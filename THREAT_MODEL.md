@@ -156,6 +156,18 @@ What follows is what is still not defended.
 - **What a granted host does with a request.** The grant names a host
   as written; where the name resolves is DNS's business, and what the
   host does with the data it receives is outside the model.
+- **The connection endpoint, when a proxy is set (known open; fixed in
+  8.0.0).** Through 7.1.x the network client honoured an ambient
+  `HTTP_PROXY` / `HTTPS_PROXY`: a `net:` grant checks the URL's host, but
+  the socket then went to the proxy, which need not be a granted host, so
+  an `http://` request carried its payload to the proxy. The grant bounded
+  the URL string, not the peer. The route is `guarded_opener()` building
+  on urllib's default `ProxyHandler`. This is a real gap in host-scoped
+  egress control, but closing it *refuses* traffic that reaches a proxy
+  today, so by STABILITY.md rule 1 the fix is a major: **8.0.0** builds the
+  opener with proxies disabled (a proxy host must itself be granted).
+  Until then, run with a clean environment, or point `HTTP(S)_PROXY` only
+  at a proxy you trust and treat it as inside the net perimeter.
 - **What a granted path contains.** A hard link inside a granted
   directory is that directory's content. A file system changed by
   another process between the check and the open is outside the
@@ -285,6 +297,24 @@ What follows is what is still not defended.
 - **Compile-time reads.** `import "path.vel"` reads that file as
   code when compiling. It reads Velaris source, not data, and the
   effect budget applies to the program's own reads, not to imports.
+- **The proof cache is data, and the program's directory is never
+  trusted for it.** Proof results are cached so a second `check` need not
+  re-run Z3. From 7.1.2 the cache lives only in a per-user directory
+  (`%LOCALAPPDATA%\velaris` on Windows, `$XDG_CACHE_HOME/velaris` or
+  `~/.cache/velaris` elsewhere), keyed by the source's absolute path, a
+  hash of its bytes, and the compiler version, with that header
+  re-verified on load. A `./.velaris/` sitting in a project is **ignored**
+  (`velaris audit` says so). This matters because from **2.29 to 7.1.1**
+  the cache was read from `./.velaris/proofs.json` in the working
+  directory and a `"proven": true` entry was trusted without re-proving:
+  a `./.velaris/` shipped alongside an untrusted program (the cache key is
+  public and deterministic) could make a false `ensures` report proven and,
+  for a native-compiled pure function, go unenforced at run time. That was
+  a hole for the life of the on-disk cache; it is
+  [advisory-proof-cache.md](advisory-proof-cache.md), fixed in 7.1.2. The
+  lesson is general: a cache the untrusted program can write is untrusted
+  input, so it lives where the program cannot reach it and is bound to the
+  source it describes.
 - **The prover's reach.** Three benchmark rows (03d, 03f, 04e) are
   caught only while running: a division on the unguarded of two
   paths, a remainder inside a loop, a read at `i + 1` in a loop over

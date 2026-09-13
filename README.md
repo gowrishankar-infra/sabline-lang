@@ -674,7 +674,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: gowrishankar-infra/velaris-lang@v7.1.1
+      - uses: gowrishankar-infra/velaris-lang@v7.1.2
 ```
 
 That is the whole workflow. With no `with:` block the Action installs
@@ -838,10 +838,10 @@ findings go to code scanning when `sarif` is on. It needs
 ### Everything else the Action takes
 
 ```yaml
-  - uses: gowrishankar-infra/velaris-lang@v7.1.1
+  - uses: gowrishankar-infra/velaris-lang@v7.1.2
     with:
       files: "src/*.vel"     # default: every .vel file in the repository
-      version: "7.1.1"       # default: the newest on PyPI
+      version: "7.1.2"       # default: the newest on PyPI
       proofs: "true"         # the default; installs z3-solver
       format: "true"         # also fail if the code is not canonically formatted
       min-proven: "80"       # fail below this percent of promises proven

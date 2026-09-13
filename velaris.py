@@ -296,7 +296,7 @@ Usage:
 import json
 import os
 
-VERSION = "7.1.1"
+VERSION = "7.1.2"
 import re
 import sys
 from dataclasses import dataclass, field
@@ -565,6 +565,7 @@ ERROR_TABLE = {
     "E002": "an unknown escape sequence in a text literal",
     "E100": "the parser expected something else here",
     "E101": "a token that cannot start an expression here",
+    "E102": "an expression that nests, or chains operators, too deeply",
     "E200": "an unknown function, or an import with no such function",
     "E300": "an effect used but not declared in 'uses', or a name in "
             "'uses' that is not an effect",
@@ -574,6 +575,7 @@ ERROR_TABLE = {
     "E313": "a path outside the run's fs grants",
     "E314": "a host or port outside the run's net grants",
     "E315": "the run's fs or net operation count was reached",
+    "E316": "a file larger than the read ceiling (raise it with --max-read)",
     "E400": "there is no 'main' function",
     "E401": "the wrong number of arguments, or parameters on 'main'",
     "E402": "an unknown variable, or a function value that uses a name "
@@ -665,6 +667,18 @@ REMOVED_ERRORS = ()
 # 3. PARSER — recursive descent, one function per grammar rule
 # ---------------------------------------------------------------------------
 
+# An expression's tree is walked recursively by every later stage (effect
+# checker, type checker, prover, formatter). A pathological source - a chain
+# of thousands of operators, or thousands of nested brackets - would build a
+# tree deep enough to overflow one of those walks with a Python traceback
+# rather than a clean error (fixed in 7.1.2). These caps are far above any
+# real expression; past them the parser stops with E102. The compile
+# pipeline also raises Python's recursion limit (load_program) so a tree up
+# to these depths walks without trouble.
+EXPR_CHAIN_LIMIT = 1000       # operators in one left-associative run
+EXPR_NEST_LIMIT = 1000        # bracket / unary nesting depth
+
+
 class Parser:
     lambda_n = 0
 
@@ -672,6 +686,15 @@ class Parser:
         self.lifted: list = []
         self.toks = tokens
         self.i = 0
+        self._nest = 0            # current expression nesting depth (E102)
+
+    def _too_deep(self, line: int):
+        return VelarisError("E102",
+            "this expression nests, or chains operators, too deeply",
+            line,
+            fixes=["split it into smaller pieces with intermediate 'let' "
+                   "bindings",
+                   "a single expression this large is almost always a bug"])
 
     def peek(self) -> Token: return self.toks[self.i]
     def next(self) -> Token:
@@ -1048,15 +1071,23 @@ class Parser:
     # expressions: or -> and -> not -> comparison -> add/sub -> mul/div -> atoms
     def parse_expr(self):
         left = self.parse_and()
+        n = 0
         while self.peek().kind == "KEYWORD" and self.peek().text == "or":
             op = self.next()
+            n += 1
+            if n > EXPR_CHAIN_LIMIT:
+                raise self._too_deep(op.line)
             left = BinOp("or", left, self.parse_and(), op.line)
         return left
 
     def parse_and(self):
         left = self.parse_not()
+        n = 0
         while self.peek().kind == "KEYWORD" and self.peek().text == "and":
             op = self.next()
+            n += 1
+            if n > EXPR_CHAIN_LIMIT:
+                raise self._too_deep(op.line)
             left = BinOp("and", left, self.parse_not(), op.line)
         return left
 
@@ -1064,27 +1095,45 @@ class Parser:
         t = self.peek()
         if t.kind == "KEYWORD" and t.text == "not":
             self.next()
-            return Not(self.parse_not(), t.line)
+            self._nest += 1
+            if self._nest > EXPR_NEST_LIMIT:
+                raise self._too_deep(t.line)
+            try:
+                return Not(self.parse_not(), t.line)
+            finally:
+                self._nest -= 1
         return self.parse_cmp()
 
     def parse_cmp(self):
         left = self.parse_add()
+        n = 0
         while self.peek().text in ("==", "!=", "<", ">", "<=", ">="):
             op = self.next()
+            n += 1
+            if n > EXPR_CHAIN_LIMIT:
+                raise self._too_deep(op.line)
             left = BinOp(op.text, left, self.parse_add(), op.line)
         return left
 
     def parse_add(self):
         left = self.parse_mul()
+        n = 0
         while self.peek().text in ("+", "-"):
             op = self.next()
+            n += 1
+            if n > EXPR_CHAIN_LIMIT:
+                raise self._too_deep(op.line)
             left = BinOp(op.text, left, self.parse_mul(), op.line)
         return left
 
     def parse_mul(self):
         left = self.parse_postfix()
+        n = 0
         while self.peek().text in ("*", "/", "%"):
             op = self.next()
+            n += 1
+            if n > EXPR_CHAIN_LIMIT:
+                raise self._too_deep(op.line)
             left = BinOp(op.text, left, self.parse_postfix(), op.line)
         return left
 
@@ -1097,6 +1146,15 @@ class Parser:
         return e
 
     def parse_atom(self):
+        self._nest += 1
+        if self._nest > EXPR_NEST_LIMIT:
+            raise self._too_deep(self.peek().line)
+        try:
+            return self._parse_atom()
+        finally:
+            self._nest -= 1
+
+    def _parse_atom(self):
         t = self.next()
         if t.kind == "KEYWORD" and t.text == "fn":
             return self.parse_lambda(t)
@@ -1323,6 +1381,15 @@ def load_program(entry: str, entry_source: str | None = None,
     """(functions, records) of the entry file and everything it imports.
     `loaded`, when given, gets the path of each file read, in the order
     they were read - the entry first."""
+    # Every later stage walks the AST recursively; the parser caps how deep
+    # an expression can nest (EXPR_NEST_LIMIT / EXPR_CHAIN_LIMIT), and this
+    # lifts Python's own limit so a tree up to that depth walks without a
+    # traceback (the interpreter raises it too, for deep calls). 7.1.2.
+    if sys.getrecursionlimit() < 20000:
+        try:
+            sys.setrecursionlimit(20000)
+        except Exception:
+            pass
     funcs, records = [], []
     fn_src, rec_src = {}, {}
     visited = set()
@@ -1448,6 +1515,14 @@ FALLIBLE_BUILTINS = {"to_int", "read_file", "read_file_secret",
                      "divide_or_fail", "parse_money"}   # + get on maps
 
 PROGRAM_ARGS: list = []    # filled by the CLI: velaris prog.vel a b c
+
+# read_file / read_file_secret refuse a file larger than this, so a single
+# read cannot exhaust memory (a whole file is read at once). The default is
+# generous for source, config and data files; a program that legitimately
+# reads more raises it with `--allow ... ` no - with `--max-read <MB>` on the
+# command line. It is a resource ceiling like a memory cap, not a grant, so
+# breaching it is E316 and cannot be caught. 64 MiB unless raised (7.1.2).
+MAX_READ_BYTES = 64 * 1024 * 1024
 
 # The eight. `declassify` joined the seven in 6.0: it is not a way to
 # reach the outside world, it is the one way a Secret becomes an
@@ -4395,8 +4470,64 @@ def check_types(funcs: list[Function], records: list, errors: list) -> None:
 #       to runtime promise checks.
 # ---------------------------------------------------------------------------
 
-CACHE_DIR = ".velaris"
-CACHE_FILE = os.path.join(CACHE_DIR, "proofs.json")
+# The proof cache lives in a PER-USER directory, never in the program's own
+# directory. Until 7.1.1 it was `./.velaris/proofs.json`, read from wherever
+# the compiler ran - so a ./.velaris/proofs.json shipped alongside an
+# untrusted program (a project directory, a tarball) was believed, and a
+# forged `"proven": true` entry made a false `ensures` report proven and, for
+# a native-compiled pure function, go unenforced at runtime. That was a hole
+# from 2.29 (when the cache was added) to 7.1.1; see advisory-proof-cache.md
+# and THREAT_MODEL.md. From 7.1.2 the program directory is never trusted for
+# it: a stray ./.velaris/ is ignored (velaris audit says so), and the cache
+# is keyed by the source's ABSOLUTE path + content hash + VERSION, so it can
+# never be transplanted onto a different file, and a tampered entry whose
+# header does not match is rejected.
+CACHE_DIR = ".velaris"                 # the stale project-local name, only
+CACHE_FILE = os.path.join(CACHE_DIR, "proofs.json")   # detected, never read
+
+
+def _user_cache_dir() -> str | None:
+    """The per-user proof-cache root, or None when one cannot be placed.
+
+    %LOCALAPPDATA%\\velaris\\proofs on Windows; $XDG_CACHE_HOME/velaris/proofs
+    or ~/.cache/velaris/proofs elsewhere. Never the program's directory."""
+    try:
+        if os.name == "nt":
+            base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        else:
+            base = os.environ.get("XDG_CACHE_HOME") or \
+                os.path.join(os.path.expanduser("~"), ".cache")
+        if not base or base == "~":
+            return None
+        return os.path.join(base, "velaris", "proofs")
+    except Exception:
+        return None
+
+
+def _proof_cache_ref(source_path, source_text):
+    """(cache_file, abspath, content_sha256) for this source, or None when
+    there is no usable per-user cache: no source path, an unreadable file,
+    or no per-user directory. The cache is bound to the absolute path, the
+    exact bytes, and this VERSION, so a changed file - or one at a different
+    path - never reuses another's proofs."""
+    if not source_path:
+        return None
+    import hashlib
+    try:
+        ap = os.path.normcase(os.path.abspath(source_path))
+        text = source_text
+        if text is None:
+            with open(source_path, encoding="utf-8") as fh:
+                text = fh.read()
+    except OSError:
+        return None
+    d = _user_cache_dir()
+    if not d:
+        return None
+    ch = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    tag = hashlib.sha256(
+        (ap + "\0" + VERSION + "\0" + ch).encode("utf-8")).hexdigest()
+    return (os.path.join(d, tag + ".json"), ap, ch)
 
 # ---- how long one proof may take --------------------------------------
 # A query about Float is decided by bit-blasting - 64-bit values expanded
@@ -4526,19 +4657,36 @@ def stmt_key(stmts) -> str:
     return show(stmts)
 
 
-def _cache_load() -> dict:
+def _cache_load(ref) -> dict:
+    """The proofs remembered for this exact source, or {} when there is no
+    cache, it does not parse, or its header does not match the path, bytes
+    and version it claims - so a hand-edited or transplanted file is
+    rejected rather than trusted."""
+    if ref is None:
+        return {}
+    cache_file, ap, ch = ref
     try:
-        with open(CACHE_FILE, encoding="utf-8") as f:
-            return json.load(f)
+        with open(cache_file, encoding="utf-8") as f:
+            doc = json.load(f)
     except Exception:
         return {}
+    if (not isinstance(doc, dict) or doc.get("version") != VERSION
+            or doc.get("path") != ap or doc.get("content_sha256") != ch):
+        return {}                       # tampered or stale: prove again
+    proofs = doc.get("proofs")
+    return proofs if isinstance(proofs, dict) else {}
 
 
-def _cache_save(data: dict) -> None:
+def _cache_save(ref, data: dict) -> None:
+    if ref is None:
+        return
+    cache_file, ap, ch = ref
     try:
-        os.makedirs(CACHE_DIR, exist_ok=True)
-        with open(CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f)
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump({"schema": "velaris.proofcache/1", "path": ap,
+                       "version": VERSION, "content_sha256": ch,
+                       "proofs": data}, f)
     except OSError:
         pass                            # a cache that cannot be written
                                         # is a slowdown, never an error
@@ -4741,7 +4889,12 @@ def loop_termination(fn, table: dict | None = None) -> list:
 def check_proofs(funcs: list[Function], records: list,
                  errors: list, proven_out: set | None = None,
                  use_cache: bool = False,
-                 timeouts_out: list | None = None) -> None:
+                 timeouts_out: list | None = None,
+                 source_path: str | None = None,
+                 source_text: str | None = None) -> None:
+    # The proof cache is per-user and bound to (source_path, its bytes,
+    # VERSION); see _proof_cache_ref. With use_cache and no source_path there
+    # is simply no cache - the program's own directory is never read (7.1.2).
     # Nothing to prove means nothing to import. Loading z3 costs about
     # 350ms, and most programs - every hello world, every script whose
     # functions carry no promises - were paying it for no work at all.
@@ -6137,7 +6290,9 @@ def check_proofs(funcs: list[Function], records: list,
             i += 1
         return [(ctx, FELL_OFF, dict(env))]
 
-    cache = _cache_load() if use_cache else {}
+    cache_ref = _proof_cache_ref(source_path, source_text) if use_cache \
+        else None
+    cache = _cache_load(cache_ref)
     settled: dict = {}          # what this run confirmed
     for fn in funcs:
         key = proof_key(fn, table, records) if use_cache else None
@@ -6327,8 +6482,8 @@ def check_proofs(funcs: list[Function], records: list,
                     for x in errors[before_errors:]]}
             continue
 
-    if use_cache:
-        _cache_save(settled)
+    if cache_ref is not None:
+        _cache_save(cache_ref, settled)
 
     # A proof that ran out of time says so, here and in every report
     # built from this run. Silence would read exactly like the prover
@@ -6475,6 +6630,31 @@ def native_eligible(funcs: list[Function],
             cand[f.name] = c
     changed = True
     while changed:                      # drop anyone calling a non-candidate
+        changed = False
+        for name in list(cand):
+            if not cand[name] <= set(cand):
+                del cand[name]
+                changed = True
+    # A directly or mutually recursive function is NOT compiled to native
+    # (7.1.2): the interpreter's E609 depth guard (call_function) has no
+    # equivalent in native code, so a recursion that never bottoms out would
+    # loop unbounded in native code instead of stopping. Interpreting it
+    # keeps E609. Find every function that can reach itself through the
+    # call graph and drop it, then drop anyone left calling a dropped one.
+    reach = {n: set(cand[n] & set(cand)) for n in cand}
+    grew = True
+    while grew:
+        grew = False
+        for n in reach:
+            add = set().union(*(reach[m] for m in reach[n])) if reach[n] \
+                else set()
+            if not add <= reach[n]:
+                reach[n] |= add
+                grew = True
+    for n in [n for n in cand if n in reach[n]]:
+        del cand[n]
+    changed = True
+    while changed:
         changed = False
         for name in list(cand):
             if not cand[name] <= set(cand):
@@ -7588,6 +7768,18 @@ def run_builtin(name: str, args: list, line: int):
         real = allow_path("read", str(args[0]), name, line)
         count_op("fs", name, line)
         try:
+            size = os.path.getsize(real)
+        except OSError:
+            size = None
+        if size is not None and size > MAX_READ_BYTES:
+            raise VelarisError("E316",
+                f"'{args[0]}' is {size} bytes, over the read ceiling of "
+                f"{MAX_READ_BYTES} bytes - a file is read whole, into "
+                f"memory, so a large one is capped", line,
+                fixes=[f"raise the ceiling: --max-read "
+                       f"{max(1, size // (1024 * 1024) + 1)} (megabytes)",
+                       "or read less, or read it in another program"])
+        try:
             return open(real, encoding="utf-8").read()
         except OSError:
             raise FailSignal(f"cannot read file '{args[0]}'")
@@ -8016,12 +8208,69 @@ def build_runtime(funcs: list[Function], native: dict | None = None):
     return {"table": table, "call": call, "run": run, "eval": eval_}
 
 
+def _needs_big_stack() -> bool:
+    """CPython before 3.11 uses much more C stack per Python frame, so with
+    the raised recursion limit build_runtime sets, a deeply recursive Velaris
+    program can overflow the C stack (a segfault on Windows) before the
+    interpreter's DEPTH_LIMIT guard fires E609. 3.11+ handles the same depth
+    in place. Running on a worker thread perturbs a memory cap's accounting,
+    so we only take that path where the guard would otherwise not be
+    reached. 7.1.2."""
+    return sys.version_info < (3, 11)
+
+
+def _run_on_big_stack(fn):
+    """On CPython < 3.11, run fn on a thread with a larger C stack and
+    re-raise whatever it raised (a VelarisError, a FailSignal, or the
+    SystemExit exit_with throws), so a runaway recursion reaches E609 rather
+    than overflowing the C stack. Elsewhere - and if the platform will not
+    size a thread stack - run in place, which leaves the memory-cap path
+    untouched. 7.1.2."""
+    if not _needs_big_stack():
+        return fn()
+    import threading
+    box: dict = {}
+
+    def worker():
+        try:
+            box["value"] = fn()
+        except BaseException as e:          # VelarisError/FailSignal/SystemExit
+            box["error"] = e
+
+    # Windows CPython rejects very large thread stacks (256 MiB raises on
+    # 3.10), so try descending sizes and take the first the platform accepts;
+    # 64 MiB holds the ~24000 Python frames DEPTH_LIMIT allows, verified on
+    # 3.10.
+    prev = None
+    for size in (64 * 1024 * 1024, 32 * 1024 * 1024):
+        try:
+            prev = threading.stack_size(size)
+            break
+        except (ValueError, RuntimeError, OverflowError):
+            continue
+    else:
+        return fn()                         # cannot size a stack: run here
+    try:
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join()
+    finally:
+        try:
+            threading.stack_size(prev or 0)
+        except (ValueError, RuntimeError, OverflowError):
+            pass
+    if "error" in box:
+        raise box["error"]
+    return box.get("value")
+
+
 def interpret(funcs: list[Function], native: dict | None = None) -> None:
     rt = build_runtime(funcs, native)
     if "main" not in rt["table"]:
         raise VelarisError("E400", "no 'main' function found", 1,
                           fixes=["add: fn main() uses io { ... }"])
-    rt["call"]("main", [], rt["table"]["main"].line)
+    _run_on_big_stack(
+        lambda: rt["call"]("main", [], rt["table"]["main"].line))
 
 
 # ---------------------------------------------------------------------------
@@ -8090,7 +8339,8 @@ def inspect_source(path: str, source: str | None = None, require_main: bool = Fa
         try:
             check_proofs(funcs, records, errors, proved,
                          use_cache="--no-cache" not in sys.argv,
-                         timeouts_out=abandoned)
+                         timeouts_out=abandoned,
+                         source_path=path, source_text=source)
         except VelarisError as e:
             errors.append(e)
     report["proof_timeouts"] = abandoned
@@ -8158,7 +8408,8 @@ def editor_answer(method: str, params: dict, text: str, uri: str):
         check_types(funcs, records, errors)
         if not errors:
             try:
-                check_proofs(funcs, records, errors, proven, use_cache=True)
+                check_proofs(funcs, records, errors, proven, use_cache=True,
+                             source_path=path, source_text=text)
             except Exception:
                 pass
 
@@ -10026,6 +10277,16 @@ def main() -> int:
         at = argv.index("--max-memory-mb") + 1
         if at < len(argv):
             _cap_this_process(argv[at])
+    if "--max-read" in argv:
+        # the read ceiling (MB); read_file/read_file_secret refuse a file
+        # larger than this (E316). A resource ceiling, not a grant. (7.1.2)
+        at = argv.index("--max-read") + 1
+        if at >= len(argv) or not _ascii_digits(argv[at]) \
+                or int(argv[at]) < 1:
+            print("--max-read needs a whole number of megabytes, as "
+                  "--max-read 256", file=sys.stderr)
+            return 2
+        globals()["MAX_READ_BYTES"] = int(argv[at]) * 1024 * 1024
     if argv[:1] == ["repl"]:
         return repl()
     if argv[:1] == ["version"]:
@@ -10273,6 +10534,15 @@ def main() -> int:
                 print(f"  line {e['line']}: [{e['code']}] {e['message']}")
             return 1
 
+        # a project-local proof cache is never trusted (7.1.2): say so where
+        # one is present, so a reader knows the proofs below were re-checked
+        _tdir = os.path.dirname(os.path.abspath(target)) or "."
+        if os.path.isdir(os.path.join(_tdir, CACHE_DIR)) or \
+                os.path.isdir(CACHE_DIR):
+            print(f"ignored: ./{CACHE_DIR}/  (a project-local proof cache is "
+                  f"never trusted; proofs here were re-checked)")
+            print()
+
         print("WHAT IT CAN TOUCH")
         if not outside:
             print("  nothing. This program cannot reach the console, the")
@@ -10375,11 +10645,20 @@ def main() -> int:
 
     if argv[:1] == ["clean"]:
         import shutil
-        if os.path.exists(CACHE_DIR):
-            shutil.rmtree(CACHE_DIR, ignore_errors=True)
-            print(f"removed {CACHE_DIR}/ - the next run proves everything "
-                  f"again")
-        else:
+        did = False
+        d = _user_cache_dir()
+        root = os.path.dirname(d) if d else None      # <cache>/velaris
+        if root and os.path.isdir(root):
+            shutil.rmtree(root, ignore_errors=True)
+            print(f"removed the proof cache at {root} - the next run "
+                  f"proves everything again")
+            did = True
+        if os.path.isdir(CACHE_DIR):
+            print(f"note: {CACHE_DIR}/ in this directory is ignored (since "
+                  f"7.1.2 a project-local proof cache is never trusted); "
+                  f"you may delete it")
+            did = True
+        if not did:
             print("nothing to clean")
         return 0
     if argv[:1] == ["build"]:
@@ -10689,7 +10968,8 @@ def main() -> int:
     # args() is the program's arguments - never the flags this command
     # took for itself. Until 2.62 `--allow io` leaked in as two words.
     FLAGS = {"--json", "--no-native", "--time", "--check", "--no-cache"}
-    VALUED = {"--allow", "--deny", "--timeout", "--max-memory-mb"}
+    VALUED = {"--allow", "--deny", "--timeout", "--max-memory-mb",
+              "--max-read"}
     rest, skip = [], False
     for a in sys.argv[2:]:
         if skip:
@@ -10707,7 +10987,8 @@ def main() -> int:
         proven: set = set()
         if not errors:                # proofs assume well-formed code
             check_proofs(funcs, records, errors, proven,
-                         use_cache="--no-cache" not in sys.argv)
+                         use_cache="--no-cache" not in sys.argv,
+                         source_path=filename)
         if errors:
             seen_err, unique = set(), []
             for e in errors:            # two checkers can spot one problem
@@ -11708,10 +11989,10 @@ def reset_program_state(budget: "Budget | None" = None,
                             engine owns
 
     There is no proof cache in memory to clear. check_proofs keeps its
-    cache on disk (.velaris/proofs.json) and only when it is asked to
-    (use_cache=True); the library and the pool never ask, so nothing
-    about one program's proofs survives in this process to reach the
-    next.
+    cache on disk, in a per-user directory (7.1.2; never the program's own
+    directory), and only when it is asked to (use_cache=True); the library
+    and the pool never ask, so nothing about one program's proofs survives
+    in this process to reach the next.
 
     With a baseline, three things that are the process's rather than
     this module's are put back too, because a program granted ffi can

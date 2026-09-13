@@ -1,5 +1,71 @@
 # Velaris changelog
 
+## 7.1.2 - The proof cache could be lied to
+
+An adversarial pass against 7.1.1 found four things. One is a soundness
+hole and the reason for this release; three are hardening.
+
+**The proof cache could be lied to (soundness; SECURITY.md challenge #1;
+2.29 through 7.1.1).** A second `velaris check` need not re-run the prover
+because proof results are cached on disk. Until now that cache was
+`./.velaris/proofs.json`, read from the directory the compiler ran in -
+the directory that holds the program. A `"proven": true` entry was trusted
+without re-proving, and the cache key is a SHA-256 of public, deterministic
+inputs (the version, the function's text and contract, its callees'
+contracts, the records). So a `./.velaris/` shipped alongside an untrusted
+program - inside a project directory or a tarball - could forge an entry
+that made a false `ensures` be reported "proven" by `check`, `proofs`,
+`audit`, `explain` and the library; and because a "proven" pure-integer
+function is compiled to native code, which carries no runtime promise
+check, the false promise was also unenforced when the program ran - it
+finished with the wrong result and exit code 0. SPEC.md §9.2 says "proven
+means established by Z3 before the program runs"; a poisoned cache made
+that a lie.
+
+The fix: the program's directory is never trusted for the cache. It moves
+to a per-user directory (`%LOCALAPPDATA%\velaris` on Windows,
+`$XDG_CACHE_HOME/velaris` or `~/.cache/velaris` elsewhere), and each entry
+is bound to, and re-verified against, the source's absolute path, a hash of
+its exact bytes, and the compiler version - so a transplanted or hand-edited
+entry is re-proved, not trusted. A `./.velaris/` present in a project is
+ignored; `velaris audit` prints `ignored: ./.velaris/`. If no per-user cache
+can be written, the run proceeds without one. A poisoned `./.velaris/` is
+therefore never read: the first run on a malicious program refutes the false
+promise (E700 with the prover, or the runtime check E601 without it). See
+[advisory-proof-cache.md](advisory-proof-cache.md) and THREAT_MODEL.md.
+
+**Native recursion is bounded like interpreted recursion (hardening).** A
+runaway recursive function compiled to native code looped unbounded, because
+the interpreter's E609 "recursion that never stops" guard had no equivalent
+in native code; the same function run `--no-native` reported E609 promptly.
+A directly or mutually recursive function is now left interpreted so the
+guard applies, and the interpreter runs a program on a thread with a large
+stack so the guard fires cleanly - as E609, within a few seconds - rather
+than overflowing the C stack, which on CPython 3.10 for Windows could
+crash the process before the guard was reached.
+
+**A giant expression is a clean error (hardening).** A single expression
+chaining thousands of operators, or nesting thousands of brackets, built a
+tree deep enough to overflow a later pass with a Python traceback. The
+parser now stops such an expression with E102, and the compile pipeline
+lifts Python's recursion limit so ordinary deep trees still walk.
+
+**`read_file` has a size ceiling (hardening).** `read_file` and
+`read_file_secret` read a whole file into memory at once. They now refuse a
+file larger than 64 MiB with E316, raised for a run with `--max-read <MB>`.
+`fetch` and `post` already capped their reads; this brings the disk to
+parity.
+
+The adversarial pass also confirmed, and this release keeps as regression
+cases (`check_adversarial.py`), that secrets reach no sink, the sandbox
+paths hold on Windows, the ffi reach check refuses foreign modules,
+shadowed builtins never win, bidi and zero-width characters outside a
+string are refused, `velaris trace` redacts, and the pool leaks nothing
+between runs. One finding is left open on purpose: a `net:` grant does not
+bound the socket peer when an ambient `HTTP_PROXY` is set, because closing
+it refuses traffic that reaches a proxy today and STABILITY.md rule 1 makes
+that a major - it is fixed in 8.0.0 and listed in THREAT_MODEL.md until then.
+
 ## 7.1.1 - 7.1.0 did not import on Python 3.10 or 3.11
 
 7.1.0, published earlier today, declares `requires-python >= 3.10` and

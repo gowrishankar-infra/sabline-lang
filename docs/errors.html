@@ -105,7 +105,7 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 </style></head><body>
 <nav><div class="in"><a class="brand" href="index.html">
 <span class="dot"></span>Velaris</a><a href="index.html" class="">Home</a><a href="tutorial.html" class="">Tutorial</a><a href="spec.html" class="">Reference</a><a href="library.html" class="">Library</a><a href="errors.html" class="here">Errors</a><a href="floats.html" class="">Floats</a><a href="playground.html" class="">Playground</a>
-<span class="ver">v7.1.1</span></div></nav>
+<span class="ver">v7.1.2</span></div></nav>
 <main class=""><h1>Error reference</h1>
 <p class="lead">Every error Velaris can give, from the error table in the compiler source, which the test suite holds against every code the compiler can raise, so this page cannot go stale. In the message templates, braces are filled with your program&rsquo;s names and values; every error also arrives with numbered fixes, and as JSON with <code>--json</code>.</p><table><tr><th>Code</th><th>What it means</th><th>Message template</th></tr>
 <tr id="E000"><td class="ecode">E000</td><td>a character the lexer cannot read, or a run that stopped without a Velaris error to report</td><td>unexpected character {source[pos]!r}</td></tr>
@@ -113,6 +113,7 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <tr id="E002"><td class="ecode">E002</td><td>an unknown escape sequence in a text literal</td><td>unknown escape &#x27;\\{e}&#x27; in text</td></tr>
 <tr id="E100"><td class="ecode">E100</td><td>the parser expected something else here</td><td>expected &#x27;{want}&#x27; but found &#x27;{t.text or &#x27;end of file&#x27;}&#x27;</td></tr>
 <tr id="E101"><td class="ecode">E101</td><td>a token that cannot start an expression here</td><td>unexpected &#x27;{t.text}&#x27;</td></tr>
+<tr id="E102"><td class="ecode">E102</td><td>an expression that nests, or chains operators, too deeply</td><td>this expression nests, or chains operators, too deeply</td></tr>
 <tr id="E200"><td class="ecode">E200</td><td>an unknown function, or an import with no such function</td><td>&#x27;{ns}&#x27; has no function called &#x27;{fname}&#x27;</td></tr>
 <tr id="E300"><td class="ecode">E300</td><td>an effect used but not declared in &#x27;uses&#x27;, or a name in &#x27;uses&#x27; that is not an effect</td><td>function &#x27;{fn.name}&#x27; declares &#x27;{unknown[0]}&#x27;, which is not an effect; the effects are {&#x27;, &#x27;.join(ALL_EFFECTS)}</td></tr>
 <tr id="E310"><td class="ecode">E310</td><td>an effect outside the run&#x27;s budget (while running); or a promise that calls a function with effects or uses &#x27;try&#x27;</td><td>the &#x27;{where}&#x27; promise of &#x27;{fn.name}&#x27; calls &#x27;{node.name}&#x27; which has effects ({&#x27;, &#x27;.join(sorted(eff))}); promises must be pure</td></tr>
@@ -120,6 +121,7 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <tr id="E313"><td class="ecode">E313</td><td>a path outside the run&#x27;s fs grants</td><td>&#x27;{what}&#x27; reaches &#x27;{path}&#x27; (resolved: {real}), which this run&#x27;s fs grants do not cover</td></tr>
 <tr id="E314"><td class="ecode">E314</td><td>a host or port outside the run&#x27;s net grants</td><td>&#x27;{what}&#x27; reaches host &#x27;{host}&#x27;, which this run does not allow: {why}</td></tr>
 <tr id="E315"><td class="ecode">E315</td><td>the run&#x27;s fs or net operation count was reached</td><td>&#x27;{what}&#x27; is the {OP_COUNTS[kind]}{_ordinal(OP_COUNTS[kind])} {kind} operation, and this run allows {limit}</td></tr>
+<tr id="E316"><td class="ecode">E316</td><td>a file larger than the read ceiling (raise it with --max-read)</td><td>&#x27;{args[0]}&#x27; is {size} bytes, over the read ceiling of {MAX_READ_BYTES} bytes - a file is read whole, into memory, so a large one is capped</td></tr>
 <tr id="E400"><td class="ecode">E400</td><td>there is no &#x27;main&#x27; function</td><td>there is no &#x27;main&#x27; - a program needs somewhere to start</td></tr>
 <tr id="E401"><td class="ecode">E401</td><td>the wrong number of arguments, or parameters on &#x27;main&#x27;</td><td>&#x27;{node.name}&#x27; expects {len(ptypes)} argument(s) but got {len(node.args)}</td></tr>
 <tr id="E402"><td class="ecode">E402</td><td>an unknown variable, or a function value that uses a name from the code around it</td><td>a function value cannot use &#x27;{node.name}&#x27; from the code around it</td></tr>

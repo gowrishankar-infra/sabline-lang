@@ -74,6 +74,8 @@ jobs:
         run: python benchmark/run.py --quick --check
       - name: Wrong programs are refused for the right reason
         run: python check_refusals.py
+      - name: The 7.1.1 adversarial pass stays closed
+        run: python check_adversarial.py
       - name: Edge, property and round-trip tests
         run: velaris examples/edges.vel --allow ffi:datetime,io
       - name: Velaris tests written in Velaris

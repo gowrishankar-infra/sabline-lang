@@ -59,6 +59,15 @@ a fix within the week, recorded in the changelog with what was found
 and what was wrong. Report through the private channel above so the
 fix ships before the details do; the credit is public either way.
 
+## Resolved advisories
+
+- **Proof cache poisoning** (challenge #1), affecting 2.29 through 7.1.1,
+  fixed in 7.1.2: a `./.velaris/proofs.json` shipped with an untrusted
+  program could make a false `ensures` report "proven" and go unenforced
+  at run time. The proof cache now lives only in a per-user directory and
+  a project-local `./.velaris/` is ignored. See
+  [advisory-proof-cache.md](advisory-proof-cache.md) and THREAT_MODEL.md.
+
 What is not in scope of the challenge, because it is documented as not
 defended: anything a granted `ffi` module does, resource use below a
 limit, the meaning of printed text, the memory cap on macOS (where
