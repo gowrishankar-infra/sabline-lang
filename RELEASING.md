@@ -90,6 +90,19 @@ publishers on PyPI and npm name this repository, the workflow file
 `release.yml` and the environment `release`, so renaming either breaks
 publishing. The one stored credential a release uses is `VSCE_TOKEN`.
 
+**`VSCE_TOKEN` is the one remaining long-lived secret, and it is here
+because the VS Code Marketplace has no OIDC trusted publishing.** PyPI,
+npm and the MCP registry all take a short-lived token minted for the run
+from the workflow's GitHub identity, so no publish credential for them
+is stored anywhere and none can leak from the repository. The
+Marketplace has no equivalent: `vsce publish` needs a personal access
+token, which must be stored as a repository secret and rotated by hand.
+It is scoped to publishing this extension and nothing else, its job
+runs `continue-on-error` so a Marketplace outage never holds up a
+release, and it is the credential to audit first. When the Marketplace
+offers OIDC publishing, this secret should go the way the PyPI and npm
+tokens already have.
+
 **A dry run.** Run `release` by hand on any branch (`gh workflow run
 release.yml --ref <branch>`). The gate says what it would decide, and
 everything is built, signed under that branch's identity and verified.

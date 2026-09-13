@@ -211,6 +211,19 @@ def check_versions() -> None:
                   f"Action or its version at {', '.join(wrong)}")
             raise SystemExit(1)
 
+    # CITATION.cff had lagged for releases (it said 4.3.1 at 7.2.0), so it
+    # is held to VERSION too from 8.0: the citation a reader copies names
+    # the version they cite. Its line is `version: X.Y.Z`.
+    cff = root / "CITATION.cff"
+    if cff.exists():
+        m = _re.search(r'^version:\s*"?([\d.]+)"?', cff.read_text(
+            encoding="utf-8"), _re.M)
+        got = m.group(1) if m else None
+        if got != a:
+            print(f"VERSION MISMATCH: velaris.py says {a}, CITATION.cff "
+                  f"says {got}")
+            raise SystemExit(1)
+
     # and what the compiler says it is when it is run with no arguments.
     # Until 4.4 that line was frozen at the version its docstring was
     # written in, and said 2.36 however old that became.

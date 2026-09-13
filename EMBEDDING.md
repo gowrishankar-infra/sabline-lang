@@ -464,6 +464,25 @@ when the incoming bytes are different, and prints both digests;
 `--force` replaces it. A project made before 3.1 has no lock, and
 `deps --verify` says so and falls back to checking `velaris.toml`.
 
+## The embedding limit
+
+Velaris embeds natively in one language and one only: Python. `import
+velaris` runs the compiler and the program in your process, and the
+three calls above return in microseconds to milliseconds - no process,
+no serialization. From any other language the boundary is a process:
+`velaris serve` (below) puts the same three calls behind a local HTTP
+door, and the CrewAI and LangChain tools, being Python, stay on the
+native library. The cost of the process boundary is real - a request to
+the door pays HTTP framing and a JSON round trip, on the order of a
+millisecond on loopback plus whatever the run itself takes, where the
+in-process call pays neither - which is why an agent framework written
+in Python should call the library, and why the door and the MCP server
+keep a worker pool (above) so they do not also pay an interpreter
+startup on every call. There is no in-process embedding for Node, Go or
+Rust, and there will not be one until the compiler is something other
+than a Python file; the process boundary is the supported way, and it is
+the boundary the OS enforces, which is stronger than the language's.
+
 ## From a language that is not Python
 
 `velaris serve` opens a local HTTP door, so a Node service, a Go tool,
@@ -700,7 +719,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: gowrishankar-infra/velaris-lang@v7.2.0
+  - uses: gowrishankar-infra/velaris-lang@v8.0.0
     with:
       min-proven: "80"
       pr-comment: "true"

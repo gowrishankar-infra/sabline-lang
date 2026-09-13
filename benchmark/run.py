@@ -681,7 +681,10 @@ def fill(text, work_path, workdir, port, other, prog_id, tool,
     the source files of category 12 name their paths."""
     paths = {"{path}": work_path,
              "{granted}": os.path.join(workdir, "granted"),
-             "{outside}": os.path.join(workdir, "outside", "secret.txt")}
+             "{outside}": os.path.join(workdir, "outside", "secret.txt"),
+             # a credential file inside the granted dir (category 13): a
+             # broad fs:read grant covers the dir, but not this .pem (8.0)
+             "{cred}": os.path.join(workdir, "granted", "service.pem")}
     if slashes:
         paths = {k: v.replace("\\", "/") for k, v in paths.items()}
     return (text.replace("{path}", paths["{path}"])
@@ -690,6 +693,7 @@ def fill(text, work_path, workdir, port, other, prog_id, tool,
                      f"http://127.0.0.1:{other}/{prog_id}/{tool}")
             .replace("{granted}", paths["{granted}"])
             .replace("{outside}", paths["{outside}"])
+            .replace("{cred}", paths["{cred}"])
             .replace("{port}", str(port)).replace("{other}", str(other)))
 
 
@@ -738,6 +742,7 @@ def run_program(prog, deno, port, other, workdir):
                     .replace("{url}", "<url>")
                     .replace("{other_url}", "<other-url>")
                     .replace("{outside}", "<outside>")
+                    .replace("{cred}", "<cred>")
                     .replace("{granted}", "<granted>"))
     row["deno_flags"] = prog.get("deno_flags", [])
     row["tools"] = {}
@@ -893,22 +898,35 @@ def results_markdown(meta, categories, rows, summary, tot):
              "**false-positive** nothing to catch but flagged or stopped; "
              "**tool-absent** not installed. README.md has the exact rules.")
     L.append("")
-    L.append("## The table")
+    # One heading per category (8.0), so a link can land on a single
+    # category (its rows follow its heading), rather than one flat table.
+    L.append("## Results, by category")
     L.append("")
-    L.append("| # | Program | Dangerous? | Velaris | Deno | Python |")
-    L.append("|---|---|---|---|---|---|")
-    for r in rows:
+
+    def row_line(r):
         dl = r["danger_line"]
         where = (f"yes, line {dl['velaris']}/{dl['deno']}/{dl['python']} "
                  f"(vel/js/py)" if r["dangerous"] else "no")
         if r.get("dependency") and r["dangerous"]:
             where += (f" of {r['dependency']['module']} "
                       f"{r['dependency']['new']}")
-        L.append(f"| {r['id']} | `{r['category_key'] if 'category_key' in r else ''}{r['name']}`<br>{r['description']} | {where} | "
-                 f"{short_cell(r['tools']['velaris'])} | "
-                 f"{short_cell(r['tools']['deno'])} | "
-                 f"{short_cell(r['tools']['python'])} |")
-    L.append("")
+        return (f"| {r['id']} | `{r.get('category_key', '')}{r['name']}`"
+                f"<br>{r['description']} | {where} | "
+                f"{short_cell(r['tools']['velaris'])} | "
+                f"{short_cell(r['tools']['deno'])} | "
+                f"{short_cell(r['tools']['python'])} |")
+
+    for cat in categories:
+        mine = [r for r in rows if r["category"] == cat["number"]]
+        if not mine:
+            continue
+        L.append(f"### {cat['number']}. {cat['title']}")
+        L.append("")
+        L.append("| # | Program | Dangerous? | Velaris | Deno | Python |")
+        L.append("|---|---|---|---|---|---|")
+        for r in mine:
+            L.append(row_line(r))
+        L.append("")
     L.append("## Per category")
     L.append("")
     L.append("Cells read before / during / missed / false-positive "
@@ -1269,6 +1287,12 @@ def main(argv=None):
         fh.write("granted-notes\n")
     with open(os.path.join(workdir, "outside", "secret.txt"), "w") as fh:
         fh.write("outside-secret\n")
+    # a credential file inside the granted dir, for the TrapDoor (cat 13):
+    # a *.pem is a documented credential location, so read_file refuses it
+    # (E318) and a broad fs:read: grant does not cover it (8.0)
+    with open(os.path.join(workdir, "granted", "service.pem"), "w") as fh:
+        fh.write("-----BEGIN PRIVATE KEY-----\nbench-not-a-real-key\n"
+                 "-----END PRIVATE KEY-----\n")
     os.environ["BENCH_SECRET"] = SECRET      # velaris.run's child inherits
     try:
         import z3  # noqa: F401

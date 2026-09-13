@@ -105,7 +105,7 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 </style></head><body>
 <nav><div class="in"><a class="brand" href="index.html">
 <span class="dot"></span>Velaris</a><a href="index.html" class="">Home</a><a href="tutorial.html" class="">Tutorial</a><a href="spec.html" class="here">Reference</a><a href="library.html" class="">Library</a><a href="errors.html" class="">Errors</a><a href="floats.html" class="">Floats</a><a href="playground.html" class="">Playground</a>
-<span class="ver">v7.2.0</span></div></nav>
+<span class="ver">v8.0.0</span></div></nav>
 <main class="wide"><h1>The Velaris language reference</h1>
 <br>
 <p>This is the specification: what Velaris means, precisely. It is not a</p>
@@ -834,14 +834,24 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <h2>14. Errors</h2>
 <br>
 <p>Every error has a stable code (<code>E###</code>), a message in plain English, a</p>
-<p>file and line, and numbered suggested fixes. <code>--json</code> emits them as</p>
-<p>structured data. The complete list is generated from the compiler</p>
-<p>source itself and published with the documentation.</p>
+<p>file and line, and numbered suggested fixes, and — from 8.0 — a line</p>
+<p>naming where to read more (<code>reference:</code>), which <code>--json</code> and SARIF carry</p>
+<p>as a field. <code>--json</code> emits them as structured data. The complete list is</p>
+<p>generated from the compiler source itself and published with the</p>
+<p>documentation.</p>
 <br>
-<p>Codes are grouped: E0xx lexing, E1xx parsing, E2xx names, E3xx</p>
-<p>effects, E4xx arity and runtime arithmetic, E5xx types — E56x among</p>
-<p>them, for a Secret that must not escape (§3.1) — E6xx runtime contract</p>
-<p>violations, E7xx proof results.</p>
+<p><code>velaris check</code> reports every error it can find in one pass, recovering</p>
+<p>at statement boundaries rather than stopping at the first. **The first</p>
+<p>error reported is authoritative**: it is the one a run of a program with</p>
+<p>only that error would give, and the errors after it may be its</p>
+<p>consequences. A tool that acts on one error acts on the first.</p>
+<br>
+<p>Codes are grouped: E0xx lexing, E1xx parsing, E2xx names — E204 among</p>
+<p>them, for a function named like a built-in (§10.1) — E3xx effects —</p>
+<p>E317 a proxy the net budget does not cover, E318 a credential location a</p>
+<p>plain read may not touch — E4xx arity and runtime arithmetic, E5xx</p>
+<p>types — E56x among them, for a Secret that must not escape (§3.1) — E6xx</p>
+<p>runtime contract violations, E7xx proof results.</p>
 <br>
 <h2>15. Versioning and stability</h2>
 <br>

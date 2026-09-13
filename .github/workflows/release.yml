@@ -548,7 +548,7 @@ jobs:
         run: python3 release_checks.py published vscode "$V" --annotate --github-output "$GITHUB_OUTPUT"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
         with:
-          node-version: "20"
+          node-version: "22"        # Node 20 is in maintenance; 22 is LTS
       # The Marketplace times out - "Request timeout: /_apis/gallery" -
       # often enough that it took out 3.3.0, 3.4.0 and 4.3.0. That is
       # their outage, not this release's, so: three attempts with a

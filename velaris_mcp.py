@@ -330,15 +330,23 @@ def call_tool(name: str, args: dict) -> tuple:
                         "max_memory_mb": MAX_MEMORY_MB},
                        is_error=True), rec
     rec["budget"] = wanted.spec()
+    seed, frozen = args.get("seed"), args.get("freeze_time")
+    if seed is not None and not isinstance(seed, int):
+        rec["outcome"] = "bad_request"
+        return as_text({"ok": False, "error": "seed is a whole number"},
+                       is_error=True), rec
     try:
         result = pools().run(
             source, allow=set(asked),
             stdin=args.get("stdin", ""),
             args=args.get("args") or [],
+            seed=seed, freeze_time=frozen,
             timeout=timeout, max_memory_mb=memory)
     except ValueError as e:
         rec["outcome"] = "bad_request"
         return as_text({"ok": False, "error": str(e)}, is_error=True), rec
+    if seed is not None or frozen is not None:
+        rec["run_params"] = {"seed": seed, "freeze_time": frozen}
     rec["effects"] = result.effects_used
     rec["outcome"] = velaris.run_outcome(result)
     rec["refusals"] = velaris.run_refusals(result)
@@ -426,7 +434,8 @@ def serve() -> int:
                                    else "(no such tool)"),
                              outcome=rec["outcome"], budget=rec["budget"],
                              effects=rec["effects"],
-                             refusals=rec["refusals"], source=rec["source"])
+                             refusals=rec["refusals"], source=rec["source"],
+                             run_params=rec.get("run_params"))
         elif method in ("notifications/initialized", "initialized"):
             continue                              # no reply expected
         elif method == "shutdown":

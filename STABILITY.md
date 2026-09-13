@@ -111,8 +111,8 @@ function named like one of those is still never reached.
 ## Breaks we have made
 
 The README has promised semantic versioning since 2.2. 2.0, 3.0, 4.0,
-5.0, 6.0 and 7.0 broke things in major versions, as promised; the rest
-below did not. None of them is being undone - the versions are published - and
+5.0, 6.0, 7.0 and 8.0 broke things in major versions, as promised; the
+rest below did not. None of them is being undone - the versions are published - and
 this section exists so the record is whole and so the rules above are
 applied from 4.0 on.
 
@@ -266,3 +266,31 @@ it was: a release whose central feature had a hole, closed the same day
 it was found. What the rule bought is that the fix arrived as 7.0
 rather than as 6.0.1, so nobody upgrades into a refusal without reading
 why.
+
+**8.0 (major).** Four changes refuse programs that ran under 7.x, each
+a security fix, each therefore a major by rule 1. Listed item by item in
+the CHANGELOG under "What a user of 7.x has to change":
+
+- **A proxy the net budget does not cover is refused (E317).** Through
+  7.x a `net:` grant checked the URL's host, but an ambient `HTTP_PROXY`
+  / `HTTPS_PROXY` routed the request to a proxy that need not be a
+  granted host - the grant bounded a string, not the socket's peer. This
+  was the open gap THREAT_MODEL.md recorded. 8.0 disables ambient
+  proxies unless the proxy's own host:port is inside the net budget;
+  `velaris add` no longer defers to a proxy either. With no proxy set,
+  behaviour is unchanged.
+- **A function named like a built-in is refused (E204).** `fn print`,
+  `fn env`, `fn read_file` and the like were silently shadowed by the
+  built-in through 7.x; now they are an error. The 4.3-and-later
+  give-way rule (SPEC.md 10.1, the Money and Secret builtins) is
+  unchanged, and the shipped standard library is exempt.
+- **`read_file` on a documented credential location is refused (E318),**
+  pointed at `read_file_secret`; and such a location is not covered by a
+  broad `fs:read:` grant unless a path within it is named explicitly.
+- **`velaris add` refuses a redirect from `https` to `http`, and a
+  redirect to a host outside the URL's origin.**
+
+Three new error codes, E204, E317 and E318; none reuses a meaning
+(rule 3). `velaris.audit/1` gains `ffi_native` within version 1 (an
+addition, not a break), and the invocation log gains an optional
+`run_params`. Nothing published before 8.0 is moved.

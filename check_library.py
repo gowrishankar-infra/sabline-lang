@@ -3003,6 +3003,37 @@ def main() -> int:
        "points at", all(f'id="{r["id"]}"' in page for r in rules),
        str([r["id"] for r in rules if f'id="{r["id"]}"' not in page][:5]))
 
+    # Every error and refusal ends with "reference: <REFERENCE_URL>" (8.0),
+    # the URL of the card (llms.txt). docs/llms.txt must be LLM.md exactly,
+    # so `velaris card` and the served card cannot diverge, and the live URL
+    # must serve the card. The fetch tolerates the window before a fresh
+    # release's docs have deployed (a 404 or a network error is a skip, not
+    # a failure), but asserts the content when the URL answers.
+    llms = (HERE / "docs" / "llms.txt").read_text(encoding="utf-8")
+    card = (HERE / "LLM.md").read_text(encoding="utf-8")
+    ok("docs/llms.txt is LLM.md exactly (the served card cannot drift from "
+       "`velaris card`)", llms == card)
+    ok("velaris.REFERENCE_URL points at the published llms.txt",
+       velaris.REFERENCE_URL.endswith("/llms.txt")
+       and velaris.REFERENCE_URL.startswith("https://"),
+       velaris.REFERENCE_URL)
+    marker = "# Velaris for language models"
+    ok("every compiler error ends with the reference line",
+       marker in card
+       and all(f"reference: {velaris.REFERENCE_URL}" in
+               velaris.VelarisError("E700", "x", 1).human("f")
+               for _ in (0,)))
+    import urllib.request as _u
+    try:
+        with _u.urlopen(velaris.REFERENCE_URL, timeout=20) as r:
+            served = r.read(4000).decode("utf-8", "replace")
+        ok("the live REFERENCE_URL serves the card", marker in served,
+           served[:80])
+    except Exception as e:
+        skip("the live REFERENCE_URL serves the card",
+             f"could not fetch it now ({type(e).__name__}); it serves after "
+             f"this release's docs deploy")
+
     pdoc, pdone = velaris_sarif("proofs", "_sarif_box")
     adoc, adone = velaris_sarif("audit", "_sarif_box/capable.vel")
     sdoc, sdone = velaris_sarif("check", "examples/wordcount.vel",

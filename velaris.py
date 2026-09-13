@@ -296,10 +296,18 @@ Usage:
 import json
 import os
 
-VERSION = "7.2.0"
+VERSION = "8.0.0"
 import re
 import sys
 from dataclasses import dataclass, field
+
+# Every compiler error and every runtime refusal ends with one line
+# pointing here, so a person - or a model - who meets an error has a
+# card to read (8.0). It is llms.txt, the language for a model, served
+# at the documentation site; build_docs.py writes it from LLM.md, and a
+# CI test fetches it to prove the card is really there. --json and SARIF
+# carry it as a field rather than a trailing line.
+REFERENCE_URL = "https://gowrishankar-infra.github.io/velaris-lang/llms.txt"
 
 # ---------------------------------------------------------------------------
 # 1. LEXER — turn raw text into a list of tokens
@@ -542,13 +550,15 @@ class VelarisError(Exception):
             out.append("  how to fix (pick one):")
             for i, f in enumerate(self.fixes, 1):
                 out.append(f"    {i}. {f}")
+        # every error teaches where to read more (8.0)
+        out.append(f"  reference: {REFERENCE_URL}")
         return "\n".join(out)
 
     def machine(self, filename: str) -> str:
         return json.dumps({
             "code": self.code, "message": self.message,
             "file": self.file or filename, "line": self.line,
-            "fixes": self.fixes,
+            "fixes": self.fixes, "reference": REFERENCE_URL,
         }, indent=2)
 
 
@@ -567,6 +577,7 @@ ERROR_TABLE = {
     "E101": "a token that cannot start an expression here",
     "E102": "an expression that nests, or chains operators, too deeply",
     "E200": "an unknown function, or an import with no such function",
+    "E204": "a function named like a built-in, which would shadow it",
     "E300": "an effect used but not declared in 'uses', or a name in "
             "'uses' that is not an effect",
     "E310": "an effect outside the run's budget (while running); or a "
@@ -576,6 +587,10 @@ ERROR_TABLE = {
     "E314": "a host or port outside the run's net grants",
     "E315": "the run's fs or net operation count was reached",
     "E316": "a file larger than the read ceiling (raise it with --max-read)",
+    "E317": "a network request whose socket peer is a proxy the run's net "
+            "grants do not cover (an ambient HTTP_PROXY / HTTPS_PROXY)",
+    "E318": "read_file on a documented credential location; read a secret "
+            "with read_file_secret, or grant its exact path",
     "E400": "there is no 'main' function",
     "E401": "the wrong number of arguments, or parameters on 'main'",
     "E402": "an unknown variable, or a function value that uses a name "
@@ -1553,6 +1568,49 @@ OP_COUNTS: dict = {"fs": 0, "net": 0}
 EFFECT_USES: dict = {}     # effect -> how many builtin calls the budget let
                            # through this run; what the doors log (3.4)
 
+# Determinism knobs (8.0). --seed makes random() reproducible; --freeze-time
+# makes now() a fixed instant. Neither is a grant: a program still needs
+# `rand` for random() and `clock` for now(), and the budget still refuses
+# them - these fix a value, they do not widen what a run may touch. They
+# are recorded as the run's parameters (velaris.invocation/1 run_params on
+# the doors; the CLI prints them under --time).
+SEED = None                # int, or None
+FROZEN_TIME = None         # epoch seconds (int), or None
+_RNG = None                # a seeded random.Random when SEED is set
+
+
+def set_run_params(seed=None, freeze_time=None) -> None:
+    """Install --seed / --freeze-time (or the library's seed= / freeze_time=).
+    `freeze_time` is an ISO 8601 instant or an int of epoch seconds."""
+    import datetime
+    import random as _random
+    g = globals()
+    g["SEED"] = None if seed is None else int(seed)
+    g["_RNG"] = _random.Random(int(seed)) if seed is not None else None
+    if freeze_time is None:
+        g["FROZEN_TIME"] = None
+    elif isinstance(freeze_time, (int, float)):
+        g["FROZEN_TIME"] = int(freeze_time)
+    else:
+        text = str(freeze_time).strip().replace("Z", "+00:00")
+        try:
+            dt = datetime.datetime.fromisoformat(text)
+        except ValueError:
+            raise ValueError(
+                f"--freeze-time wants an ISO 8601 instant, as "
+                f"2026-01-01T00:00:00Z, not {freeze_time!r}")
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        g["FROZEN_TIME"] = int(dt.timestamp())
+
+
+def run_params() -> dict | None:
+    """The run's determinism parameters, or None when neither is set -
+    for the invocation log (velaris.invocation/1)."""
+    if SEED is None and FROZEN_TIME is None:
+        return None
+    return {"seed": SEED, "freeze_time": FROZEN_TIME}
+
 
 def expand_allow(spec: str) -> str:
     """`all`, written on its own, as every effect; anything else
@@ -2078,6 +2136,46 @@ def cli_budget(argv: list) -> "Budget":
     return budget
 
 
+# A fixed, documented list of credential locations (8.0). A plain
+# `read_file` of one of these returns ordinary Text a program can print or
+# send, which is exactly the leak `Secret of T` exists to stop, so it is
+# refused (E318) and pointed at `read_file_secret`, which returns a Secret.
+# And a credential location is never covered by a broad `fs:read:` grant
+# that merely happens to sit above it: an operator must name it - or a
+# path within its credential root - explicitly. So `fs:read:.` or plain
+# `fs` does not silently include `~/.aws/credentials`; `fs:read:~/.aws`
+# (or the file itself) does. `read_file_secret` reading an explicitly
+# granted credential path is the sanctioned way and works.
+def _credential_root(real: str):
+    """The credential root `real` (an already-normcased realpath) sits at
+    or below, or None. For a directory family (`~/.aws`) the root is the
+    directory; for a single file or a glob (`~/.netrc`, `*.pem`) it is the
+    file itself, so 'named explicitly' means naming that file."""
+    import fnmatch
+    sep = os.sep
+    home = os.path.normcase(os.path.realpath(os.path.expanduser("~")))
+    base = os.path.basename(real)
+
+    def nc(*parts):
+        return os.path.normcase(os.path.join(home, *parts))
+
+    for parts in ((".aws",), (".ssh",), (".config", "gcloud")):
+        root = nc(*parts)
+        if real == root or real.startswith(root + sep):
+            return root
+    for parts in ((".docker", "config.json"), (".kube", "config"),
+                  (".netrc",)):
+        root = nc(*parts)
+        if real == root:
+            return root
+    if base == os.path.normcase(".env"):
+        return real
+    if fnmatch.fnmatch(base, os.path.normcase("*.pem")) or \
+            fnmatch.fnmatch(base, os.path.normcase("*.key")):
+        return real
+    return None
+
+
 def allow_path(kind: str, path: str, what: str, line: int) -> str:
     """Refuse a file operation outside the paths this run granted.
 
@@ -2087,6 +2185,33 @@ def allow_path(kind: str, path: str, what: str, line: int) -> str:
     the operation should use.
     """
     real = os.path.normcase(os.path.realpath(str(path)))
+    # credential locations (8.0): checked before the ordinary grant rule,
+    # so plain `fs` and a broad `fs:read:` are both held to it
+    cred = _credential_root(real) if kind in ("read", "any") else None
+    if cred is not None:
+        if what == "read_file":
+            raise VelarisError("E318",
+                f"'read_file' reaches '{path}' (resolved: {real}), a "
+                f"documented credential location; a plain read returns "
+                f"ordinary text that can be printed or sent", line,
+                fixes=["read it with read_file_secret, which returns a "
+                       "Secret the compiler will not let escape",
+                       f"and grant its exact path: --allow fs:read:{real}"])
+        wants = ("read", "write") if kind == "any" else (kind,)
+        sep = os.sep
+        named = FS_GRANTS is not None and any(
+            gkind in wants and prefix is not None
+            and (real == prefix or real.startswith(prefix.rstrip(sep) + sep))
+            and (prefix == cred or prefix.startswith(cred.rstrip(sep) + sep))
+            for gkind, prefix in FS_GRANTS)
+        if not named:
+            raise VelarisError("E318",
+                f"'{what}' reaches '{path}' (resolved: {real}), a "
+                f"documented credential location the fs grants do not name "
+                f"explicitly; a broad grant does not include it", line,
+                fixes=[f"grant its exact path: --allow fs:read:{real}",
+                       "or use a program that does not read credentials"])
+        return real
     if FS_GRANTS is None:
         return real
     wants = ("read", "write") if kind == "any" else (kind,)
@@ -2161,10 +2286,44 @@ def _ordinal(n: int) -> str:
         {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
 
-def guarded_opener():
-    """An opener whose redirects are held to the same net grants, and
-    which refuses to leave http(s). A refused redirect is a failure the
-    program can catch: it asked for one host and was sent to another."""
+def _proxy_for(url: str):
+    """The ambient proxy that would carry a request to `url`, as a URL
+    with a scheme, or None. Reads HTTP_PROXY / HTTPS_PROXY / http_proxy
+    (getproxies) and honours NO_PROXY (proxy_bypass), so a host the
+    environment exempts uses no proxy."""
+    import urllib.parse
+    import urllib.request
+    parts = urllib.parse.urlsplit(url)
+    scheme = parts.scheme
+    proxies = urllib.request.getproxies()
+    proxy = proxies.get(scheme)
+    if not proxy:
+        return None
+    host = parts.hostname or ""
+    try:
+        if host and urllib.request.proxy_bypass(host):
+            return None
+    except Exception:
+        pass
+    if "://" not in proxy:
+        proxy = "http://" + proxy
+    return proxy
+
+
+def guarded_opener(url: str):
+    """An opener whose redirects are held to the same net grants, which
+    refuses to leave http(s), and which - from 8.0 - bounds the socket
+    peer, not only the URL string.
+
+    Through 7.x the opener kept urllib's default ProxyHandler, so an
+    ambient HTTP_PROXY / HTTPS_PROXY routed the request (its payload
+    included) to a proxy that need not be a granted host: `net:` bounded
+    the URL, not the peer (THREAT_MODEL.md, fixed here). Now ambient
+    proxies are disabled unless the proxy's own host:port is inside the
+    net budget - `host_refusal` of the proxy URL is None - in which case
+    that one proxy is honoured. A proxy the budget does not cover is
+    refused with E317, naming the proxy and the grant that would allow
+    it; the refusal cannot be caught, like the other budget refusals."""
     import urllib.request
 
     class Guarded(urllib.request.HTTPRedirectHandler):
@@ -2174,7 +2333,64 @@ def guarded_opener():
                 raise _RedirectRefused(newurl, why)
             return super().redirect_request(req, fp, code, msg, headers,
                                             newurl)
-    return urllib.request.build_opener(Guarded)
+
+    proxy = _proxy_for(url)
+    if proxy is None:
+        # no ambient proxy applies: disable proxies outright, so nothing
+        # the environment sets can reroute the socket
+        return urllib.request.build_opener(
+            urllib.request.ProxyHandler({}), Guarded)
+    why = host_refusal(proxy)
+    if why is not None:
+        import urllib.parse
+        p = urllib.parse.urlsplit(proxy)
+        peer = p.hostname or proxy
+        port = p.port or (443 if p.scheme == "https" else 80)
+        raise VelarisError("E317",
+            f"an ambient proxy ({proxy}) would carry this request, and its "
+            f"host {peer}:{port} is outside this run's net grants: a net "
+            f"grant bounds the URL's host, and from 8.0 also the socket's "
+            f"peer", 0,
+            fixes=[f"grant the proxy too: --allow net:{peer}:{port}",
+                   "or run with no HTTP_PROXY / HTTPS_PROXY set"])
+    # the proxy peer is granted: honour exactly this one proxy
+    import urllib.parse
+    scheme = urllib.parse.urlsplit(url).scheme
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({scheme: proxy}), Guarded)
+
+
+def _add_opener(origin: str):
+    """The opener `velaris add` fetches through (8.0). It refuses a
+    redirect from https to http, and a redirect to a host outside the
+    URL's origin - the two ways a vendoring fetch could be steered to
+    bytes other than the ones the URL named - and, like every other
+    request from 8.0, it does not defer to an ambient proxy (there is no
+    net budget here to authorise a proxy peer)."""
+    import urllib.parse
+    import urllib.request
+
+    def host_of(u: str) -> str:
+        return (urllib.parse.urlsplit(u).hostname or "").lower().rstrip(".")
+
+    start = urllib.parse.urlsplit(origin)
+
+    class AddGuard(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            new = urllib.parse.urlsplit(newurl)
+            if start.scheme == "https" and new.scheme != "https":
+                raise _RedirectRefused(
+                    newurl, "a redirect from https to http, which would "
+                    "drop the encrypted connection")
+            if host_of(newurl) != host_of(origin):
+                raise _RedirectRefused(
+                    newurl, f"a redirect to '{host_of(newurl)}', a host "
+                    f"outside the origin '{host_of(origin)}'")
+            return super().redirect_request(req, fp, code, msg, headers,
+                                            newurl)
+
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), AddGuard)
 
 
 def allow_module(module: str, what: str, line: int) -> None:
@@ -2854,6 +3070,42 @@ def local_names_of(fn: Function) -> set[str]:
 
 def check_effects(funcs: list[Function], errors: list) -> None:
     table = {f.name: f for f in funcs}
+
+    # A function named like a built-in is refused (E204, 8.0), rather than
+    # silently shadowed by the built-in as it was through 7.x. The one
+    # exception is the rule of SPEC.md 10.1: a built-in added in 4.3 or
+    # later (NEW_BUILTINS - the Money and Secret builtins) gives way to a
+    # program's own function of the same name, so that adding one did not
+    # break a program that had used the name. Those are still allowed; the
+    # older built-ins, which a program could never have shadowed anyway
+    # (the built-in always won), are now a clear error rather than a name
+    # that reads as a call to code that never runs. A namespaced function
+    # (`http.get`, from `import "http.vel" as http`) carries its prefix and
+    # is not a bare built-in name, so it is unaffected.
+    _stdlib_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "stdlib")
+    for f in funcs:
+        n = f.name
+        try:
+            in_stdlib = os.path.realpath(f.src_file or "").startswith(
+                os.path.realpath(_stdlib_dir) + os.sep)
+        except (OSError, ValueError):
+            in_stdlib = False
+        # the shipped standard library is always imported under a name, so
+        # its `split`/`get` become `money.split`/`http.get`; it may keep the
+        # built-in names it was written with, and only a program's own file
+        # is held to E204
+        if in_stdlib:
+            continue
+        if ("." not in n and n in BUILTINS and n not in NEW_BUILTINS):
+            errors.append(blame(f, VelarisError("E204",
+                f"'{n}' is the name of a built-in, so a function called "
+                f"'{n}' would shadow it; through 7.x the built-in silently "
+                f"won and this function was never reached", f.line,
+                fixes=[f"rename the function (a built-in named '{n}' already "
+                       f"does that job)",
+                       "or import it under a name, so it is reached as "
+                       "prefix." + n])))
 
     def effects_of_callee(name: str, line: int) -> set[str]:
         builtin = builtin_reached(name, table)
@@ -4429,8 +4681,29 @@ def check_types(funcs: list[Function], records: list, errors: list) -> None:
                         fixes=["use a comparison like result >= 0"])
             env.pop("result", None)
 
+        # Recovery at statement boundaries (8.0): a problem in one
+        # top-level statement is recorded and checking goes on to the
+        # next, so `velaris check` reports every error it can in one
+        # pass rather than only the first. The first error is still the
+        # one a single-error run would give - SPEC.md 14 says the first
+        # is authoritative - and the rest may be its consequences. A
+        # statement that a nested error aborted stops there; the boundary
+        # is the top-level statement.
+        would_have_bound: set = set()
         for stmt in fn.body:
-            check_stmt(stmt)
+            try:
+                check_stmt(stmt)
+            except VelarisError as e:
+                # suppress the obvious cascade: an "unknown variable"
+                # error for a name an earlier failed `let` would have
+                # bound is a consequence of that failure, not a new one
+                if e.code == "E402" and any(
+                        f"'{n}'" in e.message for n in would_have_bound):
+                    pass
+                else:
+                    errors.append(blame(fn, e))
+                if isinstance(stmt, Let):
+                    would_have_bound.add(stmt.name)
 
     m = table.get("main")
     if m is not None and m.can_fail:
@@ -7820,11 +8093,12 @@ def run_builtin(name: str, args: list, line: int):
         headers.setdefault("User-Agent", f"velaris/{VERSION}")
         data = body.encode("utf-8") if body else None
         allow_host(url, name, line)
+        opener = guarded_opener(url)         # may refuse a proxy (E317)
         count_op("net", name, line)
         req = urllib.request.Request(url, data=data, headers=headers,
                                      method=method)
         try:
-            with guarded_opener().open(req, timeout=20) as resp:
+            with opener.open(req, timeout=20) as resp:
                 answer = {
                     "status": int(resp.status),
                     "body": resp.read(1 << 20).decode("utf-8",
@@ -7866,10 +8140,11 @@ def run_builtin(name: str, args: list, line: int):
                 "application/json" if body.lstrip()[:1] in "{["
                 else "text/plain; charset=utf-8")
         allow_host(url, name, line)
+        opener = guarded_opener(url)         # may refuse a proxy (E317)
         count_op("net", name, line)
         try:
             req = urllib.request.Request(url, data=data, headers=headers)
-            with guarded_opener().open(req, timeout=10) as resp:
+            with opener.open(req, timeout=10) as resp:
                 if name == "fetch_status":
                     return int(resp.status)
                 return resp.read(1 << 20).decode("utf-8", errors="replace")
@@ -7916,13 +8191,16 @@ def run_builtin(name: str, args: list, line: int):
             out += to_text(val) + piece
         return out
     if name == "now":
-        return int(_time.time())
+        # --freeze-time fixes the instant; it is not a grant, so the clock
+        # effect and its budget were already checked above (8.0)
+        return FROZEN_TIME if FROZEN_TIME is not None else int(_time.time())
     if name == "random":
         n = args[0]
         if n <= 0:
             raise VelarisError("E405", "random(n) needs n greater than 0", line,
                               fixes=["pass a positive number, e.g. random(6)"])
-        return _rand.randrange(n)
+        # --seed makes the sequence reproducible; still needs `rand` (8.0)
+        return _RNG.randrange(n) if _RNG is not None else _rand.randrange(n)
 
 
 def build_runtime(funcs: list[Function], native: dict | None = None):
@@ -9058,10 +9336,14 @@ def packages(argv: list) -> int:
         return 1
 
     if source.startswith("http://") or source.startswith("https://"):
-        import urllib.request
         try:
-            with urllib.request.urlopen(source, timeout=20) as resp:
+            with _add_opener(source).open(source, timeout=20) as resp:
                 data = resp.read(4 << 20)
+        except _RedirectRefused as e:
+            print(f"could not fetch {source}: it {e.why} ({e.target}); "
+                  f"'velaris add' refuses that redirect (8.0)",
+                  file=sys.stderr)
+            return 1
         except Exception as e:
             print(f"could not fetch {source}: {e}", file=sys.stderr)
             return 1
@@ -9833,7 +10115,8 @@ def serve_main(argv: list) -> int:
                            client=self.client_address[0],
                            outcome=rec["outcome"], budget=rec["budget"],
                            effects=rec["effects"], refusals=rec["refusals"],
-                           source=rec["source"])
+                           source=rec["source"],
+                           run_params=rec.get("run_params"))
 
         def status(self) -> dict:
             doc = {"velaris": VERSION, "prover": bool(HAVE_Z3),
@@ -9929,11 +10212,22 @@ def serve_main(argv: list) -> int:
                         return 403, over_ceiling(why[1]), ()
                     return 400, {"error": why[1]}, ()
                 rec["budget"] = wanted.spec()
-                out = pools.run(
-                    source, allow=set(asked),
-                    stdin=body.get("stdin", ""),
-                    args=body.get("args") or [],
-                    timeout=timeout, max_memory_mb=memory)
+                seed, frozen = body.get("seed"), body.get("freeze_time")
+                if seed is not None and not isinstance(seed, int):
+                    rec["outcome"] = "bad_request"
+                    return 400, {"error": "seed is a whole number"}, ()
+                try:
+                    out = pools.run(
+                        source, allow=set(asked),
+                        stdin=body.get("stdin", ""),
+                        args=body.get("args") or [],
+                        seed=seed, freeze_time=frozen,
+                        timeout=timeout, max_memory_mb=memory)
+                except ValueError as e:      # a bad --freeze-time, say
+                    rec["outcome"] = "bad_request"
+                    return 400, {"error": str(e)}, ()
+                if seed is not None or frozen is not None:
+                    rec["run_params"] = {"seed": seed, "freeze_time": frozen}
                 rec["effects"] = out.effects_used
                 rec["outcome"] = run_outcome(out)
                 rec["refusals"] = run_refusals(out)
@@ -10251,10 +10545,69 @@ def migrate_main(argv: list) -> int:
     return 0
 
 
+# check and audit read untrusted source (a hostile contract can send the
+# prover into a long search; a crafted expression a long walk). The prover
+# has a per-query budget and the parser caps expression depth, but the
+# whole operation had no ceiling until 8.0. `velaris check` and `velaris
+# audit` now run under a wall-clock and memory ceiling, so a platform that
+# audits before running cannot be stalled by the source it audits. The
+# defaults are generous; --check-timeout raises the clock.
+CHECK_TIMEOUT_DEFAULT = 60          # seconds, the whole check or audit
+CHECK_MEMORY_MB_DEFAULT = 2048      # MB, the whole check or audit
+
+
+def _check_ceiling(argv: list) -> int:
+    """Run `velaris check`/`audit` in a child under a time and memory
+    ceiling and pass its output through. The child carries VELARIS_CHECK_CHILD
+    so it does the work directly rather than spawning again. On the clock
+    the child is killed and this returns 2 with a clear message."""
+    import subprocess
+    timeout = CHECK_TIMEOUT_DEFAULT
+    rest = list(argv)
+    if "--check-timeout" in rest:
+        at = rest.index("--check-timeout")
+        if at + 1 >= len(rest) or not _ascii_digits(rest[at + 1]) \
+                or int(rest[at + 1]) < 1:
+            print("--check-timeout needs a whole number of seconds, as "
+                  "--check-timeout 120", file=sys.stderr)
+            return 2
+        timeout = int(rest[at + 1])
+        del rest[at:at + 2]
+    env = dict(os.environ, VELARIS_CHECK_CHILD="1")
+    cmd = [sys.executable, os.path.abspath(__file__)] + rest
+    proc, job, _how = _spawn_capped(
+        cmd, CHECK_MEMORY_MB_DEFAULT, env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            print(f"{rest[0]} did not finish within {timeout} second(s) and "
+                  f"was stopped: the source may be crafted to stall the "
+                  f"checker. Raise the ceiling with --check-timeout, or run "
+                  f"it in a sandbox you control.\n  reference: {REFERENCE_URL}",
+                  file=sys.stderr)
+            return 2
+    finally:
+        if job is not None:
+            job.close()
+    sys.stdout.write(out.decode("utf-8", "replace"))
+    sys.stderr.write(err.decode("utf-8", "replace"))
+    return proc.returncode
+
+
 def main() -> int:
     argv = sys.argv[1:]
     if argv[:1] == ["--pool-worker"]:
         return pool_worker(argv[1:])       # one child behind velaris.Pool
+    # check and audit run under a ceiling (8.0), unless we are already the
+    # child doing so, or --no-check-ceiling was asked for
+    if argv[:1] in (["check"], ["audit"]) \
+            and os.environ.get("VELARIS_CHECK_CHILD") != "1" \
+            and "--no-check-ceiling" not in argv:
+        return _check_ceiling(argv)
     # --proof-timeout S is taken out of argv here, before any command
     # sees it, so every command accepts it and none mistakes its number
     # for a file name.
@@ -10299,6 +10652,21 @@ def main() -> int:
                   "--max-read 256", file=sys.stderr)
             return 2
         globals()["MAX_READ_BYTES"] = int(argv[at]) * 1024 * 1024
+    # --seed / --freeze-time: the run's determinism parameters (8.0). Set
+    # here so every path (run, --time) sees them; not grants (set_run_params).
+    _seed = _flag_value(argv, "--seed")
+    _frozen = _flag_value(argv, "--freeze-time")
+    if _seed is not None or _frozen is not None:
+        if _seed is not None and (not _ascii_digits(_seed.lstrip("-"))
+                                  or _seed.startswith("-")):
+            print("--seed needs a whole number, as --seed 42",
+                  file=sys.stderr)
+            return 2
+        try:
+            set_run_params(_seed, _frozen)
+        except ValueError as e:
+            print(str(e), file=sys.stderr)
+            return 2
     if argv[:1] == ["repl"]:
         return repl()
     if argv[:1] == ["version"]:
@@ -10498,11 +10866,26 @@ def main() -> int:
                 else:
                     print(f"no such file: {target}", file=sys.stderr)
                     return 1
-            sarif = sarif_audit(files)
+            strict = "--strict" in argv
+            reasons = ()
+            rf = _flag_value(argv, "--allow-declassify-reasons")
+            if rf is not None:
+                try:
+                    reasons = [ln.strip() for ln in
+                               open(rf, encoding="utf-8").read().splitlines()
+                               if ln.strip() and not ln.startswith("#")]
+                except OSError as e:
+                    print(f"cannot read --allow-declassify-reasons {rf}: {e}",
+                          file=sys.stderr)
+                    return 2
+            sarif = sarif_audit(files, strict=strict, allow_reasons=reasons)
             print(json.dumps(sarif, indent=2))
             print_sarif_summary(sarif)
-            return 1 if any(not a["ok"] for a in
-                            sarif["runs"][0]["properties"]["audits"]) else 0
+            results = sarif["runs"][0]["results"]
+            bad = any(not a["ok"] for a in
+                      sarif["runs"][0]["properties"]["audits"]) or \
+                any(r["level"] == "error" for r in results)
+            return 1 if bad else 0
         if len(argv) < 2:
             print("usage: velaris audit program.vel", file=sys.stderr)
             return 1
@@ -10653,6 +11036,30 @@ def main() -> int:
             print("  NOTE: this program calls Python, which means it can")
             print("  do anything Python can. An effect budget does not")
             print("  contain that. Read the code before running it.")
+            modules = sorted(_ffi_modules_named(target, None))
+            if modules:
+                native = _ffi_native(modules)
+                say = [f"{m} ({native[m]})" for m in modules]
+                print(f"  modules named: {', '.join(say)}")
+                if any(v == "native" for v in native.values()):
+                    print("  native code (a compiled extension) ships with "
+                          "one of these;")
+                    print("  there is no source to read.")
+        if "net" in outside:
+            # a net grant bounds the URL's host and, from 8.0, the socket's
+            # peer; an ambient proxy that the run does not also grant is
+            # refused (E317). Say whether one is set in this environment.
+            proxies = sorted(v for k, v in
+                             (("HTTP_PROXY", os.environ.get("HTTP_PROXY")
+                               or os.environ.get("http_proxy")),
+                              ("HTTPS_PROXY", os.environ.get("HTTPS_PROXY")
+                               or os.environ.get("https_proxy"))) if v)
+            if proxies:
+                print()
+                print(f"  NOTE: an ambient proxy is set ({', '.join(proxies)}).")
+                print("  From 8.0 a request through it is refused (E317) "
+                      "unless the")
+                print("  proxy's host is itself in the net grants.")
         return 0
 
     if argv[:1] == ["clean"]:
@@ -10981,7 +11388,7 @@ def main() -> int:
     # took for itself. Until 2.62 `--allow io` leaked in as two words.
     FLAGS = {"--json", "--no-native", "--time", "--check", "--no-cache"}
     VALUED = {"--allow", "--deny", "--timeout", "--max-memory-mb",
-              "--max-read"}
+              "--max-read", "--seed", "--freeze-time"}
     rest, skip = [], False
     for a in sys.argv[2:]:
         if skip:
@@ -11094,7 +11501,7 @@ class AuditResult:
                  "functions", "proven_share", "safe_command", "warnings",
                  "ffi_modules", "loops_unshown", "contract_coverage",
                  "fs_paths", "net_hosts", "ffi_any", "counts", "prover",
-                 "secrets")
+                 "secrets", "ffi_native")
 
     def __init__(self, **kw):
         for k in self.__slots__:
@@ -11307,6 +11714,57 @@ def _secrets_named(path: str, source: str | None) -> dict | None:
             "declassifications": out}
 
 
+_NATIVE_SUFFIXES = (".so", ".pyd", ".dylib")
+
+
+def _ffi_native(modules) -> dict:
+    """Per named Python module, whether it - or code it ships - is native
+    (a compiled extension: .so / .pyd / .dylib), decided from the files on
+    disk WITHOUT importing the module (8.0). A module is placed on the
+    import path and its origin and, for a package, its on-disk tree are
+    looked at; finding a compiled extension makes it `"native"`. Anything
+    else is `"unknown"`, never `"false"`: a pure-Python module can import a
+    native one, and that is not visible without running its code, so the
+    audit does not claim a module is free of native code - only that it
+    could not find any. The verdict reflects the packages installed on the
+    machine that runs the audit.
+
+    Importing is deliberately avoided: `importlib.util.find_spec` on a
+    top-level name locates the module without executing it, so a module
+    whose import would write a file, open a socket or otherwise act does
+    none of that here."""
+    import importlib.util
+    out = {}
+    for m in sorted(set(modules)):
+        verdict = "unknown"
+        try:
+            spec = importlib.util.find_spec(m)   # top-level: no execution
+        except Exception:
+            spec = None
+        if spec is not None:
+            origin = spec.origin or ""
+            if origin.endswith(_NATIVE_SUFFIXES) or origin == "built-in":
+                verdict = "native"           # a C extension, or compiled in
+            else:
+                seen = 0
+                for base in (spec.submodule_search_locations or []):
+                    if verdict == "native":
+                        break
+                    try:
+                        for _root, _dirs, files in os.walk(base):
+                            seen += 1
+                            if any(f.endswith(_NATIVE_SUFFIXES)
+                                   for f in files):
+                                verdict = "native"
+                                break
+                            if seen > 5000:      # a huge tree: stop looking
+                                break
+                    except OSError:
+                        continue
+        out[m] = verdict
+    return out
+
+
 def _host_entry(url: str) -> str | None:
     """A literal URL's `net_hosts` entry: the host, lower-cased, trailing
     dots removed, with `:port` when the URL writes one - or None when it
@@ -11461,6 +11919,14 @@ def audit(source: str, *, path: str | None = None) -> AuditResult:
                     + "; grant exactly those with ffi:"
                     + ",".join(modules_named)
                     + " rather than plain ffi")
+                native = [m for m in modules_named
+                          if _ffi_native([m]).get(m) == "native"]
+                if native:
+                    warnings.append(
+                        "native code (a compiled extension) ships with: "
+                        + ", ".join(native)
+                        + " - there is no source to read, and a budget does "
+                        "not contain what it does (ffi_native)")
                 if ffi_any:
                     warnings.append(
                         "a call into Python names its module with a value "
@@ -11507,6 +11973,7 @@ def audit(source: str, *, path: str | None = None) -> AuditResult:
             ffi_any=ffi_any,
             counts=counts,
             secrets=secrets,
+            ffi_native=_ffi_native(modules_named) if modules_named else {},
             prover=bool(compiled and report.get("proofs")),
             warnings=warnings)
     finally:
@@ -11518,7 +11985,8 @@ def run(source: str, *, path: str | None = None,
         allow: set | None = None, deny: set | None = None,
         args: list | None = None, stdin: str = "",
         native: bool = True, timeout: float | None = None,
-        max_memory_mb: int | None = None) -> RunResult:
+        max_memory_mb: int | None = None,
+        seed: int | None = None, freeze_time=None) -> RunResult:
     """Run a program under an effect budget and capture what it did.
 
     allow={"io"} means it cannot read files, reach the network, call
@@ -11553,14 +12021,16 @@ def run(source: str, *, path: str | None = None,
     if timeout is not None or max_memory_mb is not None:
         return _run_bounded(source, path=path, allow=allow, deny=deny,
                             args=args, stdin=stdin, native=native,
-                            timeout=timeout, max_memory_mb=max_memory_mb)
+                            timeout=timeout, max_memory_mb=max_memory_mb,
+                            seed=seed, freeze_time=freeze_time)
     return _run_in_process(source, path=path,
                            budget=_budget_from(allow, deny),
-                           args=args, stdin=stdin, native=native)
+                           args=args, stdin=stdin, native=native,
+                           seed=seed, freeze_time=freeze_time)
 
 
 def _run_in_process(source, *, path, budget, args, stdin,
-                    native) -> RunResult:
+                    native, seed=None, freeze_time=None) -> RunResult:
     """run() with the budget already parsed, in THIS process.
 
     The budget is installed, the program runs under it, and whatever
@@ -11575,11 +12045,13 @@ def _run_in_process(source, *, path, budget, args, stdin,
     saved = Budget.snapshot()
     saved_args = list(PROGRAM_ARGS)
     saved_handles, saved_next = dict(PY_OBJECTS), PY_NEXT[0]
+    saved_params = (SEED, FROZEN_TIME, _RNG)
     out, err = _io.StringIO(), _io.StringIO()
     problems, refused, code = [], None, 0
     used: dict = {}
     try:
         budget.install()
+        set_run_params(seed, freeze_time)     # --seed / --freeze-time (8.0)
         PROGRAM_ARGS[:] = list(args or [])
         result = check(source, path=path)
         if not result.ok:
@@ -11617,6 +12089,8 @@ def _run_in_process(source, *, path, budget, args, stdin,
         PY_OBJECTS.clear()
         PY_OBJECTS.update(saved_handles)
         PY_NEXT[0] = saved_next
+        g = globals()                          # put run params back too
+        g["SEED"], g["FROZEN_TIME"], g["_RNG"] = saved_params
         if temp:
             os.unlink(temp)
     return RunResult(code == 0 and not problems, out.getvalue(),
@@ -11855,7 +12329,7 @@ def memory_cap_is_enforced() -> bool:
 
 
 def _run_bounded(source, *, path, allow, deny, args, stdin, native,
-                 timeout, max_memory_mb) -> RunResult:
+                 timeout, max_memory_mb, seed=None, freeze_time=None) -> RunResult:
     """run() in a child process that can be killed."""
     import subprocess
     where, temp = _source_to_file(source, path)
@@ -11885,6 +12359,10 @@ def _run_bounded(source, *, path, allow, deny, args, stdin, native,
         # the child caps itself on POSIX; on Windows the job object
         # below does it, and this only records what was asked for
         cmd += ["--max-memory-mb", str(int(max_memory_mb))]
+    if seed is not None:
+        cmd += ["--seed", str(int(seed))]
+    if freeze_time is not None:
+        cmd += ["--freeze-time", str(freeze_time)]
     cmd += list(args or [])
 
     timed_out = False
@@ -11967,7 +12445,7 @@ import weakref
 MUTABLE_GLOBALS = ("PROGRAM_ARGS", "EFFECT_BUDGET", "FFI_MODULES",
                    "FS_GRANTS", "NET_GRANTS", "OP_LIMITS", "OP_COUNTS",
                    "EFFECT_USES", "PY_OBJECTS", "PY_NEXT", "TRACE",
-                   "_NATIVE_KEEPALIVE")
+                   "_NATIVE_KEEPALIVE", "SEED", "FROZEN_TIME", "_RNG")
 
 
 def program_state_baseline() -> dict:
@@ -12021,6 +12499,7 @@ def reset_program_state(budget: "Budget | None" = None,
     PY_NEXT[0] = 1
     _NATIVE_KEEPALIVE.clear()
     TRACE.update({"on": False, "depth": 0, "calls": 0, "limit": 4000})
+    set_run_params(None, None)         # --seed / --freeze-time, per program
     (budget if budget is not None else Budget()).install()
     if baseline is None:
         return
@@ -12127,6 +12606,8 @@ def pool_worker(argv: list) -> int:
                 request.get("source") or "", path=request.get("path"),
                 budget=budget, args=request.get("args") or [],
                 stdin=request.get("stdin") or "",
+                seed=request.get("seed"),
+                freeze_time=request.get("freeze_time"),
                 native=native).as_dict()
         except MemoryError:
             answer = {"out_of_memory": True}
@@ -12344,11 +12825,13 @@ class Pool:
 
     # ---- using it ----------------------------------------------------
     def run(self, source: str, *, stdin: str = "", args: list | None = None,
-            path: str | None = None) -> RunResult:
+            path: str | None = None, seed: int | None = None,
+            freeze_time=None) -> RunResult:
         """Run one program on this pool, under the pool's budget.
 
         The same RunResult `velaris.run` returns, including timed_out
-        and out_of_memory.
+        and out_of_memory. `seed` and `freeze_time` fix the run's
+        randomness and clock (8.0); they are not grants.
         """
         if self._closed:
             raise RuntimeError("this pool is closed")
@@ -12365,7 +12848,8 @@ class Pool:
                 worker = None
             if worker is None:
                 worker = self._start()
-            result = self._ask(worker, source, stdin, args, path)
+            result = self._ask(worker, source, stdin, args, path,
+                               seed, freeze_time)
             keep = result.ok
             return result
         finally:
@@ -12429,9 +12913,11 @@ class Pool:
             self._live.discard(worker)
         worker.dispose()
 
-    def _ask(self, worker, source, stdin, args, path) -> RunResult:
+    def _ask(self, worker, source, stdin, args, path,
+             seed=None, freeze_time=None) -> RunResult:
         answer = worker.ask({"source": source, "stdin": stdin or "",
-                             "args": list(args or []), "path": path},
+                             "args": list(args or []), "path": path,
+                             "seed": seed, "freeze_time": freeze_time},
                             self.timeout)
         if answer is not None and "ok" in answer:
             return RunResult(
@@ -12520,10 +13006,12 @@ class PoolRegistry:
 
     def run(self, source: str, *, allow=None, deny=None, timeout=None,
             max_memory_mb=None, native: bool = True, stdin: str = "",
-            args: list | None = None, path: str | None = None) -> RunResult:
+            args: list | None = None, path: str | None = None,
+            seed: int | None = None, freeze_time=None) -> RunResult:
         return self.pool(allow=allow, deny=deny, timeout=timeout,
                          max_memory_mb=max_memory_mb, native=native).run(
-            source, stdin=stdin, args=args, path=path)
+            source, stdin=stdin, args=args, path=path,
+            seed=seed, freeze_time=freeze_time)
 
     def close(self) -> None:
         with self._lock:
@@ -12581,6 +13069,17 @@ SARIF_FINDINGS = (
     ("loop-not-shown-to-end", "note",
      "a loop the termination rule cannot show to end; check --strict "
      "refuses it as E612"),
+    ("ffi-native", "note",
+     "a granted Python module ships native code (a compiled extension: "
+     ".so/.pyd/.dylib), found on disk without importing it; there is no "
+     "source to read and a budget does not contain what it does"),
+    ("secret-source", "note",
+     "a builtin that hands the program a Secret (env, read_file_secret); "
+     "the compiler will not let its result be printed, written or sent"),
+    ("secret-declassified", "warning",
+     "a declassify call turns a Secret into an ordinary value, with a "
+     "stated reason; an error under check --strict unless the reason is "
+     "listed in --allow-declassify-reasons"),
 ) + tuple((f"uses-{e}", "note",
            f"a function that may perform {e}: {_EFFECT_WORDS[e]}")
           for e in ALL_EFFECTS) + (
@@ -12650,7 +13149,8 @@ class _SarifRun:
         self.index = {r["id"]: i for i, r in enumerate(self.rules)}
         self.results: list = []
         self.notes: list = []
-        self.properties: dict = {"prover": bool(HAVE_Z3)}
+        self.properties: dict = {"prover": bool(HAVE_Z3),
+                                 "reference": REFERENCE_URL}
         self.root = os.getcwd()
         self.base_ids: dict = {}      # more originalUriBaseIds (deps-diff)
 
@@ -12828,18 +13328,51 @@ def sarif_proofs(reports: dict, totals: dict, share: float,
     return run.log()
 
 
-def sarif_audit(files: list) -> dict:
+def sarif_audit(files: list, strict: bool = False,
+                allow_reasons=()) -> dict:
     """`velaris audit --sarif`: the audit of each file as findings - what
     each function may perform, promises left to runtime, loops not shown
-    to end, functions promising nothing about their data - and the
-    velaris.audit/1 document of each file, unchanged, in the run's
-    property bag for what has no line (safe_command, proven_share)."""
+    to end, functions promising nothing about their data, native code a
+    granted module ships (ffi-native), and its secrets (secret-source,
+    secret-declassified) - and the velaris.audit/1 document of each file,
+    unchanged, in the run's property bag for what has no line
+    (safe_command, proven_share).
+
+    A declassification is a warning; under `strict` it is an error unless
+    its stated reason is in `allow_reasons` (from
+    --allow-declassify-reasons), so a reviewed reason passes and a new one
+    does not (8.0)."""
     run = _SarifRun("audit")
+    reasons = {r.strip() for r in allow_reasons if r.strip()}
     audits = []
     for path in files:
         report = inspect_source(path)
         with open(path, encoding="utf-8") as fh:
-            audits.append(audit(fh.read(), path=path).as_dict())
+            doc = audit(fh.read(), path=path).as_dict()
+        audits.append(doc)
+        # native code a granted module ships, and secrets - both from the
+        # audit document, so they hold whether or not the file compiles
+        for m, verdict in sorted((doc.get("ffi_native") or {}).items()):
+            if verdict == "native":
+                run.add("ffi-native",
+                        f"the granted Python module '{m}' ships native code "
+                        f"(a compiled extension); there is no source to read",
+                        path, None)
+        secrets = doc.get("secrets") or {}
+        for src in secrets.get("sources", []):
+            run.add("secret-source",
+                    f"'{src}' hands this program a Secret; the compiler will "
+                    f"not let its result be printed, written or sent", path,
+                    None)
+        for d in secrets.get("declassifications", []):
+            listed = d["reason"] in reasons
+            level = ("error" if strict and not listed else "warning")
+            note = (" (reason is in --allow-declassify-reasons)" if listed
+                    else " (add its reason to --allow-declassify-reasons to "
+                    "accept it under --strict)" if strict else "")
+            run.add("secret-declassified",
+                    f"'{d['function']}' declassifies a Secret: "
+                    f"{d['reason']}{note}", path, d["line"], level=level)
         if report["errors"]:
             _sarif_errors(run, report, path)
             continue
@@ -12941,7 +13474,7 @@ class InvocationLog:
     def record(self, started: tuple, *, door: str, outcome: str,
                tool: str | None = None, endpoint: str | None = None,
                client: str | None = None, budget=None, effects=None,
-               refusals=(), source=None) -> dict:
+               refusals=(), source=None, run_params=None) -> dict:
         import hashlib
         import time as _t
         when, t0 = started
@@ -12961,6 +13494,8 @@ class InvocationLog:
             line["budget"] = budget
             line["effects"] = effects
             line["refusals"] = list(refusals)
+            if run_params is not None:      # --seed / --freeze-time (8.0)
+                line["run_params"] = run_params
             line["source_sha256"] = (
                 hashlib.sha256(source.encode("utf-8", "surrogatepass"))
                 .hexdigest() if isinstance(source, str) else None)

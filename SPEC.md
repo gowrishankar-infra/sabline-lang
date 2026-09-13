@@ -726,14 +726,24 @@ is: no, and the flag is the supported idiom.
 ## 14. Errors
 
 Every error has a stable code (`E###`), a message in plain English, a
-file and line, and numbered suggested fixes. `--json` emits them as
-structured data. The complete list is generated from the compiler
-source itself and published with the documentation.
+file and line, and numbered suggested fixes, and — from 8.0 — a line
+naming where to read more (`reference:`), which `--json` and SARIF carry
+as a field. `--json` emits them as structured data. The complete list is
+generated from the compiler source itself and published with the
+documentation.
 
-Codes are grouped: E0xx lexing, E1xx parsing, E2xx names, E3xx
-effects, E4xx arity and runtime arithmetic, E5xx types — E56x among
-them, for a Secret that must not escape (§3.1) — E6xx runtime contract
-violations, E7xx proof results.
+`velaris check` reports every error it can find in one pass, recovering
+at statement boundaries rather than stopping at the first. **The first
+error reported is authoritative**: it is the one a run of a program with
+only that error would give, and the errors after it may be its
+consequences. A tool that acts on one error acts on the first.
+
+Codes are grouped: E0xx lexing, E1xx parsing, E2xx names — E204 among
+them, for a function named like a built-in (§10.1) — E3xx effects —
+E317 a proxy the net budget does not cover, E318 a credential location a
+plain read may not touch — E4xx arity and runtime arithmetic, E5xx
+types — E56x among them, for a Secret that must not escape (§3.1) — E6xx
+runtime contract violations, E7xx proof results.
 
 ## 15. Versioning and stability
 

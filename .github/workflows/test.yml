@@ -76,6 +76,10 @@ jobs:
         run: python check_refusals.py
       - name: The 7.1.1 adversarial pass stays closed
         run: python check_adversarial.py
+      - name: A lie is never proven (Goal A corpus)
+        run: python check_prover_lies.py
+      - name: The audit is unchanged by shape, and moves only with an effect
+        run: python check_metamorphic.py
       - name: Edge, property and round-trip tests
         run: velaris examples/edges.vel --allow ffi:datetime,io
       - name: Velaris tests written in Velaris

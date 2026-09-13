@@ -143,6 +143,16 @@ What follows is what is still not defended.
   granted. Where the owning module of an object reached along the chain
   cannot be determined, the call is refused rather than allowed - the
   bound errs toward refusing more, not less.
+- **Native code inside a granted module.** A granted module may be, or
+  may ship, a compiled extension (`.so`/`.pyd`/`.dylib`), which has no
+  source to read and whose behaviour a budget does not constrain any more
+  than it constrains Python. From 8.0 `velaris audit` reports this per
+  granted module in `ffi_native` - `"native"` when it finds a compiled
+  extension on disk (found without importing the module), `"unknown"`
+  otherwise, and never `"false"`, since a pure-Python module can import a
+  native one without that being visible. The audit names the risk; it
+  does not remove it. Grant native modules only when you would grant the
+  machine.
 - **Side channels.** Timing, CPU load, cache effects, the size or
   timing of console output. Nothing measures or bounds them.
 - **Resource use below the limits.** A program may run for 29 of its
@@ -156,18 +166,19 @@ What follows is what is still not defended.
 - **What a granted host does with a request.** The grant names a host
   as written; where the name resolves is DNS's business, and what the
   host does with the data it receives is outside the model.
-- **The connection endpoint, when a proxy is set (known open; fixed in
-  8.0.0).** Through 7.1.x the network client honoured an ambient
-  `HTTP_PROXY` / `HTTPS_PROXY`: a `net:` grant checks the URL's host, but
-  the socket then went to the proxy, which need not be a granted host, so
-  an `http://` request carried its payload to the proxy. The grant bounded
-  the URL string, not the peer. The route is `guarded_opener()` building
-  on urllib's default `ProxyHandler`. This is a real gap in host-scoped
-  egress control, but closing it *refuses* traffic that reaches a proxy
-  today, so by STABILITY.md rule 1 the fix is a major: **8.0.0** builds the
-  opener with proxies disabled (a proxy host must itself be granted).
-  Until then, run with a clean environment, or point `HTTP(S)_PROXY` only
-  at a proxy you trust and treat it as inside the net perimeter.
+- **Closed in 8.0.0: the connection endpoint when a proxy is set.**
+  Through 7.1.x the network client honoured an ambient `HTTP_PROXY` /
+  `HTTPS_PROXY`: a `net:` grant checked the URL's host, but the socket
+  then went to the proxy, which need not be a granted host, so an
+  `http://` request carried its payload to the proxy. The grant bounded
+  the URL string, not the peer. From 8.0 `guarded_opener` builds the
+  opener with ambient proxies **disabled**, and honours one only when the
+  proxy's own host:port is itself inside the net budget; a proxy the
+  budget does not cover is refused (E317, uncatchable), naming the proxy
+  and the grant that would allow it. `velaris add` ignores ambient
+  proxies too. The grant now bounds the socket's peer, not only the URL -
+  this moves to **What it defends against**. What is still not bounded is
+  what a *granted* proxy does with the request, like any granted host.
 - **What a granted path contains.** A hard link inside a granted
   directory is that directory's content. A file system changed by
   another process between the check and the open is outside the
@@ -321,6 +332,23 @@ What follows is what is still not defended.
   `length(xs)`. The runtime check stopped each; the prover did not
   settle them beforehand. These are limits of the current prover,
   listed in RESULTS.md rather than worked around.
+
+## Known open
+
+The gaps this model does not close, kept as a table so the list is one
+place and stays current. None is a defect to be reported under
+SECURITY.md's challenge; each is a stated limit of what the effect
+budget is. A finding that a guarantee above is *broken* - a "proven"
+promise that breaks at run time, or an effect performed outside the
+budget - is a different thing, and SECURITY.md says how it is handled.
+
+| Open | What it is | What to do |
+|---|---|---|
+| Timing and other side channels | How long a run takes, how much CPU or cache it uses, the size or timing of its output - none is measured or bounded, and a program can signal through any of them. Not a non-interference result (7.0 bounds a secret's *value*, not the run's timing). | Do not run code whose timing you must not leak on shared hardware; if one bit per run matters, do not grant `env`. |
+| A granted `ffi` module | Within a granted module, that module's full behaviour is granted; `ffi:os` is the operating system as the current user. The allow-list narrows which module a call reaches, not what it does. | Grant `ffi` only when the task needs it, name the modules, and treat the grant as trust in those modules. Never grant `ffi:os`, `ffi:subprocess` or plain `ffi` to code you have not read. |
+| Native code | A granted module may be or ship a compiled extension with no source and no runtime bound. `velaris.audit/1`'s `ffi_native` reports where it is found (8.0), and never claims a module is free of it. | Read `ffi_native`; grant a native module only when you would grant the machine. |
+| Secrets arriving another way | `Secret of T` marks the results of `env()` and `read_file_secret()` only. A value read through `read_line`, passed in through `args()`, fetched over `net`, returned by a granted `ffi` module, or hard-coded is an ordinary value with no protection. | Run agent-written programs with a clean environment; do not treat a secret from another source as protected. |
+| No OS confinement | The budget is enforced by an interpreter written in Python, in a process that also holds the compiler, on a host that trusts that process. It is not an OS sandbox, a network policy or a separate user account. | Put Velaris inside one of those when the stakes warrant it; the budget is a guard against a program doing what it was not asked to, not a substitute for a boundary the OS enforces. |
 
 ## Residual risks, and what to do about each
 

@@ -1,5 +1,110 @@
 # Velaris changelog
 
+## 8.0 - What the socket reaches, and other things the audit now says
+
+A major version. Two of its changes refuse programs that ran under 7.x, so
+by STABILITY.md rule 1 they ship in a major - and a major is where a user
+learns to read the CHANGELOG before upgrading. Four things break; the rest
+add.
+
+**The socket peer, not the URL string (the proxy hole; E317).** Through
+7.x a `net:` grant checked the URL's host, but an ambient `HTTP_PROXY` /
+`HTTPS_PROXY` in the environment then routed the request - its payload
+included - to a proxy that need not be a granted host. The grant bounded a
+string, not the peer. This was the open hole THREAT_MODEL.md carried and
+the adversarial pass against 7.1.1 found (advisory left for a major).
+`guarded_opener` now disables ambient proxies unless the proxy's own
+host:port is itself inside the net budget, in which case that one proxy is
+honoured; a proxy the budget does not cover is refused with **E317**,
+naming the proxy and the grant that would allow it, and the refusal cannot
+be caught. `velaris add` no longer defers to an ambient proxy either. With
+no proxy set, behaviour is identical to 7.2.0.
+
+**A function named like a built-in is refused (E204).** Through 7.x a
+program that defined `fn print`, `fn env`, `fn read_file` and the like was
+silently shadowed - the built-in won and the function was never reached, a
+call that read as one thing and did another. It is now **E204**. The rule
+of SPEC.md 10.1 is unchanged: a built-in added in 4.3 or later (the Money
+and Secret builtins) still gives way to a program's own function of that
+name, so `fn money` and `fn split` in a namespaced library keep working;
+only the older built-ins, which a program could never actually shadow, are
+the error. The shipped standard library is exempt, since it is always
+imported under a name.
+
+**A credential file wants read_file_secret (E318).** `read_file` on a
+documented credential location - `~/.aws/*`, `~/.ssh/*`, `.env`,
+`~/.config/gcloud/*`, `~/.docker/config.json`, `~/.kube/config`,
+`~/.netrc`, `*.pem`, `*.key` - is refused with **E318** and pointed at
+`read_file_secret`, which returns a `Secret` the compiler will not let
+escape. And a credential location is never covered by a broad `fs:read:`
+grant that merely sits above it: an operator names it, or a path within it,
+explicitly. `read_file_secret` on an explicitly granted credential path is
+the sanctioned way and works.
+
+**`velaris add` refuses two redirects.** It refuses a redirect from `https`
+to `http` (which would drop the encrypted connection) and a redirect to a
+host outside the URL's origin - the two ways a vendoring fetch could be
+steered to bytes other than the ones the URL named.
+
+**What a user of 7.x has to change** (STABILITY.md rule 4):
+
+1. **Proxies.** A program that reaches the network with an ambient
+   `HTTP_PROXY` / `HTTPS_PROXY` set and a *scoped* `net:` grant that does
+   not cover the proxy is refused (E317). Grant the proxy's host too
+   (`net:PROXYHOST:PORT`), or run with no proxy set. `velaris add` ignores
+   ambient proxies entirely now.
+2. **Built-in names.** A function named like a built-in from before 4.3
+   (`print`, `env`, `read_file`, `fetch`, `get`, `length`, `split`, ...) is
+   refused (E204). Rename it, or move it into a file imported under a name
+   so it is reached as `prefix.name`.
+3. **Credential reads.** `read_file` (or `file_exists`) on one of the
+   documented credential locations above is refused (E318). Read a secret
+   with `read_file_secret` and grant its exact path; a broad `fs:read:`
+   grant no longer includes a credential file.
+4. **`velaris add` redirects.** A source URL that redirects `https`→`http`,
+   or to a host outside its origin, is refused. Vendor from a URL that does
+   neither, or fetch and add the file from disk.
+
+**The rest, none of it breaking:**
+
+- **The audit says whether a granted module is native.** `velaris.audit/1`
+  gains `ffi_native`: per named Python module, `"native"` when a compiled
+  extension (`.so`/`.pyd`/`.dylib`, or a built-in) is found on disk, and
+  `"unknown"` otherwise - never `"false"`, because a pure-Python module can
+  import a native one without that being visible. It is found from files on
+  disk **without importing** the module, so a module whose import would act
+  does nothing. A new SARIF note `ffi-native`; a THREAT_MODEL.md paragraph.
+- **Secrets in code scanning.** `audit --sarif` emits `secret-source` (note)
+  for `env` / `read_file_secret`, and `secret-declassified` (warning) for
+  each `declassify` - an error under `--strict` unless its reason is listed
+  in `--allow-declassify-reasons <file>`. No rule-id clashes with
+  `deps-diff`'s.
+- **Errors that teach.** Every compiler error and every runtime refusal now
+  ends with one line, `reference: <URL>`, pointing at the card
+  (`llms.txt`), served at the documentation site; `--json` and SARIF carry
+  it as a field. `velaris check` reports every error in a file, recovering
+  at statement boundaries; SPEC.md 14 says the first is authoritative, and
+  it is the one a single-error run gives.
+- **`--seed <n>` and `--freeze-time <iso8601>`** make a run's randomness and
+  clock reproducible, recorded as the run's parameters (the doors log
+  `run_params`). Neither is a grant: `random()` still needs `rand` and
+  `now()` still needs `clock`, and the budget still refuses them.
+- **`check` and `audit` run under a time and memory ceiling** (60 s, 2048 MB
+  by default; `--check-timeout` raises the clock), so a crafted contract or
+  expression cannot stall a platform that audits before running.
+- **The Action installs its own version.** With no `version:` input, the
+  Action installs the release matching the tag it was used at (`@v8.0.0`
+  installs 8.0.0), and the newest on PyPI only from a branch or a commit.
+- **New suites.** `check_metamorphic.py` (an audit is unchanged by renaming,
+  reordering, dead code, or splitting a program across files, and one added
+  effect changes it in exactly one way) and `check_prover_lies.py` (a corpus
+  of false promises that must never come back proven).
+- **A TrapDoor benchmark case** (category 13): a program whose stated
+  purpose is a security scan and whose behaviour is read-credentials-then-
+  post, caught before running.
+
+`velaris-spec` goes to 0.9.0 for the two added `velaris.audit/1` fields.
+
 ## 7.2 - Releases that tag themselves
 
 No change to the language, the library, the error codes or the command

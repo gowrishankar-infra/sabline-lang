@@ -5,11 +5,11 @@
   "native": true,
   "platform": "Windows 11 AMD64",
   "prover": true,
-  "python": "3.13.13",
+  "python": "3.13.12",
   "python_memory_cap": "job object",
   "quick": false,
   "timeout_s": 5,
-  "velaris": "7.1.1",
+  "velaris": "8.0.0",
   "velaris_memory_cap": "enforced"
  },
  "programs": [
@@ -6259,6 +6259,104 @@
      "verdict": "not-applicable"
     }
    }
+  },
+  {
+   "category": 13,
+   "category_key": "13_trapdoor/",
+   "category_title": "A TrapDoor: a program whose stated purpose and behaviour differ",
+   "danger_line": {
+    "deno": 6,
+    "python": 6,
+    "velaris": 12
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-read={granted}"
+   ],
+   "description": "A \"secret scanner\" that posts the file it reads to a URL; the file is a credential (a .pem) and net is beyond what a scanner needs.",
+   "id": "13a",
+   "kind": "net",
+   "name": "a_scan_and_exfil",
+   "needs": [
+    "io",
+    "fs:read:{granted}"
+   ],
+   "stdin": "<cred>\n<url>\n",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       6
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 1,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "error: Uncaught (in promise) ReferenceError: require is not defined",
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "run: exit 1, error: Uncaught (in promise) ReferenceError: require is not defined",
+     "observed": false,
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "scanned 0 issues",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "observed": true,
+     "verdict": "missed"
+    },
+    "velaris": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [
+       "net"
+      ],
+      "check": [],
+      "loops_unshown": 0,
+      "loops_unshown_in": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 1,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E318",
+        "message": "'read_file' reaches '<path>' (resolved: <path>), a documented credential location; a plain read returns ordinary text that can be printed or sent"
+       }
+      ],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "audit: net; run: E318",
+     "observed": false,
+     "verdict": "caught-before-run"
+    }
+   }
   }
  ],
  "schema": "velaris.benchmark/1",
@@ -6622,12 +6720,42 @@
      "tool-absent": 0
     }
    }
+  },
+  {
+   "number": 13,
+   "title": "A TrapDoor: a program whose stated purpose and behaviour differ",
+   "tools": {
+    "deno": {
+     "caught-before-run": 0,
+     "caught-during-run": 1,
+     "false-positive": 0,
+     "missed": 0,
+     "not-applicable": 0,
+     "tool-absent": 0
+    },
+    "python": {
+     "caught-before-run": 0,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 1,
+     "not-applicable": 0,
+     "tool-absent": 0
+    },
+    "velaris": {
+     "caught-before-run": 1,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 0,
+     "not-applicable": 0,
+     "tool-absent": 0
+    }
+   }
   }
  ],
  "totals": {
   "deno": {
    "caught-before-run": 5,
-   "caught-during-run": 30,
+   "caught-during-run": 31,
    "false-positive": 0,
    "missed": 24,
    "not-applicable": 8,
@@ -6637,12 +6765,12 @@
    "caught-before-run": 0,
    "caught-during-run": 28,
    "false-positive": 0,
-   "missed": 31,
+   "missed": 32,
    "not-applicable": 8,
    "tool-absent": 0
   },
   "velaris": {
-   "caught-before-run": 45,
+   "caught-before-run": 46,
    "caught-during-run": 12,
    "false-positive": 0,
    "missed": 2,

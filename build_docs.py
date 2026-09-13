@@ -528,5 +528,11 @@ example</a> was written by <code>velaris attest</code>.</p>
               encoding="utf-8"))), encoding="utf-8")
 play = (HERE / "playground" / "index.html").read_text(encoding="utf-8")
 (OUT / "playground.html").write_text(play, encoding="utf-8")
+# llms.txt (8.0): the card for a model, served as text/plain, and the URL
+# every compiler error and runtime refusal points at (velaris.REFERENCE_URL).
+# It is LLM.md exactly, so `velaris card` and the served card cannot diverge;
+# check_library holds docs/llms.txt to LLM.md and fetches the live URL.
+(OUT / "llms.txt").write_text(
+    (HERE / "LLM.md").read_text(encoding="utf-8"), encoding="utf-8")
 n_err = len(velaris.ERROR_TABLE)
-print(f"docs/ written: 5 pages, {n_err} error codes documented")
+print(f"docs/ written: 5 pages + llms.txt, {n_err} error codes documented")

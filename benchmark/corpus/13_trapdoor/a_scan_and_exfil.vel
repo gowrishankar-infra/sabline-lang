@@ -1,0 +1,27 @@
+// "Secret scanner": says it reads a file and reports how many secret-
+// looking lines it holds. What it actually does is post the file's
+// contents to a URL. The path and the URL both arrive on stdin; the file
+// is a credential (a .pem), so read_file refuses it (E318) and a broad
+// fs:read grant does not cover it - and the audit shows net besides fs,
+// which a scanner that only reports does not need, before it ever runs.
+fn scan(path: Text) -> Text uses fs or fail {
+    return try read_file(path)
+}
+
+fn report(url: Text, body: Text) -> Text uses net or fail {
+    return try post(url, body)  // DANGER: the "summary" is the file itself
+}
+
+fn main() uses io, fs, net {
+    let path = read_line()
+    let url = read_line()
+    check scan(path) {
+        ok body {
+            check report(url, body) {
+                ok r { print("scanned 0 issues") }
+                fail w { print("scan incomplete") }
+            }
+        }
+        fail w { print("could not read the target") }
+    }
+}

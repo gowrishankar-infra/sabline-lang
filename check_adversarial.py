@@ -430,6 +430,161 @@ def pool_cases():
         pool.close()
 
 
+# ---------------------------------------------------------------------------
+# The 8.0 breaks, kept closed. Each is an attempt from the 8.0 adversarial
+# pass that must stay refused (or, for the honest halves, stay allowed).
+# ---------------------------------------------------------------------------
+def _listener():
+    """A one-shot socket that records the request it receives. Stands in
+    for an un-granted proxy: nothing granted may reach it."""
+    import socket
+    import threading
+    got = {}
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+    port = srv.getsockname()[1]
+
+    def serve():
+        try:
+            c, _ = srv.accept()
+            c.settimeout(3)
+            d = b""
+            while b"\r\n\r\n" not in d and len(d) < 8192:
+                ch = c.recv(1024)
+                if not ch:
+                    break
+                d += ch
+            got["req"] = d.decode("latin1", "replace")
+            c.sendall(b"HTTP/1.1 200 OK\r\nContent-Length:2\r\n"
+                      b"Connection: close\r\n\r\nhi")
+            c.close()
+        except Exception as e:      # noqa: BLE001 - a probe, not a service
+            got["err"] = repr(e)
+
+    threading.Thread(target=serve, daemon=True).start()
+    return got, port
+
+
+def proxy_break_cases():
+    """Break 1: a net grant bounds the socket peer, not the URL string.
+    The pass's exact program is refused (E317); the same program with the
+    proxy granted succeeds; no proxy variables set -> no E317."""
+    import time
+    prog_text = ('fn main() uses net {\n'
+                 '  check fetch("http://api.vendor.example/x?d=SECRETPAYLOAD")'
+                 ' { ok b { } fail w { } }\n}\n')
+    for env_key in ("HTTP_PROXY", "http_proxy"):
+        got, port = _listener()
+        d = tempfile.mkdtemp()
+        prog(d, prog_text)
+        code, out, _ = run(["p.vel", "--allow", "net:api.vendor.example"],
+                           cwd=d, env={env_key: f"http://127.0.0.1:{port}"})
+        time.sleep(0.3)
+        ok(f"B1 ambient {env_key} to an ungranted proxy -> E317, no leak",
+           "E317" in out and "SECRETPAYLOAD" not in got.get("req", ""),
+           f"exit {code}, proxy saw {got.get('req', '')[:60]!r}")
+    # the same program with the proxy granted succeeds and reaches it
+    got, port = _listener()
+    d = tempfile.mkdtemp()
+    prog(d, prog_text)
+    code, out, _ = run(["p.vel", "--allow",
+                        f"net:api.vendor.example,net:127.0.0.1:{port}"],
+                       cwd=d, env={"HTTP_PROXY": f"http://127.0.0.1:{port}"})
+    time.sleep(0.3)
+    ok("B1 the same program with the proxy granted succeeds",
+       code == 0 and "SECRETPAYLOAD" in got.get("req", ""), f"exit {code}")
+    # no proxy set -> behaviour has no E317 (identical to before 8.0)
+    d = tempfile.mkdtemp()
+    prog(d, prog_text)
+    code, out, _ = run(["p.vel", "--allow", "net:api.vendor.example"], cwd=d)
+    ok("B1 no proxy set -> no E317 (unchanged from 7.2.0)",
+       "E317" not in out, out[:120])
+
+
+def builtin_shadow_cases():
+    """Break 2: a function named like a built-in is E204, not shadowed;
+    the 4.3+ give-way built-ins are still allowed."""
+    for b in ("print", "env", "read_file", "fetch", "length", "get",
+              "split", "now", "random", "post", "to_int"):
+        d = tempfile.mkdtemp()
+        prog(d, f'fn {b}(x: Text) -> Text {{ return x }}\n'
+                'fn main() uses io { print("hi") }\n')
+        code, out, _ = run(["check", "p.vel"], cwd=d)
+        ok(f"B2 a function named '{b}' -> E204",
+           "E204" in out and code != 0, out[:100])
+    d = tempfile.mkdtemp()
+    prog(d, 'fn money(n: Int) -> Int { return n }\n'
+            'fn main() uses io { print(to_text(money(5))) }\n')
+    code, out, _ = run(["p.vel", "--allow", "io"], cwd=d)
+    ok("B2 a function named 'money' still gives way (SPEC 10.1)",
+       code == 0 and "E204" not in out, out[:100])
+
+
+def credential_break_cases():
+    """Break 3: read_file on a documented credential location is E318;
+    a broad fs:read: grant does not cover it; read_file_secret with the
+    exact path works."""
+    d = tempfile.mkdtemp()
+    df = d.replace("\\", "/")
+    open(os.path.join(d, "x.pem"), "w").write("PEMDATA")
+    # read_file: a plain read leaks the text, so the ok arm prints it - the
+    # refusal (E318) is what must stop it before that happens
+    prog(d, 'fn main() uses io, fs {\n'
+            f'  check read_file("{df}/x.pem") {{ ok v {{ print("LEAK:" + v) }} '
+            'fail w { print("f") } }\n}\n')
+    code, out, _ = run(["p.vel", "--allow", f"io,fs:read:{df}"], cwd=d)
+    ok("B3 read_file on a .pem under a broad grant -> E318, no leak",
+       "E318" in out and "PEMDATA" not in out, out[:120])
+    # read_file_secret returns a Secret, so the ok arm cannot print it; the
+    # refusal here is that the broad grant does not name the credential
+    secret_read = ('fn main() uses io, fs {\n'
+                   f'  check read_file_secret("{df}/x.pem") '
+                   '{ ok v { print("OKREAD") } fail w { print("f") } }\n}\n')
+    prog(d, secret_read)
+    code, out, _ = run(["p.vel", "--allow", f"io,fs:read:{df}"], cwd=d)
+    ok("B3 read_file_secret on a .pem under a broad grant -> E318",
+       "E318" in out and "OKREAD" not in out, out[:120])
+    # ...and with the exact path named, read_file_secret works
+    prog(d, secret_read)
+    code, out, _ = run(["p.vel", "--allow", f"io,fs:read:{df}/x.pem"], cwd=d)
+    ok("B3 read_file_secret with the exact credential path granted works",
+       code == 0 and "OKREAD" in out, out[:120])
+
+
+def add_redirect_cases():
+    """Break 4: velaris add refuses a redirect from https to http and to a
+    host outside the URL's origin. Tested against the opener's own
+    redirect handler, so it needs no TLS server."""
+    class _Resp:
+        headers = {}
+
+        def geturl(self):
+            return ""
+
+    def outcome(origin, newurl):
+        import urllib.request
+        op = velaris._add_opener(origin)
+        handler = next(h for h in op.handlers
+                       if h.__class__.__name__ == "AddGuard")
+        try:
+            handler.redirect_request(urllib.request.Request(origin), _Resp(),
+                                     302, "Found", {}, newurl)
+            return "allowed"
+        except velaris._RedirectRefused as e:
+            return f"refused: {e.why}"
+
+    ok("B4 velaris add refuses an https->http redirect",
+       "refused" in outcome("https://example.com/lib.vel",
+                            "http://example.com/lib.vel"))
+    ok("B4 velaris add refuses a redirect to a host outside the origin",
+       "refused" in outcome("https://example.com/lib.vel",
+                            "https://evil.com/lib.vel"))
+    ok("B4 velaris add allows a same-origin https redirect",
+       outcome("https://example.com/a.vel", "https://example.com/b.vel")
+       == "allowed")
+
+
 def main():
     cache_cases()
     recursion_cases()
@@ -441,6 +596,10 @@ def main():
     trace_cases()
     witness_cases()
     pool_cases()
+    proxy_break_cases()
+    builtin_shadow_cases()
+    credential_break_cases()
+    add_redirect_cases()
     print(f"\n{PASS}/{PASS + FAIL} passed" + (f"  ({FAIL} FAILED)" if FAIL else ""))
     return 1 if FAIL else 0
 

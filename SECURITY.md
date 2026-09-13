@@ -10,7 +10,11 @@ downloaded is what was released.
 
 Please do NOT open a public issue for security problems. Instead, use
 GitHub's private reporting: **Security tab -> Report a vulnerability**
-on this repository. You will get a response within a few days.
+on this repository. **You will get a response within 48 hours** - an
+acknowledgement that the report arrived and is being looked at, not
+necessarily a fix. This is a single-maintainer project (SUPPORT.md); the
+48-hour promise is for the first reply, and a fix to a soundness or
+sandbox report is promised within a week (below).
 
 In scope: anything that makes Velaris's guarantees lie - an effect the
 checker misses, a "proven" promise that can actually break at runtime,
@@ -25,11 +29,49 @@ through either door that gets more time or memory than its operator's
 code that needs more than its `velaris.capabilities` declares while
 `velaris capabilities check` passes it.
 
+## The three guarantees, and which findings get a CVE
+
+Velaris makes three promises a person relies on to run code they have
+not read. A report that breaks one is a security report.
+
+- **Goal A - Soundness.** A promise Velaris reports "proven" never
+  breaks at run time. If `check`, `proofs`, `explain`, `audit` or the
+  library marks a `requires`/`ensures`/`invariant` proven and a run then
+  violates it, Goal A is broken.
+- **Goal B - Honesty.** A program's declared effects, and the audit
+  built from them, name everything it can do to the outside world - the
+  transitive effect rule (SPEC.md 7). If a program performs an effect no
+  signature on its call graph declares, Goal B is broken.
+- **Goal C - Confinement.** No effect outside the operator's budget
+  happens, whatever the source claims. If a program reads a file,
+  reaches a host, reads the environment, calls Python or otherwise acts
+  outside `--allow` and carries on, Goal C is broken.
+
+**A finding against Goal A or Goal C gets a CVE requested.** Those are
+the two guarantees a person leans on when they run unread code: that a
+proof is not a lie, and that the budget holds. A report that establishes
+one is treated as a security issue, fixed within a week, credited by
+name, and a repository security advisory with a CVE is drafted for it
+(RELEASING.md says how the release workflow prepares the request).
+
+Goal B findings are fixed too, but the audit is documented as reading a
+program's *text*, not running it (THREAT_MODEL.md): it describes what a
+program declares, and the budget - Goal C - is the boundary that holds
+regardless. A Goal B finding that also lets a program escape its budget
+is a Goal C finding, and gets the CVE.
+
+What is **not** a Goal A/B/C finding is anything the "Known open" table
+in THREAT_MODEL.md lists as a stated limit - a granted `ffi` module's
+behaviour, native code inside one, a timing channel, a secret arriving
+outside the two builtins, the absence of OS confinement. Those are
+documented as not defended; a report of one is welcome as a
+documentation or hardening issue, not a broken guarantee.
+
 ## Soundness reports are security reports
 
 If the prover claims something is proven and you can make it false at
-runtime, that is a vulnerability in this language's core promise.
-These reports get top priority.
+runtime, that is a vulnerability in this language's core promise (Goal
+A above). These reports get top priority.
 
 ## Standing challenge
 
