@@ -231,3 +231,14 @@ REBUILT 2026-09-13 (velaris-lang 7.1.0: the benchmark's twelfth category)
 
   Engine: MiKTeX 25.12 (MiKTeX-pdfTeX 4.23), not the TeX Live arXiv
   runs; read the PDF arXiv builds before confirming.
+
+  Re-pinned the same day to velaris-lang 7.1.1. 7.1.0 did not import on
+  Python 3.10 or 3.11 and is to be yanked; 7.1.1 fixes that and changes
+  nothing the benchmark measures (a full run at 7.1.1 wrote every verdict
+  and line of evidence 7.1.0's had). velaris.md now names 7.1.1 wherever
+  it said where the benchmark figures come from - section 4.1, Table 1's
+  caption and the reproducibility section, which checks out v7.1.1 - and
+  lists 7.1.1 among the later releases. velaris.tex regenerated with
+  pandoc 3.11; velaris.bbl unchanged; step 3 again gives 12 pages, no
+  undefined reference, no overfull or underfull box. The abstract did not
+  change, so the form field above stands.

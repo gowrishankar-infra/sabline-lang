@@ -349,8 +349,9 @@ running, missed, or, for a control, clean or a false positive - and
 after every run the harness observes whether the dangerous effect
 actually happened: a file created, a request received by a local
 listener, a subprocess's sentinel printed. The committed results were
-produced by Velaris 7.1.0, Deno 2.9.6 and Python 3.13.13 on Windows 11,
-and ten consecutive runs wrote identical files. The 63 programs of the
+produced by Velaris 7.1.1, Deno 2.9.6 and Python 3.13.13 on Windows 11;
+ten consecutive runs at 7.1.0 had written identical files, and the run
+at 7.1.1 changed only the version it records. The 63 programs of the
 first eleven categories kept the verdict each had under Velaris 4.1.0;
 Velaris 3.0.0, with the same Deno and Python on the same platform, had
 produced that table before 4.1.0, every verdict and every line of
@@ -363,7 +364,7 @@ evidence.
 | Python | 0 | 28 | 31 | 0 |
 
 Table 1: the 59 dangerous programs and the 8 controls, from
-`benchmark/RESULTS.md` at Velaris 7.1.0.
+`benchmark/RESULTS.md` at Velaris 7.1.1.
 
 Where the catches come from differs by tool. Velaris's catches before
 running come from effects in signatures (the file, network and module
@@ -732,8 +733,7 @@ that are recorded in its changelog.
 This paper describes Velaris 4.2.1 and velaris-spec 0.5.1, and every
 number in it was verified against those two tags except the
 benchmark's: the benchmark figures of the abstract, section 4.1,
-Table 1 and the conclusion are from Velaris 7.1.0, which added the
-benchmark's twelfth category. Releases after 4.2.1
+Table 1 and the conclusion are from Velaris 7.1.1. Releases after 4.2.1
 postdate the paper and are not reflected in it: 4.3.0 added `Money of
 CUR`, an exact decimal whose split is proven to add back up; 4.3.1 made
 a proof that exhausts its time budget say so rather than fall silently
@@ -743,8 +743,10 @@ every version this paper measured granted all seven effects - the
 related-work paragraphs on WASI and on Boruna say what changed, and
 velaris-spec 0.6.0 restates its sections 4.4 and 4.6 to match; 6.0.0
 and 7.0.0 added `Secret of T`, a value a program cannot print, send or
-branch on without declassifying it with a stated reason; and 7.1.0
-added `velaris deps-diff` and the benchmark's twelfth category. Later
+branch on without declassifying it with a stated reason; 7.1.0 added
+`velaris deps-diff` and the benchmark's twelfth category; and 7.1.1
+made 7.1.0 import on Python 3.10 and 3.11, and changed nothing the
+benchmark measures. Later
 patches corrected documentation and packaging. What each one changed is
 in the two repositories' changelogs.
 The tags below are therefore the ones to check out, not the current
@@ -758,8 +760,8 @@ at their tags:
     git -C velaris-spec checkout v0.5.1
     cd velaris-lang
 
-    # Table 1, at v7.1.0 (Deno 2.x on PATH for the Deno column; 3 to 8 minutes)
-    git checkout v7.1.0
+    # Table 1, at v7.1.1 (Deno 2.x on PATH for the Deno column; 3 to 8 minutes)
+    git checkout v7.1.1
     pip install ".[full,test]"         # the prover, the native compiler, jsonschema
     python benchmark/run.py --check    # exit 1 if any verdict differs
 
@@ -791,9 +793,9 @@ Where each number comes from:
 
 | Number | File |
 |---|---|
-| 67 programs, 59 dangerous, 8 controls; 45/12/2, 5/30/24, 0/28/31; 0 false positives; Velaris 7.1.0, Deno 2.9.6, Python 3.13.13, Windows 11; 5 s timeout, 256 MB cap; the misses `04c` and `09c` | `benchmark/RESULTS.md` at v7.1.0 |
-| twelve categories; three of each six programs written against the tools; category 12's three upgrades and one control; 5 to 8 minutes for a full run | `benchmark/README.md` at v7.1.0 |
-| ten identical runs; the verdicts of the 63 earlier programs unchanged from 4.1.0 | `CHANGELOG.md`, 7.1 entry |
+| 67 programs, 59 dangerous, 8 controls; 45/12/2, 5/30/24, 0/28/31; 0 false positives; Velaris 7.1.1, Deno 2.9.6, Python 3.13.13, Windows 11; 5 s timeout, 256 MB cap; the misses `04c` and `09c` | `benchmark/RESULTS.md` at v7.1.1 |
+| twelve categories; three of each six programs written against the tools; category 12's three upgrades and one control; 5 to 8 minutes for a full run | `benchmark/README.md` at v7.1.1 |
+| ten identical runs at 7.1.0; the verdicts of the 63 earlier programs unchanged from 4.1.0; the run at 7.1.1 differing only in its version | `CHANGELOG.md`, 7.1 and 7.1.1 entries |
 | the same table from Velaris 3.0.0 | `benchmark/RESULTS.md` at v4.0.0, and `CHANGELOG.md`, 4.1 entry |
 | seven effects; the refusal codes E310, E311, E313, E314, E315 | `SPEC.md` section 7 and 7.1 |
 | E407, E520, E700, E701, E705, E706; 62 error codes | `velaris.py`, `ERROR_TABLE` |

@@ -42,8 +42,12 @@ test, `benchmark/run.py --quick --check`, `velaris capabilities check .`,
 the formatter, and the docs and playground builds. Under Python 3.13
 with the console forced to cp1252 (`PYTHONIOENCODING=cp1252`),
 `check_deps.py` passes 54/54, and 7.1.0's escaping raises
-`UnicodeEncodeError` where 7.1.1's prints. The benchmark was not rerun:
-neither fix is on a path it takes, and its table is 7.1.0's.
+`UnicodeEncodeError` where 7.1.1's prints. Neither fix is on a path
+the benchmark takes; a full run at 7.1.1 wrote every verdict and every
+line of evidence 7.1.0's had, and `benchmark/RESULTS.md` and
+`results.json` differ only in the version they record. The paper's
+benchmark figures and its reproducibility section now name 7.1.1, the
+release to check them out at, rather than 7.1.0.
 
 ## 7.1 - What an upgrade gained
 

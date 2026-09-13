@@ -9,7 +9,7 @@
   "python_memory_cap": "job object",
   "quick": false,
   "timeout_s": 5,
-  "velaris": "7.1.0",
+  "velaris": "7.1.1",
   "velaris_memory_cap": "enforced"
  },
  "programs": [
