@@ -8250,15 +8250,27 @@ def _run_on_big_stack(fn):
             continue
     else:
         return fn()                         # cannot size a stack: run here
+    started = False
     try:
         t = threading.Thread(target=worker)
-        t.start()
-        t.join()
+        try:
+            t.start()
+            started = True
+        except RuntimeError:
+            # "can't start new thread": a big stack can exceed the address
+            # space a memory cap (RLIMIT_AS) leaves, especially with llvmlite
+            # loaded. Run in place - the big stack is a best-effort guard,
+            # never a requirement.
+            started = False
+        if started:
+            t.join()
     finally:
         try:
             threading.stack_size(prev or 0)
         except (ValueError, RuntimeError, OverflowError):
             pass
+    if not started:
+        return fn()
     if "error" in box:
         raise box["error"]
     return box.get("value")
