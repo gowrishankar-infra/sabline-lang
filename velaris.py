@@ -296,7 +296,7 @@ Usage:
 import json
 import os
 
-VERSION = "7.1.2"
+VERSION = "7.2.0"
 import re
 import sys
 from dataclasses import dataclass, field
@@ -12993,6 +12993,24 @@ class InvocationLog:
 MCP_TOOLS_SCHEMA = "velaris.mcp-tools/1"
 OIDC_ISSUER = "https://token.actions.githubusercontent.com"
 RELEASE_IDENTITY = REPOSITORY + "/.github/workflows/release.yml@refs/tags/v{version}"
+# From 7.2.0 no pushed tag starts a release: release.yml runs on main once
+# the tests pass there (a workflow_run), tags the commit itself and signs in
+# that same run - so a release is signed as main, not as its tag.
+# RELEASING.md and SECURITY.md.
+RELEASE_IDENTITY_MAIN = REPOSITORY + "/.github/workflows/release.yml@refs/heads/main"
+RELEASED_FROM_MAIN = (7, 2, 0)
+
+
+def release_identity(version) -> str:
+    """The sigstore identity the release workflow signed `version` with:
+    its tag up to 7.1.2, main from 7.2.0."""
+    try:
+        parts = [int(p) for p in str(version).split(".")]
+    except ValueError:
+        return RELEASE_IDENTITY.format(version=version)
+    if len(parts) in (2, 3) and tuple(parts + [0])[:3] >= RELEASED_FROM_MAIN:
+        return RELEASE_IDENTITY_MAIN
+    return RELEASE_IDENTITY.format(version=version)
 
 
 def _canonical_json(value) -> bytes:
@@ -13266,7 +13284,7 @@ def mcp_verify_main(argv: list) -> int:
         print("signature: NOT CHECKED (--skip-signature)")
     else:
         bundle_path = bundle_path or manifest_path + ".sigstore.json"
-        identity = identity or RELEASE_IDENTITY.format(version=version)
+        identity = identity or release_identity(version)
         if not os.path.exists(bundle_path):
             print(f"mcp-verify: no signature bundle at {bundle_path}; "
                   f"download it from the release beside the manifest, or "

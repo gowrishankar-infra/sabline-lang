@@ -617,10 +617,30 @@ gives parts that **provably** add up to the payout. See
 
 ## Remembered proofs
 
-Proofs are cached in `.velaris/` and keyed by the function's text *and*
-the contracts it depends on, so changing a promise re-proves everything
-that relied on it. `--no-cache` proves from scratch; `velaris clean`
-forgets.
+A second `velaris check` of an unchanged program does not run the prover
+again: what it proved is remembered in a directory that belongs to you,
+not to the program - `%LOCALAPPDATA%\velaris\proofs` on Windows,
+`$XDG_CACHE_HOME/velaris/proofs` (or `~/.cache/velaris/proofs`)
+elsewhere. A program's entries are keyed by its absolute path, a SHA-256
+of its exact bytes and the compiler's version, and checked against all
+three when they are read, so an edited file, the same file at another
+path, a hand-edited entry or a new Velaris is proved again rather than
+believed. Within that, a proof is keyed by the function's text *and* the
+contracts it depends on, so changing a promise re-proves everything that
+relied on it.
+
+A `./.velaris/` directory is never read. Until 7.1.2 the cache lived
+there, beside the program, and one shipped with an untrusted program
+could make a false promise report "proven"
+([advisory-proof-cache.md](advisory-proof-cache.md)); `velaris audit`
+prints `ignored: ./.velaris/` when it finds one. If no per-user directory
+can be written, the run goes ahead with no cache. The library and the
+worker pool never use it.
+
+`--no-cache` neither reads nor writes the cache: every promise is proved
+from scratch. `velaris clean` deletes the per-user `velaris` cache
+directory; when the current directory holds an old `./.velaris/`, it says
+that directory is ignored and leaves deleting it to you.
 
 ## The reference
 
@@ -674,7 +694,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: gowrishankar-infra/velaris-lang@v7.1.2
+      - uses: gowrishankar-infra/velaris-lang@v7.2.0
 ```
 
 That is the whole workflow. With no `with:` block the Action installs
@@ -838,10 +858,10 @@ findings go to code scanning when `sarif` is on. It needs
 ### Everything else the Action takes
 
 ```yaml
-  - uses: gowrishankar-infra/velaris-lang@v7.1.2
+  - uses: gowrishankar-infra/velaris-lang@v7.2.0
     with:
       files: "src/*.vel"     # default: every .vel file in the repository
-      version: "7.1.2"       # default: the newest on PyPI
+      version: "7.2.0"       # default: the newest on PyPI
       proofs: "true"         # the default; installs z3-solver
       format: "true"         # also fail if the code is not canonically formatted
       min-proven: "80"       # fail below this percent of promises proven

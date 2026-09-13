@@ -78,13 +78,39 @@ Windows through a job object), and programs not written in Velaris.
 
 Every artifact of a release from v2.63 onward is signed keylessly
 through sigstore by the release workflow itself, so the signature
-proves the file was built by
-`.github/workflows/release.yml` in this repository at that tag. The
-identity to check against is, for a release `vX.Y`:
+proves the file was built by `.github/workflows/release.yml` in this
+repository. Which run of it the certificate names changed at 7.2.0:
 
-    https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/vX.Y
+- **Up to 7.1.2** pushing a tag started a release, and the identity is
+  the tag's. For a release `vX.Y`:
 
-with the OIDC issuer `https://token.actions.githubusercontent.com`.
+      https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/vX.Y
+
+- **From 7.2.0** no tag starts a release. The workflow runs on main
+  once the tests pass there, tags the commit itself and signs in that
+  same run ([RELEASING.md](RELEASING.md)), so the identity names main:
+
+      https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main
+
+  That identity says "the release workflow, on main", not which
+  release. The certificate also records the commit the run was on and
+  the event that started it; checking both ties a file to the tagged
+  commit and to a real release (a release is started only by
+  `workflow_run`; a dry run by hand is `workflow_dispatch`):
+
+      sigstore verify github \
+        --bundle velaris_lang-7.2.0-py3-none-any.whl.sigstore.json \
+        --cert-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main \
+        --trigger workflow_run \
+        --sha "$(git rev-parse 'v7.2.0^{commit}')" \
+        velaris_lang-7.2.0-py3-none-any.whl
+
+  With cosign, add `--certificate-github-workflow-trigger workflow_run`
+  and `--certificate-github-workflow-sha <that commit>`.
+
+The OIDC issuer is `https://token.actions.githubusercontent.com` either
+way. The commands below name older releases; for 7.2.0 and later give
+the main identity instead, with the trigger and the commit.
 
 **The wheel and the sdist** carry a sigstore bundle
 (`<file>.sigstore.json`, holding the signature and the certificate

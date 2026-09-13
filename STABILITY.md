@@ -51,8 +51,9 @@ major version.
   module-level name not listed above, including those the doors and
   suites use (`Budget`, `InvocationLog`, `inspect_source`,
   `load_program`, ...). They may change in any release.
-- **The proof cache** in `.velaris/`: its format and location. Delete
-  it at any time; it is rebuilt.
+- **The proof cache**: its format and its location, a per-user directory
+  since 7.1.2 (README.md says where). `velaris clean` deletes it at any
+  time; it is rebuilt.
 - **The wording of messages.** Codes are stable; prose is not. That
   covers error messages, their suggested fixes, an audit's `warnings`,
   and every command's text output - read `--json`, not the text.

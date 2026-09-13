@@ -402,8 +402,13 @@ It exits 0 when every tool matches, 1 when any description or schema
 differs or a tool was added or removed, and 2 when it could not check:
 no signature bundle beside the manifest, a signature that does not
 verify, `sigstore` not installed, or a server that did not answer. The
-signature must come from this repository's release workflow at the tag
-the manifest names; `--identity` changes that for a fork, `--bundle`
+signature must come from this repository's release workflow: at the tag
+the manifest names, for 7.1.2 and earlier, and on main from 7.2.0, when
+releases stopped being started by tags (RELEASING.md). The main identity
+names no version, so the version is the one inside the signed manifest,
+which `mcp-verify` prints on its first line beside what the server
+reports. `--identity` changes the identity for a fork, or for checking a
+7.2.0 or later manifest with a Velaris older than 7.2.0; `--bundle`
 names the bundle, and `--skip-signature` compares against a manifest
 you have verified some other way.
 
@@ -695,7 +700,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: gowrishankar-infra/velaris-lang@v7.1.2
+  - uses: gowrishankar-infra/velaris-lang@v7.2.0
     with:
       min-proven: "80"
       pr-comment: "true"

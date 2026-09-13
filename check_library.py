@@ -1652,6 +1652,15 @@ def main() -> int:
            forged.returncode == 2 and "signature" in forged.stderr
            and "ok       velaris" not in forged.stdout,
            forged.stderr[:160])
+        ok("mcp-verify expects the tag's identity up to 7.1.2 and main's "
+           "from 7.2.0, when releases stopped being started by tags",
+           velaris.release_identity("7.1.2").endswith(
+               "/.github/workflows/release.yml@refs/tags/v7.1.2")
+           and velaris.release_identity("2.63").endswith("@refs/tags/v2.63")
+           and velaris.release_identity("7.2.0").endswith(
+               "/.github/workflows/release.yml@refs/heads/main")
+           and velaris.release_identity("8.0").endswith("@refs/heads/main"),
+           velaris.release_identity("7.2.0"))
     finally:
         import shutil as _shutil_m
         _shutil_m.rmtree(mbox, ignore_errors=True)

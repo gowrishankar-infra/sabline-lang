@@ -1,37 +1,116 @@
 name: release
 
-# Every artifact a release publishes is signed with sigstore (keyless,
-# through this workflow's OIDC identity), the wheel is built twice and
-# compared, and a CycloneDX SBOM travels with the release, as does a
-# signed manifest of the MCP server's tools (velaris mcp-verify) and a
-# signed in-toto attestation of one example program (velaris attest).
-# Every third-party action is pinned to a commit; the tag it was
-# resolved from is in the comment beside it. SECURITY.md says how to
-# verify.
+# A release of Velaris is made by this workflow and by nothing else.
+# RELEASING.md is the long form. In short:
 #
-# Run by hand (workflow_dispatch) on a branch, only the attestation job
-# runs: it signs and verifies the attestation under this workflow's
-# identity at that branch, and publishes nothing - the way to see that
-# a release can produce one before a tag asks it to.
+#   1. It starts when the tests workflow (test.yml, named "tests")
+#      completes on a push to main with every leg passed. Nothing else
+#      starts a release: no trigger here listens for tags, and GitHub
+#      starts no workflow for the tag this one pushes.
+#   2. The gate asks release_checks.py whether that commit is a release:
+#      velaris.py's VERSION is newer than every tag, CHANGELOG.md has an
+#      entry heading for it, and all six version files agree. If not, it
+#      says why in one line and the run ends green having done nothing,
+#      which is what an ordinary push to main looks like here.
+#   3. A release is only ever the commit the tests passed on. If main
+#      moved while they ran, the gate refuses; the newer commit's own
+#      test run decides.
+#   4. Everything is built, signed and verified first. Only then is the
+#      commit tagged: annotated, not signed (RELEASING.md says why).
+#   5. Then it publishes, in this order, each step skipping with a notice
+#      what is already there: PyPI and npm (OIDC trusted publishing, no
+#      token stored for either), the VS Code Marketplace, the GitHub
+#      release, the MCP registry (GitHub OIDC), the attestation.
+#   6. Last, PyPI, npm, the registry and the GitHub release must all
+#      report this version, or the run fails and says which does not.
+#   7. An advisory-*.md the release adds becomes the request for a draft
+#      security advisory, and the gh commands that make it are printed:
+#      GITHUB_TOKEN cannot be given that permission. Nothing here ever
+#      publishes an advisory.
+#
+# Every artifact is signed with sigstore (keyless, through this
+# workflow's OIDC identity), the wheel is built twice and compared, and a
+# CycloneDX SBOM travels with the release, as do a signed manifest of the
+# MCP server's tools (velaris mcp-verify) and a signed in-toto
+# attestation of one example program (velaris attest). A workflow_run
+# runs on main, so from 7.2.0 that identity is release.yml@refs/heads/main
+# and the certificate also names the commit and the workflow_run trigger;
+# SECURITY.md says how to verify. Every third-party action is pinned to a
+# commit; the tag it was resolved from is in the comment beside it.
+#
+# Run by hand (workflow_dispatch), on any branch, it is a dry run: the
+# gate says what it would decide, and everything is built, signed and
+# verified under that branch's identity. Nothing is tagged or published.
 
 on:
-  push:
-    tags: ["v*"]
+  workflow_run:
+    workflows: [tests]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# one release at a time; a dry run never waits behind one
+concurrency:
+  group: ${{ github.event_name == 'workflow_run' && 'release' || format('dry-run-{0}', github.run_id) }}
+  cancel-in-progress: false
+
 jobs:
-  dist:
-    name: wheel and sdist, signed, with SBOM
-    if: startsWith(github.ref, 'refs/tags/v')
+  gate:
+    name: is this commit a release?
+    # a push to main whose tests all passed - not a pull request whose
+    # branch happens to be called main, and not a fork's
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
-    permissions:
-      contents: write            # attach files to the release
-      id-token: write            # sigstore keyless signing
+    outputs:
+      release: ${{ steps.gate.outputs.release }}
+      build: ${{ steps.gate.outputs.build }}
+      version: ${{ steps.gate.outputs.version }}
+      tag: ${{ steps.gate.outputs.tag }}
+      previous_tag: ${{ steps.gate.outputs.previous_tag }}
+      sha: ${{ steps.gate.outputs.sha }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          fetch-depth: 0             # every tag, to find the newest
+          persist-credentials: false
+      - name: The gate's own logic, held to its fixtures
+        run: python3 check_release.py
+      - name: The gate
+        id: gate
+        env:
+          TESTED: ${{ github.event.workflow_run.head_sha || github.sha }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          if [ "$DRY_RUN" = true ]; then dry=--dry-run; else dry=; fi
+          python3 release_checks.py gate $dry --expect-sha "$TESTED" \
+            --annotate --github-output "$GITHUB_OUTPUT" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+  # ---- build, sign and verify everything; publish nothing ------------------
+
+  dist:
+    name: wheel and sdist, signed, with SBOM
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write            # sigstore keyless signing
+    env:
+      V: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
@@ -47,21 +126,21 @@ jobs:
           sbom-env/bin/pip install "$(ls dist/*.whl)[full]"
           cyclonedx-py environment --of JSON \
             --mc-type application \
-            -o "dist/velaris-lang-${GITHUB_REF_NAME#v}.cdx.json" \
+            -o "dist/velaris-lang-$V.cdx.json" \
             sbom-env/bin/python
           python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['bomFormat'], d['specVersion'], len(d.get('components', [])), 'components')" \
-            "dist/velaris-lang-${GITHUB_REF_NAME#v}.cdx.json"
+            "dist/velaris-lang-$V.cdx.json"
       # Every MCP tool's name, description hash and input-schema hash,
-      # asked of the server inside the wheel this job publishes - the
+      # asked of the server inside the wheel this run publishes - the
       # server a client will run - so what is signed is what ships.
       - name: The MCP tool manifest, from the server in the wheel
         run: |
           python -m venv mcp-env
           mcp-env/bin/pip install "$(ls dist/*.whl)"
           mcp-env/bin/velaris mcp-manifest \
-            -o "dist/velaris-mcp-tools-${GITHUB_REF_NAME#v}.json" \
+            -o "dist/velaris-mcp-tools-$V.json" \
             -- mcp-env/bin/python -m velaris_mcp
-          cat "dist/velaris-mcp-tools-${GITHUB_REF_NAME#v}.json"
+          cat "dist/velaris-mcp-tools-$V.json"
       - name: Sign the wheel, the sdist, the SBOM and the tool manifest (sigstore)
         uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9  # v3.5.0
         with:
@@ -70,45 +149,57 @@ jobs:
             ./dist/*.tar.gz
             ./dist/*.cdx.json
             ./dist/velaris-mcp-tools-*.json
-      # The check a client operator runs, with the real signature: it
-      # must verify as this workflow at this tag, and every tool of the
-      # wheel's server must match it.
+      # The check a client operator runs, with the real signature: every
+      # tool of the wheel's server must match it. On a release it runs
+      # exactly as a user would, with the identity mcp-verify expects by
+      # default; a dry run is signed as its branch, and names that.
       - name: Check the signed manifest against the server in the wheel
         run: |
           mcp-env/bin/pip install sigstore
-          mcp-env/bin/velaris mcp-verify \
-            "dist/velaris-mcp-tools-${GITHUB_REF_NAME#v}.json" \
-            -- mcp-env/bin/python -m velaris_mcp
+          if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
+            mcp-env/bin/velaris mcp-verify "dist/velaris-mcp-tools-$V.json" \
+              -- mcp-env/bin/python -m velaris_mcp
+          else
+            mcp-env/bin/velaris mcp-verify "dist/velaris-mcp-tools-$V.json" \
+              --identity "https://github.com/$GITHUB_REPOSITORY/.github/workflows/release.yml@$GITHUB_REF" \
+              -- mcp-env/bin/python -m velaris_mcp
+          fi
       - name: Checksums
         run: |
           cd dist
           sha256sum *.whl *.tar.gz *.cdx.json velaris-mcp-tools-*.json > SHA256SUMS
           cat SHA256SUMS
-      - name: Keep the distribution for the PyPI job
+      - name: Keep what PyPI gets
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
-          name: dist
+          name: pypi-dist
           path: |
             dist/*.whl
             dist/*.tar.gz
           if-no-files-found: error
-      - name: Attach to the GitHub release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
+      - name: Keep what the GitHub release gets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
-          files: |
+          name: release-dist
+          path: |
             dist/*.whl
             dist/*.tar.gz
             dist/*.cdx.json
             dist/velaris-mcp-tools-*.json
             dist/*.sigstore.json
             dist/SHA256SUMS
+          if-no-files-found: error
 
   reproducible:
     name: the wheel builds the same twice
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
@@ -133,13 +224,17 @@ jobs:
 
   bundle:
     name: the double-click bundle, signed
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
@@ -152,18 +247,16 @@ jobs:
             --output-certificate velaris.mcpb.pem \
             --bundle velaris.mcpb.sigstore.json
           sha256sum velaris.mcpb > velaris.mcpb.sha256
-      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
-          files: |
-            velaris.mcpb
-            velaris.mcpb.sig
-            velaris.mcpb.pem
-            velaris.mcpb.sigstore.json
-            velaris.mcpb.sha256
+          name: bundle
+          path: velaris.mcpb*
+          if-no-files-found: error
 
   binaries:
     name: standalone executable, signed
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -179,10 +272,13 @@ jobs:
             sep: ":"
     runs-on: ${{ matrix.os }}
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
@@ -219,148 +315,28 @@ jobs:
             --bundle "${{ matrix.asset }}.sigstore.json"
           sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
           ls
-      - name: Attach to the GitHub release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
-          files: |
-            dist/${{ matrix.asset }}
-            dist/${{ matrix.asset }}.sig
-            dist/${{ matrix.asset }}.pem
-            dist/${{ matrix.asset }}.sigstore.json
-            dist/${{ matrix.asset }}.sha256
-          generate_release_notes: true
-
-  pypi:
-    name: publish to PyPI
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [dist, reproducible]
-    runs-on: ubuntu-latest
-    # until a pending publisher exists on pypi.org this cannot succeed,
-    # and a release should not be marked broken for that reason
-    continue-on-error: true
-    permissions:
-      id-token: write            # trusted publishing, no API token stored
-    steps:
-      - name: The same files that were signed
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
-        with:
-          name: dist
-          path: dist
-      - name: Publish
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # release/v1
-        with:
-          skip-existing: true
-
-  vscode:
-    name: publish the VS Code extension
-    runs-on: ubuntu-latest
-    # needs a one-time VSCE_TOKEN secret; until then this is skipped
-    if: ${{ startsWith(github.ref, 'refs/tags/v') && github.repository_owner != '' }}
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
-        with:
-          node-version: "20"
-      # The Marketplace times out - "Request timeout: /_apis/gallery" -
-      # often enough that it took out 3.3.0, 3.4.0 and 4.3.0. That is
-      # their outage, not this release's, so: three attempts with a
-      # growing wait, and a publish that landed anyway counts. Anything
-      # that is NOT a timeout (a bad token, a manifest the Marketplace
-      # rejects) still fails the step, because that is this repository's
-      # problem to fix. Either way the summary below says which, so a
-      # red mark here never has to be remembered and ignored.
-      - name: Publish to the Marketplace
-        id: publish
-        working-directory: editor/vscode
-        run: |
-          say() {
-            echo "verdict=$1" >> "$GITHUB_OUTPUT"
-            echo "detail=$2" >> "$GITHUB_OUTPUT"
-          }
-          if [ -z "$VSCE_TOKEN" ]; then
-            echo "no VSCE_TOKEN secret set - skipping"
-            say skipped "no VSCE_TOKEN secret is set on this repository"
-            exit 0
-          fi
-          npm install -g @vscode/vsce
-          TAG="${GITHUB_REF_NAME#v}"       # the tag is the version
-          case "$(echo "$TAG" | tr -cd '.' | wc -c)" in
-            0) TAG="$TAG.0.0" ;;           # npm wants three parts:
-            1) TAG="$TAG.0" ;;             # v2.36 becomes 2.36.0
-          esac
-          echo "version=$TAG" >> "$GITHUB_OUTPUT"
-          npm version "$TAG" --no-git-tag-version --allow-same-version
-          landed() { vsce show gowrishankar-infra.velaris | grep -q "$TAG"; }
-          # what an outage looks like in vsce's own words
-          outage="Request timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED"
-          outage="$outage|socket hang up|EAI_AGAIN|503|502|504"
-          attempt=0
-          for wait in 30 120 stop; do
-            attempt=$((attempt + 1))
-            echo "--- attempt $attempt of 3"
-            if vsce publish --pat "$VSCE_TOKEN" > publish.log 2>&1; then
-              cat publish.log
-              say published "published on attempt $attempt of 3"
-              exit 0
-            fi
-            cat publish.log
-            if landed; then
-              say published "$TAG was already on the Marketplace"
-              exit 0
-            fi
-            if ! grep -Eqi "$outage" publish.log; then
-              echo "this is not a Marketplace outage - not retrying"
-              say failed "vsce refused the publish; the log says why"
-              exit 1
-            fi
-            if [ "$wait" = stop ]; then
-              break
-            fi
-            echo "the Marketplace timed out; waiting ${wait}s before the next attempt"
-            sleep "$wait"
-          done
-          say timed-out "the Marketplace timed out on all 3 attempts (30s and 120s apart)"
-          exit 0
-        env:
-          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
-      # One line, always written, saying whether the extension is on the
-      # Marketplace or not. Nothing else in this job needs reading.
-      - name: Whether the extension published
-        if: always()
-        env:
-          VERDICT: ${{ steps.publish.outputs.verdict }}
-          DETAIL: ${{ steps.publish.outputs.detail }}
-          EXTV: ${{ steps.publish.outputs.version }}
-        run: |
-          case "$VERDICT" in
-            published)
-              LINE="PUBLISHED - the VS Code extension $EXTV is on the Marketplace ($DETAIL)." ;;
-            timed-out)
-              LINE="NOT PUBLISHED - $DETAIL. The release is unaffected; publish $EXTV by hand with 'vsce publish', or re-run this job." ;;
-            skipped)
-              LINE="NOT PUBLISHED - $DETAIL, so nothing was attempted." ;;
-            failed)
-              LINE="NOT PUBLISHED - $DETAIL. This one needs fixing; it is not a Marketplace outage." ;;
-            *)
-              LINE="NOT PUBLISHED - the publish step did not run to a verdict. Read its log." ;;
-          esac
-          echo "### VS Code extension" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "$LINE" >> "$GITHUB_STEP_SUMMARY"
-          echo "$LINE"
+          name: binary-${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}*
+          if-no-files-found: error
 
   attestation:
     name: a signed in-toto attestation of one example program
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: write            # attach files to the release, on a tag
+      contents: read
       id-token: write            # sigstore keyless signing
     env:
       PREDICATE_TYPE: https://gowrishankar-infra.github.io/velaris-lang/capability/v1
       OIDC_ISSUER: https://token.actions.githubusercontent.com
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
@@ -400,7 +376,7 @@ jobs:
               bundle = signer.sign_dsse(statement)
           open(bundle_file, "w").write(bundle.to_json())
           EOF
-      # both must verify as this workflow at this ref, over this exact
+      # both must verify as this workflow on this ref, over this exact
       # Statement, naming the digest of the file it attests
       - name: Both verify, as this workflow, against the example's bytes
         run: |
@@ -432,8 +408,434 @@ jobs:
           name: attestation
           path: velaris-attestation-*
           if-no-files-found: error
-      - name: Attach to the GitHub release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
+
+  # ---- tag, then publish in order ---------------------------------------------
+
+  tag:
+    name: tag the commit
+    needs: [gate, dist, reproducible, bundle, binaries, attestation]
+    if: needs.gate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write            # push the tag
+    env:
+      V: ${{ needs.gate.outputs.version }}
+      TAG: ${{ needs.gate.outputs.tag }}
+      SHA: ${{ needs.gate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
-          files: velaris-attestation-*
+          ref: ${{ needs.gate.outputs.sha }}
+          fetch-depth: 0
+      # Annotated, not signed. This repository has no tag-signing setup
+      # (its earlier tags are unsigned too), this workflow holds no key and
+      # must not, and gitsign's keyless signature is one GitHub does not
+      # show as verified. The artefacts are what is signed. A tag pushed
+      # with GITHUB_TOKEN starts no workflow, which is why everything
+      # after this happens in this run.
+      - name: Tag it (annotated), unless an earlier attempt of this run did
+        run: |
+          test "$(git rev-parse HEAD)" = "$SHA"
+          if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+            there=$(git rev-parse "$TAG^{commit}")
+            if [ "$there" = "$SHA" ]; then
+              echo "::notice::$TAG already tags $SHA; not tagging again"
+              exit 0
+            fi
+            echo "::error::$TAG already exists on $there, not on $SHA; refusing to move it"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "$TAG: $(python3 release_checks.py title "$V")" "$SHA"
+          git push origin "refs/tags/$TAG"
+          echo "::notice::tagged $SHA as $TAG (annotated, not signed)"
+
+  pypi:
+    name: publish to PyPI
+    needs: [gate, tag]
+    if: needs.gate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write            # trusted publishing, no API token stored
+    env:
+      V: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - name: Is this version on PyPI already?
+        id: there
+        run: python3 release_checks.py published pypi "$V" --annotate --github-output "$GITHUB_OUTPUT"
+      - name: The same files that were signed
+        if: steps.there.outputs.published == 'false'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: pypi-dist
+          path: dist
+      - name: Publish
+        if: steps.there.outputs.published == 'false'
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
+        with:
+          skip-existing: true
+
+  npm:
+    name: publish to npm
+    needs: [gate, pypi]
+    if: needs.gate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write            # trusted publishing; npm adds provenance itself
+    env:
+      V: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - name: Is this version on npm already?
+        id: there
+        run: python3 release_checks.py published npm "$V" --annotate --github-output "$GITHUB_OUTPUT"
+      # npm's trusted publishing needs npm 11.5.1 or later and Node
+      # 22.14.0 or later, and adds provenance without --provenance
+      # (docs.npmjs.com/trusted-publishers)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        if: steps.there.outputs.published == 'false'
+        with:
+          node-version: "24"
+          check-latest: true
+          registry-url: "https://registry.npmjs.org"
+      - name: Publish npm/
+        if: steps.there.outputs.published == 'false'
+        working-directory: npm
+        run: |
+          python3 - "$(node --version)" "$(npm --version)" <<'EOF'
+          import sys
+          def parts(text):
+              return tuple(int(p) for p in text.lstrip("v").split("-")[0].split("."))
+          node, npm = sys.argv[1], sys.argv[2]
+          if parts(node) < (22, 14, 0) or parts(npm) < (11, 5, 1):
+              sys.exit(f"trusted publishing needs Node 22.14.0 and npm 11.5.1 or later; this is Node {node}, npm {npm}")
+          print(f"Node {node}, npm {npm}")
+          EOF
+          test "$(node -p "require('./package.json').version")" = "$V"
+          npm publish
+
+  vscode:
+    name: publish the VS Code extension
+    needs: [gate, npm]
+    if: needs.gate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    # as before: a Marketplace outage never holds up a release, and the
+    # summary says what happened
+    continue-on-error: true
+    env:
+      V: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - name: Is this version on the Marketplace already?
+        id: there
+        run: python3 release_checks.py published vscode "$V" --annotate --github-output "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: "20"
+      # The Marketplace times out - "Request timeout: /_apis/gallery" -
+      # often enough that it took out 3.3.0, 3.4.0 and 4.3.0. That is
+      # their outage, not this release's, so: three attempts with a
+      # growing wait, and a publish that landed anyway counts. Anything
+      # that is NOT a timeout (a bad token, a manifest the Marketplace
+      # rejects) still fails the step, because that is this repository's
+      # problem to fix. Either way the summary below says which, so a
+      # red mark here never has to be remembered and ignored.
+      - name: Publish to the Marketplace
+        id: publish
+        working-directory: editor/vscode
+        run: |
+          say() {
+            echo "verdict=$1" >> "$GITHUB_OUTPUT"
+            echo "detail=$2" >> "$GITHUB_OUTPUT"
+          }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if [ "$ALREADY" = true ]; then
+            say published "$V was already on the Marketplace; nothing was attempted"
+            exit 0
+          fi
+          if [ -z "$VSCE_TOKEN" ]; then
+            echo "no VSCE_TOKEN secret set - skipping"
+            say skipped "no VSCE_TOKEN secret is set on this repository"
+            exit 0
+          fi
+          npm install -g @vscode/vsce
+          npm version "$V" --no-git-tag-version --allow-same-version
+          landed() { vsce show gowrishankar-infra.velaris | grep -q "$V"; }
+          # what an outage looks like in vsce's own words
+          outage="Request timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED"
+          outage="$outage|socket hang up|EAI_AGAIN|503|502|504"
+          attempt=0
+          for wait in 30 120 stop; do
+            attempt=$((attempt + 1))
+            echo "--- attempt $attempt of 3"
+            if vsce publish --pat "$VSCE_TOKEN" > publish.log 2>&1; then
+              cat publish.log
+              say published "published on attempt $attempt of 3"
+              exit 0
+            fi
+            cat publish.log
+            if landed; then
+              say published "$V was already on the Marketplace"
+              exit 0
+            fi
+            if ! grep -Eqi "$outage" publish.log; then
+              echo "this is not a Marketplace outage - not retrying"
+              say failed "vsce refused the publish; the log says why"
+              exit 1
+            fi
+            if [ "$wait" = stop ]; then
+              break
+            fi
+            echo "the Marketplace timed out; waiting ${wait}s before the next attempt"
+            sleep "$wait"
+          done
+          say timed-out "the Marketplace timed out on all 3 attempts (30s and 120s apart)"
+          exit 0
+        env:
+          ALREADY: ${{ steps.there.outputs.published }}
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+      # One line, always written, saying whether the extension is on the
+      # Marketplace or not. Nothing else in this job needs reading.
+      - name: Whether the extension published
+        if: always()
+        env:
+          VERDICT: ${{ steps.publish.outputs.verdict }}
+          DETAIL: ${{ steps.publish.outputs.detail }}
+          EXTV: ${{ steps.publish.outputs.version }}
+        run: |
+          case "$VERDICT" in
+            published)
+              LINE="PUBLISHED - the VS Code extension $EXTV is on the Marketplace ($DETAIL)." ;;
+            timed-out)
+              LINE="NOT PUBLISHED - $DETAIL. The release is unaffected; publish $EXTV by hand with 'vsce publish', or re-run this job." ;;
+            skipped)
+              LINE="NOT PUBLISHED - $DETAIL, so nothing was attempted." ;;
+            failed)
+              LINE="NOT PUBLISHED - $DETAIL. This one needs fixing; it is not a Marketplace outage." ;;
+            *)
+              LINE="NOT PUBLISHED - the publish step did not run to a verdict. Read its log." ;;
+          esac
+          echo "### VS Code extension" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "$LINE" >> "$GITHUB_STEP_SUMMARY"
+          echo "$LINE"
+
+  github_release:
+    name: the GitHub release, with every artefact
+    needs: [gate, npm, vscode]
+    # after the Marketplace whatever it did, as before; after npm only if
+    # npm published
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.npm.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write            # create the release, attach files
+    env:
+      V: ${{ needs.gate.outputs.version }}
+      TAG: ${{ needs.gate.outputs.tag }}
+      SHA: ${{ needs.gate.outputs.sha }}
+      PREVIOUS: ${{ needs.gate.outputs.previous_tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: release-dist
+          path: assets
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: bundle
+          path: assets
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          pattern: binary-*
+          merge-multiple: true
+          path: assets
+      - name: Create the release, or attach only what it lacks
+        shell: bash
+        run: |
+          ls -l assets
+          python3 release_checks.py notes "$V" --sha "$SHA" --previous "$PREVIOUS" -o notes.md
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            have=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+            missing=()
+            for f in assets/*; do
+              grep -qxF "$(basename "$f")" <<< "$have" || missing+=("$f")
+            done
+            if [ ${#missing[@]} -eq 0 ]; then
+              echo "::notice::the GitHub release $TAG is already there with every file; skipping it"
+              exit 0
+            fi
+            echo "::notice::the GitHub release $TAG is already there; attaching the ${#missing[@]} file(s) it lacks"
+            gh release upload "$TAG" "${missing[@]}"
+          else
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes-file notes.md assets/*
+          fi
+
+  mcp_registry:
+    name: publish to the MCP registry
+    needs: [gate, github_release]
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.github_release.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write            # mcp-publisher login github-oidc
+    env:
+      V: ${{ needs.gate.outputs.version }}
+      # pinned; the checksum is registry_1.8.1_checksums.txt's. An
+      # "invalid audience" from login means this is too old for the
+      # registry: move both to its newest release.
+      MCP_PUBLISHER: "1.8.1"
+      MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - name: Is this version in the registry already?
+        id: there
+        run: python3 release_checks.py published registry "$V" --annotate --github-output "$GITHUB_OUTPUT"
+      # The registry accepts a version only when the PyPI and the npm
+      # package of exactly that version name this server - mcp-name in
+      # PyPI's description, mcpName in npm's package.json. Both are
+      # minutes old here, so wait until both indexes serve them.
+      - name: Wait until PyPI and npm serve this version, naming the server
+        if: steps.there.outputs.published == 'false'
+        run: python3 release_checks.py registry-ready "$V" --timeout 900 --annotate
+      - name: Install mcp-publisher, checked against its release's checksum
+        if: steps.there.outputs.published == 'false'
+        run: |
+          curl -sSfL -o mcp-publisher.tar.gz \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v$MCP_PUBLISHER/mcp-publisher_linux_amd64.tar.gz"
+          echo "$MCP_PUBLISHER_SHA256  mcp-publisher.tar.gz" | sha256sum -c -
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+          ./mcp-publisher --version
+      - name: Publish server.json, listing PyPI and npm, logged in by GitHub OIDC
+        if: steps.there.outputs.published == 'false'
+        working-directory: integrations/mcp_registry
+        run: |
+          python3 - "$V" <<'EOF'
+          import json, sys
+          doc = json.load(open("server.json", encoding="utf-8"))
+          kinds = sorted(p["registryType"] for p in doc["packages"])
+          versions = {doc["version"]} | {p["version"] for p in doc["packages"]}
+          assert kinds == ["npm", "pypi"], kinds
+          assert versions == {sys.argv[1]}, versions
+          print("server.json", sys.argv[1], "lists", " and ".join(kinds))
+          EOF
+          ../../mcp-publisher validate server.json
+          ../../mcp-publisher login github-oidc
+          ../../mcp-publisher publish
+
+  attach_attestation:
+    name: the attestation, attached to the release
+    needs: [gate, mcp_registry]
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.mcp_registry.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write            # attach files to the release
+    env:
+      TAG: ${{ needs.gate.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: attestation
+          path: attestation
+      - name: Attach what the release lacks
+        shell: bash
+        run: |
+          have=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          missing=()
+          for f in attestation/*; do
+            grep -qxF "$(basename "$f")" <<< "$have" || missing+=("$f")
+          done
+          if [ ${#missing[@]} -eq 0 ]; then
+            echo "::notice::the attestation is already attached to $TAG; skipping it"
+            exit 0
+          fi
+          gh release upload "$TAG" "${missing[@]}"
+
+  consistency:
+    name: PyPI, npm, the registry and the release all say this version
+    needs: [gate, attach_attestation]
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.attach_attestation.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      V: ${{ needs.gate.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      # indexes serve from caches, so it keeps asking for a while before
+      # it calls a difference a difference
+      - name: Every one reports this version
+        run: python3 release_checks.py consistent "$V" --timeout 900 --annotate --summary "$GITHUB_STEP_SUMMARY"
+
+  advisory:
+    name: a draft security advisory, if the release adds one
+    needs: [gate, tag, consistency]
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.tag.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.gate.outputs.tag }}
+      SHA: ${{ needs.gate.outputs.sha }}
+      PREVIOUS: ${{ needs.gate.outputs.previous_tag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      # GITHUB_TOKEN cannot create a repository security advisory or
+      # request a CVE: both endpoints need the "Repository security
+      # advisories" permission, and a workflow's permissions block has no
+      # key that grants it. So this calls no API. It writes the request
+      # and prints the two gh commands for a maintainer, which make a
+      # DRAFT; publishing an advisory is always a person's decision.
+      - name: Any advisory-*.md this release adds
+        shell: bash
+        run: |
+          found=$(python3 release_checks.py advisories "$PREVIOUS" "$SHA")
+          if [ -z "$found" ]; then
+            echo "::notice::this release adds no advisory-*.md; there is no advisory to draft"
+            exit 0
+          fi
+          mkdir -p advisory-requests
+          while IFS= read -r file; do
+            name=$(basename "$file" .md)
+            python3 release_checks.py advisory-body "$file" -o "advisory-requests/$name.json"
+            python3 release_checks.py advisory-commands "$file" --tag "$TAG" \
+              --annotate --summary "$GITHUB_STEP_SUMMARY"
+          done <<< "$found"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: hashFiles('advisory-requests/*.json') != ''
+        with:
+          name: advisory-requests
+          path: advisory-requests/

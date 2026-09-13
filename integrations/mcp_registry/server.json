@@ -8,13 +8,13 @@
     "source": "github"
   },
   "websiteUrl": "https://gowrishankar-infra.github.io/velaris-lang/",
-  "version": "7.1.2",
+  "version": "7.2.0",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "velaris-lang",
-      "version": "7.1.2",
+      "version": "7.2.0",
       "runtimeHint": "python",
       "runtimeArguments": [
         {
@@ -34,7 +34,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "velaris-lang",
-      "version": "7.1.2",
+      "version": "7.2.0",
       "transport": {
         "type": "stdio"
       },

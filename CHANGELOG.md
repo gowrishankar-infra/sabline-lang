@@ -1,5 +1,61 @@
 # Velaris changelog
 
+## 7.2 - Releases that tag themselves
+
+No change to the language, the library, the error codes or the command
+line, except one `mcp-verify` default that follows from how releases are
+now signed.
+
+**A release is made by the workflow, not by a tag.** `release.yml` no
+longer runs when a tag is pushed. It runs when the tests complete on a
+push to main with every leg passed, and a gate - `release_checks.py
+gate` - decides whether that commit is a release: `VERSION` must be newer
+than every tag, CHANGELOG.md must have an entry heading for exactly that
+version, and the six version files must agree. Otherwise the run says
+why in one line and ends green without doing anything, so an ordinary
+push to main stays ordinary. A release must also be the very commit the
+tests passed on; if main moved while they ran, the gate refuses.
+Everything is built, signed and verified before the commit is tagged,
+and then published in order, each step skipping what is already there:
+PyPI and npm by OIDC trusted publishing, with no token stored for
+either; the VS Code Marketplace, as before; the GitHub release; the MCP
+registry, logged in by GitHub OIDC, with `server.json` listing both
+packages; and the attestation. Last, PyPI, npm, the registry and the
+GitHub release must all report the version, or the run fails and names
+the one that does not. [RELEASING.md](RELEASING.md) is the procedure,
+what a person still does - publishing an advisory, yanking - and the rule
+that nobody tags by hand. `check_release.py` holds the gate to fixtures
+(a docs-only commit, a version bump without a CHANGELOG entry, a correct
+bump, and what else it refuses), and the release runs it before gating.
+test.yml is unchanged.
+
+**The tag is annotated, not signed.** This repository has no
+tag-signing setup - no earlier tag is signed - the workflow holds no
+signing key and should not, and a keyless gitsign signature is one
+GitHub does not show as verified. The release notes say so. What is
+signed is every artefact, as before.
+
+**Signed as main.** A `workflow_run` runs on main, so from 7.2.0 the
+sigstore certificates name `release.yml@refs/heads/main` instead of
+`release.yml@refs/tags/vX.Y.Z`; they also record the commit and the
+`workflow_run` trigger, and SECURITY.md shows how to check both.
+`velaris mcp-verify` now expects the main identity for a manifest of
+7.2.0 or later and the tag's for an earlier one; a Velaris older than
+7.2.0 checking a 7.2.0 manifest needs `--identity`.
+
+**An advisory file becomes a draft request, never an advisory.** When a
+release adds an `advisory-*.md`, the workflow writes the request for a
+draft repository security advisory and prints the two `gh` commands
+that create it and request its CVE. It cannot run them - GITHUB_TOKEN
+cannot be given the repository-security-advisories permission - and it
+never publishes an advisory.
+
+**README said the proof cache lived in `./.velaris/`.** That stopped
+being true in 7.1.2, and it described the very behaviour the proof-cache
+advisory is about. "Remembered proofs" now says where the cache is, how
+it is keyed, that a `./.velaris/` is ignored, and what `--no-cache` and
+`velaris clean` do; STABILITY.md's mention is corrected as well.
+
 ## 7.1.2 - The proof cache could be lied to
 
 An adversarial pass against 7.1.1 found four things. One is a soundness
