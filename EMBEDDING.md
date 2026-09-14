@@ -75,8 +75,9 @@ caller sent none, and a caller who sent more got more.
 can be written to make reading it slow: a promise the prover spends its
 whole budget on, or an expression the checker takes many seconds to take
 apart. From 8.1 both run in a child process under the ceiling `velaris
-check` has had since 8.0 - 60 seconds and 2048 MB unless raised - and
-come back with a problem instead of holding the caller:
+check` has had since 8.0 - 60 seconds and 2048 MB unless raised; until
+8.1 its memory cap took hold only on Windows - and come back with a
+problem instead of holding the caller:
 
 ```python
 report = velaris.audit(source, timeout=10, max_memory_mb=512)

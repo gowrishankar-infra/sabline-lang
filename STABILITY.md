@@ -315,6 +315,8 @@ record stays whole.
   `import_root=` is an added parameter.
 - **`velaris.check()`, `velaris.audit()` and `velaris.attest()` stop at 60
   seconds and 2048 MB** unless raised, where 8.0 waited. The command line has
-  had the same ceiling since 8.0, whose CHANGELOG counted it as an addition;
+  had the same ceiling since 8.0, whose CHANGELOG counted it as an addition
+  (its memory cap took hold only on Windows until 8.1, and now holds on
+  Linux as documented);
   this applies that reading to the library. A check that needs longer passes
   `timeout=`, and `None` restores 8.0's call exactly.

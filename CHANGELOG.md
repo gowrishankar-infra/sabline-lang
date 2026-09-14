@@ -21,7 +21,17 @@ and an audit that is stopped says `ok: false` with nothing determined.
 `velaris.Pool` gains `check()` and `audit()`, which keep their worker
 between calls. The HTTP door and the MCP server check and audit on their own
 workers under `--check-timeout` and `--check-memory-mb`, and the command
-line gains `--check-memory-mb` beside `--check-timeout`. `run(timeout=...)`
+line gains `--check-memory-mb` beside `--check-timeout`. The command line's
+memory cap did not hold in 8.0 except on Windows: on Linux and macOS the
+child it checked in was started without it, so an audit that 8.0 said was
+held to 2048 MB used what it liked until the clock stopped it. It is set
+now - on Linux, and on macOS as far as the system honours a cap, as for a
+run - and `check_library.py`'s Linux legs are what found it. Setting it
+showed a second thing: under a cap, CPython on Linux reports running out
+about half the time as `SystemError: error return without exception set`
+rather than `MemoryError`, which the command line and `velaris.Pool` read
+as a crash (E000). Both now read it as running out: E614 for a check or
+an audit, E611 for a run. `run(timeout=...)`
 now compiles inside its child, under the deadline: until 8.1 it compiled
 first in the caller's process with no limit, so a program crafted to stall
 the prover held `run(source, timeout=5)` for as long as it liked. A bounded
@@ -118,7 +128,8 @@ packages, then changes it to reach the network and sees E310.
    says why.
 2. **In the library, a `check()` or `audit()` past 60 seconds or 2048 MB**
    is stopped (E613, E614) where 8.0 waited for it. The command line has
-   stopped it since 8.0.
+   stopped it at the clock since 8.0, and on Linux now stops it at the
+   memory cap too, which 8.0 named and did not set there.
 
 **Two holes, fixed.**
 

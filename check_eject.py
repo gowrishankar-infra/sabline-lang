@@ -166,7 +166,8 @@ def main() -> int:
        asked.stderr)
 
     program = out / "program" / "discount.vel"
-    text = program.read_text(encoding="utf-8")
+    ejected = program.read_bytes()      # restored byte for byte: a text
+    text = program.read_text(encoding="utf-8")  # round trip can change EOLs
     widened = (re.sub(r"\bfn main\(\) uses io\b", "fn old_main() uses io",
                       text, count=1)
                + '\nfn main() uses io, net {\n'
@@ -189,7 +190,7 @@ def main() -> int:
        anyway.returncode == 1 and "E310" in anyway.stderr
        and "'net'" in anyway.stderr and "FETCHED" not in anyway.stdout,
        anyway.stdout[-200:] + anyway.stderr[-300:])
-    program.write_text(text, encoding="utf-8")
+    program.write_bytes(ejected)
 
     runtime = out / "runtime" / "velaris.py"
     original = runtime.read_bytes()

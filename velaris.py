@@ -10865,7 +10865,10 @@ def _check_ceiling(argv: list) -> int:
         limits[flag] = int(rest[at + 1])
         del rest[at:at + 2]
     timeout, memory = limits["--check-timeout"], limits["--check-memory-mb"]
-    env = dict(os.environ, VELARIS_CHECK_CHILD="1")
+    # the child caps itself from VELARIS_CHECK_MEMORY_MB on POSIX (main);
+    # 8.0.0 passed it nothing, so there the cap was named and never set
+    env = dict(os.environ, VELARIS_CHECK_CHILD="1",
+               VELARIS_CHECK_MEMORY_MB=str(memory))
     cmd = [sys.executable, os.path.abspath(__file__)] + rest
     proc, job, _how = _spawn_capped(
         cmd, memory, env=env,
@@ -10886,8 +10889,7 @@ def _check_ceiling(argv: list) -> int:
         if job is not None:
             job.close()
     said = err.decode("utf-8", "replace")
-    if proc.returncode != 0 and ("MemoryError" in said
-                                 or "Cannot allocate" in said
+    if proc.returncode != 0 and (_out_of_memory(said)
                                  or proc.returncode in (-9, 137)):
         sys.stdout.write(out.decode("utf-8", "replace"))
         print(f"error[E614] {rest[0]} used more than {memory} MB and was "
@@ -10906,6 +10908,10 @@ def main() -> int:
         return pool_worker(argv[1:])       # one child behind velaris.Pool
     if os.environ.get("VELARIS_CHECK_CHILD") == "1":
         globals()["_IN_CHILD"] = True      # already under the ceiling
+        if os.environ.get("VELARIS_CHECK_MEMORY_MB"):
+            # first, as a pool worker does: POSIX caps itself here; on
+            # Windows the parent put this process in a job object already
+            _cap_this_process(os.environ["VELARIS_CHECK_MEMORY_MB"])
     # check and audit run under a ceiling (8.0), unless we are already the
     # child doing so, or --no-check-ceiling was asked for
     if argv[:1] in (["check"], ["audit"]) \
@@ -12741,6 +12747,20 @@ def _cap_this_process(mb) -> bool:
         return False
 
 
+# How a process under one of these caps says it ran out. CPython raises
+# MemoryError when it can; when an allocation fails where it cannot make
+# even that, it reports "error return without exception set" instead - on
+# Linux under a 120 MB cap, about half the time (8.1); the C library says
+# "Cannot allocate memory". A job object, or the kernel, ends it with -9.
+_OUT_OF_MEMORY_SIGNS = ("MemoryError", "Cannot allocate",
+                        "error return without exception set")
+
+
+def _out_of_memory(said: str) -> bool:
+    """Does this text, from a capped process, say it ran out of memory?"""
+    return any(sign in (said or "") for sign in _OUT_OF_MEMORY_SIGNS)
+
+
 class _WindowsMemoryJob:
     """A Windows job object capping one child's committed memory.
 
@@ -12841,7 +12861,8 @@ def _spawn_capped(cmd: list, max_memory_mb, **popen_kw):
     if max_memory_mb is None:
         return subprocess.Popen(cmd, **popen_kw), None, "no cap asked for"
     if os.name != "nt":
-        # the child caps itself from --max-memory-mb, already in cmd
+        # the child caps itself: from --max-memory-mb in cmd, or from
+        # VELARIS_CHECK_MEMORY_MB for the child of a command-line check
         return subprocess.Popen(cmd, **popen_kw), None, "RLIMIT_AS"
     try:
         job = _WindowsMemoryJob(max_memory_mb)
@@ -13510,7 +13531,8 @@ class Pool:
             return False
         noise = worker.stderr()
         return (bool((answer or {}).get("out_of_memory"))
-                or "MemoryError" in noise or "Cannot allocate" in noise
+                or _out_of_memory(noise)
+                or _out_of_memory((answer or {}).get("crashed") or "")
                 or (not worker.killed_by_timeout
                     and worker.proc.returncode in (-9, 137)))
 
