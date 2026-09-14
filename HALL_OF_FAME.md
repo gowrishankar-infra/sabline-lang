@@ -85,6 +85,18 @@ are in the 3.3 CHANGELOG entry.
   that reports it. Fixed in 4.1; the details are in the 4.1 CHANGELOG
   entry.
 
+## External assessments, September 2026
+
+- **Two independent external assessments of 8.0.0** - reported by
+  2026-09-14 - each found that a proof cache entry in the per-user
+  directory 7.1.2 had moved the cache to was still believed: a process
+  running as the same user, or an `XDG_CACHE_HOME` or `LOCALAPPDATA`
+  pointed at a directory it chose, could plant one with the real proof key,
+  and a false `ensures` was reported proven by `check`, `proofs` and
+  `audit` and, compiled to native code, ran unchecked. Fixed in 8.1.1 by
+  believing nothing the cache holds; the details are in the 8.1.1
+  CHANGELOG entry and advisory-proof-cache-2.md.
+
 ## Automated review, September 2026
 
 - **CodeRabbit, the review bot on the CrewAI pull request

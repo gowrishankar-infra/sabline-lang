@@ -22,6 +22,7 @@ consulted without it).
 import glob
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -55,12 +56,15 @@ def ok(label, cond, detail=""):
         print(f"FAIL  {label}   {detail}")
 
 
-def run(args, cwd=None, env=None, stdin=None, timeout=60):
-    """Run velaris; return (exit_code, combined_output, seconds)."""
+def run(args, cwd=None, env=None, stdin=None, timeout=60, unset=()):
+    """Run velaris; return (exit_code, combined_output, seconds). `unset`
+    names variables the child does not inherit."""
     import time
     e = dict(os.environ)
     if env:
         e.update(env)
+    for name in unset:
+        e.pop(name, None)
     t0 = time.perf_counter()
     try:
         r = subprocess.run([sys.executable, VELARIS] + args,
@@ -167,6 +171,288 @@ def cache_cases():
             code, out, _ = run(["check", "p.vel"], cwd=d2, env=env2)
             ok("CACHE-2 tampered cache header is rejected (still checks ok)",
                code == 0, out[:160])
+
+
+# ---------------------------------------------------------------------------
+# 8.1.1: the per-user cache cannot lie either. Two outside assessments of
+# 8.0.0 planted a per-user entry - the real proof_key, the cache moved with
+# XDG_CACHE_HOME (LOCALAPPDATA on Windows) - and a false ensures was
+# reported proven by check, proofs and audit and, compiled to native code,
+# ran unchecked (advisory-proof-cache-2.md). Nothing in the cache is
+# believed now. The file planted below is one this loader accepts, so the
+# refusals show the design, not a file rejected for its shape.
+# ---------------------------------------------------------------------------
+LOOP_LIE = ("fn count(n: Int) -> Int\n"
+            "  requires n >= 0\n"
+            "  ensures result == n + 1\n"
+            "{\n"
+            "  let i = 0\n"
+            "  while i < n { i = i + 1 }\n"
+            "  return i\n"
+            "}\n"
+            "fn main() uses io { print(to_text(count(5))) }\n")
+
+TRUE = ("fn add1(n: Int) -> Int\n  ensures result == n + 1\n"
+        "{ return n + 1 }\n"
+        "fn main() uses io { print(to_text(add1(1))) }\n")
+
+_CACHE_VARS = ("VELARIS_CACHE_DIR", "XDG_CACHE_HOME", "LOCALAPPDATA")
+
+
+class _redirected:
+    """In this process, the environment the outside pass ran velaris in: no
+    VELARIS_CACHE_DIR, and the per-user cache moved under `base`."""
+
+    def __init__(self, base):
+        self.base = base
+
+    def __enter__(self):
+        self.saved = {k: os.environ.get(k) for k in _CACHE_VARS}
+        os.environ.pop("VELARIS_CACHE_DIR", None)
+        os.environ["XDG_CACHE_HOME"] = self.base
+        os.environ["LOCALAPPDATA"] = self.base
+
+    def __exit__(self, *exc):
+        for k, v in self.saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def plant_user_cache(d, base, fn_name):
+    """The outside pass's plant: the per-user cache file velaris reads for
+    d/p.vel with the cache moved under `base`, its header naming the file's
+    real path, bytes and version, and one entry under the real proof_key of
+    `fn_name` claiming it proven. Returns (that file, what this velaris's
+    loader reads from it)."""
+    path = os.path.join(d, "p.vel")
+    with _redirected(base):
+        funcs, records = velaris.load_program(path)
+        table = {f.name: f for f in funcs}
+        key = velaris.proof_key(table[fn_name], table, records)
+        ref = velaris._proof_cache_ref(path, None)
+        cache_file, ap, ch = ref
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump({"schema": "velaris.proofcache/1", "path": ap,
+                       "version": velaris.VERSION, "content_sha256": ch,
+                       "proofs": {key: {"proven": True, "errors": []}}}, f)
+        if os.name == "posix":
+            os.chmod(cache_file, 0o600)
+        return cache_file, velaris._cache_load(ref)
+
+
+def _says_proven(out):
+    """Whether check, proofs --sarif, audit or explain output calls one
+    promise proven."""
+    return any(s in out for s in ("1 with proven", "[proven", '"proven": 1'))
+
+
+def user_cache_cases():
+    base = os.path.realpath(tempfile.mkdtemp(prefix="redirect_", dir=WORK))
+    moved = {"XDG_CACHE_HOME": base, "LOCALAPPDATA": base}
+    unset = ("VELARIS_CACHE_DIR",)
+
+    # CACHE-3: the exact reproduction, under every command that reports a
+    # promise and both ways of running
+    d = os.path.realpath(tempfile.mkdtemp(dir=WORK))
+    prog(d, FALSE)
+    planted, loaded = plant_user_cache(d, base, "double")
+    ok("CACHE-3 the plant is a file this loader accepts - what follows is "
+       "the design refusing it, not a file rejected", len(loaded) == 1,
+       str(loaded))
+    for label, args in (("check", ["check", "p.vel"]),
+                        ("proofs", ["proofs", "p.vel", "--sarif"]),
+                        ("audit", ["audit", "p.vel"]),
+                        ("explain", ["explain", "p.vel"]),
+                        ("run", ["p.vel", "--allow", "io"]),
+                        ("run --no-native",
+                         ["p.vel", "--allow", "io", "--no-native"])):
+        code, out, _ = run(args, cwd=d, env=moved, unset=unset)
+        if HAVE_Z3:
+            said = '"ruleId": "E700"' if label == "proofs" else "E700"
+            ok(f"CACHE-3 a planted per-user entry for a false ensures, "
+               f"{label}: E700 (z3)",
+               code != 0 and said in out and "1000005" not in out,
+               out[:200])
+        elif label.startswith("run"):
+            ok(f"CACHE-3 a planted per-user entry for a false ensures, "
+               f"{label}: E601 (no z3)", code != 0 and "E601" in out,
+               out[:200])
+        else:
+            ok(f"CACHE-3 a planted per-user entry for a false ensures, "
+               f"{label}: not proven (no z3)",
+               code == 0 and not _says_proven(out), out[:200])
+    if HAVE_Z3:
+        doc = json.load(open(planted, encoding="utf-8"))
+        entry = next(iter(doc.get("proofs", {}).values()), {})
+        ok("CACHE-3 ...and those runs read that very file: they wrote it back "
+           "with the time of their own proof", "seconds" in entry,
+           str(doc)[:160])
+
+    # CACHE-4: the strongest plant - a lie no prover refutes, which only the
+    # runtime check can catch, so a believed entry was the whole defence
+    d2 = os.path.realpath(tempfile.mkdtemp(dir=WORK))
+    prog(d2, LOOP_LIE)
+    _, loaded2 = plant_user_cache(d2, base, "count")
+    path2 = os.path.join(d2, "p.vel")
+    with _redirected(base):
+        funcs, records = velaris.load_program(path2)
+        proven, errs = set(), []
+        velaris.check_proofs(funcs, records, errs, proven, use_cache=True,
+                             source_path=path2)
+    ok("CACHE-4 a planted entry for a lie no prover refutes is read, and "
+       "check_proofs neither calls it proven nor makes native code of it",
+       len(loaded2) == 1 and "count" not in proven
+       and "count" not in velaris.native_eligible(funcs, proven),
+       f"{loaded2} {proven}")
+    for label, args in (("run", ["p.vel", "--allow", "io"]),
+                        ("run --no-native",
+                         ["p.vel", "--allow", "io", "--no-native"])):
+        code, out, _ = run(args, cwd=d2, env=moved, unset=unset)
+        ok(f"CACHE-4 ...{label} stops at the runtime check (E601) rather "
+           f"than print 5 and exit 0", code != 0 and "E601" in out,
+           out[:200])
+    for label in ("check", "audit"):
+        code, out, _ = run([label, "p.vel"], cwd=d2, env=moved, unset=unset)
+        ok(f"CACHE-4 ...{label} does not report it proven",
+           code == 0 and not _says_proven(out), out[:200])
+
+    # CACHE-5: an honest entry costs nothing in what it reports
+    if HAVE_Z3:
+        env5, ch5 = _cache_env()
+        d5 = os.path.realpath(tempfile.mkdtemp(dir=WORK))
+        prog(d5, TRUE)
+        first = run(["check", "p.vel"], cwd=d5, env=env5)
+        second = run(["check", "p.vel"], cwd=d5, env=env5)
+        ok("CACHE-5 a true promise is proven by the second check as by the "
+           "first, its entry proved again rather than believed",
+           first[0] == 0 and second[0] == 0 and "1 with proven" in first[1]
+           and "1 with proven" in second[1], second[1][:160])
+        files = glob.glob(os.path.join(ch5, "velaris", "proofs", "*.json"))
+        if files:
+            blob = open(files[0], "rb").read()
+            open(files[0], "wb").write(blob[:len(blob) // 2])
+            code, out, _ = run(["check", "p.vel"], cwd=d5, env=env5)
+            try:
+                whole = isinstance(
+                    json.load(open(files[0], encoding="utf-8")), dict)
+            except ValueError:
+                whole = False
+            ok("CACHE-6 a torn cache file on disk: the check proves as with "
+               "none, and the file is written whole again",
+               code == 0 and "1 with proven" in out and whole, out[:160])
+            if os.name == "posix":
+                import stat
+                modes = [stat.S_IMODE(os.stat(p).st_mode) for p in (
+                    os.path.join(ch5, "velaris"),
+                    os.path.join(ch5, "velaris", "proofs"), files[0])]
+                ok("CACHE-7 the cache directories are made 0700 and a cache "
+                   "file 0600 (POSIX)", modes == [0o700, 0o700, 0o600],
+                   str([oct(m) for m in modes]))
+
+    # CACHE-6: a torn file, or one a save would not write, is rejected whole
+    d6 = os.path.realpath(tempfile.mkdtemp(dir=WORK))
+    prog(d6, TRUE)
+    path6 = os.path.join(d6, "p.vel")
+    with _redirected(base):
+        ref6 = velaris._proof_cache_ref(path6, None)
+    cache_file, ap, ch = ref6
+    good = {"schema": velaris.PROOF_CACHE_SCHEMA, "path": ap,
+            "version": velaris.VERSION, "content_sha256": ch,
+            "proofs": {"a" * 64: {"proven": False, "errors": [],
+                                  "seconds": 0.5}}}
+    raw = json.dumps(good).encode("utf-8")
+
+    def with_entry(entry, key="a" * 64):
+        return json.dumps(dict(good, proofs={key: entry})).encode("utf-8")
+
+    ok("CACHE-6 a whole file with this source's header is read",
+       velaris._cache_document(raw, ap, ch) is not None)
+    for label, blob in (
+            ("cut in half", raw[:len(raw) // 2]),
+            ("bytes that are not UTF-8", b"\xff\xfe" + raw),
+            ("another schema", json.dumps(
+                dict(good, schema="velaris.proofcache/0")).encode("utf-8")),
+            ("another path's header", json.dumps(
+                dict(good, path=ap + "x")).encode("utf-8")),
+            ("a key that is not a sha256", with_entry({"proven": True},
+                                                      key="double")),
+            ("an entry that is not an object", with_entry([True])),
+            ("seconds NaN", with_entry({"seconds": float("nan")})),
+            ("seconds infinite", with_entry({"seconds": float("inf")})),
+            ("seconds negative", with_entry({"seconds": -1})),
+            ("seconds past a day", with_entry({"seconds": 1e308})),
+            ("seconds true", with_entry({"seconds": True})),
+            ("seconds as text", with_entry({"seconds": "1"}))):
+        ok(f"CACHE-6 a cache file with {label} is rejected whole",
+           velaris._cache_document(blob, ap, ch) is None)
+
+    # CACHE-7: foreign files and directories (POSIX: ownership and modes;
+    # links anywhere they can be made without privileges)
+    if os.name == "posix":
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, "wb") as f:
+            f.write(raw)
+        os.chmod(cache_file, 0o600)
+        ok("CACHE-7 a file of this user's that no one else may write is read "
+           "(POSIX)", velaris._cache_load(ref6) != {})
+        os.chmod(cache_file, 0o666)
+        ok("CACHE-7 a cache file another user may write is foreign and "
+           "rejected (POSIX)", velaris._cache_load(ref6) == {})
+        os.chmod(cache_file, 0o600)
+        real = os.path.join(WORK, f"real-{os.getpid()}.json")
+        os.replace(cache_file, real)
+        os.symlink(real, cache_file)
+        ok("CACHE-7 a cache file that is a link is foreign and rejected "
+           "(POSIX)", velaris._cache_load(ref6) == {})
+        os.unlink(cache_file)
+        os.replace(real, cache_file)
+        proofs_dir = os.path.dirname(cache_file)
+        os.rename(proofs_dir, proofs_dir + "-real")
+        os.symlink(proofs_dir + "-real", proofs_dir)
+        ok("CACHE-7 a cache directory that is a link is foreign and rejected "
+           "(POSIX)", velaris._cache_load(ref6) == {})
+        os.unlink(proofs_dir)
+        os.rename(proofs_dir + "-real", proofs_dir)
+
+    # CACHE-8: a relative XDG_CACHE_HOME or LOCALAPPDATA would have put the
+    # cache in the directory velaris runs in - the program's
+    if HAVE_Z3:
+        d8 = os.path.realpath(tempfile.mkdtemp(dir=WORK))
+        home = os.path.realpath(tempfile.mkdtemp(prefix="home_", dir=WORK))
+        prog(d8, TRUE)
+        code, out, _ = run(["check", "p.vel"], cwd=d8,
+                           env={"XDG_CACHE_HOME": ".", "LOCALAPPDATA": ".",
+                                "HOME": home, "USERPROFILE": home},
+                           unset=unset)
+        ok("CACHE-8 a relative XDG_CACHE_HOME or LOCALAPPDATA is ignored: no "
+           "cache under the program's directory",
+           code == 0 and not os.path.exists(os.path.join(d8, "velaris")),
+           out[:160])
+
+    # CACHE-9: the library and the language server never read it
+    text = LOOP_LIE
+    with _redirected(base):
+        c = velaris.check(text, path=path2, timeout=None, max_memory_mb=None)
+        where = path2.replace(os.sep, "/")
+        uri = "file://" + ("" if where.startswith("/") else "/") + where
+        lenses = velaris.editor_answer("textDocument/codeLens", {}, text, uri)
+    ok("CACHE-9 the library does not report the planted lie proven",
+       "count" not in c.proven, str(c.proven))
+    titles = [lens["command"]["title"] for lens in lenses or []]
+    ok("CACHE-9 the language server's lens does not call it proven",
+       bool(titles) and not any("proven" in t for t in titles), str(titles))
+
+    # CACHE-10: the Action proves nothing with the cache
+    action = (HERE / "action.yml").read_text(encoding="utf-8")
+    proving = [ln.strip() for ln in action.splitlines()
+               if re.search(r"\bvelaris (check|proofs|review|audit)\b", ln)
+               and not ln.strip().startswith(("#", "description:"))]
+    ok("CACHE-10 every command in the Action that proves passes --no-cache",
+       bool(proving) and all("--no-cache" in ln for ln in proving),
+       str(proving))
 
 
 # ---------------------------------------------------------------------------
@@ -851,6 +1137,7 @@ def door_rate_cases():
 
 def main():
     cache_cases()
+    user_cache_cases()
     recursion_cases()
     compiler_limits_cases()
     secret_cases()

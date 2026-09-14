@@ -103,6 +103,15 @@ fix ships before the details do; the credit is public either way.
 
 ## Resolved advisories
 
+- **A per-user proof cache entry was believed** (challenge #1, Goal A),
+  affecting 7.1.2 through 8.1.0, fixed in 8.1.1: a process running as the
+  same user, or an `XDG_CACHE_HOME` or `LOCALAPPDATA` pointed at a directory
+  it chose, could write a cache entry with the real proof key that made a
+  false `ensures` report "proven" and, compiled to native code, run
+  unchecked. Nothing in the cache is believed now: a promise is proven only
+  when the process reporting on it or running it proved it. Reported by two
+  independent external assessments. See
+  [advisory-proof-cache-2.md](advisory-proof-cache-2.md).
 - **Prover names a program could write** (challenge #1, Goal A), affecting
   0.9 through 8.0.0, fixed in 8.1.0: a parameter named like a name the
   prover made up for itself - `__g_result_1` for the result of a call to

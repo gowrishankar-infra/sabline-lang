@@ -310,7 +310,7 @@ Usage:
 import json
 import os
 
-VERSION = "8.1.0"
+VERSION = "8.1.1"
 import re
 import sys
 from dataclasses import dataclass, field
@@ -4844,6 +4844,15 @@ def check_types(funcs: list[Function], records: list, errors: list) -> None:
 # is keyed by the source's ABSOLUTE path + content hash + VERSION, so it can
 # never be transplanted onto a different file, and a tampered entry whose
 # header does not match is rejected.
+#
+# That moved the cache out of the program's reach and left what it said
+# believed. From 7.1.2 to 8.1.0 a same-user process - or anything that set
+# XDG_CACHE_HOME or LOCALAPPDATA - could write a per-user entry with the
+# real proof_key, and a false `ensures` was reported proven and, native-
+# compiled, ran unchecked (advisory-proof-cache-2.md). From 8.1.1 nothing
+# the cache holds is believed: check_proofs proves every function in this
+# process, only that proof is reported or makes a function native, and an
+# entry sizes the budget of that proof and nothing else.
 CACHE_DIR = ".velaris"                 # the stale project-local name, only
 CACHE_FILE = os.path.join(CACHE_DIR, "proofs.json")   # detected, never read
 
@@ -4865,12 +4874,19 @@ def _user_cache_dir() -> str | None:
         chosen = os.environ.get(CACHE_DIR_ENV, "").strip()
         if chosen:
             return os.path.join(os.path.abspath(chosen), "velaris", "proofs")
+        # A relative XDG_CACHE_HOME is ignored, as the XDG specification
+        # says: it would put the cache under whatever directory velaris ran
+        # in, which is usually the program's. LOCALAPPDATA likewise (8.1.1).
+        home = os.path.expanduser("~")
         if os.name == "nt":
-            base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+            base = os.environ.get("LOCALAPPDATA", "")
+            if not os.path.isabs(base):
+                base = home
         else:
-            base = os.environ.get("XDG_CACHE_HOME") or \
-                os.path.join(os.path.expanduser("~"), ".cache")
-        if not base or base == "~":
+            base = os.environ.get("XDG_CACHE_HOME", "")
+            if not os.path.isabs(base):
+                base = os.path.join(home, ".cache")
+        if not os.path.isabs(base):
             return None
         return os.path.join(base, "velaris", "proofs")
     except Exception:
@@ -5030,43 +5046,156 @@ def stmt_key(stmts) -> str:
     return show(stmts)
 
 
+PROOF_CACHE_SCHEMA = "velaris.proofcache/1"
+PROOF_CACHE_MAX_BYTES = 16 * 1024 * 1024   # far past any file a save writes
+_SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+
+# How long a function the cache remembers is given when it is proved again
+# (8.1.1): a second, and three times what its proof took when it was
+# remembered. A proof that has not settled by then is proved under the
+# usual budget, as if nothing were remembered - so an entry that is wrong
+# about the time costs at most this much more than no entry, and an entry
+# cannot change what the proof finds.
+REPROOF_SECONDS_FLOOR = 1.0
+
+
+def _reproof_seconds(entry: dict) -> float:
+    return REPROOF_SECONDS_FLOOR + 3.0 * float(entry.get("seconds", 0))
+
+
+def _cache_dir_ours(d: str) -> bool:
+    """d is a directory itself, not a link to one - and on POSIX, this
+    user's."""
+    import stat
+    try:
+        st = os.lstat(d)
+    except OSError:
+        return False
+    return stat.S_ISDIR(st.st_mode) and (
+        os.name != "posix" or st.st_uid == os.geteuid())
+
+
+def _cache_read(cache_file: str) -> bytes | None:
+    """A cache file's bytes, or None when it is foreign (8.1.1): not a
+    regular file (a link, a directory, a device), in a directory - or a
+    `velaris` directory above it - that is a link or on POSIX another
+    user's, on POSIX owned by another user or writable by one, or larger
+    than any save writes."""
+    import stat
+    d = os.path.dirname(cache_file)
+    if not (_cache_dir_ours(d) and _cache_dir_ours(os.path.dirname(d))):
+        return None
+    try:
+        if stat.S_ISLNK(os.lstat(cache_file).st_mode):
+            return None
+        fd = os.open(cache_file, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+                     | getattr(os, "O_BINARY", 0))
+    except OSError:
+        return None
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) \
+                or st.st_size > PROOF_CACHE_MAX_BYTES:
+            return None
+        if os.name == "posix" and (st.st_uid != os.geteuid()
+                                   or st.st_mode & 0o022):
+            return None
+        chunks, size = [], 0
+        while True:
+            chunk = os.read(fd, 1 << 20)
+            if not chunk:
+                return b"".join(chunks)
+            size += len(chunk)
+            if size > PROOF_CACHE_MAX_BYTES:
+                return None
+            chunks.append(chunk)
+    except OSError:
+        return None
+    finally:
+        os.close(fd)
+
+
+def _cache_document(raw: bytes, ap: str, ch: str) -> dict | None:
+    """The entries in a cache file's bytes, or None when the file is torn or
+    is not one a save writes for this source: not whole JSON, another
+    schema, a header naming another path, other bytes or another version,
+    or an entry that is not an object under a sha256 key, or whose
+    `seconds` is not a number from 0 to a day."""
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except ValueError:                  # UnicodeDecodeError is one
+        return None
+    if not (isinstance(doc, dict)
+            and doc.get("schema") == PROOF_CACHE_SCHEMA
+            and doc.get("version") == VERSION and doc.get("path") == ap
+            and doc.get("content_sha256") == ch
+            and isinstance(doc.get("proofs"), dict)):
+        return None
+    for key, entry in doc["proofs"].items():
+        if not (_SHA256_HEX.fullmatch(key) and isinstance(entry, dict)):
+            return None
+        s = entry.get("seconds", 0)
+        # NaN and the infinities compare false, and so are refused here
+        if isinstance(s, bool) or not isinstance(s, (int, float)) \
+                or not 0 <= s <= 86400:
+            return None
+    return doc["proofs"]
+
+
 def _cache_load(ref) -> dict:
-    """The proofs remembered for this exact source, or {} when there is no
-    cache, it does not parse, or its header does not match the path, bytes
-    and version it claims - so a hand-edited or transplanted file is
-    rejected rather than trusted."""
+    """What is remembered for this exact source, or {} when there is no
+    cache or its file is torn or foreign. Nothing in it is believed
+    (8.1.1): an entry only sizes the budget check_proofs gives a function
+    it proves again."""
     if ref is None:
         return {}
     cache_file, ap, ch = ref
-    try:
-        with open(cache_file, encoding="utf-8") as f:
-            doc = json.load(f)
-    except Exception:
+    raw = _cache_read(cache_file)
+    if raw is None:
         return {}
-    if (not isinstance(doc, dict) or doc.get("version") != VERSION
-            or doc.get("path") != ap or doc.get("content_sha256") != ch):
-        return {}                       # tampered or stale: prove again
-    proofs = doc.get("proofs")
-    return proofs if isinstance(proofs, dict) else {}
+    return _cache_document(raw, ap, ch) or {}
+
+
+def _cache_dirs_made(d: str) -> bool:
+    """Make the cache directory and the `velaris` directory above it, 0700
+    on POSIX, and say whether both are this user's own (8.1.1). One an
+    earlier Velaris made more open is narrowed to 0700; one that is a link,
+    or another user's, is not used."""
+    top = os.path.dirname(d)
+    os.makedirs(os.path.dirname(top), exist_ok=True)
+    for p in (top, d):
+        try:
+            os.mkdir(p, 0o700)
+        except FileExistsError:
+            pass
+        if not _cache_dir_ours(p):
+            return False
+        if os.name == "posix":
+            os.chmod(p, 0o700)
+    return True
 
 
 def _cache_save(ref, data: dict) -> None:
+    """Write this source's entries whole or not at all: into a new file
+    beside the cache file, flushed to disk, then renamed over it, so a
+    reader - or the machine stopping - meets the old file or the new one
+    and never part of either (8.1; the flush 8.1.1)."""
     if ref is None:
         return
     cache_file, ap, ch = ref
     import tempfile
+    d = os.path.dirname(cache_file)
     try:
-        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-        # written beside the cache file and renamed over it, so a reader
-        # running at the same moment - another check of the same file -
-        # sees the whole old entry or the whole new one, never half (8.1)
-        fd, tmp = tempfile.mkstemp(prefix=".proofs-", suffix=".tmp",
-                                   dir=os.path.dirname(cache_file))
+        if not _cache_dirs_made(d):
+            return
+        fd, tmp = tempfile.mkstemp(prefix=".proofs-", suffix=".tmp", dir=d)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump({"schema": "velaris.proofcache/1", "path": ap,
+                json.dump({"schema": PROOF_CACHE_SCHEMA, "path": ap,
                            "version": VERSION, "content_sha256": ch,
                            "proofs": data}, f)
+                f.flush()
+                os.fsync(f.fileno())
             os.replace(tmp, cache_file)
         except BaseException:
             try:
@@ -5074,6 +5203,12 @@ def _cache_save(ref, data: dict) -> None:
             except OSError:
                 pass
             raise
+        if os.name == "posix":          # and the rename, to disk
+            dfd = os.open(d, os.O_RDONLY)
+            try:
+                os.fsync(dfd)
+            finally:
+                os.close(dfd)
     except OSError:
         pass                            # a cache that cannot be written
                                         # is a slowdown, never an error
@@ -5375,9 +5510,17 @@ def check_proofs(funcs: list[Function], records: list,
     FELL_OFF = object()
     FAILED = object()
     saw_fp = [False]                   # FP queries earn a bigger budget
+    short_budget = [None]              # seconds, re-proving a remembered one
+
+    def query_seconds() -> float:
+        """What one query gets: the usual budget, or less while a function
+        the cache remembers is proved again (8.1.1)."""
+        usual = proof_timeout_seconds(saw_fp[0])
+        return usual if short_budget[0] is None \
+            else min(usual, short_budget[0])
 
     def solver_budget() -> int:
-        return int(proof_timeout_seconds(saw_fp[0]) * 1000)
+        return int(query_seconds() * 1000)
 
     # 'unknown' has two meanings and they are nothing alike. Z3 says it
     # when the question is outside what it decides - and it says it when
@@ -5403,7 +5546,7 @@ def check_proofs(funcs: list[Function], records: list,
                     {"name": fn_.name if fn_ is not None else "?",
                      "line": fn_.line if fn_ is not None else 0,
                      "file": (fn_.src_file if fn_ is not None else None),
-                     "seconds": proof_timeout_seconds(saw_fp[0]),
+                     "seconds": query_seconds(),
                      "float": bool(saw_fp[0])})
         return v
     counter = [0]
@@ -6697,23 +6840,50 @@ def check_proofs(funcs: list[Function], records: list,
             i += 1
         return [(ctx, FELL_OFF, dict(env))]
 
+    # Nothing the cache holds is believed (8.1.1). Until then a remembered
+    # "proven" went into proven_out without Z3 - reported proven, and
+    # eligible for native code, which has no runtime promise check - and
+    # the cache is a file anything running as this user can write. Now
+    # every function is proved here, and only a proof made in this process
+    # reaches proven_out. A function the cache remembers is proved under a
+    # short budget first (_reproof_seconds); if that runs out, it is proved
+    # again under the usual budget as if nothing were remembered, so what
+    # this finds is what a check with --no-cache finds.
+    from time import perf_counter as _proof_clock
     cache_ref = _proof_cache_ref(source_path, source_text) if use_cache \
         else None
     cache = _cache_load(cache_ref)
-    settled: dict = {}          # what this run confirmed
-    for fn in funcs:
+    settled: dict = {}          # what this run proved, refuted or left
+    work = [(fn, False) for fn in funcs]     # (function, second attempt)
+    at = 0
+    tried = None                # (function, short budget, errors before)
+    started = [0.0]
+
+    def took() -> float:
+        return round(_proof_clock() - started[0], 3)
+
+    while True:
+        if tried is not None:
+            fn_, short_, before_ = tried
+            tried = None
+            if short_ is not None and ran_out[0]:
+                # the short budget ran out: nothing it found stands, and
+                # the function is proved again under the usual budget
+                del errors[before_:]
+                timed_out.pop(fn_.name, None)
+                if proven_out is not None:
+                    proven_out.discard(fn_.name)
+                work.insert(at, (fn_, True))
+        if at >= len(work):
+            break
+        fn, again = work[at]
+        at += 1
         key = proof_key(fn, table, records) if use_cache else None
-        if key is not None and key in cache:
-            remembered = cache[key]
-            settled[key] = remembered
-            if remembered.get("proven") and proven_out is not None:
-                proven_out.add(fn.name)
-            for e in remembered.get("errors", []):
-                errors.append(VelarisError(
-                    e["code"], e["message"], e["line"],
-                    fixes=e.get("fixes", []), file=e.get("file")))
-            continue
+        short_budget[0] = (_reproof_seconds(cache[key])
+                           if key in cache and not again else None)
         before_errors = len(errors)
+        tried = (fn, short_budget[0], before_errors)
+        started[0] = _proof_clock()
         current_fn[0] = fn
         saw_fp[0] = False              # FP budget only when FP appears
         ran_out[0] = False             # and a fresh clock with it
@@ -6865,6 +7035,7 @@ def check_proofs(funcs: list[Function], records: list,
             if key is not None:
                 settled[key] = {
                     "proven": bool(fn.ensures or fn.requires),
+                    "seconds": took(),
                     "errors": [{"code": e.code, "message": e.message,
                                 "line": e.line, "fixes": e.fixes,
                                 "file": e.file}
@@ -6873,7 +7044,8 @@ def check_proofs(funcs: list[Function], records: list,
             # a proof the clock ended is not remembered: nothing was
             # settled, so the next run should spend its budget again
             if key is not None and not ran_out[0]:
-                settled[key] = {"proven": False, "errors": [
+                settled[key] = {"proven": False, "seconds": took(),
+                                "errors": [
                     {"code": e.code, "message": e.message, "line": e.line,
                      "fixes": e.fixes, "file": e.file}
                     for e in errors[before_errors:]]}
@@ -6882,8 +7054,9 @@ def check_proofs(funcs: list[Function], records: list,
             continue                    # solver hiccup: runtime still guards
         except VelarisError as e:
             errors.append(blame(fn, e))
-            if key is not None:         # a refutation is worth remembering
-                settled[key] = {"proven": False, "errors": [
+            if key is not None:         # a refutation's time, too
+                settled[key] = {"proven": False, "seconds": took(),
+                                "errors": [
                     {"code": x.code, "message": x.message, "line": x.line,
                      "fixes": x.fixes, "file": x.file}
                     for x in errors[before_errors:]]}
@@ -8841,7 +9014,8 @@ def editor_answer(method: str, params: dict, text: str, uri: str):
         check_types(funcs, records, errors)
         if not errors:
             try:
-                check_proofs(funcs, records, errors, proven, use_cache=True,
+                # an editor is a door: no cache, as the others (8.1.1)
+                check_proofs(funcs, records, errors, proven, use_cache=False,
                              source_path=path, source_text=text)
             except Exception:
                 pass
@@ -16088,8 +16262,8 @@ def _declared_change(before_text, after_path: str) -> dict:
 
 
 def review_main(argv: list) -> int:
-    """velaris review --against REF [path] [--json]"""
-    usage = "usage: velaris review --against REF [path] [--json]"
+    """velaris review --against REF [path] [--json] [--no-cache]"""
+    usage = "usage: velaris review --against REF [path] [--json] [--no-cache]"
     ref = None
     places, as_json = [], False
     i = 0
@@ -16104,6 +16278,8 @@ def review_main(argv: list) -> int:
             continue
         if a == "--json":
             as_json = True
+        elif a == "--no-cache":
+            pass                        # inspect_source reads it (8.1.1)
         elif a.startswith("-"):
             print(usage, file=sys.stderr)
             return 2

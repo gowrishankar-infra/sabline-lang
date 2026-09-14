@@ -360,24 +360,28 @@ What follows is what is still not defended.
   `.vel` file the process can read, and the audit's `fs_paths`, `net_hosts`
   and `ffi_modules` include that file's literals. Give the library an
   `import_root` for source you were sent.
-- **The proof cache is data, and the program's directory is never
-  trusted for it.** Proof results are cached so a second `check` need not
-  re-run Z3. From 7.1.2 the cache lives only in a per-user directory
+- **The proof cache is data, and nothing in it is believed.** Proof
+  results are kept on disk in a per-user directory
   (`%LOCALAPPDATA%\velaris` on Windows, `$XDG_CACHE_HOME/velaris` or
   `~/.cache/velaris` elsewhere), keyed by the source's absolute path, a
-  hash of its bytes, and the compiler version, with that header
-  re-verified on load. A `./.velaris/` sitting in a project is **ignored**
-  (`velaris audit` says so). This matters because from **2.29 to 7.1.1**
-  the cache was read from `./.velaris/proofs.json` in the working
-  directory and a `"proven": true` entry was trusted without re-proving:
-  a `./.velaris/` shipped alongside an untrusted program (the cache key is
-  public and deterministic) could make a false `ensures` report proven and,
-  for a native-compiled pure function, go unenforced at run time. That was
-  a hole for the life of the on-disk cache; it is
-  [advisory-proof-cache.md](advisory-proof-cache.md), fixed in 7.1.2. The
-  lesson is general: a cache the untrusted program can write is untrusted
-  input, so it lives where the program cannot reach it and is bound to the
-  source it describes.
+  hash of its bytes and the compiler version. From 8.1.1 no entry is
+  believed: every function is proved again in the process that reports on
+  it or runs it, only that proof is reported "proven" or makes a function
+  native, and an entry sets how long the first attempt at that proof is
+  given and nothing else. A `./.velaris/` sitting in a project is
+  **ignored** (`velaris audit` says so). Two holes came before this. From
+  **2.29 to 7.1.1** the cache was `./.velaris/proofs.json` beside the
+  program, and a `"proven": true` entry shipped with an untrusted program
+  was believed ([advisory-proof-cache.md](advisory-proof-cache.md), fixed
+  in 7.1.2 by moving the cache). From **7.1.2 to 8.1.0** the per-user entry
+  was still believed, so a process running as the same user, or an
+  `XDG_CACHE_HOME` or `LOCALAPPDATA` pointed at a directory someone else
+  chose, could plant one: a false `ensures` was reported proven and,
+  compiled to native code, ran unchecked
+  ([advisory-proof-cache-2.md](advisory-proof-cache-2.md), fixed in 8.1.1).
+  The first fix changed who could write the cache; the second changed what
+  the cache can do. A cache that grants trust is an input to trust wherever
+  it lives.
 - **The prover's reach.** Three benchmark rows (03d, 03f, 04e) are
   caught only while running: a division on the unguarded of two
   paths, a remainder inside a loop, a read at `i + 1` in a loop over
@@ -404,6 +408,7 @@ budget - is a different thing, and SECURITY.md says how it is handled.
 | What a receipt shows that is not a value | A receipt (8.1) keeps out every value a program handled, but holds its exit status, where it stopped, its counts and its wall time - which a program that declassified something can choose from it. | Do not grant `declassify` to code whose receipts you will share. |
 | Writes to where Python imports from | A write grant to a directory on some Python's import path lets a program leave code the next Python process runs. Velaris does not look for this on a plain run; an ejected launcher refuses such a budget where it is launched. | Grant writes to data directories only; run Python with `-I` where you can. |
 | An ejected directory | It keeps the Velaris it was ejected with; no fix reaches it, and its launcher cannot check itself. | Eject again after an upgrade; check `SHA256SUMS` when the directory could have been written by someone else. |
+| The user running velaris | The user running velaris is trusted; anything running as that user is that user - the cache, the receipts, everything. Such a process can edit the program, the budget, a receipt after it is written, or the installed Velaris itself. From 8.1.1 the proof cache grants nothing, so writing it changes no report and no run; that does not make anything else the user can write trustworthy. | Run code you have not read as a different user, or in a container or a virtual machine. Do not rely on a report made in an account something else controls. |
 
 ## Residual risks, and what to do about each
 

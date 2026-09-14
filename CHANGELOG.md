@@ -1,5 +1,105 @@
 # Velaris changelog
 
+## 8.1.1 - The proof cache can no longer lie
+
+A patch release with one fix. Compatibility: a patch under STABILITY.md
+rule 1, because it refuses no program that legitimately worked. A false
+promise that a planted cache entry let through now fails - before the run
+with the prover (E700), while running without it (E601) - where it used to
+pass without a word. A user with no planted entry sees one difference, in
+time: a second `velaris check` of an unchanged program takes about as long
+as the first.
+
+**What was wrong (Goal A; `advisory-proof-cache-2.md`; 7.1.2 through
+8.1.0).** 7.1.2 moved the proof cache out of the program's directory into a
+per-user one, and bound each file to the source's path, its bytes and the
+compiler version. What an entry said was still believed. A remembered
+"proven" was reported as proven by `check`, `proofs`, `audit` and `explain`
+without running Z3, and it made the function eligible for native code,
+which has no runtime promise check. Everything a cache file's name and an
+entry's key are made from is public, so a process running as the same
+user, or anything that set `XDG_CACHE_HOME` or `LOCALAPPDATA` for the
+process running `velaris`, could write an entry under the real `proof_key`. A false
+`ensures` was then reported proven, and a run compiled the function to
+native code and returned the wrong result with exit code 0. Run with
+`--no-native`, the interpreter's own check still stopped it (E601). Two
+independent external assessments of 8.0.0 reported it. The cause was the
+design, not the file's location: a cached "proven" was allowed to switch off
+a runtime check.
+
+**What changes.**
+
+1. **Nothing in the cache is believed.** Every function is proved in the
+   process that reports on it or runs it. Only a proof made in that process
+   marks a promise "proven" in `check`, `proofs`, `audit`, `explain`,
+   `attest` and the library, and only such a function is compiled to native
+   code. A contract not proven in that process keeps its runtime `requires`
+   and `ensures` checks, interpreted or native.
+2. **A remembered promise is proved again, under a short budget.** Of the
+   two ways to keep the cache honest - prove a remembered promise again, or
+   report it as "cached, unverified" - this release proves it again. The
+   short budget is one second plus three times what the proof took when it
+   was remembered. A proof that has not settled by then is proved under the
+   usual budget, so a check finds what `--no-cache` finds, and an entry can
+   change how long a check takes but not what it reports. The cost is time:
+   Z3 keeps nothing that makes a second proof cheaper than the first.
+   Measured on the machine this was built on (Windows 11, Python 3.13,
+   z3-solver 5.1.0), each second run against 8.1.0's:
+
+   | Second run of | 8.1.0 | 8.1.1 | 8.1.1, `--no-cache` |
+   |---|---|---|---|
+   | `velaris check examples/fp_proof_bad.vel` (a float refutation) | 1.0 s | 21.5 s | 21.9 s |
+   | `velaris proofs examples` | 7.5 s | 11 to 14 s | 12 s |
+   | `velaris check examples/discount.vel` | 1.1 s | 1.7 s | |
+
+   That cost was accepted because the other way adds a third status to
+   `check`, `proofs`, `audit`, `explain`, SARIF and `velaris.audit/1`, and
+   every second check of a program would have reported less than its
+   first.
+3. **No cache where nobody vouches for the directory.** The Action runs
+   `check`, `proofs` and `review` with `--no-cache`, since a runner's cache
+   directory can be restored from another workflow's run, and `velaris
+   review` now accepts the flag. The HTTP door, the MCP server and the
+   library have never read the cache; from this release the language
+   server's code lenses do not read it either. `agent_loop.py` passes
+   `--no-cache` too.
+4. **A cache file is written whole, and an odd one is ignored.** A save
+   writes a temporary file, flushes it to disk and renames it into place.
+   On POSIX the rename is flushed as well, and the `velaris` and `proofs`
+   directories are made 0700; one an earlier Velaris made wider is narrowed.
+   A file is ignored whole if any of these holds:
+   - it is not whole JSON;
+   - it names another schema, path, content or version;
+   - it holds a malformed entry;
+   - it is a link or not a regular file;
+   - on POSIX, another user owns it or can write to it.
+
+   A relative `XDG_CACHE_HOME` or `LOCALAPPDATA` is now ignored, as the XDG
+   specification says, so the cache is no longer placed under the directory
+   `velaris` runs in.
+5. **THREAT_MODEL.md's known-open table** gains a row: the user running
+   velaris is trusted; anything running as that user is that user - the
+   cache, the receipts, everything. SECURITY.md lists the advisory as
+   resolved, and HALL_OF_FAME.md credits the two assessments.
+
+`check_adversarial.py` (`CACHE-3` to `CACHE-10`) now covers the outside
+reproduction and the cases around it:
+
+- **The reproduction:** the real `proof_key`, with the cache moved through
+  `XDG_CACHE_HOME` and `LOCALAPPDATA`, in a file this release's loader
+  accepts. With the prover, E700 under `check`, `proofs`, `audit`,
+  `explain`, a run and a run with `--no-native`. Without it, E601 on both
+  runs and nothing reported proven.
+- **A lie no prover refutes:** a planted entry for a loop whose false
+  promise the prover cannot settle stops at E601 on both run paths.
+- **Files and settings:** torn and foreign files, the directories' modes,
+  links, and a relative redirect.
+- **Doors:** the library, the language server and the Action.
+
+The cache's format and location stay outside what STABILITY.md covers. The
+file format is unchanged apart from a `seconds` field in each entry.
+velaris-spec is unchanged.
+
 ## 8.1 - Receipts, and what a policy can ask
 
 A minor version. A program, a budget or a command line written for 8.0

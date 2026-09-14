@@ -634,34 +634,45 @@ gives parts that **provably** add up to the payout. See
 
 ## Remembered proofs
 
-A second `velaris check` of an unchanged program does not run the prover
-again: what it proved is remembered in a directory that belongs to you,
+Velaris records the proofs it makes in a directory that belongs to you,
 not to the program - `%LOCALAPPDATA%\velaris\proofs` on Windows,
 `$XDG_CACHE_HOME/velaris/proofs` (or `~/.cache/velaris/proofs`)
-elsewhere. A program's entries are keyed by its absolute path, a SHA-256
-of its exact bytes and the compiler's version, and checked against all
-three when they are read, so an edited file, the same file at another
-path, a hand-edited entry or a new Velaris is proved again rather than
-believed. Within that, a proof is keyed by the function's text *and* the
-contracts it depends on, so changing a promise re-proves everything that
-relied on it. `VELARIS_CACHE_DIR` puts the cache under a directory you name
-instead, as `<dir>/velaris/proofs` (8.1) - which is how two test runs from
-one checkout keep from sharing one; a cache file is written beside itself
-and renamed into place, so two checks of the same file at once each read a
-whole entry.
+elsewhere; a relative `XDG_CACHE_HOME` or `LOCALAPPDATA` is ignored. A
+program's entries are keyed by its absolute path, a SHA-256 of its exact
+bytes and the compiler's version, and within that by the function's text
+*and* the contracts it depends on. `VELARIS_CACHE_DIR` puts the cache under
+a directory you name instead, as `<dir>/velaris/proofs` (8.1) - which is
+how two test runs from one checkout keep from sharing one.
+
+**Nothing in it is believed (8.1.1).** Every `velaris check`, `proofs`,
+`audit`, `explain` and run proves each function again. A promise is
+"proven" only when that run proved it, only such a function is compiled to
+native code, and a promise not proven in that run is checked while the
+program runs, interpreted or native. A remembered entry sets how long the
+first attempt at that proof is given - a proof that has not settled by then
+is proved under the usual budget - and nothing else, so a second check
+takes about as long as the first. Until 8.1.1 an entry was believed, and a
+process running as you could plant one that made a false promise report
+proven ([advisory-proof-cache-2.md](advisory-proof-cache-2.md)).
+
+A cache file is written whole or not at all: to a new file, flushed to
+disk, then renamed into place, in directories made 0700 on POSIX. A file
+that is not whole, is not for this source, is a link, or on POSIX is
+another user's or writable by one, is ignored.
 
 A `./.velaris/` directory is never read. Until 7.1.2 the cache lived
 there, beside the program, and one shipped with an untrusted program
 could make a false promise report "proven"
 ([advisory-proof-cache.md](advisory-proof-cache.md)); `velaris audit`
 prints `ignored: ./.velaris/` when it finds one. If no per-user directory
-can be written, the run goes ahead with no cache. The library and the
-worker pool never use it.
+can be written, the run goes ahead with no cache. The library, the worker
+pool, the HTTP door, the MCP server, the language server and the GitHub
+Action never use it.
 
-`--no-cache` neither reads nor writes the cache: every promise is proved
-from scratch. `velaris clean` deletes the per-user `velaris` cache
-directory; when the current directory holds an old `./.velaris/`, it says
-that directory is ignored and leaves deleting it to you.
+`--no-cache` neither reads nor writes the cache. `velaris clean` deletes
+the per-user `velaris` cache directory; when the current directory holds an
+old `./.velaris/`, it says that directory is ignored and leaves deleting it
+to you.
 
 ## The reference
 

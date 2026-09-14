@@ -34,7 +34,8 @@ ROUNDS = 6
 def check(path: Path) -> list:
     """Every problem the compiler can see, as data."""
     done = subprocess.run(
-        [sys.executable, str(VELARIS), "check", str(path), "--json"],
+        [sys.executable, str(VELARIS), "check", str(path), "--json",
+         "--no-cache"],
         capture_output=True, text=True, timeout=600)
     text = (done.stdout or "").strip()
     if not text:
@@ -58,7 +59,8 @@ def check(path: Path) -> list:
 def proof_state(path: Path) -> tuple:
     """How many promises are proven rather than checked while running."""
     done = subprocess.run(
-        [sys.executable, str(VELARIS), "proofs", str(path), "--json"],
+        [sys.executable, str(VELARIS), "proofs", str(path), "--json",
+         "--no-cache"],
         capture_output=True, text=True, timeout=900)
     try:
         report = json.loads(done.stdout)
@@ -157,7 +159,7 @@ def main() -> int:
                 print("no contracts to prove.")
             print(f"\nwritten to {out}\n")
             subprocess.run([sys.executable, str(VELARIS), "audit",
-                            str(out)], timeout=900)
+                            str(out), "--no-cache"], timeout=900)
             return 0
         print(f"round {attempt}: {len(errors)} problem(s), asking again")
         for line in complain(errors).splitlines()[:4]:

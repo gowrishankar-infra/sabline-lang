@@ -106,6 +106,10 @@ runs:
     # With sarif (the default), the check writes SARIF 2.1.0 to a file and
     # still prints each finding to the log; it fails the step exactly as
     # the plain check does. The file is uploaded by the next step.
+    # Every command here that proves runs with --no-cache (8.1.1): a
+    # runner's cache directory can be restored from another workflow's
+    # run, and from 8.1.1 the cache is never believed anyway, so reading it
+    # would only add a directory the Action cannot vouch for.
     - name: Check
       id: check
       shell: bash
@@ -125,9 +129,9 @@ runs:
         if [ "$SARIF" = "true" ]; then
           sarif="$RUNNER_TEMP/velaris.sarif"
           echo "sarif-file=$sarif" >> "$GITHUB_OUTPUT"
-          velaris check $files --sarif > "$sarif"
+          velaris check $files --sarif --no-cache > "$sarif"
         else
-          velaris check $files
+          velaris check $files --no-cache
         fi
 
     # Runs whether the check passed or not: the findings of a failing
@@ -197,7 +201,7 @@ runs:
     - name: Proven share
       if: ${{ inputs.min-proven != '' }}
       shell: bash
-      run: velaris proofs . --min "${{ inputs.min-proven }}"
+      run: velaris proofs . --min "${{ inputs.min-proven }}" --no-cache
 
     - name: Formatting
       if: ${{ inputs.format == 'true' }}
@@ -247,7 +251,7 @@ runs:
         # the proven share, new fallible functions, new hosts and paths,
         # and a risk word computed from those alone
         review_file=""
-        if [ "$scope" = "changed" ] && velaris review --against "$BASE_SHA" --json \
+        if [ "$scope" = "changed" ] && velaris review --against "$BASE_SHA" --json --no-cache \
             > "$RUNNER_TEMP/velaris-review.json" 2> "$RUNNER_TEMP/velaris-review.err"; then
           review_file="$RUNNER_TEMP/velaris-review.json"
         fi
