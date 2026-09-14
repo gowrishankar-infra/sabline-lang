@@ -567,6 +567,17 @@ def cmd_published(args) -> int:
     return 0
 
 
+def _waiting_for(rows) -> str:
+    """What a poll is still waiting on, as one line. A row is a sentence
+    (registry-ready, or a target that could not be asked) or a (target,
+    report, agrees) row from consistency(), named only when it disagrees.
+    Until 8.1.1 this joined the rows as they came, and a consistency row is
+    a tuple: the first release a target lagged behind (8.1.1, PyPI's JSON)
+    stopped the check with a TypeError instead of asking again."""
+    return "; ".join(row if isinstance(row, str) else f"{row[0]} ({row[1]})"
+                     for row in rows if isinstance(row, str) or not row[2])
+
+
 def _poll(args, ask):
     """Ask until the answer is good or --timeout runs out: (good, rows)."""
     deadline = time.monotonic() + args.timeout
@@ -574,7 +585,7 @@ def _poll(args, ask):
         good, rows = ask()
         if good or time.monotonic() >= deadline:
             return good, rows
-        print("not yet: " + "; ".join(rows), flush=True)
+        print("not yet: " + _waiting_for(rows), flush=True)
         time.sleep(args.interval)
 
 

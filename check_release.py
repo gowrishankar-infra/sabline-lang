@@ -187,8 +187,11 @@ class StandIn(BaseHTTPRequestHandler):
     routes: dict = {}
 
     def _answer(self, method: str) -> None:
-        status, body = self.routes.get((method, self.path.split("?")[0]),
-                                       (404, {"detail": "not found"}))
+        answer = self.routes.get((method, self.path.split("?")[0]),
+                                 (404, {"detail": "not found"}))
+        if isinstance(answer, list):    # answers in turn; the last one stays
+            answer = answer.pop(0) if len(answer) > 1 else answer[0]
+        status, body = answer
         raw = json.dumps(body).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -531,6 +534,48 @@ def main() -> int:
         ok("...and a GitHub release missing one signature names that file",
            code == 1 and "the GitHub release (latest is v7.2.0, without "
                          "velaris-macos.sigstore.json)" in out, out)
+
+        # The "not yet" path: a target behind for a while. 8.1.1's release
+        # met it for the first time - PyPI's JSON still said 8.1.0 - and the
+        # consistency check stopped with a TypeError instead of asking again.
+        def polled(*words):
+            try:
+                return in_process(*words)
+            except Exception as e:      # noqa: BLE001 - reported, not raised
+                return None, f"{type(e).__name__}: {e}"
+
+        routes = all_at("7.2.0")
+        routes[("GET", "/pypi/velaris-lang/json")] = [
+            (200, {"info": {"version": "7.1.1"}}),
+            (200, {"info": {"version": "7.2.0"}})]
+        StandIn.routes = routes
+        code, out = polled("consistent", "7.2.0", "--timeout", "30",
+                           "--interval", "0", "--annotate")
+        ok("consistent: a target one poll behind is 'not yet', naming it and "
+           "what it says, and the next poll finds every target agreeing",
+           code == 0 and "not yet: PyPI (latest is 7.1.1)\n" in out
+           and "::notice::consistent" in out, out)
+        routes = all_at("7.2.0")
+        routes[("GET", "/pypi/velaris-lang/json")] = (200, {"info": {
+            "version": "7.1.1"}})
+        StandIn.routes = routes
+        code, out = polled("consistent", "7.2.0", "--timeout", "0.3",
+                           "--interval", "0.05", "--annotate")
+        ok("...a target still behind when --timeout runs out is asked again "
+           "until then, and fails red naming it",
+           code == 1 and out.count("not yet: PyPI (latest is 7.1.1)") >= 2
+           and "::error::inconsistent: PyPI (latest is 7.1.1)" in out, out)
+        routes = all_at("7.2.0")
+        routes[("GET", "/pypi/velaris-lang/7.2.0/json")] = [
+            (404, {}),
+            (200, {"info": {"version": "7.2.0", "description":
+                            f"<!-- mcp-name: {SERVER} -->\n# Velaris"}})]
+        StandIn.routes = routes
+        code, out = polled("registry-ready", "7.2.0", "--timeout", "30",
+                           "--interval", "0", "--annotate")
+        ok("...and registry-ready's 'not yet' still names what the registry "
+           "would not find, then goes green",
+           code == 0 and "not yet: " in out and "PyPI" in out, out)
     finally:
         release_checks.ENDPOINTS.update(saved)
         stand_in.shutdown()
