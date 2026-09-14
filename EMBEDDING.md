@@ -803,7 +803,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: gowrishankar-infra/velaris-lang@5f31d2904ab182d40d05ad6cc21d811ab227c38e  # v8.0.0
+  - uses: gowrishankar-infra/velaris-lang@e7d4ed6aa262747cc6a8201db1171eb4e7556c25  # v8.1.0
     with:
       min-proven: "80"
       pr-comment: "true"
