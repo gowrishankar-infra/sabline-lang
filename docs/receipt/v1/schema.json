@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gowrishankar-infra.github.io/velaris-lang/receipt/v1/schema.json",
+  "title": "https://gowrishankar-infra.github.io/velaris-lang/receipt/v1",
+  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://gowrishankar-infra.github.io/velaris-lang/receipt/v1: a velaris.receipt/1 document recording one run of the program that is the statement's first subject - the budget it was given, each refusal and declassification, the parameters it ran under, how it ended and how long it took. velaris-spec SPEC.md section 8.7 defines it. No field holds a value the program handled. Within v1 fields may be added and consumers must ignore fields they do not know.",
+  "type": "object",
+  "required": ["schema", "producer", "budget", "run_parameters", "refusals", "declassifications", "exit", "wall_time_ms", "complete"],
+  "properties": {
+    "schema": {"const": "velaris.receipt/1"},
+    "producer": {
+      "description": "The implementation that ran the program and wrote the receipt.",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "uri": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1}
+      }
+    },
+    "specification": {
+      "description": "The velaris-spec version the producer followed, as 'velaris-spec 0.10.0'. Informative.",
+      "type": "string"
+    },
+    "startedAt": {
+      "description": "When the run started, RFC 3339 with timezone Z, by the producer's clock. Informative.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+    },
+    "wall_time_ms": {
+      "description": "How long the run took, in milliseconds, by the producer's clock.",
+      "type": "number",
+      "minimum": 0
+    },
+    "budget": {
+      "description": "The budget the run was given, as the budget grammar writes it (section 4.7). The empty string is a budget that grants nothing.",
+      "type": "string"
+    },
+    "run_parameters": {
+      "description": "What the run was given besides its budget.",
+      "type": "object",
+      "required": ["seed", "freeze_time", "timeout", "max_memory_mb", "confinement"],
+      "properties": {
+        "seed": {"description": "The seed randomness was fixed to, or null.", "type": ["integer", "null"]},
+        "freeze_time": {"description": "The instant the clock was fixed to, RFC 3339 with Z, or null.", "type": ["string", "null"]},
+        "timeout": {"description": "The most seconds the run was allowed, or null for no limit.", "type": ["number", "null"], "exclusiveMinimum": 0},
+        "max_memory_mb": {"description": "The most memory the run was allowed, in MB, or null for no cap.", "type": ["integer", "null"], "minimum": 1},
+        "max_read_bytes": {"description": "The largest file a read accepted, in bytes.", "type": ["integer", "null"], "minimum": 0},
+        "confinement": {"description": "What operating-system confinement the run had. 'none' when the budget was the only boundary.", "type": "string", "minLength": 1}
+      }
+    },
+    "effects_used": {
+      "description": "Each effect and how many operations of it the budget let through, or null when the producer could not tell (a run stopped from outside).",
+      "type": ["object", "null"],
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "refusals": {
+      "description": "Each place the budget refused the run, once per code, effect, line and whether it stopped the run, with how many times. The path, host or module the program named is not recorded.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "effect", "line", "stopped", "times"],
+        "properties": {
+          "code": {"type": ["string", "null"], "pattern": "^E[0-9]{3}$"},
+          "effect": {"enum": ["io", "env", "fs", "net", "clock", "rand", "ffi", "declassify", null]},
+          "line": {"type": ["integer", "null"], "minimum": 0},
+          "stopped": {"type": "boolean"},
+          "times": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "declassifications": {
+      "description": "Each place the run declassified a value, with the reason written in the program and how many times. The value is not recorded.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["reason", "line", "times"],
+        "properties": {
+          "reason": {"type": "string"},
+          "line": {"type": ["integer", "null"], "minimum": 0},
+          "times": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "exit": {
+      "description": "How the run ended.",
+      "type": "object",
+      "required": ["status", "outcome", "code"],
+      "properties": {
+        "status": {"description": "The exit status the producer reported.", "type": ["integer", "null"]},
+        "outcome": {"enum": ["ok", "refused", "failed", "did_not_compile", "timeout", "out_of_memory"]},
+        "code": {"description": "The code of the error that ended the run, or null.", "type": ["string", "null"], "pattern": "^E[0-9]{3}$"}
+      }
+    },
+    "complete": {
+      "description": "False when the run was stopped from outside before it could report: what the receipt lists happened, and a count is at least the number given.",
+      "type": "boolean"
+    }
+  }
+}

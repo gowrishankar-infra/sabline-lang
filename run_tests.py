@@ -8,6 +8,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from suite_dirs import isolate  # noqa: E402
+
 # every example, with its expected verdict
 EXPECT = {
     "hello.vel": "RUNS",            "effects.vel": "RUNS",
@@ -133,7 +136,8 @@ ALLOW = {
 
 # scripted keyboard input for interactive examples
 ARGS = {
-    "wordcount.vel": ["examples/sample.txt", "3"],
+    "wordcount.vel": [str(Path(__file__).parent / "examples" / "sample.txt"),
+                      "3"],
 }
 
 STDIN = {
@@ -192,24 +196,7 @@ def check_versions() -> None:
                   f"the MCP registry manifest says {said}")
             raise SystemExit(1)
 
-    # the Action a reader copies out of the README pins a release, and so
-    # does the version it installs. 7.0.0 still showed v5.0.1 in both, two
-    # majors late; every pin in the README and EMBEDDING.md must be this
-    # release.
-    for doc in ("README.md", "EMBEDDING.md"):
-        text = (root / doc).read_text(encoding="utf-8")
-        pins = _re.findall(r"gowrishankar-infra/velaris-lang@v([\w.]+)", text)
-        installs = _re.findall(r'^\s*version:\s*"([^"]*)"', text, _re.M)
-        if doc == "README.md" and not pins:
-            print("VERSION MISMATCH: README.md no longer pins the Action "
-                  "(gowrishankar-infra/velaris-lang@v...), which this "
-                  "check reads")
-            raise SystemExit(1)
-        wrong = sorted({v for v in pins + installs if v != a})
-        if wrong:
-            print(f"VERSION MISMATCH: velaris.py says {a}, {doc} pins the "
-                  f"Action or its version at {', '.join(wrong)}")
-            raise SystemExit(1)
+    check_action_pins(root)
 
     # CITATION.cff had lagged for releases (it said 4.3.1 at 7.2.0), so it
     # is held to VERSION too from 8.0: the citation a reader copies names
@@ -236,10 +223,107 @@ def check_versions() -> None:
         raise SystemExit(1)
 
 
+REPOSITORY_URL = "https://github.com/gowrishankar-infra/velaris-lang.git"
+
+
+def _tag_commits(root: Path) -> dict:
+    """{tag: the commit it names} for every v* tag, asked of the repository
+    on GitHub (a CI checkout is shallow and has no tags), or of this
+    checkout when GitHub cannot be reached; {} when neither answers."""
+    import re as _re
+    for cmd in (["git", "ls-remote", "--tags", REPOSITORY_URL],
+                ["git", "show-ref", "--tags", "-d"]):
+        try:
+            done = subprocess.run(cmd, cwd=root, capture_output=True,
+                                  text=True, timeout=60)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if done.returncode != 0:
+            continue
+        found, peeled = {}, {}
+        for line in done.stdout.splitlines():
+            m = _re.match(r"^([0-9a-f]{40})\s+refs/tags/(v[\d.]+)(\^\{\})?$",
+                          line.strip())
+            if m:
+                (peeled if m.group(3) else found)[m.group(2)] = m.group(1)
+        found.update(peeled)            # an annotated tag: its commit
+        if found:
+            return found
+    return {}
+
+
+def check_action_pins(root: Path) -> None:
+    """The Action a reader copies out of README.md and EMBEDDING.md is pinned
+    by commit, with its tag in a comment (8.1), and that commit is what the
+    newest tag names - so a copied example neither trusts a movable tag nor
+    lags a release behind. 7.0.0 still showed v5.0.1, two majors late. The
+    `version:` an example installs is that tag's version.
+
+    The newest tag, not this commit's VERSION: a release commit cannot name
+    its own hash, so its docs pin the release before it, and the next
+    commit moves the pin to the tag the release workflow made."""
+    import re as _re
+    pins, installs = [], []
+    for doc in ("README.md", "EMBEDDING.md"):
+        text = (root / doc).read_text(encoding="utf-8")
+        for m in _re.finditer(
+                r"gowrishankar-infra/velaris-lang@(\S+)(?:[ \t]+#[ \t]*"
+                r"(v[\d.]+))?", text):
+            pins.append((doc, m.group(1), m.group(2)))
+        installs += [(doc, v) for v in
+                     _re.findall(r'^\s*version:\s*"([^"]*)"', text, _re.M)]
+    if not any(doc == "README.md" for doc, _, _ in pins):
+        print("PIN MISMATCH: README.md no longer shows the Action "
+              "(gowrishankar-infra/velaris-lang@<commit>  # <tag>), which "
+              "this check reads")
+        raise SystemExit(1)
+    loose = [(doc, ref) for doc, ref, tag in pins
+             if not _re.fullmatch(r"[0-9a-f]{40}", ref) or not tag]
+    if loose:
+        print(f"PIN MISMATCH: every example pins the Action by commit, with "
+              f"its tag in a comment beside it; not {loose}")
+        raise SystemExit(1)
+    named = {tag for _, _, tag in pins}
+    if len(named) != 1 or len({ref for _, ref, _ in pins}) != 1:
+        print(f"PIN MISMATCH: the examples pin more than one release: "
+              f"{sorted(set((ref, tag) for _, ref, tag in pins))}")
+        raise SystemExit(1)
+    tag = named.pop()
+    wrong = sorted({f"{doc}: {v}" for doc, v in installs if f"v{v}" != tag})
+    if wrong:
+        print(f"PIN MISMATCH: the examples pin {tag}, and install "
+              f"{', '.join(wrong)}")
+        raise SystemExit(1)
+    tags = _tag_commits(root)
+    if not tags:
+        print("note: no tag could be read (no network, no tags here), so the "
+              "Action pin was held to its form and not to a tag")
+        return
+
+    def order(t):
+        return tuple(int(x) for x in t[1:].split("."))
+
+    newest = max(tags, key=order)
+    if tag != newest:
+        print(f"PIN MISMATCH: the examples pin {tag}; the newest tag is "
+              f"{newest} ({tags[newest]}). Move the pin in README.md and "
+              f"EMBEDDING.md to that commit.")
+        raise SystemExit(1)
+    ref = pins[0][1]
+    if tags[newest] != ref:
+        print(f"PIN MISMATCH: the examples pin {ref} as {tag}, and {tag} is "
+              f"{tags[newest]}")
+        raise SystemExit(1)
+
+
 def main() -> int:
     check_versions()
     here = Path(__file__).parent
     examples = here / "examples"
+    # every example runs in this suite's own directory, with its own proof
+    # cache: effects.vel and ledger.vel write report.txt and ledger.txt
+    # where they run, and two runs of this suite at once must not share them
+    work = isolate("run_tests")
     extra = [a for a in sys.argv[1:] if a.startswith("--")]
     expect = dict(EXPECT)
     try:
@@ -268,7 +352,7 @@ def main() -> int:
             [sys.executable, str(here / "velaris.py"), str(path)]
             + budget + ARGS.get(name, []) + extra,
             capture_output=True, text=True, timeout=300,
-            input=STDIN.get(name))
+            input=STDIN.get(name), cwd=work)
         got = "RUNS" if r.returncode == 0 else "REJECTED"
         ok = got == want
         print(f"{'PASS' if ok else 'FAIL':4}  {name:22} expected {want:8} got {got}")

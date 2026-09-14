@@ -40,10 +40,13 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
-SCRATCH = HERE / "_secret_check.vel"
 
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
+from suite_dirs import isolate  # noqa: E402
+
+# its own directory and proof cache, so two runs at once do not collide
+SCRATCH = isolate("check_secret") / "_secret_check.vel"
 
 PASS = [0]
 FAIL = [0]

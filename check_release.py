@@ -41,7 +41,9 @@ CHECKS = HERE / "release_checks.py"
 sys.path.insert(0, str(HERE))
 import release_checks  # noqa: E402
 
-SCRATCH = Path(tempfile.mkdtemp(prefix="velaris-release-check-"))
+from suite_dirs import isolate  # noqa: E402
+
+SCRATCH = isolate("check_release")
 SERVER = release_checks.SERVER
 REPOSITORY = release_checks.REPOSITORY
 
@@ -448,6 +450,17 @@ def main() -> int:
     ok("a release's files are the 24 the v7.1.2 release holds, by name",
        sorted(release_checks.expected_assets("7.1.2")) == sorted(V712_ASSETS),
        set(release_checks.expected_assets("7.1.2")) ^ set(V712_ASSETS))
+    receipt_files = {"velaris-receipt-8.1.0.intoto.json",
+                     "velaris-receipt-8.1.0.cosign.sigstore.json",
+                     "velaris-receipt-8.1.0.sigstore-python.sigstore.json"}
+    ok("from 8.1.0 a release also holds the receipt of one run of the "
+       "attested example, signed both ways: 27 files, and 8.0.0 still 24",
+       len(release_checks.expected_assets("8.1.0")) == 27
+       and receipt_files <= set(release_checks.expected_assets("8.1.0"))
+       and len(release_checks.expected_assets("8.0.0")) == 24
+       and not any("receipt" in n
+                   for n in release_checks.expected_assets("8.0.0")),
+       release_checks.expected_assets("8.1.0"))
 
     stand_in = ThreadingHTTPServer(("127.0.0.1", 0), StandIn)
     threading.Thread(target=stand_in.serve_forever, daemon=True).start()

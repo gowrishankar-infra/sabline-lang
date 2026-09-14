@@ -322,7 +322,7 @@ jobs:
           if-no-files-found: error
 
   attestation:
-    name: a signed in-toto attestation of one example program
+    name: a signed in-toto attestation of one example program, and a receipt of one run of it
     needs: gate
     if: needs.gate.outputs.build == 'true'
     runs-on: ubuntu-latest
@@ -402,11 +402,76 @@ jobs:
           assert signed["subject"][0]["digest"]["sha256"] == digest, "another file"
           print("sigstore-python: verified, as", identity)
           EOF
+      # 8.1: the receipt of one run of the same program - the "after" to the
+      # attestation's "before", bound to the same bytes - signed and verified
+      # the same two ways. The program writes report.txt here, which is what
+      # its budget grants.
+      - name: The receipt of one run, from velaris --receipt
+        run: |
+          V=$(python -c "import velaris; print(velaris.VERSION)")
+          echo "REC=velaris-receipt-$V" >> "$GITHUB_ENV"
+          velaris examples/effects.vel \
+            --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand \
+            --receipt "velaris-receipt-$V.intoto.json"
+          cat "velaris-receipt-$V.intoto.json"
+          python - "velaris-receipt-$V.intoto.json" "$ATT.intoto.json" <<'EOF'
+          import json, sys
+          receipt = json.load(open(sys.argv[1], encoding="utf-8"))
+          attestation = json.load(open(sys.argv[2], encoding="utf-8"))
+          assert receipt["predicateType"] == "https://gowrishankar-infra.github.io/velaris-lang/receipt/v1"
+          assert receipt["subject"] == attestation["subject"], "not the attestation's subjects"
+          assert receipt["predicate"]["exit"]["outcome"] == "ok", receipt["predicate"]["exit"]
+          print("receipt: the attestation's subjects, outcome ok")
+          EOF
+      - name: The receipt, signed with cosign and with sigstore-python (keyless)
+        run: |
+          cosign attest-blob --yes --statement "$REC.intoto.json" \
+            --bundle "$REC.cosign.sigstore.json"
+          python - "$REC.intoto.json" "$REC.sigstore-python.sigstore.json" <<'EOF'
+          import sys
+          from sigstore.dsse import Statement
+          from sigstore.models import ClientTrustConfig
+          from sigstore.oidc import IdentityToken, detect_credential
+          from sigstore.sign import SigningContext
+          statement_file, bundle_file = sys.argv[1], sys.argv[2]
+          statement = Statement(open(statement_file, "rb").read())
+          context = SigningContext.from_trust_config(ClientTrustConfig.production())
+          with context.signer(IdentityToken(detect_credential())) as signer:
+              bundle = signer.sign_dsse(statement)
+          open(bundle_file, "w").write(bundle.to_json())
+          EOF
+      - name: Both receipt signatures verify, as this workflow, against the example's bytes
+        env:
+          RECEIPT_TYPE: https://gowrishankar-infra.github.io/velaris-lang/receipt/v1
+        run: |
+          IDENTITY="https://github.com/$GITHUB_REPOSITORY/.github/workflows/release.yml@$GITHUB_REF"
+          cosign verify-blob-attestation --bundle "$REC.cosign.sigstore.json" \
+            --type "$RECEIPT_TYPE" --certificate-identity "$IDENTITY" \
+            --certificate-oidc-issuer "$OIDC_ISSUER" examples/effects.vel
+          python - "$REC.sigstore-python.sigstore.json" "$REC.intoto.json" "$IDENTITY" <<'EOF'
+          import hashlib, json, os, sys
+          from sigstore.models import Bundle
+          from sigstore.verify import Verifier
+          from sigstore.verify.policy import Identity
+          bundle_file, statement_file, identity = sys.argv[1:4]
+          bundle = Bundle.from_json(open(bundle_file, "rb").read())
+          kind, payload = Verifier.production().verify_dsse(
+              bundle, Identity(identity=identity, issuer=os.environ["OIDC_ISSUER"]))
+          signed = json.loads(payload)
+          assert kind == "application/vnd.in-toto+json", kind
+          assert signed == json.load(open(statement_file, encoding="utf-8")), "not this Statement"
+          assert signed["predicateType"] == os.environ["RECEIPT_TYPE"]
+          digest = hashlib.sha256(open("examples/effects.vel", "rb").read()).hexdigest()
+          assert signed["subject"][0]["digest"]["sha256"] == digest, "another file"
+          print("sigstore-python: the receipt verified, as", identity)
+          EOF
       - name: Keep them
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: attestation
-          path: velaris-attestation-*
+          path: |
+            velaris-attestation-*
+            velaris-receipt-*
           if-no-files-found: error
 
   # ---- tag, then publish in order ---------------------------------------------

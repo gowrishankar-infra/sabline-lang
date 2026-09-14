@@ -15,7 +15,7 @@ inputs:
     required: false
     default: ""
   version:
-    description: "Which Velaris version to install. Default: the version matching the tag the Action itself was used at (so `@v8.0.0` installs velaris-lang 8.0.0), and the newest on PyPI only when the Action is used from a branch or a commit."
+    description: "Which Velaris version to install. Default: the Action's own version - the tag it was used at (`@v8.1.0` installs velaris-lang 8.1.0), or, when it is pinned to a commit, the version that commit's velaris.py names; the newest on PyPI only if that version is not there."
     required: false
     default: ""
   proofs:
@@ -67,25 +67,39 @@ runs:
       env:
         VERSION_INPUT: ${{ inputs.version }}
         ACTION_REF: ${{ github.action_ref }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         pkg="velaris-lang"
+        pinned=""
         if [ -n "$VERSION_INPUT" ]; then
           pkg="velaris-lang==$VERSION_INPUT"
         else
-          # default to the release the Action itself is used at, so the
-          # compiler and the Action are the same version (e.g. @v8.0.0
-          # installs velaris-lang 8.0.0). A branch or a commit ref has no
-          # version, so fall back to the newest on PyPI.
+          # default to the Action's own version, so the compiler and the
+          # Action agree: the tag it was used at (@v8.1.0 installs 8.1.0),
+          # or - pinned to a commit, as the README shows - the version that
+          # commit's velaris.py names. Only when neither gives a version
+          # that installs does it fall back to the newest on PyPI.
           ver="${ACTION_REF#v}"
-          if echo "$ver" | grep -qE '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+          if ! echo "$ver" | grep -qE '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+            ver=$(sed -n 's/^VERSION = "\([0-9.]*\)"$/\1/p' "$ACTION_PATH/velaris.py" 2>/dev/null | head -n 1)
+          fi
+          if [ -n "$ver" ]; then
             pkg="velaris-lang==$ver"
+            pinned="$ver"
           fi
         fi
-        echo "installing $pkg (action ref: ${ACTION_REF:-none})"
+        extra=""
         if [ "${{ inputs.proofs }}" = "true" ]; then
-          pip install "$pkg" z3-solver
-        else
-          pip install "$pkg"
+          extra="z3-solver"
+        fi
+        echo "installing $pkg (action ref: ${ACTION_REF:-none})"
+        if ! pip install "$pkg" $extra; then
+          if [ -n "$pinned" ]; then
+            echo "::warning::velaris-lang $pinned, the Action's own version, did not install; installing the newest on PyPI instead"
+            pip install velaris-lang $extra
+          else
+            exit 1
+          fi
         fi
         velaris doctor
 

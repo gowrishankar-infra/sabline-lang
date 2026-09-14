@@ -145,12 +145,16 @@ Usage:
   velaris <file> --allow io,fs:read:./data grant exactly this, nothing else
   velaris <file> --allow all               every effect; says so on stderr
   velaris <file> --allow all --deny net    every effect but these
+  velaris <file> --receipt FILE            and write the run's receipt
+                                           (velaris.receipt/1, in-toto)
   velaris migrate --to 5.0 [path]          the budget each program needs, and
         [--write]                          the command to run it under 5.0
   velaris fmt program.vel                  format to the canonical style
   velaris check program.vel                compile only, do not run
   velaris check f.vel --strict             refuse any promise left to runtime
   velaris check f.vel --sarif              findings as SARIF 2.1.0 on stdout
+  velaris check f.vel --check-timeout S    the ceiling on a check or audit
+        [--check-memory-mb M]              (60 s, 2048 MB; E613, E614)
   velaris proofs [path] [--min 80]         how much is proven, not just checked
   velaris proofs . --detail                which functions, one by one
   velaris proofs . --sarif                 promises left to runtime, as SARIF
@@ -169,6 +173,9 @@ Usage:
         [--max-timeout S]                  the same one python -m velaris_mcp
         [--max-memory-mb M]                starts; grants at most io, 30 s and
         [--log-file F] [--log minimal]     512 MB a run unless told otherwise
+        [--root DIR]                       imports only from DIR (E515)
+        [--check-timeout S]                and checks and audits under
+        [--check-memory-mb M]              60 s and 2048 MB
   velaris mcp-install                      set up the tools in your assistant
   velaris mcp-manifest -o tools.json       the MCP server's tools, hashed
   velaris mcp-verify tools.json            a running server against a signed
@@ -178,6 +185,11 @@ Usage:
         [--max-timeout S]                  most io, 30 s and 512 MB a run
         [--max-memory-mb M]                unless the operator says more
         [--log-file F] [--log minimal]     one JSON line per call
+        [--bind ADDR]                      127.0.0.1 unless named; says so
+        [--root DIR]                       imports only from DIR (E515)
+        [--rate-limit N]                   N requests a minute a token (600)
+        [--check-timeout S]                checks and audits under 60 s
+        [--check-memory-mb M]              and 2048 MB unless raised
   velaris capabilities init [path]         record the capability surface in
                                            velaris.capabilities (--force)
   velaris capabilities check [path]        fail if the surface widened past
@@ -193,6 +205,8 @@ Usage:
         [--json] [--corpus DIR]            corpus against this Velaris
   velaris attest <path> [--output FILE]    the audit as an in-toto Statement,
         [--json]                           each file by its sha256 (unsigned)
+  velaris eject program.vel [-o DIR]       a directory that runs with nothing
+        [--allow G] [--force]              from here, its budget fixed in it
   velaris explain <folder>                 a map of every file
   velaris doctor                           check the installation
   velaris new <name>                       start a fresh project
@@ -296,7 +310,7 @@ Usage:
 import json
 import os
 
-VERSION = "8.0.0"
+VERSION = "8.1.0"
 import re
 import sys
 from dataclasses import dataclass, field
@@ -618,6 +632,8 @@ ERROR_TABLE = {
     "E512": "an imported file cannot be found",
     "E513": "a function or record defined in two files",
     "E514": "a variable named like an import",
+    "E515": "an import from outside the directory a program is served "
+            "from, or of a file there that is not a .vel file",
     "E520": "a failure that is ignored: a call that can fail, not "
             "handled with check or passed up with try",
     "E521": "'try' in a function that cannot fail, or a failure that "
@@ -659,6 +675,8 @@ ERROR_TABLE = {
     "E610": "the run's time limit was reached and the program stopped",
     "E611": "the run's memory cap was reached and the program stopped",
     "E612": "a loop whose end cannot be shown (check --strict only)",
+    "E613": "a check or audit ran past its time ceiling and was stopped",
+    "E614": "a check or audit grew past its memory ceiling and was stopped",
     "E700": "a promise that is provably false, with the input that "
             "breaks it",
     "E701": "a call that can break the called function's 'requires', "
@@ -1391,6 +1409,38 @@ def unknown_function(name: str, line: int, known) -> VelarisError:
                                "check the spelling of the name"])
 
 
+# Where imports may come from, when a program is served rather than run by
+# the person who owns the disk (8.1). None - the default everywhere but the
+# doors - resolves an import wherever its path points, as it always has.
+# Set, an import must be a .vel file at or under this directory (realpath,
+# so `..` and a symbolic link cannot leave it) or a file of the shipped
+# standard library; anything else is E515 before the file is opened, so
+# whether it exists is not told either. The HTTP door and the MCP server set
+# it to the directory they serve (--root, the directory they were started
+# in by default); the library takes import_root=.
+IMPORT_ROOT = None
+
+
+def _stdlib_dir() -> str:
+    return os.path.normcase(os.path.realpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "stdlib")))
+
+
+def _import_refusal(path: str, root: str) -> str | None:
+    """Why `path` may not be imported under `root`, or None when it may."""
+    shown, shown_top = os.path.realpath(path), os.path.realpath(root)
+    real, top = os.path.normcase(shown), os.path.normcase(shown_top)
+    std = _stdlib_dir()
+    inside = (real == top or real.startswith(top.rstrip(os.sep) + os.sep)
+              or real.startswith(std + os.sep))
+    if not inside:
+        return (f"it resolves to {shown}, outside the directory this "
+                f"program is served from ({shown_top})")
+    if not real.endswith(os.path.normcase(".vel")):
+        return "it is not a .vel file"
+    return None
+
+
 def load_program(entry: str, entry_source: str | None = None,
                  loaded: list | None = None):
     """(functions, records) of the entry file and everything it imports.
@@ -1418,6 +1468,14 @@ def load_program(entry: str, entry_source: str | None = None,
         source = None
         if importer is None and entry_source is not None:
             source = entry_source
+        if importer is not None and IMPORT_ROOT is not None:
+            why = _import_refusal(path, IMPORT_ROOT)
+            if why is not None:
+                raise VelarisError("E515",
+                    f"cannot import '{path}': {why}", iline,
+                    fixes=["import a .vel file inside the served directory, "
+                           "or a file of the standard library"],
+                    file=importer)
         try:
             if source is None:
                 source = open(path, encoding="utf-8").read()
@@ -1438,12 +1496,30 @@ def load_program(entry: str, entry_source: str | None = None,
                 fixes=["check the path in the import line",
                        "paths are relative to the importing file"],
                 file=importer)
+        except UnicodeDecodeError:
+            raise VelarisError("E512",
+                f"cannot import '{path}': it is not UTF-8 text, so it is not "
+                f"Velaris source", iline,
+                fixes=["an import names a .vel file"], file=importer)
         if loaded is not None:
             loaded.append(path)
         try:
             tokens = lex(source)
             fs, rs, imports = Parser(tokens).parse_program()
         except VelarisError as e:
+            if importer is not None and not os.path.normcase(path).endswith(
+                    os.path.normcase(".vel")):
+                # a lexer or parser error quotes what it found, and in a
+                # file that is not Velaris source what it found is the
+                # file's content: `import "/home/me/.env"` answered
+                # "expected 'fn' but found 'API_KEY'". Until 8.1 that went
+                # to whoever sent the program - through the HTTP door and
+                # the MCP server included. The error now names the file
+                # and says nothing about what is in it.
+                raise VelarisError(e.code,
+                    f"'{path}' is imported, and it is not Velaris source; "
+                    f"what it holds is not shown", iline,
+                    fixes=["an import names a .vel file"], file=importer)
             e.file = e.file or path
             raise
         base = os.path.dirname(path)
@@ -1585,23 +1661,36 @@ def set_run_params(seed=None, freeze_time=None) -> None:
     import datetime
     import random as _random
     g = globals()
+    frozen = _frozen_epoch(freeze_time)       # a bad instant fails first
     g["SEED"] = None if seed is None else int(seed)
     g["_RNG"] = _random.Random(int(seed)) if seed is not None else None
+    g["FROZEN_TIME"] = frozen
+
+
+def _frozen_epoch(freeze_time) -> int | None:
+    """--freeze-time as epoch seconds: an int, or an ISO 8601 instant (UTC
+    when it names no zone). ValueError for anything else."""
+    import datetime
     if freeze_time is None:
-        g["FROZEN_TIME"] = None
-    elif isinstance(freeze_time, (int, float)):
-        g["FROZEN_TIME"] = int(freeze_time)
-    else:
-        text = str(freeze_time).strip().replace("Z", "+00:00")
-        try:
-            dt = datetime.datetime.fromisoformat(text)
-        except ValueError:
-            raise ValueError(
-                f"--freeze-time wants an ISO 8601 instant, as "
-                f"2026-01-01T00:00:00Z, not {freeze_time!r}")
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=datetime.timezone.utc)
-        g["FROZEN_TIME"] = int(dt.timestamp())
+        return None
+    if isinstance(freeze_time, (int, float)) and \
+            not isinstance(freeze_time, bool):
+        return int(freeze_time)
+    text = str(freeze_time).strip().replace("Z", "+00:00")
+    try:
+        dt = datetime.datetime.fromisoformat(text)
+    except ValueError:
+        raise ValueError(
+            f"--freeze-time wants an ISO 8601 instant, as "
+            f"2026-01-01T00:00:00Z, not {freeze_time!r}")
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    return int(dt.timestamp())
+
+
+# What a receipt is recording about the run in progress (8.1), or None when
+# nobody asked for one. Section 19 has the recorder.
+RUN_RECORDER = None
 
 
 def run_params() -> dict | None:
@@ -4759,12 +4848,23 @@ CACHE_DIR = ".velaris"                 # the stale project-local name, only
 CACHE_FILE = os.path.join(CACHE_DIR, "proofs.json")   # detected, never read
 
 
+CACHE_DIR_ENV = "VELARIS_CACHE_DIR"
+
+
 def _user_cache_dir() -> str | None:
     """The per-user proof-cache root, or None when one cannot be placed.
 
-    %LOCALAPPDATA%\\velaris\\proofs on Windows; $XDG_CACHE_HOME/velaris/proofs
-    or ~/.cache/velaris/proofs elsewhere. Never the program's directory."""
+    <VELARIS_CACHE_DIR>/velaris/proofs when that is set (8.1), so two runs
+    that must not share a cache - two test suites at once - each name
+    their own; otherwise %LOCALAPPDATA%\\velaris\\proofs on Windows and
+    $XDG_CACHE_HOME/velaris/proofs or ~/.cache/velaris/proofs elsewhere.
+    The cache is always a `velaris` directory under the base, so `velaris
+    clean` deletes that and never the base itself. Never the program's
+    directory."""
     try:
+        chosen = os.environ.get(CACHE_DIR_ENV, "").strip()
+        if chosen:
+            return os.path.join(os.path.abspath(chosen), "velaris", "proofs")
         if os.name == "nt":
             base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
         else:
@@ -4954,12 +5054,26 @@ def _cache_save(ref, data: dict) -> None:
     if ref is None:
         return
     cache_file, ap, ch = ref
+    import tempfile
     try:
         os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-        with open(cache_file, "w", encoding="utf-8") as f:
-            json.dump({"schema": "velaris.proofcache/1", "path": ap,
-                       "version": VERSION, "content_sha256": ch,
-                       "proofs": data}, f)
+        # written beside the cache file and renamed over it, so a reader
+        # running at the same moment - another check of the same file -
+        # sees the whole old entry or the whole new one, never half (8.1)
+        fd, tmp = tempfile.mkstemp(prefix=".proofs-", suffix=".tmp",
+                                   dir=os.path.dirname(cache_file))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump({"schema": "velaris.proofcache/1", "path": ap,
+                           "version": VERSION, "content_sha256": ch,
+                           "proofs": data}, f)
+            os.replace(tmp, cache_file)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
     except OSError:
         pass                            # a cache that cannot be written
                                         # is a slowdown, never an error
@@ -5159,6 +5273,14 @@ def loop_termination(fn, table: dict | None = None) -> list:
     return out
 
 
+def _shown_name(z3_name: str) -> str:
+    """A Z3 constant's name as a counterexample shows it: `xs#n`, the
+    length the prover keeps for a list `xs`, is `length(xs)`."""
+    if z3_name.endswith("#n"):
+        return f"length({z3_name[:-2]})"
+    return z3_name
+
+
 def check_proofs(funcs: list[Function], records: list,
                  errors: list, proven_out: set | None = None,
                  use_cache: bool = False,
@@ -5318,11 +5440,22 @@ def check_proofs(funcs: list[Function], records: list,
                         z3.ArraySort(z3.IntSort(), z3.StringSort()))
     SPLIT_N = z3.Function("split_count", z3.StringSort(),
                           z3.StringSort(), z3.IntSort())
-    _st, _ss = z3.String("__split_t"), z3.String("__split_s")
+    # Every name the prover makes up for itself - a quantifier's variable,
+    # a call's result, a loop's havoc value - starts with "!", and every
+    # name it derives from one of the program's own ("xs#n", the length of
+    # a list xs) holds "#". Neither character can appear in a Velaris
+    # identifier ([A-Za-z_][A-Za-z0-9_]*), so no parameter, variable or
+    # field can be the same Z3 constant as one of them. Until 8.1 these
+    # were spelled "__g_result_1" and "xs__n", which a program could
+    # write: a parameter named __g_result_1 was the same constant as the
+    # result of the call g(...), and a record field named xs__n the same
+    # as the length of its list field xs, and both made a false promise
+    # come back proven (SECURITY.md challenge #1; advisory-prover-names.md).
+    _st, _ss = z3.String("!split_t"), z3.String("!split_s")
     SPLIT_AXIOMS = [z3.ForAll([_st, _ss], SPLIT_N(_st, _ss) >= 1)]
     UPPER = z3.Function("upper", z3.StringSort(), z3.StringSort())
     LOWER = z3.Function("lower", z3.StringSort(), z3.StringSort())
-    _t = z3.String("__case_t")
+    _t = z3.String("!case_t")
     CASE_AXIOMS = [                     # changing case keeps the length
         z3.ForAll([_t], z3.Length(UPPER(_t)) == z3.Length(_t)),
         z3.ForAll([_t], z3.Length(LOWER(_t)) == z3.Length(_t)),
@@ -5337,7 +5470,7 @@ def check_proofs(funcs: list[Function], records: list,
     # which would have cost refutations elsewhere in the same program.
     # A sum is still not defined by them, so a counterexample that
     # mentions TOTAL may be one no real list has: has_fresh says so.
-    TOTAL = z3.Function("__total", z3.ArraySort(z3.IntSort(), z3.IntSort()),
+    TOTAL = z3.Function("!total", z3.ArraySort(z3.IntSort(), z3.IntSort()),
                         z3.IntSort(), z3.IntSort())
     total_facts: list = []
     _total_seen: set = set()
@@ -5352,7 +5485,7 @@ def check_proofs(funcs: list[Function], records: list,
             key = str(term)
             if key not in _total_seen:
                 _total_seen.add(key)
-                k = z3.Int(f"__total_k{len(_total_seen)}")
+                k = z3.Int(f"!total_k{len(_total_seen)}")
 
                 def every(cmp, k=k, lv=lv):
                     return z3.ForAll([k], z3.Implies(
@@ -5381,7 +5514,7 @@ def check_proofs(funcs: list[Function], records: list,
         if not z3.is_expr(e):
             return False
         if z3.is_app(e) and e.num_args() and \
-                e.decl().name() == "__total":
+                e.decl().name() == "!total":
             return True
         return any(mentions_total(c) for c in e.children())
 
@@ -5459,7 +5592,7 @@ def check_proofs(funcs: list[Function], records: list,
                     and z3.is_int(by) and provably_positive(by, ctx):
                 return rounded(a, by, mode)
         counter[0] += 1
-        return z3.Int(f"__{mb}_result_{counter[0]}")
+        return z3.Int(f"!{mb}.result{counter[0]}")
 
     def map_parts(t: str):
         """('Map of Text to Int') -> ('Text', 'Int') if both are modelable."""
@@ -5477,7 +5610,7 @@ def check_proofs(funcs: list[Function], records: list,
         key_t, val_t = parts
         ks, vs = MAP_SORTS[key_t](), MAP_SORTS[val_t]()
         return MapVal(z3.Array(name, ks, vs),
-                      z3.Array(name + "__has", ks, z3.BoolSort()),
+                      z3.Array(name + "#has", ks, z3.BoolSort()),
                       key_t, val_t)
 
     def mk(name: str, t: str):
@@ -5497,7 +5630,7 @@ def check_proofs(funcs: list[Function], records: list,
                 out[f] = mk(f"{prefix}.{f}", ft)
             elif ft == "List of Int":
                 arr = z3.Array(f"{prefix}.{f}", z3.IntSort(), z3.IntSort())
-                out[f] = ListVal(arr, z3.Int(f"{prefix}.{f}__n"))
+                out[f] = ListVal(arr, z3.Int(f"{prefix}.{f}#n"))
             else:
                 out[f] = mk_rec(f"{prefix}.{f}", ft)
         return RecVal(rname, out)
@@ -5514,7 +5647,7 @@ def check_proofs(funcs: list[Function], records: list,
 
     def fresh(t: str, base: str):
         counter[0] += 1
-        return mk(f"__{base}_result_{counter[0]}", t)
+        return mk(f"!{base}.result{counter[0]}", t)
 
     class Ctx:
         """Per-path proof state: path conditions + facts assumed so far.
@@ -5543,14 +5676,14 @@ def check_proofs(funcs: list[Function], records: list,
         if isinstance(e, RecElem):
             return has_fresh(e.idx) or has_fresh(e.src.length)
         if z3.is_app(e) and e.num_args() and \
-                e.decl().name() == "__total":
+                e.decl().name() == "!total":
             return True              # a sum Z3 was never told the value of
         if isinstance(e, MapVal):
             return has_fresh(e.vals) or has_fresh(e.present)
         if isinstance(e, GridVal):
             return (has_fresh(e.rows) or has_fresh(e.lens)
                     or has_fresh(e.length))
-        if z3.is_const(e) and e.decl().name().startswith("__"):
+        if z3.is_const(e) and e.decl().name().startswith("!"):
             return True
         return any(has_fresh(c) for c in e.children())
 
@@ -5708,13 +5841,13 @@ def check_proofs(funcs: list[Function], records: list,
         check_requires_at(fnB, args_z3, ctx, node.line)
         if amounts_back:
             counter[0] += 1
-            base = f"__{fnB.name}_result_{counter[0]}"
+            base = f"!{fnB.name}.result{counter[0]}"
             rv = ListVal(z3.Array(base, z3.IntSort(), z3.IntSort()),
-                         z3.Int(base + "__n"))
+                         z3.Int(base + "#n"))
             ctx.assum.append(rv.length >= 0)
         elif fnB.return_type in rec_fields:
             counter[0] += 1
-            rv = mk_rec(f"__{fnB.name}_result_{counter[0]}",
+            rv = mk_rec(f"!{fnB.name}.result{counter[0]}",
                         fnB.return_type)
         else:
             rv = fresh(erase_wrappers(fnB.return_type), fnB.name)
@@ -5792,7 +5925,7 @@ def check_proofs(funcs: list[Function], records: list,
             if pfn is None:
                 raise Unprovable()      # predicate came through a variable
             counter[0] += 1
-            k = z3.Int(f"__q{counter[0]}")
+            k = z3.Int(f"!q{counter[0]}")
             body = predicate_formula(pfn, z3.Select(a0.arr, k))
             inside = z3.And(k >= 0, k < a0.length)
             if node.name == "all_of":
@@ -6020,9 +6153,10 @@ def check_proofs(funcs: list[Function], records: list,
         if verdict_of(solver) == z3.sat:
             m = solver.model()
             names = sorted({d.name() for d in m.decls()
-                            if not d.name().startswith("__")})
+                            if not d.name().startswith("!")})
             shown = ", ".join(
-                f"{n} = {m.eval(z3.Int(n), model_completion=True)}"
+                f"{_shown_name(n)} = "
+                f"{m.eval(z3.Int(n), model_completion=True)}"
                 for n in names[:3])
             word = "divide by" if op == "/" else "take the remainder of"
             raise VelarisError("E706",
@@ -6085,7 +6219,7 @@ def check_proofs(funcs: list[Function], records: list,
                     except Unprovable:
                         if pt.startswith("List of "):
                             counter[0] += 1
-                            ln = z3.Int(f"__arg_len_{counter[0]}")
+                            ln = z3.Int(f"!arg_len{counter[0]}")
                             v = OpaqueList(ln)
                         else:
                             v = None
@@ -6228,7 +6362,7 @@ def check_proofs(funcs: list[Function], records: list,
                     if not isinstance(lv, ListVal):
                         raise KeyError(n)
                     counter[0] += 1
-                    k = z3.Int(f"__qq{counter[0]}")
+                    k = z3.Int(f"!qq{counter[0]}")
                     return z3.ForAll([k], z3.Implies(
                         z3.And(k >= 0, k < lv.length),
                         predicate_formula(pfn, z3.Select(lv.arr, k))))
@@ -6378,41 +6512,41 @@ def check_proofs(funcs: list[Function], records: list,
             old = env.get(n)
             if isinstance(old, RecVal):
                 counter[0] += 1
-                out[n] = mk_rec(f"__{n}_{counter[0]}", old.rname)
+                out[n] = mk_rec(f"!{n}.{counter[0]}", old.rname)
             elif isinstance(old, ListVal):
                 counter[0] += 1
-                arr = z3.Array(f"__{n}_arr_{counter[0]}",
+                arr = z3.Array(f"!{n}.arr{counter[0]}",
                                z3.IntSort(), z3.IntSort())
-                ln = z3.Int(f"__{n}_len_{counter[0]}")
+                ln = z3.Int(f"!{n}.len{counter[0]}")
                 out[n] = ListVal(arr, ln)
                 facts.append(ln >= 0)
             elif old is not None and z3.is_bool(old):
                 out[n] = fresh("Bool", n)
             elif old is not None and isinstance(old, GridVal):
                 counter[0] += 1
-                base = f"__{n}_grid_{counter[0]}"
+                base = f"!{n}.grid{counter[0]}"
                 inner = z3.ArraySort(z3.IntSort(), z3.IntSort())
-                gl = z3.Int(base + "__n")
+                gl = z3.Int(base + "#n")
                 out[n] = GridVal(z3.Array(base, z3.IntSort(), inner),
-                                 z3.Array(base + "__lens", z3.IntSort(),
+                                 z3.Array(base + "#lens", z3.IntSort(),
                                           z3.IntSort()), gl)
                 facts.append(gl >= 0)
             elif old is not None and isinstance(old, RecListVal):
                 counter[0] += 1
-                arrays = {f: z3.Array(f"__{n}_{f}_{counter[0]}",
+                arrays = {f: z3.Array(f"!{n}.{f}{counter[0]}",
                                       z3.IntSort(), z3.IntSort())
                           for f in old.arrays}
-                ln = z3.Int(f"__{n}_rlen_{counter[0]}")
+                ln = z3.Int(f"!{n}.rlen{counter[0]}")
                 out[n] = RecListVal(old.rname, arrays, ln)
                 facts.append(ln >= 0)
             elif old is not None and isinstance(old, OpaqueList):
                 counter[0] += 1
-                ln = z3.Int(f"__{n}_olen_{counter[0]}")
+                ln = z3.Int(f"!{n}.olen{counter[0]}")
                 out[n] = OpaqueList(ln)
                 facts.append(ln >= 0)
             elif old is not None and isinstance(old, MapVal):
                 counter[0] += 1
-                out[n] = mk_map(f"__{n}_havoc_{counter[0]}",
+                out[n] = mk_map(f"!{n}.havoc{counter[0]}",
                                 f"Map of {old.key_t} to {old.val_t}")
             elif old is not None and z3.is_string(old):
                 out[n] = fresh("Text", n)
@@ -6594,23 +6728,23 @@ def check_proofs(funcs: list[Function], records: list,
                 env[pname] = mk(pname, ptype)
             elif ptype == "List of Int":
                 arr = z3.Array(pname, z3.IntSort(), z3.IntSort())
-                ln = z3.Int(pname + "__n")
+                ln = z3.Int(pname + "#n")
                 env[pname] = ListVal(arr, ln)
                 list_facts.append(ln >= 0)
             elif ptype == "List of Text":
                 arr = z3.Array(pname, z3.IntSort(), z3.StringSort())
-                ln = z3.Int(pname + "__n")
+                ln = z3.Int(pname + "#n")
                 env[pname] = ListVal(arr, ln)
                 list_facts.append(ln >= 0)
             elif ptype == "List of List of Int":
                 inner = z3.ArraySort(z3.IntSort(), z3.IntSort())
                 rows = z3.Array(pname, z3.IntSort(), inner)
-                lens = z3.Array(pname + "__lens", z3.IntSort(),
+                lens = z3.Array(pname + "#lens", z3.IntSort(),
                                 z3.IntSort())
-                ln = z3.Int(pname + "__n")
+                ln = z3.Int(pname + "#n")
                 env[pname] = GridVal(rows, lens, ln)
                 list_facts.append(ln >= 0)
-                k0 = z3.Int(pname + "__k")
+                k0 = z3.Int(pname + "#k")
                 list_facts.append(z3.ForAll(
                     [k0], z3.Select(lens, k0) >= 0))
             elif ptype in rec_fields and provable_rec(ptype):
@@ -6623,9 +6757,9 @@ def check_proofs(funcs: list[Function], records: list,
                 for fname, ftype in rec_fields[rname]:
                     if ftype == "Int":
                         arrays[fname] = z3.Array(
-                            f"{pname}__{fname}", z3.IntSort(),
+                            f"{pname}#{fname}", z3.IntSort(),
                             z3.IntSort())
-                ln = z3.Int(pname + "__n")
+                ln = z3.Int(pname + "#n")
                 env[pname] = RecListVal(rname, arrays, ln)
                 list_facts.append(ln >= 0)
             elif ptype.startswith("List of "):
@@ -6633,7 +6767,7 @@ def check_proofs(funcs: list[Function], records: list,
                 # and length is what contracts about lists usually say.
                 # Without this, one length(items) in a conjunction threw
                 # the whole requires away, checkable parts included.
-                ln = z3.Int(pname + "__n")
+                ln = z3.Int(pname + "#n")
                 env[pname] = OpaqueList(ln)
                 list_facts.append(ln >= 0)
             elif ptype.startswith("Map of "):
@@ -8058,7 +8192,11 @@ def run_builtin(name: str, args: list, line: int):
             raise FailSignal(f"cannot read file '{args[0]}'")
     if name == "declassify":
         # the effect was spent before this ran; a Secret is a compile-time
-        # distinction, so at this point the value is simply itself
+        # distinction, so at this point the value is simply itself. A
+        # receipt records that it happened, where, and the reason written
+        # in the call (a literal: E561) - never the value (8.1)
+        if RUN_RECORDER is not None:
+            RUN_RECORDER.note("declassify", reason=str(args[1]), line=line)
         return args[0]
     if name == "write_file":
         real = allow_path("write", str(args[0]), name, line)
@@ -8110,6 +8248,7 @@ def run_builtin(name: str, args: list, line: int):
                 "body": e.read(1 << 20).decode("utf-8", errors="replace"),
                 "headers": {k: v for k, v in (e.headers or {}).items()}}
         except _RedirectRefused as e:     # sent somewhere it may not go
+            _note_redirect(line)
             raise FailSignal(f"'{url}' redirected to '{e.target}', which "
                              f"this run does not allow: {e.why}")
         except Exception as e:            # say what happened, not how
@@ -8153,6 +8292,7 @@ def run_builtin(name: str, args: list, line: int):
                 return int(e.code)
             raise FailSignal(f"'{url}' answered with status {e.code}")
         except _RedirectRefused as e:     # sent somewhere it may not go
+            _note_redirect(line)
             raise FailSignal(f"'{url}' redirected to '{e.target}', which "
                              f"this run does not allow: {e.why}")
         except Exception:
@@ -8600,7 +8740,9 @@ def contract_coverage(functions: list, records: list) -> list:
     return out
 
 
-def inspect_source(path: str, source: str | None = None, require_main: bool = False) -> dict:
+def inspect_source(path: str, source: str | None = None,
+                   require_main: bool = False,
+                   use_cache: bool | None = None) -> dict:
     """Everything a reader wants to know about a program, as data.
 
     Used by 'velaris explain' and the browser inspector: for each
@@ -8628,7 +8770,8 @@ def inspect_source(path: str, source: str | None = None, require_main: bool = Fa
     if not errors:
         try:
             check_proofs(funcs, records, errors, proved,
-                         use_cache="--no-cache" not in sys.argv,
+                         use_cache=("--no-cache" not in sys.argv
+                                    if use_cache is None else use_cache),
                          timeouts_out=abandoned,
                          source_path=path, source_text=source)
         except VelarisError as e:
@@ -9810,6 +9953,87 @@ def _read_token_file(path: str) -> tuple:
 # were only the values used when a caller sent none.
 DOOR_MAX_TIMEOUT = 30
 DOOR_MAX_MEMORY_MB = 512
+# requests a minute the HTTP door answers for one token - or, for requests
+# without it, one address - unless --rate-limit says otherwise (8.1)
+DOOR_RATE_LIMIT = 600
+
+
+def check_ceilings(timeout_flag, memory_flag) -> tuple:
+    """(most seconds, most MB) one check or audit through a door may take,
+    from --check-timeout and --check-memory-mb (None when not given): the
+    ceiling `velaris check` has, 60 seconds and 2048 MB unless raised. A
+    value that is not one is a ValueError holding the sentence to show."""
+    most_time = CHECK_TIMEOUT_DEFAULT
+    if timeout_flag is not None:
+        if not (_ascii_digits(str(timeout_flag)) and int(timeout_flag) >= 1):
+            raise ValueError("--check-timeout needs a whole number of "
+                             "seconds, 1 or more, as --check-timeout 120")
+        most_time = int(timeout_flag)
+    most_memory = CHECK_MEMORY_MB_DEFAULT
+    if memory_flag is not None:
+        if not (_ascii_digits(str(memory_flag)) and int(memory_flag) >= 1):
+            raise ValueError("--check-memory-mb needs a whole number of MB, "
+                             "1 or more, as --check-memory-mb 4096")
+        most_memory = int(memory_flag)
+    return most_time, most_memory
+
+
+def _token_matches(given: list, want) -> bool:
+    """Does the one Authorization header a request carries hold the door's
+    bearer token? `want` is the token's sha256 digest, or None when the door
+    takes no token. The comparison is secrets.compare_digest over the two
+    sha256 digests: its time depends on neither how long the guess is nor
+    how much of it is right. A request with no header, two headers or
+    another scheme is refused before any comparison; none of that is about
+    the token."""
+    import hashlib
+    import secrets
+    if want is None:
+        return True
+    if len(given) != 1:
+        return False
+    scheme, _, value = given[0].strip().partition(" ")
+    if scheme.lower() != "bearer":
+        return False
+    got = hashlib.sha256(value.strip().encode("latin-1", "replace")).digest()
+    return secrets.compare_digest(got, want)
+
+
+class _RateLimit:
+    """At most `per_minute` requests a minute for each key: a bucket of that
+    many that refills evenly, so a burst up to the limit is answered and a
+    steady stream past it is not. The door keys a request by its token when
+    it carries the right one, and by its address otherwise, so a caller
+    guessing tokens is limited too and cannot spend the holder's allowance.
+    At most KEEP keys are remembered; the least recently seen goes first."""
+
+    KEEP = 4096
+
+    def __init__(self, per_minute: int):
+        import threading as _threading
+        self.per_minute = int(per_minute)
+        self._rate = self.per_minute / 60.0
+        self._lock = _threading.Lock()
+        self._buckets: dict = {}
+
+    def take(self, key: str) -> float:
+        """0 when this request may go ahead; otherwise the seconds until
+        one could."""
+        import time as _t
+        now = _t.monotonic()
+        with self._lock:
+            level, last = self._buckets.pop(key, (float(self.per_minute),
+                                                  now))
+            level = min(float(self.per_minute),
+                        level + (now - last) * self._rate)
+            if level >= 1.0:
+                level, wait = level - 1.0, 0.0
+            else:
+                wait = (1.0 - level) / self._rate
+            self._buckets[key] = (level, now)
+            while len(self._buckets) > self.KEEP:
+                self._buckets.pop(next(iter(self._buckets)))
+        return wait
 
 
 def door_ceilings(timeout_flag, memory_flag) -> tuple:
@@ -9895,8 +10119,10 @@ def serve_main(argv: list) -> int:
     import secrets
     import urllib.parse
 
-    valued = {"--port", "--host", "--max-allow", "--token-file",
-              "--log-file", "--log", "--max-timeout", "--max-memory-mb"}
+    valued = {"--port", "--host", "--bind", "--max-allow", "--token-file",
+              "--log-file", "--log", "--max-timeout", "--max-memory-mb",
+              "--root", "--rate-limit", "--check-timeout",
+              "--check-memory-mb"}
     opts: dict = {}
     i = 0
     while i < len(argv):
@@ -9922,9 +10148,10 @@ def serve_main(argv: list) -> int:
         # case it is a token typed where it should not be
         shown = f" '{a}'" if re.fullmatch(r"--[a-z][a-z-]{0,30}", a) else ""
         print(f"velaris serve: unknown argument{shown}. It takes --port, "
-              f"--host, --max-allow, --max-timeout, --max-memory-mb, "
-              f"--token-file, --no-auth, --log-file and --log.",
-              file=sys.stderr)
+              f"--bind (or --host), --max-allow, --max-timeout, "
+              f"--max-memory-mb, --check-timeout, --check-memory-mb, "
+              f"--root, --rate-limit, --token-file, --no-auth, --log-file "
+              f"and --log.", file=sys.stderr)
         return 2
 
     # Read VELARIS_TOKEN and take it out of the environment whichever
@@ -9964,7 +10191,13 @@ def serve_main(argv: list) -> int:
               file=sys.stderr)
         return 2
 
-    host = opts.get("--host", "127.0.0.1")
+    if "--bind" in opts and "--host" in opts \
+            and opts["--bind"] != opts["--host"]:
+        return refuse("--bind and --host are two names for one setting; "
+                      "give one")
+    # loopback unless the operator widens it, and a widened door says so on
+    # stderr before it listens (8.1 names the flag --bind; --host still is)
+    host = opts.get("--bind", opts.get("--host", "127.0.0.1"))
     if no_auth and host not in ("127.0.0.1", "localhost"):
         return refuse(f"--no-auth is refused with --host {host}: without "
                       f"a token, anyone who can reach the port can run "
@@ -9994,8 +10227,25 @@ def serve_main(argv: list) -> int:
     try:
         most_time, most_memory = door_ceilings(opts.get("--max-timeout"),
                                                opts.get("--max-memory-mb"))
+        check_time, check_memory = check_ceilings(
+            opts.get("--check-timeout"), opts.get("--check-memory-mb"))
     except ValueError as e:
         return refuse(str(e))
+    rate = opts.get("--rate-limit", str(DOOR_RATE_LIMIT))
+    if not (_ascii_digits(rate) and int(rate) >= 1):
+        return refuse("--rate-limit needs a whole number of requests a "
+                      "minute, 1 or more, as --rate-limit 600")
+    limiter = _RateLimit(int(rate))
+    # the directory a request's imports may come from (8.1): a source is
+    # compiled as a file in it, so its relative imports resolve there, and
+    # an import that leaves it - or is not a .vel file - is E515. Until 8.1
+    # a request could import any file the door's user could read, and an
+    # error quoted what it found there.
+    served = opts.get("--root", os.getcwd())
+    if not os.path.isdir(served):
+        return refuse(f"--root: {served} is not a directory")
+    served = os.path.realpath(served)
+    request_file = os.path.join(served, ".velaris-request.vel")
 
     def over_ceiling(what: str) -> dict:
         return {"error": what, "max_allow": ceiling_list,
@@ -10017,6 +10267,11 @@ def serve_main(argv: list) -> int:
     # ceiling is checked before a pool is asked for, so a pool never
     # exists for a budget this server would refuse.
     pools = _self.PoolRegistry()
+    # checks and audits run on their own workers, under the check ceiling,
+    # so a crafted program answers E613 or E614 instead of holding a
+    # request thread (8.1); a worker that answers is kept
+    checker = _self.Pool(size=2, timeout=check_time,
+                         max_memory_mb=check_memory, import_root=served)
     endpoints = {("GET", "/health"), ("GET", "/"), ("GET", "/card"),
                  ("POST", "/check"), ("POST", "/audit"), ("POST", "/run")}
 
@@ -10039,17 +10294,15 @@ def serve_main(argv: list) -> int:
                 self.wfile.write(body)
 
         def authorized(self) -> bool:
-            if want is None:
-                return True
-            given = self.headers.get_all("Authorization") or []
-            if len(given) != 1:
-                return False
-            scheme, _, value = given[0].strip().partition(" ")
-            if scheme.lower() != "bearer":
-                return False
-            got = hashlib.sha256(
-                value.strip().encode("latin-1", "replace")).digest()
-            return secrets.compare_digest(got, want)
+            return _token_matches(self.headers.get_all("Authorization")
+                                  or [], want)
+
+        def bucket(self) -> str:
+            """Whose allowance a request spends: the token's when it
+            carries the right one, its address's otherwise."""
+            if want is not None and self.authorized():
+                return "token"
+            return "client:" + str(self.client_address[0])
 
         def not_local(self):
             """With --no-auth, what stands in for the token against a web
@@ -10100,7 +10353,16 @@ def serve_main(argv: list) -> int:
             rec = {"outcome": "error", "budget": None, "effects": None,
                    "refusals": [], "source": None}
             try:
-                code, payload, headers = self.route(method, where, rec)
+                wait = limiter.take(self.bucket())
+                if wait:
+                    self.drain()
+                    rec["outcome"] = "rate_limited"
+                    code, payload, headers = 429, {
+                        "error": "too many requests",
+                        "rate_limit": limiter.per_minute}, (
+                        ("Retry-After", str(max(1, int(wait + 0.999)))),)
+                else:
+                    code, payload, headers = self.route(method, where, rec)
                 try:
                     self.answer(code, payload, headers)
                 except OSError:
@@ -10125,6 +10387,9 @@ def serve_main(argv: list) -> int:
                 doc["max_allow"] = sorted(max_allow)
                 doc["max_timeout"] = most_time
                 doc["max_memory_mb"] = most_memory
+                doc["check_timeout"] = check_time
+                doc["check_memory_mb"] = check_memory
+                doc["rate_limit"] = limiter.per_minute
                 doc["endpoints"] = ["POST /check", "POST /audit",
                                     "POST /run", "GET /card"]
             return doc
@@ -10175,13 +10440,15 @@ def serve_main(argv: list) -> int:
                 return 400, {"error": "send {\"source\": ...}"}, ()
             rec["source"] = source
             try:
-                if where == "/check":
-                    got = _self.check(source)
-                    rec["outcome"] = "ok" if got.ok else "problems"
-                    return 200, got.as_dict(), ()
-                if where == "/audit":
-                    got = _self.audit(source)
-                    rec["outcome"] = "ok" if got.ok else "problems"
+                if where in ("/check", "/audit"):
+                    got = (checker.check(source, path=request_file)
+                           if where == "/check"
+                           else checker.audit(source, path=request_file))
+                    stopped = {p.code for p in got.problems} \
+                        & {"E613", "E614"}
+                    rec["outcome"] = ("timeout" if "E613" in stopped else
+                                      "out_of_memory" if "E614" in stopped
+                                      else "ok" if got.ok else "problems")
                     return 200, got.as_dict(), ()
                 asked = body.get("allow") or ["io"]
                 if not isinstance(asked, list) or \
@@ -10216,13 +10483,19 @@ def serve_main(argv: list) -> int:
                 if seed is not None and not isinstance(seed, int):
                     rec["outcome"] = "bad_request"
                     return 400, {"error": "seed is a whole number"}, ()
+                want_receipt = body.get("receipt", False)
+                if not isinstance(want_receipt, bool):
+                    rec["outcome"] = "bad_request"
+                    return 400, {"error": "receipt is true or false"}, ()
                 try:
                     out = pools.run(
                         source, allow=set(asked),
                         stdin=body.get("stdin", ""),
                         args=body.get("args") or [],
                         seed=seed, freeze_time=frozen,
-                        timeout=timeout, max_memory_mb=memory)
+                        timeout=timeout, max_memory_mb=memory,
+                        path=request_file, import_root=served,
+                        _name="<source>")
                 except ValueError as e:      # a bad --freeze-time, say
                     rec["outcome"] = "bad_request"
                     return 400, {"error": str(e)}, ()
@@ -10232,16 +10505,29 @@ def serve_main(argv: list) -> int:
                 rec["outcome"] = run_outcome(out)
                 rec["refusals"] = run_refusals(out)
                 payload = out.as_dict()
+                if not want_receipt:
+                    payload.pop("receipt", None)    # on request (8.1)
                 payload["allowed"] = sorted(asked)
                 return 200, payload, ()
             except Exception as e:
                 rec["outcome"] = "error"
                 return 500, {"error": f"{type(e).__name__}: {e}"}, ()
 
+    if host not in ("127.0.0.1", "localhost"):
+        # said before listening, so the line is there even when the bind
+        # fails - whoever widened the door sees that they did
+        print("  WARNING: not bound to localhost. This endpoint RUNS "
+              "programs, and it speaks plain HTTP: the token crosses the "
+              "network readable by anyone on the path unless a TLS proxy "
+              "sits in front. Do not expose it to a network you do not "
+              "control.", file=sys.stderr)
+        sys.stderr.flush()
     try:
         httpd = http.server.ThreadingHTTPServer((host, port), Door)
     except OSError as e:
         log.close()
+        checker.close()
+        pools.close()
         return refuse(f"cannot listen on {host}:{port}: {e.strerror or e}")
     port = httpd.server_address[1]
 
@@ -10253,6 +10539,11 @@ def serve_main(argv: list) -> int:
     print(f"  each run at most: {most_time:g} second(s), {most_memory} MB"
           + ("" if "--max-timeout" in opts and "--max-memory-mb" in opts
              else "   (--max-timeout, --max-memory-mb)"))
+    print(f"  each check or audit at most: {check_time} second(s), "
+          f"{check_memory} MB   (--check-timeout, --check-memory-mb)")
+    print(f"  imports from: {served}   (--root)")
+    print(f"  at most {limiter.per_minute} requests a minute per token, or "
+          f"per address without it   (--rate-limit)")
     if token is not None:
         print("  every endpoint but GET /health needs "
               "'Authorization: Bearer <token>'")
@@ -10273,12 +10564,6 @@ def serve_main(argv: list) -> int:
             "  web page in a browser here cannot use it; nothing stops a",
             "  local program.",
             bar]), file=sys.stderr)
-    if host not in ("127.0.0.1", "localhost"):
-        print("  WARNING: not bound to localhost. This endpoint RUNS "
-              "programs, and it speaks plain HTTP: the token crosses the "
-              "network readable by anyone on the path unless a TLS proxy "
-              "sits in front. Do not expose it to a network you do not "
-              "control.", file=sys.stderr)
     if token_file and os.name != "nt":
         try:
             if os.stat(token_file).st_mode & 0o077:
@@ -10299,6 +10584,7 @@ def serve_main(argv: list) -> int:
     finally:
         httpd.server_close()
         pools.close()                     # no worker outlives the door
+        checker.close()
         log.close()
     return 0
 
@@ -10335,7 +10621,7 @@ def migrate_needs(path: str) -> dict:
     except OSError as e:
         return {"path": path, "ok": False, "why": str(e), "allow": None}
     try:
-        report = audit(source, path=path)
+        report = _audit_here(source, path=path)
     except Exception as e:                 # a file that does not parse
         return {"path": path, "ok": False, "why": str(e), "allow": None}
     if not report.ok:
@@ -10559,24 +10845,30 @@ CHECK_MEMORY_MB_DEFAULT = 2048      # MB, the whole check or audit
 def _check_ceiling(argv: list) -> int:
     """Run `velaris check`/`audit` in a child under a time and memory
     ceiling and pass its output through. The child carries VELARIS_CHECK_CHILD
-    so it does the work directly rather than spawning again. On the clock
-    the child is killed and this returns 2 with a clear message."""
+    so it does the work directly rather than spawning again. Past the clock
+    the child is killed (E613), past the memory cap it is stopped (E614),
+    and this returns 2 with a clear message either way."""
     import subprocess
-    timeout = CHECK_TIMEOUT_DEFAULT
+    limits = {"--check-timeout": CHECK_TIMEOUT_DEFAULT,
+              "--check-memory-mb": CHECK_MEMORY_MB_DEFAULT}
     rest = list(argv)
-    if "--check-timeout" in rest:
-        at = rest.index("--check-timeout")
+    for flag, example, unit in (("--check-timeout", "120", "seconds"),
+                                ("--check-memory-mb", "4096", "MB")):
+        if flag not in rest:
+            continue
+        at = rest.index(flag)
         if at + 1 >= len(rest) or not _ascii_digits(rest[at + 1]) \
                 or int(rest[at + 1]) < 1:
-            print("--check-timeout needs a whole number of seconds, as "
-                  "--check-timeout 120", file=sys.stderr)
+            print(f"{flag} needs a whole number of {unit}, as "
+                  f"{flag} {example}", file=sys.stderr)
             return 2
-        timeout = int(rest[at + 1])
+        limits[flag] = int(rest[at + 1])
         del rest[at:at + 2]
+    timeout, memory = limits["--check-timeout"], limits["--check-memory-mb"]
     env = dict(os.environ, VELARIS_CHECK_CHILD="1")
     cmd = [sys.executable, os.path.abspath(__file__)] + rest
     proc, job, _how = _spawn_capped(
-        cmd, CHECK_MEMORY_MB_DEFAULT, env=env,
+        cmd, memory, env=env,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         try:
@@ -10584,17 +10876,27 @@ def _check_ceiling(argv: list) -> int:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.communicate()
-            print(f"{rest[0]} did not finish within {timeout} second(s) and "
-                  f"was stopped: the source may be crafted to stall the "
-                  f"checker. Raise the ceiling with --check-timeout, or run "
-                  f"it in a sandbox you control.\n  reference: {REFERENCE_URL}",
-                  file=sys.stderr)
+            print(f"error[E613] {rest[0]} did not finish within {timeout} "
+                  f"second(s) and was stopped: the source may be crafted to "
+                  f"stall the checker. Raise the ceiling with "
+                  f"--check-timeout, or run it in a sandbox you control.\n"
+                  f"  reference: {REFERENCE_URL}", file=sys.stderr)
             return 2
     finally:
         if job is not None:
             job.close()
+    said = err.decode("utf-8", "replace")
+    if proc.returncode != 0 and ("MemoryError" in said
+                                 or "Cannot allocate" in said
+                                 or proc.returncode in (-9, 137)):
+        sys.stdout.write(out.decode("utf-8", "replace"))
+        print(f"error[E614] {rest[0]} used more than {memory} MB and was "
+              f"stopped: the source may be crafted to bloat the checker. "
+              f"Raise the cap with --check-memory-mb, or run it in a sandbox "
+              f"you control.\n  reference: {REFERENCE_URL}", file=sys.stderr)
+        return 2
     sys.stdout.write(out.decode("utf-8", "replace"))
-    sys.stderr.write(err.decode("utf-8", "replace"))
+    sys.stderr.write(said)
     return proc.returncode
 
 
@@ -10602,6 +10904,8 @@ def main() -> int:
     argv = sys.argv[1:]
     if argv[:1] == ["--pool-worker"]:
         return pool_worker(argv[1:])       # one child behind velaris.Pool
+    if os.environ.get("VELARIS_CHECK_CHILD") == "1":
+        globals()["_IN_CHILD"] = True      # already under the ceiling
     # check and audit run under a ceiling (8.0), unless we are already the
     # child doing so, or --no-check-ceiling was asked for
     if argv[:1] in (["check"], ["audit"]) \
@@ -10792,6 +11096,8 @@ def main() -> int:
         return conformance_main(argv[1:])
     if argv[:1] == ["attest"]:
         return attest_main(argv[1:])
+    if argv[:1] == ["eject"]:
+        return eject_main(argv[1:])
     if argv[:1] == ["mcp-manifest"]:
         return mcp_manifest_main(argv[1:])
     if argv[:1] == ["mcp-verify"]:
@@ -10915,7 +11221,7 @@ def main() -> int:
             # the Action all emit - so a consumer meets one shape from
             # every door (spec Q3, resolved in 3.3). Before 3.3 this
             # printed an older, unversioned summary the schema rejected.
-            result = audit(open(target, encoding="utf-8").read(),
+            result = _audit_here(open(target, encoding="utf-8").read(),
                            path=target)
             print(json.dumps(result.as_dict(), indent=2))
             return 0 if result.ok else 1
@@ -11388,7 +11694,7 @@ def main() -> int:
     # took for itself. Until 2.62 `--allow io` leaked in as two words.
     FLAGS = {"--json", "--no-native", "--time", "--check", "--no-cache"}
     VALUED = {"--allow", "--deny", "--timeout", "--max-memory-mb",
-              "--max-read", "--seed", "--freeze-time"}
+              "--max-read", "--seed", "--freeze-time", "--receipt"}
     rest, skip = [], False
     for a in sys.argv[2:]:
         if skip:
@@ -11398,8 +11704,76 @@ def main() -> int:
         elif a not in FLAGS:
             rest.append(a)
     PROGRAM_ARGS[:] = rest
+    if "--receipt" in sys.argv:
+        try:
+            receipt_to = _flag_value(sys.argv, "--receipt")
+        except BudgetError as e:
+            print(str(e), file=sys.stderr)
+            return 2
+        return _cli_run_with_receipt(filename, as_json, budget, receipt_to)
+    return _cli_run(filename, as_json)
+
+
+def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
+                          receipt_to: str) -> int:
+    """`velaris file.vel --receipt FILE` (8.1): the run, then its
+    velaris.receipt/1 Statement written to FILE - whether it ended well,
+    was refused, failed or called exit_with. The receipt is written once
+    the program has finished, so nothing the program wrote to that path
+    survives it. A receipt that cannot be written is said on stderr, and a
+    run that was otherwise clean exits 2."""
+    import posixpath
+    import time as _t
     try:
-        funcs, records = load_program(filename)
+        with open(filename, "rb") as fh:
+            entry_bytes = fh.read()
+    except OSError:
+        entry_bytes = b""
+    recorder = _RunRecorder()
+    loaded: list = []
+    started_at, t0 = _utc_now_ms(), _t.monotonic()
+    status, raised = 1, None
+    globals()["RUN_RECORDER"] = recorder
+    try:
+        status = _cli_run(filename, as_json, loaded=loaded)
+    except SystemExit as e:
+        raised = e
+        status = e.code if isinstance(e.code, int) else \
+            (0 if e.code is None else 1)
+    finally:
+        globals()["RUN_RECORDER"] = None
+    name = posixpath.normpath(filename.replace(os.sep, "/"))
+    if loaded:
+        recorder.subjects = _receipt_subjects(filename, name, entry_bytes,
+                                              loaded)
+    stop = recorder.stop or {}
+    result = RunResult(status == 0 and not stop, "", "",
+                       [Problem(stop["code"], "", stop.get("line"), filename,
+                                [])] if stop else [],
+                       None, status, effects_used=dict(EFFECT_USES))
+    doc = receipt_statement(
+        recorder, name=name, entry_bytes=entry_bytes, budget=budget.spec(),
+        parameters=_run_parameters(SEED, FROZEN_TIME, None, None),
+        result=result, started_at=started_at,
+        wall_time_ms=(_t.monotonic() - t0) * 1000)
+    try:
+        with open(receipt_to, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
+    except OSError as e:
+        print(f"velaris: the receipt could not be written to {receipt_to}: "
+              f"{e.strerror or e}", file=sys.stderr)
+        if raised is None and status == 0:
+            status = 2
+    if raised is not None:
+        raise raised
+    return status
+
+
+def _cli_run(filename: str, as_json: bool, loaded: list | None = None) -> int:
+    """`velaris file.vel`: compile, prove, and run, under the budget main()
+    installed. `loaded` gets the files read, for a receipt."""
+    try:
+        funcs, records = load_program(filename, loaded=loaded)
         errors: list[VelarisError] = []
         check_effects(funcs, errors)  # superpower 1: no hidden effects
         check_types(funcs, records, errors)  # superpower 2: no type surprises
@@ -11426,9 +11800,12 @@ def main() -> int:
                       file=sys.stderr)
                 if len(errors) > 1:
                     print(f"\nfound {len(errors)} problems", file=sys.stderr)
+            _note_stop(errors[0].code, errors[0].line)
             return 1
         native = ({} if "--no-native" in sys.argv
                   else compile_native(funcs, proven))
+        if RUN_RECORDER is not None:
+            RUN_RECORDER.compiled = True
         import time as _t
         t0 = _t.perf_counter()
         interpret(funcs, native)
@@ -11438,6 +11815,7 @@ def main() -> int:
             print(f"[--time] ran in {ms:.1f} ms ({mode})", file=sys.stderr)
         return 0
     except VelarisError as e:
+        _note_error(e)
         print(e.machine(filename) if as_json else e.human(filename), file=sys.stderr)
         return 1
 
@@ -11518,23 +11896,29 @@ class RunResult:
     """What a run did. `effects_used` (3.4) maps each effect to how many
     builtin calls the budget let through - what the program actually
     performed, as the runtime saw it. It is {} when nothing ran and None
-    when the run happened in a child process that could not report it
-    (run() with a timeout or memory cap outside a pool, or a pool worker
-    that was killed). What a granted ffi module does inside Python is
-    not seen: it counts as ffi calls, nothing more."""
+    when the worker that ran it was killed before it could say (the
+    timeout, the memory cap). What a granted ffi module does inside
+    Python is not seen: it counts as ffi calls, nothing more.
+
+    `receipt` (8.1) is the run's velaris.receipt/1 record, an in-toto
+    Statement bound to the same subjects `attest` names: the budget, every
+    refusal and declassification, the run's parameters, how it ended and
+    how long it took - and no value the program handled."""
 
     __slots__ = ("ok", "output", "logs", "problems", "refused_effect",
-                 "exit_code", "timed_out", "out_of_memory", "effects_used")
+                 "exit_code", "timed_out", "out_of_memory", "effects_used",
+                 "receipt")
 
     def __init__(self, ok, output, logs, problems, refused_effect,
                  exit_code, timed_out=False, out_of_memory=False,
-                 effects_used=None):
+                 effects_used=None, receipt=None):
         self.ok, self.output, self.logs = ok, output, logs
         self.problems, self.refused_effect = problems, refused_effect
         self.exit_code = exit_code
         self.timed_out = timed_out
         self.out_of_memory = out_of_memory
         self.effects_used = effects_used
+        self.receipt = receipt
 
     def as_dict(self) -> dict:
         return {"ok": self.ok, "output": self.output, "logs": self.logs,
@@ -11543,7 +11927,15 @@ class RunResult:
                 "exit_code": self.exit_code,
                 "timed_out": self.timed_out,
                 "out_of_memory": self.out_of_memory,
-                "effects_used": self.effects_used}
+                "effects_used": self.effects_used,
+                "receipt": self.receipt}
+
+
+def _problem_of(d) -> Problem:
+    """A Problem back from its as_dict() form, as a worker sends it."""
+    d = d if isinstance(d, dict) else {}
+    return Problem(d.get("code"), d.get("message"), d.get("line"),
+                   d.get("file"), d.get("fixes") or [])
 
 
 def _as_problem(e, where) -> Problem:
@@ -11814,9 +12206,63 @@ def _safe_grants(effects, modules_named, paths, hosts) -> list:
     return out
 
 
-def check(source: str, *, path: str | None = None,
-          prove: bool = True) -> CheckResult:
-    """Compile without running. Every problem, plus what was proven."""
+def _ceiling_args(timeout, max_memory_mb) -> None:
+    """ValueError when a check's, an audit's or an attestation's ceiling
+    is not one."""
+    if timeout is not None and not (
+            isinstance(timeout, (int, float))
+            and not isinstance(timeout, bool)
+            and 0 < timeout < float("inf")):
+        raise ValueError("timeout is a number of seconds greater than 0, "
+                         "or None for no ceiling")
+    if max_memory_mb is not None and not (
+            isinstance(max_memory_mb, int)
+            and not isinstance(max_memory_mb, bool) and max_memory_mb >= 1):
+        raise ValueError("max_memory_mb is a whole number of MB, 1 or more, "
+                         "or None for no cap")
+
+
+# True in a process that is itself the bounded child of a check, an audit
+# or a pool, so that a library call there does its work in place rather
+# than start another child under the one already bounded.
+_IN_CHILD = False
+
+
+def check(source: str, *, path: str | None = None, prove: bool = True,
+          timeout=CHECK_TIMEOUT_DEFAULT,
+          max_memory_mb=CHECK_MEMORY_MB_DEFAULT,
+          import_root=None) -> CheckResult:
+    """Compile without running. Every problem, plus what was proven.
+
+    From 8.1 the check runs in a child process under a ceiling: `timeout`
+    seconds and `max_memory_mb` MB, 60 and 2048 unless given - the ceiling
+    `velaris check` has had since 8.0. Source crafted to stall the prover
+    or bloat the checker comes back as a problem, E613 for the clock and
+    E614 for memory, instead of holding the caller. Raise either for a
+    large program; None for both checks in this process with no ceiling,
+    as every check did before 8.1. The child costs an interpreter's
+    startup; velaris.Pool(...).check() keeps one alive.
+
+    `import_root`, when given, is the directory imports must stay inside
+    (E515 otherwise): pass it when the source is someone else's.
+    """
+    _ceiling_args(timeout, max_memory_mb)
+    if (timeout is not None or max_memory_mb is not None) and not _IN_CHILD:
+        with Pool(size=1, timeout=timeout, max_memory_mb=max_memory_mb,
+                  import_root=import_root) as pool:
+            return pool.check(source, path=path, prove=prove)
+    saved = IMPORT_ROOT
+    if import_root is not None:
+        globals()["IMPORT_ROOT"] = os.path.realpath(str(import_root))
+    try:
+        return _check_here(source, path=path, prove=prove)
+    finally:
+        globals()["IMPORT_ROOT"] = saved
+
+
+def _check_here(source: str, *, path: str | None = None,
+                prove: bool = True) -> CheckResult:
+    """check() in this process, with no ceiling."""
     where, temp = _source_to_file(source, path)
     try:
         problems, proven, runtime = [], set(), []
@@ -11842,15 +12288,58 @@ def check(source: str, *, path: str | None = None,
             os.unlink(temp)
 
 
-def audit(source: str, *, path: str | None = None) -> AuditResult:
+def audit(source: str, *, path: str | None = None,
+          timeout=CHECK_TIMEOUT_DEFAULT,
+          max_memory_mb=CHECK_MEMORY_MB_DEFAULT,
+          import_root=None) -> AuditResult:
     """What this program can touch, promise and fail at.
 
     The same answer `velaris audit` prints, as data, with a schema name
     so a dashboard or an agent can rely on its shape.
+
+    Under the same ceiling as check() from 8.1, with the same defaults and
+    the same way out: an audit that does not finish in time or in memory
+    comes back `ok: false` with E613 or E614 as its problem, and every
+    other field saying nothing was determined. `import_root` as in check().
     """
+    _ceiling_args(timeout, max_memory_mb)
+    if (timeout is not None or max_memory_mb is not None) and not _IN_CHILD:
+        with Pool(size=1, timeout=timeout, max_memory_mb=max_memory_mb,
+                  import_root=import_root) as pool:
+            return pool.audit(source, path=path)
+    saved = IMPORT_ROOT
+    if import_root is not None:
+        globals()["IMPORT_ROOT"] = os.path.realpath(str(import_root))
+    try:
+        return _audit_here(source, path=path)
+    finally:
+        globals()["IMPORT_ROOT"] = saved
+
+
+def _unfinished_audit(problem: "Problem") -> AuditResult:
+    """The velaris.audit/1 document of an audit that was stopped: ok false,
+    the problem that stopped it, and nothing determined."""
+    return AuditResult(
+        schema=AUDIT_SCHEMA, velaris_version=VERSION, ok=False,
+        problems=[problem], effects=[], functions=[], proven_share=None,
+        safe_command="velaris <file> --allow ''",
+        warnings=[problem.message], ffi_modules=[], loops_unshown=0,
+        contract_coverage=[],
+        fs_paths={"read": [], "write": [], "read_any": False,
+                  "write_any": False},
+        net_hosts={"hosts": [], "any": False}, ffi_any=False, counts=None,
+        prover=False, secrets=None, ffi_native={})
+
+
+def _audit_here(source: str, *, path: str | None = None) -> AuditResult:
+    """audit() in this process, with no ceiling."""
     where, temp = _source_to_file(source, path)
     try:
-        report = inspect_source(where, source if path else None)
+        # the library never uses the proof cache (README.md): until 8.1
+        # audit() did, and wrote an entry for every temporary file a
+        # source was put in, so a long-running door grew it without end
+        report = inspect_source(where, source if path else None,
+                                use_cache=False)
         own = [f for f in report["functions"]
                if os.path.abspath(f["file"]) == os.path.abspath(where)]
         # A uses clause naming anything but the seven does not compile
@@ -11986,7 +12475,8 @@ def run(source: str, *, path: str | None = None,
         args: list | None = None, stdin: str = "",
         native: bool = True, timeout: float | None = None,
         max_memory_mb: int | None = None,
-        seed: int | None = None, freeze_time=None) -> RunResult:
+        seed: int | None = None, freeze_time=None,
+        import_root=None) -> RunResult:
     """Run a program under an effect budget and capture what it did.
 
     allow={"io"} means it cannot read files, reach the network, call
@@ -12017,27 +12507,68 @@ def run(source: str, *, path: str | None = None,
     keeps workers alive under one budget and is about a hundred times
     faster for a small program; EMBEDDING.md states what it does and
     does not carry between programs.
+
+    The result's `receipt` (8.1) is the signed-to-be record of this run
+    (receipt_statement). `import_root` as in check(): the directory
+    imports must stay inside, for a source someone else wrote.
     """
     if timeout is not None or max_memory_mb is not None:
         return _run_bounded(source, path=path, allow=allow, deny=deny,
                             args=args, stdin=stdin, native=native,
                             timeout=timeout, max_memory_mb=max_memory_mb,
-                            seed=seed, freeze_time=freeze_time)
-    return _run_in_process(source, path=path,
-                           budget=_budget_from(allow, deny),
-                           args=args, stdin=stdin, native=native,
-                           seed=seed, freeze_time=freeze_time)
+                            seed=seed, freeze_time=freeze_time,
+                            import_root=import_root)
+    budget = _budget_from(allow, deny)
+    saved = IMPORT_ROOT
+    if import_root is not None:
+        globals()["IMPORT_ROOT"] = os.path.realpath(str(import_root))
+    try:
+        return _run_in_process(source, path=path, budget=budget,
+                               args=args, stdin=stdin, native=native,
+                               seed=seed, freeze_time=freeze_time)
+    finally:
+        globals()["IMPORT_ROOT"] = saved
 
 
 def _run_in_process(source, *, path, budget, args, stdin,
-                    native, seed=None, freeze_time=None) -> RunResult:
+                    native, seed=None, freeze_time=None,
+                    emit=None, name=None) -> RunResult:
     """run() with the budget already parsed, in THIS process.
 
     The budget is installed, the program runs under it, and whatever
     budget was in place before is put back - so several audits and runs
     can share a process, and so a pool worker comes back to its own
     budget after every program it serves.
+
+    The result carries the run's receipt (8.1). `emit`, when given, is
+    handed each thing the receipt records as it happens: a pool worker
+    streams them to its parent, which keeps them if the worker is killed
+    before it can answer.
     """
+    import time as _time
+    recorder = _RunRecorder(emit)
+    saved_recorder = RUN_RECORDER
+    started_at, t0 = _utc_now_ms(), _time.monotonic()
+    globals()["RUN_RECORDER"] = recorder
+    try:
+        result = _run_program(source, path=path, budget=budget, args=args,
+                              stdin=stdin, native=native, seed=seed,
+                              freeze_time=freeze_time, name=name)
+    finally:
+        globals()["RUN_RECORDER"] = saved_recorder
+    result.receipt = receipt_statement(
+        recorder, name=_entry_name(path, name),
+        entry_bytes=source.encode("utf-8", "surrogatepass"),
+        budget=budget.spec(),
+        parameters=_run_parameters(seed, freeze_time, None, None),
+        result=result, started_at=started_at,
+        wall_time_ms=(_time.monotonic() - t0) * 1000)
+    return result
+
+
+def _run_program(source, *, path, budget, args, stdin, native, seed,
+                 freeze_time, name) -> RunResult:
+    """The run itself, for _run_in_process, which adds its receipt."""
     import io as _io
     import contextlib
     where, temp = _source_to_file(source, path)
@@ -12053,7 +12584,16 @@ def _run_in_process(source, *, path, budget, args, stdin,
         budget.install()
         set_run_params(seed, freeze_time)     # --seed / --freeze-time (8.0)
         PROGRAM_ARGS[:] = list(args or [])
-        result = check(source, path=path)
+        read: list = []
+        try:
+            load_program(where, source if path else None, loaded=read)
+        except Exception:                  # the check below says why
+            pass
+        if RUN_RECORDER is not None:
+            RUN_RECORDER.set_subjects(_receipt_subjects(
+                where, _entry_name(path, name),
+                source.encode("utf-8", "surrogatepass"), read))
+        result = _check_here(source, path=path)
         if not result.ok:
             return RunResult(False, "", "", result.problems, None, 1,
                              effects_used={})
@@ -12062,6 +12602,8 @@ def _run_in_process(source, *, path, budget, args, stdin,
         proven: set = set()
         check_proofs(funcs, records, errors, proven, use_cache=False)
         compiled = compile_native(funcs, proven) if native else {}
+        if RUN_RECORDER is not None:
+            RUN_RECORDER.compiled = True
         with contextlib.redirect_stdout(out), \
                 contextlib.redirect_stderr(err):
             old_stdin = sys.stdin
@@ -12073,10 +12615,12 @@ def _run_in_process(source, *, path, budget, args, stdin,
     except SystemExit as e:
         code = int(e.code or 0)
     except VelarisError as e:
+        _note_error(e)
         problems = [_as_problem(e, where)]
         refused = _refused_from(e.code, e.message)
         code = 1
     except FailSignal as e:
+        _note_stop("E521", 0)
         problems = [Problem("E521", f"a failure escaped: {e.reason}", 0,
                             where, ["handle it with check"])]
         code = 1
@@ -12149,6 +12693,17 @@ def _refused_from(code: str, message: str):
     if code == "E315":
         m = re.search(r" (fs|net) operation", message)
         return (m.group(1) if m else "") + "@count"
+    # 8.1: the three refusals 7.1.2 and 8.0 added were left out here, so a
+    # run stopped by one reported refused_effect None and the doors logged
+    # it as "failed" rather than "refused"
+    if code == "E316":
+        return "fs@size"
+    if code == "E317":
+        m = re.search(r"its host (\S+) is outside", message)
+        return "net:" + m.group(1) if m else "net"
+    if code == "E318":
+        m = re.search(r"reaches '([^']+)'", message)
+        return "fs:" + m.group(1) if m else "fs"
     return None
 
 
@@ -12329,92 +12884,23 @@ def memory_cap_is_enforced() -> bool:
 
 
 def _run_bounded(source, *, path, allow, deny, args, stdin, native,
-                 timeout, max_memory_mb, seed=None, freeze_time=None) -> RunResult:
-    """run() in a child process that can be killed."""
-    import subprocess
-    where, temp = _source_to_file(source, path)
-    try:
-        budget = _budget_from(allow, deny)
-    except ValueError:
-        if temp:
-            os.unlink(temp)
-        raise
+                 timeout, max_memory_mb, seed=None, freeze_time=None,
+                 import_root=None) -> RunResult:
+    """run() in a child process that can be killed: a pool of one worker,
+    made for this run and closed after it.
 
-    # compile first, in this process: a program that does not compile
-    # never needs a child, and the problems come back the normal way
-    result = check(source, path=path)
-    if not result.ok:
-        if temp:
-            os.unlink(temp)
-        return RunResult(False, "", "", result.problems, None, 1,
-                         effects_used={})
-
-    # the same budget, spelled out with absolute paths, so the child
-    # parses to exactly what this process would have enforced
-    cmd = [sys.executable, os.path.abspath(__file__), where,
-           "--allow", budget.spec() or "''"]
-    if not native:
-        cmd.append("--no-native")
-    if max_memory_mb is not None:
-        # the child caps itself on POSIX; on Windows the job object
-        # below does it, and this only records what was asked for
-        cmd += ["--max-memory-mb", str(int(max_memory_mb))]
-    if seed is not None:
-        cmd += ["--seed", str(int(seed))]
-    if freeze_time is not None:
-        cmd += ["--freeze-time", str(freeze_time)]
-    cmd += list(args or [])
-
-    timed_out = False
-    out, err, code = "", "", 0
-    proc, job, _how = _spawn_capped(
-        cmd, max_memory_mb, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-    try:
-        try:
-            raw_out, raw_err = proc.communicate(
-                stdin.encode("utf-8"), timeout=timeout)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            proc.kill()
-            raw_out, raw_err = proc.communicate()
-        out = raw_out.decode("utf-8", "replace")
-        err = raw_err.decode("utf-8", "replace")
-        code = 124 if timed_out else proc.returncode
-    finally:
-        if job is not None:
-            job.close()
-        if temp:
-            os.unlink(temp)
-
-    problems, refused = [], None
-    out_of_memory = False
-    if timed_out:
-        problems.append(Problem(
-            "E610", f"the program ran longer than {timeout} second(s) "
-                    f"and was stopped", 0, where,
-            ["give it more time, or fix the loop that never ends"]))
-    elif code != 0:
-        text = err.strip()
-        m = re.search(r"error\[(E\d{3})\] (.+)", text)
-        if m:
-            problems.append(Problem(m.group(1), m.group(2).strip(), 0,
-                                    where, []))
-            refused = _refused_from(m.group(1), m.group(2))
-        elif "MemoryError" in text or code in (-9, 137) or \
-                "Cannot allocate" in text:
-            out_of_memory = True
-            problems.append(Problem(
-                "E611", f"the program used more than {max_memory_mb} MB "
-                        f"and was stopped", 0, where,
-                ["give it more memory, or find what is growing"]))
-        else:
-            problems.append(Problem("E000", text.splitlines()[0][:200]
-                                    if text else f"exit code {code}",
-                                    0, where, []))
-    ok = code == 0 and not problems
-    return RunResult(ok, out, err if not problems else "", problems,
-                     refused, code, timed_out, out_of_memory)
+    Until 8.1 this started the command line in a child and compiled the
+    program first in THIS process, with no ceiling at all - so a program
+    crafted to stall the prover held the caller of run(timeout=5) for as
+    long as it liked before the timeout ever started. The worker compiles
+    under the deadline, reports effects_used like any pool run, and
+    streams what the receipt records, so a run killed by the clock still
+    has one."""
+    with Pool(size=1, allow=allow, deny=deny, timeout=timeout,
+              max_memory_mb=max_memory_mb, native=native,
+              import_root=import_root) as pool:
+        return pool.run(source, stdin=stdin, args=args, path=path,
+                        seed=seed, freeze_time=freeze_time)
 
 
 # ---------------------------------------------------------------------------
@@ -12445,13 +12931,15 @@ import weakref
 MUTABLE_GLOBALS = ("PROGRAM_ARGS", "EFFECT_BUDGET", "FFI_MODULES",
                    "FS_GRANTS", "NET_GRANTS", "OP_LIMITS", "OP_COUNTS",
                    "EFFECT_USES", "PY_OBJECTS", "PY_NEXT", "TRACE",
-                   "_NATIVE_KEEPALIVE", "SEED", "FROZEN_TIME", "_RNG")
+                   "_NATIVE_KEEPALIVE", "SEED", "FROZEN_TIME", "_RNG",
+                   "RUN_RECORDER", "IMPORT_ROOT")
 
 
 def program_state_baseline() -> dict:
     """What this process looked like before it ran anyone's program."""
     return {"cwd": os.getcwd(), "env": dict(os.environ),
-            "recursion": sys.getrecursionlimit()}
+            "recursion": sys.getrecursionlimit(),
+            "import_root": IMPORT_ROOT}
 
 
 def reset_program_state(budget: "Budget | None" = None,
@@ -12500,9 +12988,13 @@ def reset_program_state(budget: "Budget | None" = None,
     _NATIVE_KEEPALIVE.clear()
     TRACE.update({"on": False, "depth": 0, "calls": 0, "limit": 4000})
     set_run_params(None, None)         # --seed / --freeze-time, per program
+    globals()["RUN_RECORDER"] = None   # a receipt is one program's (8.1)
     (budget if budget is not None else Budget()).install()
     if baseline is None:
         return
+    # the root imports are held to is the pool's, like its budget: a program
+    # granted ffi could reach this module and clear it for the next one
+    globals()["IMPORT_ROOT"] = baseline.get("import_root")
     try:
         if os.getcwd() != baseline["cwd"]:
             os.chdir(baseline["cwd"])
@@ -12574,6 +13066,11 @@ def pool_worker(argv: list) -> int:
         # POSIX caps itself here; on Windows the parent put this process
         # in a job object before it was allowed to run at all
         _cap_this_process(argv[argv.index("--max-memory-mb") + 1])
+    # a check or an audit asked of this worker is already under its
+    # parent's deadline and this process's cap: do it here, not in a child
+    globals()["_IN_CHILD"] = True
+    if "--import-root" in argv:
+        globals()["IMPORT_ROOT"] = argv[argv.index("--import-root") + 1]
     try:
         budget = Budget.parse(spec)
     except BudgetError as e:
@@ -12601,14 +13098,29 @@ def pool_worker(argv: list) -> int:
         if request is None or request.get("stop"):
             return 0                       # the parent closed the pipe
         reset_program_state(budget, baseline)
+
+        def emit(event):
+            _msg_write(replies, {"event": event})
+
+        op = request.get("op") or "run"
         try:
-            answer = _run_in_process(
-                request.get("source") or "", path=request.get("path"),
-                budget=budget, args=request.get("args") or [],
-                stdin=request.get("stdin") or "",
-                seed=request.get("seed"),
-                freeze_time=request.get("freeze_time"),
-                native=native).as_dict()
+            if op == "check":
+                answer = {"check": _check_here(
+                    request.get("source") or "", path=request.get("path"),
+                    prove=bool(request.get("prove", True))).as_dict()}
+            elif op == "audit":
+                answer = {"audit": _audit_here(
+                    request.get("source") or "",
+                    path=request.get("path")).as_dict()}
+            else:
+                answer = _run_in_process(
+                    request.get("source") or "", path=request.get("path"),
+                    budget=budget, args=request.get("args") or [],
+                    stdin=request.get("stdin") or "",
+                    seed=request.get("seed"),
+                    freeze_time=request.get("freeze_time"),
+                    native=native, emit=emit,
+                    name=request.get("name")).as_dict()
         except MemoryError:
             answer = {"out_of_memory": True}
         except Exception as e:             # a defect in the compiler, not
@@ -12653,10 +13165,13 @@ class _Worker:
     def stderr(self) -> str:
         return "".join(self._noise).strip()
 
-    def ask(self, request: dict, timeout):
-        """Send one program and wait. None means the worker did not
-        answer: killed by the deadline, or dead for another reason."""
+    def ask(self, request: dict, timeout) -> tuple:
+        """Send one request and wait: (answer, events). The answer is None
+        when the worker did not give one - killed by the deadline, or dead
+        for another reason. The events are what the worker streamed while
+        it worked (what a receipt records), kept even when it was killed."""
         self.killed_by_timeout = False
+        events: list = []
         alarm = None
         if timeout is not None:
             alarm = threading.Timer(timeout, self._deadline)
@@ -12666,8 +13181,13 @@ class _Worker:
             try:
                 _msg_write(self.proc.stdin, request)
             except (OSError, ValueError):
-                return None
-            return _msg_read(self.proc.stdout)
+                return None, events
+            while True:
+                message = _msg_read(self.proc.stdout)
+                if message is None or "event" not in message:
+                    return message, events
+                if isinstance(message["event"], dict):
+                    events.append(message["event"])
         finally:
             if alarm is not None:
                 alarm.cancel()
@@ -12803,13 +13323,18 @@ class Pool:
 
     def __init__(self, size: int = 4, *, allow: set | None = None,
                  deny: set | None = None, timeout: float | None = None,
-                 max_memory_mb: int | None = None, native: bool = True):
+                 max_memory_mb: int | None = None, native: bool = True,
+                 import_root=None):
         if int(size) < 1:
             raise ValueError("a pool needs at least one worker")
         self.size = int(size)
         self.timeout = timeout
         self.max_memory_mb = max_memory_mb
         self.native = native
+        # the directory imports must stay inside (8.1), fixed like the
+        # budget: every worker is started with it
+        self.import_root = (None if import_root is None
+                            else os.path.realpath(str(import_root)))
         self._budget = _budget_from(allow, deny)   # a bad grant fails here,
         self.allow = self._budget.spec()           # before any worker starts
         self._free: "_queue.Queue" = _queue.Queue()
@@ -12826,13 +13351,76 @@ class Pool:
     # ---- using it ----------------------------------------------------
     def run(self, source: str, *, stdin: str = "", args: list | None = None,
             path: str | None = None, seed: int | None = None,
-            freeze_time=None) -> RunResult:
+            freeze_time=None, _name: str | None = None) -> RunResult:
         """Run one program on this pool, under the pool's budget.
 
-        The same RunResult `velaris.run` returns, including timed_out
-        and out_of_memory. `seed` and `freeze_time` fix the run's
-        randomness and clock (8.0); they are not grants.
+        The same RunResult `velaris.run` returns, including timed_out,
+        out_of_memory and, from 8.1, the run's receipt. `seed` and
+        `freeze_time` fix the run's randomness and clock (8.0); they are
+        not grants.
         """
+        started_at = _utc_now_ms()
+        _run_parameters(seed, freeze_time, self.timeout,
+                        self.max_memory_mb)       # a bad instant fails here
+        answer, events, worker, seconds = self._use(
+            {"op": "run", "source": source, "stdin": stdin or "",
+             "args": list(args or []), "path": path, "seed": seed,
+             "freeze_time": freeze_time, "name": _name},
+            lambda a: bool(a) and bool(a.get("ok")))
+        if answer is not None and "ok" in answer:
+            result = RunResult(
+                bool(answer.get("ok")), answer.get("output") or "",
+                answer.get("logs") or "",
+                [_problem_of(p) for p in answer.get("problems") or []],
+                answer.get("refused_effect"), answer.get("exit_code") or 0,
+                bool(answer.get("timed_out")),
+                bool(answer.get("out_of_memory")),
+                answer.get("effects_used"))
+        else:
+            result = self._no_answer(worker, answer, path)
+        result.receipt = self._receipt(
+            source, path, _name, seed, freeze_time, answer, events, result,
+            started_at, seconds)
+        return result
+
+    def check(self, source: str, *, path: str | None = None,
+              prove: bool = True) -> CheckResult:
+        """check() on a worker of this pool (8.1): under the pool's timeout
+        and memory cap, E613 or E614 when it passes one. A worker that
+        answers is kept - nothing of the program ran in it."""
+        answer, _events, worker, _s = self._use(
+            {"op": "check", "source": source, "path": path,
+             "prove": bool(prove)},
+            lambda a: bool(a) and isinstance(a.get("check"), dict))
+        got = (answer or {}).get("check")
+        if isinstance(got, dict):
+            return CheckResult(
+                bool(got.get("ok")),
+                [_problem_of(p) for p in got.get("problems") or []],
+                list(got.get("proven") or []),
+                list(got.get("runtime_checked") or []))
+        return CheckResult(False, [self._stopped(worker, answer, path,
+                                                 "check")], [], [])
+
+    def audit(self, source: str, *, path: str | None = None) -> AuditResult:
+        """audit() on a worker of this pool (8.1), under its limits."""
+        answer, _events, worker, _s = self._use(
+            {"op": "audit", "source": source, "path": path},
+            lambda a: bool(a) and isinstance(a.get("audit"), dict))
+        got = (answer or {}).get("audit")
+        if isinstance(got, dict):
+            fields = {k: got.get(k) for k in AuditResult.__slots__}
+            fields["problems"] = [_problem_of(p)
+                                  for p in got.get("problems") or []]
+            return AuditResult(**fields)
+        return _unfinished_audit(self._stopped(worker, answer, path,
+                                               "audit"))
+
+    def _use(self, request: dict, keep_if) -> tuple:
+        """One request to an idle worker: (answer, events, the worker,
+        seconds it took). The worker goes back to the pool only when
+        keep_if(answer) says so; otherwise it is killed and replaced."""
+        import time as _time
         if self._closed:
             raise RuntimeError("this pool is closed")
         slot = self._free.get()
@@ -12848,10 +13436,11 @@ class Pool:
                 worker = None
             if worker is None:
                 worker = self._start()
-            result = self._ask(worker, source, stdin, args, path,
-                               seed, freeze_time)
-            keep = result.ok
-            return result
+            began = _time.monotonic()
+            answer, events = worker.ask(request, self.timeout)
+            seconds = _time.monotonic() - began
+            keep = bool(keep_if(answer))
+            return answer, events, worker, seconds
         finally:
             if worker is not None and not keep:
                 try:
@@ -12893,6 +13482,8 @@ class Pool:
             cmd.append("--no-native")
         if self.max_memory_mb is not None:
             cmd += ["--max-memory-mb", str(int(self.max_memory_mb))]
+        if self.import_root is not None:
+            cmd += ["--import-root", self.import_root]
         worker = _Worker(cmd, self.max_memory_mb)
         with self._lock:
             # close() may have run between the check in run() and here.
@@ -12913,24 +13504,15 @@ class Pool:
             self._live.discard(worker)
         worker.dispose()
 
-    def _ask(self, worker, source, stdin, args, path,
-             seed=None, freeze_time=None) -> RunResult:
-        answer = worker.ask({"source": source, "stdin": stdin or "",
-                             "args": list(args or []), "path": path,
-                             "seed": seed, "freeze_time": freeze_time},
-                            self.timeout)
-        if answer is not None and "ok" in answer:
-            return RunResult(
-                bool(answer.get("ok")), answer.get("output") or "",
-                answer.get("logs") or "",
-                [Problem(p.get("code"), p.get("message"), p.get("line"),
-                         p.get("file"), p.get("fixes") or [])
-                 for p in answer.get("problems") or []],
-                answer.get("refused_effect"), answer.get("exit_code") or 0,
-                bool(answer.get("timed_out")),
-                bool(answer.get("out_of_memory")),
-                answer.get("effects_used"))
-        return self._no_answer(worker, answer, path)
+    def _starved(self, worker, answer) -> bool:
+        """Did the worker run out of the memory this pool capped it at?"""
+        if self.max_memory_mb is None:
+            return False
+        noise = worker.stderr()
+        return (bool((answer or {}).get("out_of_memory"))
+                or "MemoryError" in noise or "Cannot allocate" in noise
+                or (not worker.killed_by_timeout
+                    and worker.proc.returncode in (-9, 137)))
 
     def _no_answer(self, worker, answer, path) -> RunResult:
         """The worker handed back no run. Say which limit or which
@@ -12942,20 +13524,67 @@ class Pool:
                         f"second(s) and was stopped", 0, where,
                 ["give it more time, or fix the loop that never ends"])],
                 None, 124, True, False)
-        noise = worker.stderr()
-        starved = bool((answer or {}).get("out_of_memory")) or \
-            "MemoryError" in noise or "Cannot allocate" in noise
-        if starved and self.max_memory_mb is not None:
+        if self._starved(worker, answer):
             return RunResult(False, "", "", [Problem(
                 "E611", f"the program used more than {self.max_memory_mb} "
                         f"MB and was stopped", 0, where,
                 ["give it more memory, or find what is growing"])],
                 None, 1, False, True)
+        noise = worker.stderr()
         detail = (answer or {}).get("crashed") or (
             noise.splitlines()[-1][:200] if noise
             else "the worker stopped without answering")
         return RunResult(False, "", "", [Problem("E000", detail, 0, where,
                                                  [])], None, 1)
+
+    def _stopped(self, worker, answer, path, what: str) -> "Problem":
+        """Why a check or an audit came back with no answer: the clock
+        (E613), the memory cap (E614), or a fault (E000)."""
+        where = path or "<source>"
+        if worker.killed_by_timeout:
+            return Problem(
+                "E613", f"the {what} did not finish within {self.timeout:g} "
+                        f"second(s) and was stopped; the source may be "
+                        f"crafted to stall the checker", 0, where,
+                ["raise the ceiling - timeout= in the library, "
+                 "--check-timeout on the command line and the doors",
+                 "or check it where a stall costs nothing"])
+        if self._starved(worker, answer):
+            return Problem(
+                "E614", f"the {what} used more than {self.max_memory_mb} MB "
+                        f"and was stopped; the source may be crafted to "
+                        f"bloat the checker", 0, where,
+                ["raise the cap - max_memory_mb= in the library, "
+                 "--check-memory-mb on the command line and the doors"])
+        noise = worker.stderr()
+        detail = (answer or {}).get("crashed") or (
+            noise.splitlines()[-1][:200] if noise
+            else "the worker stopped without answering")
+        return Problem("E000", detail, 0, where, [])
+
+    def _receipt(self, source, path, name, seed, freeze_time, answer,
+                 events, result, started_at, seconds) -> dict:
+        """The receipt of a run on this pool. The worker's own, when it
+        answered, with the limits, the start and the wall time this process
+        measured; otherwise one made here from what it streamed before it
+        was stopped, marked incomplete."""
+        parameters = _run_parameters(seed, freeze_time, self.timeout,
+                                     self.max_memory_mb)
+        doc = (answer or {}).get("receipt")
+        if isinstance(doc, dict) and isinstance(doc.get("predicate"), dict):
+            doc["predicate"]["run_parameters"] = parameters
+            doc["predicate"]["startedAt"] = started_at
+            doc["predicate"]["wall_time_ms"] = round(seconds * 1000, 1)
+            return doc
+        recorder = _RunRecorder()
+        for event in events:
+            recorder.take(event)
+        return receipt_statement(
+            recorder, name=_entry_name(path, name),
+            entry_bytes=source.encode("utf-8", "surrogatepass"),
+            budget=self.allow, parameters=parameters, result=result,
+            started_at=started_at, wall_time_ms=seconds * 1000,
+            complete=False)
 
 
 class PoolRegistry:
@@ -12984,19 +13613,20 @@ class PoolRegistry:
         self._lock = threading.Lock()
 
     def pool(self, *, allow=None, deny=None, timeout=None,
-             max_memory_mb=None, native: bool = True) -> "Pool":
+             max_memory_mb=None, native: bool = True,
+             import_root=None) -> "Pool":
         # spec() rather than the caller's words: two spellings of one
         # budget are one budget, and a bad grant fails here as it would
         # in run(), before any worker starts
         key = (_budget_from(allow, deny).spec(), timeout, max_memory_mb,
-               bool(native))
+               bool(native), import_root)
         stale = []
         with self._lock:
             found = self._pools.pop(key, None)
             if found is None or found.closed:
                 found = Pool(self.size, allow=allow, deny=deny,
                              timeout=timeout, max_memory_mb=max_memory_mb,
-                             native=native)
+                             native=native, import_root=import_root)
             self._pools[key] = found       # most recently used, last
             while len(self._pools) > self.keep:
                 stale.append(self._pools.pop(next(iter(self._pools))))
@@ -13007,11 +13637,13 @@ class PoolRegistry:
     def run(self, source: str, *, allow=None, deny=None, timeout=None,
             max_memory_mb=None, native: bool = True, stdin: str = "",
             args: list | None = None, path: str | None = None,
-            seed: int | None = None, freeze_time=None) -> RunResult:
+            seed: int | None = None, freeze_time=None,
+            import_root=None, _name: str | None = None) -> RunResult:
         return self.pool(allow=allow, deny=deny, timeout=timeout,
-                         max_memory_mb=max_memory_mb, native=native).run(
+                         max_memory_mb=max_memory_mb, native=native,
+                         import_root=import_root).run(
             source, stdin=stdin, args=args, path=path,
-            seed=seed, freeze_time=freeze_time)
+            seed=seed, freeze_time=freeze_time, _name=_name)
 
     def close(self) -> None:
         with self._lock:
@@ -13348,7 +13980,7 @@ def sarif_audit(files: list, strict: bool = False,
     for path in files:
         report = inspect_source(path)
         with open(path, encoding="utf-8") as fh:
-            doc = audit(fh.read(), path=path).as_dict()
+            doc = _audit_here(fh.read(), path=path).as_dict()
         audits.append(doc)
         # native code a granted module ships, and secrets - both from the
         # audit document, so they hold whether or not the file compiles
@@ -13426,8 +14058,7 @@ def run_refusals(result: "RunResult") -> list:
     if not result.refused_effect:
         return []
     code = next((p.code for p in result.problems
-                 if p.code in ("E310", "E311", "E313", "E314", "E315")),
-                None)
+                 if p.code in REFUSAL_CODES), None)
     return [{"by": "budget", "code": code, "what": result.refused_effect}]
 
 
@@ -15662,7 +16293,7 @@ def _conf_audit(case: dict, ctx: dict) -> str:
     try:
         _conf_files(box, given["files"])
         entry = given["entry"]
-        doc = audit(given["files"][entry],
+        doc = _audit_here(given["files"][entry],
                     path=os.path.join(box, *entry.split("/"))).as_dict()
     finally:
         shutil.rmtree(box, ignore_errors=True)
@@ -16242,12 +16873,14 @@ def _subject_name(path: str, entry: str, entry_name: str) -> str:
     return full.replace(os.sep, "/")
 
 
-def attest_statement(path: str, name: str | None = None) -> dict:
+def attest_statement(path: str, name: str | None = None, *,
+                     auditor=None) -> dict:
     """The in-toto Statement for one .vel file (velaris-spec 8.5): the
     file first among the subjects, then each file it imports, each by
     the sha256 of its bytes; the predicate, audit() of those bytes.
     ValueError when the file is not UTF-8, or changed while it was being
-    attested."""
+    attested. `auditor` is what audits the source - a pool's, under a
+    ceiling, from attest(); this process's with no ceiling otherwise."""
     import hashlib
     import posixpath
     name = name or posixpath.normpath(path.replace(os.sep, "/"))
@@ -16273,7 +16906,7 @@ def attest_statement(path: str, name: str | None = None) -> dict:
         return out
 
     before = imports()
-    doc = audit(source, path=path).as_dict()
+    doc = (auditor or _audit_here)(source, path=path).as_dict()
     # the audit read the imported files from disk; if one changed while it
     # did, a digest would name bytes the audit may not have read
     if imports() != before or _sha256_of(path) != entry_digest:
@@ -16292,11 +16925,26 @@ def attest_statement(path: str, name: str | None = None) -> dict:
                           "audit": doc}}
 
 
-def attest(path: str) -> list:
+def attest(path: str, *, timeout=CHECK_TIMEOUT_DEFAULT,
+           max_memory_mb=CHECK_MEMORY_MB_DEFAULT) -> list:
     """One in-toto Statement per .vel file: the file itself, or every
     .vel file under a directory, as `velaris capabilities` finds them
     (.git and what git ignores left out). ValueError when there is
-    nothing to attest."""
+    nothing to attest.
+
+    From 8.1 each audit runs under the ceiling audit() has - one worker
+    for the whole call - and a file whose audit passes it is attested
+    with `ok: false` and E613 or E614, which says nothing was determined.
+    None for both audits in this process, as before."""
+    _ceiling_args(timeout, max_memory_mb)
+    if (timeout is not None or max_memory_mb is not None) and not _IN_CHILD:
+        with Pool(size=1, timeout=timeout,
+                  max_memory_mb=max_memory_mb) as pool:
+            return _attest(path, pool.audit)
+    return _attest(path, None)
+
+
+def _attest(path: str, auditor) -> list:
     import posixpath
     if os.path.isdir(path):
         base = posixpath.normpath(path.replace(os.sep, "/"))
@@ -16304,11 +16952,12 @@ def attest(path: str) -> list:
         if not files:
             raise ValueError(f"no .vel file under {path}")
         return [attest_statement(os.path.join(path, *rel.split("/")),
-                                 rel if base == "." else f"{base}/{rel}")
+                                 rel if base == "." else f"{base}/{rel}",
+                                 auditor=auditor)
                 for rel in files]
     if not os.path.isfile(path):
         raise ValueError(f"{path}: no such file or directory")
-    return [attest_statement(path)]
+    return [attest_statement(path, auditor=auditor)]
 
 
 def attest_main(argv: list) -> int:
@@ -16372,6 +17021,257 @@ def attest_main(argv: list) -> int:
     print(f"written to {output}" if output else
           "not written: pass --output FILE, or --json to print it")
     return 0
+
+
+# ---------------------------------------------------------------------------
+# 19b. RECEIPTS - what one run did, bound to the bytes attest names
+#
+#     An attestation says what a program may do, before it runs. A receipt
+#     says what one run of it did: the budget it was given, every refusal,
+#     every declassification with the reason written for it, the parameters
+#     it ran under, how it ended and how long it took. Its subjects are the
+#     files `velaris attest` names, by the same digests, so an audit and a
+#     receipt of one program are the before and the after of the same
+#     bytes. It is an in-toto Statement of the receipt/v1 predicate
+#     (velaris-spec 8.7), and it is signed the way an attestation is.
+#
+#     It holds no value the program handled. A refusal is its code, its
+#     effect and its line - not the path, host or module the program named,
+#     which could have been built from a declassified secret; a
+#     declassification is the reason written in the source (a literal,
+#     E561); the output, the input, the arguments and every message are
+#     left out. What the program chose that is not a value still shows - its
+#     exit status, which lines it reached, how long it ran - and
+#     THREAT_MODEL.md says so.
+# ---------------------------------------------------------------------------
+
+RECEIPT_SCHEMA = "velaris.receipt/1"
+RECEIPT_PREDICATE_TYPE = ("https://gowrishankar-infra.github.io/"
+                          "velaris-lang/receipt/v1")
+RECEIPT_SPEC = "velaris-spec 0.10.0"
+# the refusals a receipt lists and the doors log: the budget's, and the
+# read ceiling's
+REFUSAL_CODES = ("E310", "E311", "E313", "E314", "E315", "E316", "E317",
+                 "E318")
+
+
+def _utc_now_ms() -> str:
+    import datetime
+    now = datetime.datetime.now(datetime.timezone.utc)
+    return (now.strftime("%Y-%m-%dT%H:%M:%S.")
+            + f"{now.microsecond // 1000:03d}Z")
+
+
+def _entry_name(path, name=None) -> str:
+    """How a receipt names the program it ran: the path it was given,
+    '/'-separated, or <source> for text that came with no file."""
+    import posixpath
+    if name:
+        return name
+    if path is None:
+        return "<source>"
+    return posixpath.normpath(str(path).replace(os.sep, "/"))
+
+
+def _refusal_effect(code: str, message: str) -> str | None:
+    """The effect a refusal is about, as one of the effect names - never
+    the path, host or module the program gave."""
+    if code == "E310":
+        m = re.search(r"needs the '(\w+)' effect", message or "")
+        return m.group(1) if m and m.group(1) in ALL_EFFECTS else None
+    if code == "E315":
+        m = re.search(r" (fs|net) operation", message or "")
+        return m.group(1) if m else None
+    if code == "E311":
+        return "ffi"
+    if code in ("E313", "E316", "E318"):
+        return "fs"
+    if code in ("E314", "E317"):
+        return "net"
+    return None
+
+
+class _RunRecorder:
+    """What a receipt records about one run, while it happens.
+
+    Each refusal and each declassification is kept once per place - its
+    kind, its code or its reason, its line - with a count, so a loop that
+    declassifies a million times is one entry. `emit` streams an entry the
+    first time it is seen and every thousandth time after; that is what a
+    pool keeps when it has to kill the worker before the run ends, and the
+    counts it has then are counts of at least that many."""
+
+    STREAM_EVERY = 1000
+
+    def __init__(self, emit=None):
+        self.emit = emit
+        self.subjects = None
+        self.sites: dict = {}
+        self.stop = None
+        self.compiled = False
+
+    def _send(self, event: dict) -> None:
+        if self.emit is None:
+            return
+        try:
+            self.emit(event)
+        except Exception:                 # nobody is listening any more
+            self.emit = None
+
+    def set_subjects(self, subjects: list) -> None:
+        self.subjects = subjects
+        self._send({"kind": "subjects", "subjects": subjects})
+
+    def note(self, kind: str, **fields) -> None:
+        key = (kind,) + tuple(sorted(fields.items()))
+        entry = self.sites.get(key)
+        if entry is None:
+            entry = self.sites[key] = dict(fields, kind=kind, times=0)
+        entry["times"] += 1
+        if entry["times"] == 1 or entry["times"] % self.STREAM_EVERY == 0:
+            self._send(dict(entry))
+
+    def take(self, event: dict) -> None:
+        """An entry a worker streamed, kept by its parent."""
+        kind = event.get("kind")
+        if kind == "subjects":
+            if isinstance(event.get("subjects"), list):
+                self.subjects = event["subjects"]
+            return
+        if kind not in ("refusal", "declassify"):
+            return
+        fields = {k: v for k, v in event.items()
+                  if k not in ("kind", "times")}
+        try:
+            key = (kind,) + tuple(sorted(fields.items()))
+            entry = self.sites.setdefault(
+                key, dict(fields, kind=kind, times=0))
+        except TypeError:                 # not a shape this file sends
+            return
+        try:
+            entry["times"] = max(entry["times"],
+                                 int(event.get("times") or 1))
+        except (TypeError, ValueError):
+            entry["times"] = max(entry["times"], 1)
+
+
+def _note_error(e) -> None:
+    """A VelarisError stopped the run: what its receipt records of that."""
+    rec = RUN_RECORDER
+    if rec is None:
+        return
+    code, line = getattr(e, "code", None), getattr(e, "line", 0) or 0
+    rec.stop = {"code": code, "line": line}
+    if code in REFUSAL_CODES:
+        rec.note("refusal", code=code, line=line, stopped=True,
+                 effect=_refusal_effect(code, getattr(e, "message", "")))
+
+
+def _note_stop(code: str, line: int) -> None:
+    if RUN_RECORDER is not None:
+        RUN_RECORDER.stop = {"code": code, "line": line}
+
+
+def _note_redirect(line: int) -> None:
+    """A redirect the net grants refused: the one refusal a program is
+    told about as a failure, and may carry on from."""
+    if RUN_RECORDER is not None:
+        RUN_RECORDER.note("refusal", code=None, effect="net", line=line,
+                          stopped=False)
+
+
+def _receipt_subjects(entry: str, name: str, entry_bytes: bytes,
+                      loaded: list) -> list:
+    """A receipt's subjects, as attest_statement makes them: the program, by
+    the sha256 of the text that ran, then each file it read, by the sha256
+    of its bytes, named in the program's terms or as <stdlib>/NAME."""
+    import hashlib
+    subjects = [{"name": name, "digest": {
+        "sha256": hashlib.sha256(entry_bytes).hexdigest()}}]
+    seen = {os.path.abspath(entry)}
+    for p in loaded:
+        if os.path.abspath(p) in seen:
+            continue
+        seen.add(os.path.abspath(p))
+        try:
+            digest = _sha256_of(p)
+        except OSError:
+            continue
+        subjects.append({"name": _subject_name(p, entry, name),
+                         "digest": {"sha256": digest}})
+    return subjects
+
+
+def _run_parameters(seed, freeze_time, timeout, max_memory_mb) -> dict:
+    """What a run was given besides its budget, as its receipt says it.
+    ValueError for a freeze_time that is not an instant."""
+    import datetime
+    frozen = _frozen_epoch(freeze_time)
+    return {"seed": None if seed is None else int(seed),
+            "freeze_time": None if frozen is None else
+            datetime.datetime.fromtimestamp(frozen, datetime.timezone.utc)
+            .strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "timeout": timeout,
+            "max_memory_mb": (None if max_memory_mb is None
+                              else int(max_memory_mb)),
+            "max_read_bytes": MAX_READ_BYTES,
+            "confinement": "none"}
+
+
+def receipt_statement(recorder, *, name, entry_bytes, budget, parameters,
+                      result, started_at, wall_time_ms,
+                      complete=True) -> dict:
+    """The in-toto Statement of one run's receipt (velaris-spec 8.7)."""
+    import hashlib
+    subjects = recorder.subjects or [{"name": name, "digest": {
+        "sha256": hashlib.sha256(entry_bytes).hexdigest()}}]
+    sites = list(recorder.sites.values())
+    refusals = sorted(
+        ({"code": s.get("code"), "effect": s.get("effect"),
+          "line": s.get("line"), "stopped": bool(s.get("stopped")),
+          "times": s.get("times", 1)}
+         for s in sites if s.get("kind") == "refusal"),
+        key=lambda r: (r["line"] or 0, str(r["code"]), str(r["effect"]),
+                       r["stopped"]))
+    declassifications = sorted(
+        ({"reason": s.get("reason"), "line": s.get("line"),
+          "times": s.get("times", 1)}
+         for s in sites if s.get("kind") == "declassify"),
+        key=lambda d: (d["line"] or 0, str(d["reason"])))
+    if result.timed_out:
+        outcome, code = "timeout", "E610"
+    elif result.out_of_memory:
+        outcome, code = "out_of_memory", "E611"
+    else:
+        code = (recorder.stop or {}).get("code") or (
+            result.problems[0].code if result.problems and not result.ok
+            else None)
+        if any(r["stopped"] for r in refusals):
+            outcome = "refused"
+        elif result.ok:
+            outcome = "ok"
+        elif complete and not recorder.compiled and result.problems:
+            outcome = "did_not_compile"
+        else:
+            outcome = "failed"
+    return {"_type": INTOTO_STATEMENT_TYPE,
+            "subject": subjects,
+            "predicateType": RECEIPT_PREDICATE_TYPE,
+            "predicate": {
+                "schema": RECEIPT_SCHEMA,
+                "producer": {"name": "velaris-lang", "uri": REPOSITORY,
+                             "version": VERSION},
+                "specification": RECEIPT_SPEC,
+                "startedAt": started_at,
+                "wall_time_ms": round(float(wall_time_ms), 1),
+                "budget": budget,
+                "run_parameters": parameters,
+                "effects_used": result.effects_used,
+                "refusals": refusals,
+                "declassifications": declassifications,
+                "exit": {"status": result.exit_code, "outcome": outcome,
+                         "code": code},
+                "complete": bool(complete)}}
 
 
 # ---------------------------------------------------------------------------
@@ -18121,6 +19021,561 @@ def card() -> str:
         if os.path.exists(where):
             return open(where, encoding="utf-8").read()
     return ""
+
+
+# ---------------------------------------------------------------------------
+# 21. EJECT - a program that keeps running with nothing from this project
+#
+#     `velaris eject program.vel` writes a directory that runs, and builds
+#     into one executable, with nothing fetched from here: the program and
+#     the libraries it imports, the runtime that enforces its budget (this
+#     file, copied, and the standard library files the program uses), a
+#     launcher whose budget is fixed at eject time, a pinned requirements
+#     file, and a README that says what holds once ejected and what does
+#     not. The budget is enforced by the copied runtime, whatever the
+#     program says. The proofs are a record of what this Velaris proved at
+#     eject time, which nothing trusts when the program runs, and which
+#     `main.py --prove` runs again.
+# ---------------------------------------------------------------------------
+
+EJECT_SCHEMA = "velaris.eject/1"
+
+_EJECT_LAUNCHER = r'''#!/usr/bin/env python3
+"""@NAME@: a Velaris program, ejected by Velaris @VERSION@ on @DATE@.
+
+    python -I main.py [arguments]    run it, under the budget below
+    python -I main.py --prove        check its promises again
+    python build.py                  one executable, with PyInstaller
+
+README.md says what holds once ejected, and what does not.
+"""
+import hashlib
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+# a PyInstaller build unpacks these files beside a temporary launcher
+BASE = getattr(sys, "_MEIPASS", HERE)
+
+ENTRY = @ENTRY@
+# the budget the program runs under, fixed when it was ejected
+BUDGET = @BUDGET@
+# the sha256 of every file this launcher runs, when it was ejected
+FILES = @FILES@
+
+
+def changed():
+    """The files that are not what was ejected."""
+    wrong = []
+    for rel, want in sorted(FILES.items()):
+        try:
+            with open(os.path.join(BASE, *rel.split("/")), "rb") as fh:
+                got = hashlib.sha256(fh.read()).hexdigest()
+        except OSError:
+            got = None
+        if got != want:
+            wrong.append(rel)
+    return wrong
+
+
+def writes_here(velaris):
+    """Why the budget lets the program write into this directory - where
+    one run could change the launcher, the runtime or the program the next
+    run uses - or None."""
+    budget = velaris.Budget.parse(BUDGET or "''")
+    if "fs" not in budget.effects:
+        return None
+    if budget.fs is None:
+        return "plain fs writes anywhere"
+    here = os.path.normcase(os.path.realpath(BASE))
+    for kind, prefix in budget.fs:
+        if kind != "write":
+            continue
+        if prefix is None:
+            return "fs:write names no path"
+        if (here == prefix or here.startswith(prefix.rstrip(os.sep) + os.sep)
+                or prefix.startswith(here.rstrip(os.sep) + os.sep)):
+            return "fs:write:" + prefix + " reaches " + here
+    return None
+
+
+def writes_where_python_imports(velaris):
+    """Why the budget lets the program write into a directory Python
+    imports from - a PYTHONPATH entry, a site-packages, the user's site -
+    where a sitecustomize.py or a module one run leaves is code the next
+    Python process runs, or None. PYTHONPATH counts under -I too: the next
+    Python may be started without it."""
+    import site
+    budget = velaris.Budget.parse(BUDGET or "''")
+    if "fs" not in budget.effects or budget.fs is None:
+        return None
+    places = [p for p in sys.path if p]
+    places += [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep)
+               if p]
+    for more in (getattr(site, "getusersitepackages", None),
+                 getattr(site, "getsitepackages", None)):
+        try:
+            got = more() if more else []
+            places += [got] if isinstance(got, str) else list(got)
+        except Exception:
+            pass
+    for place in places:
+        real = os.path.normcase(os.path.realpath(place))
+        for kind, prefix in budget.fs:
+            if kind != "write" or prefix is None:
+                continue
+            if (real == prefix or real.startswith(prefix.rstrip(os.sep) + os.sep)
+                    or prefix.startswith(real.rstrip(os.sep) + os.sep)):
+                return "fs:write:" + prefix + " reaches " + real
+    return None
+
+
+def main(argv):
+    prove = "--prove" in argv
+    changed_ok = "--changed-ok" in argv
+    rest = [a for a in argv if a not in ("--prove", "--changed-ok")]
+    for a in rest:
+        if a.split("=", 1)[0] in ("--allow", "--deny"):
+            print("the budget is fixed at eject time (" + (BUDGET or "nothing")
+                  + "); change BUDGET in main.py to change it",
+                  file=sys.stderr)
+            return 2
+    wrong = changed()
+    runtime_changed = [w for w in wrong if not w.startswith("program/")]
+    if runtime_changed:
+        # the runtime is what enforces the budget: a changed one is never run
+        print("these files are not what was ejected: "
+              + ", ".join(runtime_changed) + ". They are the runtime that "
+              "enforces the budget, so nothing runs them, --changed-ok "
+              "included.", file=sys.stderr)
+        return 2
+    if wrong and not changed_ok:
+        print("these files are not what was ejected: " + ", ".join(wrong)
+              + ". Pass --changed-ok to run the changed program anyway; "
+              "the runtime is unchanged and still holds it to the budget.",
+              file=sys.stderr)
+        return 2
+    if "--receipt" in rest:
+        at = rest.index("--receipt")
+        target = rest[at + 1] if at + 1 < len(rest) else ""
+        real = os.path.normcase(os.path.realpath(target))
+        here = os.path.normcase(os.path.realpath(BASE))
+        if real == here or real.startswith(here.rstrip(os.sep) + os.sep):
+            print("refused: --receipt names a file in this directory, where "
+                  "it would replace what the next run is", file=sys.stderr)
+            return 2
+    runtime = os.path.join(BASE, "runtime")
+    sys.path.insert(0, runtime)
+    import velaris
+    if os.path.normcase(os.path.dirname(os.path.abspath(velaris.__file__))) \
+            != os.path.normcase(os.path.abspath(runtime)):
+        print("refused: velaris was imported from " + velaris.__file__
+              + ", not from this directory's runtime/", file=sys.stderr)
+        return 2
+    reach = writes_here(velaris)
+    if reach:
+        print("refused: the budget " + BUDGET + " lets the program write "
+              "into this directory (" + reach + "), where one run could "
+              "change what the next one runs", file=sys.stderr)
+        return 2
+    reach = writes_where_python_imports(velaris)
+    if reach:
+        print("refused: the budget " + BUDGET + " lets the program write "
+              "where Python imports from (" + reach + "): a file one run "
+              "leaves there is code the next Python process runs",
+              file=sys.stderr)
+        return 2
+    entry = os.path.join(BASE, *ENTRY.split("/"))
+    if prove:
+        sys.argv = [velaris.__file__, "check", entry]
+        if getattr(sys, "frozen", False):
+            sys.argv.append("--no-check-ceiling")
+        return velaris.main()
+    sys.argv = [velaris.__file__, entry, "--allow", BUDGET or "''"] + rest
+    return velaris.main()
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
+'''
+
+_EJECT_BUILD = r'''#!/usr/bin/env python3
+"""One executable of this program, built with PyInstaller:
+
+    pip install pyinstaller
+    python build.py            (python build.py --print shows the command)
+
+It carries main.py, runtime/ and program/, checks their digests and holds
+the program to its budget as main.py does. Add --collect-all z3 and
+--collect-all llvmlite to the command when those are installed and should
+travel inside it.
+"""
+import os
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+NAME = @NAME@
+
+
+def main():
+    sep = ";" if os.name == "nt" else ":"
+    cmd = [sys.executable, "-m", "PyInstaller", "--onefile", "--noconfirm",
+           "--name", NAME,
+           "--add-data", "runtime" + sep + "runtime",
+           "--add-data", "program" + sep + "program",
+           "main.py"]
+    if "--print" in sys.argv:
+        print(" ".join(cmd))
+        return 0
+    return subprocess.call(cmd, cwd=HERE)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+'''
+
+_EJECT_README = """# @NAME@, ejected from Velaris
+
+This directory is `@ENTRY@` and everything it needs to run, taken out of
+Velaris @VERSION@ on @DATE@ by `velaris eject`. Nothing in it fetches
+anything, and it does not need Velaris installed.
+
+    python -I main.py [arguments]      run it
+    python -I main.py --prove          check its promises again
+    python build.py                    one executable (needs PyInstaller)
+    pip install -r requirements.txt    optional: the prover, native code
+
+`-I` keeps Python from reading `PYTHONPATH`, the user's site-packages and
+the current directory before this directory's own files.
+
+## What is here
+
+| Path | What it is |
+|---|---|
+| `main.py` | the launcher: checks the files, fixes the budget, runs the program |
+| `runtime/velaris.py` | the Velaris @VERSION@ compiler and runtime, unchanged |
+| `runtime/stdlib/` | the standard library files the program imports |
+| `program/` | the program, and the libraries it imports |
+| `proofs.json` | what Velaris @VERSION@ proved when the program was ejected |
+| `requirements.txt` | the prover and the native compiler, pinned to what was installed |
+| `build.py` | the PyInstaller command for one executable |
+| `SHA256SUMS` | the sha256 of every other file here |
+| `LICENSE` | Velaris's licence, which covers `runtime/` |
+
+## What holds once ejected
+
+- **The budget is enforced.** The program runs under `@BUDGET@` whatever
+  its source declares, checked by `runtime/velaris.py` at the moment each
+  effect is attempted - the check `velaris program.vel --allow @BUDGET@`
+  makes. An effect outside it stops the program, which cannot catch that.
+  The budget is written in `main.py`, and `main.py` refuses `--allow` and
+  `--deny` on its command line.
+- **A changed file is noticed.** `main.py` holds the sha256 of every file
+  in `runtime/` and `program/` from eject time and will not run if one
+  differs. `--changed-ok` runs a changed program anyway, still under the
+  budget; a changed runtime - the part that enforces the budget - is never
+  run.
+- **A run cannot rewrite the next one.** `main.py` refuses a budget that
+  lets the program write into this directory, or into a directory Python
+  imports from where it is launched - a `PYTHONPATH` entry, a
+  site-packages - where a file left behind is code the next Python runs.
+
+## What does not
+
+- **The proofs are a record, not a promise.** `proofs.json` says what
+  Velaris @VERSION@ proved when the program was ejected (@PROVER@). Nothing
+  reads it when the program runs: each run proves the promises again when
+  z3-solver is installed and checks them while running when it is not.
+  `python -I main.py --prove` runs the check and says what is proven now.
+- **No fix arrives.** `runtime/velaris.py` is Velaris @VERSION@ and stays
+  that. A later Velaris that closes a hole does not reach this directory;
+  eject again to take it.
+- **`main.py` does not check itself.** A changed `main.py` can skip its own
+  checks. If anything but you could have written here, compare every file
+  with `SHA256SUMS` first: `sha256sum -c SHA256SUMS` on Linux,
+  `shasum -a 256 -c SHA256SUMS` on macOS.
+- **What Velaris does not defend against**, it does not defend against
+  here either (THREAT_MODEL.md in the Velaris repository): a granted `ffi`
+  module does what it does; nothing bounds how long the program runs or
+  how much memory it takes unless you run it under limits; and the budget
+  is enforced by an interpreter, not by the operating system.
+"""
+
+
+def _eject_write_reach(budget: "Budget", out: str) -> str | None:
+    """Why `budget` lets a program write into `out`, or None."""
+    if "fs" not in budget.effects:
+        return None
+    if budget.fs is None:
+        return "plain fs writes anywhere"
+    here = os.path.normcase(os.path.realpath(out))
+    for kind, prefix in budget.fs:
+        if kind != "write":
+            continue
+        if prefix is None:
+            return "fs:write names no path"
+        if (here == prefix or here.startswith(prefix.rstrip(os.sep) + os.sep)
+                or prefix.startswith(here.rstrip(os.sep) + os.sep)):
+            return f"fs:write:{prefix} reaches {here}"
+    return None
+
+
+def _velaris_license() -> str:
+    """This project's licence text, to travel with the copied runtime."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    for where in (os.path.join(here, "LICENSE"),
+                  os.path.join(here, "..", "LICENSE")):
+        if os.path.isfile(where):
+            with open(where, encoding="utf-8") as fh:
+                return fh.read()
+    try:
+        from importlib import metadata
+        dist = metadata.distribution("velaris-lang")
+        for f in dist.files or []:
+            if os.path.basename(str(f)).upper().startswith("LICENSE"):
+                return f.read_text(encoding="utf-8")
+    except Exception:
+        pass
+    return ("Velaris is released under the MIT License:\n"
+            f"{REPOSITORY}/blob/main/LICENSE\n")
+
+
+def eject_main(argv: list) -> int:
+    """velaris eject <program.vel> [-o DIR] [--allow GRANTS] [--force]"""
+    import datetime
+    import hashlib
+    import shutil
+    usage = ("usage: velaris eject <program.vel> [-o DIR] [--allow GRANTS] "
+             "[--force]")
+    places, out, allow, force = [], None, None, False
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a in ("-o", "--output", "--allow") and i + 1 < len(argv):
+            if a == "--allow":
+                allow = argv[i + 1]
+            else:
+                out = argv[i + 1]
+            i += 2
+            continue
+        if a == "--force":
+            force = True
+        elif a.startswith("-"):
+            print(usage, file=sys.stderr)
+            return 2
+        else:
+            places.append(a)
+        i += 1
+    if len(places) != 1 or not places[0].endswith(".vel"):
+        print(usage, file=sys.stderr)
+        return 2
+    entry = places[0]
+    if not os.path.isfile(entry):
+        print(f"velaris eject: no such file: {entry}", file=sys.stderr)
+        return 2
+    with open(entry, encoding="utf-8") as fh:
+        source = fh.read()
+    report = _audit_here(source, path=entry)
+    if not report.ok:
+        print(f"velaris eject: {entry} does not compile, so it was not "
+              f"ejected:", file=sys.stderr)
+        for p in report.problems[:5]:
+            print(f"  line {p.line}: [{p.code}] {p.message}", file=sys.stderr)
+        return 1
+    if allow is None:
+        budget_text = ",".join(_safe_grants(
+            report.effects, report.ffi_modules,
+            {"read": report.fs_paths["read"],
+             "write": report.fs_paths["write"],
+             "read_any": report.fs_paths["read_any"],
+             "write_any": report.fs_paths["write_any"]},
+            {"hosts": report.net_hosts["hosts"],
+             "any": report.net_hosts["any"]}))
+        chosen = "from its audit; --allow to choose another"
+    else:
+        if allow.strip() == ALLOW_ALL:
+            warn_allow_all("velaris eject")
+        budget_text = expand_allow(allow)
+        chosen = "as --allow said"
+    try:
+        budget = Budget.parse(budget_text or "''")
+    except BudgetError as e:
+        print(f"velaris eject: --allow: {e}", file=sys.stderr)
+        return 2
+    stem = os.path.splitext(os.path.basename(entry))[0]
+    out = out or f"{stem}-ejected"
+    reach = _eject_write_reach(budget, out)
+    if reach:
+        print(f"velaris eject: refused: the budget {budget_text} lets the "
+              f"program write into {out} ({reach}), where one run could "
+              f"change the launcher, the runtime or the program the next "
+              f"run uses. Eject somewhere the program cannot write, or "
+              f"narrow the budget.", file=sys.stderr)
+        return 2
+
+    # which files it loads, and where each goes
+    read: list = []
+    load_program(entry, loaded=read)
+    std = _stdlib_dir()
+    mine, shipped, seen = [], [], set()
+    for p in read:
+        real = os.path.normcase(os.path.realpath(p))
+        if real in seen:
+            continue
+        seen.add(real)
+        (shipped if real.startswith(std + os.sep) else mine).append(
+            os.path.abspath(p))
+    try:
+        base = os.path.commonpath([os.path.dirname(p) for p in mine])
+    except ValueError:
+        print("velaris eject: the program's files are on different drives, "
+              "so they cannot keep their places relative to each other",
+              file=sys.stderr)
+        return 2
+
+    if os.path.exists(out):
+        ours = False
+        try:
+            with open(os.path.join(out, "proofs.json"),
+                      encoding="utf-8") as fh:
+                ours = json.load(fh).get("schema") == EJECT_SCHEMA
+        except (OSError, ValueError, AttributeError):
+            ours = False
+        if not (os.path.isdir(out) and not os.listdir(out)):
+            if not (force and ours):
+                print(f"velaris eject: {out} already exists"
+                      + ("; --force replaces it" if ours else
+                         " and was not made by velaris eject; choose "
+                         "another -o"), file=sys.stderr)
+                return 2
+            shutil.rmtree(out)
+    os.makedirs(os.path.join(out, "runtime", "stdlib"), exist_ok=True)
+
+    placed: dict = {}                 # published path -> source file
+    for p in mine:
+        placed["program/" + os.path.relpath(p, base).replace(os.sep, "/")] = p
+    for p in shipped:
+        placed["runtime/stdlib/" + os.path.basename(p)] = p
+    placed["runtime/velaris.py"] = os.path.abspath(__file__)
+    for rel, src in placed.items():
+        target = os.path.join(out, *rel.split("/"))
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        shutil.copyfile(src, target)
+    new_entry = "program/" + os.path.relpath(
+        os.path.abspath(entry), base).replace(os.sep, "/")
+
+    # the copy must load only from inside itself: an import written as an
+    # absolute path would still reach the original
+    again: list = []
+    try:
+        load_program(os.path.join(out, *new_entry.split("/")), loaded=again)
+    except VelarisError as e:
+        shutil.rmtree(out, ignore_errors=True)
+        print(f"velaris eject: the copy does not load: [{e.code}] "
+              f"{e.message}", file=sys.stderr)
+        return 1
+    top = os.path.normcase(os.path.realpath(out))
+    outside = [p for p in again if not os.path.normcase(os.path.realpath(p))
+               .startswith(top + os.sep)
+               and not os.path.normcase(os.path.realpath(p))
+               .startswith(std + os.sep)]
+    if outside:
+        shutil.rmtree(out, ignore_errors=True)
+        print(f"velaris eject: the program imports {outside[0]} by a path "
+              f"that would still reach it after ejecting; import it "
+              f"relative to the program instead", file=sys.stderr)
+        return 1
+
+    when = datetime.datetime.now(datetime.timezone.utc)
+    date = when.strftime("%Y-%m-%d")
+    details = inspect_source(entry, use_cache=False)
+    functions = [{"name": f["name"],
+                  "file": "program/" + os.path.relpath(
+                      os.path.abspath(f["file"]), base).replace(os.sep, "/")
+                  if not os.path.normcase(os.path.realpath(f["file"]))
+                  .startswith(std + os.sep)
+                  else "runtime/stdlib/" + os.path.basename(f["file"]),
+                  "requires": f["requires"], "ensures": f["ensures"],
+                  "status": f["status"]}
+                 for f in details["functions"]]
+    promising = [f for f in functions if f["requires"] or f["ensures"]]
+    proven = [f for f in promising if f["status"] == "proven"]
+    record = {"schema": EJECT_SCHEMA, "velaris_version": VERSION,
+              "ejected_at": when.strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "entry": new_entry, "budget": budget_text,
+              "prover": bool(HAVE_Z3), "functions": functions,
+              "proven": f"{len(proven)} of {len(promising)}"}
+    files = {}
+    for rel in sorted(placed):
+        with open(os.path.join(out, *rel.split("/")), "rb") as fh:
+            files[rel] = hashlib.sha256(fh.read()).hexdigest()
+
+    def fill(template: str, literal: bool) -> str:
+        quote = json.dumps if literal else str
+        return (template.replace("@NAME@", quote(stem))
+                .replace("@VERSION@", VERSION).replace("@DATE@", date)
+                .replace("@ENTRY@", quote(new_entry if literal
+                                          else entry.replace(os.sep, "/")))
+                .replace("@BUDGET@", quote(budget_text or ("" if literal
+                                                          else "nothing")))
+                .replace("@FILES@", json.dumps(files, indent=4))
+                .replace("@PROVER@", "with the prover" if HAVE_Z3
+                         else "without the prover, so nothing was proven"))
+
+    try:
+        from importlib import metadata as _metadata
+    except ImportError:                    # pragma: no cover
+        _metadata = None
+    pins = [f"# Pinned by velaris eject (Velaris {VERSION}, {date}) to what "
+            f"was installed then.",
+            "# Neither is needed to run: without z3-solver promises are "
+            "checked while the",
+            "# program runs, and without llvmlite nothing is compiled to "
+            "native code."]
+    for dist, why in (("z3-solver", "proves promises before running"),
+                      ("llvmlite", "compiles pure numeric functions")):
+        try:
+            pins.append(f"{dist}=={_metadata.version(dist)}    # {why}")
+        except Exception:
+            pins.append(f"# {dist} was not installed when this was ejected "
+                        f"({why})")
+    writes = {
+        "main.py": fill(_EJECT_LAUNCHER, literal=True),
+        "build.py": fill(_EJECT_BUILD, literal=True),
+        "README.md": fill(_EJECT_README, literal=False),
+        "requirements.txt": "\n".join(pins) + "\n",
+        "proofs.json": json.dumps(record, indent=2) + "\n",
+        "LICENSE": _velaris_license(),
+    }
+    for rel, text in writes.items():
+        with open(os.path.join(out, rel), "w", encoding="utf-8",
+                  newline="\n") as fh:
+            fh.write(text)
+    sums = []
+    for dp, dirs, fns in os.walk(out):
+        dirs.sort()
+        for fn in sorted(fns):
+            full = os.path.join(dp, fn)
+            rel = os.path.relpath(full, out).replace(os.sep, "/")
+            if rel == "SHA256SUMS":
+                continue
+            with open(full, "rb") as fh:
+                sums.append(f"{hashlib.sha256(fh.read()).hexdigest()}  {rel}")
+    with open(os.path.join(out, "SHA256SUMS"), "w", encoding="utf-8",
+              newline="\n") as fh:
+        fh.write("\n".join(sorted(sums, key=lambda s: s[66:])) + "\n")
+
+    shown = out.replace(os.sep, "/")
+    print(f"velaris eject: {entry.replace(os.sep, '/')} -> {shown}/")
+    print(f"  budget:  {budget_text or 'nothing'}   ({chosen})")
+    print(f"  files:   {len(mine)} program file(s), {len(shipped)} standard "
+          f"library file(s), the Velaris {VERSION} runtime")
+    print(f"  proofs:  {record['proven']} proven when ejected"
+          + ("" if HAVE_Z3 else " (no prover installed)")
+          + "; a record - each run proves again")
+    print(f"  run it:  python -I {shown}/main.py")
+    return 0
 
 
 if __name__ == "__main__":

@@ -8,13 +8,15 @@ different guarantee.
 
     python check_refusals.py
 """
+import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
+sys.path.insert(0, str(HERE))
+from suite_dirs import isolate  # noqa: E402
 
 try:                       # proof-only refusals cannot be checked without
     import z3              # the prover: those programs simply run
@@ -264,9 +266,12 @@ fn main() uses io {
 
 
 def main() -> int:
-    work = Path(tempfile.mkdtemp(prefix="velaris-refusals-"))
+    # its own directory and proof cache, so two runs at once do not collide.
+    # One case imports examples/lib/geo.vel relative to itself, so that
+    # library is copied to the same place beside the scratch file.
+    work = isolate("check_refusals")
+    shutil.copytree(HERE / "examples" / "lib", work / "examples" / "lib")
     skipped = 0
-    # a couple of cases import from the repo, so run in the repo itself
     passed = failed = 0
     print(f"{len(CASES)} programs that must be refused")
     print("-" * 62)
@@ -275,7 +280,7 @@ def main() -> int:
             print("  skip %-5s    %s (needs the prover)" % (want, name))
             skipped += 1
             continue
-        path = HERE / "_refusal_check.vel"
+        path = work / "_refusal_check.vel"
         path.write_text(source.lstrip(), encoding="utf-8")
         run = subprocess.run(
             [sys.executable, str(VELARIS), str(path), "--no-cache"],
@@ -301,7 +306,7 @@ def main() -> int:
                   % (want, name))
             skipped += 1
             continue
-        path = HERE / "_refusal_check.vel"
+        path = work / "_refusal_check.vel"
         path.write_text(source.lstrip(), encoding="utf-8")
         plain = subprocess.run(
             [sys.executable, str(VELARIS), str(path), "--no-cache"],
@@ -327,7 +332,6 @@ def main() -> int:
     print("-" * 62)
     note = f", {skipped} skipped (no prover installed)" if skipped else ""
     print(f"{passed} refused correctly, {failed} not{note}")
-    work.rmdir()
     return 1 if failed else 0
 
 

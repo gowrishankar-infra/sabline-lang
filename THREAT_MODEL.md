@@ -30,7 +30,7 @@ write instead.
 | The compiler and runtime (`velaris.py`) | yes | One file, in the same process as the program it runs, or in a child process when a time or memory limit is set - a fresh one per run, or a pooled worker under one fixed budget (3.1). A defect here is a defect in the guard. The suites below exist because of that. |
 | The host Python and operating system | yes | The interpreter runs on CPython; the memory cap is the OS's address-space limit; the timeout kills a process. None of these are hardened by Velaris. |
 | Python modules granted through `ffi:` | yes, in full | A granted module can do whatever that module can do. Granting `ffi:subprocess` is granting a shell. |
-| A caller of the HTTP door (`velaris serve`) | only with the token (3.4), and only as far as the ceilings (4.0) | Anyone who presents the bearer token may send programs, up to the door's `--max-allow` (`io` unless the operator raised it), `--max-timeout` and `--max-memory-mb` (30 seconds and 512 MB unless raised); anyone who does not gets a 401 and nothing else. One token is one principal: the door cannot tell two holders apart. |
+| A caller of the HTTP door (`velaris serve`) | only with the token (3.4), and only as far as the ceilings (4.0) | Anyone who presents the bearer token may send programs, up to the door's `--max-allow` (`io` unless the operator raised it), `--max-timeout` and `--max-memory-mb` (30 seconds and 512 MB unless raised); anyone who does not gets a 401 and nothing else. One token is one principal: the door cannot tell two holders apart. From 8.1 a request's imports stay inside the directory the door serves (`--root`), its checks and audits stop at the check ceiling, and all requests with the token together get at most `--rate-limit` a minute. |
 | A caller of the MCP server | as far as the ceilings (3.4, 4.0) | Whoever the MCP client lets drive the server - in practice the model - may ask for any budget up to the server's `--max-allow`, which is `io` unless the operator raised it, and for any time and memory up to `--max-timeout` and `--max-memory-mb`. |
 | A change to the repository's code | only inside the declared surface (4.0) | When a repository commits `velaris.capabilities` and runs `velaris capabilities check` in CI, a change that needs more than that file declares fails, whichever commit brought it; widening the surface means editing the file, in review. |
 | An MCP tool's description | checkable (3.4) | The client shows it to the model, and the model follows it. `velaris mcp-verify` holds what a running server says against the manifest the release workflow signed. |
@@ -56,11 +56,16 @@ on.
 | A program granted `env` or `fs` printing, writing, sending or handing to Python the secret it read, or working it out and printing that | `Secret of T` (6.0, SPEC.md 3.1): `env()` and `read_file_secret()` return one; every builtin that declares an effect refuses an argument carrying one (E560, naming the value and where the secret came from), and so does every builtin that can fail, because a failure's reason is text the program can print; a list, map or record holding one carries it; every pure operation keeps it, a comparison included, so `key == c` is a `Secret of Bool`; and nothing branches on one (E563, from 7.0) - which is what stops the loop that would read a key out a character at a time. `declassify(value, reason)` is the only way out: `uses declassify` in the signature, a reason written in the call, and the `declassify` grant at run time, with `velaris audit`'s `secrets` section reporting every one with its reason - so "does this program ever let a secret out" is answered without running it. What this still does not bound is under **What it explicitly does NOT defend against** below | `check_secret.py` - 76 checks: every emitting builtin and every fallible builtin refused, a record, a list, a map and a nested record refused whole, a secret through two helpers, through a generic function of any kind - a pure one hands the answer back just as readily - through a `fail` reason and through a signature that does not say Secret; the extraction loop refused at the branch and the same program accepted with `declassify` and recorded in the audit; `declassify` refused without the effect, without the grant and without a written reason; the audit's `secrets` section for each shape; `velaris trace` and a broken promise printing `<secret>`; and honest programs that still run. `check_sandbox.py` - `declassify` refused by the budget (E310) and allowed with the grant; `check_refusals.py` - E560, E561, E562 and E563 each for the right reason |
 | A program that does more file or network operations than the operator expected | Counts (3.0): `fs:read:./data@50`, `net:api.example.com@100` - at most that many operations of that effect in the run; E315 cannot be caught. A budget with no count is a budget on what, not on how much | `check_sandbox.py`, `check_library.py` - the count reached on fs and on net; from 4.1, `@0`, and a count spent by an operation that then failed |
 | A program that never ends, or eats memory | `velaris.run(timeout=, max_memory_mb=)` runs the program in a child process killed on breach and reports E610 or E611. On the MCP server and the HTTP door the operator sets both as ceilings, `--max-timeout` and `--max-memory-mb`, 30 s and 512 MB when not given: a run that names neither gets them, and a caller asking for more is refused like an over-wide budget (4.0). Before 4.0 a caller could send any timeout and any memory cap and have it | `check_library.py` - a program that never ends is stopped in 2 s on every platform; a program that doubles a text is stopped at 150 MB, asserted wherever the mechanism holds: Linux (`RLIMIT_AS`) and Windows (a job object, 3.1), best-effort on macOS - see below; on both doors a request for more time or memory than the ceiling is refused, less runs, and a run naming no timeout stops at the operator's. `check_pool.py` asserts both limits again on a pool |
-| A promise that is false - a contract the code does not keep, a division by a value that can be zero, a list read that can go past the end | The prover: `requires`/`ensures`/`invariant` are checked by Z3 before running (E700, E701, E703, E705, E706) with an exact counterexample; a premise it cannot translate abandons the proof to a runtime check rather than proving with a gap | `check_refusals.py` - 21 wrong programs each refused with the specific code; `fuzz_native.py` - random programs run natively and interpreted must agree exactly, so a proven-and-compiled function cannot behave differently from an interpreted one |
+| A promise that is false - a contract the code does not keep, a division by a value that can be zero, a list read that can go past the end | The prover: `requires`/`ensures`/`invariant` are checked by Z3 before running (E700, E701, E703, E705, E706) with an exact counterexample; a premise it cannot translate abandons the proof to a runtime check rather than proving with a gap. Every query is built from the syntax tree through Z3's API, never parsed from text, and from 8.1 every name the prover makes up for its own values begins with `!` or contains `#`, which no identifier can - until then a parameter named `__g_result_1` was the same Z3 value as a call's result, and a false promise came back proven (advisory-prover-names.md) | `check_refusals.py` - 21 wrong programs each refused with the specific code; `check_prover_lies.py` - false promises that must never be proven, the prover's old names among them, and identifiers and text spelled like SMT-LIB; `fuzz_native.py` - random programs run natively and interpreted must agree exactly, so a proven-and-compiled function cannot behave differently from an interpreted one |
 | A failure the program ignores - a parse, a map lookup, a pop, a network call, a Python call that can fail | Fallibility in the signature (`or fail`), and E520 for any fallible call not handled with `check` or passed up with `try` | `check_fallible.py` - every builtin in `FALLIBLE_BUILTINS` is refused when ignored and formats its failure when caught; a builtin added without a recipe fails the suite |
 | A loop that never ends, before running it | The termination rule (SPEC.md 9.5): a loop is `terminates` only when a counter moves one step toward a limit the body leaves alone, `unshown` otherwise; reported by `audit` as `loops_unshown` and refused by `check --strict` as E612 | `check_termination.py` - 44 adversarial loops, each with its required verdict; the rule was wrong twice while being built, both times refusing a loop that ends, never the reverse |
 | One program's leftovers becoming the next program's starting state, when runs share a process | `velaris.Pool` (3.1) fixes the budget when the pool is made and re-asserts it before every program; a worker is killed and replaced unless the run finished cleanly; a reused worker has every module-level mutable reset - arguments, Python handles, native engines and their arena, the tracer, the budget and its counts, and the working directory, environment and recursion limit a granted `ffi` module can change | `check_pool.py` - 39 checks, including a program that widens its own budget through `ffi` and cannot widen it for the next, a handle nobody closed, args from a previous run, a counted grant spent per program, and a program writing straight at file descriptor 1 |
 | Not knowing what a program does before running it | `velaris audit`: effects, Python modules named, proven share, what can fail, loops not shown to end, functions that promise nothing about the data they handle, and the exact budget to run it under | `check_library.py` - the library and the MCP server report the same audit; the format is versioned (`velaris.audit/1`) |
+| Source written to stall or bloat the checker - a promise the prover spends its whole budget on, an expression the checker takes minutes to read - sent to a platform that audits before it runs | From 8.1 `velaris.check`, `velaris.audit` and `velaris.attest`, the doors' check and audit, and `run(timeout=...)`'s compile all run in a child under a ceiling: 60 seconds and 2048 MB unless raised, as `velaris check` has had since 8.0. Past it the answer is E613 or E614, and an audit that stopped says `ok: false` | `check_library.py` - an inflated expression and a crafted float contract stopped through the library, `Pool.check`, `run(timeout=)`, `attest`, the command line, the HTTP door and the MCP server; `check_platform.py` - the reference platform answers a stalled audit with 422 and stores nothing |
+| A program sent to a door, or to a platform's audit, reading a file on the host through an import | From 8.1 an error inside an imported file that is not `.vel` names the file and none of its content, everywhere; the HTTP door and the MCP server compile a request as a file in the directory they serve and refuse (E515), before opening it, an import that resolves outside that directory or to a file there that is not `.vel`; the library does the same with `import_root=`. Until 8.1 `import "/home/me/.env"` answered `found 'API_KEY'` (advisory-import-read.md) | `check_library.py` - a relative escape, an absolute path, a non-`.vel` file inside the root and a symbolic link out of it, each E515 with nothing of the file in the answer, through the door, the MCP server and the library; `check_adversarial.py` I1, I2 |
+| Not knowing what one run did, or who says so | `velaris.receipt/1` (8.1): the program and its imports by the digests `attest` uses, the budget, every refusal by code, effect and line, every declassification by reason and line, the run's parameters, how it ended and how long it took, as an in-toto Statement for a signature to bind. It holds no value the program handled. A run killed by its limit still has one, marked incomplete | `check_library.py` - receipts from `run`, a pool, the command line and both doors, validated against velaris-spec's schema, a declassified secret and a refused sink built from one kept out, a killed run's declassification kept; `check_adversarial.py` R1-R5, a forged receipt file among them; the release workflow signs one with cosign and sigstore-python and verifies both |
+| A caller of the HTTP door guessing the token, or flooding it | From 8.1 at most `--rate-limit` requests a minute (600 by default) for the token, and the same for each address without it; a wrong token or a forwarded-for header gets no allowance of its own, and cannot spend the token's. The token is compared with `secrets.compare_digest` over sha256 digests | `check_library.py` - 429 once an address's allowance is spent, the token's allowance untouched by it, and the comparison watched; `check_adversarial.py` D1 |
+| An ejected program changing what its next run is | `velaris eject` (8.1) refuses a budget whose writes reach the ejected directory; its `main.py` refuses one that reaches its own directory or a directory Python imports from where it is launched, refuses a runtime that differs from eject time, and refuses `--allow`, `--deny` and a `--receipt` inside itself | `check_eject.py`; `check_adversarial.py` E1-E6 - grants written several ways, a runtime with its budget check removed, a planted `velaris.py` |
 | Not knowing which source an audit describes, or who says so | `velaris attest` (4.2): the audit in an in-toto Statement whose subjects are the audited file and its imports by sha256, for a signature to bind; a file that changes while it is attested is refused | `check_library.py` - the Statement validates against in-toto's Statement v1, the capability/v1 predicate and `velaris.audit/1` schemas, its audit is `audit()`'s field for field, each digest is the file's; the release workflow signs one with cosign and with sigstore-python and verifies both as itself |
 | Anyone who can reach the HTTP door's port running programs through it | A bearer token on every endpoint but `GET /health` (3.4), from `--token-file`, `VELARIS_TOKEN` or made and printed once; never taken as an argument. Compared in constant time; a missing, wrong or misplaced token is the same 401 on every path, unknown ones included. `VELARIS_TOKEN` is removed from the environment before any worker starts, so a program granted `env` cannot read it. `--no-auth` is refused on any host but `127.0.0.1`/`localhost` and warns on every start; without a token, a request must name a loopback `Host`, carry no foreign `Origin` and post JSON, which keeps a browser page off the door | `check_library.py` - no token, a wrong one, another scheme, a bare `Bearer` and the token in the query string are each 401 with identical bytes; `/card` and an unknown path are 401 too; the token is accepted; a program cannot read `VELARIS_TOKEN`; the made token is printed once and never logged; `--token` in both spellings and a bare value are refused without being repeated; `--no-auth` is refused on `0.0.0.0`, `::1` and another address, and on loopback refuses `text/plain`, a foreign `Host` and a foreign `Origin` |
 | A caller of either door asking for more than the operator allows | `--max-allow` on the MCP server (3.4) and the HTTP door, the same grammar and the same `Budget.covers`; `io` on both when the flag is absent - on the HTTP door from 4.0, where before a door started without it granted every effect, `ffi` included; a request past it at any level is refused with the ceilings named | `check_library.py` - fs and ffi refused under the default on both doors; a narrower path passes while a wider path, unscoped `fs`, another host, a larger count and another module are refused under a scoped ceiling; a ceiling that does not parse stops the server |
@@ -220,8 +225,10 @@ What follows is what is still not defended.
 
 - **The door's token, once it is out.** The token is a password with
   no user behind it: whoever holds it has every grant the ceiling
-  allows, and the door cannot tell holders apart, revoke one of them,
-  or limit how often they call. It is only as secret as the file or
+  allows, and the door cannot tell holders apart or revoke one of them.
+  From 8.1 it limits how often the token is used, all its holders
+  together; one holder can spend that allowance for the rest. It is only
+  as secret as the file or
   environment it came from. A program the ceiling allows to read the
   token file can read it, and one allowed `net` as well can send it
   away. The door speaks plain HTTP: on any address but loopback the
@@ -288,6 +295,36 @@ What follows is what is still not defended.
   program is safe, that the audit is right, or that any runtime will
   enforce its `safe_command` - and whatever the audit could not
   determine, it could not either.
+- **What a receipt does not say.** A receipt (8.1) holds no value the
+  program handled, and nothing more careful than that: it holds what the
+  program did, and a program controls some of that without handing it a
+  value - its exit status, the line at which it was refused or stopped,
+  how many times it did something, how long it ran. After a
+  `declassify`, a program can choose any of those from the declassified
+  value. A declassification's reason is text the program's author wrote,
+  and nothing checks it. Velaris signs no receipt, and a signed one says
+  its signer ran this Velaris on these bytes and saw this run - as strong
+  as the machine it ran on, with `confinement: "none"` saying the budget
+  was the only boundary, and silent about any other run. A receipt marked
+  `complete: false` lists what the killed worker reported, and counts at
+  least that. A receipt written by `--receipt` is written when the run
+  ends; a process killed from outside writes none.
+- **What ejecting does not keep.** An ejected directory runs the Velaris
+  it was ejected with, and no later fix reaches it. Its `main.py` checks
+  the runtime and the program against their digests and cannot check
+  itself: if anything but its owner could have written to the directory,
+  compare it with `SHA256SUMS` before running. The proofs recorded in it
+  are a record, not something the launcher trusts. Its refusal of a budget
+  that writes where Python imports from is made where and when it is
+  launched: a directory added to `PYTHONPATH` later is not known to it.
+- **A write grant to where Python imports from.** A program allowed to
+  write into a directory on some Python's import path - a `PYTHONPATH`
+  entry, a site-packages, a user site - can leave a `sitecustomize.py` or
+  a module there that the next Python process started with that path runs.
+  That is not a Velaris effect, and a plain `velaris program.vel --allow
+  fs:write:...` does not look for it; the ejected launcher refuses such a
+  budget, and `python -I` ignores `PYTHONPATH` and the user site. Grant
+  writes to directories that hold data, not code.
 - **What the invocation log does not hold.** The program's source,
   output, stdin and arguments, and request headers, are not recorded;
   what a granted `ffi` module does inside Python shows only as `ffi`
@@ -300,14 +337,29 @@ What follows is what is still not defended.
   holds. The release workflow signs every artifact and publishes an
   SBOM; [SECURITY.md](SECURITY.md) says how to verify a download.
   Verify it.
-- **The compiler as a target.** `velaris check` runs the parser, the
-  type checker and the prover on untrusted source. The prover has a
-  time budget per query; the other passes do not. A hostile source
-  can make `check` slow. Run it under the same timeout you would run
-  the program under.
-- **Compile-time reads.** `import "path.vel"` reads that file as
-  code when compiling. It reads Velaris source, not data, and the
-  effect budget applies to the program's own reads, not to imports.
+- **The compiler as a target.** Checking runs the parser, the type
+  checker and the prover on untrusted source. The prover has a time
+  budget per query; the other passes do not, and a hostile source can
+  make a check slow or large. From 8.0 `velaris check` and `audit`, and
+  from 8.1 the library's `check`, `audit` and `attest`, the doors' check
+  and audit, and a bounded run's compile, stop at a ceiling (E613,
+  E614); what stays inside the ceiling - 59 seconds of it, every time -
+  is still spent. The language server has no ceiling: an editor that opens
+  a file written to stall the prover waits for it, and so does a program
+  that calls `check(timeout=None)`.
+- **Compile-time reads.** `import "path"` reads that file when compiling,
+  before any budget applies - the budget governs what a program does when
+  it runs. Until 8.1 this section said such a read "reads Velaris source,
+  not data". It was wrong: nothing held the path to a `.vel` file, and an
+  error inside a file that was not Velaris source quoted what it found, so
+  a program sent to a door or a platform could read the first word of a
+  file (advisory-import-read.md). From 8.1 that error shows nothing of the
+  file, and the doors, and the library given `import_root=`, refuse an
+  import outside the directory they serve (E515). Without an import root -
+  the command line, and the library by default - an import still reads any
+  `.vel` file the process can read, and the audit's `fs_paths`, `net_hosts`
+  and `ffi_modules` include that file's literals. Give the library an
+  `import_root` for source you were sent.
 - **The proof cache is data, and the program's directory is never
   trusted for it.** Proof results are cached so a second `check` need not
   re-run Z3. From 7.1.2 the cache lives only in a per-user directory
@@ -349,6 +401,9 @@ budget - is a different thing, and SECURITY.md says how it is handled.
 | Native code | A granted module may be or ship a compiled extension with no source and no runtime bound. `velaris.audit/1`'s `ffi_native` reports where it is found (8.0), and never claims a module is free of it. | Read `ffi_native`; grant a native module only when you would grant the machine. |
 | Secrets arriving another way | `Secret of T` marks the results of `env()` and `read_file_secret()` only. A value read through `read_line`, passed in through `args()`, fetched over `net`, returned by a granted `ffi` module, or hard-coded is an ordinary value with no protection. | Run agent-written programs with a clean environment; do not treat a secret from another source as protected. |
 | No OS confinement | The budget is enforced by an interpreter written in Python, in a process that also holds the compiler, on a host that trusts that process. It is not an OS sandbox, a network policy or a separate user account. | Put Velaris inside one of those when the stakes warrant it; the budget is a guard against a program doing what it was not asked to, not a substitute for a boundary the OS enforces. |
+| What a receipt shows that is not a value | A receipt (8.1) keeps out every value a program handled, but holds its exit status, where it stopped, its counts and its wall time - which a program that declassified something can choose from it. | Do not grant `declassify` to code whose receipts you will share. |
+| Writes to where Python imports from | A write grant to a directory on some Python's import path lets a program leave code the next Python process runs. Velaris does not look for this on a plain run; an ejected launcher refuses such a budget where it is launched. | Grant writes to data directories only; run Python with `-I` where you can. |
+| An ejected directory | It keeps the Velaris it was ejected with; no fix reaches it, and its launcher cannot check itself. | Eject again after an upgrade; check `SHA256SUMS` when the directory could have been written by someone else. |
 
 ## Residual risks, and what to do about each
 
@@ -370,7 +425,7 @@ budget - is a different thing, and SECURITY.md says how it is handled.
 | The MCP server's tools are changed after install | Run `velaris mcp-verify` against the signed manifest of the release you installed, after every install or upgrade and in the pipeline that builds the client's environment. |
 | Nobody reads the invocation log | Send it to a file (`--log-file`) that something keeps and watches; `outcome` values `unauthorized`, `ceiling` and `refused` are the ones that mean someone tried more than they were given. |
 | The model wrote something other than Velaris | Check the file extension and run `velaris check` first; refuse to run anything the checker refuses. |
-| A compiler defect | Pin a version, verify the signature of what you install, run the suites (`python run_tests.py`, `check_sandbox.py`, `check_library.py`, `check_refusals.py`, `check_fallible.py`, `check_termination.py`, `check_pool.py`, `check_ratchet.py`, `check_money.py`, `check_secret.py`, `check_platform.py`, `check_deps.py`, `fuzz_native.py`) and `velaris conformance` on the machine that will run untrusted code, and report anything that lies through the private channel in SECURITY.md. |
+| A compiler defect | Pin a version, verify the signature of what you install, run the suites (`python run_tests.py`, `check_sandbox.py`, `check_library.py`, `check_refusals.py`, `check_fallible.py`, `check_termination.py`, `check_pool.py`, `check_ratchet.py`, `check_money.py`, `check_secret.py`, `check_platform.py`, `check_deps.py`, `check_adversarial.py`, `check_prover_lies.py`, `check_metamorphic.py`, `check_eject.py`, `check_policies.py`, `fuzz_native.py`) and `velaris conformance` on the machine that will run untrusted code, and report anything that lies through the private channel in SECURITY.md. |
 | A single maintainer | Real, and stated in [SUPPORT.md](SUPPORT.md). Fixes to soundness and sandbox reports are promised within a week; nothing else is promised. |
 
 ## What "not a security boundary" means here

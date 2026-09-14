@@ -322,11 +322,15 @@ def registry_prerequisites(version: str) -> list[str]:
     return missing
 
 
+RECEIPT_SINCE = (8, 1, 0)
+
+
 def expected_assets(version: str) -> list[str]:
     """Every file a release's GitHub page holds: the nine artefacts - the
     wheel, the sdist, the SBOM, the MCP tool manifest, the .mcpb bundle,
     three executables and the attestation - with their signatures and
-    checksums."""
+    checksums; and from 8.1.0 a tenth, the signed receipt of one run of
+    the program the attestation is of."""
     signed = [f"velaris_lang-{version}-py3-none-any.whl",
               f"velaris_lang-{version}.tar.gz",
               f"velaris-lang-{version}.cdx.json",
@@ -338,6 +342,10 @@ def expected_assets(version: str) -> list[str]:
     names += [f"velaris-attestation-{version}.intoto.json",
               f"velaris-attestation-{version}.cosign.sigstore.json",
               f"velaris-attestation-{version}.sigstore-python.sigstore.json"]
+    if (parse_version(version) or (0, 0, 0)) >= RECEIPT_SINCE:
+        names += [f"velaris-receipt-{version}.intoto.json",
+                  f"velaris-receipt-{version}.cosign.sigstore.json",
+                  f"velaris-receipt-{version}.sigstore-python.sigstore.json"]
     return names
 
 

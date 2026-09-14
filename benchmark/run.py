@@ -50,6 +50,9 @@ EXT = {"velaris": ".vel", "deno": ".js", "python": ".py"}
 
 sys.path.insert(0, ROOT)
 import velaris  # noqa: E402  (the checkout being benchmarked)
+from suite_dirs import isolate  # noqa: E402
+
+isolate("benchmark")                  # its own proof cache (8.1)
 HAVE_PROVER = velaris.HAVE_Z3
 
 

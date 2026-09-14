@@ -23,10 +23,13 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
-SCRATCH = HERE / "_fallible_check.vel"
 
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
+from suite_dirs import isolate  # noqa: E402
+
+# its own directory and proof cache, so two runs at once do not collide
+SCRATCH = isolate("check_fallible") / "_fallible_check.vel"
 
 # how to call each builtin so that it type-checks; every entry uses
 # arguments that would compile if the failure were handled

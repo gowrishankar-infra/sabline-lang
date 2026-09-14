@@ -105,7 +105,7 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 </style></head><body>
 <nav><div class="in"><a class="brand" href="index.html">
 <span class="dot"></span>Velaris</a><a href="index.html" class="">Home</a><a href="tutorial.html" class="">Tutorial</a><a href="spec.html" class="">Reference</a><a href="library.html" class="">Library</a><a href="errors.html" class="here">Errors</a><a href="floats.html" class="">Floats</a><a href="playground.html" class="">Playground</a>
-<span class="ver">v8.0.0</span></div></nav>
+<span class="ver">v8.1.0</span></div></nav>
 <main class=""><h1>Error reference</h1>
 <p class="lead">Every error Velaris can give, from the error table in the compiler source, which the test suite holds against every code the compiler can raise, so this page cannot go stale. In the message templates, braces are filled with your program&rsquo;s names and values; every error also arrives with numbered fixes, and as JSON with <code>--json</code>.</p><table><tr><th>Code</th><th>What it means</th><th>Message template</th></tr>
 <tr id="E000"><td class="ecode">E000</td><td>a character the lexer cannot read, or a run that stopped without a Velaris error to report</td><td>unexpected character {source[pos]!r}</td></tr>
@@ -145,9 +145,10 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <tr id="E509"><td class="ecode">E509</td><td>a record value with a missing, unknown or repeated field, or a map with a repeated key</td><td>record &#x27;{node.name}&#x27; is missing field(s): {&#x27;, &#x27;.join(missing)}</td></tr>
 <tr id="E510"><td class="ecode">E510</td><td>a field that the value does not have</td><td>record &#x27;{t}&#x27; has no field &#x27;{node.field}&#x27;</td></tr>
 <tr id="E511"><td class="ecode">E511</td><td>a record changed in place</td><td>records cannot be changed in place</td></tr>
-<tr id="E512"><td class="ecode">E512</td><td>an imported file cannot be found</td><td>cannot find imported file &#x27;{path}&#x27;</td></tr>
+<tr id="E512"><td class="ecode">E512</td><td>an imported file cannot be found</td><td>cannot import &#x27;{path}&#x27;: it is not UTF-8 text, so it is not Velaris source</td></tr>
 <tr id="E513"><td class="ecode">E513</td><td>a function or record defined in two files</td><td>function &#x27;{f.name}&#x27; is defined in both &#x27;{fn_src[f.name]}&#x27; and &#x27;{path}&#x27;</td></tr>
 <tr id="E514"><td class="ecode">E514</td><td>a variable named like an import</td><td>&#x27;{name}&#x27; is the name of an import, so it cannot also be a variable</td></tr>
+<tr id="E515"><td class="ecode">E515</td><td>an import from outside the directory a program is served from, or of a file there that is not a .vel file</td><td>cannot import &#x27;{path}&#x27;: {why}</td></tr>
 <tr id="E520"><td class="ecode">E520</td><td>a failure that is ignored: a call that can fail, not handled with check or passed up with try</td><td>&#x27;get&#x27; on a map can fail - the key may be missing, and that cannot be ignored</td></tr>
 <tr id="E521"><td class="ecode">E521</td><td>&#x27;try&#x27; in a function that cannot fail, or a failure that escaped the program while running</td><td>&#x27;try&#x27; passes failure up, but &#x27;{fn.name}&#x27; cannot fail</td></tr>
 <tr id="E522"><td class="ecode">E522</td><td>&#x27;try&#x27; or &#x27;check&#x27; on a call that cannot fail</td><td>&#x27;{shown_name(node.subject.name)}&#x27; cannot fail - call it directly, no check needed</td></tr>
@@ -176,6 +177,8 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <tr id="E610"><td class="ecode">E610</td><td>the run&#x27;s time limit was reached and the program stopped</td><td>the program ran longer than {self.timeout} second(s) and was stopped</td></tr>
 <tr id="E611"><td class="ecode">E611</td><td>the run&#x27;s memory cap was reached and the program stopped</td><td>the program used more than {self.max_memory_mb} MB and was stopped</td></tr>
 <tr id="E612"><td class="ecode">E612</td><td>a loop whose end cannot be shown (check --strict only)</td><td></td></tr>
+<tr id="E613"><td class="ecode">E613</td><td>a check or audit ran past its time ceiling and was stopped</td><td>the {what} did not finish within {self.timeout:g} second(s) and was stopped; the source may be crafted to stall the checker</td></tr>
+<tr id="E614"><td class="ecode">E614</td><td>a check or audit grew past its memory ceiling and was stopped</td><td>the {what} used more than {self.max_memory_mb} MB and was stopped; the source may be crafted to bloat the checker</td></tr>
 <tr id="E700"><td class="ecode">E700</td><td>a promise that is provably false, with the input that breaks it</td><td>promise cannot be kept: {nice_name(fn.name)} ensures {expr_str(ens_expr)} - proven without running the program: {vals} gives result = {rv}</td></tr>
 <tr id="E701"><td class="ecode">E701</td><td>a call that can break the called function&#x27;s &#x27;requires&#x27;, with the input that does</td><td>this call can break a promise: &#x27;{fnB.name}&#x27; requires {expr_str(r_expr)}, but &#x27;{ctx.caller}&#x27; can call it with {vals} - proven without running the program</td></tr>
 <tr id="E703"><td class="ecode">E703</td><td>a loop invariant the prover cannot show holds</td><td>cannot prove the loop keeps &#x27;invariant {expr_str(inv_expr)}&#x27; {where} in &#x27;{ctx.caller}&#x27; - the promises allow: {vals}</td></tr>

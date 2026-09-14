@@ -1,5 +1,181 @@
 # Velaris changelog
 
+## 8.1 - Receipts, and what a policy can ask
+
+A minor version. A program, a budget or a command line written for 8.0
+means the same under 8.1, except for what "What 8.1 refuses that 8.0 did
+not" names below: on the two doors, an import from outside the directory
+they serve, and in the library, a check or audit past the ceiling the
+command line has had since 8.0. The adversarial pass run against this
+release found two holes, and both are fixed here, each with an advisory
+draft.
+
+**Check and audit have a ceiling in the library and the doors.** 8.0 put
+`velaris check` and `velaris audit` under a time and memory ceiling on the
+command line. `velaris.check()`, `velaris.audit()` and `velaris.attest()`
+now run under the same one: 60 seconds and 2048 MB, raised with `timeout=`
+and `max_memory_mb=`, and `None` for both checks in the calling process as
+before. Source written to stall the prover or to bloat the checker comes
+back as a problem - **E613** past the clock, **E614** past the memory cap -
+and an audit that is stopped says `ok: false` with nothing determined.
+`velaris.Pool` gains `check()` and `audit()`, which keep their worker
+between calls. The HTTP door and the MCP server check and audit on their own
+workers under `--check-timeout` and `--check-memory-mb`, and the command
+line gains `--check-memory-mb` beside `--check-timeout`. `run(timeout=...)`
+now compiles inside its child, under the deadline: until 8.1 it compiled
+first in the caller's process with no limit, so a program crafted to stall
+the prover held `run(source, timeout=5)` for as long as it liked. A bounded
+run is now a pool of one worker, and reports `effects_used` where it
+reported `None`. A library `check()` or `audit()` costs a child process's
+start - a third of a second on the machine this was built on - where it cost
+nothing; `timeout=None, max_memory_mb=None` avoids that for source you wrote
+yourself.
+
+**Receipts.** `velaris.receipt/1` records one run: the program and its
+imports by sha256 - the subjects `velaris attest` writes for the same bytes,
+so an attestation and a receipt of one program are its before and its
+after - the budget, every refusal (code, effect, line), every
+declassification with its reason, the run's parameters (seed, frozen clock,
+timeout, memory cap, and `confinement: "none"`), the exit status and
+outcome, and the wall time. It is an in-toto Statement of a new predicate
+type, `https://gowrishankar-infra.github.io/velaris-lang/receipt/v1`, signed
+as an attestation is signed. `velaris program.vel --receipt FILE` writes
+one, `run()` and `Pool.run()` return one as `RunResult.receipt`, and the
+doors return one when a request says `"receipt": true`. A run stopped by its
+time or memory limit still has one, marked `complete: false`, holding what
+the worker reported before it was killed. A receipt holds no value the
+program handled: a refusal is recorded without the path or host it named, a
+declassification without its value, and no output, input, argument or
+message is kept. The release workflow signs the receipt of one run of
+`examples/effects.vel` with cosign and with sigstore-python and verifies
+both, so a release holds 27 files. velaris-spec 0.10.0 section 8.7 defines
+the format.
+
+**What a policy can ask.** `policies/opa/capability.rego` refuses an in-toto
+capability attestation - what `velaris attest` writes - whose effects are
+outside an allowed set or whose net hosts are outside an allow-list, and one
+whose program did not compile or whose host is built while it runs, since
+neither can be held to a list. `capability_test.rego` holds a pass, a fail
+and the edges. `policies/kyverno/require-capability-attestation.yaml`
+refuses a Pod whose image lacks a capability attestation, using Kyverno's
+image verification with a keyless attestor. `check_policies.py` runs `opa
+test`, and `opa eval` against Statements `velaris attest` writes, and skips
+them with a notice where OPA is not installed; CI installs OPA 1.20.2.
+EMBEDDING.md has the example.
+
+**`velaris eject`.** `velaris eject program.vel` writes a directory that
+runs, and builds into one executable with PyInstaller, with nothing from
+this project installed: the program and what it imports, a copy of the
+runtime and of the standard library files it uses, `main.py` with the budget
+fixed at eject time, a `requirements.txt` pinning the prover and the native
+compiler to the versions installed, `proofs.json` recording what was proven,
+`SHA256SUMS`, and a README saying what holds once ejected and what does not.
+The copied runtime enforces the budget whatever the program says. `main.py`
+refuses `--allow`; refuses a program that differs from eject time unless
+given `--changed-ok`, and a runtime that differs whatever it is given; and
+refuses a budget that would let the program write into its own directory or
+where Python imports from (`sys.path`, `PYTHONPATH`, the site directories),
+and a `--receipt` inside its directory. The last two came from the
+adversarial pass: a program granted a write to a `PYTHONPATH` directory
+left a `sitecustomize.py` that the next Python started there ran, and
+`--changed-ok` ran a runtime that had been edited. The proofs are a record
+that nothing trusts when the
+program runs; `main.py --prove` runs them again. `check_eject.py` ejects
+`examples/discount.vel`, runs it from a fresh virtual environment with no
+packages, then changes it to reach the network and sees E310.
+
+**The doors.**
+
+- `velaris serve --rate-limit N` answers at most N requests a minute - 600
+  unless told otherwise - per token, and per address for requests without
+  it, so a caller guessing tokens is limited and cannot spend the holder's
+  allowance. Past it the answer is 429 with `Retry-After`, logged
+  `rate_limited`.
+- `--bind` names the address (`--host` still does). A door bound anywhere
+  but loopback says so on stderr before it listens.
+- The token comparison was confirmed rather than assumed:
+  `secrets.compare_digest` over two sha256 digests, whatever length was
+  sent. It is one function now, which a test watches.
+- EMBEDDING.md says what can connect to the MCP server and the language
+  server, and that neither runs a program to answer a hover, a format, a
+  check or an audit; a test sends both a program that writes a file, and no
+  file is written.
+
+**What 8.1 refuses that 8.0 did not.**
+
+1. **On the HTTP door and the MCP server, an import from outside the
+   directory they serve** - `--root`, the directory they were started in
+   unless it names another - or of a file there that is not `.vel`, is
+   refused with **E515** before the file is opened. A program sent as text
+   is compiled as a file in that directory, so its relative imports resolve
+   there. Until 8.1 such a program could import any file the door's user
+   could read, and the compiler's error quoted what it found
+   (`advisory-import-read.md`). A door serving programs that import files
+   elsewhere needs `--root` naming their directory. The library is
+   unchanged unless `import_root=` is given. By the reading STABILITY.md
+   applied to 3.4, a door that refuses what it accepted is a break; this
+   one is made in a minor version, and STABILITY.md records it as such and
+   says why.
+2. **In the library, a `check()` or `audit()` past 60 seconds or 2048 MB**
+   is stopped (E613, E614) where 8.0 waited for it. The command line has
+   stopped it since 8.0.
+
+**Two holes, fixed.**
+
+- **A false promise could come back proven** (Goal A;
+  `advisory-prover-names.md`; 0.9 through 8.0.0). The prover gave the values
+  it made up Z3 names a program could also write: `__g_result_1` for the
+  result of a call to `g`, `xs__n` for the length of a list `xs`. A
+  parameter with such a name was the same Z3 value, so a parameter named
+  `__g_result_1` turned `g`'s promise about its result into an assumption
+  about the parameter, and a false `ensures` was reported proven - and,
+  compiled to native code, never checked when it ran. The prover's own names
+  now begin with `!` or contain `#`, which no identifier can. It was found
+  checking this release's item 6: the prover builds every query from the
+  syntax tree and parses none from text, so an identifier spelled like
+  SMT-LIB is an identifier - but a name the prover spelled for itself could
+  be written by a program.
+- **An import could read a file and quote it** (Goal C;
+  `advisory-import-read.md`; 0.16 through 8.0.0). An imported file that is
+  not Velaris source gave an error naming its first token - `import
+  "/home/me/.env"` answered `found 'API_KEY'` - through the library and both
+  doors. That error now names the file and nothing in it, everywhere, and
+  the doors hold imports to their root. THREAT_MODEL.md said an import
+  "reads Velaris source, not data"; that was wrong, and it now says what an
+  import reads.
+
+**Smaller things.**
+
+- `VELARIS_CACHE_DIR` names the directory the proof cache goes under
+  (`<dir>/velaris/proofs`); `velaris clean` still deletes only that
+  `velaris` directory. A cache file is written beside itself and renamed
+  over the old one, so two checks of one file at once each read a whole
+  entry. `audit()` no longer writes the cache, which README.md already said
+  the library never did.
+- `refused_effect` and the doors' log name the refusals 7.1.2 and 8.0 added
+  (E316, E317, E318), which a door logged as `failed`.
+- Every suite writes to a temporary directory of its own and keeps its own
+  proof cache (`suite_dirs.py`), so two runs from one checkout do not
+  collide: until 8.1 `run_tests.py` wrote `report.txt` and `ledger.txt` into
+  the checkout, `check_library.py` shared one door log, and seven suites
+  wrote a scratch program beside the source. CI runs `run_tests`,
+  `check_library`, `check_adversarial` and `fuzz_native` twice at once, in
+  one job, to show it. `build_docs.py` and `build_playground.py` write each
+  page beside itself and rename it.
+- README.md and EMBEDDING.md pin the Action by commit, with its tag in a
+  comment, and `run_tests.py` checks that the commit is the one the newest
+  tag names. Pinned to a commit, the Action installs the version that
+  commit's velaris.py names, as it installs a tag's.
+- `packaging/placeholders/` records the names beside `velaris-lang`.
+  `velaris` is free on PyPI and on npm, and the packages that would hold it
+  are ready, not published: publishing takes a registry account this
+  repository keeps no credential for. `velarislang` and `velaris_lang`
+  cannot be registered by anyone on either registry.
+- `examples/platform` audits a submission under its own limit, 20 seconds
+  and 1024 MB, and answers 422 when the audit does not finish.
+
+New codes: E515, E613, E614. velaris-spec goes to 0.10.0.
+
 ## 8.0 - What the socket reaches, and other things the audit now says
 
 A major version. Two of its changes refuse programs that ran under 7.x, so

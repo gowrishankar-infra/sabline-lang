@@ -600,6 +600,14 @@ shadow an import name (E514).
 Imports are resolved relative to the importing file, with the bundled
 standard library searched last. Import cycles are rejected.
 
+A program compiled under an import root - the HTTP door and the MCP
+server always compile under one, the directory they serve, and the
+library takes `import_root=` - may import only `.vel` files at or under
+that directory, resolved with realpath, and files of the standard library;
+any other import is refused with E515 before the file is read (8.1). An
+error inside an imported file that is not a `.vel` file names the file and
+shows nothing of its content, with or without an import root.
+
 ### 10.1 Your names and the builtins
 
 A builtin added in **4.3 or later** gives way to a function of the same

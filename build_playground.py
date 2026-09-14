@@ -367,5 +367,12 @@ html = TEMPLATE.replace("__SRC__", json.dumps(SRC)) \
                .replace("__EXAMPLES__", json.dumps(EXAMPLES))
 outdir = HERE / "playground"
 outdir.mkdir(exist_ok=True)
-(outdir / "index.html").write_text(html, encoding="utf-8")
+# written beside the page and renamed over it, so a reader at the same
+# moment - build_docs.py copies it - never sees half a page (8.1)
+import os as _os
+import tempfile as _tempfile
+_fd, _tmp = _tempfile.mkstemp(prefix=".index-", suffix=".tmp", dir=outdir)
+with _os.fdopen(_fd, "w", encoding="utf-8") as _fh:
+    _fh.write(html)
+_os.replace(_tmp, outdir / "index.html")
 print(f"playground/index.html written ({len(html)//1024} KB)")

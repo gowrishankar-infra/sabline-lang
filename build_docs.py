@@ -504,35 +504,157 @@ example</a> was written by <code>velaris attest</code>.</p>
 """
 
 
-(OUT / "capability" / "v1").mkdir(parents=True, exist_ok=True)
-(OUT / "capability" / "v1" / "index.html").write_text(
-    shell("capability/v1 predicate type", "", capability_page(),
-          root="../../"), encoding="utf-8")
-(OUT / "index.html").write_text(
-    shell("Velaris", "index.html", index_page()), encoding="utf-8")
-(OUT / "tutorial.html").write_text(
-    shell("Tutorial", "tutorial.html",
-          md_to_html((HERE / "TUTORIAL.md").read_text(encoding="utf-8"))),
-    encoding="utf-8")
-(OUT / "library.html").write_text(
-    shell("Library", "library.html", library_page()), encoding="utf-8")
-(OUT / "errors.html").write_text(
-    shell("Errors", "errors.html", errors_page()), encoding="utf-8")
-(OUT / "spec.html").write_text(
-    shell("Language reference", "spec.html",
-          md_to_html((HERE / "SPEC.md").read_text(encoding="utf-8")),
-          wide=True), encoding="utf-8")
-(OUT / "floats.html").write_text(
-    shell("Floats", "floats.html",
-          md_to_html((HERE / "docs" / "floats.md").read_text(
-              encoding="utf-8"))), encoding="utf-8")
+RECEIPT_TYPE = ("https://gowrishankar-infra.github.io/velaris-lang/"
+                "receipt/v1")
+
+
+def receipt_page() -> str:
+    """The page the receipt/v1 predicate type URL resolves to. The
+    definition is velaris-spec SPEC.md section 8.7; the schema beside this
+    page is velaris-spec's schemas/receipt-predicate.v1.schema.json, byte
+    for byte, and velaris-spec's tools/check_sync.py fails if they
+    differ."""
+    import hashlib
+    digest = hashlib.sha256(
+        (HERE / "examples" / "effects.vel").read_bytes()).hexdigest()
+    example = html.escape("""{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {"name": "examples/effects.vel",
+     "digest": {"sha256": "%s"}}
+  ],
+  "predicateType": "%s",
+  "predicate": {
+    "schema": "velaris.receipt/1",
+    "producer": {"name": "velaris-lang", "version": "%s",
+                 "uri": "https://github.com/gowrishankar-infra/velaris-lang"},
+    "specification": "%s",
+    "startedAt": "2026-09-14T00:00:00.000Z",
+    "wall_time_ms": 41.7,
+    "budget": "clock,fs:read:/work/report.txt,fs:write:/work/report.txt,io,rand",
+    "run_parameters": {"seed": null, "freeze_time": null, "timeout": null,
+                       "max_memory_mb": null, "max_read_bytes": 67108864,
+                       "confinement": "none"},
+    "effects_used": {"clock": 1, "rand": 1, "fs": 2, "io": 4},
+    "refusals": [],
+    "declassifications": [],
+    "exit": {"status": 0, "outcome": "ok", "code": null},
+    "complete": true
+  }
+}""" % (digest, RECEIPT_TYPE, velaris.VERSION, velaris.RECEIPT_SPEC))
+    return f"""
+<div class="eyebrow">An in-toto predicate type</div>
+<h1>receipt/v1</h1>
+<p class="lead">A signed record of one run of a Velaris program: the budget
+it was given, every refusal and every declassification, the parameters it
+ran under, how it ended and how long it took - bound, by sha256, to the same
+source files a <a href="../../capability/v1/">capability/v1</a> attestation
+names. The attestation is what the program may do; the receipt is what one
+run of it did.</p>
+
+<p><b>Predicate type:</b> <code>{RECEIPT_TYPE}</code> - this
+page.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
+draft 2020-12, for the predicate.<br><b>Definition:</b>
+<a href="{SPEC_REPO}/blob/main/SPEC.md#87-velarisreceipt1-a-record-of-one-run">velaris-spec
+SPEC.md section 8.7</a>, dedicated to the public domain under CC0.</p>
+
+<pre><code>{example}</code></pre>
+
+<h2>Fields</h2>
+<table>
+<tr><th>Field</th><th>Meaning</th></tr>
+<tr><td><code>subject</code></td><td>the program that ran, by the sha256 of
+its text, then each file it imported, by the sha256 of its bytes - the
+subjects <code>velaris attest</code> writes for the same files</td></tr>
+<tr><td><code>budget</code></td><td>the budget the run was given, in the
+budget grammar</td></tr>
+<tr><td><code>run_parameters</code></td><td><code>seed</code>,
+<code>freeze_time</code>, <code>timeout</code>,
+<code>max_memory_mb</code>, <code>max_read_bytes</code>, and
+<code>confinement</code>: <code>none</code> when the budget was the only
+boundary</td></tr>
+<tr><td><code>effects_used</code></td><td>each effect and how many
+operations of it the budget let through; null when the run was stopped from
+outside before it could say</td></tr>
+<tr><td><code>refusals</code></td><td>each refusal as its code, its effect
+and its line, whether it stopped the run, and how many times - never the
+path, host or module the program named</td></tr>
+<tr><td><code>declassifications</code></td><td>each declassification as
+the reason written in the program and its line, and how many times - never
+the value</td></tr>
+<tr><td><code>exit</code></td><td><code>status</code>, <code>outcome</code>
+(ok, refused, failed, did_not_compile, timeout, out_of_memory) and the
+<code>code</code> that ended it</td></tr>
+<tr><td><code>wall_time_ms</code>, <code>startedAt</code></td><td>by the
+producer's clock</td></tr>
+<tr><td><code>complete</code></td><td>false when the run was stopped from
+outside: what is listed happened, and a count is at least that</td></tr>
+</table>
+
+<h2>What it does not say</h2>
+<p>It holds no value the program handled, and nothing of its output, input
+or arguments. It does not hide what a program controls that is not a value:
+its exit status, which lines it reached and how long it ran are in it, and a
+program that has declassified a value can choose those. A declassification's
+reason is text its author wrote, and nothing checks it. A signed receipt
+says that its signer ran this producer on these bytes and saw this run; it
+is no stronger than the machine it was made on, and it says nothing about
+any other run.</p>
+
+<h2>A producer</h2>
+<p>velaris-lang writes receipts from 8.1:</p>
+<pre><code>velaris program.vel --allow io --receipt program.receipt.json
+velaris.run(source, allow={{"io"}}).receipt
+POST /run  {{"source": "...", "allow": ["io"], "receipt": true}}</code></pre>
+<p>It signs none; they are signed as an attestation is -
+<code>cosign attest-blob --statement</code>, or sigstore-python's
+<code>sign_dsse</code> - and <code>cosign verify-blob-attestation --type
+{RECEIPT_TYPE}</code> checks one against the program's own bytes.
+Every release of velaris-lang carries one for an example program, signed by
+its release workflow and verified there.</p>
+"""
+
+
+def write(path: Path, text: str) -> None:
+    """A page, written beside itself and renamed over the old one, so a
+    reader at the same moment - a suite reading the errors page while
+    another run rebuilds it - never sees half of it (8.1)."""
+    import os
+    import tempfile
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".page-", suffix=".tmp",
+                               dir=path.parent)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.replace(tmp, path)
+
+
+write(OUT / "capability" / "v1" / "index.html",
+      shell("capability/v1 predicate type", "", capability_page(),
+            root="../../"))
+write(OUT / "receipt" / "v1" / "index.html",
+      shell("receipt/v1 predicate type", "", receipt_page(), root="../../"))
+write(OUT / "index.html", shell("Velaris", "index.html", index_page()))
+write(OUT / "tutorial.html",
+      shell("Tutorial", "tutorial.html",
+            md_to_html((HERE / "TUTORIAL.md").read_text(encoding="utf-8"))))
+write(OUT / "library.html", shell("Library", "library.html", library_page()))
+write(OUT / "errors.html", shell("Errors", "errors.html", errors_page()))
+write(OUT / "spec.html",
+      shell("Language reference", "spec.html",
+            md_to_html((HERE / "SPEC.md").read_text(encoding="utf-8")),
+            wide=True))
+write(OUT / "floats.html",
+      shell("Floats", "floats.html",
+            md_to_html((HERE / "docs" / "floats.md").read_text(
+                encoding="utf-8"))))
 play = (HERE / "playground" / "index.html").read_text(encoding="utf-8")
-(OUT / "playground.html").write_text(play, encoding="utf-8")
+write(OUT / "playground.html", play)
 # llms.txt (8.0): the card for a model, served as text/plain, and the URL
 # every compiler error and runtime refusal points at (velaris.REFERENCE_URL).
 # It is LLM.md exactly, so `velaris card` and the served card cannot diverge;
 # check_library holds docs/llms.txt to LLM.md and fetches the live URL.
-(OUT / "llms.txt").write_text(
-    (HERE / "LLM.md").read_text(encoding="utf-8"), encoding="utf-8")
+write(OUT / "llms.txt", (HERE / "LLM.md").read_text(encoding="utf-8"))
 n_err = len(velaris.ERROR_TABLE)
-print(f"docs/ written: 5 pages + llms.txt, {n_err} error codes documented")
+print(f"docs/ written: 5 pages, 2 predicate types + llms.txt, {n_err} error "
+      f"codes documented")

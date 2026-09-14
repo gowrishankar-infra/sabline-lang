@@ -28,6 +28,10 @@ from pathlib import Path
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
+from suite_dirs import isolate  # noqa: E402
+
+# its own directory and proof cache, so two runs at once do not collide
+WORK = isolate("check_pool")
 
 TIMEOUT = 60
 MEMORY_MB = 300
@@ -447,7 +451,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
        len(dropped) == 1 and all_gone(dropped),
        f"{dropped} -> {[p for p in dropped if alive(p)]}")
 
-    leaver = HERE / "_pool_leaver.py"
+    leaver = WORK / "_pool_leaver.py"
     leaver.write_text(
         "import sys\n"
         f"sys.path.insert(0, {str(HERE)!r})\n"

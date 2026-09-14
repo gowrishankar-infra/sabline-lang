@@ -37,6 +37,12 @@ jobs:
         with:
           repository: gowrishankar-infra/velaris-spec
           path: velaris-spec
+      # OPA, so check_policies.py runs `opa test` and `opa eval` rather than
+      # skipping them
+      - name: OPA, for the policy's tests
+        uses: open-policy-agent/setup-opa@b2b258e089860efaadaaf71bf6e3aecb4a3eeff1  # v2.4.0
+        with:
+          version: "1.20.2"
       - name: Test suite
         run: python run_tests.py
       - name: Native and interpreted agree (random programs)
@@ -57,6 +63,10 @@ jobs:
         run: python check_pool.py
       - name: The reference platform refuses what it says it refuses
         run: python check_platform.py
+      - name: An ejected program runs with nothing from here, and holds its budget
+        run: python check_eject.py
+      - name: The OPA policy and its Kyverno twin ask what they say
+        run: python check_policies.py
       - name: Every loop gets the termination verdict it must
         run: python check_termination.py
       - name: Every widening of the capability surface fails, and nothing else does
@@ -93,3 +103,43 @@ jobs:
         run: python build_playground.py
       - name: Docs site builds
         run: python build_docs.py
+
+  # Two suites at once, from one checkout, as two local configurations run
+  # side by side: every suite writes to a directory of its own and keeps
+  # its own proof cache (suite_dirs.py), so neither may see the other's
+  # files. Each pair runs the same suite twice together.
+  concurrent:
+    name: suites run twice at once, from one checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install (full)
+        run: pip install ".[full,test]"
+      - name: velaris-spec, for the schemas
+        uses: actions/checkout@v5
+        with:
+          repository: gowrishankar-infra/velaris-spec
+          path: velaris-spec
+      - name: run_tests (native and --no-native), check_library, check_adversarial and fuzz_native, each twice at once
+        shell: bash
+        run: |
+          python run_tests.py > run_tests-a.log 2>&1 & p1=$!
+          python run_tests.py --no-native > run_tests-b.log 2>&1 & p2=$!
+          python check_library.py > check_library-a.log 2>&1 & p3=$!
+          python check_library.py > check_library-b.log 2>&1 & p4=$!
+          python check_adversarial.py > check_adversarial-a.log 2>&1 & p5=$!
+          python check_adversarial.py > check_adversarial-b.log 2>&1 & p6=$!
+          python fuzz_native.py 30 > fuzz_native-a.log 2>&1 & p7=$!
+          python fuzz_native.py 30 > fuzz_native-b.log 2>&1 & p8=$!
+          status=0
+          for pair in "run_tests-a $p1" "run_tests-b $p2" "check_library-a $p3" \
+                      "check_library-b $p4" "check_adversarial-a $p5" \
+                      "check_adversarial-b $p6" "fuzz_native-a $p7" "fuzz_native-b $p8"; do
+            set -- $pair
+            if wait "$2"; then echo "passed: $1"; else echo "::error::$1 failed"; status=1; fi
+          done
+          for log in *.log; do echo "===== $log"; tail -n 25 "$log"; done
+          exit $status

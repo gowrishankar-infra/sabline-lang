@@ -48,6 +48,10 @@ import velaris  # noqa: E402
 # platform's own API. No files, no other host, no Python.
 PLATFORM_ALLOW = "io,net:api.example.com@20"
 TIMEOUT_S, MEMORY_MB = 5, 256
+# How long, and in how much memory, the audit of a submission may take. A
+# customer's source is read by the compiler before anything runs, and a
+# source can be written to stall that; the audit stops at these (8.1).
+AUDIT_TIMEOUT_S, AUDIT_MEMORY_MB = 20, 1024
 
 
 def grants(spec: str) -> list:
@@ -149,7 +153,16 @@ def policy() -> dict:
 def submit(source: str = Body(..., media_type="text/plain"),
            name: str = "untitled"):
     """Audit it, decide, store it. This never runs the script."""
-    report = velaris.audit(source)
+    report = velaris.audit(source, timeout=AUDIT_TIMEOUT_S,
+                           max_memory_mb=AUDIT_MEMORY_MB)
+    stopped = [p for p in report.problems if p.code in ("E613", "E614")]
+    if stopped:
+        return JSONResponse(status_code=422, content={
+            "error": "the audit did not finish within this platform's "
+                     "limits, so this cannot be enabled",
+            "problems": problems(stopped),
+            "limits": {"audit_timeout_s": AUDIT_TIMEOUT_S,
+                       "audit_memory_mb": AUDIT_MEMORY_MB}})
     if not report.ok:
         return JSONResponse(status_code=400, content={
             "error": "this does not compile, so it cannot be enabled",

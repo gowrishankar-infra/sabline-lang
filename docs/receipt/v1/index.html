@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Velaris - the language where you can
+trust code you didn't write. Effects, failure, and Z3-proven contracts,
+all in the signature.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a7d5a'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<title>receipt/v1 predicate type - Velaris</title>
+<style>
+:root { --paper:#ffffff; --alt:#f6f7f8; --line:#e6e8eb; --ink:#0b1215;
+        --mut:#57606a; --brand:#0a7d5a; --brand2:#075e44;
+        --term:#101418; --term-ink:#e6edf3; --term-mut:#8b949e;
+        --err:#e5484d; --mint:#7ee2c0; }
+* { box-sizing:border-box; margin:0; }
+html { scroll-behavior:smooth; }
+body { background:var(--paper); color:var(--ink); font:clamp(15px,0.5vw + 11px,18px)/1.65
+  -apple-system,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased; }
+nav { position:sticky; top:0; background:rgba(255,255,255,.86);
+  backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
+  z-index:10; }
+nav .in { max-width:clamp(900px,86vw,1480px); margin:0 auto;
+  padding:12px clamp(14px,3vw,24px); display:flex;
+  gap:clamp(13px,2.4vw,26px); align-items:center; flex-wrap:wrap; }
+.brand { font-weight:700; font-size:17px; letter-spacing:-.02em;
+  color:var(--ink); text-decoration:none; display:flex; gap:8px;
+  align-items:center; }
+.dot { width:9px; height:9px; border-radius:50%;
+  background:var(--brand); display:inline-block; }
+nav a { color:var(--mut); text-decoration:none; font-size:14.5px;
+  font-weight:500; }
+nav a:hover, nav a.here { color:var(--ink); }
+nav .ver { margin-left:auto; font-size:12.5px; color:var(--mut);
+  border:1px solid var(--line); border-radius:99px; padding:3px 11px; }
+main { max-width:clamp(760px,74vw,1240px); margin:0 auto;
+  padding:clamp(28px,5vw,56px) clamp(16px,4vw,32px) 110px;
+  overflow-wrap:break-word; }
+main.wide { max-width:clamp(900px,86vw,1480px); }
+h1 { font-size:clamp(32px,2.6vw + 14px,58px); letter-spacing:-.03em;
+  line-height:1.12; font-weight:750; }
+h2 { font-size:clamp(20px,1.2vw + 12px,30px); letter-spacing:-.02em;
+  margin:2.2em 0 .7em; font-weight:700; }
+h3 { font-size:18px; margin:1.6em 0 .5em; font-weight:650; }
+p, li { color:#2a3138; }
+p { margin:.85em 0; }
+.lead { font-size:clamp(16.5px,0.8vw + 10px,22px); color:var(--mut);
+  max-width:52ch; }
+a { color:var(--brand); text-decoration:none; }
+a:hover { text-decoration:underline; }
+code { background:var(--alt); border:1px solid var(--line);
+  padding:1.5px 6px; border-radius:6px;
+  font:13px ui-monospace,"SF Mono",Consolas,monospace; }
+pre { background:var(--term); color:var(--term-ink); border-radius:12px;
+  padding:clamp(13px,2.5vw,18px) clamp(14px,3vw,20px); overflow-x:auto;
+  margin:1.2em 0; -webkit-overflow-scrolling:touch;
+  font:clamp(12px,0.5vw + 8px,15px)/1.6 ui-monospace,"SF Mono",Consolas,
+  monospace; }
+pre code { background:none; border:none; padding:0; color:inherit;
+  font:inherit; }
+.k { color:var(--mint); } .e { color:#ff8f8f; } .m { color:var(--term-mut); }
+.btns { display:flex; gap:12px; margin:26px 0 8px; flex-wrap:wrap; }
+.btn { background:var(--ink); color:#fff; padding:11px 22px;
+  border-radius:9px; font-weight:600; font-size:15px; }
+.btn:hover { background:#22292f; text-decoration:none; }
+.btn.ghost { background:transparent; color:var(--ink);
+  border:1px solid var(--line); }
+.btn.ghost:hover { border-color:#c7ccd1; }
+.hero { padding:clamp(36px,8vw,74px) 0 20px; }
+@media (max-width:560px) {
+  .btns { flex-direction:column; }
+  .btn { text-align:center; }
+  nav .ver { display:none; }
+  .fnrow .sig { font-size:12.5px; }
+}
+.eyebrow { color:var(--brand); font-weight:650; font-size:13.5px;
+  letter-spacing:.06em; text-transform:uppercase; margin-bottom:14px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,
+  minmax(clamp(230px,22vw,300px),1fr)); gap:16px; margin:34px 0; }
+.card { border:1px solid var(--line); border-radius:14px;
+  padding:20px 22px; background:var(--paper); }
+.card b { font-size:clamp(15px,0.4vw + 10px,17.5px); letter-spacing:-.01em; }
+.card p { font-size:clamp(13.5px,0.4vw + 9px,16px); color:var(--mut); margin:.5em 0 0; }
+.sig { color:var(--ink); font:clamp(13px,0.45vw + 9px,15.5px) ui-monospace,"SF Mono",Consolas,
+  monospace; font-weight:600; }
+.contract { color:var(--brand); font:clamp(12px,0.4vw + 8px,14.5px) ui-monospace,"SF Mono",
+  Consolas,monospace; margin:5px 0 0 20px; }
+.fnrow { border:1px solid var(--line); border-radius:12px;
+  padding:15px 18px; margin:11px 0; }
+table { border-collapse:collapse; width:100%; margin:1.2em 0;
+  font-size:clamp(13px,0.5vw + 9px,16px); display:block; overflow-x:auto;
+  -webkit-overflow-scrolling:touch; white-space:nowrap; }
+table tr td:last-child { white-space:normal; min-width:220px; }
+td, th { border-bottom:1px solid var(--line); padding:9px 12px;
+  text-align:left; vertical-align:top; }
+th { color:var(--mut); font-weight:600; font-size:13px;
+  text-transform:uppercase; letter-spacing:.05em; }
+.ecode { color:var(--err); font-weight:650;
+  font-family:ui-monospace,Consolas,monospace; font-size:13px; }
+.strip { background:var(--alt); border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  margin:44px calc(-1 * clamp(16px,4vw,24px));
+  padding:30px clamp(16px,4vw,24px); }
+footer { border-top:1px solid var(--line); color:var(--mut);
+  font-size:13.5px; padding:26px 24px; text-align:center; }
+</style></head><body>
+<nav><div class="in"><a class="brand" href="../../index.html">
+<span class="dot"></span>Velaris</a><a href="../../index.html" class="">Home</a><a href="../../tutorial.html" class="">Tutorial</a><a href="../../spec.html" class="">Reference</a><a href="../../library.html" class="">Library</a><a href="../../errors.html" class="">Errors</a><a href="../../floats.html" class="">Floats</a><a href="../../playground.html" class="">Playground</a>
+<span class="ver">v8.1.0</span></div></nav>
+<main class="">
+<div class="eyebrow">An in-toto predicate type</div>
+<h1>receipt/v1</h1>
+<p class="lead">A signed record of one run of a Velaris program: the budget
+it was given, every refusal and every declassification, the parameters it
+ran under, how it ended and how long it took - bound, by sha256, to the same
+source files a <a href="../../capability/v1/">capability/v1</a> attestation
+names. The attestation is what the program may do; the receipt is what one
+run of it did.</p>
+
+<p><b>Predicate type:</b> <code>https://gowrishankar-infra.github.io/velaris-lang/receipt/v1</code> - this
+page.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
+draft 2020-12, for the predicate.<br><b>Definition:</b>
+<a href="https://github.com/gowrishankar-infra/velaris-spec/blob/main/SPEC.md#87-velarisreceipt1-a-record-of-one-run">velaris-spec
+SPEC.md section 8.7</a>, dedicated to the public domain under CC0.</p>
+
+<pre><code>{
+  &quot;_type&quot;: &quot;https://in-toto.io/Statement/v1&quot;,
+  &quot;subject&quot;: [
+    {&quot;name&quot;: &quot;examples/effects.vel&quot;,
+     &quot;digest&quot;: {&quot;sha256&quot;: &quot;37a7df8f595907f9e00f3e9be71ce1f00b584dbe70074dc37e8fad85e3cba5f7&quot;}}
+  ],
+  &quot;predicateType&quot;: &quot;https://gowrishankar-infra.github.io/velaris-lang/receipt/v1&quot;,
+  &quot;predicate&quot;: {
+    &quot;schema&quot;: &quot;velaris.receipt/1&quot;,
+    &quot;producer&quot;: {&quot;name&quot;: &quot;velaris-lang&quot;, &quot;version&quot;: &quot;8.1.0&quot;,
+                 &quot;uri&quot;: &quot;https://github.com/gowrishankar-infra/velaris-lang&quot;},
+    &quot;specification&quot;: &quot;velaris-spec 0.10.0&quot;,
+    &quot;startedAt&quot;: &quot;2026-09-14T00:00:00.000Z&quot;,
+    &quot;wall_time_ms&quot;: 41.7,
+    &quot;budget&quot;: &quot;clock,fs:read:/work/report.txt,fs:write:/work/report.txt,io,rand&quot;,
+    &quot;run_parameters&quot;: {&quot;seed&quot;: null, &quot;freeze_time&quot;: null, &quot;timeout&quot;: null,
+                       &quot;max_memory_mb&quot;: null, &quot;max_read_bytes&quot;: 67108864,
+                       &quot;confinement&quot;: &quot;none&quot;},
+    &quot;effects_used&quot;: {&quot;clock&quot;: 1, &quot;rand&quot;: 1, &quot;fs&quot;: 2, &quot;io&quot;: 4},
+    &quot;refusals&quot;: [],
+    &quot;declassifications&quot;: [],
+    &quot;exit&quot;: {&quot;status&quot;: 0, &quot;outcome&quot;: &quot;ok&quot;, &quot;code&quot;: null},
+    &quot;complete&quot;: true
+  }
+}</code></pre>
+
+<h2>Fields</h2>
+<table>
+<tr><th>Field</th><th>Meaning</th></tr>
+<tr><td><code>subject</code></td><td>the program that ran, by the sha256 of
+its text, then each file it imported, by the sha256 of its bytes - the
+subjects <code>velaris attest</code> writes for the same files</td></tr>
+<tr><td><code>budget</code></td><td>the budget the run was given, in the
+budget grammar</td></tr>
+<tr><td><code>run_parameters</code></td><td><code>seed</code>,
+<code>freeze_time</code>, <code>timeout</code>,
+<code>max_memory_mb</code>, <code>max_read_bytes</code>, and
+<code>confinement</code>: <code>none</code> when the budget was the only
+boundary</td></tr>
+<tr><td><code>effects_used</code></td><td>each effect and how many
+operations of it the budget let through; null when the run was stopped from
+outside before it could say</td></tr>
+<tr><td><code>refusals</code></td><td>each refusal as its code, its effect
+and its line, whether it stopped the run, and how many times - never the
+path, host or module the program named</td></tr>
+<tr><td><code>declassifications</code></td><td>each declassification as
+the reason written in the program and its line, and how many times - never
+the value</td></tr>
+<tr><td><code>exit</code></td><td><code>status</code>, <code>outcome</code>
+(ok, refused, failed, did_not_compile, timeout, out_of_memory) and the
+<code>code</code> that ended it</td></tr>
+<tr><td><code>wall_time_ms</code>, <code>startedAt</code></td><td>by the
+producer's clock</td></tr>
+<tr><td><code>complete</code></td><td>false when the run was stopped from
+outside: what is listed happened, and a count is at least that</td></tr>
+</table>
+
+<h2>What it does not say</h2>
+<p>It holds no value the program handled, and nothing of its output, input
+or arguments. It does not hide what a program controls that is not a value:
+its exit status, which lines it reached and how long it ran are in it, and a
+program that has declassified a value can choose those. A declassification's
+reason is text its author wrote, and nothing checks it. A signed receipt
+says that its signer ran this producer on these bytes and saw this run; it
+is no stronger than the machine it was made on, and it says nothing about
+any other run.</p>
+
+<h2>A producer</h2>
+<p>velaris-lang writes receipts from 8.1:</p>
+<pre><code>velaris program.vel --allow io --receipt program.receipt.json
+velaris.run(source, allow={"io"}).receipt
+POST /run  {"source": "...", "allow": ["io"], "receipt": true}</code></pre>
+<p>It signs none; they are signed as an attestation is -
+<code>cosign attest-blob --statement</code>, or sigstore-python's
+<code>sign_dsse</code> - and <code>cosign verify-blob-attestation --type
+https://gowrishankar-infra.github.io/velaris-lang/receipt/v1</code> checks one against the program's own bytes.
+Every release of velaris-lang carries one for an example program, signed by
+its release workflow and verified there.</p>
+</main>
+<footer>Velaris is MIT-licensed open source &middot;
+<a href="https://github.com/gowrishankar-infra/velaris-lang">GitHub</a>
+&middot; <a href="https://github.com/gowrishankar-infra/velaris-lang/issues">Issues</a></footer>
+</body></html>

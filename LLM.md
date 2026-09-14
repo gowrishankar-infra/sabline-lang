@@ -584,6 +584,7 @@ them as structured data for a fix loop.
 | E506 | empty `[]` or `{}` with no type | annotate the `let` |
 | E507 | a record defined twice, or a duplicate field | rename one |
 | E514 | local name collides with an import | rename one |
+| E515 | an import outside the directory the program is served from, or of a file that is not `.vel` | import a `.vel` file inside that directory, or the standard library |
 | E520 | a failure was ignored | wrap in `check`, or `try` inside `or fail` |
 | E522 | `try` on something that cannot fail | remove the `try` |
 | E600/E601 | a promise broke while running | fix the code or the promise |
@@ -602,6 +603,7 @@ them as structured data for a fix loop.
 | E608 | a file could not be written | check the folder exists and is writable |
 | E609 | recursion 2000 deep | move toward the base case, or use a loop |
 | E612 | a loop's end could not be shown (only under `check --strict`) | make one counter move one step toward a limit the body does not change |
+| E613/E614 | a check or audit ran past its time or memory ceiling | simplify the promise or split the program; the operator can raise `--check-timeout` |
 | E542 | function value of the wrong shape | match the parameter's fn type |
 | E550 | two currencies met | convert on purpose, or keep one currency |
 | E551 | a currency that is not known, or not written in the call | write a listed code: `money(1250, "INR")` |

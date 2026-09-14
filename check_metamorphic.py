@@ -26,6 +26,9 @@ from pathlib import Path
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
+from suite_dirs import isolate  # noqa: E402
+
+isolate("check_metamorphic")          # its own proof cache
 
 PASS = FAIL = 0
 

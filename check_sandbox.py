@@ -39,6 +39,10 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
+sys.path.insert(0, str(HERE))
+from suite_dirs import isolate  # noqa: E402
+
+isolate("check_sandbox")              # its own proof cache
 
 # words a program prints only if it got past the refusal
 MARKERS = ("READ IT", "WROTE IT", "REACHED IT", "CALLED IT", "OPENED IT",

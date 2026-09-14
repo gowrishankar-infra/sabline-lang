@@ -43,6 +43,9 @@ HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
+from suite_dirs import isolate  # noqa: E402
+
+isolate("check_deps")                 # its own proof cache
 
 try:
     from jsonschema import Draft4Validator

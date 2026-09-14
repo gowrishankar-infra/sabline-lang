@@ -18,6 +18,10 @@ from pathlib import Path
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
+from suite_dirs import isolate  # noqa: E402
+
+# its own directory and proof cache, so two runs at once do not collide
+WORK = isolate("check_library")
 
 # three checks below are about PROOFS, so they can only be made when the
 # prover is installed. Without it those promises are checked while the
@@ -1127,12 +1131,12 @@ def main() -> int:
     import threading as _threading
     from http.server import BaseHTTPRequestHandler, HTTPServer
 
-    box = HERE / "_library_box"
+    box = WORK / "_library_box"
     for sub in ("data", "out"):
         (box / sub).mkdir(parents=True, exist_ok=True)
     inside = box / "data" / "a.txt"
     inside.write_text("inside\n", encoding="utf-8")
-    outside = HERE / "_library_outside.txt"
+    outside = WORK / "_library_outside.txt"
     outside.write_text("outside\n", encoding="utf-8")
     data, out = (box / "data").as_posix(), (box / "out").as_posix()
 
@@ -1406,7 +1410,7 @@ def main() -> int:
        "--max-allow" in mcpb["long_description"]
        and "io" in bundle_run, bundle_run)
 
-    box_mcp = HERE / "_mcp_box"
+    box_mcp = WORK / "_mcp_box"
     (box_mcp / "data" / "sub").mkdir(parents=True, exist_ok=True)
     mcp_data = (box_mcp / "data").as_posix()
     mcp_log = box_mcp / "mcp.jsonl"
@@ -2062,7 +2066,7 @@ def main() -> int:
 
     TOKEN = "door-" + _secrets.token_urlsafe(24)
     WRONG = "wrong-" + _secrets.token_urlsafe(24)
-    door_box = HERE / "_door_log_box"
+    door_box = WORK / "_door_log_box"
     door_box.mkdir(exist_ok=True)
     door_log = door_box / "door.jsonl"
     door_log.unlink(missing_ok=True)
@@ -2336,7 +2340,7 @@ def main() -> int:
     print("the HTTP door with a scoped ceiling (3.0)")
     print("-" * 62)
     gp, op = scoped_ports
-    box2 = HERE / "_door_box"
+    box2 = WORK / "_door_box"
     (box2 / "data" / "sub").mkdir(parents=True, exist_ok=True)
     (box2 / "data" / "sub" / "a.txt").write_text("inside\n", encoding="utf-8")
     data2 = (box2 / "data").as_posix()
@@ -2871,7 +2875,7 @@ def main() -> int:
                             format_checker=Draft4Validator.FORMAT_CHECKER)
         return sorted(v.iter_errors(doc), key=lambda e: list(e.path))
 
-    sbox = HERE / "_sarif_box"
+    sbox = WORK / "_sarif_box"
     sbox.mkdir(exist_ok=True)
     programs = {
         "effect.vel": WONT_COMPILE,                          # E300
@@ -2900,12 +2904,13 @@ def main() -> int:
     }
     for name, text in programs.items():
         (sbox / name).write_text(text, encoding="utf-8")
-    rel = [f"_sarif_box/{n}" for n in programs] + ["examples/wordcount.vel"]
+    wordcount = str(HERE / "examples" / "wordcount.vel")
+    rel = [f"_sarif_box/{n}" for n in programs] + [wordcount]
 
     def velaris_sarif(*words):
         environ = dict(os.environ, VELARIS_TOKEN="sarif-" + TOKEN)
         done = subprocess.run([sys.executable, str(HERE / "velaris.py"),
-                               *words, "--sarif"], cwd=str(HERE),
+                               *words, "--sarif"], cwd=str(WORK),
                               capture_output=True, text=True, timeout=900,
                               env=environ)
         try:
@@ -3036,8 +3041,7 @@ def main() -> int:
 
     pdoc, pdone = velaris_sarif("proofs", "_sarif_box")
     adoc, adone = velaris_sarif("audit", "_sarif_box/capable.vel")
-    sdoc, sdone = velaris_sarif("check", "examples/wordcount.vel",
-                                "--strict")
+    sdoc, sdone = velaris_sarif("check", wordcount, "--strict")
     if Draft4Validator is None:
         skip("proofs --sarif, audit --sarif and check --strict --sarif "
              "validate", "jsonschema is not installed")
@@ -3074,6 +3078,555 @@ def main() -> int:
            srun.get("invocations", [{}])[0].get("executionSuccessful")
            is False and sdone.returncode == 1, sdone.stderr[:160])
     _shutil.rmtree(sbox, ignore_errors=True)
+
+    # ---------------------------------------------------------------------
+    print()
+    print("check and audit under a ceiling: the library, the command line (8.1)")
+    print("-" * 62)
+    import hashlib as _h81
+    import inspect as _inspect
+    import tempfile as _t81
+    # written to stall the checker, not to run: nine hundred functions,
+    # each one expression chained just under the parser's limit
+    INFLATED = "".join(
+        f"fn f{i}(n: Int) -> Int {{ return {'+'.join(['n'] * 999)} }}\n"
+        for i in range(900)) + "fn main() uses io { print(f0(1)) }\n"
+    # written to stall the prover: a cube over floating point
+    CRAFTED = ("fn f(x: Float, y: Float, z: Float) -> Float\n"
+               "    requires x > 1.0 and y > 1.0 and z > 1.0\n"
+               "    ensures result * result * result == x * y * z * x\n"
+               "{\n    return x * y * z\n}\n"
+               "fn main() uses io { print(f(2.0, 3.0, 4.0)) }\n")
+    began = time.monotonic()
+    c = velaris.check(INFLATED, timeout=2)
+    took = time.monotonic() - began
+    ok("velaris.check stops an inflated expression at its timeout (E613), "
+       "in seconds rather than however long the source asks for",
+       not c.ok and [p.code for p in c.problems] == ["E613"] and took < 60,
+       f"{took:.1f}s {[(p.code, p.message[:60]) for p in c.problems]}")
+    began = time.monotonic()
+    a = velaris.audit(INFLATED, timeout=2)
+    took = time.monotonic() - began
+    ok("velaris.audit does the same, and its document says nothing was "
+       "determined", not a.ok and [p.code for p in a.problems] == ["E613"]
+       and a.schema == "velaris.audit/1" and a.counts is None
+       and a.secrets is None and a.prover is False and took < 60,
+       f"{took:.1f}s {a.as_dict()}"[:300])
+    if velaris.memory_cap_is_enforced():
+        c = velaris.check(INFLATED, timeout=120, max_memory_mb=120)
+        ok("...and past its memory cap it stops with E614",
+           [p.code for p in c.problems] == ["E614"],
+           [(p.code, p.message[:80]) for p in c.problems])
+    else:
+        skip("a check past its memory cap stops with E614",
+             "the memory cap is not enforced on this machine")
+    if HAVE_PROVER:
+        began = time.monotonic()
+        c = velaris.check(CRAFTED, timeout=3)
+        took = time.monotonic() - began
+        ok("a contract crafted to stall the prover stops at the timeout "
+           "(E613)", [p.code for p in c.problems] == ["E613"] and took < 60,
+           f"{took:.1f}s {[(p.code, p.message[:60]) for p in c.problems]}")
+    else:
+        skip("a contract crafted to stall the prover stops at the timeout",
+             "no prover: nothing is proven, so nothing stalls")
+    ok("the ceiling is the command line's: 60 seconds and 2048 MB unless "
+       "raised, for check, audit and attest",
+       all(f.__kwdefaults__["timeout"] == velaris.CHECK_TIMEOUT_DEFAULT == 60
+           and f.__kwdefaults__["max_memory_mb"]
+           == velaris.CHECK_MEMORY_MB_DEFAULT == 2048
+           for f in (velaris.check, velaris.audit, velaris.attest)))
+    ok("timeout=None and max_memory_mb=None check in this process, as "
+       "before 8.1", velaris.check(PURE, timeout=None,
+                                   max_memory_mb=None).ok)
+    wrong = []
+    for kw in ({"timeout": 0}, {"timeout": -1}, {"timeout": "5"},
+               {"timeout": True}, {"max_memory_mb": 0},
+               {"max_memory_mb": 1.5}):
+        try:
+            velaris.check(PURE, **kw)
+            wrong.append(kw)
+        except ValueError:
+            pass
+    ok("a ceiling that is not a number above zero is a ValueError",
+       not wrong, str(wrong))
+    with velaris.Pool(size=1, timeout=2) as cp:
+        first, second = cp.check(INFLATED), cp.check(PURE)
+    ok("Pool.check stops at the pool's timeout, and a fresh worker checks "
+       "the next", [p.code for p in first.problems] == ["E613"]
+       and second.ok, f"{first.as_dict()} {second.as_dict()}"[:200])
+    began = time.monotonic()
+    r = velaris.run(INFLATED, allow={"io"}, timeout=2)
+    took = time.monotonic() - began
+    ok("run(timeout=2) compiles under its own deadline (before 8.1 the "
+       "compile ran first in the caller's process, with no limit)",
+       r.timed_out and [p.code for p in r.problems] == ["E610"]
+       and took < 60, f"{took:.1f}s {r.as_dict()}"[:200])
+    inflated_file = WORK / "inflated81.vel"
+    inflated_file.write_text(INFLATED, encoding="utf-8")
+    statements = velaris.attest(str(inflated_file), timeout=2)
+    audit81 = statements[0]["predicate"]["audit"] if statements else {}
+    ok("velaris.attest audits under the ceiling too: the Statement says ok "
+       "false, with E613", audit81.get("ok") is False
+       and [p["code"] for p in audit81.get("problems", [])] == ["E613"],
+       str(audit81)[:200])
+    done = _sub.run([sys.executable, str(HERE / "velaris.py"), "check",
+                     str(inflated_file), "--check-timeout", "2"],
+                    capture_output=True, text=True, timeout=300)
+    ok("velaris check --check-timeout 2 stops it with E613 (exit 2)",
+       done.returncode == 2 and "E613" in done.stderr, done.stderr[:200])
+    if velaris.memory_cap_is_enforced():
+        done = _sub.run([sys.executable, str(HERE / "velaris.py"), "audit",
+                         str(inflated_file), "--check-memory-mb", "120"],
+                        capture_output=True, text=True, timeout=300)
+        ok("velaris audit --check-memory-mb 120 stops it with E614 (exit 2)",
+           done.returncode == 2 and "E614" in done.stderr, done.stderr[:200])
+
+    # ---------------------------------------------------------------------
+    print()
+    print("imports stay inside the directory a program is served from (8.1)")
+    print("-" * 62)
+    root81 = Path(_t81.mkdtemp(prefix="velaris-root-", dir=WORK))
+    (root81 / "lib").mkdir()
+    (root81 / "lib" / "helper.vel").write_text(
+        "fn helper() -> Int {\n    return 7\n}\n", encoding="utf-8")
+    (root81 / "notes.txt").write_text("hunter2isthepassword\n",
+                                      encoding="utf-8")
+    outside81 = WORK / "outside81.vel"
+    outside81.write_text("fn secret_function_name_Q9() -> Int {\n"
+                         "    return 1\n}\n", encoding="utf-8")
+    notes_out = WORK / "notes81.txt"
+    notes_out.write_text("tokenvalue123abc and more\n", encoding="utf-8")
+    IMPORTS = ('import "lib/helper.vel"\n\n'
+               'fn main() uses io {\n    print(helper())\n}\n')
+
+    def importing(target: str) -> str:
+        return f'import "{target}"\n\nfn main() uses io {{\n    print(1)\n}}\n'
+
+    c = velaris.check(importing("../outside81.vel"),
+                      path=str(root81 / "x.vel"), import_root=str(root81))
+    ok("velaris.check(..., import_root=) refuses an import outside it "
+       "(E515)", [p.code for p in c.problems] == ["E515"],
+       [(p.code, p.message) for p in c.problems])
+    c = velaris.check(importing(notes_out.as_posix()), timeout=None,
+                      max_memory_mb=None)
+    shown81 = " ".join(p.message for p in c.problems)
+    ok("an import of a file that is not Velaris source says so and shows "
+       "nothing of it, with no root at all",
+       c.problems and "not Velaris source" in shown81
+       and "tokenvalue123abc" not in shown81, shown81)
+
+    server, port81 = start_door("--check-timeout", "2", "--root", str(root81),
+                                env={"VELARIS_TOKEN": TOKEN})
+    receipts81 = []
+    try:
+        began = time.monotonic()
+        code, body, _ = ask(port81, "POST", "/check", {"source": INFLATED},
+                            token=TOKEN)
+        took = time.monotonic() - began
+        d = as_json(body)
+        ok("a door started with --check-timeout 2 answers POST /check on an "
+           "inflated expression with E613, in seconds",
+           code == 200 and [p["code"] for p in d.get("problems", [])]
+           == ["E613"] and took < 60, f"{code} {took:.1f}s {str(d)[:160]}")
+        code, body, _ = ask(port81, "POST", "/audit", {"source": INFLATED},
+                            token=TOKEN)
+        d = as_json(body)
+        ok("...and POST /audit: ok false, E613",
+           code == 200 and d.get("ok") is False
+           and [p["code"] for p in d.get("problems", [])] == ["E613"],
+           f"{code} {str(d)[:160]}")
+        if HAVE_PROVER:
+            code, body, _ = ask(port81, "POST", "/check", {"source": CRAFTED},
+                                token=TOKEN)
+            ok("...and a contract crafted to stall the prover",
+               code == 200 and [p["code"] for p in as_json(body).get(
+                   "problems", [])] == ["E613"], f"{code} {body[:160]}")
+        health = as_json(ask(port81, "GET", "/health", token=TOKEN)[1])
+        ok("with the token, /health names the check ceiling and the rate "
+           "limit", health.get("check_timeout") == 2
+           and health.get("check_memory_mb") == 2048
+           and health.get("rate_limit") == 600, str(health))
+        code, body, _ = ask(port81, "POST", "/run",
+                            {"source": IMPORTS, "allow": ["io"]}, token=TOKEN)
+        ok("a request's relative import resolves in the door's --root",
+           code == 200 and as_json(body).get("output", "").strip() == "7",
+           f"{code} {body[:200]}")
+        for label, target in (("a relative path that leaves the root",
+                               "../outside81.vel"),
+                              ("an absolute path outside it",
+                               notes_out.as_posix()),
+                              ("a file inside it that is not .vel",
+                               "notes.txt")):
+            code, body, _ = ask(port81, "POST", "/check",
+                                {"source": importing(target)}, token=TOKEN)
+            text81 = body.decode("utf-8", "replace")
+            ok(f"an import of {label} is refused (E515), before the file is "
+               f"read", code == 200
+               and [p["code"] for p in as_json(body).get("problems", [])]
+               == ["E515"] and "secret_function_name_Q9" not in text81
+               and "tokenvalue123abc" not in text81
+               and "hunter2" not in text81, f"{code} {text81[:200]}")
+        try:
+            os.symlink(outside81, root81 / "link.vel")
+            linked = True
+        except (OSError, NotImplementedError):
+            linked = False
+        if linked:
+            code, body, _ = ask(port81, "POST", "/check",
+                                {"source": importing("link.vel")},
+                                token=TOKEN)
+            ok("...and a symbolic link inside the root to a file outside it",
+               [p["code"] for p in as_json(body).get("problems", [])]
+               == ["E515"], body[:200])
+        else:
+            skip("an import through a symbolic link out of the root is "
+                 "refused", "this system would not make a symbolic link")
+        code, body, _ = ask(port81, "POST", "/run",
+                            {"source": PURE, "allow": ["io"],
+                             "receipt": True}, token=TOKEN)
+        d = as_json(body)
+        receipts81.append(d.get("receipt"))
+        ok("POST /run with \"receipt\": true answers with the run's receipt, "
+           "the source by its sha256",
+           code == 200 and d.get("receipt", {}).get("predicateType")
+           == velaris.RECEIPT_PREDICATE_TYPE
+           and d["receipt"]["subject"][0] == {
+               "name": "<source>",
+               "digest": {"sha256": _h81.sha256(PURE.encode()).hexdigest()}},
+           f"{code} {str(d)[:200]}")
+        code, body, _ = ask(port81, "POST", "/run",
+                            {"source": PURE, "allow": ["io"]}, token=TOKEN)
+        ok("...and without it, no receipt",
+           code == 200 and "receipt" not in as_json(body), body[:160])
+        code, _, _ = ask(port81, "POST", "/run",
+                         {"source": PURE, "allow": ["io"], "receipt": "yes"},
+                         token=TOKEN)
+        ok("...and a receipt that is not true or false is a bad request",
+           code == 400, str(code))
+    finally:
+        server.terminate()
+        server.wait(timeout=30)
+
+    # ---------------------------------------------------------------------
+    print()
+    print("the HTTP door: rate, binding, the token compare (8.1)")
+    print("-" * 62)
+    server, port82 = start_door("--rate-limit", "5",
+                                env={"VELARIS_TOKEN": TOKEN})
+    try:
+        anon = [ask(port82, "GET", "/card")[0] for _ in range(12)]
+        first_429 = anon.index(429) if 429 in anon else None
+        ok("--rate-limit 5: requests without the token are limited by "
+           "address, and 429 once that is spent",
+           first_429 is not None and first_429 <= 6
+           and all(c == 401 for c in anon[:first_429]), str(anon))
+        code, body, headers = ask(port82, "GET", "/card")
+        ok("...with Retry-After, and a body saying why",
+           code == 429 and int(headers.get("Retry-After", "0")) >= 1
+           and as_json(body).get("error") == "too many requests",
+           f"{code} {headers.get('Retry-After')} {body[:80]}")
+        authed = [ask(port82, "GET", "/card", token=TOKEN)[0]
+                  for _ in range(7)]
+        ok("...and they do not spend the token's allowance: its own five are "
+           "answered, then 429", authed[:5] == [200] * 5 and authed[5] == 429,
+           str(authed))
+    finally:
+        server.terminate()
+        server.wait(timeout=30)
+    done = _sub.run([sys.executable, str(HERE / "velaris.py"), "serve",
+                     "--bind", "192.0.2.10", "--port", str(free_port())],
+                    capture_output=True, text=True, timeout=60,
+                    env=dict(os.environ, VELARIS_TOKEN=TOKEN))
+    ok("--bind to an address that is not loopback says so on stderr before "
+       "it listens (this one is not the machine's, so it then cannot)",
+       done.returncode == 2 and "WARNING: not bound to localhost"
+       in done.stderr and "cannot listen" in done.stderr
+       and done.stderr.index("WARNING") < done.stderr.index("cannot listen"),
+       done.stderr[:240])
+    done = _sub.run([sys.executable, str(HERE / "velaris.py"), "serve",
+                     "--bind", "127.0.0.1", "--host", "0.0.0.0",
+                     "--port", str(free_port())],
+                    capture_output=True, text=True, timeout=60,
+                    env=dict(os.environ, VELARIS_TOKEN=TOKEN))
+    ok("--bind and --host naming two addresses is refused",
+       done.returncode == 2 and "--bind and --host" in done.stderr,
+       done.stderr[:160])
+    ok("with neither, the door binds to 127.0.0.1",
+       '"--host", "127.0.0.1"' in _inspect.getsource(velaris.serve_main)
+       or 'opts.get("--host", "127.0.0.1")'
+       in _inspect.getsource(velaris.serve_main))
+    import secrets as _sec81
+    seen81 = []
+    real_compare = _sec81.compare_digest
+
+    def spy(a, b):
+        seen81.append((len(a), len(b)))
+        return real_compare(a, b)
+
+    want81 = _h81.sha256(b"the-right-token-0123").digest()
+    _sec81.compare_digest = spy
+    try:
+        right = velaris._token_matches(["Bearer the-right-token-0123"], want81)
+        short = velaris._token_matches(["Bearer x"], want81)
+        long_ = velaris._token_matches(["Bearer " + "y" * 5000], want81)
+        prefix = velaris._token_matches(["Bearer the-right-token-012"], want81)
+    finally:
+        _sec81.compare_digest = real_compare
+    ok("the token is compared with secrets.compare_digest over two 32-byte "
+       "sha256 digests, whatever length was sent (confirmed, not assumed)",
+       right and not short and not long_ and not prefix
+       and seen81 == [(32, 32)] * 4, str(seen81))
+    ok("...and it is the comparison the door's authorized() makes",
+       "_token_matches(" in _inspect.getsource(velaris.serve_main))
+
+    # ---------------------------------------------------------------------
+    print()
+    print("nothing evaluates a program on hover, format, check or audit (8.1)")
+    print("-" * 62)
+    marker = WORK / "evaluated81.txt"
+    WRITER = ('fn main() uses io, fs {\n    write_file("' + marker.as_posix()
+              + '", "ran")\n    print("ran")\n}\n')
+    writer = WORK / "writer81.vel"
+    writer.write_text(WRITER, encoding="utf-8")
+    uri = "file://" + ("/" if os.name == "nt" else "") + writer.as_posix()
+    lsp_msgs = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        {"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {
+            "textDocument": {"uri": uri, "text": WRITER}}},
+        {"jsonrpc": "2.0", "id": 2, "method": "textDocument/hover",
+         "params": {"textDocument": {"uri": uri},
+                    "position": {"line": 0, "character": 4}}},
+        {"jsonrpc": "2.0", "id": 3, "method": "textDocument/codeLens",
+         "params": {"textDocument": {"uri": uri}}},
+        {"jsonrpc": "2.0", "id": 4, "method": "textDocument/formatting",
+         "params": {"textDocument": {"uri": uri}, "options": {}}},
+        {"jsonrpc": "2.0", "method": "textDocument/didSave", "params": {
+            "textDocument": {"uri": uri}, "text": WRITER}},
+        {"jsonrpc": "2.0", "id": 5, "method": "shutdown", "params": {}},
+        {"jsonrpc": "2.0", "method": "exit", "params": {}},
+    ]
+    frames = b"".join(
+        f"Content-Length: {len(b)}\r\n\r\n".encode() + b
+        for b in (json.dumps(m).encode("utf-8") for m in lsp_msgs))
+    lsp = _sub.run([sys.executable, str(HERE / "velaris.py"), "lsp"],
+                   input=frames, capture_output=True, timeout=300)
+    replies = []
+    rest81 = lsp.stdout
+    while rest81.startswith(b"Content-Length:"):
+        head, _, rest81 = rest81.partition(b"\r\n\r\n")
+        size = int(head.split(b":", 1)[1])
+        replies.append(json.loads(rest81[:size]))
+        rest81 = rest81[size:]
+    ids = {r.get("id") for r in replies if "id" in r}
+    ok("the language server answers hover, code lenses, formatting and "
+       "saves without running the program: nothing written, nothing printed",
+       {1, 2, 3, 4, 5} <= ids and not rest81 and not marker.exists(),
+       f"{sorted(i for i in ids if i)} {rest81[:80]!r} {marker.exists()}")
+    fmt81 = _sub.run([sys.executable, str(HERE / "velaris.py"), "fmt",
+                      str(writer), "--stdout"], capture_output=True,
+                     text=True, timeout=120)
+    ok("velaris fmt does not run it either",
+       fmt81.returncode == 0 and not marker.exists(), fmt81.stderr[:120])
+    got, done, _ = mcp_session([("velaris_check", {"source": WRITER}),
+                                ("velaris_audit", {"source": WRITER})])
+    ok("nor do the MCP server's velaris_check and velaris_audit",
+       text_of(got.get(10, {})).get("ok") is True
+       and text_of(got.get(11, {})).get("schema") == "velaris.audit/1"
+       and not marker.exists(), str(got)[:200])
+
+    # ---------------------------------------------------------------------
+    print()
+    print("the MCP server: its root, its check ceiling, receipts (8.1)")
+    print("-" * 62)
+    got, done, listed = mcp_session([
+        ("velaris_check", {"source": INFLATED}),
+        ("velaris_run", {"source": IMPORTS, "allow": ["io"],
+                         "receipt": True}),
+        ("velaris_run", {"source": PURE, "allow": ["io"]}),
+        ("velaris_check", {"source": importing("../outside81.vel")}),
+    ], "--check-timeout", "2", "--root", str(root81))
+    c0, r1 = text_of(got.get(10, {})), text_of(got.get(11, {}))
+    r2, c3 = text_of(got.get(12, {})), text_of(got.get(13, {}))
+    receipts81.append(r1.get("receipt"))
+    ok("with --check-timeout 2, velaris_check stops an inflated expression "
+       "(E613)", [p["code"] for p in c0.get("problems", [])] == ["E613"],
+       str(c0)[:160])
+    ok("...velaris_run resolves an import in --root and gives the receipt "
+       "asked for", r1.get("output", "").strip() == "7"
+       and r1.get("receipt", {}).get("predicateType")
+       == velaris.RECEIPT_PREDICATE_TYPE, str(r1)[:200])
+    ok("...no receipt when none was asked for",
+       r2.get("ok") and "receipt" not in r2, str(r2)[:160])
+    ok("...and an import outside --root is refused (E515), unread",
+       [p["code"] for p in c3.get("problems", [])] == ["E515"]
+       and "secret_function_name_Q9" not in json.dumps(c3), str(c3)[:200])
+    schema81 = {t["name"]: t for t in listed}.get("velaris_run", {}).get(
+        "inputSchema", {}).get("properties", {})
+    ok("velaris_run's input schema takes receipt, a boolean",
+       schema81.get("receipt", {}).get("type") == "boolean", str(schema81))
+    done = subprocess.run([sys.executable, str(HERE / "velaris_mcp.py"),
+                           "--root", str(WORK / "no-such-dir")],
+                          input="", capture_output=True, text=True,
+                          timeout=60)
+    ok("an MCP server with a --root that is not a directory does not start",
+       done.returncode == 2 and "--root" in done.stderr, done.stderr[:120])
+
+    # ---------------------------------------------------------------------
+    print()
+    print("receipts (8.1)")
+    print("-" * 62)
+    KEY = "LEAKYSECRET" + _secrets.token_hex(6)
+    os.environ["RECEIPT_KEY"] = KEY
+    DECLASSIFIED = ('fn main() uses io, env, declassify {\n'
+                    '    let k = env("RECEIPT_KEY", "")\n'
+                    '    let shown = declassify(k, "the test prints it on '
+                    'purpose")\n'
+                    '    print(shown)\n}\n')
+    r = velaris.run(DECLASSIFIED, allow={"io", "env", "declassify"})
+    doc = r.receipt or {}
+    pred = doc.get("predicate", {})
+    receipts81.append(doc)
+    ok("a run returns its receipt: an in-toto Statement of receipt/v1 whose "
+       "predicate is velaris.receipt/1",
+       doc.get("_type") == "https://in-toto.io/Statement/v1"
+       and doc.get("predicateType") == velaris.RECEIPT_PREDICATE_TYPE
+       and pred.get("schema") == "velaris.receipt/1"
+       and pred.get("producer", {}).get("version") == velaris.VERSION
+       and doc["subject"] == [{"name": "<source>", "digest": {
+           "sha256": _h81.sha256(DECLASSIFIED.encode()).hexdigest()}}],
+       str(doc)[:300])
+    ok("...with the budget, the parameters, the declassification and its "
+       "reason, how it ended, and how long it took",
+       pred.get("budget") == "declassify,env,io"
+       and pred.get("run_parameters", {}).get("confinement") == "none"
+       and pred.get("run_parameters", {}).get("timeout") is None
+       and pred.get("declassifications") == [
+           {"reason": "the test prints it on purpose", "line": 3,
+            "times": 1}]
+       and pred.get("refusals") == []
+       and pred.get("exit") == {"status": 0, "outcome": "ok", "code": None}
+       and isinstance(pred.get("wall_time_ms"), float)
+       and pred.get("complete") is True, str(pred)[:300])
+    ok("the program printed the declassified secret; its receipt does not "
+       "hold it", KEY in r.output and KEY not in json.dumps(doc),
+       r.output[:80])
+    SINK = ('fn main() uses io, env, declassify, net {\n'
+            '    let host = declassify(env("RECEIPT_KEY", ""), "a host is '
+            'not secret")\n'
+            '    check fetch("https://" + host + ".example.org/") {\n'
+            '        ok b { print("sent") }\n'
+            '        fail w { print("failed") }\n    }\n}\n')
+    r = velaris.run(SINK, allow={"io", "env", "declassify",
+                                 "net:api.example.com"})
+    doc = r.receipt or {}
+    receipts81.append(doc)
+    said81 = json.dumps(r.as_dict()["problems"]).lower()
+    ok("a refused sink is in the receipt as code, effect and line - and the "
+       "host the program built from the secret is not, though the refusal "
+       "message names it",
+       doc.get("predicate", {}).get("refusals") == [
+           {"code": "E314", "effect": "net", "line": 3, "stopped": True,
+            "times": 1}]
+       and doc["predicate"]["exit"]["outcome"] == "refused"
+       and KEY.lower() in said81
+       and KEY.lower() not in json.dumps(doc).lower(), str(doc)[:300])
+    FOREVER81 = ('fn main() uses io, env, declassify {\n'
+                 '    let n = declassify(length(env("RECEIPT_KEY", "")), '
+                 '"only its length")\n'
+                 '    let i = 0\n    while i >= 0 {\n        i = i + 1\n'
+                 '        if i > 1000000 {\n            i = 0\n        }\n'
+                 '    }\n    print(n)\n}\n')
+    r = velaris.run(FOREVER81, allow={"io", "env", "declassify"}, timeout=2)
+    pred = (r.receipt or {}).get("predicate", {})
+    receipts81.append(r.receipt)
+    ok("a run the clock stopped still has a receipt: incomplete, timeout, "
+       "and the declassification it made before it was killed",
+       r.timed_out and pred.get("complete") is False
+       and pred.get("exit", {}).get("outcome") == "timeout"
+       and pred.get("exit", {}).get("code") == "E610"
+       and pred.get("declassifications") == [
+           {"reason": "only its length", "line": 2, "times": 1}]
+       and pred.get("run_parameters", {}).get("timeout") == 2
+       and KEY not in json.dumps(r.receipt), str(pred)[:300])
+
+    pdir = Path(_t81.mkdtemp(prefix="velaris-receipt-", dir=WORK))
+    (pdir / "helper.vel").write_text("fn helper() -> Int {\n    return 7\n}\n",
+                                     encoding="utf-8")
+    main81 = pdir / "main.vel"
+    main81.write_text('import "helper.vel"\n\n'
+                      'fn main() uses io {\n    print(helper())\n}\n',
+                      encoding="utf-8")
+    statement81 = velaris.attest(str(main81))[0]
+    text81 = main81.read_bytes().decode("utf-8")
+    r = velaris.run(text81, path=str(main81), allow={"io"})
+    receipts81.append(r.receipt)
+    ok("a receipt's subjects are the attestation's for the same bytes: the "
+       "same names, the same digests, imports included",
+       r.ok and len(statement81["subject"]) == 2
+       and r.receipt["subject"] == statement81["subject"],
+       f"{r.receipt['subject']} vs {statement81['subject']}")
+    with velaris.Pool(size=1, allow={"io"}, timeout=30) as rp:
+        pr = rp.run(text81, path=str(main81))
+    receipts81.append(pr.receipt)
+    ok("...from a pool too, with the pool's limits among its parameters and "
+       "the effects the run performed",
+       pr.receipt["subject"] == statement81["subject"]
+       and pr.receipt["predicate"]["run_parameters"]["timeout"] == 30
+       and pr.receipt["predicate"]["effects_used"] == {"io": 1},
+       str(pr.receipt["predicate"])[:200])
+    rfile = WORK / "receipt81.json"
+    done = subprocess.run([sys.executable, str(HERE / "velaris.py"),
+                           str(main81), "--allow", "io", "--receipt",
+                           str(rfile)], capture_output=True, text=True,
+                          timeout=300)
+    cli81 = json.loads(rfile.read_text(encoding="utf-8")) \
+        if rfile.exists() else {}
+    receipts81.append(cli81)
+    ok("velaris file.vel --receipt FILE writes it, bound to the same subjects",
+       done.returncode == 0 and done.stdout.strip() == "7"
+       and cli81.get("subject") == statement81["subject"]
+       and cli81["predicate"]["exit"] == {"status": 0, "outcome": "ok",
+                                          "code": None},
+       f"{done.returncode} {done.stderr[:120]} {str(cli81)[:160]}")
+    rfile.unlink(missing_ok=True)
+    done = subprocess.run([sys.executable, str(HERE / "velaris.py"),
+                           str(main81), "--allow", "", "--receipt",
+                           str(rfile)], capture_output=True, text=True,
+                          timeout=300)
+    refused81 = json.loads(rfile.read_text(encoding="utf-8")) \
+        if rfile.exists() else {}
+    receipts81.append(refused81)
+    ok("...and writes it for a refused run too, with the refusal and exit 1",
+       done.returncode == 1 and refused81.get("predicate", {}).get("exit")
+       == {"status": 1, "outcome": "refused", "code": "E310"}
+       and refused81["predicate"]["refusals"][0]["effect"] == "io",
+       f"{done.returncode} {str(refused81)[:200]}")
+    spec_schema = next((p for p in (
+        HERE / "velaris-spec" / "schemas" / "receipt-predicate.v1.schema.json",
+        HERE.parent / "velaris-spec" / "schemas"
+        / "receipt-predicate.v1.schema.json") if p.exists()), None)
+    published = HERE / "docs" / "receipt" / "v1" / "schema.json"
+    ok("the receipt/v1 schema is published beside its predicate type's page",
+       published.exists())
+    try:
+        from jsonschema import Draft202012Validator
+    except ImportError:
+        Draft202012Validator = None
+    if spec_schema is None or Draft202012Validator is None:
+        skip("every receipt above validates against velaris-spec's schema",
+             "velaris-spec or jsonschema is not here")
+    else:
+        v81 = Draft202012Validator(json.loads(spec_schema.read_text(
+            encoding="utf-8")))
+        bad81 = [(i, e.message) for i, doc81 in enumerate(receipts81)
+                 for e in v81.iter_errors((doc81 or {}).get("predicate"))]
+        ok(f"every receipt above ({len(receipts81)}) validates against "
+           f"velaris-spec's receipt/v1 schema", not bad81, str(bad81[:3]))
+        ok("...which is the schema this repository publishes",
+           published.exists() and published.read_text(encoding="utf-8")
+           .replace("\r\n", "\n") == spec_schema.read_text(encoding="utf-8")
+           .replace("\r\n", "\n"))
 
     print("-" * 62)
     print(f"{passed} correct, {failed} wrong")

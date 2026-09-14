@@ -337,6 +337,8 @@ variables — the compiler tells you to pass them in instead.
 
 ```
 velaris script.vel                    the command (io unless you say more)
+velaris script.vel --receipt r.json   and a signable record of what that run did
+velaris eject script.vel              a directory that runs with nothing from here
 import velaris                        a Python library
 velaris mcp-install                   tools inside your assistant
 velaris.mcpb                          double-click install for Claude Desktop
@@ -558,7 +560,10 @@ import "std.vel"                 // flat: sort(xs)
 ```
 
 A named import prefixes that library's functions, so two libraries that
-both export `distance` can be used in the same file.
+both export `distance` can be used in the same file. A program sent to the
+HTTP door or the MCP server imports only `.vel` files inside the directory
+the door serves, and the library does the same given `import_root=`; any
+other import is refused (E515) before the file is read (8.1).
 
 ## Shipping a program
 
@@ -573,6 +578,18 @@ velaris build myprogram.vel --for-everyone   # a workflow that builds
 
 Your program, its imports, the standard library and the compiler, in
 one file. It is compiled and proof-checked before it is built.
+
+```
+velaris eject myprogram.vel      # a directory that runs with nothing
+python -I myprogram-ejected/main.py   # installed from this project
+```
+
+`velaris eject` (8.1) writes the program, its imports and a copy of the
+runtime into a directory whose `main.py` fixes the budget, checks every
+file's digest and refuses a budget that could let one run rewrite the next,
+with a pinned `requirements.txt`, the PyInstaller command, and a README
+saying what holds once ejected - the budget - and what does not: the
+proofs are a record of eject time, and no later fix reaches it.
 
 ## Tooling
 
@@ -627,7 +644,11 @@ three when they are read, so an edited file, the same file at another
 path, a hand-edited entry or a new Velaris is proved again rather than
 believed. Within that, a proof is keyed by the function's text *and* the
 contracts it depends on, so changing a promise re-proves everything that
-relied on it.
+relied on it. `VELARIS_CACHE_DIR` puts the cache under a directory you name
+instead, as `<dir>/velaris/proofs` (8.1) - which is how two test runs from
+one checkout keep from sharing one; a cache file is written beside itself
+and renamed into place, so two checks of the same file at once each read a
+whole entry.
 
 A `./.velaris/` directory is never read. Until 7.1.2 the cache lived
 there, beside the program, and one shipped with an untrusted program
@@ -694,8 +715,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: gowrishankar-infra/velaris-lang@v8.0.0
+      - uses: gowrishankar-infra/velaris-lang@5f31d2904ab182d40d05ad6cc21d811ab227c38e  # v8.0.0
 ```
+
+The Action is pinned to a commit, with its tag in the comment beside it:
+a tag can be moved to other code after you copied it, and a commit cannot.
+Pinned that way it installs the Velaris of that commit, as it does at a
+tag.
 
 That is the whole workflow. With no `with:` block the Action installs
 Velaris and the prover, checks every `.vel` file in the repository,
@@ -858,10 +884,10 @@ findings go to code scanning when `sarif` is on. It needs
 ### Everything else the Action takes
 
 ```yaml
-  - uses: gowrishankar-infra/velaris-lang@v8.0.0
+  - uses: gowrishankar-infra/velaris-lang@5f31d2904ab182d40d05ad6cc21d811ab227c38e  # v8.0.0
     with:
       files: "src/*.vel"     # default: every .vel file in the repository
-      version: "8.0.0"       # default: the Action's own tag (8.0.0)
+      version: "8.0.0"       # default: the Action's own version (8.0.0)
       proofs: "true"         # the default; installs z3-solver
       format: "true"         # also fail if the code is not canonically formatted
       min-proven: "80"       # fail below this percent of promises proven

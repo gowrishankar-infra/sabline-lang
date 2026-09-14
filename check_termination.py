@@ -18,6 +18,10 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import velaris  # noqa: E402
+from suite_dirs import isolate  # noqa: E402
+
+# its own directory and proof cache, so two runs at once do not collide
+WORK = str(isolate("check_termination"))
 
 T, U = "terminates", "unshown"
 
@@ -576,7 +580,7 @@ fn main() uses io { print(count_down(3)) }
 
 def verdicts_of(source: str) -> tuple:
     """(verdicts in source order, errors) for a program."""
-    path = os.path.join(HERE, "_termination_check.vel")
+    path = os.path.join(WORK, "_termination_check.vel")
     with open(path, "w", encoding="utf-8") as f:
         f.write(source.lstrip())
     try:

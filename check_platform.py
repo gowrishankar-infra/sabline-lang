@@ -13,11 +13,15 @@ fastapi is a dependency of the example, never of Velaris. Without it
 (or without the http client its test client needs) this suite skips.
 """
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
+from suite_dirs import isolate  # noqa: E402
+
+isolate("check_platform")             # its own proof cache
 
 HAVE_PROVER = velaris.HAVE_Z3
 
@@ -51,6 +55,21 @@ WONT_PROVE = ('fn discount(price: Int) -> Int\n'
 NEVER_ENDS = ('fn main() uses io {\n    let i = 0\n    while i >= 0 {\n'
               '        i = i + 1\n        if i > 1000000 {\n'
               '            i = 0\n        }\n    }\n    print(1)\n}\n')
+
+# written to stall the audit, not to run: nine hundred functions, each one
+# expression chained just under the parser's limit - valid Velaris that
+# takes the checker many seconds to read
+INFLATED = "".join(
+    f"fn f{i}(n: Int) -> Int {{ return {'+'.join(['n'] * 999)} }}\n"
+    for i in range(900)) + "fn main() uses io { print(f0(1)) }\n"
+
+# and a promise written to stall the prover: a cube over floating point,
+# which Z3 decides by bit-blasting 64-bit values
+CRAFTED = ("fn f(x: Float, y: Float, z: Float) -> Float\n"
+           "    requires x > 1.0 and y > 1.0 and z > 1.0\n"
+           "    ensures result * result * result == x * y * z * x\n"
+           "{\n    return x * y * z\n}\n"
+           "fn main() uses io { print(f(2.0, 3.0, 4.0)) }\n")
 
 
 def main() -> int:                        # noqa: C901 - a suite, not logic
@@ -224,6 +243,37 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
            and ran.get("stopped_by") == f"the {platform.TIMEOUT_S}s time "
                                         f"limit",
            str(ran)[:200])
+
+        # ---- a submission written to stall the audit itself (8.1) -----
+        # the audit is the first thing that reads a customer's text, so it
+        # is the first thing a hostile text aims at; it stops at the
+        # platform's audit limit, and nothing is stored
+        saved = platform.AUDIT_TIMEOUT_S
+        platform.AUDIT_TIMEOUT_S = 2
+        try:
+            for label, text, needs_prover in (
+                    ("an inflated expression", INFLATED, False),
+                    ("a crafted contract", CRAFTED, True)):
+                if needs_prover and not HAVE_PROVER:
+                    skip(f"{label} is stopped at the audit limit",
+                         "no prover: that promise is checked while it runs, "
+                         "and nothing stalls")
+                    continue
+                before = len(platform.SCRIPTS)
+                began = time.monotonic()
+                r = client.post(f"/scripts?name={label}", content=text)
+                took = time.monotonic() - began
+                body = r.json()
+                ok(f"{label} is stopped at the platform's audit limit "
+                   f"(E613), answered in seconds, and not stored",
+                   r.status_code == 422
+                   and [p["code"] for p in body.get("problems", [])]
+                   == ["E613"]
+                   and body.get("limits", {}).get("audit_timeout_s") == 2
+                   and took < 60 and len(platform.SCRIPTS) == before,
+                   f"{r.status_code} {took:.1f}s {str(body)[:160]}")
+        finally:
+            platform.AUDIT_TIMEOUT_S = saved
     finally:
         platform.POOL.close()
 

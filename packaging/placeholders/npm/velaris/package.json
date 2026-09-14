@@ -1,0 +1,22 @@
+{
+  "name": "velaris",
+  "version": "0.1.0",
+  "description": "Velaris is published as velaris-lang; installing this installs it.",
+  "license": "MIT",
+  "author": "Palakurthi Gowri Shankar <gowrishankar@gowrishankar.dev>",
+  "homepage": "https://github.com/gowrishankar-infra/velaris-lang",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gowrishankar-infra/velaris-lang.git",
+    "directory": "packaging/placeholders/npm/velaris"
+  },
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "velaris-lang": ">=8.1.0"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ]
+}

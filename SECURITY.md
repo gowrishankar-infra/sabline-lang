@@ -103,6 +103,19 @@ fix ships before the details do; the credit is public either way.
 
 ## Resolved advisories
 
+- **Prover names a program could write** (challenge #1, Goal A), affecting
+  0.9 through 8.0.0, fixed in 8.1.0: a parameter named like a name the
+  prover made up for itself - `__g_result_1` for the result of a call to
+  `g` - was the same Z3 value, and a false `ensures` was reported proven and,
+  compiled to native code, went unenforced. The prover's names now use
+  characters no identifier can. See
+  [advisory-prover-names.md](advisory-prover-names.md).
+- **An import that read a file and quoted it** (Goal C), affecting 0.16
+  through 8.0.0, fixed in 8.1.0: a program sent to the HTTP door, the MCP
+  server or a platform's `velaris.audit` could import any readable file, and
+  the error named its first token. Such an error now shows nothing of the
+  file, and the doors refuse an import outside the directory they serve
+  (E515). See [advisory-import-read.md](advisory-import-read.md).
 - **Proof cache poisoning** (challenge #1), affecting 2.29 through 7.1.1,
   fixed in 7.1.2: a `./.velaris/proofs.json` shipped with an untrusted
   program could make a false `ensures` report "proven" and go unenforced
@@ -214,6 +227,20 @@ from the tagged source:
 
 It fails when the file is not the one the Statement names, by digest.
 What the Statement says, and what it does not, is in EMBEDDING.md.
+
+**A receipt of one run of it** (from 8.1). `velaris-receipt-X.Y.Z.intoto.json`
+is the `velaris.receipt/1` Statement `velaris examples/effects.vel --receipt`
+writes in the release workflow, for a run under the budget the example's
+audit names, with the same subjects as the attestation. It is signed the same
+two ways and verified before it is attached. With the same
+`examples/effects.vel`:
+
+    cosign verify-blob-attestation \
+      --bundle velaris-receipt-8.1.0.cosign.sigstore.json \
+      --type https://gowrishankar-infra.github.io/velaris-lang/receipt/v1 \
+      --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      examples/effects.vel
 
 **Checksums.** `SHA256SUMS` (for the wheel, sdist, SBOM and tool manifest) and
 `<asset>.sha256` (for each binary and the bundle) are attached too;

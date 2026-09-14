@@ -27,10 +27,12 @@ major version.
   The other versioned documents Velaris writes follow the same rule
   within their version: `velaris.capabilities/1`,
   `velaris.capabilities-check/1`, `velaris.review/1`,
-  `velaris.invocation/1`, `velaris.mcp-tools/1` and, from 4.1,
-  `velaris.conformance/1`.
+  `velaris.invocation/1`, `velaris.mcp-tools/1`, from 4.1
+  `velaris.conformance/1`, and from 8.1 `velaris.receipt/1` and the receipt
+  Statement that carries it (velaris-spec section 8.7).
 - **The library API**: `velaris.check`, `velaris.audit`, `velaris.run`,
-  `velaris.Pool`, `velaris.card` and, from 4.2, `velaris.attest` - their
+  `velaris.Pool` (with `Pool.check` and `Pool.audit` from 8.1),
+  `velaris.card` and, from 4.2, `velaris.attest` - their
   names, their parameters, and the fields of what they return
   (`CheckResult`, `AuditResult`, `RunResult`, `Problem`, and the in-toto
   Statements `attest` returns, whose predicate velaris-spec section 8.5
@@ -294,3 +296,25 @@ Three new error codes, E204, E317 and E318; none reuses a meaning
 (rule 3). `velaris.audit/1` gains `ffi_native` within version 1 (an
 addition, not a break), and the invocation log gains an optional
 `run_params`. Nothing published before 8.0 is moved.
+
+**8.1 (minor), and two refusals it adds.** Both are listed in its CHANGELOG
+under "What 8.1 refuses that 8.0 did not", and are recorded here so the
+record stays whole.
+
+- **The HTTP door and the MCP server refuse an import from outside the
+  directory they serve** (E515), where 8.0 compiled one. The list above
+  names the command line's commands, flags and exit codes, and the library;
+  what a door does with a request is not on it. But this file counted 3.4's
+  door that began refusing requests it had accepted as a break made in a
+  minor version, and by that reading this is one too, and is recorded as
+  one. It shipped in 8.1 because it closes a read of the door host's files
+  by any caller - a token holder, or whatever an MCP client let a model
+  send, under the `io` ceiling (advisory-import-read.md) - and because a
+  door whose programs import from elsewhere has one flag to set, `--root`.
+  The library, which the list does cover, refuses nothing new:
+  `import_root=` is an added parameter.
+- **`velaris.check()`, `velaris.audit()` and `velaris.attest()` stop at 60
+  seconds and 2048 MB** unless raised, where 8.0 waited. The command line has
+  had the same ceiling since 8.0, whose CHANGELOG counted it as an addition;
+  this applies that reading to the library. A check that needs longer passes
+  `timeout=`, and `None` restores 8.0's call exactly.

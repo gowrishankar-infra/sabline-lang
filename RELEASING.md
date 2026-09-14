@@ -17,9 +17,10 @@ Everything a person does happens before the push:
    (`VERSION`), `pyproject.toml`, `npm/package.json`,
    `mcpb/manifest.json`, `editor/vscode/package.json` and
    `integrations/mcp_registry/server.json` (three times: its own, and
-   the PyPI and npm packages'). Move the Action pins in README.md and
-   EMBEDDING.md too. `python run_tests.py` holds all of them to one
-   version.
+   the PyPI and npm packages'). `python run_tests.py` holds all of them to
+   one version. Leave the Action pins in README.md and EMBEDDING.md where
+   they are: they name a commit, which the release commit cannot name for
+   itself, so they stay on the previous release until it is tagged (below).
 2. Write the CHANGELOG entry, headed `## X.Y.Z - Title`. An X.Y.0
    release may be headed `## X.Y - Title`, as minor releases always
    have been here; `## X.Y` never stands for X.Y.1.
@@ -52,8 +53,8 @@ GitHub does the rest:
 9. **Build, sign, verify.** The wheel and the sdist (the wheel built
    twice and compared), the SBOM, the MCP tool manifest (checked
    against the wheel's own server), the `.mcpb` bundle, the three
-   executables and the attestation of `examples/effects.vel` are built
-   and signed with sigstore. Nothing is published yet, and if any of it
+   executables, the attestation of `examples/effects.vel` and, from 8.1,
+   the receipt of one run of it are built and signed with sigstore. Nothing is published yet, and if any of it
    fails nothing is tagged: fix it and push again with the same version.
 10. **Tag.** The commit is tagged `vX.Y.Z`, annotated - not signed; see
     below.
@@ -74,12 +75,12 @@ GitHub does the rest:
        the npm package. It first waits until PyPI and npm serve this
        version naming the server, because the registry checks exactly
        that.
-    6. The attestation, attached to the release.
+    6. The attestation and the receipt, attached to the release.
 
     A step that fails stops the ones after it (the Marketplace aside).
 12. **Consistency.** PyPI, npm, the MCP registry and the GitHub release
-    must all report this version, and the release must hold all 24
-    files. The indexes cache, so it keeps asking for fifteen minutes;
+    must all report this version, and the release must hold all 27
+    files (24 before 8.1.0, which added the receipt). The indexes cache, so it keeps asking for fifteen minutes;
     then it fails and names what differs.
 13. **Advisory.** If a commit since the previous tag adds an
     `advisory-*.md`, see below.
@@ -107,6 +108,20 @@ tokens already have.
 release.yml --ref <branch>`). The gate says what it would decide, and
 everything is built, signed under that branch's identity and verified.
 Nothing is tagged or published.
+
+## After the release: move the Action pins
+
+README.md and EMBEDDING.md show the Action pinned by commit, with the tag in
+a comment beside it (`@<commit>  # vX.Y.Z`), and `run_tests.py` fails unless
+that commit is the one the newest `v*` tag names. So once the workflow has
+tagged a release, the next push to main must move the pins:
+
+    git fetch --tags
+    git rev-parse "vX.Y.Z^{commit}"
+
+Put that commit and `# vX.Y.Z` in both files, and the `version:` example
+with it. That push is not a release - its version is already tagged - and
+its tests are what hold the pins to the tag.
 
 ## Why the tag is not signed
 

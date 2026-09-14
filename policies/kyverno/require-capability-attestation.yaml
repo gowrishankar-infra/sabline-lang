@@ -1,0 +1,75 @@
+# Refuse a Pod whose image lacks a verified Velaris capability attestation.
+#
+# The attestation is the audit `velaris attest` writes, attached to the
+# image as an in-toto attestation of the capability/v1 predicate type and
+# signed keylessly by the workflow that built the image:
+#
+#   velaris attest app.vel --json | jq .predicate > capability.json
+#   cosign attest --yes --type \
+#       https://gowrishankar-infra.github.io/velaris-lang/capability/v1 \
+#       --predicate capability.json registry.example.com/agents/app@sha256:...
+#
+# Kyverno's image verification fetches the attestation, checks its
+# signature against the attestor below and its predicate against the
+# conditions: the audit is velaris.audit/1 and its program compiled. A Pod
+# with an image that has no such attestation, or one signed by anyone else,
+# is refused. Which effects and hosts a program may have is the question
+# policies/opa/capability.rego asks; this one asks that the image carries a
+# signed answer.
+#
+# Replace imageReferences, the subject and the issuer with your own.
+#
+# This is Kyverno's established image verification, a kyverno.io/v1
+# ClusterPolicy with verifyImages. Kyverno 1.19 loads it and warns that the
+# kind is deprecated in favour of ImageValidatingPolicy
+# (policies.kyverno.io); checked with the Kyverno 1.19.1 CLI.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-velaris-capability-attestation
+  annotations:
+    policies.kyverno.io/title: Require a Velaris capability attestation
+    policies.kyverno.io/category: Software Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Refuses a Pod whose image does not carry an in-toto attestation of the
+      Velaris capability/v1 predicate, signed by the named workflow, whose
+      audit is velaris.audit/1 and compiled.
+spec:
+  background: false
+  webhookConfiguration:
+    failurePolicy: Fail
+    timeoutSeconds: 30
+  rules:
+    - name: velaris-capability-attestation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - imageReferences:
+            - "registry.example.com/agents/*"
+          failureAction: Enforce
+          required: true
+          mutateDigest: true
+          verifyDigest: true
+          attestations:
+            - predicateType: https://gowrishankar-infra.github.io/velaris-lang/capability/v1
+              attestors:
+                - count: 1
+                  entries:
+                    - keyless:
+                        subject: "https://github.com/example-org/agents/.github/workflows/build.yml@refs/heads/main"
+                        issuer: "https://token.actions.githubusercontent.com"
+                        rekor:
+                          url: https://rekor.sigstore.dev
+              conditions:
+                - all:
+                    - key: "{{ audit.schema }}"
+                      operator: Equals
+                      value: velaris.audit/1
+                    - key: "{{ audit.ok }}"
+                      operator: Equals
+                      value: true

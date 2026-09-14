@@ -31,6 +31,9 @@ HERE = Path(__file__).parent
 VELARIS = str(HERE / "velaris.py")
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
+from suite_dirs import isolate  # noqa: E402
+
+WORK = isolate("check_adversarial")   # and its own proof cache
 
 try:
     import z3  # noqa: F401
@@ -79,8 +82,11 @@ def prog(d, text, name="p.vel"):
 # A per-user cache under a temp dir, so no case touches the real one and
 # CI stays clean. Both env names cover Windows and POSIX.
 def _cache_env():
-    ch = tempfile.mkdtemp(prefix="veladvcache_")
-    return {"LOCALAPPDATA": ch, "XDG_CACHE_HOME": ch}, ch
+    ch = tempfile.mkdtemp(prefix="veladvcache_", dir=WORK)
+    # VELARIS_CACHE_DIR (8.1) wins over the other two, and the suite sets it
+    # for everything it starts, so the case names its own
+    return {"LOCALAPPDATA": ch, "XDG_CACHE_HOME": ch,
+            "VELARIS_CACHE_DIR": ch}, ch
 
 
 # ---------------------------------------------------------------------------
@@ -585,6 +591,264 @@ def add_redirect_cases():
        == "allowed")
 
 
+# ---------------------------------------------------------------------------
+# The 8.1 pass, kept closed: the prover's names, imports, receipts, eject,
+# and the door's rate limit. Each is an attempt from that pass.
+# ---------------------------------------------------------------------------
+def prover_name_cases():
+    """P1/P2: a parameter or record field named like a name the prover made
+    up for itself was the same Z3 value, and a false promise was proven -
+    and, compiled to native code, never checked (advisory-prover-names.md)."""
+    lie = ("fn g(n: Int) -> Int\n  ensures result > n\n{ return n + 1 }\n"
+           "fn f(__g_result_1: Int) -> Int\n"
+           "  ensures result == __g_result_1 + 5\n"
+           "{ return g(__g_result_1) }\n"
+           "fn main() uses io { print(to_text(f(1))) }\n")
+    d = tempfile.mkdtemp(dir=WORK)
+    prog(d, lie)
+    for mode, label in (([], "native"), (["--no-native"], "--no-native")):
+        code, out, _ = run(["p.vel", "--allow", "io"] + mode, cwd=d)
+        ok(f"P1 a parameter named __g_result_1 proves nothing false "
+           f"({label}): the run stops (E601/E700), not prints 2",
+           code != 0 and ("E601" in out or "E700" in out), out[:160])
+    c = velaris.check(lie, timeout=None, max_memory_mb=None)
+    ok("P1 ...and check does not report f proven", "f" not in c.proven,
+       str(c.proven))
+    boxed = ("record Box { xs: List of Int  xs__n: Int }\n"
+             "fn f(b: Box) -> Int\n  requires b.xs__n == 5\n"
+             "  ensures result == 5\n{ return length(b.xs) }\n"
+             "fn main() uses io { print(to_text(f(Box(xs: [1], xs__n: 5)))) }\n")
+    c = velaris.check(boxed, timeout=None, max_memory_mb=None)
+    ok("P2 a record field named xs__n is not the length of xs",
+       "f" not in c.proven, str(c.proven))
+
+
+def import_read_cases():
+    """I1/I2: an import of a file that is not Velaris source quoted what it
+    found there, through check, audit and run - and so through every door
+    (advisory-import-read.md)."""
+    d = tempfile.mkdtemp(dir=WORK)
+    open(os.path.join(d, ".env"), "w").write("API_KEY_FROM_ENV=sk-live-ABC\n")
+    open(os.path.join(d, "notes.txt"), "w").write("hunter2isthepassword x\n")
+    for name, token in ((".env", "API_KEY_FROM_ENV"),
+                        ("notes.txt", "hunter2isthepassword")):
+        src = (f'import "{os.path.join(d, name).replace(os.sep, "/")}"\n'
+               f'fn main() uses io {{ print("x") }}\n')
+        said = {
+            "check": velaris.check(src, timeout=None,
+                                   max_memory_mb=None).problems,
+            "audit": velaris.audit(src, timeout=None,
+                                   max_memory_mb=None).problems,
+            "run": velaris.run(src, allow={"io"}).problems}
+        for how, problems in said.items():
+            text = " ".join(p.message for p in problems)
+            ok(f"I1 {how} of a program importing {name} names the file and "
+               f"not what it holds", problems and token not in text,
+               text[:160])
+    root = tempfile.mkdtemp(dir=WORK)
+    present = (f'import "{os.path.join(d, "notes.txt").replace(os.sep, "/")}"'
+               f'\nfn main() uses io {{ print("x") }}\n')
+    missing = present.replace("notes.txt", "no-such-file.txt")
+    got = [velaris.check(s, import_root=root).problems
+           for s in (present, missing)]
+    ok("I2 with import_root, an import outside it is E515 whether or not the "
+       "file exists - so nothing about it is told",
+       [[p.code for p in g] for g in got] == [["E515"], ["E515"]],
+       [[(p.code, p.message[:60]) for p in g] for g in got])
+
+
+def receipt_leak_cases():
+    """R1-R5: a secret value into a receipt - declassified and printed, into
+    a refused host and a refused path, before a kill, and a forged receipt
+    file written by the program itself."""
+    key = "RK" + os.urandom(6).hex()
+    os.environ["ADV_RECEIPT_KEY"] = key
+
+    def leaks(doc):
+        return key.lower() in json.dumps(doc).lower()
+
+    pre = 'fn main() uses io, env, declassify'
+    printed = velaris.run(
+        pre + ' {\n    print(declassify(env("ADV_RECEIPT_KEY", ""), "shown"))\n}\n',
+        allow={"io", "env", "declassify"})
+    ok("R1 a declassified secret the program printed is not in its receipt",
+       key in printed.output and not leaks(printed.receipt))
+    host = velaris.run(
+        pre + ', net {\n'
+        '    let h = declassify(env("ADV_RECEIPT_KEY", ""), "a host")\n'
+        '    check fetch("https://" + h + ".example.org/") {\n'
+        '        ok b { print("x") }\n        fail w { print("no") }\n    }\n}\n',
+        allow={"io", "env", "declassify", "net:api.example.com"})
+    ok("R2 a refused host built from the secret: E314 in the receipt, the "
+       "host not", host.refused_effect and not leaks(host.receipt)
+       and host.receipt["predicate"]["refusals"][0]["code"] == "E314",
+       str(host.receipt["predicate"]["refusals"]))
+    path = velaris.run(
+        pre + ', fs {\n'
+        '    let p = declassify(env("ADV_RECEIPT_KEY", ""), "a path")\n'
+        '    write_file(p + ".txt", "x")\n}\n',
+        allow={"io", "env", "declassify",
+               f"fs:write:{tempfile.mkdtemp(dir=WORK)}"})
+    ok("R3 a refused path built from the secret: E313 in the receipt, the "
+       "path not", path.refused_effect and not leaks(path.receipt)
+       and path.receipt["predicate"]["refusals"][0]["code"] == "E313",
+       str(path.receipt["predicate"]["refusals"]))
+    killed = velaris.run(
+        pre + ' {\n'
+        '    let k = declassify(env("ADV_RECEIPT_KEY", ""), "before the kill")\n'
+        '    let i = 0\n    while i >= 0 {\n        i = i + 1\n'
+        '        if i > 1000000 { i = 0 }\n    }\n    print(k)\n}\n',
+        allow={"io", "env", "declassify"}, timeout=2)
+    ok("R4 a run killed by the clock keeps the declassification it made, and "
+       "not the value", killed.timed_out and not leaks(killed.receipt)
+       and killed.receipt["predicate"]["declassifications"][0]["reason"]
+       == "before the kill", str(killed.receipt["predicate"])[:200])
+    d = tempfile.mkdtemp(dir=WORK)
+    out = os.path.join(d, "receipt.json").replace(os.sep, "/")
+    prog(d, 'fn main() uses io, fs {\n'
+            f'    write_file("{out}", "{{\\"forged\\": true}}")\n'
+            '    print("wrote")\n}\n')
+    code, said, _ = run(["p.vel", "--allow", f"io,fs:write:{out}",
+                         "--receipt", out], cwd=d)
+    doc = json.load(open(out)) if os.path.exists(out) else {}
+    ok("R5 a program that writes the --receipt file itself is overwritten by "
+       "the real receipt when it ends",
+       code == 0 and "forged" not in doc
+       and doc.get("predicateType") == velaris.RECEIPT_PREDICATE_TYPE,
+       f"{code} {str(doc)[:120]}")
+
+
+def eject_widening_cases():
+    """E1-E6: a program that tries to widen its own budget once ejected."""
+    hello = 'fn main() uses io {\n    print("hello")\n}\n'
+    d = tempfile.mkdtemp(dir=WORK)
+    prog(d, hello)
+    target = os.path.join(d, "ej")
+    for label, allow in (("the directory", f"io,fs:write:{target}"),
+                         ("the directory through ..",
+                          f"io,fs:write:{target}/../ej"),
+                         ("its parent", f"io,fs:write:{d}"),
+                         ("plain fs", "io,fs")):
+        code, out, _ = run(["eject", "p.vel", "-o", target, "--allow", allow],
+                           cwd=d)
+        ok(f"E1 eject refuses a budget that writes into the ejected "
+           f"directory: {label}",
+           code == 2 and not os.path.exists(os.path.join(target, "main.py")),
+           out[:160])
+    code, out, _ = run(["eject", "p.vel", "-o", target], cwd=d)
+    launcher = os.path.join(target, "main.py")
+    runtime = os.path.join(target, "runtime", "velaris.py")
+    original = open(runtime, "rb").read()
+    open(runtime, "wb").write(original.replace(
+        b"def spend(", b"def _spend_was(", 1)
+        + b"\ndef spend(effect, what, line):\n    return None\n")
+    done = subprocess.run([sys.executable, "-I", launcher, "--changed-ok"],
+                          capture_output=True, text=True, cwd=d, timeout=120)
+    open(runtime, "wb").write(original)
+    ok("E2 a runtime with its budget check removed is never run, "
+       "--changed-ok or not", done.returncode == 2
+       and "runtime/velaris.py" in done.stderr, done.stderr[-160:])
+    done = subprocess.run([sys.executable, "-I", launcher, "--receipt",
+                           runtime], capture_output=True, text=True, cwd=d,
+                          timeout=120)
+    ok("E3 main.py refuses a --receipt that would overwrite its runtime",
+       done.returncode == 2 and open(runtime, "rb").read() == original,
+       done.stderr[-160:])
+    done = subprocess.run([sys.executable, "-I", launcher, "--allow=all"],
+                          capture_output=True, text=True, cwd=d, timeout=120)
+    ok("E4 main.py refuses --allow=all", done.returncode == 2, done.stderr)
+    rel = os.path.join(d, "rel")
+    # ejected from elsewhere, where ./ is not the directory; launched from
+    # the directory itself, where it is
+    elsewhere = tempfile.mkdtemp(dir=WORK)
+    code, out, _ = run(["eject", os.path.join(d, "p.vel"), "-o", rel,
+                        "--allow", "io,fs:write:./"], cwd=elsewhere)
+    done = subprocess.run([sys.executable, "-I",
+                           os.path.join(rel, "main.py")],
+                          capture_output=True, text=True, cwd=rel,
+                          timeout=120) if code == 0 else None
+    ok("E5 a relative write grant that reaches the directory from where it "
+       "is launched is refused there", done is not None
+       and done.returncode == 2
+       and "write into this directory" in done.stderr,
+       out[:160] if done is None else done.stderr[-160:])
+    code, out, _ = run(["eject", os.path.join(d, "p.vel"), "-o",
+                        os.path.join(d, "site"), "--allow",
+                        f"io,fs:write:{os.path.join(d, 'pylib')}"],
+                       cwd=elsewhere)
+    os.makedirs(os.path.join(d, "pylib"), exist_ok=True)
+    env7 = {k: v for k, v in os.environ.items()
+            if not k.startswith("PYTHON")}
+    env7["PYTHONPATH"] = os.path.join(d, "pylib")
+    done = subprocess.run([sys.executable, os.path.join(d, "site", "main.py")],
+                          capture_output=True, text=True, cwd=elsewhere,
+                          env=env7, timeout=120) if code == 0 else None
+    ok("E7 a budget that writes into a directory on PYTHONPATH - where a "
+       "planted sitecustomize.py would run in the next Python - is refused "
+       "at launch", done is not None and done.returncode == 2
+       and "imports from" in done.stderr,
+       out[:160] if done is None else done.stderr[-200:])
+    drop = tempfile.mkdtemp(dir=WORK)
+    marker = os.path.join(drop, "IMPORTED")
+    open(os.path.join(drop, "velaris.py"), "w").write(
+        f"open(r'{marker}', 'w').write('shadowed')\n")
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+    env["PYTHONPATH"] = drop
+    done = subprocess.run([sys.executable, launcher], capture_output=True,
+                          text=True, cwd=drop, env=env, timeout=120)
+    ok("E6 a velaris.py planted on PYTHONPATH, or in the working directory, "
+       "is not the runtime the launcher runs",
+       done.returncode == 0 and "hello" in done.stdout
+       and not os.path.exists(marker), done.stderr[-160:])
+
+
+def door_rate_cases():
+    """D1: a caller guessing tokens gets no new allowance from a new wrong
+    token or an X-Forwarded-For header, and cannot spend the token's."""
+    import socket
+    import time
+    import urllib.error
+    import urllib.request
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    token = "adv-rate-" + os.urandom(12).hex()
+    door = subprocess.Popen([sys.executable, VELARIS, "serve", "--port",
+                             str(port), "--rate-limit", "4"],
+                            env=dict(os.environ, VELARIS_TOKEN=token),
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL)
+
+    def status(headers):
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/card",
+                                     headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return r.status
+        except urllib.error.HTTPError as e:
+            return e.code
+        except OSError:
+            return None
+
+    try:
+        for _ in range(80):
+            if status({}) is not None:
+                break
+            time.sleep(0.25)
+        guesses = [status({"Authorization": f"Bearer wrong-{i:04d}-abcdefgh",
+                           "X-Forwarded-For": f"10.0.0.{i}"})
+                   for i in range(10)]
+        held = [status({"Authorization": f"bearer   {token}  "})
+                for _ in range(6)]
+        ok("D1 new wrong tokens and X-Forwarded-For get no new allowance",
+           guesses.count(429) >= 5, str(guesses))
+        ok("D1 ...and the token's own allowance is its own, spent once each",
+           held[:4] == [200] * 4 and 429 in held, str(held))
+    finally:
+        door.terminate()
+        door.wait(timeout=30)
+
+
 def main():
     cache_cases()
     recursion_cases()
@@ -600,6 +864,11 @@ def main():
     builtin_shadow_cases()
     credential_break_cases()
     add_redirect_cases()
+    prover_name_cases()
+    import_read_cases()
+    receipt_leak_cases()
+    eject_widening_cases()
+    door_rate_cases()
     print(f"\n{PASS}/{PASS + FAIL} passed" + (f"  ({FAIL} FAILED)" if FAIL else ""))
     return 1 if FAIL else 0
 

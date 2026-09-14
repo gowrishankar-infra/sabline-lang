@@ -69,6 +69,38 @@ may lower and cannot raise: 30 seconds and 512 MB unless the operator
 names others (4.0). Before 4.0 those were only the values used when a
 caller sent none, and a caller who sent more got more.
 
+### Checking and auditing source someone else wrote (8.1)
+
+`check` and `audit` read a program before anything runs, and a program
+can be written to make reading it slow: a promise the prover spends its
+whole budget on, or an expression the checker takes many seconds to take
+apart. From 8.1 both run in a child process under the ceiling `velaris
+check` has had since 8.0 - 60 seconds and 2048 MB unless raised - and
+come back with a problem instead of holding the caller:
+
+```python
+report = velaris.audit(source, timeout=10, max_memory_mb=512)
+if any(p.code in ("E613", "E614") for p in report.problems):
+    ...        # it did not finish: report.ok is False, nothing determined
+```
+
+E613 is the clock and E614 the memory cap. `velaris.attest` takes the
+same two parameters. `timeout=None, max_memory_mb=None` checks in your
+own process with no ceiling, as every call did before 8.1 - fine for
+source you wrote, not for source you were sent. A child costs an
+interpreter's start; `Pool(...).check(source)` and
+`Pool(...).audit(source)` keep one alive, under the pool's timeout and
+memory cap. `run(source, timeout=...)` compiles inside its child, under
+its deadline, from 8.1.
+
+`import_root=` on `check`, `audit`, `run` and `Pool` holds a program's
+imports to one directory: an import that resolves outside it, or to a
+file there that is not `.vel`, is refused (E515) without being read.
+Pass it whenever the source is someone else's. The doors always hold
+imports to a directory (below). And wherever an imported file is not
+Velaris source, the error names the file and shows nothing of what it
+holds; until 8.1 it quoted the first word it found there.
+
 ## Many runs: a pool
 
 Every bounded run starts a Python interpreter - about a tenth of a
@@ -81,7 +113,9 @@ result = pool.run(source)        # the same RunResult run() returns
 pool.close()                     # also a context manager
 ```
 
-`pool.run` also takes `stdin=`, `args=` and `path=`. On one machine,
+`pool.run` also takes `stdin=`, `args=` and `path=`, and from 8.1
+`pool.check(source)` and `pool.audit(source)` check and audit on a
+worker under the pool's limits, keeping it when it answers. On one machine,
 200 sequential bounded runs of a small program took 46.6 s one process
 at a time and 0.5 s on a pool.
 
@@ -361,6 +395,31 @@ and `velaris mcp-install` start the server without the flag; add it to
 the `args` above to widen it. A `--max-allow` that does not parse
 stops the server before it answers anything.
 
+**From 8.1** the server checks and audits under `--check-timeout` and
+`--check-memory-mb` (60 seconds and 2048 MB unless raised), on a worker of
+its own, and holds a program's imports to `--root` - the directory it was
+started in unless named - as the HTTP door does. `velaris_run` takes
+`"receipt": true` for the run's receipt.
+
+### What can connect, and what runs
+
+**The MCP server** reads requests from its standard input and answers on
+its standard output. It opens no port, so the only thing that can talk to
+it is the process that started it - the MCP client - and the client decides
+what the model may send. **The language server** (`velaris lsp`) is the
+same: its editor, over stdin and stdout, and nothing else.
+
+Neither runs a program to answer anything but `velaris_run`. The MCP
+server's `velaris_check` and `velaris_audit`, and the language server's
+diagnostics, hovers, code lenses, completions, outline and rename, parse,
+type-check and (where the prover is installed) prove - they never call
+`main`. The language server offers no formatting request, and `velaris fmt`
+reads tokens and writes text. `check_library.py` sends both servers, and
+`fmt`, a program whose `main` writes a file, and asserts no file is
+written. What they do run is the compiler over text the client sent, and
+the language server's proofs have no ceiling: an editor opening a file
+written to stall the prover waits for it.
+
 ### Checking the tools against the signed manifest
 
 An MCP client shows the model each tool's description, and a model
@@ -502,8 +561,16 @@ GET  /card           the language, for pasting into a model
 POST /check          {"source": "..."}                  -> problems, proven
 POST /audit          {"source": "..."}                  -> velaris.audit/1
 POST /run            {"source": "...", "allow": ["io"], "stdin": "", "args": [],
-                      "timeout": 10, "max_memory_mb": 256}
+                      "timeout": 10, "max_memory_mb": 256, "receipt": false}
 ```
+
+A program sent to the door is compiled as a file in the directory it
+serves - `--root`, or the directory it was started in - so its relative
+imports resolve there, and an import that leaves that directory or names a
+file there that is not `.vel` is refused (E515) before the file is read
+(8.1). Until 8.1 a program sent to the door could import any file the
+door's user could read, and the error quoted what it found. `"receipt":
+true` on `/run` returns the run's receipt with the result.
 
 **Every endpoint but `GET /health` needs the token**, as
 `Authorization: Bearer <token>`:
@@ -586,6 +653,20 @@ more at any of the three gets 403 with the ceilings named:
 | the budget | `--max-allow` | `io` |
 | seconds per run | `--max-timeout` | 30 |
 | MB per run | `--max-memory-mb` | 512 |
+| seconds per check or audit (8.1) | `--check-timeout` | 60 |
+| MB per check or audit (8.1) | `--check-memory-mb` | 2048 |
+| requests a minute (8.1) | `--rate-limit` | 600 |
+| where imports may come from (8.1) | `--root` | the directory it was started in |
+
+`POST /check` and `POST /audit` run on the door's own workers under the
+check ceiling: a program written to stall the checker is answered with
+E613 or E614, and logged `timeout` or `out_of_memory`, instead of holding a
+request. **Requests are rate-limited**: at most `--rate-limit` a minute for
+the token, and the same again for each address sending requests without
+it, so a caller guessing tokens is limited and cannot spend the holder's
+allowance. Past it the answer is `429` with `Retry-After`, logged
+`rate_limited`. With the token, `GET /health` names the check ceiling and
+the rate.
 
 `--max-allow` takes the full grammar: a caller asking for more at any
 level - an effect, a module, a wider path prefix, a host the server
@@ -605,7 +686,9 @@ own process (on Linux and macOS); it is now the most each run may have,
 and the door's process is not capped.
 
 It binds to `127.0.0.1` unless told otherwise, because **this endpoint
-runs programs**. Do not expose it to a network you do not control, and
+runs programs**. `--bind ADDR` names another address (`--host` is the
+older name for the same flag), and a door bound anywhere but loopback
+writes a line to stderr saying so before it listens. Do not expose it to a network you do not control, and
 prefer `--max-allow io,fs` over granting `ffi` on a shared machine -
 the server warns about both. Keep the token file outside every path the
 ceiling grants: a program allowed to read it can send it somewhere.
@@ -646,7 +729,7 @@ and from the MCP server, a call the ceiling refused:
 | `ts` | when the call arrived, UTC, to the millisecond |
 | `door` | `http` or `mcp` |
 | `endpoint` / `tool` | `POST /run`, `GET /card`...; an unknown path is written `POST (no such endpoint)`, never as sent. The MCP tool's name, or `(no such tool)` |
-| `outcome` | `ok`; `problems` (check or audit found some); `failed`, `refused` (the budget stopped the program), `timeout`, `out_of_memory` for a run; `ceiling` (the door's `--max-allow`, `--max-timeout` or `--max-memory-mb` refused the request); `unauthorized`; `not_local` (`--no-auth` refused a request a browser page could have sent); `bad_request`, `too_large`, `not_found`, `unknown_tool`, `caller_gone`, `error` |
+| `outcome` | `ok`; `problems` (check or audit found some); `failed`, `refused` (the budget stopped the program), `timeout`, `out_of_memory` for a run - and from 8.1 for a check or an audit stopped at its ceiling; `ceiling` (the door's `--max-allow`, `--max-timeout` or `--max-memory-mb` refused the request); `unauthorized`; `rate_limited` (8.1); `not_local` (`--no-auth` refused a request a browser page could have sent); `bad_request`, `too_large`, `not_found`, `unknown_tool`, `caller_gone`, `error` |
 | `duration_ms` | from arrival to the answer |
 | `client` | the caller's IP address (HTTP only) |
 | `budget` | the budget the program ran under, as the budget grammar writes it (paths absolute); `null` when nothing ran |
@@ -719,7 +802,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: gowrishankar-infra/velaris-lang@v8.0.0
+  - uses: gowrishankar-infra/velaris-lang@5f31d2904ab182d40d05ad6cc21d811ab227c38e  # v8.0.0
     with:
       min-proven: "80"
       pr-comment: "true"
@@ -1044,6 +1127,171 @@ Every release carries one: `velaris-attestation-X.Y.Z.intoto.json` for
 `examples/effects.vel`, signed both ways by the release workflow's
 identity and verified in that workflow before it is attached
 ([SECURITY.md](SECURITY.md)).
+
+## A receipt of what one run did (8.1)
+
+```
+velaris examples/effects.vel \
+    --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand \
+    --receipt effects.receipt.json
+```
+
+```python
+result = velaris.run(source, allow={"io"})
+result.receipt               # the same Statement, as a dict
+```
+
+An attestation says what a program may do. A receipt says what one run of
+it did. It is an in-toto Statement of the predicate type
+`https://gowrishankar-infra.github.io/velaris-lang/receipt/v1`
+(velaris-spec section 8.7), whose predicate is `velaris.receipt/1`:
+
+```json
+{"_type": "https://in-toto.io/Statement/v1",
+ "subject": [{"name": "examples/effects.vel", "digest": {"sha256": "e483..."}}],
+ "predicateType": "https://gowrishankar-infra.github.io/velaris-lang/receipt/v1",
+ "predicate": {
+   "schema": "velaris.receipt/1",
+   "producer": {"name": "velaris-lang", "version": "8.1.0", "uri": "..."},
+   "startedAt": "2026-09-14T09:12:03.418Z", "wall_time_ms": 41.7,
+   "budget": "clock,fs:read:/work/report.txt,fs:write:/work/report.txt,io,rand",
+   "run_parameters": {"seed": null, "freeze_time": null, "timeout": null,
+                      "max_memory_mb": null, "max_read_bytes": 67108864,
+                      "confinement": "none"},
+   "effects_used": {"clock": 1, "fs": 2, "io": 4, "rand": 1},
+   "refusals": [],
+   "declassifications": [],
+   "exit": {"status": 0, "outcome": "ok", "code": null},
+   "complete": true}}
+```
+
+| Field | What it holds |
+|---|---|
+| `subject` | the program by the sha256 of the text that ran - named as given, or `<source>` - then each file it imported: the subjects `velaris attest` writes for the same bytes, so an attestation and a receipt of one program match by digest |
+| `budget` | the budget the run had, in the budget grammar, paths absolute |
+| `run_parameters` | `seed` and `freeze_time`; `timeout` and `max_memory_mb`, null when there were none; `max_read_bytes`; `confinement`, `"none"` when the budget was the only boundary |
+| `effects_used` | each effect and how many operations the budget let through; null when the run was killed before it could say |
+| `refusals` | `{"code", "effect", "line", "stopped", "times"}` for each place the budget refused - `stopped` is false for a refused redirect, which the program is told about and may carry on from |
+| `declassifications` | `{"reason", "line", "times"}` for each place the program declassified |
+| `exit` | `status`, `outcome` - `ok`, `refused`, `failed`, `did_not_compile`, `timeout` or `out_of_memory` - and the `code` that ended the run |
+| `complete` | false when the run was stopped from outside: what is listed happened, and each `times` is at least that |
+
+`run()` and `Pool.run()` always return one. The HTTP door and the MCP
+server return one when a request says `"receipt": true`. A run the clock or
+the memory cap stopped has one too, marked `complete: false`, holding what
+its worker reported before it was killed.
+
+**What is never in a receipt** is a value the program handled: not its
+output, input, arguments or environment; not an error message, which can
+quote one; not the path, host or module a refused operation named, which
+the program may have built from something it declassified; not a
+declassified value. A refusal is its code, its effect and its line, and a
+declassification is the reason written in the program. **What is in it**,
+and is the program's to choose, is everything that is not a value: its exit
+status, where it stopped, how often it did something, how long it took. A
+program that has declassified a value can choose those from it; do not
+grant `declassify` to code whose receipts you will share.
+
+**Signing and verifying** is the attestation's recipe with the receipt's
+type:
+
+```
+cosign attest-blob --yes --statement effects.receipt.json \
+    --bundle effects.receipt.sigstore.json
+cosign verify-blob-attestation --bundle effects.receipt.sigstore.json \
+    --type https://gowrishankar-infra.github.io/velaris-lang/receipt/v1 \
+    --certificate-identity you@example.com \
+    --certificate-oidc-issuer https://github.com/login/oauth \
+    examples/effects.vel
+```
+
+or sigstore-python's `sign_dsse` and `Verifier.verify_dsse`, as shown for
+the attestation; `verify-blob-attestation` fails unless the file named is
+the receipt's first subject, by digest. Every release carries
+`velaris-receipt-X.Y.Z.intoto.json` for one run of `examples/effects.vel`,
+signed both ways and verified in the release workflow before it is attached
+([SECURITY.md](SECURITY.md)).
+
+A signed receipt says its signer ran this Velaris on these bytes, under
+this budget, and saw this run. It is no stronger than the machine it ran
+on, and it says nothing about any other run.
+
+## What a policy asks of it (8.1)
+
+An attestation is worth what reads it. [`policies/`](policies) holds one
+policy, written for two engines.
+
+[`policies/opa/capability.rego`](policies/opa/capability.rego) takes a
+capability Statement as its input and a platform's allow-lists as data,
+and answers with the reasons to refuse:
+
+```
+velaris attest agent.vel --output agent.intoto.json
+opa eval -d policies/opa/capability.rego -d platform.json \
+    -i agent.intoto.json 'data.velaris.capability.deny'
+```
+
+```json
+{"platform": {"effects": ["io", "net"],
+              "hosts": ["api.example.com", "*.cdn.example.net:443"]}}
+```
+
+An empty set admits the program. It refuses an effect outside `effects`
+and a host outside `hosts` - an entry without a port admits any port, and
+`*.example.com` admits one label in place of the star - and two things it
+cannot check: an audit whose program did not compile, and a host built
+while the program runs. `opa test policies/opa` runs its tests, which hold
+a pass and a fail; `conftest test agent.intoto.json -p policies/opa
+--namespace velaris.capability -d platform.json` asks the same in conftest.
+
+[`policies/kyverno/require-capability-attestation.yaml`](policies/kyverno/require-capability-attestation.yaml)
+is its twin at admission: a Kyverno `ClusterPolicy` that refuses a Pod
+whose image lacks a capability attestation, verified by Kyverno's image
+verification against a keyless signer you name, with an audit that
+compiled. The attestation is attached to the image with cosign:
+
+```
+velaris attest agent.vel --json | jq .predicate > capability.json
+cosign attest --yes \
+    --type https://gowrishankar-infra.github.io/velaris-lang/capability/v1 \
+    --predicate capability.json registry.example.com/agents/agent@sha256:...
+```
+
+That Statement's subject is the image and its predicate is the program's
+audit. Kyverno asks that the image has one, signed by whom it should be;
+the OPA policy is where a platform asks what it says. The policy is a
+`kyverno.io/v1` `ClusterPolicy` with `verifyImages`, Kyverno's established
+image verification; Kyverno 1.19 loads it and warns that the kind is
+deprecated in favour of `ImageValidatingPolicy`.
+
+## Ejecting a program (8.1)
+
+```
+velaris eject agent.vel -o agent-ejected
+python -I agent-ejected/main.py
+```
+
+`velaris eject` writes a directory that runs, and builds into one
+executable, with nothing from this project installed: the program and its
+imports, a copy of `velaris.py` and of the standard library files it uses,
+`main.py` with the budget written into it (the audit's narrowest, or
+`--allow`), `requirements.txt` pinning the prover and the native compiler
+to the versions installed, `proofs.json`, `build.py` with the PyInstaller
+command, `SHA256SUMS` and a README. That README says what holds once
+ejected and what does not. In short:
+
+- **The budget is enforced** by the copied runtime, whatever the program
+  says; `main.py` refuses `--allow` and `--deny`.
+- **Changes are noticed.** `main.py` holds the sha256 of the runtime and
+  the program from eject time. A changed program runs only with
+  `--changed-ok`; a changed runtime never runs.
+- **A run cannot rewrite the next.** `main.py` refuses a budget whose
+  writes reach its own directory, or a directory Python imports from.
+- **The proofs are a record** of what this Velaris proved at eject time.
+  Nothing trusts them when the program runs - with z3-solver installed each
+  run proves again - and `main.py --prove` checks them again.
+- **No fix arrives.** The directory is the Velaris you ejected with; eject
+  again to take a later one.
 
 ## As a commit hook
 

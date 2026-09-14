@@ -32,6 +32,20 @@ The operator's flags, after "velaris_mcp" in "args":
                          appended here instead of written to stderr
     --log minimal        fewer fields in each line; the log cannot be
                          turned off
+    --root DIR           where a program's imports may come from: .vel
+                         files at or under DIR, and the standard library.
+                         Default: the directory the server was started in
+                         (8.1). An import outside it is E515, and nothing
+                         about the file is read.
+    --check-timeout S    the most seconds velaris_check or velaris_audit
+                         may take. Default: 60, as `velaris check` (8.1).
+    --check-memory-mb M  the most memory either may use. Default: 2048.
+
+What can connect: only the process that started the server, over its
+stdin and stdout - an MCP client, which decides what the model may send.
+It opens no port and reads no file but the program sent and its imports
+under --root. velaris_check and velaris_audit compile, and never run, the
+program they are given.
 
 Nothing here trusts the program's own claims: velaris_run enforces the
 budget while the program runs, and a refused effect stops it.
@@ -70,10 +84,21 @@ LOG = None          # velaris.InvocationLog, set by configure()
 # refused like an over-wide budget (4.0)
 MAX_TIMEOUT = velaris.DOOR_MAX_TIMEOUT
 MAX_MEMORY_MB = velaris.DOOR_MAX_MEMORY_MB
+# where imports may come from (8.1): the directory the server was started
+# in unless --root names another; and the ceiling velaris_check and
+# velaris_audit run under, the one `velaris check` has
+ROOT = None
+CHECK_TIMEOUT = velaris.CHECK_TIMEOUT_DEFAULT
+CHECK_MEMORY_MB = velaris.CHECK_MEMORY_MB_DEFAULT
+CHECKER = None      # velaris.Pool that checks and audits, set by checker()
+# the name a program sent as text is compiled under: inside the root, so
+# its relative imports resolve there
+REQUEST_FILE = ".velaris-request.vel"
 
 USAGE = ("usage: python -m velaris_mcp [--max-allow GRANTS] "
          "[--max-timeout SECONDS] [--max-memory-mb MB] "
-         "[--log-file PATH] [--log full|minimal]")
+         "[--log-file PATH] [--log full|minimal] [--root DIR] "
+         "[--check-timeout SECONDS] [--check-memory-mb MB]")
 
 # One pool per distinct budget a caller asks for, made the first time
 # that budget is seen and closed when the server stops. An assistant
@@ -90,11 +115,37 @@ def pools():
     return POOLS
 
 
+def root() -> str:
+    global ROOT
+    if ROOT is None:
+        ROOT = os.path.realpath(os.getcwd())
+    return ROOT
+
+
+def request_path() -> str:
+    return os.path.join(root(), REQUEST_FILE)
+
+
+def checker():
+    """The worker velaris_check and velaris_audit run on: under the check
+    ceiling, with imports held to the root. A crafted program comes back
+    E613 or E614 instead of holding the server."""
+    global CHECKER
+    if CHECKER is None:
+        CHECKER = velaris.Pool(size=1, timeout=CHECK_TIMEOUT,
+                               max_memory_mb=CHECK_MEMORY_MB,
+                               import_root=root())
+    return CHECKER
+
+
 def close_pools() -> None:
-    global POOLS
+    global POOLS, CHECKER
     registry, POOLS = POOLS, None
     if registry is not None:
         registry.close()
+    one, CHECKER = CHECKER, None
+    if one is not None:
+        one.close()
 
 
 def ceiling():
@@ -119,13 +170,15 @@ def log():
 def configure(argv: list) -> str | None:
     """Read the operator's flags. None when they are fine, else what is
     wrong with them."""
-    global CEILING, LOG, MAX_TIMEOUT, MAX_MEMORY_MB
+    global CEILING, LOG, MAX_TIMEOUT, MAX_MEMORY_MB, ROOT
+    global CHECK_TIMEOUT, CHECK_MEMORY_MB
     opts = {}
     i = 0
     while i < len(argv):
         a = argv[i]
         if a in ("--max-allow", "--max-timeout", "--max-memory-mb",
-                 "--log-file", "--log"):
+                 "--log-file", "--log", "--root", "--check-timeout",
+                 "--check-memory-mb"):
             if i + 1 >= len(argv):
                 return f"{a} needs a value; {USAGE}"
             opts[a] = argv[i + 1]
@@ -142,8 +195,14 @@ def configure(argv: list) -> str | None:
     try:
         MAX_TIMEOUT, MAX_MEMORY_MB = velaris.door_ceilings(
             opts.get("--max-timeout"), opts.get("--max-memory-mb"))
+        CHECK_TIMEOUT, CHECK_MEMORY_MB = velaris.check_ceilings(
+            opts.get("--check-timeout"), opts.get("--check-memory-mb"))
     except ValueError as e:
         return str(e)
+    if "--root" in opts:
+        if not os.path.isdir(opts["--root"]):
+            return f"--root: {opts['--root']} is not a directory"
+        ROOT = os.path.realpath(opts["--root"])
     try:
         LOG = velaris.InvocationLog(opts.get("--log-file"),
                                     opts.get("--log", "full"))
@@ -232,6 +291,18 @@ TOOLS = [
                 },
                 "stdin": {"type": "string"},
                 "args": {"type": "array", "items": {"type": "string"}},
+                "receipt": {
+                    "type": "boolean",
+                    "description": ("true to be given the run's receipt: "
+                                    "an in-toto Statement "
+                                    "(velaris.receipt/1) of what this run "
+                                    "did - the budget, each refusal and "
+                                    "declassification with its reason, the "
+                                    "parameters, how it ended and how long "
+                                    "it took - bound to the program's "
+                                    "sha256 and holding none of its "
+                                    "values."),
+                },
                 "timeout": {
                     "type": "number",
                     "description": ("seconds before the program is "
@@ -287,14 +358,17 @@ def call_tool(name: str, args: dict) -> tuple:
                        is_error=True), rec
     rec["source"] = source
 
-    if name == "velaris_check":
-        got = velaris.check(source)
-        rec["outcome"] = "ok" if got.ok else "problems"
-        return as_text(got.as_dict()), rec
-
-    if name == "velaris_audit":
-        got = velaris.audit(source)
-        rec["outcome"] = "ok" if got.ok else "problems"
+    if name in ("velaris_check", "velaris_audit"):
+        # compiled on a worker under the check ceiling, never run, with its
+        # imports held to the root (8.1)
+        if name == "velaris_check":
+            got = checker().check(source, path=request_path())
+        else:
+            got = checker().audit(source, path=request_path())
+        stopped = {p.code for p in got.problems} & {"E613", "E614"}
+        rec["outcome"] = ("timeout" if "E613" in stopped else
+                          "out_of_memory" if "E614" in stopped else
+                          "ok" if got.ok else "problems")
         return as_text(got.as_dict()), rec
 
     # velaris_run: parse what was asked, hold it against the ceiling -
@@ -335,13 +409,19 @@ def call_tool(name: str, args: dict) -> tuple:
         rec["outcome"] = "bad_request"
         return as_text({"ok": False, "error": "seed is a whole number"},
                        is_error=True), rec
+    want_receipt = args.get("receipt", False)
+    if not isinstance(want_receipt, bool):
+        rec["outcome"] = "bad_request"
+        return as_text({"ok": False, "error": "receipt is true or false"},
+                       is_error=True), rec
     try:
         result = pools().run(
             source, allow=set(asked),
             stdin=args.get("stdin", ""),
             args=args.get("args") or [],
             seed=seed, freeze_time=frozen,
-            timeout=timeout, max_memory_mb=memory)
+            timeout=timeout, max_memory_mb=memory,
+            path=request_path(), import_root=root(), _name="<source>")
     except ValueError as e:
         rec["outcome"] = "bad_request"
         return as_text({"ok": False, "error": str(e)}, is_error=True), rec
@@ -351,6 +431,8 @@ def call_tool(name: str, args: dict) -> tuple:
     rec["outcome"] = velaris.run_outcome(result)
     rec["refusals"] = velaris.run_refusals(result)
     payload = result.as_dict()
+    if not want_receipt:
+        payload.pop("receipt", None)      # on request only (8.1)
     payload["allowed"] = sorted(asked)
     if result.timed_out:
         payload["note"] = "the program ran too long and was stopped"

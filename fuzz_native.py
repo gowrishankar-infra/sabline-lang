@@ -17,6 +17,12 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
+sys.path.insert(0, str(HERE))
+from suite_dirs import isolate  # noqa: E402
+
+# its own directory and proof cache: two runs at once, each with its own
+# random seed, must not run each other's program
+WORK = isolate("fuzz_native")
 
 
 def rnd_int(r):
@@ -104,7 +110,7 @@ def main() -> int:
         seed = int(argv[argv.index("--seed") + 1])
     r = random.Random(seed)
     print(f"fuzzing {n} programs (seed {seed})")
-    tmp = HERE / "_fuzz.vel"
+    tmp = WORK / "_fuzz.vel"
     bad = 0
     for k in range(n):
         src = gen_program(r)
