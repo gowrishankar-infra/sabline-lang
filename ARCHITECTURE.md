@@ -185,6 +185,7 @@ run has a function to compile (`check_cli.py` measures it).
 | `check_hostile.py` | does every hostile resource end in a coded error, never a traceback |
 | `check_self_budget.py` | can anything a program or its surroundings control - arguments, the working directory, the environment, files beside it - widen its budget or change its audit |
 | `check_docs.py` | are the documents true: code blocks, commands, counts, error codes, paths |
+| `check_site.py` | is the documentation site what it says: every page built, no Markdown left raw, a strict HTML parse, every link and anchor, search over every heading, the landing page, contrast, the page budget; with Chrome (site.yml), no page wider than 360px, no console error, and the menu, search and theme toggle working |
 | `check_identical.py` | are the audit and SARIF the same bytes on Linux, Windows and macOS |
 | `check_differential.py` | does every difference from the previous release appear in the CHANGELOG |
 | `perf_gates.py` | the numbers each release publishes, and pure-numeric time against the previous tag |

@@ -161,6 +161,10 @@ jobs:
         run: python build_playground.py
       - name: Docs site builds
         run: python build_docs.py
+      # rendering, links, the HTML parse, search, the landing page, contrast
+      # and the page budget; site.yml runs the same with Chrome
+      - name: The documentation site holds what it says (without Chrome)
+        run: python check_site.py --no-chrome
       # the same audits and SARIF, byte for byte, on the three x64 systems
       - name: Audit and SARIF documents, for the comparison across systems
         if: matrix.python == '3.12' && matrix.deps == 'full' && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || matrix.os == 'macos-15-intel')
