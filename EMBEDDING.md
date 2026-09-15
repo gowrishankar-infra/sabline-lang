@@ -818,7 +818,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: gowrishankar-infra/velaris-lang@56afc323c09ce75ed179c14cdee2bea4d05922be  # v8.1.1
+  - uses: gowrishankar-infra/velaris-lang@08d66c5580ac124f895e5b817c5e8331b9453d9f  # v8.2.0
     with:
       min-proven: "80"
       pr-comment: "true"
@@ -1324,7 +1324,7 @@ ejected and what does not. In short:
 ```yaml
 repos:
   - repo: https://github.com/gowrishankar-infra/velaris-lang
-    rev: v8.1.1
+    rev: v8.2.0
     hooks:
       - id: velaris-check      # it compiles, and the promises hold
       - id: velaris-fmt        # canonically formatted

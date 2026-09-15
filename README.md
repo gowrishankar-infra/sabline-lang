@@ -718,7 +718,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: gowrishankar-infra/velaris-lang@56afc323c09ce75ed179c14cdee2bea4d05922be  # v8.1.1
+      - uses: gowrishankar-infra/velaris-lang@08d66c5580ac124f895e5b817c5e8331b9453d9f  # v8.2.0
 ```
 
 The Action is pinned to a commit, with its tag in the comment beside it:
@@ -890,10 +890,10 @@ findings go to code scanning when `sarif` is on. It needs
 ### Everything else the Action takes
 
 ```yaml
-  - uses: gowrishankar-infra/velaris-lang@56afc323c09ce75ed179c14cdee2bea4d05922be  # v8.1.1
+  - uses: gowrishankar-infra/velaris-lang@08d66c5580ac124f895e5b817c5e8331b9453d9f  # v8.2.0
     with:
       files: "src/*.vel"     # default: every .vel file in the repository
-      version: "8.1.1"       # default: the Action's own version (8.1.1)
+      version: "8.2.0"       # default: the Action's own version (8.2.0)
       proofs: "true"         # the default; installs z3-solver
       format: "true"         # also fail if the code is not canonically formatted
       min-proven: "80"       # fail below this percent of promises proven
