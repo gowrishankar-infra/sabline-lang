@@ -18,16 +18,32 @@ checkout this script sits in is never what answers.
     python check_install.py --name mcpb --mcp "python bundle/server/velaris_mcp.py" \\
         --pythonpath bundle/server/lib
     python check_install.py --name vscode --lsp "velaris lsp"
+    python check_install.py --name pre-commit \\
+        --find "$PRE_COMMIT_HOME/repo*/py_env-*/bin/velaris"
 
-A path in a command is taken from where this script is started. The
-language server runs nothing, so for it the check is that it diagnoses,
-not that it refuses. --any-version accepts whatever version answers; the
-Action installs from PyPI, so on an unreleased commit it answers with the
-newest release.
+The first word of a command is the program: holding a slash, it is a file,
+taken from where this script is started; without one it is found on PATH,
+as a shell finds it. After it, a word naming an existing file is made
+absolute, since the command runs from an empty directory - never a
+directory, and never the module after -m. The first nightly run turned
+`python -m velaris` and `velaris lsp`, started from a checkout holding
+velaris/, into that directory. --find takes a glob for the program instead,
+for an install known only by its shape, and checks every file it matches.
+
+A program that is not there, a glob that matches nothing, or a program
+that cannot be started is a BROKEN line naming what was looked for and
+where, never a traceback. Under GitHub Actions each BROKEN line is also an
+error annotation, which a report can read before the run has finished
+(open_issues.py). The language server runs nothing, so for it the check
+is that it diagnoses, not that it refuses. --any-version accepts whatever
+version answers; the Action installs from PyPI, so on an unreleased commit
+it answers with the newest release. check_nightly.py runs every call
+nightly.yml makes of this script, on every push.
 """
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import os
 import queue
@@ -55,6 +71,7 @@ REACHED = "reached the network"
 REFUSED = "'fetch' needs the 'net' effect"
 BROKEN = 'fn main() uses io {\n    print(nowhere)\n}\n'
 PASS = FAIL = 0
+NAME = ""
 
 
 def ok(label: str, good: bool, detail: str = "") -> None:
@@ -67,6 +84,10 @@ def ok(label: str, good: bool, detail: str = "") -> None:
         print(f"  BROKEN  {label}")
         if detail:
             print("          " + detail.strip().replace("\n", "\n          ")[:1500])
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            said = f"{NAME}: {label}" + (f" - {detail.strip()[:600]}" if detail.strip() else "")
+            print("::error title=check_install::" + said.replace("%", "%25")
+                  .replace("\r", "%0D").replace("\n", "%0A"))
 
 
 def expected_version() -> str:
@@ -77,17 +98,76 @@ def expected_version() -> str:
     return found.group(1)
 
 
-def split(command: str) -> list[str]:
-    """The words of a command, each one naming an existing file made absolute:
-    the command runs from an empty directory."""
-    words = shlex.split(command, posix=os.name != "nt")
-    return [os.path.abspath(w) if not w.startswith("-") and os.path.exists(w)
-            else w for w in words]
+def nearest(pattern: str) -> str:
+    """Where a path or glob stops matching: the deepest directories its
+    leading parts reach, and what they hold."""
+    parts = Path(pattern).parts
+    absolute = Path(pattern).is_absolute()
+    reached = [parts[0]] if absolute else ["."]
+    for part in parts[1 if absolute else 0:-1]:
+        deeper = sorted(p for r in reached
+                        for p in glob.glob(os.path.join(glob.escape(r), part))
+                        if os.path.isdir(p))
+        if not deeper:
+            break
+        reached = deeper
+    held = []
+    for r in reached[:3]:
+        try:
+            names = sorted(os.listdir(r))
+        except OSError as e:
+            held.append(f"{os.path.abspath(r)} cannot be read ({e})")
+            continue
+        shown = ", ".join(names[:15]) + (f" and {len(names) - 15} more"
+                                         if len(names) > 15 else "")
+        held.append(f"{os.path.abspath(r)} holds {shown or 'nothing'}")
+    more = f" (and {len(reached) - 3} more like it)" if len(reached) > 3 else ""
+    return "; the deepest it reaches: " + "; ".join(held) + more
+
+
+def split(command: str) -> tuple[list[str], str | None]:
+    """The words of a command, ready to run from an empty directory:
+    (words, None), or ([], what was looked for and where)."""
+    words = [w[1:-1] if os.name == "nt" and len(w) > 1 and w[0] == w[-1] == '"'
+             else w for w in shlex.split(command, posix=os.name != "nt")]
+    if not words or not words[0]:
+        return [], "the command is empty: there is nothing to run"
+    program = words[0]
+    if "/" in program or os.sep in program:
+        found = os.path.abspath(program)
+        if not os.path.isfile(found):
+            return [], f"{program} is not there: no file {found}{nearest(found)}"
+    else:
+        on_path = shutil.which(program)
+        if on_path is None:
+            path = os.environ.get("PATH", "").split(os.pathsep)
+            return [], (f"{program} is not on PATH, which is these "
+                        f"{len(path)} directories: " + os.pathsep.join(path))
+        found = on_path
+    rest = [os.path.abspath(w) if words[i] != "-m" and not w.startswith("-")
+            and os.path.isfile(w) else w for i, w in enumerate(words[1:])]
+    return [found, *rest], None
+
+
+def matching(pattern: str) -> tuple[list[str], str | None]:
+    """Every file a glob matches (~ and $VARIABLES expanded), or
+    ([], what was looked for and where)."""
+    pattern = os.path.expanduser(os.path.expandvars(pattern))
+    files = sorted(os.path.abspath(f) for f in glob.glob(pattern)
+                   if os.path.isfile(f))
+    if not files:
+        return [], f"no file matches {pattern}{nearest(pattern)}"
+    return files, None
 
 
 def run(cmd: list[str], cwd: Path, timeout: int = 600) -> tuple[int, str]:
-    done = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
-                          encoding="utf-8", errors="replace", timeout=timeout)
+    try:
+        done = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=timeout)
+    except OSError as e:
+        return -1, f"{cmd[0]} could not be started: {e}"
+    except subprocess.TimeoutExpired:
+        return -1, f"{cmd[0]} had not finished after {timeout} s"
     return done.returncode, done.stdout + done.stderr
 
 
@@ -130,9 +210,13 @@ def as_mcp(cmd: list[str], work: Path, version: str | None) -> None:
             "arguments": {"source": NET, "allow": ["io", "net"]}}},
         {"jsonrpc": "2.0", "method": "exit", "params": {}},
     ]
-    done = subprocess.run(cmd, cwd=work, capture_output=True, text=True,
-                          encoding="utf-8", errors="replace", timeout=600,
-                          input="\n".join(json.dumps(m) for m in msgs) + "\n")
+    try:
+        done = subprocess.run(cmd, cwd=work, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=600,
+                              input="\n".join(json.dumps(m) for m in msgs) + "\n")
+    except (OSError, subprocess.TimeoutExpired) as e:
+        ok("the server starts and answers", False, f"{cmd[0]}: {e}")
+        return
     answers: dict[int, dict[str, Any]] = {}
     for line in done.stdout.splitlines():
         try:
@@ -170,8 +254,12 @@ def as_mcp(cmd: list[str], work: Path, version: str | None) -> None:
 
 def as_lsp(cmd: list[str], work: Path) -> None:
     """The language server the VS Code extension spawns."""
-    proc = subprocess.Popen(cmd, cwd=work, stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        proc = subprocess.Popen(cmd, cwd=work, stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except OSError as e:
+        ok("the language server starts", False, f"{cmd[0]} could not be started: {e}")
+        return
     got: queue.Queue[dict[str, Any] | None] = queue.Queue()
     errors: list[bytes] = []
 
@@ -249,7 +337,12 @@ def as_lsp(cmd: list[str], work: Path) -> None:
         send({"jsonrpc": "2.0", "id": 9, "method": "shutdown", "params": None})
         wait(lambda m: m.get("id") == 9, 30)
         send({"jsonrpc": "2.0", "method": "exit", "params": None})
-        proc.wait(timeout=30)
+        try:
+            proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            ok("...and exits when asked", False, "still running 30 s after exit")
+    except OSError as e:
+        ok("the language server keeps its pipes open", False, str(e))
     finally:
         if proc.poll() is None:
             proc.kill()
@@ -258,10 +351,14 @@ def as_lsp(cmd: list[str], work: Path) -> None:
 
 
 def main(argv: list[str]) -> int:
+    global NAME
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--name", required=True, help="what was installed, for the log")
     how = ap.add_mutually_exclusive_group(required=True)
     how.add_argument("--command", help="the command that runs Velaris")
+    how.add_argument("--find", metavar="GLOB",
+                     help="a glob for the program that runs Velaris; every "
+                          "file it matches is checked")
     how.add_argument("--docker", metavar="IMAGE",
                      help="an image whose entrypoint is velaris")
     how.add_argument("--mcp", help="the command that starts the MCP server")
@@ -271,6 +368,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--any-version", action="store_true",
                     help="accept whatever version answers")
     args = ap.parse_args(argv)
+    NAME = args.name
     version = None if args.any_version else expected_version()
     if args.pythonpath:
         os.environ["PYTHONPATH"] = os.path.abspath(args.pythonpath)
@@ -280,16 +378,31 @@ def main(argv: list[str]) -> int:
     try:
         shutil.copy2(DISCOUNT, work / "discount.vel")
         (work / "net.vel").write_text(NET, encoding="utf-8")
-        if args.command:
-            as_command(split(args.command), work, None, version)
-        elif args.docker:
-            mount = str(work).replace("\\", "/")
-            as_command(["docker", "run", "--rm", "-v", f"{mount}:/work",
-                        args.docker], work, "/work", version)
-        elif args.mcp:
-            as_mcp(split(args.mcp), work, version)
+        programs: list[str] = []
+        words: list[str] = []
+        if args.find is not None:
+            programs, missing = matching(args.find)
         else:
-            as_lsp(split(args.lsp), work)
+            words, missing = split("docker" if args.docker is not None else
+                                   args.command if args.command is not None else
+                                   args.mcp if args.mcp is not None else args.lsp)
+        if missing:
+            ok("found the program to run", False, missing)
+        elif args.find is not None:
+            for program in programs:
+                if len(programs) > 1:
+                    print(f"  {program}")
+                as_command([program], work, None, version)
+        elif args.docker is not None:
+            mount = str(work).replace("\\", "/")
+            as_command(words + ["run", "--rm", "-v", f"{mount}:/work",
+                                args.docker], work, "/work", version)
+        elif args.command is not None:
+            as_command(words, work, None, version)
+        elif args.mcp is not None:
+            as_mcp(words, work, version)
+        else:
+            as_lsp(words, work)
     finally:
         shutil.rmtree(work, ignore_errors=True)
     print("-" * 62)

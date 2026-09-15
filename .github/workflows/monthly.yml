@@ -191,6 +191,7 @@ jobs:
     permissions:
       contents: read
       actions: read              # which jobs failed, and their logs
+      checks: read               # a failed job's annotations, while its log cannot be read
       issues: write              # open or comment; nothing else
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5

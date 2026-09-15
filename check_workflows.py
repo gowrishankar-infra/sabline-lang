@@ -18,7 +18,10 @@ them and holds them to it:
 Then it holds open_issues.py and adversarial_models.py to what those
 workflows rely on, with gh replaced by a fake: one issue per failure, a
 comment rather than a second issue, nothing at all on --dry-run, no gh
-command outside issues and labels, one issue per finding, keys struck out.
+command outside issues and labels, the job's failure annotations when its
+log cannot be read yet, a close only with a comment, only of an issue it
+opened, and only when every job of the run passed (which nightly.yml alone
+asks for), one issue per finding, keys struck out.
 
     python check_workflows.py
 """
@@ -137,14 +140,28 @@ def structure() -> None:
     report = doc["jobs"]["report"]
     ok("adversarial-models.yml / report: labels each issue by its model",
        "adversarial:$model" in json.dumps(report))
+    nightly = workflow("nightly.yml")["jobs"]["report"]
+    ok("nightly.yml / report: runs after a green run too, and closes the "
+       "issues of the jobs that passed",
+       re.sub(r"\s", "", str(nightly.get("if"))) == "${{!cancelled()}}"
+       and "--close-when-green" in json.dumps(nightly), str(nightly.get("if")))
+    ok("...while the monthly and adversarial reports close nothing",
+       not any("--close-when-green" in json.dumps(workflow(n)["jobs"]["report"])
+               for n in ("monthly.yml", "adversarial-models.yml")))
 
 
 class FakeGh:
-    """gh, as far as open_issues.py uses it."""
+    """gh, as far as open_issues.py uses it. Every open issue was opened by
+    the workflow unless `authors` names someone else; `log_error` makes
+    `gh run view` fail as it does while the run is still going."""
 
     def __init__(self, open_titles: dict[str, int], labels: list[str],
-                 jobs: list[dict[str, Any]]) -> None:
+                 jobs: list[dict[str, Any]], authors: dict[int, str] | None = None,
+                 log_error: str = "",
+                 annotations: list[dict[str, Any]] | None = None) -> None:
         self.open_titles, self.labels, self.jobs = open_titles, labels, jobs
+        self.authors, self.log_error = authors or {}, log_error
+        self.annotations = annotations or []
         self.calls: list[list[str]] = []
 
     def __call__(self, cmd: list[str], **_: Any) -> SimpleNamespace:
@@ -152,13 +169,19 @@ class FakeGh:
         self.calls.append(args)
         out = ""
         if args[:2] == ["issue", "list"]:
-            out = json.dumps([{"number": n, "title": t}
-                              for t, n in self.open_titles.items()])
+            out = json.dumps([{"number": n, "title": t, "author": {
+                "login": self.authors.get(n, "app/github-actions")}}
+                for t, n in self.open_titles.items()])
         elif args[:2] == ["label", "list"]:
             out = json.dumps([{"name": n} for n in self.labels])
+        elif args[:1] == ["api"] and "/annotations" in args[1]:
+            out = json.dumps(self.annotations)
         elif args[:1] == ["api"]:
             out = "\n".join(json.dumps(j) for j in self.jobs)
         elif args[:2] == ["run", "view"]:
+            if self.log_error:
+                return SimpleNamespace(returncode=1, stdout="",
+                                       stderr=self.log_error)
             out = "job\tstep\tline one\njob\tstep\tBROKEN  something\n"
         return SimpleNamespace(returncode=0, stdout=out, stderr="")
 
@@ -173,7 +196,10 @@ def issues() -> None:
     os.environ["GH_REPO"] = "owner/repo"
     refused = []
     for words in (["pr", "create"], ["release", "create"], ["repo", "delete"],
-                  ["issue", "close", "1"], ["issue", "edit", "1"],
+                  ["issue", "close", "1"], ["issue", "close", "1", "--reason",
+                                            "completed"],
+                  ["issue", "edit", "1"], ["issue", "reopen", "1"],
+                  ["issue", "delete", "1"], ["issue", "lock", "1"],
                   ["api", "-X", "POST", "repos/x"], ["api", "--method=PUT", "x"],
                   ["api", "repos/x", "-f", "a=b"], ["workflow", "run", "x"]):
         try:
@@ -181,17 +207,26 @@ def issues() -> None:
             refused.append(False)
         except open_issues.Refused:
             refused.append(True)
-    ok("gh() refuses every command but reading, opening and commenting on "
-       "issues, labels and run logs", all(refused), str(refused))
+    ok("gh() refuses every command but reading, opening, commenting on and "
+       "closing issues, labels and run logs - and a close without a comment",
+       all(refused), str(refused))
+    open_issues.RUNNER = FakeGh({}, [], [])
+    try:
+        open_issues.gh(["issue", "close", "1", "--comment", "passed in run 7"])
+        closes = True
+    except open_issues.Refused:
+        closes = False
+    ok("...a close with a comment is let through", closes)
     source = (HERE / "open_issues.py").read_text(encoding="utf-8")
     ok("...and nothing in open_issues.py starts a process but through gh()",
        source.count("subprocess.") == 1 and "os.system" not in source)
 
-    def run_jobs(fake: FakeGh, dry: bool = False, most: int = 40) -> None:
+    def run_jobs(fake: FakeGh, dry: bool = False, most: int = 40,
+                 close: bool = False) -> None:
         open_issues.RUNNER = fake
         opener = open_issues.Opener("nightly", dry, most)
-        open_issues.jobs(SimpleNamespace(workflow="nightly", run_id="7"),  # type: ignore[arg-type]  # stands in for the parsed arguments
-                         opener)
+        open_issues.jobs(SimpleNamespace(workflow="nightly", run_id="7",  # type: ignore[arg-type]  # stands in for the parsed arguments
+                                         close_when_green=close), opener)
 
     jobs = [{"id": 1, "name": "wheel on ubuntu", "conclusion": "failure",
              "html_url": "u1", "steps": [{"name": "s", "conclusion": "failure"}]},
@@ -230,6 +265,66 @@ def issues() -> None:
     run_jobs(fake)
     ok("a run with no failed job opens nothing and makes no label",
        not fake.made("issue", "create") and not fake.made("label"))
+
+    # the report job runs inside the run it reports on, and gh reads no log
+    # of a run that has not finished (nightly #1's nine issues said only that)
+    fake = FakeGh({}, ["nightly"], jobs[:1],
+                  log_error="run 7 is still in progress; logs will be "
+                            "available when it is complete",
+                  annotations=[{"annotation_level": "warning",
+                                "message": "Node.js 20 is deprecated"},
+                               {"annotation_level": "failure",
+                                "message": "wheel: --version answers 8.2.1 - "
+                                           "No module named velaris"}])
+    run_jobs(fake)
+    created = fake.made("issue", "create")
+    body = created[0][created[0].index("--body") + 1] if created else ""
+    ok("a log gh will not read yet: the issue holds the job's failure "
+       "annotations instead, and says why",
+       "still in progress" in body and "No module named velaris" in body
+       and "Node.js 20" not in body, body)
+
+    run = "https://api.github.com/repos/o/r/actions/runs/7"
+    green = [{"id": 1, "name": "wheel on ubuntu", "status": "completed",
+              "conclusion": "success", "run_url": run, "head_sha": "abc123"},
+             {"id": 2, "name": "docker", "status": "completed",
+              "conclusion": "success", "run_url": run, "head_sha": "abc123"},
+             {"id": 9, "name": "one issue per failed job", "status": "in_progress",
+              "conclusion": None}]
+    still_open = {"nightly: wheel on ubuntu failed": 12,
+                  "nightly: a job since renamed failed": 13,
+                  "nightly: docker failed": 14}
+    fake = FakeGh(still_open, ["nightly"], green, authors={14: "a-person"})
+    run_jobs(fake, close=True)
+    closed = fake.made("issue", "close")
+    said = closed[0][closed[0].index("--comment") + 1] if closed else ""
+    ok("--close-when-green, every job passed: the issue opened for a job "
+       "that passed is closed, with a comment naming the run",
+       [c[2] for c in closed] == ["12"]
+       and "github.com/o/r/actions/runs/7" in said and "abc123" in said,
+       str(closed))
+    ok("...while an issue for a job the run does not have, and one a person "
+       "opened, stay open", not any(c[2] in ("13", "14") for c in closed))
+    partly = [green[0], dict(green[1], conclusion="failure", html_url="u2",
+                             steps=[]), green[2]]
+    fake = FakeGh(still_open, ["nightly"], partly)
+    run_jobs(fake, close=True)
+    ok("...a run with a job failed closes nothing, not even the issue of the "
+       "job that passed, and comments on the one still failing",
+       not fake.made("issue", "close")
+       and [c[2] for c in fake.made("issue", "comment")] == ["14"],
+       str(fake.calls))
+    fake = FakeGh(still_open, ["nightly"],
+                  [green[0], dict(green[1], conclusion="skipped"), green[2]])
+    run_jobs(fake, close=True)
+    ok("...nor does a run with a job skipped", not fake.made("issue", "close"))
+    fake = FakeGh(still_open, ["nightly"], green)
+    run_jobs(fake)
+    ok("...nor a green run without --close-when-green, as monthly.yml runs it",
+       not fake.made("issue", "close"))
+    fake = FakeGh(still_open, ["nightly"], green)
+    run_jobs(fake, dry=True, close=True)
+    ok("...nor --dry-run", not fake.made("issue", "close"))
 
     with tempfile.TemporaryDirectory() as d:
         for i, title in enumerate(["# first survivor", "second, no hash"]):

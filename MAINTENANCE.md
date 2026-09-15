@@ -14,10 +14,15 @@ pushes, tags, publishes, or opens a pull request, and none may:
 - only a job named `report` may write, and only issues (`issues: write`);
 - every checkout keeps no credential (`persist-credentials: false`);
 - `open_issues.py` is the only thing that writes, and its `gh()` refuses any
-  command but listing, opening and commenting on issues, making a label, and
-  reading a run's logs;
+  command but listing, opening, commenting on and closing issues (a close
+  only with a comment), making a label, and reading a run's logs and
+  annotations. It closes only an issue it opened, and only for the nightly,
+  once a run in which every job passed shows that issue's job passing;
 - `check_workflows.py`, on every push, reads the three scheduled workflows
-  and fails if any of that stops being true.
+  and fails if any of that stops being true;
+- `check_nightly.py`, on every push, runs each of nightly.yml's probes
+  against a local install, so a probe that cannot run fails there, not at
+  02:23.
 
 Dependabot opens pull requests; a person merges them. A person reproduces
 every finding before anything changes, and a fix goes through a pull
@@ -29,7 +34,7 @@ request and test.yml like any other change.
 |---|---|---|---|
 | Every push to main and every pull request | `test.yml` | 18 legs - Linux, Windows and macOS x64, Python 3.10 and 3.12, with and without z3 and llvmlite; Linux and macOS arm64 on 3.12; Python 3.14 on Linux, allowed to fail - each running every suite (ARCHITECTURE.md lists them); the same audit and SARIF bytes on three systems (`identical`); mypy --strict and ruff (`lint`); suites twice at once (`concurrent`) | none: a red run is the report |
 | A push to main whose tests passed | `release.yml` | the gate, then - for a release - pure-numeric time against the previous tag (`perf`), every difference from the previous tag named (`differential`), the builds and signatures, the kill switch, the tag and every publish (RELEASING.md) | none |
-| Every night, 02:23 UTC | `nightly.yml` | every artefact built from main and installed as a user installs it - the wheel and the sdist on three systems, the MCP bundle, the npm wrapper from the registry, the standalone executables, the Docker image, the pre-commit hooks, the Action, the VS Code extension's language server - each running `examples/discount.vel` and refusing a program that fetches a URL (`check_install.py`) | one per failed job, label `nightly` |
+| Every night, 02:23 UTC | `nightly.yml` | every artefact built from main and installed as a user installs it - the wheel and the sdist on three systems, the MCP bundle, the npm wrapper from the registry, the standalone executables, the Docker image, the pre-commit hooks, the Action, the VS Code extension's language server - each running `examples/discount.vel` and refusing a program that fetches a URL (`check_install.py`) | one per failed job, label `nightly`; the next run in which every job passes closes them, naming itself |
 | Every Monday, 04:11 UTC | `adversarial-models.yml` | the standing adversarial prompt (`.github/adversarial/PROMPT.md`), this week's area of the compiler, sent to Claude (Claude Code), Gemini (Gemini CLI) and Grok (xAI API); a model whose key is not set is skipped | one per finding, label `adversarial:claude`, `adversarial:gemini` or `adversarial:grok` |
 | Every Monday | Dependabot | z3-solver and llvmlite as CI pins them (`requirements/ci.txt`), and every action every workflow uses | pull requests, which run test.yml in full, the benchmark's verdict check included |
 | The 1st of each month, 03:41 UTC | `monthly.yml` | coverage-guided fuzzing for 20 minutes (`fuzz_parsers.py`, atheris); mutation testing for 90 minutes (`check_mutants.py`); the worker pool for 5,000 runs (`check_pool_soak.py`); every URL the documents name, and llms.txt (`check_urls.py`); the previous release against main over the full benchmark (`check_differential.py`); native code and the parsers under AddressSanitizer and UndefinedBehaviorSanitizer on Linux | one per failed job, label `monthly`; one per surviving mutant, label `mutation` |
@@ -53,7 +58,7 @@ workflow. The adversarial pass takes an area to attack.
 | the release gate | not a release, or a release it refuses | its one line says why; a refusal for a new error code, a removed flag or a changed default needs a `compatibility:` line (RELEASING.md) |
 | release `perf` | pure-numeric time is more than 25% slower than the previous tag | run `python perf_gates.py --only numeric --against vX.Y.Z` on a quiet machine; a real regression is fixed, not waived |
 | release `differential` | an output differs from the previous tag and the CHANGELOG entry does not name it | name it with a `differential:` line if it is meant (`check_differential.py`'s docstring), or fix it |
-| a `nightly` issue | an artefact built from main does not install or does not behave | the issue links the job and holds the end of its log; `python check_install.py` runs the same checks against any command |
+| a `nightly` issue | an artefact built from main does not install or does not behave - or the probe is wrong, which `check_nightly.py` exists to catch first | the issue links the job and holds its failure annotations, one per broken check (the report runs before the run ends, and gh reads no log until then); `python check_install.py` runs the same checks against any command. The next run in which every job passes closes the issue; leave the closing to it |
 | a `monthly` issue | a long check failed | the issue names the job; each runs locally (below) |
 | a `mutation` issue | a line a guarantee rests on can change without any suite noticing | write the test that fails with the mutant, or say why the mutant is equivalent, and close it |
 | an `adversarial:*` issue | a model claims a hole | reproduce it against main first; most are not holes. A real one is a security report (SECURITY.md) |

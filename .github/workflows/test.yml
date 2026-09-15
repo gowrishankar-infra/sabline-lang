@@ -83,6 +83,8 @@ jobs:
         run: python check_release.py
       - name: The scheduled workflows report and change nothing; open_issues.py and adversarial_models.py
         run: python check_workflows.py
+      - name: The nightly's probes, each against a local install; a program that is not there is one BROKEN line
+        run: python check_nightly.py
       - name: Every fallible builtin is enforced
         run: python check_fallible.py
       - name: Amounts are exact, in one currency, and round only where named

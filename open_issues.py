@@ -1,24 +1,37 @@
 #!/usr/bin/env python3
-"""Open one GitHub issue per failure, and nothing else.
+"""Open one GitHub issue per failure, and close only what it opened.
 
 The nightly, monthly and adversarial workflows end here (MAINTENANCE.md).
 A robot reports and a person fixes: this script can list and open issues,
-comment on an open one, create a label, and read a run's jobs and logs. It
-cannot commit, push, tag, close or edit an issue, or touch a pull request.
-Every gh call goes through gh(), which refuses any other command and any
-API call that is not a read.
+comment on an open one, create a label, read a run's jobs, logs and
+annotations, and - asked to, with --close-when-green - close an issue it
+opened, with a comment, once a run in which every job passed shows the job
+it reports passing. It cannot commit, push, tag, edit, reopen or delete an
+issue, or touch a pull request. Every gh call goes through gh(), which
+refuses any other command, any API call that is not a read, and a close
+without a comment.
 
     python open_issues.py jobs --workflow nightly --run-id ID --label nightly
         one issue per failed job of that run
+    python open_issues.py jobs ... --close-when-green
+        ...and when every job of the run passed, close each open issue
+        this script opened for one of its jobs, saying which run it
+        passed in; a run with any job failed, cancelled or skipped closes
+        nothing, and an issue a person opened is never closed
     python open_issues.py files DIR --label mutation
         one issue per Markdown file in DIR: the first line, less a leading
         "# ", is the title, and the rest is the body
-    --dry-run   say what would be opened, and open nothing
+    --dry-run   say what would be opened or closed, and do none of it
 
 An issue already open with the same title is not opened twice; the new
 failure is added to it as a comment. At most --max issues (40) are opened
 or commented on in one call; past that, one more issue says how many were
 left out, because that many at once is one problem, not forty.
+
+The report job runs inside the run it reports on, and gh reads no log of
+a run that has not finished (nightly #1 opened nine issues saying only
+that). So when the log cannot be read, the issue holds the job's failure
+annotations instead, which check_install.py writes one per broken check.
 """
 from __future__ import annotations
 
@@ -32,8 +45,11 @@ from typing import Any, Callable
 
 RUNNER: Callable[..., Any] = subprocess.run
 READS = {("issue", "list"), ("label", "list"), ("run", "view")}
-WRITES = {("issue", "create"), ("issue", "comment"), ("label", "create")}
+WRITES = {("issue", "create"), ("issue", "comment"), ("issue", "close"),
+          ("label", "create")}
 NOT_A_READ = {"-X", "--method", "-f", "-F", "--field", "--raw-field", "--input"}
+# who a workflow's GITHUB_TOKEN opens an issue as, as gh names it
+ROBOTS = {"app/github-actions", "github-actions[bot]"}
 BODY_LIMIT = 60000
 SIGNATURE = ("\n\n---\nOpened by `open_issues.py`. A robot reports this and "
              "fixes nothing (MAINTENANCE.md).\n")
@@ -53,6 +69,8 @@ def gh(args: list[str]) -> str:
     elif tuple(args[:2]) not in READS | WRITES:
         raise Refused(f"gh {' '.join(args[:2])} is not something this "
                       f"script does")
+    elif tuple(args[:2]) == ("issue", "close") and "--comment" not in args:
+        raise Refused("an issue is closed here only with a comment saying why")
     done = RUNNER(["gh", *args], capture_output=True, text=True,
                   encoding="utf-8", errors="replace")
     if done.returncode != 0:
@@ -65,14 +83,19 @@ class Opener:
         self.label, self.dry_run, self.most = label, dry_run, most
         self.done = 0
         self.left_out: list[str] = []
+        self._issues: list[dict[str, Any]] | None = None
         self._open: dict[str, int] | None = None
+
+    def open_issues(self) -> list[dict[str, Any]]:
+        if self._issues is None:
+            self._issues = json.loads(gh(["issue", "list", "--state", "open",
+                                          "--label", self.label, "--limit", "500",
+                                          "--json", "number,title,author"]) or "[]")
+        return self._issues
 
     def open_titles(self) -> dict[str, int]:
         if self._open is None:
-            found = json.loads(gh(["issue", "list", "--state", "open",
-                                   "--label", self.label, "--limit", "500",
-                                   "--json", "number,title"]) or "[]")
-            self._open = {i["title"]: i["number"] for i in found}
+            self._open = {i["title"]: i["number"] for i in self.open_issues()}
         return self._open
 
     def ensure_label(self) -> None:
@@ -103,6 +126,11 @@ class Opener:
                 "--body", body])
         self.open_titles()[title] = -1
 
+    def close(self, number: int, title: str, why: str) -> None:
+        print(f"closing #{number}: {title}")
+        if not self.dry_run:
+            gh(["issue", "close", str(number), "--comment", why])
+
     def finish(self, what: str) -> None:
         if not self.left_out:
             return
@@ -118,34 +146,77 @@ def fence(text: str) -> str:
     return "```text\n" + text.replace("```", "'''") + "\n```"
 
 
+def failure_log(repo: str, job: dict[str, Any]) -> str:
+    """The end of a failed job's log; or, while the run holding the job is
+    still going and gh will not read its log, the job's failure
+    annotations."""
+    try:
+        log = gh(["run", "view", "--job", str(job["id"]), "--log-failed"])
+        return "\n".join(line[:300] for line in log.splitlines()[-80:])
+    except RuntimeError as e:
+        why = str(e)
+    try:
+        notes = json.loads(gh(["api", f"repos/{repo}/check-runs/{job['id']}"
+                                      "/annotations?per_page=50"]) or "[]")
+    except (RuntimeError, json.JSONDecodeError) as e:
+        return f"(the log could not be read: {why}; nor the job's annotations: {e})"
+    failures = [str(n.get("message", ""))[:1000] for n in notes
+                if isinstance(n, dict) and n.get("annotation_level") == "failure"]
+    if not failures:
+        return f"(the log could not be read: {why}; the job has no failure annotations)"
+    return (f"(the log could not be read: {why})\n\nthe job's failure "
+            f"annotations:\n\n" + "\n\n".join(failures))
+
+
+def close_passed(workflow: str, every: list[dict[str, Any]], opener: Opener) -> None:
+    """Close each open issue this script opened for a job that passed, when
+    every finished job of the run passed; otherwise close nothing."""
+    finished = [j for j in every if j.get("status") == "completed"]
+    if not finished or any(j.get("conclusion") != "success" for j in finished):
+        print("not every job of the run passed: no issue is closed")
+        return
+    passed = {f"{workflow}: {j['name']} failed": j for j in finished}
+    closed = 0
+    for issue in opener.open_issues():
+        job = passed.get(issue.get("title", ""))
+        if job is None or (issue.get("author") or {}).get("login") not in ROBOTS:
+            continue
+        run = job.get("run_url", "").replace("api.github.com/repos", "github.com")
+        opener.close(issue["number"], issue["title"], (
+            f"**{job['name']}** passed in {workflow} run {run}, at "
+            f"{job.get('head_sha', '')}, in which every job passed. Closed by "
+            f"`open_issues.py`; a later failure opens a new issue."))
+        closed += 1
+    print(f"every job of the run passed: {closed} issue(s) "
+          f"{'would be ' if opener.dry_run else ''}closed")
+
+
 def jobs(args: argparse.Namespace, opener: Opener) -> None:
     repo = os.environ.get("GH_REPO") or os.environ.get("GITHUB_REPOSITORY")
     if not repo:
         sys.exit("open_issues: set GH_REPO to owner/name")
     lines = gh(["api", f"repos/{repo}/actions/runs/{args.run_id}/jobs"
                         "?per_page=100", "--paginate", "--jq", ".jobs[] | @json"])
-    failed = [j for j in (json.loads(x) for x in lines.splitlines() if x.strip())
-              if j.get("conclusion") == "failure"]
+    every = [json.loads(x) for x in lines.splitlines() if x.strip()]
+    failed = [j for j in every if j.get("conclusion") == "failure"]
     print(f"{len(failed)} failed job(s) in run {args.run_id}")
     if failed:
         opener.ensure_label()
     for job in failed:
         steps = [s["name"] for s in job.get("steps") or []
                  if s.get("conclusion") == "failure"]
-        try:
-            log = gh(["run", "view", "--job", str(job["id"]), "--log-failed"])
-            tail = "\n".join(line[:300] for line in log.splitlines()[-80:])
-        except RuntimeError as e:
-            tail = f"(the log could not be read: {e})"
         title = f"{args.workflow}: {job['name']} failed"
         body = (f"The {args.workflow} workflow's job **{job['name']}** failed.\n\n"
                 f"- run: {job.get('run_url', '').replace('api.github.com/repos', 'github.com')}\n"
                 f"- job: {job.get('html_url', '')}\n"
                 f"- commit: {job.get('head_sha', '')}\n"
                 f"- failed step(s): {', '.join(steps) or 'none named'}\n\n"
-                f"The end of the failed steps' log:\n\n{fence(tail)}")
+                f"The end of the failed steps' log:\n\n"
+                f"{fence(failure_log(repo, job))}")
         opener.report(title, body, f"Failed again in {job.get('html_url', '')}.")
     opener.finish(args.workflow)
+    if getattr(args, "close_when_green", False):
+        close_passed(args.workflow, every, opener)
 
 
 def files(args: argparse.Namespace, opener: Opener) -> None:
@@ -167,6 +238,9 @@ def main(argv: list[str]) -> int:
     j = sub.add_parser("jobs", help="one issue per failed job of a run")
     j.add_argument("--workflow", required=True)
     j.add_argument("--run-id", required=True)
+    j.add_argument("--close-when-green", action="store_true",
+                   help="when every job of the run passed, close the issues "
+                        "this script opened for its jobs")
     f = sub.add_parser("files", help="one issue per Markdown file")
     f.add_argument("directory")
     for p in (j, f):

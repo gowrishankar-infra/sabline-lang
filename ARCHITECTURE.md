@@ -178,6 +178,7 @@ run has a function to compile (`check_cli.py` measures it).
 | `check_release.py` | does the release gate decide what RELEASING.md says, and does the kill switch stop a release |
 | `check_workflows.py` | do the scheduled workflows report and change nothing |
 | `check_install.py` | does every artefact, installed as a user installs it, run discount.vel and refuse the network (nightly) |
+| `check_nightly.py` | does every probe nightly.yml runs pass against a local install, and is a program that is not there one BROKEN line rather than a traceback |
 | `check_urls.py` | does every URL the documents name still answer (monthly) |
 | `check_lint.py` | mypy --strict and ruff over the package and every script, and the complexity report |
 | `check_platform.py` | does the reference platform refuse at submission, at run time and at its audit limit what it says it refuses |
@@ -255,8 +256,8 @@ needs the prover.
    out with the reason.
 
 9. **Robots report; people fix.** The nightly, monthly and adversarial
-   workflows open issues and never commit (MAINTENANCE.md,
-   `check_workflows.py`).
+   workflows open issues and never commit; the nightly closes the ones it
+   opened once a run passes in full (MAINTENANCE.md, `check_workflows.py`).
 
 ## Working on it
 

@@ -9,8 +9,12 @@ name: nightly
 #
 # It commits nothing, tags nothing and publishes nothing. Every job's token
 # reads the repository and nothing more, except the last job's, which may
-# open issues: one per failed job, or a comment on the one already open
-# (open_issues.py). MAINTENANCE.md says what to do with one.
+# write issues: one per failed job, or a comment on the one already open,
+# and, in a run where every job passed, closing each it opened for them
+# with a comment naming the run (open_issues.py). MAINTENANCE.md says what
+# to do with one. check_nightly.py runs every check_install.py line below
+# against a local install on every push, so a probe that cannot run fails
+# there rather than here.
 
 on:
   schedule:
@@ -211,21 +215,32 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
-      - name: Both hooks, from this checkout, on a repository holding discount.vel
+      # as a user runs them: a .pre-commit-config.yaml naming this repository
+      # at this commit, with the environments kept in $RUNNER_TEMP/pre-commit.
+      # Not `pre-commit try-repo`, which builds them in a temporary store and
+      # deletes it on exit, so the next step found nothing (nightly #1).
+      - name: Both hooks, from this commit, on a repository holding discount.vel
         run: |
           pip install pre-commit
+          export PRE_COMMIT_HOME="$RUNNER_TEMP/pre-commit"
           mkdir -p "$RUNNER_TEMP/hooks"
           cp examples/discount.vel "$RUNNER_TEMP/hooks/"
           cd "$RUNNER_TEMP/hooks"
           git init -q
-          git add discount.vel
-          pre-commit try-repo "$GITHUB_WORKSPACE" velaris-check --files discount.vel --verbose
-          pre-commit try-repo "$GITHUB_WORKSPACE" velaris-fmt --files discount.vel --verbose
-      - name: The velaris the hooks installed
-        run: |
-          velaris=$(ls -d ~/.cache/pre-commit/repo*/py_env-*/bin/velaris | head -n 1)
-          echo "the hooks' velaris: $velaris"
-          python check_install.py --name "pre-commit hook environment" --command "$velaris"
+          cat > .pre-commit-config.yaml <<EOF
+          repos:
+            - repo: $GITHUB_WORKSPACE
+              rev: $(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)
+              hooks:
+                - id: velaris-check
+                - id: velaris-fmt
+          EOF
+          git add discount.vel .pre-commit-config.yaml
+          pre-commit run --all-files --verbose
+      # each hook has an environment of its own: velaris-check's holds the
+      # prover, velaris-fmt's does not; both are checked
+      - name: The velaris each hook's environment holds
+        run: python check_install.py --name "pre-commit hook environment" --find "$RUNNER_TEMP/pre-commit/repo*/py_env-*/bin/velaris"
 
   action:
     name: the GitHub Action
@@ -280,15 +295,19 @@ jobs:
           python -m pip install -c requirements/ci.txt "$(ls artefacts/*.whl)"
           python check_install.py --name "VS Code extension's language server" --lsp "velaris lsp"
 
+  # Runs after a green run too: then every job passed, and each issue this
+  # workflow opened for one of them is closed, naming this run. A run with
+  # any job failed, cancelled or skipped closes nothing.
   report:
-    name: one issue per failed job
+    name: one issue per failed job, closed when every job passes
     needs: [build, pip, mcpb, npm, binary, docker, pre-commit, action, vscode]
-    if: ${{ !cancelled() && contains(needs.*.result, 'failure') }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read              # which jobs failed, and their logs
-      issues: write              # open or comment; nothing else
+      checks: read               # a failed job's annotations, while its log cannot be read
+      issues: write              # open, comment, or close what it opened; nothing else
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
@@ -296,8 +315,8 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
-      - name: Open them
+      - name: Open them, or close them
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: python open_issues.py jobs --workflow nightly --run-id "${{ github.run_id }}" --label nightly
+        run: python open_issues.py jobs --workflow nightly --run-id "${{ github.run_id }}" --label nightly --close-when-green
