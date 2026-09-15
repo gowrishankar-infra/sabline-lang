@@ -38,6 +38,7 @@ import threading
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any, cast
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
@@ -45,12 +46,12 @@ sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
-isolate("check_deps")                 # its own proof cache
+isolate("check_deps")                 # its own directory
 
 try:
     from jsonschema import Draft4Validator
 except ImportError:                        # the SARIF cases say they skipped
-    Draft4Validator = None
+    Draft4Validator = None  # type: ignore[misc, assignment]  # optional; tested for None
 
 HAVE_GIT = shutil.which("git") is not None
 SCRATCH = Path(tempfile.mkdtemp(prefix="velaris-deps-check-"))
@@ -58,7 +59,7 @@ SCRATCH = Path(tempfile.mkdtemp(prefix="velaris-deps-check-"))
 
 # ---- the command line --------------------------------------------------------
 
-def velaris_cli(*words, cwd=None, env=None):
+def velaris_cli(*words: Any, cwd: Any = None, env: Any = None) -> Any:
     full = dict(os.environ)
     full.update(env or {})
     return subprocess.run([sys.executable, str(VELARIS), *words],
@@ -66,14 +67,14 @@ def velaris_cli(*words, cwd=None, env=None):
                           text=True, encoding="utf-8", env=full, timeout=600)
 
 
-def as_json(done) -> dict:
+def as_json(done: Any) -> dict[Any, Any]:
     try:
-        return json.loads(done.stdout)
+        return cast(dict[Any, Any], json.loads(done.stdout))
     except ValueError:
         return {"_stdout": done.stdout[-800:], "_stderr": done.stderr[-800:]}
 
 
-def versions_dir(name: str, versions: dict) -> Path:
+def versions_dir(name: str, versions: dict[Any, Any]) -> Path:
     """dir:<this> with one subdirectory per version, each holding files."""
     root = SCRATCH / "dirs" / name
     for version, files in versions.items():
@@ -84,11 +85,11 @@ def versions_dir(name: str, versions: dict) -> Path:
     return root
 
 
-def findings(result: dict) -> list:
-    return (result.get("velaris") or {}).get("findings", [])
+def findings(result: dict[Any, Any]) -> list[Any]:
+    return cast(list[Any], (result.get("velaris") or {}).get("findings", []))
 
 
-def grant_finding(result: dict, grant: str) -> dict:
+def grant_finding(result: dict[Any, Any], grant: str) -> dict[Any, Any]:
     return next((f for f in findings(result)
                  if f["kind"] == "grant" and f["grant"] == grant), {})
 
@@ -197,9 +198,9 @@ ROOT_FROM_PYTHON = '''fn root_two() -> Float or fail uses ffi {
 # ---- a registry on 127.0.0.1 -------------------------------------------------
 
 class Served(BaseHTTPRequestHandler):
-    routes: dict = {}
+    routes: dict[Any, Any] = {}
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         body = Served.routes.get(self.path.split("?", 1)[0])
         if body is None:
             self.send_response(404)
@@ -211,17 +212,17 @@ class Served(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, *args):
+    def log_message(self, *args: Any) -> None:
         pass
 
 
-def serve(handler):
+def serve(handler: Any) -> tuple[Any, ...]:
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server, f"http://127.0.0.1:{server.server_address[1]}"
 
 
-def tar_gz(files: dict, top: str = "") -> bytes:
+def tar_gz(files: dict[Any, Any], top: str = "") -> bytes:
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as t:
         for name, body in files.items():
@@ -233,7 +234,7 @@ def tar_gz(files: dict, top: str = "") -> bytes:
     return buf.getvalue()
 
 
-def zipped(files: dict) -> bytes:
+def zipped(files: dict[Any, Any]) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
         for name, body in files.items():
@@ -241,8 +242,8 @@ def zipped(files: dict) -> bytes:
     return buf.getvalue()
 
 
-def npm_publish(base: str, name: str, version: str, files: dict,
-                manifest_override=None, raw_members=None) -> None:
+def npm_publish(base: str, name: str, version: str, files: dict[Any, Any],
+                manifest_override: Any = None, raw_members: Any = None) -> None:
     """A version on the npm registry: its tarball (package/...), and the
     manifest the registry serves for it - the tarball's package.json
     unless manifest_override says otherwise."""
@@ -263,12 +264,12 @@ def npm_publish(base: str, name: str, version: str, files: dict,
     Served.routes[f"/{name}"] = json.dumps(doc).encode()
 
 
-def npm_package_json(name, version, **more) -> str:
+def npm_package_json(name: Any, version: Any, **more: Any) -> str:
     return json.dumps({"name": name, "version": version, **more}, indent=2)
 
 
-def pypi_publish(base: str, name: str, version: str, sdist: dict,
-                 wheel: dict, requires: list, wrong_digest=False) -> None:
+def pypi_publish(base: str, name: str, version: str, sdist: dict[Any, Any],
+                 wheel: dict[Any, Any], requires: list[Any], wrong_digest: bool = False) -> None:
     listed = []
     for kind, filename, data in (
             ("sdist", f"{name}-{version}.tar.gz",
@@ -294,10 +295,10 @@ def pypi_publish(base: str, name: str, version: str, sdist: dict,
 # ---- the GitHub API on 127.0.0.1 -----------------------------------------------
 
 class GitHub(BaseHTTPRequestHandler):
-    comments: list = []
-    calls: list = []
+    comments: list[Any] = []
+    calls: list[Any] = []
 
-    def _send(self, status, doc):
+    def _send(self, status: Any, doc: Any) -> None:
         body = json.dumps(doc).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -305,11 +306,11 @@ class GitHub(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _body(self):
+    def _body(self) -> Any:
         n = int(self.headers.get("Content-Length") or 0)
         return json.loads(self.rfile.read(n) or b"{}")
 
-    def do_GET(self):
+    def do_GET(self) -> Any:
         GitHub.calls.append(("GET", self.path))
         if self.headers.get("Authorization") != "Bearer test-token":
             return self._send(401, {"message": "Bad credentials"})
@@ -317,7 +318,7 @@ class GitHub(BaseHTTPRequestHandler):
             return self._send(200, GitHub.comments)
         self._send(404, {"message": "Not Found"})
 
-    def do_POST(self):
+    def do_POST(self) -> Any:
         GitHub.calls.append(("POST", self.path))
         if self.path != "/repos/o/r/issues/7/comments":
             return self._send(404, {"message": "Not Found"})
@@ -326,7 +327,7 @@ class GitHub(BaseHTTPRequestHandler):
         GitHub.comments.append(new)
         self._send(201, new)
 
-    def do_PATCH(self):
+    def do_PATCH(self) -> Any:
         GitHub.calls.append(("PATCH", self.path))
         cid = self.path.rsplit("/", 1)[-1]
         for c in GitHub.comments:
@@ -335,16 +336,16 @@ class GitHub(BaseHTTPRequestHandler):
                 return self._send(200, c)
         self._send(404, {"message": "Not Found"})
 
-    def log_message(self, *args):
+    def log_message(self, *args: Any) -> None:
         pass
 
 
-def git(root: Path, *words):
+def git(root: Path, *words: Any) -> Any:
     return subprocess.run(["git", *words], cwd=str(root), capture_output=True,
                           text=True, timeout=120)
 
 
-def git_repo(files: dict) -> Path:
+def git_repo(files: dict[Any, Any]) -> Path:
     root = Path(tempfile.mkdtemp(prefix="repo-", dir=str(SCRATCH)))
     git(root, "init", "-q")
     for key, value in (("user.name", "deps"),
@@ -356,7 +357,7 @@ def git_repo(files: dict) -> Path:
     return root
 
 
-def write(root: Path, files: dict) -> None:
+def write(root: Path, files: dict[Any, Any]) -> None:
     for rel, text in files.items():
         p = root / rel
         if text is None:
@@ -371,7 +372,7 @@ def commit(root: Path, message: str) -> None:
     git(root, "commit", "-q", "-m", message)
 
 
-def package_lock(deps: dict, base: str) -> str:
+def package_lock(deps: dict[Any, Any], base: str) -> str:
     packages = {"": {"name": "app", "version": "1.0.0",
                      "dependencies": {n: "^" + v for n, v in deps.items()}}}
     for n, v in deps.items():
@@ -390,14 +391,14 @@ def line_of(text: str, after: str, needle: str) -> int:
 
 # ---- the benchmark's category 12 ----------------------------------------------
 
-def category_12() -> tuple:
+def category_12() -> tuple[Any, ...]:
     corpus = json.loads((HERE / "benchmark" / "corpus.json")
                         .read_text(encoding="utf-8"))
     cat = next(c for c in corpus["categories"] if c["number"] == 12)
     return cat["key"], cat["programs"]
 
 
-def place_12(key: str, prog: dict) -> tuple:
+def place_12(key: str, prog: dict[Any, Any]) -> tuple[Any, ...]:
     """The dependency's two versions under dir:<versions>, and the caller
     beside each, with the placeholders filled as the harness fills them."""
     dep = prog["dependency"]
@@ -431,7 +432,7 @@ def place_12(key: str, prog: dict) -> tuple:
 def main() -> int:
     passed = failed = skipped = 0
 
-    def ok(label, condition, detail=""):
+    def ok(label: Any, condition: Any, detail: object = "") -> None:
         nonlocal passed, failed
         if condition:
             print(f"  ok       {label}")
@@ -442,12 +443,12 @@ def main() -> int:
                 print(f"           {str(detail)[:900]}")
             failed += 1
 
-    def skip(label, why):
+    def skip(label: Any, why: Any) -> None:
         nonlocal skipped
         print(f"  skip     {label} ({why})")
         skipped += 1
 
-    def diff(package, old, new, *more, env=None):
+    def diff(package: Any, old: Any, new: Any, *more: Any, env: Any = None) -> tuple[Any, ...]:
         done = velaris_cli("deps-diff", package, old, new, "--json", *more,
                            env=env)
         return done.returncode, as_json(done), done
@@ -458,7 +459,7 @@ def main() -> int:
     schema = json.loads((HERE / "tests" / "sarif-schema-2.1.0.json")
                         .read_text(encoding="utf-8"))
 
-    def validates(label, log):
+    def validates(label: Any, log: Any) -> None:
         if Draft4Validator is None:
             skip(label, "jsonschema is not installed")
             return
@@ -474,7 +475,8 @@ def main() -> int:
                                                 RENDER_PHONES_HOME}})
         code, r, done = diff(f"dir:{lib}", "1.0.0", "1.1.0")
         g = grant_finding(r, "net:telemetry.example.net")
-        fn = next((f for f in findings(r) if f["kind"] == "function"), {})
+        fn: dict[str, Any] = next(
+            (f for f in findings(r) if f["kind"] == "function"), {})
         ok("a library that gains net: exit 1, the grant reported as a new "
            "effect outside the old surface and the file's old entry (W1, "
            "W3), and the function that gained it (W5)",
@@ -783,7 +785,7 @@ def main() -> int:
                             "--sarif", env=reg_env)
         log = as_json(sarif)
         results = (log.get("runs") or [{}])[0].get("results", [])
-        hit = next((x for x in results
+        hit: dict[str, Any] = next((x for x in results
                     if x["ruleId"] == "dependency-install-script"), {})
         ok("--sarif of one package: the install script as an error in the "
            "package, the unknown surface as a note",
@@ -871,12 +873,12 @@ def main() -> int:
                and GitHub.comments[0] == {"id": 99,
                                           "body": "looks fine to me"},
                (first.stderr, second.stderr, GitHub.calls))
-            body = ours[0]["body"] if ours else ""
+            comment_body = ours[0]["body"] if ours else ""
             ok("...holding what each upgrade gained and, as plainly, what "
                "was not seen",
-               "npm:textkit" in body and "postinstall" in body
-               and "unknown" in body and "yarn.lock" in body
-               and "not safe" in body, body[:900])
+               "npm:textkit" in comment_body and "postinstall" in comment_body
+               and "unknown" in comment_body and "yarn.lock" in comment_body
+               and "not safe" in comment_body, comment_body[:900])
             GitHub.calls[:] = []
             quiet = velaris_cli("deps-diff", "--against", "HEAD", "--comment",
                                 "--pr", "7", cwd=repo, env=env)

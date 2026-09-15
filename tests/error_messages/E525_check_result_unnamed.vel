@@ -1,0 +1,10 @@
+fn parse(t: Text) -> Int or fail {
+    return try to_int(t)
+}
+
+fn main() uses io {
+    check parse("5") {
+        ok { print("parsed") }
+        fail why { print(why) }
+    }
+}

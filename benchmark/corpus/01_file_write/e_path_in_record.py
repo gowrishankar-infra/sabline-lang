@@ -9,7 +9,7 @@ class Job:
     text: str
 
 
-def run_job(job):
+def run_job(job: Job) -> int:
     with open(job.path, "w") as f:  # DANGER
         f.write(job.text)
     return len(job.text)

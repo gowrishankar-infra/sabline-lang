@@ -103,6 +103,26 @@ fix ships before the details do; the credit is public either way.
 
 ## Resolved advisories
 
+- **Negating the smallest whole number was not range-checked** (challenge
+  #1, Goal A), affecting 2.14 through 8.1.1, fixed in 8.2.0: `-n` of
+  -9223372036854775808 left the 64-bit range without E407, and a function
+  whose `ensures` about `-n` was proven ran as native code and returned a
+  value that broke it. Unary minus, and the smallest number divided by -1,
+  now stop with E407 in both engines. Found by the 8.2 corpus of false
+  promises. See [advisory-int-negation.md](advisory-int-negation.md).
+- **Words after `--` were read as Velaris's own flags** (Goal C), affecting
+  5.0.0 through 8.1.1, fixed in 8.2.0: `velaris program.vel -- --allow all`
+  granted every effect to a run whose operator named no budget, and
+  `-- --receipt x` wrote a file. On a run, `--` now ends Velaris's flags and
+  everything after it is the program's `args()`. Found by the 8.2
+  self-budget suite. See [advisory-cli-double-dash.md](advisory-cli-double-dash.md).
+- **A program given to the library as text imported from the temp
+  directory** (Goal C), affecting 2.52 through 8.1.1, fixed in 8.2.0: its
+  imports resolved in the system temp directory first, so a `std.vel`
+  another local user planted in `/tmp` ran in place of the standard
+  library's, and the audit reported it. The text is now written into a
+  directory of its own. Found by the 8.2 self-budget suite. See
+  [advisory-source-temp-import.md](advisory-source-temp-import.md).
 - **A per-user proof cache entry was believed** (challenge #1, Goal A),
   affecting 7.1.2 through 8.1.0, fixed in 8.1.1: a process running as the
   same user, or an `XDG_CACHE_HOME` or `LOCALAPPDATA` pointed at a directory

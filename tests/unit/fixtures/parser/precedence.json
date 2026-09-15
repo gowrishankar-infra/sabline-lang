@@ -1,0 +1,29 @@
+{
+  "about": "Each expression, and its tree written with every operation in brackets. or binds loosest, then and, then not, then comparison, then + and -, then * / %, then a field or a call; a minus sign binds to the one operand after it. Operators of one level group to the left.",
+  "cases": [
+    ["1 + 2 * 3", "(1 + (2 * 3))"],
+    ["1 * 2 + 3", "((1 * 2) + 3)"],
+    ["a - b - c", "((a - b) - c)"],
+    ["a / b * c", "((a / b) * c)"],
+    ["a % b + c", "((a % b) + c)"],
+    ["a + b < c * d", "((a + b) < (c * d))"],
+    ["a < b == c", "((a < b) == c)"],
+    ["a == b and c != d", "((a == b) and (c != d))"],
+    ["a or b and c", "(a or (b and c))"],
+    ["a and b or c", "((a and b) or c)"],
+    ["a or b or c", "((a or b) or c)"],
+    ["not a and b", "((not a) and b)"],
+    ["not a == b", "(not (a == b))"],
+    ["not not a", "(not (not a))"],
+    ["-a * b", "((-a) * b)"],
+    ["a - -b", "(a - (-b))"],
+    ["--a", "(-(-a))"],
+    ["-p.x", "(-p.x)"],
+    ["(a + b) * c", "((a + b) * c)"],
+    ["a * (b + c)", "(a * (b + c))"],
+    ["f(a, b + c) * d", "(f(a, (b + c)) * d)"],
+    ["p.x.y + 1", "(p.x.y + 1)"],
+    ["geo.area(1, 2) >= 0", "(geo.area(1, 2) >= 0)"],
+    ["length(xs) - 1 <= i or done", "(((length(xs) - 1) <= i) or done)"]
+  ]
+}

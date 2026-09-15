@@ -105,7 +105,7 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 </style></head><body>
 <nav><div class="in"><a class="brand" href="index.html">
 <span class="dot"></span>Velaris</a><a href="index.html" class="">Home</a><a href="tutorial.html" class="">Tutorial</a><a href="spec.html" class="here">Reference</a><a href="library.html" class="">Library</a><a href="errors.html" class="">Errors</a><a href="floats.html" class="">Floats</a><a href="playground.html" class="">Playground</a>
-<span class="ver">v8.1.1</span></div></nav>
+<span class="ver">v8.2.0</span></div></nav>
 <main class="wide"><h1>The Velaris language reference</h1>
 <br>
 <p>This is the specification: what Velaris means, precisely. It is not a</p>
@@ -114,7 +114,7 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <p>this language can find out exactly what it promises — and what it</p>
 <p>does not.</p>
 <br>
-<p>Version 2.32. Where this document and the implementation disagree,</p>
+<p>Version 8.2.0. Where this document and the implementation disagree,</p>
 <p>that is a bug in one of them; please report it.</p>
 <br>
 <h2>1. Programs</h2>
@@ -146,12 +146,12 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <p>| Int | <code>0</code>, <code>42</code>, <code>-7</code> | 64-bit, signed (§4.1) |</p>
 <p>| Float | <code>1.5</code>, <code>0.0</code>, <code>-2.25</code> | IEEE-754 binary64 (§4.2) |</p>
 <p>| Bool | <code>true</code>, <code>false</code> | |</p>
-<p>| Text | <code>&quot;hello&quot;</code>, <code>&quot;a\nb&quot;</code> | escapes: <code>\n \t \\ \&quot; \r \0</code> |</p>
+<p>| Text | <code>&quot;hello&quot;</code>, <code>&quot;a\nb&quot;</code> | escapes: <code>\n \t \\ \&quot;</code>; any other is E002 |</p>
 <p>| List | <code>[1, 2, 3]</code> | all elements one type |</p>
 <p>| Map | <code>{&quot;a&quot;: 1}</code> | keys <code>Text</code> or <code>Int</code> |</p>
 <br>
 <p>An empty <code>[]</code> or <code>{}</code> has no inferable element type; give it one with</p>
-<p>a typed <code>let</code> (E506, E507).</p>
+<p>a typed <code>let</code> (E506).</p>
 <br>
 <h2>3. Types</h2>
 <br>
@@ -359,9 +359,11 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <h3>4.2 Decimals</h3>
 <br>
 <p><code>Float</code> is IEEE-754 binary64 with round-to-nearest-even, including</p>
-<p>signed zeros, infinities and NaN. <code>Float</code> division by zero follows</p>
-<p>IEEE-754 and yields an infinity; this is the one place the language</p>
-<p>does not raise an error, because it is what the hardware defines.</p>
+<p>signed zeros, infinities and NaN, which arithmetic can reach: a</p>
+<p>product past the largest float is an infinity. Division or remainder</p>
+<p>by zero is an error (E403) for <code>Float</code> as for <code>Int</code>, never an</p>
+<p>infinity or a NaN: <code>/</code> and <code>%</code> stay interpreted, where the divisor is</p>
+<p>checked (§11).</p>
 <br>
 <p><code>Int</code> and <code>Float</code> never mix implicitly. <code>to_float(x)</code> widens;</p>
 <p><code>round(x)</code> narrows.</p>
@@ -380,8 +382,8 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <p>    with_units(m, n)          n minor units, in m&#x27;s currency</p>
 <br>
 <p><code>money</code> and <code>parse_money</code> take the currency as text **written in the</p>
-<p>call**, and it must be one the implementation knows (<code>CURRENCIES</code> in</p>
-<p><code>velaris.py</code>, §4.4); anything else is E551. A function may be generic in</p>
+<p>call**, and it must be one the implementation knows</p>
+<p>(<code>velaris.CURRENCIES</code>, §4.4); anything else is E551. A function may be generic in</p>
 <p>a currency: <code>fn f(m: Money of C) -&gt; Money of C for any C</code>.</p>
 <br>
 <p><b>Arithmetic.</b> Two amounts in the same currency add, subtract and</p>
@@ -426,7 +428,7 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <h3>4.4 Which currencies</h3>
 <br>
 <p>An implementation carries a table of currency codes and how many digits</p>
-<p>each has after the point: <code>CURRENCIES</code> in <code>velaris.py</code>, which today</p>
+<p>each has after the point: <code>velaris.CURRENCIES</code>, which today</p>
 <p>holds 21 of them — 2 digits for INR, USD, EUR and most others, 0 for JPY</p>
 <p>and KRW, 3 for KWD, BHD, JOD and OMR. <b>It is not exhaustive.</b> A</p>
 <p>currency outside it is refused (E551) rather than assumed to have two</p>
@@ -565,9 +567,12 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <p>fail.</p>
 <br>
 <p>Fallible builtins: <code>to_int</code>, <code>read_file</code>, <code>read_file_secret</code>, <code>fetch</code>,</p>
-<p><code>post</code>,</p>
-<p><code>fetch_status</code>, <code>get</code> on a <b>map</b>, <code>divide_or_fail</code>, <code>parse_money</code>, the</p>
-<p><code>py_*</code> family, and the <code>json_*</code> readers. <code>get</code> on a <b>list</b> is not fallible: list bounds are the</p>
+<p><code>post</code>, <code>request</code>, <code>fetch_status</code>, <code>get</code> on a <b>map</b>, <code>pop</code>, <code>slice</code>,</p>
+<p><code>set_at</code>, <code>add_or_fail</code>, <code>sub_or_fail</code>, <code>mul_or_fail</code>, <code>div_or_fail</code>,</p>
+<p><code>mod_or_fail</code>, <code>divide_or_fail</code>, <code>parse_money</code>, <code>py</code>, <code>py_int</code>,</p>
+<p><code>py_float</code>, <code>py_json</code>, <code>py_new</code>, <code>py_do</code>, <code>py_field</code>, <code>json_get</code>,</p>
+<p><code>json_int</code>, <code>json_float</code> and <code>json_len</code> - every <code>py_*</code> builtin but</p>
+<p><code>py_close</code>. <code>get</code> on a <b>list</b> is not fallible: list bounds are the</p>
 <p>prover&#x27;s domain (§9.4), and <code>get_or(m, k, default)</code> gives a total map</p>
 <p>lookup.</p>
 <br>
@@ -626,9 +631,14 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <p>true things about — that nothing adds up to zero, and that items all</p>
 <p><code>&gt;= 0</code> (all <code>&lt;= 0</code>) add up to something <code>&gt;= 0</code> (<code>&lt;= 0</code>) — so a promise</p>
 <p>that needs more about a sum than those, such as one that needs induction</p>
-<p>over the list, is left to runtime rather than claimed. <code>text_of</code>,</p>
-<p><code>parse_money</code> and <code>divide_or_fail</code> are not modelled at all: a function</p>
-<p>that uses one keeps its promises as runtime checks.</p>
+<p>over the list, is left to runtime rather than claimed. <code>parse_money</code></p>
+<p>and <code>divide_or_fail</code> are modelled on the path where they did not fail:</p>
+<p>an amount <code>parse_money</code> read is an unknown amount, so a promise about</p>
+<p>it is proven only where the function checks what it read (`if m &lt;</p>
+<p>money(0, &quot;INR&quot;) { fail &quot;negative&quot; }`), and a division that did not</p>
+<p>fail is the exact rounding the interpreter performs, for a divisor</p>
+<p>shown positive. <code>text_of</code> is not modelled: a function that uses it</p>
+<p>keeps its promises as runtime checks.</p>
 <br>
 <p>Not proven, and checked at runtime instead: the contents of text</p>
 <p>beyond the above; anything involving values that come back from the</p>
@@ -706,7 +716,10 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <p>shadow an import name (E514).</p>
 <br>
 <p>Imports are resolved relative to the importing file, with the bundled</p>
-<p>standard library searched last. Import cycles are rejected.</p>
+<p>standard library searched last. A file already in the program is not</p>
+<p>read again, so two files that import each other, or a file that</p>
+<p>imports itself, load without an error and with each file in the</p>
+<p>program once.</p>
 <br>
 <p>A program compiled under an import root - the HTTP door and the MCP</p>
 <p>server always compile under one, the directory they serve, and the</p>
@@ -882,10 +895,11 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <p>Stated plainly, because a specification that only lists strengths is</p>
 <p>advertising: no threads or async (§13); no exceptions — failure is in</p>
 <p>the signature (§8); no traits, interfaces, classes or inheritance; no</p>
-<p>closures — function values cannot capture their surroundings; no</p>
+<p>reference capture — a function value takes a copy of the values</p>
+<p>around it when it is made (§12a), never a reference to them; no</p>
 <p>mutable data structures; no reflection; no macros; no operator</p>
 <p>overloading; no package registry (libraries are vendored, §10); no</p>
-<p>incremental compilation beyond proof caching; and a compiler written</p>
+<p>incremental compilation, and from 8.2 no proof cache; and a compiler written</p>
 <p>in Python, which is clear to read and slower than a production</p>
 <p>compiler.</p></main>
 <footer>Velaris is MIT-licensed open source &middot;

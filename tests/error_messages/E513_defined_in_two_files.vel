@@ -1,0 +1,9 @@
+import "helpers.vel"
+
+fn double(n: Int) -> Int {
+    return n + n
+}
+
+fn main() uses io {
+    print(double(2))
+}

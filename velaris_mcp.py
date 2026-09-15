@@ -6,7 +6,7 @@ can touch, and run it in a box, without leaving the conversation. This
 speaks the Model Context Protocol over stdin/stdout, so any MCP client
 can offer:
 
-    velaris_card    the whole language, ~3,700 words, for writing it
+    velaris_card    the whole language, ~4,600 words, for writing it
     velaris_check   compile without running; problems as data
     velaris_audit   what a program touches, promises and can fail at
     velaris_run     run it under an effect budget you choose
@@ -54,6 +54,7 @@ import json
 import sys
 
 import os
+from typing import Any
 
 # the compiler may be: installed (pip), vendored beside this file in an
 # .mcpb bundle, or sitting in the repo next door. Try each, in the order
@@ -108,7 +109,7 @@ USAGE = ("usage: python -m velaris_mcp [--max-allow GRANTS] "
 POOLS = None
 
 
-def pools():
+def pools() -> Any:
     global POOLS
     if POOLS is None:
         POOLS = velaris.PoolRegistry()
@@ -126,7 +127,7 @@ def request_path() -> str:
     return os.path.join(root(), REQUEST_FILE)
 
 
-def checker():
+def checker() -> Any:
     """The worker velaris_check and velaris_audit run on: under the check
     ceiling, with imports held to the root. A crafted program comes back
     E613 or E614 instead of holding the server."""
@@ -148,26 +149,26 @@ def close_pools() -> None:
         one.close()
 
 
-def ceiling():
+def ceiling() -> Any:
     global CEILING
     if CEILING is None:
         CEILING = velaris.Budget.parse(DEFAULT_CEILING)
     return CEILING
 
 
-def ceiling_list() -> list:
+def ceiling_list() -> list[Any]:
     spec = ceiling().spec()
     return spec.split(",") if spec else []
 
 
-def log():
+def log() -> Any:
     global LOG
     if LOG is None:
         LOG = velaris.InvocationLog()
     return LOG
 
 
-def configure(argv: list) -> str | None:
+def configure(argv: list[Any]) -> str | None:
     """Read the operator's flags. None when they are fine, else what is
     wrong with them."""
     global CEILING, LOG, MAX_TIMEOUT, MAX_MEMORY_MB, ROOT
@@ -220,7 +221,7 @@ TOOLS = [
     {
         "name": "velaris_card",
         "description": (
-            "The Velaris language in about 3,700 words: syntax, the "
+            "The Velaris language in about 4,600 words: syntax, the "
             "rules models get wrong, every builtin with its effects and "
             "whether it can fail, full standard-library signatures, and "
             "the error table. Read this before writing Velaris."),
@@ -331,18 +332,18 @@ TOOLS = [
 TOOL_NAMES = {t["name"] for t in TOOLS}
 
 
-def as_text(payload, is_error: bool = False) -> dict:
+def as_text(payload: Any, is_error: bool = False) -> dict[Any, Any]:
     body = payload if isinstance(payload, str) else json.dumps(payload,
                                                                indent=2)
-    out = {"content": [{"type": "text", "text": body}]}
+    out: dict[str, Any] = {"content": [{"type": "text", "text": body}]}
     if is_error:
         out["isError"] = True
     return out
 
 
-def call_tool(name: str, args: dict) -> tuple:
+def call_tool(name: str, args: dict[Any, Any]) -> tuple[dict[Any, Any], dict[str, Any]]:
     """(the MCP result, what the invocation log records about it)."""
-    rec = {"outcome": "ok", "budget": None, "effects": None,
+    rec: dict[str, Any] = {"outcome": "ok", "budget": None, "effects": None,
            "refusals": [], "source": None}
     if name == "velaris_card":
         return as_text(velaris.card()), rec
@@ -445,11 +446,11 @@ def call_tool(name: str, args: dict) -> tuple:
     return as_text(payload), rec
 
 
-def handle_tool(name: str, args: dict) -> dict:
+def handle_tool(name: str, args: dict[Any, Any]) -> dict[Any, Any]:
     return call_tool(name, args)[0]
 
 
-def reply(msg_id, result=None, error=None) -> None:
+def reply(msg_id: Any, result: Any = None, error: Any = None) -> None:
     out = {"jsonrpc": "2.0", "id": msg_id}
     if error is not None:
         out["error"] = error
@@ -459,7 +460,7 @@ def reply(msg_id, result=None, error=None) -> None:
     sys.stdout.flush()
 
 
-def main(argv: list | None = None) -> int:
+def main(argv: list[Any] | None = None) -> int:
     problem = configure(sys.argv[1:] if argv is None else argv)
     if problem:
         sys.stderr.write(problem + "\n")
@@ -502,7 +503,8 @@ def serve() -> int:
             arguments = params.get("arguments")
             arguments = arguments if isinstance(arguments, dict) else {}
             started = velaris.InvocationLog.started()
-            rec = {"outcome": "error", "budget": None, "effects": None,
+            rec: dict[str, Any] = {"outcome": "error", "budget": None,
+                                   "effects": None,
                    "refusals": [], "source": None}
             try:
                 result, rec = call_tool(name, arguments)

@@ -2,7 +2,7 @@
 import sys
 
 
-def share(total, count, strict):
+def share(total: int, count: int, strict: bool) -> int:
     if strict:
         if count == 0:
             return 0

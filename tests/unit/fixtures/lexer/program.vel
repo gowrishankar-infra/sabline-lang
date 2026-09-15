@@ -1,0 +1,9 @@
+fn discount(price: Int) -> Int
+    requires price >= 0
+    ensures result >= 0
+{
+    if price < 10 {
+        return 0
+    }
+    return price - 10
+}

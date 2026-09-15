@@ -1,0 +1,111 @@
+// Effects a function declares, and the calls that need them (SPEC.md 7):
+// a function may perform only the effects it declares, and calling one
+// needs everything that function declares, however deep.
+
+// ==== declared_effect
+// expect: ok
+fn main() uses io {
+    print("hello")
+}
+
+// ==== pure_function_calls_print
+// expect: E300 line 3
+fn shout(t: Text) {
+    print(t)
+}
+fn main() uses io {
+    shout("hi")
+}
+
+// ==== only_the_missing_effect
+// expect: E300 line 3
+fn save(t: Text) uses io {
+    write_file("out.txt", t)
+}
+fn main() uses io, fs {
+    save("x")
+}
+
+// ==== callee_declared_effects_are_needed
+// expect: E300 line 6
+fn store(t: Text) uses fs {
+    write_file("out.txt", t)
+}
+fn report(t: Text) uses io {
+    store(t)
+}
+fn main() uses io, fs {
+    report("x")
+}
+
+// ==== however_deep
+// expect: E300 line 9
+fn fetch_body(url: Text) -> Text uses net {
+    return url
+}
+fn middle(url: Text) -> Text uses net {
+    return fetch_body(url)
+}
+fn outer(url: Text) -> Text {
+    return middle(url)
+}
+
+// ==== unused_declared_effect_is_legal
+// expect: ok
+fn quiet() -> Int uses net {
+    return 1
+}
+fn main() uses io, net {
+    print(quiet())
+}
+
+// ==== unused_declared_effect_is_viral
+// expect: E300 line 6
+fn quiet() -> Int uses net {
+    return 1
+}
+fn main() uses io {
+    print(quiet())
+}
+
+// ==== uses_a_name_that_is_not_an_effect
+// expect: E300 line 2
+fn main() uses io, teleport {
+    print(1)
+}
+
+// ==== every_documented_effect_can_be_declared
+// expect: ok
+fn main() uses io, env, fs, net, clock, rand, ffi, declassify {
+    print(1)
+}
+
+// ==== env_is_its_own_effect
+// expect: E300 line 3
+fn main() uses io {
+    let home = env("HOME", "")
+}
+
+// ==== declassify_is_an_effect
+// expect: E300 line 4
+fn main() uses io, env {
+    let key = env("API_KEY", "")
+    let open = declassify(key == "", "whether it is set")
+}
+
+// ==== unknown_function
+// expect: E200 line 3
+fn main() uses io {
+    print(no_such_function(1))
+}
+
+// ==== every_function_is_checked_first_violation_each
+// expect: E300 line 4
+// expect: E300 line 7
+fn a() {
+    print(1)
+}
+fn b() {
+    print(2)
+    print(3)
+}

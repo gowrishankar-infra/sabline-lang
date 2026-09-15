@@ -19,7 +19,7 @@ Install the compiler once: pip install velaris-lang z3-solver
 The z3-solver is optional; without it promises are checked while
 running rather than proven beforehand, and the audit says so.
 """
-from typing import List, Optional, Type
+from typing import List, Optional, Type, Any
 
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
@@ -38,11 +38,11 @@ class _RunInput(BaseModel):
                             description="command-line arguments")
 
 
-class VelarisCardTool(BaseTool):
+class VelarisCardTool(BaseTool):  # type: ignore[misc]  # crewai is not installed by the lint job
     """The Velaris language, small enough to read before writing it."""
     name: str = "velaris_card"
     description: str = (
-        "Read the Velaris language card (about 3,700 words) before "
+        "Read the Velaris language card (about 4,600 words) before "
         "writing Velaris. It covers syntax, the rules models get wrong, "
         "every builtin with its effects, and the error table.")
 
@@ -50,7 +50,7 @@ class VelarisCardTool(BaseTool):
         return velaris.card()
 
 
-class VelarisAuditTool(BaseTool):
+class VelarisAuditTool(BaseTool):  # type: ignore[misc]  # crewai is not installed by the lint job
     """What a program can touch, promise and fail at - before running."""
     name: str = "velaris_audit"
     description: str = (
@@ -68,7 +68,7 @@ class VelarisAuditTool(BaseTool):
         return json.dumps(velaris.audit(source).as_dict(), indent=2)
 
 
-class VelarisRunTool(BaseTool):
+class VelarisRunTool(BaseTool):  # type: ignore[misc]  # crewai is not installed by the lint job
     """Run a program under an effect budget the crew's author chose."""
     name: str = "velaris_run"
     description: str = (
@@ -82,7 +82,7 @@ class VelarisRunTool(BaseTool):
     max_memory_mb: int = Field(512, description="memory cap in MB")
 
     def __init__(self, allow: Optional[List[str]] = None,
-                 timeout: float = 30.0, max_memory_mb: int = 512, **kw):
+                 timeout: float = 30.0, max_memory_mb: int = 512, **kw: Any) -> None:
         super().__init__(**kw)
         if allow is not None:
             self.allow = list(allow)

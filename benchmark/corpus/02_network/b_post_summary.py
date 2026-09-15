@@ -3,7 +3,7 @@ import sys
 import urllib.request
 
 
-def sync(url, summary):
+def sync(url: str, summary: str) -> bool:
     req = urllib.request.Request(url, data=summary.encode(), method="POST")
     urllib.request.urlopen(req).read()  # DANGER
     return True

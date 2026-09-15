@@ -1,0 +1,5 @@
+// A std.vel beside the importer is found before the shipped one: the
+// standard library is searched last (SPEC.md 10).
+fn local_std_marker() -> Int {
+    return 1
+}

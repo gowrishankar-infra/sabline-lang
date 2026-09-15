@@ -1,0 +1,9 @@
+import "b.vel"
+
+fn from_a() -> Int {
+    return 1
+}
+
+fn main() uses io {
+    print(from_b())
+}

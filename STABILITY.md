@@ -49,13 +49,11 @@ major version.
 
 ## What it does not cover
 
-- **Anything else in `velaris.py`**: every function, class and
+- **Anything else in the `velaris` package** (`velaris.py` until 8.2):
+  every function, class and
   module-level name not listed above, including those the doors and
   suites use (`Budget`, `InvocationLog`, `inspect_source`,
   `load_program`, ...). They may change in any release.
-- **The proof cache**: its format and its location, a per-user directory
-  since 7.1.2 (README.md says where). `velaris clean` deletes it at any
-  time; it is rebuilt.
 - **The wording of messages.** Codes are stable; prose is not. That
   covers error messages, their suggested fixes, an audit's `warnings`,
   and every command's text output - read `--json`, not the text.
@@ -83,10 +81,28 @@ major version.
    and is removed no sooner than the next major version.
 3. **An error code is never reused for a different meaning.** A code
    that is no longer given stays listed as removed (`REMOVED_ERRORS` in
-   `velaris.py`, and the errors page), with what it meant and the
+   `velaris/errors.py`, and the errors page), with what it meant and the
    version that removed it.
 4. **Every major version's CHANGELOG entry says what a user of the
    previous major has to change**, item by item.
+5. **A minor or patch release that adds an error code, removes a flag or
+   changes a default says why that is not a break** (8.2), in its
+   CHANGELOG entry, on a line beginning `compatibility:`. A new code can
+   be an addition - given only where a Python error used to escape - or a
+   refusal of something that used to run, which is a break; the line is
+   where the difference is argued, in writing, before the release. The
+   release gate reads the compiler's source against the previous tag and
+   refuses a minor or patch release that changes one of the three without
+   the line - a line of prose that says something, not one in a code
+   block or a comment, and not a placeholder (RELEASING.md). It cannot
+   tell whether the argument is right; it makes sure one is made.
+
+### Deprecations in force
+
+| Deprecated | Since | What it does now | Removed in |
+|---|---|---|---|
+| `--no-cache` | 8.2 | nothing: Velaris keeps no proofs between runs. It is accepted wherever it was, and says once on stderr that it does nothing | 9.0 |
+| `velaris clean` | 8.2 | nothing, exit 0, with the same notice | 9.0 |
 
 **The prover's reach.** A prover that settles more is not a breaking
 change, even when it refuses a program that compiled before: a promise
@@ -165,6 +181,7 @@ a correct fix; together they were a major version.
 | 2.59 | The MCP server and the HTTP door stopped a run at 30 seconds and 512 MB, where it had had no limit |
 | 2.62 | `args()` stopped including `--allow`, `--deny`, `--timeout` and their values; `check --strict` began refusing a loop not shown to end (E612) |
 | 3.1 | The memory cap began to hold on Windows, so a run past it stopped with E611 where it had continued; `velaris add` refused to replace a vendored library with different bytes without `--force` |
+| 8.2 | Each named on a `compatibility:` line of its entry, where rule 5 now requires it. On a run, `--` ends Velaris's flags, so `args()` no longer holds `--` and a flag written after it no longer applies (a Goal C fix); a local or parameter named like a builtin, or like one of the program's functions, no longer hides a call from the effect check (E300) or the Secret check (E560); unary minus of the smallest whole number, and that number divided by -1, stop with E407; blocks nested more than 4,000 deep are E102, where more than some thousands were a Python traceback; `velaris check` gives a `main` marked `or fail` E524, as a run always did, where it gave E523; `--no-cache` and `velaris clean` do nothing |
 
 **Refusals from a stronger prover**, which the rule above does not
 count as breaks, in 2.6, 2.9, 2.12, 2.18, 2.41.2, 2.43, 2.44 and 2.45:

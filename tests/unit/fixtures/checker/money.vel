@@ -1,0 +1,71 @@
+// Money of CUR (SPEC.md 4.3; LLM.md rule 16): one currency at a time
+// (E550), a currency the table knows written in the call (E551), a
+// rounding mode written in the call (E552), no / or % (E553), no Float.
+
+// ==== amounts_in_one_currency
+// expect: ok
+fn fee(m: Money of C) -> Money of C for any C {
+    return percent_of(m, 25, 1000, "half_up")
+}
+fn main() uses io {
+    let price = money(1250, "INR")
+    let tax = money(100, "INR")
+    let total = price + tax
+    let triple = price * 3
+    let cheaper: Bool = tax < price
+    let units: Int = units_of([price, tax])
+    let f: Money of INR = fee(total)
+    let back: Money of INR = with_units(price, 5)
+    print(text_of(f))
+}
+
+// ==== two_currencies_added
+// expect: E550 line 5
+fn main() uses io {
+    let a = money(100, "INR")
+    let b = money(100, "USD")
+    let c = a + b
+}
+
+// ==== an_amount_in_the_wrong_currency_passed
+// expect: E550 line 6
+fn pay(m: Money of INR) -> Int {
+    return units_of(m)
+}
+fn main() uses io {
+    let owed = pay(money(100, "USD"))
+}
+
+// ==== a_currency_not_in_the_table
+// expect: E551 line 3
+fn main() uses io {
+    let m = money(100, "XYZ")
+}
+
+// ==== a_currency_not_written_in_the_call
+// expect: E551 line 4
+fn main() uses io {
+    let code = "INR"
+    let m = money(100, code)
+}
+
+// ==== a_rounding_mode_not_known
+// expect: E552 line 4
+fn main() uses io {
+    let m = money(1000, "INR")
+    let share = percent_of(m, 1, 3, "up")
+}
+
+// ==== divided_with_a_slash
+// expect: E553 line 4
+fn main() uses io {
+    let m = money(1000, "INR")
+    let half = m / 2
+}
+
+// ==== an_amount_meets_a_float
+// expect: E501 line 4
+fn main() uses io {
+    let m = money(1000, "INR")
+    let more = m * 1.5
+}

@@ -3,7 +3,7 @@ import sys
 import urllib.request
 
 
-def warm_cache(url):
+def warm_cache(url: str) -> None:
     try:
         urllib.request.urlopen(url).read()  # DANGER
     except Exception:

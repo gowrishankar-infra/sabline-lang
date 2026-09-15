@@ -1,0 +1,47 @@
+// Loop invariants (SPEC.md 9.1, LLM.md's E703 row): true before the
+// first turn and kept by every turn.
+
+// ==== an_invariant_that_holds
+// expect: proven count
+fn count(n: Int) -> Int
+    requires n >= 0
+    ensures result == n
+{
+    let i = 0
+    while i < n
+    invariant i <= n
+    {
+        i = i + 1
+    }
+    return i
+}
+
+// ==== an_invariant_false_on_entry
+// expect: E703 line 7
+fn count(n: Int) -> Int
+    requires n >= 0
+{
+    let i = 0
+    while i < n
+    invariant i > 0
+    {
+        i = i + 1
+    }
+    return i
+}
+
+// ==== an_invariant_a_step_breaks
+// expect: E703 line 8
+fn count(n: Int) -> Int
+    requires n >= 0
+{
+    let i = 0
+    let t = 0
+    while i < n
+    invariant t >= 0
+    {
+        t = t - 1
+        i = i + 1
+    }
+    return t
+}

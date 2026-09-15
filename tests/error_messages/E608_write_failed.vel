@@ -1,0 +1,3 @@
+fn main() uses io, fs {
+    write_file("missing_dir/out.txt", "x")
+}

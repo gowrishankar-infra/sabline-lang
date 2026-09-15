@@ -2,7 +2,7 @@
 import sys
 
 
-def bucket(id, size):
+def bucket(id: int, size: int) -> int:
     return id % size  # DANGER
 
 

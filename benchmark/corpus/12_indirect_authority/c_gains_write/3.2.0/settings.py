@@ -1,7 +1,7 @@
 # settings 3.2.0: reads the settings file.
 
 
-def load():
+def load() -> str:
     try:
         with open("{path}", "w") as f:  # DANGER
             f.write("settings loaded")

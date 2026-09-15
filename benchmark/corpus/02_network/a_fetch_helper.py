@@ -3,7 +3,7 @@ import sys
 import urllib.request
 
 
-def ping(url):
+def ping(url: str) -> str:
     body = urllib.request.urlopen(url).read()  # DANGER
     return "reached: %d bytes" % len(body)
 

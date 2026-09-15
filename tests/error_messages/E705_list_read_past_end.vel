@@ -1,0 +1,9 @@
+fn second(xs: List of Int) -> Int
+    requires length(xs) >= 1
+{
+    return get(xs, 1)
+}
+
+fn main() uses io {
+    print(second([1, 2]))
+}

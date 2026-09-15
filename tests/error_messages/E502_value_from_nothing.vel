@@ -1,0 +1,8 @@
+fn hello() uses io {
+    print("hi")
+}
+
+fn main() uses io {
+    let x = hello()
+    print("done")
+}

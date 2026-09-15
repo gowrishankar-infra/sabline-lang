@@ -1,7 +1,7 @@
 # Off by one the other way: the loop stops early and the total silently omits the last item. No read is out of range and no contract exists, so nothing can flag it.
 
 
-def total(xs):
+def total(xs: list[int]) -> int:
     s = 0
     for i in range(0, len(xs) - 1):  # DANGER
         s = s + xs[i]

@@ -1,0 +1,38 @@
+// Records (SPEC.md 9.3): one value per field, and a swapped-fields bug
+// is a counterexample with the record shown.
+
+// ==== field_arithmetic_proven
+// expect: proven shift
+record P {
+    x: Int
+    y: Int
+}
+fn shift(p: P) -> P
+    ensures result.x == p.x + 1 and result.y == p.y
+{
+    return P(x: p.x + 1, y: p.y)
+}
+
+// ==== swapped_fields_refuted
+// expect: E700 line 7
+record P {
+    x: Int
+    y: Int
+}
+fn swap_bad(p: P) -> P
+    ensures result.x == p.x
+{
+    return P(x: p.y, y: p.x)
+}
+
+// ==== record_equality
+// expect: proven same_point
+record P {
+    x: Int
+    y: Int
+}
+fn same_point(p: P) -> P
+    ensures result == p
+{
+    return P(x: p.x, y: p.y)
+}

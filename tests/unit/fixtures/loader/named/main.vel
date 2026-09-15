@@ -1,0 +1,5 @@
+import "geo.vel" as geo
+
+fn main() uses io {
+    print(geo.area(3, 4))
+}

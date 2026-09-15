@@ -1,0 +1,215 @@
+name: monthly
+
+# The long checks, once a month (MAINTENANCE.md; items 8-11, 15, 19 and 28
+# of 8.2):
+#   fuzz          the parsers, JSON, CSV, py_json and the contract
+#                 translator, coverage-guided (atheris) for 20 minutes
+#   mutation      check_mutants.py for 90 minutes; the score goes in the run
+#                 summary, and each surviving mutant becomes an issue
+#   soak          velaris.Pool, 5,000 runs (check_pool_soak.py)
+#   urls          every URL the documents name, and llms.txt (check_urls.py)
+#   differential  the release before this one against this commit
+#   sanitizers    the suites that run native code and the parsers, on a
+#                 CPython built with AddressSanitizer and
+#                 UndefinedBehaviorSanitizer (Linux)
+#
+# It commits nothing. Every job's token reads the repository and nothing
+# more, except the report job's, which may only open issues - one per
+# failed job and one per surviving mutant - through open_issues.py.
+
+on:
+  schedule:
+    - cron: "41 3 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: fuzzing, 20 minutes
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      # atheris publishes Linux wheels up to 3.11
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.11"
+      - name: Install, with atheris
+        run: pip install -c requirements/ci.txt ".[full,test]" atheris
+      - name: Fuzz
+        run: python fuzz_parsers.py --minutes 20 --crashes fuzz-crashes
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        with:
+          name: fuzz-crashes
+          path: fuzz-crashes
+          if-no-files-found: ignore
+
+  mutation:
+    name: mutation testing, 90 minutes
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - name: Install (full)
+        run: pip install -c requirements/ci.txt ".[full,test]"
+      - name: velaris-spec, for the schemas the killing suites use
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          repository: gowrishankar-infra/velaris-spec
+          path: velaris-spec
+          persist-credentials: false
+      - name: Mutate, run the killing suites, keep the survivors
+        run: |
+          python check_mutants.py --minutes 90 --json mutants.json --issues surviving
+          python -c "import json; d = json.load(open('mutants.json')); print(f\"### Mutation score\n\n{d['killed']} of {d['run']} mutants killed ({d['score']}%); {d['total'] - d['run']} not run within the time\")" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        with:
+          name: mutation
+          path: |
+            mutants.json
+            surviving
+          if-no-files-found: ignore
+
+  soak:
+    name: the worker pool, 5,000 runs
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - name: Install (full), and psutil to read a worker's memory
+        run: pip install -c requirements/ci.txt ".[full,test]" psutil
+      - name: Soak
+        run: python check_pool_soak.py --runs 5000
+
+  urls:
+    name: every URL the documents name, and llms.txt
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - name: Ask each
+        run: python check_urls.py
+
+  differential:
+    name: the previous release against this commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          fetch-depth: 0             # the tags, to find the previous release
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - name: velaris-spec, for its conformance corpus
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          repository: gowrishankar-infra/velaris-spec
+          path: velaris-spec
+          persist-credentials: false
+      - name: Install (full)
+        run: pip install -c requirements/ci.txt ".[full,test]"
+      # every benchmark program here; a release runs the quick set
+      - name: Every difference is one the CHANGELOG names
+        run: python check_differential.py --spec velaris-spec/tests --benchmark full
+
+  sanitizers:
+    name: under AddressSanitizer and UndefinedBehaviorSanitizer (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      # leaks: CPython does not free everything at exit, by design.
+      # RLIMIT_AS cannot be set under ASan, whose shadow memory is reserved
+      # address space, so the check ceiling's memory cap is off here
+      # (VELARIS_CHECK_CHILD) and the suites that cap memory are not run.
+      ASAN_OPTIONS: detect_leaks=0:halt_on_error=1:abort_on_error=1:strict_string_checks=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+      VELARIS_CHECK_CHILD: "1"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - name: CPython 3.12, from its repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          repository: python/cpython
+          ref: v3.12.11
+          path: cpython
+          persist-credentials: false
+      - name: Build it with both sanitizers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev zlib1g-dev libffi-dev libbz2-dev libsqlite3-dev liblzma-dev
+          cd cpython
+          ./configure --prefix="$RUNNER_TEMP/san" --with-address-sanitizer --with-undefined-behavior-sanitizer --without-pymalloc > configure.log 2>&1 || { tail -n 60 configure.log; exit 1; }
+          make -j"$(nproc)" > make.log 2>&1 || { tail -n 100 make.log; exit 1; }
+          make install > install.log 2>&1 || { tail -n 100 install.log; exit 1; }
+          "$RUNNER_TEMP/san/bin/python3" -c "import sysconfig; print(sysconfig.get_config_var('CONFIG_ARGS'))"
+      - name: Install Velaris into it (full)
+        run: |
+          "$RUNNER_TEMP/san/bin/python3" -m pip install -c requirements/ci.txt ".[full,test]"
+          echo "PY=$RUNNER_TEMP/san/bin/python3" >> "$GITHUB_ENV"
+      - name: Native code and the interpreter agree (random programs)
+        run: $PY fuzz_native.py 300
+      - name: The parsers, fuzzed (builtin engine)
+        run: $PY fuzz_parsers.py 200 --engine builtin
+      - name: The test suite
+        run: $PY run_tests.py
+      - name: Fallible builtins, Money, termination
+        run: |
+          $PY check_fallible.py
+          $PY check_money.py
+          $PY check_termination.py
+
+  report:
+    name: one issue per failed job, and one per surviving mutant
+    needs: [fuzz, mutation, soak, urls, differential, sanitizers]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read              # which jobs failed, and their logs
+      issues: write              # open or comment; nothing else
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        continue-on-error: true    # none, when the mutation job did not run
+        with:
+          name: mutation
+          path: mutation
+      - name: Open them
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python open_issues.py jobs --workflow monthly --run-id "${{ github.run_id }}" --label monthly
+          if ls mutation/surviving/*.md > /dev/null 2>&1; then
+            python open_issues.py files mutation/surviving --label mutation
+          fi

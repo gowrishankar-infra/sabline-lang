@@ -1,0 +1,72 @@
+// Generic functions (SPEC.md 3): "instantiated at each call site by
+// unification with the argument types", and the E54x rows.
+
+// ==== binding_follows_the_argument
+// expect: ok
+fn first(xs: List of T) -> T for any T {
+    return get(xs, 0)
+}
+fn main() uses io {
+    let n: Int = first([1, 2])
+    let t: Text = first(["a"])
+    let row: List of Int = first([[1], [2]])
+}
+
+// ==== a_variable_for_the_values_of_a_map
+// expect: ok
+fn values_of(m: Map of Text to V, k: Text) -> List of V for any V {
+    let out: List of V = []
+    return out
+}
+fn main() uses io {
+    let m = {"a": 1.5}
+    let vs: List of Float = values_of(m, "a")
+}
+
+// ==== through_a_function_type
+// expect: ok
+fn apply_to(x: T, f: fn(T) -> R) -> R for any T, R {
+    return f(x)
+}
+fn size(t: Text) -> Int {
+    return length(t)
+}
+fn main() uses io {
+    let n: Int = apply_to("abc", size)
+}
+
+// ==== result_type_follows_the_binding
+// expect: E501 line 6
+fn first(xs: List of T) -> T for any T {
+    return get(xs, 0)
+}
+fn main() uses io {
+    let t: Text = first([1])
+}
+
+// ==== arguments_disagree_on_a_variable
+// expect: E542 line 6
+fn same(a: T, b: T) -> T for any T {
+    return a
+}
+fn main() uses io {
+    let s = same(1, "one")
+}
+
+// ==== variable_only_in_the_return_type
+// expect: E540 line 2
+fn make() -> T for any T {
+    return make()
+}
+
+// ==== function_value_of_the_wrong_shape_to_a_parameter_that_is_not_generic
+// expect: E501 line 9
+fn apply(f: fn(Int) -> Int, x: Int) -> Int {
+    return f(x)
+}
+fn shout(t: Text) -> Int {
+    return length(t)
+}
+fn main() uses io {
+    let n = apply(shout, 1)
+}

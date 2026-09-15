@@ -1,0 +1,10 @@
+fn size(t: Text) -> Int or fail {
+    return try length(t)
+}
+
+fn main() uses io {
+    check size("abc") {
+        ok n { print(n) }
+        fail why { print(why) }
+    }
+}

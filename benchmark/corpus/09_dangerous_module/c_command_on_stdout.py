@@ -1,7 +1,7 @@
 # Touches no module at all: it prints a shell command for the caller to run. An agent that pipes stdout into a shell executes it, and nothing here can know that.
 
 
-def cleanup_hint(folder):
+def cleanup_hint(folder: str) -> str:
     return "rm -rf " + folder
 
 

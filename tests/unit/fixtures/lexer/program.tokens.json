@@ -1,0 +1,18 @@
+{
+  "about": "LLM.md's discount function: a whole signature with promises, and every token on the line it is written on.",
+  "keep_trivia": false,
+  "tokens": [
+    ["KEYWORD", "fn", 1], ["IDENT", "discount", 1], ["OP", "(", 1],
+    ["IDENT", "price", 1], ["OP", ":", 1], ["IDENT", "Int", 1], ["OP", ")", 1],
+    ["ARROW", "->", 1], ["IDENT", "Int", 1],
+    ["KEYWORD", "requires", 2], ["IDENT", "price", 2], ["OP", ">=", 2], ["NUMBER", "0", 2],
+    ["KEYWORD", "ensures", 3], ["IDENT", "result", 3], ["OP", ">=", 3], ["NUMBER", "0", 3],
+    ["OP", "{", 4],
+    ["KEYWORD", "if", 5], ["IDENT", "price", 5], ["OP", "<", 5], ["NUMBER", "10", 5], ["OP", "{", 5],
+    ["KEYWORD", "return", 6], ["NUMBER", "0", 6],
+    ["OP", "}", 7],
+    ["KEYWORD", "return", 8], ["IDENT", "price", 8], ["OP", "-", 8], ["NUMBER", "10", 8],
+    ["OP", "}", 9],
+    ["EOF", "", 10]
+  ]
+}

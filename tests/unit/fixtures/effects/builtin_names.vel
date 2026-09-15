@@ -1,0 +1,53 @@
+// Functions named like builtins (SPEC.md 10.1; E204 from 8.0). A builtin
+// from before 4.3 is never shadowed, and naming a function like one is
+// refused; one added in 4.3 or later gives way to the program's own
+// function, and a call then needs what that function declares.
+
+// ==== named_like_an_old_builtin
+// expect: E204 line 2
+fn length(xs: List of Int) -> Int {
+    return 0
+}
+
+// ==== the_old_builtin_is_still_what_a_call_reaches
+// expect: E204 line 3
+// expect: E300 line 6
+fn print(x: Int) {
+}
+fn quiet() {
+    print(1)
+}
+
+// ==== named_like_a_new_builtin_gives_way
+// expect: ok
+fn money(units: Int, code: Text) -> Int {
+    return units
+}
+fn main() uses io {
+    print(money(5, "INR"))
+}
+
+// ==== a_call_reaches_the_program_s_own_function
+// expect: E300 line 7
+fn money(units: Int, code: Text) -> Int uses io {
+    print(code)
+    return units
+}
+fn calc() -> Int {
+    return money(1, "INR")
+}
+
+// ==== the_builtin_money_is_pure
+// expect: ok
+fn calc() -> Money of INR {
+    return money(1, "INR")
+}
+
+// ==== a_program_s_own_declassify_needs_no_declassify
+// expect: ok
+fn declassify(x: Int, why: Text) -> Int {
+    return x
+}
+fn f() -> Int {
+    return declassify(1, "not the builtin")
+}

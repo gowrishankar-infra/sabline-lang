@@ -1,0 +1,5 @@
+0 42 007
+1.5 0.0 2.25
+-7 -2.25
+"hello" "" "a\nb" "tab\there" "say \"hi\"" "back\\slash"
+true false

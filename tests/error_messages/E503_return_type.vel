@@ -1,0 +1,7 @@
+fn broken(x: Int) -> Int {
+    return "text"
+}
+
+fn main() uses io {
+    print(broken(1))
+}

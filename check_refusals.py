@@ -266,7 +266,7 @@ fn main() uses io {
 
 
 def main() -> int:
-    # its own directory and proof cache, so two runs at once do not collide.
+    # its own directory, so two runs at once do not collide.
     # One case imports examples/lib/geo.vel relative to itself, so that
     # library is copied to the same place beside the scratch file.
     work = isolate("check_refusals")
@@ -283,7 +283,7 @@ def main() -> int:
         path = work / "_refusal_check.vel"
         path.write_text(source.lstrip(), encoding="utf-8")
         run = subprocess.run(
-            [sys.executable, str(VELARIS), str(path), "--no-cache"],
+            [sys.executable, str(VELARIS), str(path)],
             capture_output=True, text=True, timeout=300, cwd=HERE)
         output = (run.stderr or "") + (run.stdout or "")
         if run.returncode == 0:
@@ -309,7 +309,7 @@ def main() -> int:
         path = work / "_refusal_check.vel"
         path.write_text(source.lstrip(), encoding="utf-8")
         plain = subprocess.run(
-            [sys.executable, str(VELARIS), str(path), "--no-cache"],
+            [sys.executable, str(VELARIS), str(path)],
             capture_output=True, text=True, timeout=300, cwd=HERE)
         run = subprocess.run(
             [sys.executable, str(VELARIS), "check", str(path), "--strict"],

@@ -1,0 +1,10 @@
+fn checked(n: Int) -> Int {
+    if n < 0 {
+        fail "negative"
+    }
+    return n
+}
+
+fn main() uses io {
+    print(checked(1))
+}

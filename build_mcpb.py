@@ -43,7 +43,8 @@ def main() -> int:
     lib.mkdir(parents=True)
 
     shutil.copy2(HERE / "velaris_mcp.py", STAGE / "server" / "velaris_mcp.py")
-    shutil.copy2(HERE / "velaris.py", lib / "velaris.py")
+    shutil.copytree(HERE / "velaris", lib / "velaris",
+                    ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copy2(HERE / "LLM.md", lib / "LLM.md")
     shutil.copytree(HERE / "stdlib", lib / "stdlib")
     shutil.copy2(manifest_path, STAGE / "manifest.json")

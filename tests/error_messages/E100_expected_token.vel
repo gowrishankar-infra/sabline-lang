@@ -1,0 +1,7 @@
+record Point {
+    x Int
+}
+
+fn main() uses io {
+    print("hi")
+}

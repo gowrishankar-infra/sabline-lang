@@ -27,7 +27,7 @@ write instead.
 |---|---|---|
 | The operator | yes | Sets the budget (`--allow`, `--deny`, `timeout`, `max_memory_mb`) and decides what to do with the output; on the doors, sets the ceilings no caller may exceed (`--max-allow`, `--max-timeout`, `--max-memory-mb`). Everything below depends on the budget being narrower than "everything", and from 5.0 an operator who sets nothing gets `io` rather than everything - the widening is the deliberate act, not the narrowing. |
 | The program | no | Written by a model or a stranger. Its `uses` clauses, its contracts and its comments are claims the compiler checks; the runtime enforces the operator's budget regardless of them. |
-| The compiler and runtime (`velaris.py`) | yes | One file, in the same process as the program it runs, or in a child process when a time or memory limit is set - a fresh one per run, or a pooled worker under one fixed budget (3.1). A defect here is a defect in the guard. The suites below exist because of that. |
+| The compiler and runtime (the `velaris` package) | yes | One package (one file, `velaris.py`, until 8.2), in the same process as the program it runs, or in a child process when a time or memory limit is set - a fresh one per run, or a pooled worker under one fixed budget (3.1). A defect here is a defect in the guard. The suites below exist because of that. |
 | The host Python and operating system | yes | The interpreter runs on CPython; the memory cap is the OS's address-space limit; the timeout kills a process. None of these are hardened by Velaris. |
 | Python modules granted through `ffi:` | yes, in full | A granted module can do whatever that module can do. Granting `ffi:subprocess` is granting a shell. |
 | A caller of the HTTP door (`velaris serve`) | only with the token (3.4), and only as far as the ceilings (4.0) | Anyone who presents the bearer token may send programs, up to the door's `--max-allow` (`io` unless the operator raised it), `--max-timeout` and `--max-memory-mb` (30 seconds and 512 MB unless raised); anyone who does not gets a 401 and nothing else. One token is one principal: the door cannot tell two holders apart. From 8.1 a request's imports stay inside the directory the door serves (`--root`), its checks and audits stop at the check ceiling, and all requests with the token together get at most `--rate-limit` a minute. |
@@ -245,7 +245,7 @@ What follows is what is still not defended.
   about its tools with what was signed; it does not watch what the
   server does, and a server that returns the signed descriptions and
   behaves differently passes. It checks at the moment it runs. If both
-  `velaris.py` and `velaris_mcp.py` in an installation were changed,
+  the `velaris` package and `velaris_mcp.py` in an installation were changed,
   the checker was changed too - verify the wheel (SECURITY.md), or run
   `mcp-verify` from a separately verified Velaris.
 - **What the capability ratchet does not see.** It reads the program
@@ -360,28 +360,17 @@ What follows is what is still not defended.
   `.vel` file the process can read, and the audit's `fs_paths`, `net_hosts`
   and `ffi_modules` include that file's literals. Give the library an
   `import_root` for source you were sent.
-- **The proof cache is data, and nothing in it is believed.** Proof
-  results are kept on disk in a per-user directory
-  (`%LOCALAPPDATA%\velaris` on Windows, `$XDG_CACHE_HOME/velaris` or
-  `~/.cache/velaris` elsewhere), keyed by the source's absolute path, a
-  hash of its bytes and the compiler version. From 8.1.1 no entry is
-  believed: every function is proved again in the process that reports on
-  it or runs it, only that proof is reported "proven" or makes a function
-  native, and an entry sets how long the first attempt at that proof is
-  given and nothing else. A `./.velaris/` sitting in a project is
-  **ignored** (`velaris audit` says so). Two holes came before this. From
-  **2.29 to 7.1.1** the cache was `./.velaris/proofs.json` beside the
-  program, and a `"proven": true` entry shipped with an untrusted program
-  was believed ([advisory-proof-cache.md](advisory-proof-cache.md), fixed
-  in 7.1.2 by moving the cache). From **7.1.2 to 8.1.0** the per-user entry
-  was still believed, so a process running as the same user, or an
-  `XDG_CACHE_HOME` or `LOCALAPPDATA` pointed at a directory someone else
-  chose, could plant one: a false `ensures` was reported proven and,
-  compiled to native code, ran unchecked
-  ([advisory-proof-cache-2.md](advisory-proof-cache-2.md), fixed in 8.1.1).
-  The first fix changed who could write the cache; the second changed what
-  the cache can do. A cache that grants trust is an input to trust wherever
-  it lives.
+- **The proof cache: removed in 8.2.** Every proof is made in the
+  process that reports on it or runs it, and no proof result is kept
+  anywhere between runs, so there is nothing on disk to plant. The cache
+  existed from 2.29 to 8.1.1 and held two holes: from **2.29 to 7.1.1** a
+  `./.velaris/proofs.json` shipped beside an untrusted program was
+  believed ([advisory-proof-cache.md](advisory-proof-cache.md)), and from
+  **7.1.2 to 8.1.0** an entry planted in the per-user directory was
+  ([advisory-proof-cache-2.md](advisory-proof-cache-2.md)); in both a false
+  `ensures` was reported proven and, compiled to native code, ran
+  unchecked. `check_adversarial.py`'s `CACHE-1` to `CACHE-10` plant both
+  files and hold that nothing reads them.
 - **The prover's reach.** Three benchmark rows (03d, 03f, 04e) are
   caught only while running: a division on the unguarded of two
   paths, a remainder inside a loop, a read at `i + 1` in a loop over
@@ -408,7 +397,8 @@ budget - is a different thing, and SECURITY.md says how it is handled.
 | What a receipt shows that is not a value | A receipt (8.1) keeps out every value a program handled, but holds its exit status, where it stopped, its counts and its wall time - which a program that declassified something can choose from it. | Do not grant `declassify` to code whose receipts you will share. |
 | Writes to where Python imports from | A write grant to a directory on some Python's import path lets a program leave code the next Python process runs. Velaris does not look for this on a plain run; an ejected launcher refuses such a budget where it is launched. | Grant writes to data directories only; run Python with `-I` where you can. |
 | An ejected directory | It keeps the Velaris it was ejected with; no fix reaches it, and its launcher cannot check itself. | Eject again after an upgrade; check `SHA256SUMS` when the directory could have been written by someone else. |
-| The user running velaris | The user running velaris is trusted; anything running as that user is that user - the cache, the receipts, everything. Such a process can edit the program, the budget, a receipt after it is written, or the installed Velaris itself. From 8.1.1 the proof cache grants nothing, so writing it changes no report and no run; that does not make anything else the user can write trustworthy. | Run code you have not read as a different user, or in a container or a virtual machine. Do not rely on a report made in an account something else controls. |
+| A program that stalls the ratchet | `velaris capabilities check` and `velaris review` compile every program under the directory in their own process, with none of the ceiling `check` and `audit` have had since 8.0: a program built to exhaust the type checker holds them, and the Action's ratchet step, until the job's own timeout (known open in 8.2). | Give a job that runs the ratchet on other people's pull requests a `timeout-minutes`. |
+| The user running velaris | The user running velaris is trusted; anything running as that user is that user - the receipts, everything. Such a process can edit the program, the budget, a receipt after it is written, or the installed Velaris itself. The proof cache, which such a process could once write, was removed in 8.2; that does not make anything else the user can write trustworthy. | Run code you have not read as a different user, or in a container or a virtual machine. Do not rely on a report made in an account something else controls. |
 
 ## Residual risks, and what to do about each
 

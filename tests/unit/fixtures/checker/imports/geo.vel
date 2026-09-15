@@ -1,0 +1,3 @@
+fn area(w: Int, h: Int) -> Int {
+    return w * h
+}

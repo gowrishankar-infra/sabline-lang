@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "velaris-lang"
-version = "8.1.1"
+version = "8.2.0"
 description = "The language where you can trust code you didn't write - signatures declare types, effects, and machine-checked promises."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,8 +17,10 @@ full = ["z3-solver", "llvmlite"]
 # for the suites only, never for Velaris itself: jsonschema validates
 # check_library.py's SARIF output against the OASIS schema, and fastapi
 # with an http client is what examples/platform is written against, so
-# check_platform.py can exercise it rather than skip
-test = ["jsonschema>=4.18", "fastapi", "httpx"]
+# check_platform.py can exercise it rather than skip; pyyaml reads
+# action.yml and the workflows for check_api.py and check_release.py; and
+# hypothesis generates the programs check_properties.py holds to its laws
+test = ["jsonschema>=4.18", "fastapi", "httpx", "pyyaml", "hypothesis"]
 
 [project.scripts]
 velaris = "velaris:main"
@@ -27,7 +29,7 @@ velaris = "velaris:main"
 Homepage = "https://github.com/gowrishankar-infra/velaris-lang"
 
 [tool.hatch.build.targets.wheel]
-only-include = ["velaris.py", "velaris_mcp.py", "velaris_mcp_install.py", "velaris_magic.py"]
+only-include = ["velaris", "velaris_mcp.py", "velaris_mcp_install.py", "velaris_magic.py"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "LLM.md" = "LLM.md"
@@ -37,4 +39,32 @@ only-include = ["velaris.py", "velaris_mcp.py", "velaris_mcp_install.py", "velar
 "stdlib" = "stdlib"
 
 [tool.hatch.build]
+
+# check_lint.py runs both over every Python file in the repository (8.2)
+[tool.mypy]
+strict = true
+python_version = "3.10"
+# the lint job runs on Linux; checking as Linux everywhere gives every
+# machine its answer (a branch for Windows is still checked, as Linux sees it)
+platform = "linux"
+
+[[tool.mypy.overrides]]
+# ship no type information
+module = ["z3", "z3.*", "llvmlite", "llvmlite.*", "atheris", "atheris.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# optional, for one command or integration, and not installed by the lint
+# job: read as Any wherever they are, so every machine checks the same
+module = [
+    "IPython", "IPython.*", "PyInstaller", "PyInstaller.*",
+    "anthropic", "anthropic.*", "openai", "openai.*",
+    "crewai", "crewai.*", "langchain_core", "langchain_core.*",
+    "pytest", "pytest.*", "sigstore", "sigstore.*",
+]
+follow_imports = "skip"
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py310"
 

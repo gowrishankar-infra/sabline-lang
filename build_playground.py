@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Generate playground/index.html with the real velaris.py embedded.
+"""Generate playground/index.html with the real compiler embedded.
 
-Run after any change to velaris.py:   python build_playground.py
+Run after any change to the velaris package:   python build_playground.py
 Open playground/index.html in a browser - no install, no server needed.
 """
 import json
 from pathlib import Path
 
 HERE = Path(__file__).parent
-SRC = (HERE / "velaris.py").read_text(encoding="utf-8")
+# every module of the package, by file name (8.2: until then one file)
+SRC = {p.name: p.read_text(encoding="utf-8")
+       for p in sorted((HERE / "velaris").glob("*.py"))}
 
 EXAMPLES = {
     "word frequency": """// Counting words: maps, lambdas, and a sorted report.
@@ -213,7 +215,7 @@ native code with LLVM. github.com/gowrishankar-infra/velaris-lang</span></pre>
   <div id="cards" class="hidden"></div>
 </main>
 <script>
-const VELARIS_SRC = __SRC__;
+const VELARIS_FILES = __SRC__;
 const EXAMPLES = __EXAMPLES__;
 
 const sel = document.getElementById("examples");
@@ -233,7 +235,10 @@ let pyodide = null;
 async function boot() {
   pyodide = await loadPyodide();
   pyodide.setStdin({ stdin: () => window.prompt("the program asks:") });
-  pyodide.FS.writeFile("/velaris.py", VELARIS_SRC);
+  pyodide.FS.mkdirTree("/velaris");
+  for (const [name, text] of Object.entries(VELARIS_FILES)) {
+    pyodide.FS.writeFile("/velaris/" + name, text);
+  }
   runBtn.disabled = false;
   runBtn.textContent = "Run \\u25B6";
   document.getElementById("inspect").disabled = false;
@@ -248,11 +253,16 @@ async function run() {
   out.textContent = "";
   pyodide.FS.writeFile("/prog.vel", code.value);
   const py = `
-import importlib.util, io, json, sys
+import io, json, sys
 from contextlib import redirect_stdout, redirect_stderr
-spec = importlib.util.spec_from_file_location("velaris", "/velaris.py")
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
+# a Velaris imported anew for every run, as a new process would have
+# it, so nothing one run set is there for the next
+for _name in [n for n in sys.modules
+              if n == "velaris" or n.startswith("velaris.")]:
+    del sys.modules[_name]
+if "/" not in sys.path:
+    sys.path.insert(0, "/")
+import velaris as mod
 # io: what every example here needs, and all a page in a browser can
 # use. It is also the default from 5.0; saying it keeps the page from
 # depending on that.
@@ -301,10 +311,13 @@ async function inspect() {
   inspectBtn.disabled = true; inspectBtn.textContent = "reading\\u2026";
   pyodide.FS.writeFile("/prog.vel", code.value);
   const py = `
-import importlib.util, json
-spec = importlib.util.spec_from_file_location("velaris", "/velaris.py")
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
+import json, sys
+for _name in [n for n in sys.modules
+              if n == "velaris" or n.startswith("velaris.")]:
+    del sys.modules[_name]
+if "/" not in sys.path:
+    sys.path.insert(0, "/")
+import velaris as mod
 json.dumps(mod.inspect_source("/prog.vel"))
 `;
   try {
@@ -369,8 +382,8 @@ outdir = HERE / "playground"
 outdir.mkdir(exist_ok=True)
 # written beside the page and renamed over it, so a reader at the same
 # moment - build_docs.py copies it - never sees half a page (8.1)
-import os as _os
-import tempfile as _tempfile
+import os as _os  # noqa: E402
+import tempfile as _tempfile  # noqa: E402
 _fd, _tmp = _tempfile.mkstemp(prefix=".index-", suffix=".tmp", dir=outdir)
 with _os.fdopen(_fd, "w", encoding="utf-8") as _fh:
     _fh.write(html)

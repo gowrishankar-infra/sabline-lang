@@ -1,0 +1,24 @@
+{
+  "about": "SPEC.md 2: keywords are a fixed set and everything else is an identifier. The words the grammar reads in place (in, to, any, as, of, ok) and the type names are identifiers; so is a word that only starts like a keyword, and one spelled with different case.",
+  "keep_trivia": false,
+  "tokens": [
+    ["KEYWORD", "fn", 1], ["KEYWORD", "let", 1], ["KEYWORD", "return", 1],
+    ["KEYWORD", "if", 1], ["KEYWORD", "else", 1], ["KEYWORD", "uses", 1],
+    ["KEYWORD", "true", 1], ["KEYWORD", "false", 1], ["KEYWORD", "while", 1],
+    ["KEYWORD", "for", 1],
+    ["KEYWORD", "requires", 2], ["KEYWORD", "ensures", 2], ["KEYWORD", "and", 2],
+    ["KEYWORD", "or", 2], ["KEYWORD", "not", 2], ["KEYWORD", "invariant", 2],
+    ["KEYWORD", "record", 2], ["KEYWORD", "import", 2], ["KEYWORD", "fail", 2],
+    ["KEYWORD", "check", 2], ["KEYWORD", "try", 2],
+    ["IDENT", "in", 3], ["IDENT", "to", 3], ["IDENT", "any", 3],
+    ["IDENT", "as", 3], ["IDENT", "of", 3], ["IDENT", "ok", 3],
+    ["IDENT", "Map", 3], ["IDENT", "List", 3], ["IDENT", "Money", 3],
+    ["IDENT", "Secret", 3], ["IDENT", "Text", 3], ["IDENT", "Int", 3],
+    ["IDENT", "result", 3], ["IDENT", "main", 3],
+    ["IDENT", "fnord", 4], ["IDENT", "iffy", 4], ["IDENT", "returned", 4],
+    ["IDENT", "notes", 4], ["IDENT", "order", 4], ["IDENT", "android", 4],
+    ["IDENT", "_private", 4], ["IDENT", "x1", 4], ["IDENT", "Fn", 4],
+    ["IDENT", "IF", 4], ["IDENT", "True", 4],
+    ["EOF", "", 5]
+  ]
+}

@@ -2,7 +2,7 @@
 import sys
 
 
-def magnitude(n):
+def magnitude(n: int) -> int:
     if n < 0:
         return 0 - n  # DANGER
     return n

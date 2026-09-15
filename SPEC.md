@@ -6,7 +6,7 @@ programming. It exists so that anyone deciding whether to depend on
 this language can find out exactly what it promises — and what it
 does not.
 
-Version 2.32. Where this document and the implementation disagree,
+Version 8.2.0. Where this document and the implementation disagree,
 that is a bug in one of them; please report it.
 
 ## 1. Programs
@@ -38,12 +38,12 @@ Literals:
 | Int | `0`, `42`, `-7` | 64-bit, signed (§4.1) |
 | Float | `1.5`, `0.0`, `-2.25` | IEEE-754 binary64 (§4.2) |
 | Bool | `true`, `false` | |
-| Text | `"hello"`, `"a\nb"` | escapes: `\n \t \\ \" \r \0` |
+| Text | `"hello"`, `"a\nb"` | escapes: `\n \t \\ \"`; any other is E002 |
 | List | `[1, 2, 3]` | all elements one type |
 | Map | `{"a": 1}` | keys `Text` or `Int` |
 
 An empty `[]` or `{}` has no inferable element type; give it one with
-a typed `let` (E506, E507).
+a typed `let` (E506).
 
 ## 3. Types
 
@@ -251,9 +251,11 @@ Division or remainder by zero is an error (E403), never an infinity.
 ### 4.2 Decimals
 
 `Float` is IEEE-754 binary64 with round-to-nearest-even, including
-signed zeros, infinities and NaN. `Float` division by zero follows
-IEEE-754 and yields an infinity; this is the one place the language
-does not raise an error, because it is what the hardware defines.
+signed zeros, infinities and NaN, which arithmetic can reach: a
+product past the largest float is an infinity. Division or remainder
+by zero is an error (E403) for `Float` as for `Int`, never an
+infinity or a NaN: `/` and `%` stay interpreted, where the divisor is
+checked (§11).
 
 `Int` and `Float` never mix implicitly. `to_float(x)` widens;
 `round(x)` narrows.
@@ -272,8 +274,8 @@ program's decisions, not a language's.
     with_units(m, n)          n minor units, in m's currency
 
 `money` and `parse_money` take the currency as text **written in the
-call**, and it must be one the implementation knows (`CURRENCIES` in
-`velaris.py`, §4.4); anything else is E551. A function may be generic in
+call**, and it must be one the implementation knows
+(`velaris.CURRENCIES`, §4.4); anything else is E551. A function may be generic in
 a currency: `fn f(m: Money of C) -> Money of C for any C`.
 
 **Arithmetic.** Two amounts in the same currency add, subtract and
@@ -318,7 +320,7 @@ and no part with a sign the amount does not have.
 ### 4.4 Which currencies
 
 An implementation carries a table of currency codes and how many digits
-each has after the point: `CURRENCIES` in `velaris.py`, which today
+each has after the point: `velaris.CURRENCIES`, which today
 holds 21 of them — 2 digits for INR, USD, EUR and most others, 0 for JPY
 and KRW, 3 for KWD, BHD, JOD and OMR. **It is not exhaustive.** A
 currency outside it is refused (E551) rather than assumed to have two
@@ -457,9 +459,12 @@ Ignoring a fallible call is a compile error (E520). `main` cannot
 fail.
 
 Fallible builtins: `to_int`, `read_file`, `read_file_secret`, `fetch`,
-`post`,
-`fetch_status`, `get` on a **map**, `divide_or_fail`, `parse_money`, the
-`py_*` family, and the `json_*` readers. `get` on a **list** is not fallible: list bounds are the
+`post`, `request`, `fetch_status`, `get` on a **map**, `pop`, `slice`,
+`set_at`, `add_or_fail`, `sub_or_fail`, `mul_or_fail`, `div_or_fail`,
+`mod_or_fail`, `divide_or_fail`, `parse_money`, `py`, `py_int`,
+`py_float`, `py_json`, `py_new`, `py_do`, `py_field`, `json_get`,
+`json_int`, `json_float` and `json_len` - every `py_*` builtin but
+`py_close`. `get` on a **list** is not fallible: list bounds are the
 prover's domain (§9.4), and `get_or(m, k, default)` gives a total map
 lookup.
 
@@ -518,9 +523,14 @@ What a list of amounts adds up to is an unknown the prover is told three
 true things about — that nothing adds up to zero, and that items all
 `>= 0` (all `<= 0`) add up to something `>= 0` (`<= 0`) — so a promise
 that needs more about a sum than those, such as one that needs induction
-over the list, is left to runtime rather than claimed. `text_of`,
-`parse_money` and `divide_or_fail` are not modelled at all: a function
-that uses one keeps its promises as runtime checks.
+over the list, is left to runtime rather than claimed. `parse_money`
+and `divide_or_fail` are modelled on the path where they did not fail:
+an amount `parse_money` read is an unknown amount, so a promise about
+it is proven only where the function checks what it read (`if m <
+money(0, "INR") { fail "negative" }`), and a division that did not
+fail is the exact rounding the interpreter performs, for a divisor
+shown positive. `text_of` is not modelled: a function that uses it
+keeps its promises as runtime checks.
 
 Not proven, and checked at runtime instead: the contents of text
 beyond the above; anything involving values that come back from the
@@ -598,7 +608,10 @@ a library behaves identically from the inside. A local name may not
 shadow an import name (E514).
 
 Imports are resolved relative to the importing file, with the bundled
-standard library searched last. Import cycles are rejected.
+standard library searched last. A file already in the program is not
+read again, so two files that import each other, or a file that
+imports itself, load without an error and with each file in the
+program once.
 
 A program compiled under an import root - the HTTP door and the MCP
 server always compile under one, the directory they serve, and the
@@ -774,9 +787,10 @@ every push.
 Stated plainly, because a specification that only lists strengths is
 advertising: no threads or async (§13); no exceptions — failure is in
 the signature (§8); no traits, interfaces, classes or inheritance; no
-closures — function values cannot capture their surroundings; no
+reference capture — a function value takes a copy of the values
+around it when it is made (§12a), never a reference to them; no
 mutable data structures; no reflection; no macros; no operator
 overloading; no package registry (libraries are vendored, §10); no
-incremental compilation beyond proof caching; and a compiler written
+incremental compilation, and from 8.2 no proof cache; and a compiler written
 in Python, which is clear to read and slower than a production
 compiler.

@@ -1,0 +1,3 @@
+fn main() uses io {
+    print(format("{} and {}", 1))
+}

@@ -16,6 +16,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
@@ -26,7 +27,7 @@ WORK = isolate("check_eject")
 PASS = FAIL = 0
 
 
-def ok(label, cond, detail=""):
+def ok(label: Any, cond: Any, detail: object = "") -> None:
     global PASS, FAIL
     if cond:
         PASS += 1
@@ -38,16 +39,15 @@ def ok(label, cond, detail=""):
             print(f"          {str(detail)[:400]}")
 
 
-def velaris_cli(*words, cwd=None):
+def velaris_cli(*words: Any, cwd: Any = None) -> Any:
     return subprocess.run([sys.executable, str(HERE / "velaris.py"), *words],
                           capture_output=True, text=True, cwd=cwd,
                           timeout=600)
 
 
-def clean_env() -> dict:
+def clean_env() -> dict[Any, Any]:
     env = {k: v for k, v in os.environ.items()
            if not k.startswith("PYTHON") and not k.startswith("VELARIS_")}
-    env["VELARIS_CACHE_DIR"] = str(WORK / "cache")
     return env
 
 
@@ -76,16 +76,20 @@ def main() -> int:
                        cwd=HERE)
     ok("velaris eject examples/discount.vel writes the directory",
        done.returncode == 0 and (out / "main.py").is_file()
-       and (out / "runtime" / "velaris.py").is_file()
+       and (out / "runtime" / "velaris" / "__init__.py").is_file()
        and (out / "program" / "discount.vel").is_file()
        and (out / "runtime" / "stdlib" / "money.vel").is_file(),
        done.stdout + done.stderr)
     for name in ("README.md", "requirements.txt", "proofs.json", "build.py",
                  "SHA256SUMS", "LICENSE"):
         ok(f"...with {name}", (out / name).is_file())
-    ok("...and the runtime is this Velaris, byte for byte",
-       (out / "runtime" / "velaris.py").read_bytes()
-       == (HERE / "velaris.py").read_bytes())
+    ok("...and the runtime is this Velaris, every module byte for byte",
+       sorted(p.name for p in (HERE / "velaris").glob("*.py"))
+       == sorted(p.name for p in (out / "runtime" / "velaris")
+                 .glob("*.py"))
+       and all((out / "runtime" / "velaris" / p.name).read_bytes()
+               == p.read_bytes()
+               for p in (HERE / "velaris").glob("*.py")))
 
     # it builds: every Python file compiles in the fresh environment, and
     # build.py names the PyInstaller command
@@ -115,7 +119,8 @@ def main() -> int:
                == line[:64] for line in sums)
     listed = {line[66:] for line in sums}
     ok("SHA256SUMS holds the sha256 of every other file, and each matches",
-       good and {"main.py", "runtime/velaris.py", "program/discount.vel",
+       good and {"main.py", "runtime/velaris/budget.py",
+                 "runtime/velaris/__init__.py", "program/discount.vel",
                  "README.md", "proofs.json"} <= listed, sums[:3])
 
     record = json.loads((out / "proofs.json").read_text(encoding="utf-8"))
@@ -192,7 +197,7 @@ def main() -> int:
        anyway.stdout[-200:] + anyway.stderr[-300:])
     program.write_bytes(ejected)
 
-    runtime = out / "runtime" / "velaris.py"
+    runtime = out / "runtime" / "velaris" / "budget.py"
     original = runtime.read_bytes()
     runtime.write_bytes(original + b"\n# changed after ejecting\n")
     tampered = subprocess.run([str(py), "-I", str(out / "main.py"),
@@ -202,7 +207,7 @@ def main() -> int:
     runtime.write_bytes(original)
     ok("a changed runtime is never run, --changed-ok or not: it is what "
        "enforces the budget", tampered.returncode == 2
-       and "runtime/velaris.py" in tampered.stderr
+       and "runtime/velaris/budget.py" in tampered.stderr
        and "payable" not in tampered.stdout, tampered.stderr)
     into = subprocess.run([str(py), "-I", str(out / "main.py"), "--receipt",
                            str(out / "main.py")], capture_output=True,

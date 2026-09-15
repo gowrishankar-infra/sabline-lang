@@ -1,0 +1,7 @@
+fn twice(n: Integer) -> Int {
+    return n * 2
+}
+
+fn main() uses io {
+    print(twice(2))
+}

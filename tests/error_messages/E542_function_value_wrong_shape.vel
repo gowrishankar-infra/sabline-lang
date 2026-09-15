@@ -1,0 +1,11 @@
+fn apply(x: T, f: fn(T) -> T) -> T for any T {
+    return f(x)
+}
+
+fn shout(t: Text) -> Text {
+    return t
+}
+
+fn main() uses io {
+    print(apply(1, shout))
+}

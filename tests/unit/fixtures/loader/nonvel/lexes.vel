@@ -1,0 +1,5 @@
+import "token.txt"
+
+fn main() uses io {
+    print(1)
+}

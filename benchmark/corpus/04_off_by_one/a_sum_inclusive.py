@@ -1,7 +1,7 @@
 # Sums a list with "<=" where "<" was meant, reading one past the end.
 
 
-def total(xs):
+def total(xs: list[int]) -> int:
     s = 0
     i = 0
     while i <= len(xs):

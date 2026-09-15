@@ -2,7 +2,7 @@
 import sys
 
 
-def share(total, count):
+def share(total: int, count: int) -> int:
     return total // count  # DANGER
 
 

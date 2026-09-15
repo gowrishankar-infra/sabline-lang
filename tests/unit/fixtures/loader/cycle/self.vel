@@ -1,0 +1,5 @@
+import "self.vel"
+
+fn main() uses io {
+    print(1)
+}

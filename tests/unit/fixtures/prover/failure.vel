@@ -1,0 +1,56 @@
+// Failure paths (SPEC.md 9.3): ensures applies to every path that
+// returns, through check and try as well.
+
+// ==== ensures_holds_on_every_return
+// expect: proven nonneg
+fn nonneg(x: Int) -> Int or fail
+    ensures result >= 0
+{
+    if x < 0 {
+        fail "negative"
+    }
+    return x
+}
+
+// ==== a_path_that_returns_breaks_it
+// expect: E700 line 3
+fn nonneg_bad(x: Int) -> Int or fail
+    ensures result >= 0
+{
+    if x < -1 {
+        fail "negative"
+    }
+    return x
+}
+
+// ==== through_check_and_try
+// expect: proven nonneg
+// expect: proven safe
+// expect: proven doubled
+fn nonneg(x: Int) -> Int or fail
+    ensures result >= 0
+{
+    if x < 0 {
+        fail "negative"
+    }
+    return x
+}
+fn safe(x: Int) -> Int
+    ensures result >= 0
+{
+    check nonneg(x) {
+        ok v {
+            return v
+        }
+        fail why {
+            return 0
+        }
+    }
+    return 0
+}
+fn doubled(x: Int) -> Int or fail
+    ensures result >= 0
+{
+    let v = try nonneg(x)
+    return v + v
+}

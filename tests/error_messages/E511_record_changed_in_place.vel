@@ -1,0 +1,10 @@
+record Point {
+    x: Int
+    y: Int
+}
+
+fn main() uses io {
+    let p = Point(x: 1, y: 2)
+    p.x = 5
+    print(p.x)
+}

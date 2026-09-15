@@ -2,7 +2,7 @@
 import sys
 
 
-def save(path, text):
+def save(path: str, text: str) -> None:
     with open(path, "w") as f:  # DANGER
         f.write(text)
 

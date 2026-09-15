@@ -1,0 +1,16 @@
+record Size {
+    w: Int
+    h: Int
+}
+
+fn mul(a: Int, b: Int) -> Int {
+    return a * b
+}
+
+fn area(w: Int, h: Int) -> Int {
+    return mul(w, h)
+}
+
+fn pick() -> fn(Int, Int) -> Int {
+    return mul
+}

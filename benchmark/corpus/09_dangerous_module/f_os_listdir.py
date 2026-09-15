@@ -2,7 +2,7 @@
 import os
 
 
-def describe(folder):
+def describe(folder: str) -> str:
     listing = os.listdir(folder)  # DANGER
     return "module-reached: listing came back (%s)" % str(len(listing) > 0).lower()
 

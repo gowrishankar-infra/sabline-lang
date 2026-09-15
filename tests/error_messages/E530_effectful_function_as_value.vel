@@ -1,0 +1,9 @@
+fn loud(n: Int) -> Int uses io {
+    print(n)
+    return n
+}
+
+fn main() uses io {
+    let f = loud
+    print("hi")
+}

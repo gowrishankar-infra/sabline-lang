@@ -1,0 +1,6 @@
+// Imported by nothing. lib/util.vel's `import "helper.vel"` means
+// lib/helper.vel, beside the file that imports it, not this file beside
+// the entry file (SPEC.md 10).
+fn decoy_helper() -> Int {
+    return 0
+}

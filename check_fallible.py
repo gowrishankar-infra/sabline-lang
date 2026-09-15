@@ -20,6 +20,7 @@ with no test to remember to write.
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
@@ -28,7 +29,7 @@ sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
-# its own directory and proof cache, so two runs at once do not collide
+# its own directory, so two runs at once do not collide
 SCRATCH = isolate("check_fallible") / "_fallible_check.vel"
 
 # how to call each builtin so that it type-checks; every entry uses
@@ -91,7 +92,7 @@ NO_RUNTIME = {"py_do", "py_field",
 SKIP = {"get"}
 
 
-def run(source: str, effect: str | None = None) -> tuple:
+def run(source: str, effect: str | None = None) -> tuple[Any, ...]:
     """Run the case under the narrowest budget it needs. From 5.0 a run
     with no --allow gets io, so a builtin that reads a file or calls
     Python has to be granted that effect or the refusal, not the
@@ -104,7 +105,7 @@ def run(source: str, effect: str | None = None) -> tuple:
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
 
-def check_only(source: str) -> tuple:
+def check_only(source: str) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
         [sys.executable, str(VELARIS), "check", str(SCRATCH)],
@@ -116,19 +117,19 @@ def check_only(source: str) -> tuple:
 # since 3.0: a redirect to a host outside the run's net grants. The
 # program asked for one host and was sent to another, so this is a
 # failure it can catch, unlike a refused host (E314, which it cannot).
-def redirect_case() -> tuple:
+def redirect_case() -> tuple[Any, ...]:
     """(passed, detail): the failure formats and is caught, never a
     traceback, against a local server that redirects."""
     import threading
     from http.server import BaseHTTPRequestHandler, HTTPServer
 
     class H(BaseHTTPRequestHandler):
-        def do_GET(self):
+        def do_GET(self) -> None:
             self.send_response(302)
             self.send_header("Location", "http://localhost:9/elsewhere")
             self.end_headers()
 
-        def log_message(self, *a):
+        def log_message(self, *a: Any) -> None:
             pass
 
     srv = HTTPServer(("127.0.0.1", 0), H)

@@ -1,0 +1,10 @@
+fn discount(price: Int) -> Int
+    requires price >= 0
+    ensures result >= 0
+{
+    return price - 10
+}
+
+fn main() uses io {
+    print(discount(50))
+}

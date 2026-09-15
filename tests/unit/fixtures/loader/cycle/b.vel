@@ -1,0 +1,5 @@
+import "a.vel"
+
+fn from_b() -> Int {
+    return from_a()
+}

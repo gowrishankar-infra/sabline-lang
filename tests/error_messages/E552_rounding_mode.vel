@@ -1,0 +1,4 @@
+fn main() uses io {
+    let tax = percent_of(money(1000, "INR"), 18, 100, "sideways")
+    print(text_of(tax))
+}

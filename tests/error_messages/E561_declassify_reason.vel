@@ -1,0 +1,5 @@
+fn main() uses io, env, declassify {
+    let key = env("API_KEY", "")
+    let why = "made up while running"
+    print(declassify(key, why))
+}

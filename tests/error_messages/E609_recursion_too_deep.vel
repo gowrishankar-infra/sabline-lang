@@ -1,0 +1,7 @@
+fn forever(n: Int) -> Int {
+    return forever(n + 1)
+}
+
+fn main() uses io {
+    print(forever(0))
+}

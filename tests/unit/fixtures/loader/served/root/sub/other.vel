@@ -1,0 +1,3 @@
+fn other() -> Int {
+    return 2
+}

@@ -21,6 +21,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
@@ -33,14 +34,14 @@ FORMAT = "velaris.conformance-corpus/1"
 LEVELS = {1: "Declaration", 2: "Enforcement", 3: "Ratchet"}
 
 
-def short(*parts) -> str:
+def short(*parts: Any) -> str:
     """A stable ten-character name for a case that has no id of its own."""
     text = json.dumps(parts, ensure_ascii=False)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:10]
 
 
-def case(id, level, kind, description, source, input, expect, *, spec=(),
-         requires=(), known_limit=None) -> dict:
+def case(id: Any, level: Any, kind: Any, description: Any, source: Any, input: Any, expect: Any, *, spec: Any = (),
+         requires: Any = (), known_limit: Any = None) -> dict[str, Any]:
     return {"id": id, "level": level, "kind": kind,
             "description": description, "spec": list(spec),
             "from": source, "requires": sorted(requires),
@@ -59,7 +60,7 @@ DENY_WITHOUT_GRANTS = ("a denial with no grants narrows the runtime's "
                        "to the runtime")
 
 
-def level1() -> tuple:
+def level1() -> tuple[Any, ...]:
     out, excluded = [], []
     for bid, what, allow, deny, want in check_library.BUDGETS:
         if allow is None and deny is not None and want is not None:
@@ -85,7 +86,7 @@ def level1() -> tuple:
             "check_library.py malformed_budgets()", {"allow": text},
             {"valid": False}, spec=["4.2"]))
     for a in check_library.AUDITS:
-        files = dict(a["files"])
+        files = dict(cast("dict[str, str]", a["files"]))
         out.append(case(
             f"L1-audit-{a['id']}", 1, "audit", a["description"],
             f"check_library.py AUDITS {a['id']}",
@@ -96,7 +97,7 @@ def level1() -> tuple:
 
 # ---- level 2: enforcement ---------------------------------------------------
 
-def level2() -> tuple:
+def level2() -> tuple[Any, ...]:
     out, excluded = [], []
     for table, name in ((check_sandbox.ESCAPES, "ESCAPES"),
                         (check_sandbox.HONEST, "HONEST")):
@@ -129,7 +130,7 @@ def level2() -> tuple:
 
 # ---- level 3: the baseline, and the ratchet ----------------------------------
 
-def level3() -> list:
+def level3() -> list[Any]:
     out = []
     r = check_ratchet
     for d in r.DERIVE:
@@ -138,6 +139,7 @@ def level3() -> list:
             f"check_ratchet.py DERIVE {d['id']}",
             {"tree": d["tree"], "root": d.get("root", ".")}, d["expect"],
             spec=d.get("spec", ["9.3"])))
+    c: Any                     # a case of CHECKS, then a grant of COVERING
     for c in r.CHECKS:
         if c["baseline"] is None:
             base = {"from_tree": True, "edit": c["edit"]}
@@ -153,18 +155,21 @@ def level3() -> list:
         steps = [{"description": st["description"], "change": st["change"],
                   "edit": st["edit"], "rewrite": st["rewrite"],
                   "delete_baseline": st["delete_baseline"]}
-                 for st in s["steps"]]
+                 for st in cast("list[dict[str, Any]]", s["steps"])]
         out.append(case(
             f"L3-sequence-{s['id']}", 3, "sequence", s["description"],
             f"check_ratchet.py SEQUENCES {s['id']}",
             {"tree": s["tree"], "root": ".", "steps": steps},
-            {"steps": [st["expect"] for st in s["steps"]]}, spec=s["spec"]))
+            {"steps": [st["expect"] for st in
+                       cast("list[dict[str, Any]]", s["steps"])]},
+            spec=s["spec"]))
     for w in r.WRITE_GUARD:
         out.append(case(
             f"L3-write-{w['id']}", 3, "write-guard", w["description"],
             f"check_ratchet.py WRITE_GUARD {w['id']}",
             {"tree": w["tree"], "root": ".", "change": w["change"]},
             {"refuses": True, "unchanged": True}, spec=w["spec"]))
+    want: Any                  # a bool, a list of grants, a bound: per table
     for b, c, want in r.COVERING:
         out.append(case(
             f"L3-covers-{short(b, c)}", 3, "covers",
@@ -185,12 +190,13 @@ def level3() -> list:
     return out
 
 
-def corpus() -> dict:
+def corpus() -> dict[Any, Any]:
     """{relative path: text} - every file the corpus holds."""
     cases, excluded = level1()
     run_cases, more = level2()
     excluded += more
     cases += run_cases + level3()
+    seen: set[str]
     files, seen = {}, set()
     for c in cases:
         assert c["id"] not in seen, f"two cases are called {c['id']}"
@@ -216,11 +222,11 @@ def corpus() -> dict:
     return files
 
 
-def dump(value) -> str:
+def dump(value: Any) -> str:
     return json.dumps(value, indent=2, ensure_ascii=False) + "\n"
 
 
-def main(argv: list) -> int:
+def main(argv: list[Any]) -> int:
     check = "--check" in argv
     places = [a for a in argv if not a.startswith("-")]
     if len(places) != 1:

@@ -1,0 +1,25 @@
+{
+  "about": "Every operator, and the longest match: <= is one token and < = two; -> is an arrow and - > two; === is == then =.",
+  "keep_trivia": false,
+  "tokens": [
+    ["IDENT", "a", 1], ["OP", "<=", 1], ["IDENT", "b", 1], ["OP", ">=", 1],
+    ["IDENT", "c", 1], ["OP", "==", 1], ["IDENT", "d", 1], ["OP", "!=", 1],
+    ["IDENT", "e", 1], ["ARROW", "->", 1], ["IDENT", "f", 1],
+    ["IDENT", "a", 2], ["OP", "<", 2], ["IDENT", "b", 2], ["OP", ">", 2],
+    ["IDENT", "c", 2], ["OP", "=", 2], ["IDENT", "d", 2], ["OP", "+", 2],
+    ["IDENT", "e", 2], ["OP", "-", 2], ["IDENT", "f", 2], ["OP", "*", 2],
+    ["IDENT", "g", 2], ["OP", "/", 2], ["IDENT", "h", 2], ["OP", "%", 2],
+    ["IDENT", "i", 2],
+    ["OP", "(", 3], ["OP", ")", 3], ["OP", "{", 3], ["OP", "}", 3],
+    ["OP", "[", 3], ["OP", "]", 3], ["OP", ",", 3], ["OP", ":", 3],
+    ["OP", ".", 3],
+    ["IDENT", "a", 4], ["OP", "<=", 4], ["IDENT", "b", 4],
+    ["IDENT", "a", 4], ["OP", "<", 4], ["OP", "=", 4], ["IDENT", "b", 4],
+    ["IDENT", "a", 4], ["ARROW", "->", 4], ["IDENT", "b", 4],
+    ["IDENT", "a", 4], ["OP", "-", 4], ["OP", ">", 4], ["IDENT", "b", 4],
+    ["IDENT", "a", 4], ["OP", "-", 4], ["OP", "-", 4], ["IDENT", "b", 4],
+    ["IDENT", "x", 5], ["OP", "==", 5], ["OP", "=", 5], ["IDENT", "y", 5],
+    ["IDENT", "x", 5], ["OP", "==", 5], ["OP", "-", 5], ["NUMBER", "1", 5],
+    ["EOF", "", 6]
+  ]
+}

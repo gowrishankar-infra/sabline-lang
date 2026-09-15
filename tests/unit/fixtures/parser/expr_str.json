@@ -1,0 +1,17 @@
+{
+  "about": "expr_str writes a tree back as source, bracketing only where the meaning needs it (velaris/parser.py).",
+  "cases": [
+    ["(result + 1) * count", "(result + 1) * count"],
+    ["result + 1 * count", "result + 1 * count"],
+    ["a - (b - c)", "a - (b - c)"],
+    ["(a - b) - c", "a - b - c"],
+    ["(a or b) and c", "(a or b) and c"],
+    ["not (x > 0)", "not x > 0"],
+    ["[1, 2, 3]", "[1, 2, 3]"],
+    ["{\"a\": 1, \"b\": 2}", "{\"a\": 1, \"b\": 2}"],
+    ["Point(x: 1, y: -2)", "Point(x: 1, y: -2)"],
+    ["geo.area(p.x, 2)", "geo.area(p.x, 2)"],
+    ["1.5 + 0.25", "1.5 + 0.25"],
+    ["true and false", "true and false"]
+  ]
+}

@@ -1,0 +1,15 @@
+fn count(n: Int) -> Int
+    requires n >= 0
+{
+    let i = 0
+    while i < n
+    invariant i > 0
+    {
+        i = i + 1
+    }
+    return i
+}
+
+fn main() uses io {
+    print(count(3))
+}

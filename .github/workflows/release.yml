@@ -8,8 +8,10 @@ name: release
 #      starts a release: no trigger here listens for tags, and GitHub
 #      starts no workflow for the tag this one pushes.
 #   2. The gate asks release_checks.py whether that commit is a release:
-#      velaris.py's VERSION is newer than every tag, CHANGELOG.md has an
-#      entry heading for it, and all six version files agree. If not, it
+#      velaris/version.py's VERSION is newer than every tag, CHANGELOG.md
+#      has an entry heading for it, all six version files agree, and a
+#      minor or patch release that adds an error code, removes a flag or
+#      changes a default says so on a compatibility: line. If not, it
 #      says why in one line and the run ends green having done nothing,
 #      which is what an ordinary push to main looks like here.
 #   3. A release is only ever the commit the tests passed on. If main
@@ -287,6 +289,7 @@ jobs:
       - name: Build standalone executable
         run: >
           pyinstaller --onefile --name velaris
+          --collect-submodules velaris
           --collect-all z3 --collect-all llvmlite
           --add-data "stdlib${{ matrix.sep }}stdlib"
           velaris.py
@@ -296,6 +299,10 @@ jobs:
           ./dist/velaris* --version
           ./dist/velaris* doctor
           ./dist/velaris* examples/hello.vel
+          # check runs its work in a child under a ceiling; until 8.2 the
+          # executable started velaris.py for it, which it does not hold,
+          # and every check failed with E001 (found by velaris-canary)
+          ./dist/velaris* check examples/discount.vel
       - name: Rename asset
         shell: bash
         run: |
@@ -474,12 +481,92 @@ jobs:
             velaris-receipt-*
           if-no-files-found: error
 
+  # ---- held to the previous release (8.2) -------------------------------------
+
+  # Pure-numeric time, native and interpreted, against the previous tag,
+  # the two taking turns on the same programs. More than 25% slower and the
+  # commit is not tagged (perf_gates.py; RELEASING.md). The numbers a
+  # release publishes come from the same script on a quiet machine.
+  perf:
+    name: pure-numeric time against the previous release
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    env:
+      PREVIOUS: ${{ needs.gate.outputs.previous_tag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          fetch-depth: 0             # the previous tag
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - name: Install (full)
+        run: pip install -c requirements/ci.txt ".[full]"
+      - name: Against the previous tag
+        run: python perf_gates.py --only numeric --runs 3 --against "$PREVIOUS"
+
+  # The examples, velaris-spec's conformance corpus and the quick benchmark,
+  # run under this commit and under the previous tag. A difference the
+  # CHANGELOG entry does not name stops the release (check_differential.py).
+  differential:
+    name: every difference from the previous release is named
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    env:
+      PREVIOUS: ${{ needs.gate.outputs.previous_tag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          repository: gowrishankar-infra/velaris-spec
+          path: velaris-spec
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - name: Install (full)
+        run: pip install -c requirements/ci.txt ".[full,test]"
+      - name: This commit against the previous tag
+        run: python check_differential.py --old "$PREVIOUS" --spec velaris-spec/tests --benchmark quick
+
   # ---- tag, then publish in order ---------------------------------------------
+
+  # The kill switch. RELEASE_PAUSED is a variable of the release environment
+  # (Settings, Environments, release). Set to anything but empty, 0, false,
+  # no or off, this says so and the tag and every publish after it are
+  # skipped, while the tests and the builds above still run. RELEASING.md
+  # says when to use it and how to release once it is cleared.
+  paused:
+    name: is releasing paused?
+    needs: gate
+    if: needs.gate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    outputs:
+      paused: ${{ steps.paused.outputs.paused }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - name: RELEASE_PAUSED
+        id: paused
+        env:
+          RELEASE_PAUSED: ${{ vars.RELEASE_PAUSED }}
+        run: python3 release_checks.py paused --annotate --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
 
   tag:
     name: tag the commit
-    needs: [gate, dist, reproducible, bundle, binaries, attestation]
-    if: needs.gate.outputs.release == 'true'
+    needs: [gate, paused, perf, differential, dist, reproducible, bundle, binaries, attestation]
+    if: needs.gate.outputs.release == 'true' && needs.paused.outputs.paused == 'false'
     runs-on: ubuntu-latest
     environment: release
     permissions:

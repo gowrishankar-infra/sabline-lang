@@ -1,0 +1,4 @@
+fn main() uses io {
+    let xs = []
+    print(length(xs))
+}

@@ -15,13 +15,14 @@ fastapi is a dependency of the example, never of Velaris. Without it
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
-isolate("check_platform")             # its own proof cache
+isolate("check_platform")             # its own directory
 
 HAVE_PROVER = velaris.HAVE_Z3
 
@@ -75,7 +76,7 @@ CRAFTED = ("fn f(x: Float, y: Float, z: Float) -> Float\n"
 def main() -> int:                        # noqa: C901 - a suite, not logic
     passed = failed = 0
 
-    def ok(label, condition, detail=""):
+    def ok(label: Any, condition: Any, detail: str = "") -> None:
         nonlocal passed, failed
         if condition:
             print(f"  ok       {label}")
@@ -86,7 +87,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
                 print(f"           {detail}")
             failed += 1
 
-    def skip(label, why):
+    def skip(label: Any, why: Any) -> None:
         print(f"  skipped  {label}")
         print(f"           {why}")
 

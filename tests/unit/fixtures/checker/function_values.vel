@@ -1,0 +1,43 @@
+// Function values (SPEC.md 3, "pure only", and 12a; E530 and E402).
+
+// ==== a_function_with_effects_as_a_value
+// expect: E530 line 10
+fn apply(f: fn(Int) -> Int, x: Int) -> Int {
+    return f(x)
+}
+fn noisy(n: Int) -> Int uses io {
+    print(n)
+    return n
+}
+fn main() uses io {
+    let n = apply(noisy, 1)
+}
+
+// ==== a_function_that_can_fail_as_a_value
+// expect: E530 line 9
+fn apply(f: fn(Text) -> Int, x: Text) -> Int {
+    return f(x)
+}
+fn parse(t: Text) -> Int or fail {
+    return try to_int(t)
+}
+fn main() uses io {
+    let n = apply(parse, "1")
+}
+
+// ==== an_inline_function_reads_a_local
+// expect: ok
+fn apply(f: fn(Int) -> Bool, x: Int) -> Bool {
+    return f(x)
+}
+fn main() uses io {
+    let limit = 10
+    let small = fn(n: Int) -> Bool { return n < limit }
+    print(apply(small, 3))
+}
+
+// ==== an_inline_function_reads_a_name_defined_nowhere
+// expect: E402 line 3
+fn main() uses io {
+    let f = fn(n: Int) -> Int { return n + nowhere }
+}

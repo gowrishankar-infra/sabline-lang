@@ -89,9 +89,8 @@ nothing wrong'.
 `velaris check` marks the file `1 proof(s) abandoned: out of time,
 nothing settled`, `velaris proofs --detail` marks the function
 `[timeout]` rather than `[runtime]`, and `--strict` fails and says the
-proof was abandoned rather than unprovable. An abandoned proof is not
-written to the proof cache, so the next run spends the budget again. A
-slow machine must never be able to make a lost refutation look like a
+proof was abandoned rather than unprovable. The next run spends the
+budget again: no proof is kept between runs. A slow machine must never be able to make a lost refutation look like a
 clean bill of health — that is the same commitment as the one below,
 read from the other side.
 

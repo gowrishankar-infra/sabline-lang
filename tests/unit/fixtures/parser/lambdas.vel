@@ -1,0 +1,18 @@
+fn apply(f: fn(Int) -> Int, x: Int) -> Int {
+    return f(x)
+}
+
+fn main() uses io {
+    let limit = 10
+    let clamp = fn(n: Int) -> Int
+        ensures result <= limit
+    {
+        let top = limit
+        if n > top {
+            return top
+        }
+        return n
+    }
+    print(apply(clamp, 42))
+    print(apply(fn(n: Int) -> Int { return n + 1 }, 1))
+}

@@ -1,7 +1,7 @@
 # Sums a list of expenses and prints the total. Nothing to flag.
 
 
-def total_of(items):
+def total_of(items: list[tuple[str, int]]) -> int:
     total = 0
     for label, amount in items:
         if amount > 0:

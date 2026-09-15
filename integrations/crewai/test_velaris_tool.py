@@ -31,13 +31,13 @@ fn main() uses io {
 """
 
 
-def test_audit_names_every_effect():
+def test_audit_names_every_effect() -> None:
     report = json.loads(VelarisAuditTool()._run(READS_A_FILE))
     assert report["schema"] == "velaris.audit/1"
     assert report["effects"] == ["fs", "io"]
 
 
-def test_run_refuses_an_effect_outside_the_budget():
+def test_run_refuses_an_effect_outside_the_budget() -> None:
     out = VelarisRunTool(allow=["io"])._run(READS_A_FILE)
     assert "REFUSED" in out and "'fs'" in out
     assert "READ IT" not in out
@@ -60,26 +60,26 @@ fn main() uses io {
 """
 
 
-def test_run_stops_a_program_that_never_ends():
+def test_run_stops_a_program_that_never_ends() -> None:
     # the marker must not collide with velaris's own E610 fix hint,
     # which says "fix the loop that never ends"
     out = VelarisRunTool(allow=["io"], timeout=2)._run(FOREVER)
     assert "STOPPED" in out and "REACHED THE END" not in out
 
 
-def test_the_default_limits_are_set():
+def test_the_default_limits_are_set() -> None:
     tool = VelarisRunTool()
     assert tool.timeout == 30.0 and tool.max_memory_mb == 512
 
 
-def test_run_permits_what_the_budget_allows():
+def test_run_permits_what_the_budget_allows() -> None:
     out = VelarisRunTool(allow=["io", "fs"])._run(READS_A_FILE)
     assert "READ IT" in out
 
 
-def test_run_returns_output():
+def test_run_returns_output() -> None:
     assert VelarisRunTool(allow=["io"])._run(PURE).strip() == "42"
 
 
-def test_the_default_budget_is_io_only():
+def test_the_default_budget_is_io_only() -> None:
     assert VelarisRunTool().allow == ["io"]

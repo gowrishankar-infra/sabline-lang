@@ -1,0 +1,5 @@
+import "helper.vel"
+
+fn double(n: Int) -> Int {
+    return helper_add(n, n)
+}

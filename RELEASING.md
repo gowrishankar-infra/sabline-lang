@@ -13,30 +13,36 @@ that is already tagged. If one is pushed by mistake, delete it
 
 Everything a person does happens before the push:
 
-1. Put the new version in all six version files: `velaris.py`
-   (`VERSION`), `pyproject.toml`, `npm/package.json`,
-   `mcpb/manifest.json`, `editor/vscode/package.json` and
-   `integrations/mcp_registry/server.json` (three times: its own, and
+1. Put the new version in all six version files: `velaris/version.py`
+   (`VERSION`; it was `velaris.py` until 8.2), `pyproject.toml`,
+   `npm/package.json`, `mcpb/manifest.json`, `editor/vscode/package.json`
+   and `integrations/mcp_registry/server.json` (three times: its own, and
    the PyPI and npm packages'). `python run_tests.py` holds all of them to
    one version. Leave the Action pins in README.md and EMBEDDING.md where
    they are: they name a commit, which the release commit cannot name for
    itself, so they stay on the previous release until it is tagged (below).
 2. Write the CHANGELOG entry, headed `## X.Y.Z - Title`. An X.Y.0
    release may be headed `## X.Y - Title`, as minor releases always
-   have been here; `## X.Y` never stands for X.Y.1.
+   have been here; `## X.Y` never stands for X.Y.1. Two kinds of line in
+   it are read by the gate (below): a line beginning `compatibility:`,
+   and a line beginning `api:`.
 3. Ask the gate what it will decide: `python release_checks.py gate`
-   should say `release: X.Y.Z`.
+   should say `release: X.Y.Z`. `python release_checks.py covered vA.B.C`
+   lists what the release changes that a minor or patch release must
+   explain, against the previous tag.
 4. Commit and push to main.
 
 GitHub does the rest:
 
-5. `tests` (test.yml) runs its twelve legs on that commit.
+5. `tests` (test.yml) runs its eighteen legs on that commit, and the job
+   that runs suites twice at once.
 6. When it completes with every leg passed, `release` starts. Nothing
-   else starts it.
+   else starts it. (The legs on Python 3.14 may fail without failing the
+   run; they are reported, not required.)
 7. **The gate.** It runs `check_release.py`, which holds the gate's own
    logic to fixtures, and then `release_checks.py gate`. The commit is
    a release only when
-   - `VERSION` in velaris.py is newer than the newest `v*` tag,
+   - `VERSION` is newer than the newest `v*` tag,
    - CHANGELOG.md has an entry heading for exactly that version, and
    - all six version files agree with it, and the registry manifest
      lists both the PyPI and the npm package.
@@ -45,6 +51,41 @@ GitHub does the rest:
    release: CHANGELOG.md has no entry heading for 7.2.1 ...` - and ends
    green having done nothing. That is what every push that is not a
    release looks like.
+
+   Two more conditions refuse a release - exit 1, red, and one line naming
+   what is wrong (8.2):
+   - **A minor or patch release that changes what STABILITY.md covers
+     without saying why that is not a break.** Against the previous tag,
+     the gate reads the compiler's source, every module of the package:
+     - an error code added - any text in the source that is one code, so
+       a code added to `ERROR_TABLE` by a subscript, by `update()` or in
+       another module counts as one in the literal table does;
+     - a `--flag` the command line or the MCP server no longer knows;
+     - a default that is not what it was: a module-level constant named
+       `DEFAULT_*` or `*_DEFAULT`, the few in `KNOWN_DEFAULTS`, every
+       variable of the run state (`velaris/state.py`, `EFFECT_BUDGET`
+       among them), and each parameter default of the library STABILITY.md
+       covers, read through any constant it names; and a parameter that
+       loses its default.
+
+     If it finds one, the entry must hold a line beginning
+     `compatibility:` that explains why the change does not break a user
+     of the previous version - `compatibility: E615 is given only to a
+     program that stopped with a Python error in 8.1`. The line is prose:
+     at the start of a line, with at least four words after the colon,
+     not in a code block or an HTML comment, and not a placeholder such as
+     TODO. A major release needs no such line: it is where a break may be.
+     What the gate does not see: a default computed in a function body,
+     and a code built from pieces while running.
+   - **An API golden that moved without an `api:` line.** When
+     `tests/api/golden.json` (check_api.py) differs from the previous
+     tag's, the entry must hold a line beginning `api:`, read as the
+     `compatibility:` line is, saying what changed. Every release, major
+     included.
+
+   A commit whose sources the gate cannot read - a module that is not
+   UTF-8, one that does not parse - is refused in one line, and a VERSION
+   that is not `X.Y.Z` writes no step output.
 8. **Only the commit the tests passed on.** A `workflow_run` runs
    against the tip of main, which may have moved while the tests ran.
    If the tip is not the commit whose tests started the run, the gate
@@ -54,11 +95,18 @@ GitHub does the rest:
    twice and compared), the SBOM, the MCP tool manifest (checked
    against the wheel's own server), the `.mcpb` bundle, the three
    executables, the attestation of `examples/effects.vel` and, from 8.1,
-   the receipt of one run of it are built and signed with sigstore. Nothing is published yet, and if any of it
-   fails nothing is tagged: fix it and push again with the same version.
-10. **Tag.** The commit is tagged `vX.Y.Z`, annotated - not signed; see
+   the receipt of one run of it are built and signed with sigstore. Beside
+   them, from 8.2, this commit is held to the previous tag twice: its
+   pure-numeric time (`perf`; Performance, below) and every output that
+   differs from the previous release's (`differential`; Differences from
+   the previous release, below). Nothing is published yet, and if any of
+   it fails nothing is tagged: fix it and push again with the same
+   version.
+10. **Paused?** If the `release` environment's variable `RELEASE_PAUSED`
+    is set (below), the run says so and stops here.
+11. **Tag.** The commit is tagged `vX.Y.Z`, annotated - not signed; see
     below.
-11. **Publish, in this order.** Each step first asks whether the version
+12. **Publish, in this order.** Each step first asks whether the version
     is already there, and skips with a notice if it is.
     1. PyPI, by trusted publishing (OIDC; no token is stored).
     2. npm, from `npm/`, by trusted publishing (OIDC; npm adds
@@ -78,11 +126,11 @@ GitHub does the rest:
     6. The attestation and the receipt, attached to the release.
 
     A step that fails stops the ones after it (the Marketplace aside).
-12. **Consistency.** PyPI, npm, the MCP registry and the GitHub release
+13. **Consistency.** PyPI, npm, the MCP registry and the GitHub release
     must all report this version, and the release must hold all 27
     files (24 before 8.1.0, which added the receipt). The indexes cache, so it keeps asking for fifteen minutes;
     then it fails and names what differs.
-13. **Advisory.** If a commit since the previous tag adds an
+14. **Advisory.** If a commit since the previous tag adds an
     `advisory-*.md`, see below.
 
 The environment `release` holds no secrets. PyPI, npm and the MCP
@@ -108,6 +156,30 @@ tokens already have.
 release.yml --ref <branch>`). The gate says what it would decide, and
 everything is built, signed under that branch's identity and verified.
 Nothing is tagged or published.
+
+## Pausing releases: RELEASE_PAUSED
+
+`RELEASE_PAUSED` is a variable of the `release` environment (Settings,
+Environments, `release`, Environment variables). Set to anything but
+empty, `0`, `false`, `no` or `off` - an unclear value pauses rather than
+publishes - the `paused` job says so in the run's summary, and the tag
+and every publish after it are skipped. The tests still run on every
+push, and the build, sign and verify jobs still run on a release commit,
+so a paused release is a checked one.
+
+Use it when something outside this repository makes publishing wrong for
+a while: a registry is known to be misbehaving, a credential is being
+rotated, an advisory is being coordinated with a reporter.
+
+To release a commit that was pushed while paused: clear the variable, open
+that commit's `release` run, and **re-run all jobs**. The gate decides
+again - the version is not tagged yet - and the release proceeds. Re-running
+only failed jobs does not, because a paused run has none.
+
+`check_release.py` holds this to the workflow: the `paused` job reads the
+environment's variable, the tag needs it and runs only when it says not
+paused, every job that publishes comes after the tag, and no build job
+waits on it.
 
 ## After the release: move the Action pins
 
@@ -147,6 +219,14 @@ what already landed, so it continues where it stopped. Re-running the
 whole workflow does nothing, because its gate sees the tag the first
 attempt made.
 
+`check_release.py` holds this to release.yml itself (8.2): it runs the
+jobs from the tag on against a stand-in for PyPI, npm, the Marketplace,
+GitHub and the MCP registry, makes one publish fail - npm, the registry,
+the GitHub release - re-runs the failed jobs and the jobs after them, as
+GitHub does, and checks that every publish was made exactly once, none
+was skipped, and the consistency check passes; and that a whole second
+run publishes nothing again.
+
 **Never finish a publish by hand with a token.** Trusted publishing
 means no long-lived publish token exists; making one to get past a
 failure brings it back.
@@ -154,6 +234,28 @@ failure brings it back.
 If the fix needs a change to the repository after the tag was made,
 that version is spent: bump to the next one, add its CHANGELOG entry and
 push. Do not delete or move a tag that has published anything.
+
+## Performance
+
+Every release's CHANGELOG entry carries the numbers `perf_gates.py`
+measures on the machine the release was built on (MAINTENANCE.md says
+which): the cold start of `velaris --version` and of `velaris check` on a
+one-line file, a check per 1,000 lines, proof time p50 and p95 over the
+examples, the native compiler's compile time against what it saves on
+`examples/bench.vel`, and a pool's memory after 1,000 runs. The release
+workflow runs `perf_gates.py --against <previous tag>` before tagging and
+fails the release if the pure-numeric benchmark is more than 25% slower
+than the previous tag on the same runner.
+
+## Differences from the previous release
+
+Before tagging, the `differential` job runs `check_differential.py`: the
+examples, velaris-spec's conformance corpus and the quick benchmark, each
+run under this commit and under the previous tag, compared once what is not
+output (paths, the version string, timings) is taken out. A difference the
+CHANGELOG entry does not name stops the release. Name one on a line of the
+entry beginning `differential:`, in the form the script's docstring gives.
+The monthly workflow runs the same comparison over every benchmark program.
 
 ## What a person still does
 

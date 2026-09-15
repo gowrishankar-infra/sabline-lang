@@ -1,0 +1,4 @@
+fn main() uses io {
+    let price = money(100, "XYZ")
+    print(text_of(price))
+}

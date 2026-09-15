@@ -1,0 +1,3 @@
+fn total() -> Int {
+    return 2
+}

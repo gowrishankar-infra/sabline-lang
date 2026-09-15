@@ -32,6 +32,7 @@ the source claims. Default budget is io, which lets a cell print and
 nothing else.
 """
 import shlex
+from typing import Any
 
 try:
     from IPython.core.magic import Magics, cell_magic, magics_class
@@ -44,10 +45,10 @@ ALL = ("io", "fs", "net", "clock", "rand", "ffi")
 
 
 @magics_class
-class VelarisMagics(Magics):
+class VelarisMagics(Magics):  # type: ignore[misc]  # IPython is not installed by the lint job
 
-    @cell_magic
-    def velaris(self, line, cell):
+    @cell_magic  # type: ignore[misc]  # IPython is not installed by the lint job
+    def velaris(self, line: Any, cell: Any) -> None:
         words = shlex.split(line or "")
         allow = {"io"}
         want_audit = "--audit" in words
@@ -94,5 +95,5 @@ class VelarisMagics(Magics):
             print(result.output, end="")
 
 
-def load_ipython_extension(ipython):
+def load_ipython_extension(ipython: Any) -> None:
     ipython.register_magics(VelarisMagics)

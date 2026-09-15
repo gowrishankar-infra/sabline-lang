@@ -1,0 +1,43 @@
+// Quantified list properties through all_of and any_of (SPEC.md 9.3;
+// LLM.md: "ensures all_of(result, is_positive) proves when every push is
+// guarded to satisfy the predicate, with no invariant written").
+
+// ==== all_of_carried_through
+// expect: proven keep_positive
+fn is_positive(n: Int) -> Bool {
+    return n > 0
+}
+fn keep_positive(xs: List of Int) -> List of Int
+    requires all_of(xs, is_positive)
+    ensures all_of(result, is_positive)
+{
+    return xs
+}
+
+// ==== all_of_built_by_a_loop
+// expect: proven positives
+fn is_positive(n: Int) -> Bool {
+    return n > 0
+}
+fn positives(xs: List of Int) -> List of Int
+    ensures all_of(result, is_positive)
+{
+    let out: List of Int = []
+    for x in xs {
+        if x > 0 {
+            out = push(out, x)
+        }
+    }
+    return out
+}
+
+// ==== any_of_refuted
+// expect: E700 line 6
+fn is_positive(n: Int) -> Bool {
+    return n > 0
+}
+fn any_bad(xs: List of Int) -> List of Int
+    ensures any_of(result, is_positive)
+{
+    return xs
+}

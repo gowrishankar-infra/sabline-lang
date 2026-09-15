@@ -6,7 +6,8 @@ Velaris without shelling out - and the effect budget is enforced the
 same way it is on the command line, whatever a program's source claims
 about itself.
 
-```
+<!-- illustrative: installs from PyPI -->
+```sh
 pip install velaris-lang
 ```
 
@@ -31,7 +32,7 @@ run = velaris.run(source, allow={"io"})
 print(run.ok, run.output, run.refused_effect)
 ```
 
-`velaris.card()` returns the language in about 3,700 words - paste it
+`velaris.card()` returns the language in about <!-- count:card-words -->4,600<!-- /count --> words - paste it
 into a model before asking for Velaris.
 
 ## Limits: time and memory
@@ -182,7 +183,8 @@ process per call is easier to reason about.
 together in the shape a SaaS team would copy - a FastAPI service in one
 file, under 200 lines:
 
-```
+<!-- illustrative: the routes the example service answers -->
+```text
 POST /scripts           audit the source, store it with its capability
                         surface, answer with what it declares. No run.
 GET  /scripts/{id}      that declaration, as a customer is shown it
@@ -313,7 +315,8 @@ not parse).
 
 **One command, every client on the machine:**
 
-```
+<!-- illustrative lines 1,3: they change the configuration of the assistants on this machine -->
+```sh
 velaris mcp-install          # adds it wherever it finds a client
 velaris mcp-install --list   # show what it found, change nothing
 velaris mcp-install --remove # take it back out
@@ -434,7 +437,8 @@ the wheel it publishes and signed with sigstore
 
 To check the server you run against it:
 
-```
+<!-- illustrative: downloads a release, and verifies its signature online -->
+```sh
 gh release download v4.0.0 --repo gowrishankar-infra/velaris-lang \
   --pattern 'velaris-mcp-tools-4.0.0.json*'
 pip install sigstore
@@ -446,7 +450,8 @@ Everything after `--` is the command your client's configuration runs;
 `mcp-verify` starts it the way the client does, asks it for its tools,
 and compares:
 
-```
+<!-- illustrative: what mcp-verify prints for a server that changed -->
+```text
 manifest:  velaris-mcp-tools-4.0.0.json (4 tool(s), velaris 4.0.0)
 signature: verified, signed by https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/v4.0.0
 server:    python -m velaris_mcp --max-allow io (velaris 4.0.0)
@@ -489,7 +494,7 @@ environment your client runs in. What it does and does not tell you:
   the code.
 * It checks one moment. A server that changes its tools after you ran
   it is caught the next time you run it, not before.
-* The checker is in `velaris.py`, not in `velaris_mcp.py`, so a changed
+* The checker is in the `velaris` package, not in `velaris_mcp.py`, so a changed
   server file does not change the code that checks it. An installation
   in which both were changed is caught by verifying the wheel, or by
   running `mcp-verify` from a separately verified Velaris (a signed
@@ -500,7 +505,8 @@ manifest for any server, which is how the release workflow makes it.
 
 ## Vendored libraries, and velaris.lock
 
-```
+<!-- illustrative lines 1-2: they fetch a library over the network -->
+```sh
 velaris add https://example.com/geo.vel as geo   # vendored into lib/
 velaris add https://example.com/geo.vel --force  # replace different bytes
 velaris deps                                     # what you depend on
@@ -540,7 +546,7 @@ in Python should call the library, and why the door and the MCP server
 keep a worker pool (above) so they do not also pay an interpreter
 startup on every call. There is no in-process embedding for Node, Go or
 Rust, and there will not be one until the compiler is something other
-than a Python file; the process boundary is the supported way, and it is
+than a Python package; the process boundary is the supported way, and it is
 the boundary the OS enforces, which is stronger than the language's.
 
 ## From a language that is not Python
@@ -548,14 +554,16 @@ the boundary the OS enforces, which is stronger than the language's.
 `velaris serve` opens a local HTTP door, so a Node service, a Go tool,
 a Rust agent or a shell script can use the same three calls.
 
-```
+<!-- illustrative: starts a door, which runs until it is stopped -->
+```sh
 velaris serve --token-file ~/.velaris-token \
               --max-allow io,fs:read:./data,net:api.example.com@100 \
               --max-timeout 10 --max-memory-mb 256
                                        # localhost:8787, grants at most this
 ```
 
-```
+<!-- illustrative: the door's routes -->
+```text
 GET  /health         version, whether the prover is installed; with the
                      token, the ceilings too. The one endpoint without a token.
 GET  /card           the language, for pasting into a model
@@ -576,6 +584,7 @@ true` on `/run` returns the run's receipt with the result.
 **Every endpoint but `GET /health` needs the token**, as
 `Authorization: Bearer <token>`:
 
+<!-- illustrative: needs Node and a running door -->
 ```javascript
 const answer = await fetch("http://127.0.0.1:8787/run", {
   method: "POST",
@@ -613,7 +622,8 @@ length does not show either). A request with no token, a wrong one,
 another scheme, or the token anywhere but the header gets the same
 answer, to any path, `/card` and unknown paths included:
 
-```
+<!-- illustrative: an answer from the door -->
+```text
 401   WWW-Authenticate: Bearer realm="velaris"
       {"error": "unauthorized"}
 ```
@@ -643,7 +653,8 @@ door says so when it starts.
 the door grants them only up to its ceilings, and a caller asking for
 more at any of the three gets 403 with the ceilings named:
 
-```
+<!-- illustrative: an answer from the door -->
+```text
 403   {"error": "this server allows at most 30 second(s) per run; the
        request asked for 60", "max_allow": ["io"], "max_timeout": 30,
        "max_memory_mb": 512}
@@ -755,10 +766,12 @@ if a write to it fails later, the line goes to stderr instead.
 
 ## From JavaScript
 
-```
+<!-- illustrative: installs from npm -->
+```sh
 npm install velaris-lang        # or: npx velaris-lang script.vel --allow io
 ```
 
+<!-- illustrative: needs Node and the npm package -->
 ```javascript
 import { audit, run } from "velaris-lang";
 
@@ -775,12 +788,14 @@ the npm package says so plainly if it is missing. Types ship with it.
 
 ## In a notebook
 
-```
+<!-- illustrative: Jupyter commands -->
+```text
 %pip install velaris-lang
 %load_ext velaris_magic
 ```
 
-```
+<!-- illustrative: a Jupyter cell -->
+```text
 %%velaris --audit --allow io
 fn main() uses io {
     print("proven before it ran")
@@ -853,7 +868,8 @@ CI section lists the lockfiles it reads and what it cannot see.
 
 ## Holding a repository to its capability surface
 
-```
+<!-- illustrative lines 5: needs a git repository with a remote -->
+```sh
 velaris capabilities init              # record the surface in velaris.capabilities
 velaris capabilities check             # exit 1 if the code needs more than that
 velaris capabilities check --json      # the same, for tools
@@ -912,7 +928,8 @@ Each widening names what widened, the file and function that introduced
 it - the call, its line, and the chain of calls from `main` that reaches
 it - and the edit to `velaris.capabilities` that would accept it:
 
-```
+<!-- illustrative: the check's report of the sixth change of check_ratchet.py's gradual history -->
+```text
 WIDENED  net:collector.example.net - a new effect, net
     needed by app.vel (its entry does not grant it)
       lib/deliver.vel:2  send calls post("https://collector.example.net/v1")
@@ -961,7 +978,7 @@ is a new function.
 
 ## Moving a 4.x project to 5.0
 
-```
+```sh
 velaris migrate --to 5.0                # every program under .
 velaris migrate --to 5.0 src/report.vel # one of them
 velaris migrate --to 5.0 --json         # velaris.migrate/1
@@ -975,7 +992,8 @@ reads, it derives the narrowest budget the program's own audit can
 write - the grants `safe_command` carries - and prints the command to
 run it under 5.0.
 
-```
+<!-- output of: velaris migrate --to 5.0 examples/wordcount.vel -->
+```text
 examples/wordcount.vel
     uses:  fs, io
     run:   velaris examples/wordcount.vel --allow fs:read,io
@@ -996,7 +1014,8 @@ line it left alone with the budget to add by hand.
 
 ## Running velaris-spec's conformance corpus
 
-```
+<!-- illustrative lines 4: DIR stands for a directory -->
+```sh
 velaris conformance                    # L1, L2 and L3; exit 1 if any case fails
 velaris conformance --level 3          # the cases a claim at L3 needs: L1 and L3
 velaris conformance --json             # velaris.conformance/1, one result per case
@@ -1022,7 +1041,7 @@ and the verdict says so.
 
 ## An in-toto Statement of what a program may do
 
-```
+```sh
 velaris attest examples/effects.vel --output effects.intoto.json
 velaris attest examples/effects.vel --json          # the Statement on stdout
 velaris attest src --output src.jsonl               # one Statement per file
@@ -1071,7 +1090,8 @@ Sigstore bundle.
 With cosign (v3), keyless - a browser sign-in on a workstation, the
 job's identity in CI:
 
-```
+<!-- illustrative: signs through Sigstore, online -->
+```sh
 cosign attest-blob --yes --statement effects.intoto.json \
     --bundle effects.intoto.sigstore.json
 cosign verify-blob-attestation --bundle effects.intoto.sigstore.json \
@@ -1083,7 +1103,8 @@ cosign verify-blob-attestation --bundle effects.intoto.sigstore.json \
 
 or with a key pair (`cosign generate-key-pair`):
 
-```
+<!-- illustrative: needs cosign and a key pair -->
+```sh
 cosign attest-blob --yes --key cosign.key --statement effects.intoto.json \
     --bundle effects.intoto.sigstore.json
 cosign verify-blob-attestation --key cosign.pub --bundle effects.intoto.sigstore.json \
@@ -1100,6 +1121,7 @@ With sigstore-python (4.x): its command line's `sigstore attest` takes
 only SLSA provenance predicates, so use its library - the same calls the
 release workflow makes:
 
+<!-- illustrative: signs through Sigstore, online -->
 ```python
 from sigstore.dsse import Statement
 from sigstore.models import ClientTrustConfig
@@ -1131,7 +1153,7 @@ identity and verified in that workflow before it is attached
 
 ## A receipt of what one run did (8.1)
 
-```
+```sh
 velaris examples/effects.vel \
     --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand \
     --receipt effects.receipt.json
@@ -1196,7 +1218,8 @@ grant `declassify` to code whose receipts you will share.
 **Signing and verifying** is the attestation's recipe with the receipt's
 type:
 
-```
+<!-- illustrative: signs through Sigstore, online -->
+```sh
 cosign attest-blob --yes --statement effects.receipt.json \
     --bundle effects.receipt.sigstore.json
 cosign verify-blob-attestation --bundle effects.receipt.sigstore.json \
@@ -1226,7 +1249,8 @@ policy, written for two engines.
 capability Statement as its input and a platform's allow-lists as data,
 and answers with the reasons to refuse:
 
-```
+<!-- illustrative lines 2-3: needs OPA -->
+```sh
 velaris attest agent.vel --output agent.intoto.json
 opa eval -d policies/opa/capability.rego -d platform.json \
     -i agent.intoto.json 'data.velaris.capability.deny'
@@ -1251,7 +1275,8 @@ whose image lacks a capability attestation, verified by Kyverno's image
 verification against a keyless signer you name, with an audit that
 compiled. The attestation is attached to the image with cosign:
 
-```
+<!-- illustrative lines 2-4: needs cosign and a registry -->
+```sh
 velaris attest agent.vel --json | jq .predicate > capability.json
 cosign attest --yes \
     --type https://gowrishankar-infra.github.io/velaris-lang/capability/v1 \
@@ -1267,14 +1292,14 @@ deprecated in favour of `ImageValidatingPolicy`.
 
 ## Ejecting a program (8.1)
 
-```
+```sh
 velaris eject agent.vel -o agent-ejected
 python -I agent-ejected/main.py
 ```
 
 `velaris eject` writes a directory that runs, and builds into one
 executable, with nothing from this project installed: the program and its
-imports, a copy of `velaris.py` and of the standard library files it uses,
+imports, a copy of the `velaris` package and of the standard library files it uses,
 `main.py` with the budget written into it (the audit's narrowest, or
 `--allow`), `requirements.txt` pinning the prover and the native compiler
 to the versions installed, `proofs.json`, `build.py` with the PyInstaller
@@ -1299,7 +1324,7 @@ ejected and what does not. In short:
 ```yaml
 repos:
   - repo: https://github.com/gowrishankar-infra/velaris-lang
-    rev: v2.55
+    rev: v8.1.1
     hooks:
       - id: velaris-check      # it compiles, and the promises hold
       - id: velaris-fmt        # canonically formatted
@@ -1308,7 +1333,8 @@ repos:
 
 ## Trying it with nothing installed
 
-```
+<!-- illustrative: installs from PyPI -->
+```sh
 pipx run --spec velaris-lang velaris hello.vel --allow io
 ```
 

@@ -1,0 +1,80 @@
+// Whole numbers and Bool (SPEC.md 9.3): arithmetic, comparison, every
+// path through the branches, and division with its divisor (E706).
+
+// ==== int_promise_proven
+// expect: proven double
+fn double(n: Int) -> Int
+    requires n >= 0
+    ensures result >= n
+{
+    return n * 2
+}
+
+// ==== int_promise_refuted
+// expect: E700 line 3
+fn bump(n: Int) -> Int
+    ensures result > n
+{
+    return n
+}
+
+// ==== every_path_through_branches
+// expect: proven clamp
+fn clamp(n: Int, lo: Int, hi: Int) -> Int
+    requires lo <= hi
+    ensures result >= lo and result <= hi
+{
+    if n < lo {
+        return lo
+    }
+    if n > hi {
+        return hi
+    }
+    return n
+}
+
+// ==== one_path_breaks_it
+// expect: E700 line 4
+fn clamp_bad(n: Int, lo: Int, hi: Int) -> Int
+    requires lo <= hi
+    ensures result >= lo
+{
+    if n > hi {
+        return hi
+    }
+    return n
+}
+
+// ==== bool_promise_proven
+// expect: proven both
+fn both(a: Bool, b: Bool) -> Bool
+    ensures result == (a and b)
+{
+    if a {
+        return b
+    }
+    return false
+}
+
+// ==== bool_promise_refuted
+// expect: E700 line 3
+fn either(a: Bool, b: Bool) -> Bool
+    ensures result == (a or b)
+{
+    return not (not a or not b)
+}
+
+// ==== divisor_shown_positive
+// expect: proven ratio
+fn ratio(a: Int, b: Int) -> Int
+    requires a >= 0 and b > 0
+    ensures result >= 0
+{
+    return a / b
+}
+
+// ==== divisor_can_be_zero
+// expect: E706 line 3
+fn ratio(a: Int, b: Int) -> Int {
+    return a / b
+}

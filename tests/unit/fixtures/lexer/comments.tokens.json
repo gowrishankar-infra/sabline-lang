@@ -1,0 +1,13 @@
+{
+  "about": "SPEC.md 2: a comment runs from // to the end of the line. With keep_trivia each comment is a COMMENT token without its trailing blanks and each line break a NEWLINE token on the line it ends; // inside text is text.",
+  "keep_trivia": true,
+  "tokens": [
+    ["COMMENT", "// a whole-line comment", 1], ["NEWLINE", "", 1],
+    ["KEYWORD", "let", 2], ["IDENT", "x", 2], ["OP", "=", 2], ["NUMBER", "1", 2],
+    ["COMMENT", "// trailing", 2], ["NEWLINE", "", 2],
+    ["NEWLINE", "", 3],
+    ["STRING", "\"// not a comment\"", 4], ["COMMENT", "// but this is", 4],
+    ["NEWLINE", "", 4],
+    ["EOF", "", 5]
+  ]
+}

@@ -2,7 +2,7 @@
 import sys
 
 
-def log_line(path, line):
+def log_line(path: str, line: str) -> None:
     with open(path, "a") as f:  # DANGER
         f.write(line + "\n")
 

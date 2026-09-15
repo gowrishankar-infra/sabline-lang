@@ -1,0 +1,221 @@
+name: adversarial models
+
+# A standing adversarial pass, once a week, by three models from three
+# vendors (item 30 of 8.2): Claude through Claude Code, Gemini through
+# Gemini CLI, and Grok through the xAI API. Each is given the same prompt,
+# .github/adversarial/PROMPT.md, with this week's area of the compiler
+# (adversarial_models.py rotates it). Each finding becomes one issue,
+# labelled with the model that made it: adversarial:claude,
+# adversarial:gemini, adversarial:grok. A person reproduces a finding
+# before anything changes (MAINTENANCE.md).
+#
+# Nothing here commits, pushes or fixes anything:
+#   - the checkout keeps no credential (persist-credentials: false), and
+#     no model's job holds a GitHub token with more than read access to
+#     the repository, or any token at all in the model's own step;
+#   - only the report job may open issues, and it holds no model key;
+#   - Claude Code and Gemini CLI may read the checkout, write under
+#     adversarial-scratch/ and run the compiler, on a runner that is thrown
+#     away; Grok has no tools at all.
+# A model whose key is not set is skipped with a notice, and the run is
+# green. Keys: ANTHROPIC_API_KEY, GEMINI_API_KEY, XAI_API_KEY (repository
+# secrets). Models: the variables ADVERSARIAL_CLAUDE_MODEL,
+# ADVERSARIAL_GEMINI_MODEL and ADVERSARIAL_GROK_MODEL, or the defaults below.
+
+on:
+  schedule:
+    - cron: "11 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      focus:
+        description: "The area to attack (an adversarial_models.py FOCUS key); empty for this week's"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  claude:
+    name: Claude (Claude Code)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+      FOCUS: ${{ github.event.inputs.focus }}
+    steps:
+      - name: Skipped without a key
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice::ANTHROPIC_API_KEY is not set; the Claude pass is skipped"
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        if: env.HAS_KEY == 'true'
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        if: env.HAS_KEY == 'true'
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        if: env.HAS_KEY == 'true'
+        with:
+          node-version: "22"
+      - name: The compiler with its prover, Claude Code, and this week's prompt
+        if: env.HAS_KEY == 'true'
+        run: |
+          pip install -c requirements/ci.txt ".[full]"
+          npm install -g @anthropic-ai/claude-code
+          mkdir -p adversarial-scratch
+          python adversarial_models.py prompt ${FOCUS:+--focus "$FOCUS"} > "$RUNNER_TEMP/prompt.md"
+          cat "$RUNNER_TEMP/prompt.md"
+      - name: The pass
+        if: env.HAS_KEY == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ vars.ADVERSARIAL_CLAUDE_MODEL || 'claude-opus-5' }}
+        run: |
+          status=0
+          claude -p --model "$MODEL" --max-turns 80 --output-format text \
+            --permission-mode dontAsk \
+            --allowedTools "Read,Grep,Glob,Edit(adversarial-scratch/**),Write(adversarial-scratch/**),Bash(python *),Bash(git log *),Bash(git show *),Bash(git diff *),Bash(ls *)" \
+            --disallowedTools "WebFetch,WebSearch,Bash(git push *),Bash(git commit *),Bash(gh *),Bash(curl *),Bash(wget *)" \
+            < "$RUNNER_TEMP/prompt.md" > "$RUNNER_TEMP/claude.out" || status=$?
+          if [ "$status" != 0 ]; then echo "::warning::claude exited $status"; fi
+          tail -c 4000 "$RUNNER_TEMP/claude.out"
+      - name: Its findings, one file each
+        if: env.HAS_KEY == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python adversarial_models.py findings claude "$RUNNER_TEMP/claude.out" --out findings/claude
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: env.HAS_KEY == 'true'
+        with:
+          name: findings-claude
+          path: findings/claude
+          if-no-files-found: ignore
+
+  gemini:
+    name: Gemini (Gemini CLI)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HAS_KEY: ${{ secrets.GEMINI_API_KEY != '' }}
+      FOCUS: ${{ github.event.inputs.focus }}
+    steps:
+      - name: Skipped without a key
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice::GEMINI_API_KEY is not set; the Gemini pass is skipped"
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        if: env.HAS_KEY == 'true'
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        if: env.HAS_KEY == 'true'
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        if: env.HAS_KEY == 'true'
+        with:
+          node-version: "22"
+      - name: The compiler with its prover, Gemini CLI, and this week's prompt
+        if: env.HAS_KEY == 'true'
+        run: |
+          pip install -c requirements/ci.txt ".[full]"
+          npm install -g @google/gemini-cli
+          mkdir -p adversarial-scratch
+          python adversarial_models.py prompt ${FOCUS:+--focus "$FOCUS"} > "$RUNNER_TEMP/prompt.md"
+      # yolo approves the shell tool, so it can run the compiler; the runner
+      # holds no credential and is thrown away after the job
+      - name: The pass
+        if: env.HAS_KEY == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_CLI_TRUST_WORKSPACE: "true"
+          MODEL: ${{ vars.ADVERSARIAL_GEMINI_MODEL }}
+        run: |
+          model=()
+          if [ -n "$MODEL" ]; then model=(-m "$MODEL"); fi
+          status=0
+          gemini "${model[@]}" --approval-mode yolo --output-format text \
+            -p "$(cat "$RUNNER_TEMP/prompt.md")" > "$RUNNER_TEMP/gemini.out" || status=$?
+          if [ "$status" != 0 ]; then echo "::warning::gemini exited $status"; fi
+          tail -c 4000 "$RUNNER_TEMP/gemini.out"
+      - name: Its findings, one file each
+        if: env.HAS_KEY == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python adversarial_models.py findings gemini "$RUNNER_TEMP/gemini.out" --out findings/gemini
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: env.HAS_KEY == 'true'
+        with:
+          name: findings-gemini
+          path: findings/gemini
+          if-no-files-found: ignore
+
+  grok:
+    name: Grok (xAI API, no tools)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      HAS_KEY: ${{ secrets.XAI_API_KEY != '' }}
+      FOCUS: ${{ github.event.inputs.focus }}
+    steps:
+      - name: Skipped without a key
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice::XAI_API_KEY is not set; the Grok pass is skipped"
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        if: env.HAS_KEY == 'true'
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        if: env.HAS_KEY == 'true'
+        with:
+          python-version: "3.12"
+      - name: The pass
+        if: env.HAS_KEY == 'true'
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          MODEL: ${{ vars.ADVERSARIAL_GROK_MODEL || 'grok-4' }}
+        run: |
+          python adversarial_models.py prompt ${FOCUS:+--focus "$FOCUS"} > "$RUNNER_TEMP/prompt.md"
+          status=0
+          python adversarial_models.py grok "$RUNNER_TEMP/prompt.md" --model "$MODEL" > "$RUNNER_TEMP/grok.out" || status=$?
+          if [ "$status" != 0 ]; then echo "::warning::the Grok pass exited $status"; fi
+          python adversarial_models.py findings grok "$RUNNER_TEMP/grok.out" --out findings/grok
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: env.HAS_KEY == 'true'
+        with:
+          name: findings-grok
+          path: findings/grok
+          if-no-files-found: ignore
+
+  report:
+    name: one issue per finding, labelled by model
+    needs: [claude, gemini, grok]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write              # open or comment; nothing else
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          pattern: findings-*
+          path: findings
+      - name: Open them
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for model in claude gemini grok; do
+            if ls "findings/findings-$model"/*.md > /dev/null 2>&1; then
+              python open_issues.py files "findings/findings-$model" --label "adversarial:$model"
+            else
+              echo "$model: nothing to open"
+            fi
+          done

@@ -1,0 +1,10 @@
+fn main() uses io, fs {
+    check read_file("a.txt") {
+        ok text { print(text) }
+        fail why { print(why) }
+    }
+    check read_file("a.txt") {
+        ok text { print(text) }
+        fail why { print(why) }
+    }
+}

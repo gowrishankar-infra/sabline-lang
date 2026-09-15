@@ -2,7 +2,7 @@
 import math
 
 
-def root(x):
+def root(x: float) -> float:
     return math.sqrt(x)
 
 

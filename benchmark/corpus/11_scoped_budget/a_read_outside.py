@@ -2,7 +2,7 @@
 import sys
 
 
-def peek(path):
+def peek(path: str) -> str:
     return open(path, encoding="utf-8").read()  # DANGER
 
 

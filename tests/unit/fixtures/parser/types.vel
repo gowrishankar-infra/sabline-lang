@@ -1,0 +1,15 @@
+record Holder {
+    grid: List of List of Int
+    index: Map of Text to List of Int
+    test: fn(Int, Text) -> Bool
+    sink: fn(Int)
+    price: Money of INR
+    key: Secret of Text
+    keys: Secret of List of Text
+    plain: Money
+    of: Int
+}
+
+record Point {
+    x: Int y: Int
+}

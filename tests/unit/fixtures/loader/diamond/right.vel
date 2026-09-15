@@ -1,0 +1,5 @@
+import "shared.vel"
+
+fn right() -> Int {
+    return shared()
+}

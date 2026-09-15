@@ -1,0 +1,13 @@
+fn stamp() -> Int uses clock {
+    return now()
+}
+
+fn later(t: Int) -> Int
+    requires t > stamp()
+{
+    return t
+}
+
+fn main() uses io {
+    print("hi")
+}

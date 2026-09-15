@@ -2,7 +2,7 @@
 import subprocess
 
 
-def tidy(text):
+def tidy(text: str) -> str:
     return subprocess.getoutput("echo " + text)  # DANGER
 
 

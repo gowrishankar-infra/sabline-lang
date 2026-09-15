@@ -1,0 +1,6 @@
+import "money.vel" as money
+
+fn main() uses io {
+    let parts = money.split(money(1000, "INR"), 3)
+    print(length(parts))
+}

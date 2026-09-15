@@ -2,17 +2,17 @@
 import sys
 
 
-def store(path, text):
+def store(path: str, text: str) -> None:
     open(path, "w").write(text)  # DANGER
 
 
-def render(path, total):
+def render(path: str, total: int) -> str:
     text = "total %d" % total
     store(path, text)
     return text
 
 
-def report(path, amounts):
+def report(path: str, amounts: list[int]) -> str:
     return render(path, sum(amounts))
 
 

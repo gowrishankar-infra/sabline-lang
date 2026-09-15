@@ -1,0 +1,4 @@
+fn main() uses io {
+    let share = money(100, "INR") / 3
+    print(text_of(share))
+}

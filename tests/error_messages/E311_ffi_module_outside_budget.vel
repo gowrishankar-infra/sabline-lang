@@ -1,0 +1,6 @@
+fn main() uses io, ffi {
+    check py("os", "path.basename", ["a/b"]) {
+        ok v { print(v) }
+        fail why { print(why) }
+    }
+}

@@ -1,0 +1,42 @@
+// Text (SPEC.md 9.3): length and contains, upper and lower keeping the
+// length, and split giving at least one piece.
+
+// ==== concatenation_length_proven
+// expect: proven shout
+fn shout(t: Text) -> Text
+    ensures length(result) == length(t) + 1
+{
+    return t + "!"
+}
+
+// ==== concatenation_length_refuted
+// expect: E700 line 3
+fn shout(t: Text) -> Text
+    ensures length(result) == length(t)
+{
+    return t + "!"
+}
+
+// ==== contains_proven
+// expect: proven tag
+fn tag(t: Text) -> Text
+    ensures contains(result, "#")
+{
+    return "#" + t
+}
+
+// ==== case_change_keeps_the_length
+// expect: proven up
+fn up(t: Text) -> Text
+    ensures length(result) == length(t)
+{
+    return upper(t)
+}
+
+// ==== split_gives_at_least_one_piece
+// expect: proven pieces
+fn pieces(t: Text) -> Int
+    ensures result >= 1
+{
+    return length(split(t, ","))
+}

@@ -5,28 +5,46 @@ on:
     branches: [main]
   pull_request:
 
+# What runs where, and where to look when something is red: MAINTENANCE.md.
+
 jobs:
   test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }} / ${{ matrix.deps }}
+    # Python 3.14 is run and reported, and allowed to fail: a red 3.14 leg
+    # does not fail the run, so it does not hold up a release (8.2)
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # x64 on all three systems, both Pythons, with and without the
+        # optional dependencies: twelve legs
+        os: [ubuntu-latest, windows-latest, macos-15-intel]
         python: ["3.10", "3.12"]
         deps: [full, minimal]
+        experimental: [false]
+        # arm64 on Linux and macOS, and Python 3.14: six more (8.2)
+        include:
+          - {os: ubuntu-24.04-arm, python: "3.12", deps: full, experimental: false}
+          - {os: ubuntu-24.04-arm, python: "3.12", deps: minimal, experimental: false}
+          - {os: macos-latest, python: "3.12", deps: full, experimental: false}
+          - {os: macos-latest, python: "3.12", deps: minimal, experimental: false}
+          - {os: ubuntu-latest, python: "3.14", deps: full, experimental: true}
+          - {os: ubuntu-latest, python: "3.14", deps: minimal, experimental: true}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      # [test] is jsonschema, which the suites use to validate SARIF
-      # output; it is not a dependency of Velaris
+          allow-prereleases: true
+      # [test] is what the suites need and Velaris does not: jsonschema,
+      # fastapi and httpx, pyyaml, hypothesis
       - name: Install (full - with Z3 proofs and LLVM native)
         if: matrix.deps == 'full'
-        run: pip install ".[full,test]"
+        run: pip install -c requirements/ci.txt ".[full,test]"
       - name: Install (minimal - runtime checks, interpreted)
         if: matrix.deps == 'minimal'
-        run: pip install ".[test]"
+        run: pip install -c requirements/ci.txt ".[test]"
       - name: Version
         run: velaris --version
       # velaris-spec: its conformance corpus, and the schemas the library
@@ -45,12 +63,26 @@ jobs:
           version: "1.20.2"
       - name: Test suite
         run: python run_tests.py
+      - name: Each stage on its own (unit tests, and the modules' pipeline order)
+        run: python run_unit_tests.py
       - name: Native and interpreted agree (random programs)
         run: python fuzz_native.py 60
+      - name: The parsers, JSON, CSV, py_json and the contract translator, fuzzed (30 each)
+        run: python fuzz_parsers.py 30
       - name: How much is proven
         run: velaris proofs examples stdlib || true
       - name: The library and MCP server keep the same guarantees
         run: python check_library.py
+      - name: What the library, the command line, the doors and the Action offer, held to a golden
+        run: python check_api.py
+      - name: Every command answers --help; stats --ffi; z3 and llvmlite imported only when used
+        run: python check_cli.py
+      - name: Every error code's message, held to a golden
+        run: python check_error_messages.py
+      - name: The release gate, the kill switch and a release that fails midway
+        run: python check_release.py
+      - name: The scheduled workflows report and change nothing; open_issues.py and adversarial_models.py
+        run: python check_workflows.py
       - name: Every fallible builtin is enforced
         run: python check_fallible.py
       - name: Amounts are exact, in one currency, and round only where named
@@ -84,12 +116,24 @@ jobs:
         run: python benchmark/run.py --quick --check
       - name: Wrong programs are refused for the right reason
         run: python check_refusals.py
-      - name: The 7.1.1 adversarial pass stays closed
+      - name: Every adversarial pass stays closed
         run: python check_adversarial.py
-      - name: A lie is never proven (Goal A corpus)
+      - name: A lie is never proven, under five Z3 seeds (Goal A corpus)
         run: python check_prover_lies.py
       - name: The audit is unchanged by shape, and moves only with an effect
         run: python check_metamorphic.py
+      - name: Hostile resources end in a coded error, never a traceback
+        run: python check_hostile.py
+      - name: Nothing a program or its surroundings control widens its budget or its audit
+        run: python check_self_budget.py
+      - name: Properties over generated programs (formatter, check, audit against the run)
+        run: python check_properties.py
+      - name: The documents are true (code blocks run, commands run, counts and codes match)
+        run: python check_docs.py
+      # the ten tasks with their recorded replies: no model and no network;
+      # with a key the same command asks the model (agent_loop.py)
+      - name: The model round trip, replayed (agent_loop.py --metric --offline)
+        run: python agent_loop.py --metric --offline
       - name: Edge, property and round-trip tests
         run: velaris examples/edges.vel --allow ffi:datetime,io
       - name: Velaris tests written in Velaris
@@ -103,11 +147,52 @@ jobs:
         run: python build_playground.py
       - name: Docs site builds
         run: python build_docs.py
+      # the same audits and SARIF, byte for byte, on the three x64 systems
+      - name: Audit and SARIF documents, for the comparison across systems
+        if: matrix.python == '3.12' && matrix.deps == 'full' && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || matrix.os == 'macos-15-intel')
+        run: python check_identical.py --write identical-out
+      - name: Keep them
+        if: matrix.python == '3.12' && matrix.deps == 'full' && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || matrix.os == 'macos-15-intel')
+        uses: actions/upload-artifact@v4
+        with:
+          name: identical-${{ runner.os }}
+          path: identical-out
+          if-no-files-found: error
+
+  identical:
+    name: the audit and SARIF are the same bytes on Linux, Windows and macOS
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: identical-*
+          path: identical
+      - name: Compare
+        run: python check_identical.py --compare identical/identical-Linux identical/identical-Windows identical/identical-macOS
+
+  lint:
+    name: mypy --strict and ruff, and the complexity report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -c requirements/ci.txt ".[full,test]" "mypy==1.18.2" "ruff==0.13.1" "types-PyYAML==6.0.12.20260906" "types-psutil==7.2.2.20260906" "types-jsonschema==4.26.0.20260518"
+      - name: Lint and type-check the package and every script
+        run: python check_lint.py
 
   # Two suites at once, from one checkout, as two local configurations run
-  # side by side: every suite writes to a directory of its own and keeps
-  # its own proof cache (suite_dirs.py), so neither may see the other's
-  # files. Each pair runs the same suite twice together.
+  # side by side: every suite writes to a directory of its own
+  # (suite_dirs.py), so neither may see the other's files. Each pair runs
+  # the same suite twice together.
   concurrent:
     name: suites run twice at once, from one checkout
     runs-on: ubuntu-latest
@@ -117,7 +202,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install (full)
-        run: pip install ".[full,test]"
+        run: pip install -c requirements/ci.txt ".[full,test]"
       - name: velaris-spec, for the schemas
         uses: actions/checkout@v5
         with:

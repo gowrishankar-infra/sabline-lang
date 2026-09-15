@@ -1,0 +1,5 @@
+fn main() uses io {
+    if 1 {
+        print("one")
+    }
+}

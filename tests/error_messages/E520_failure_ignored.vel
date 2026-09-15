@@ -1,0 +1,3 @@
+fn main() uses io {
+    print(to_int("5") * 2)
+}

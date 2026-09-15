@@ -8,6 +8,9 @@ hold it to fixtures and a person can ask the same question before
 pushing:
 
     python release_checks.py gate              is this commit a release?
+    python release_checks.py covered v8.1.1    what it changes that a minor
+                                               release must explain
+    python release_checks.py paused            does RELEASE_PAUSED stop it?
     python release_checks.py title 7.2.0       its CHANGELOG title
     python release_checks.py notes 7.2.0 --sha SHA --previous v7.1.2
     python release_checks.py published pypi 7.2.0
@@ -25,6 +28,7 @@ later.
 from __future__ import annotations
 
 import argparse
+import ast
 import fnmatch
 import json
 import os
@@ -36,6 +40,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import Any, Callable, cast
 
 REPOSITORY = "gowrishankar-infra/velaris-lang"
 PACKAGE = "velaris-lang"                         # on PyPI and on npm
@@ -55,10 +60,13 @@ NAMES = {"pypi": "PyPI", "npm": "npm", "registry": "the MCP registry",
          "github": "GitHub releases", "vscode": "the VS Code Marketplace"}
 RETRY_WAIT = 10          # seconds between attempts at a target that failed
 
-# The six files run_tests.py's check_versions holds to one version.
-VERSION_FILES = ("velaris.py", "pyproject.toml", "npm/package.json",
+# The six files run_tests.py's check_versions holds to one version. The
+# first was velaris.py until 8.2 made the compiler a package; a repository
+# of that shape - an older tag, a fixture - is still read.
+VERSION_FILES = ("velaris/version.py", "pyproject.toml", "npm/package.json",
                  "mcpb/manifest.json", "editor/vscode/package.json",
                  "integrations/mcp_registry/server.json")
+OLD_VERSION_FILE = "velaris.py"
 
 # A CHANGELOG entry heading: "## 7.1.2 - The proof cache could be lied to"
 ENTRY = re.compile(r"^## (\d+\.\d+(?:\.\d+)?) - (.+)$", re.M)
@@ -72,7 +80,7 @@ class Unanswered(Exception):
 
 # ---- versions, tags and the CHANGELOG ----------------------------------------
 
-def parse_version(text) -> tuple[int, int, int] | None:
+def parse_version(text: Any) -> tuple[int, int, int] | None:
     """(major, minor, patch) of '7.2.0', 'v7.2.0' or '7.2'; None otherwise."""
     m = re.fullmatch(r"v?(\d+)\.(\d+)(?:\.(\d+))?", str(text or "").strip())
     if not m:
@@ -87,7 +95,7 @@ def _read(root: Path, name: str) -> str | None:
         return None
 
 
-def _load_json(text):
+def _load_json(text: Any) -> Any:
     try:
         return json.loads(text) if text is not None else None
     except ValueError:
@@ -95,12 +103,14 @@ def _load_json(text):
 
 
 def version_claims(root: Path) -> list[tuple[str, str | None]]:
-    """What each version file says, velaris.py first; None where a file
+    """What each version file says, the compiler's first; None where a file
     or its field is missing. The registry manifest says it three times -
     its own, and one per package - and each of those is published."""
     claims: list[tuple[str, str | None]] = []
-    for name, pattern in (("velaris.py", r'^VERSION = "([^"]*)"'),
-                          ("pyproject.toml", r'^version = "([^"]*)"')):
+    first = (OLD_VERSION_FILE if not (root / VERSION_FILES[0]).exists()
+             and (root / OLD_VERSION_FILE).exists() else VERSION_FILES[0])
+    for name, pattern in ((first, r'^VERSION = "([^"\r\n]*)"'),
+                          ("pyproject.toml", r'^version = "([^"\r\n]*)"')):
         m = re.search(pattern, _read(root, name) or "", re.M)
         claims.append((name, m.group(1) if m else None))
     for name in VERSION_FILES[2:]:
@@ -108,7 +118,8 @@ def version_claims(root: Path) -> list[tuple[str, str | None]]:
         doc = doc if isinstance(doc, dict) else {}
         claims.append((name, doc.get("version")))
         if name.endswith("server.json"):
-            for package in doc.get("packages") or []:
+            listed = doc.get("packages")
+            for package in listed if isinstance(listed, list) else []:
                 if isinstance(package, dict):
                     claims.append(
                         (f"{name} ({package.get('registryType')} package)",
@@ -120,7 +131,9 @@ def registry_packages(root: Path) -> list[str]:
     """The registryType of every package the registry manifest lists."""
     doc = _load_json(_read(root, VERSION_FILES[-1]))
     packages = doc.get("packages") if isinstance(doc, dict) else None
-    return sorted(str(p.get("registryType")) for p in packages or []
+    if not isinstance(packages, list):
+        return []
+    return sorted(str(p.get("registryType")) for p in packages
                   if isinstance(p, dict))
 
 
@@ -150,30 +163,263 @@ def git(root: Path, *words: str) -> str:
     return done.stdout.strip()
 
 
+# ---- what a release changes that STABILITY.md covers ---------------------------
+
+# A default that is a value: a change to one changes what a command line, a
+# door or the library does when nobody says (STABILITY.md: the command line,
+# and the budget a command line with no --allow installs). Every module-level
+# name DEFAULT_* or *_DEFAULT counts, and these.
+KNOWN_DEFAULTS = ("MAX_READ_BYTES", "PROOF_SECONDS", "FLOAT_PROOF_SECONDS",
+                  "DOOR_MAX_TIMEOUT", "DOOR_MAX_MEMORY_MB", "DOOR_RATE_LIMIT")
+DEFAULT_NAME = re.compile(r"^(?:DEFAULT_\w+|\w+_DEFAULT)$")
+# the library STABILITY.md covers, whose parameters' defaults count too
+COVERED_CALLS = ("check", "audit", "run", "attest", "card")
+COVERED_CLASS = "Pool"
+FLAG = re.compile(r"--[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
+# the variables of the run state: what a run starts from when nobody says
+STATE_MODULE = "velaris/state.py"
+STATE_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
+CODE = re.compile(r"E\d{3}")
+PLACEHOLDER = re.compile(r"(?:todo|tbd|fixme|xxx|placeholder)\b", re.I)
+COMPATIBILITY_LINE = "compatibility:"
+API_LINE = "api:"
+API_GOLDEN = "tests/api/golden.json"
+
+
+def velaris_sources(root: Path, ref: str | None = None) -> dict[str, str]:
+    """{path: text} of Velaris's own Python - every module of the package,
+    in a sub-package too, or velaris.py before 8.2, and the MCP server - in
+    the working tree, or at a git ref. A file that cannot be read as UTF-8
+    text is a question the gate cannot answer, never an empty module."""
+    single = (OLD_VERSION_FILE, "velaris_mcp.py")
+    if ref is None:
+        paths = sorted(p.relative_to(root).as_posix()
+                       for p in (root / "velaris").rglob("*.py") if p.is_file())
+        paths += [n for n in single if (root / n).is_file()]
+        found: dict[str, str] = {}
+        for p in paths:
+            try:
+                found[p] = (root / p).read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as e:
+                raise Unanswered(f"{p} cannot be read as UTF-8 text ({e})")
+        return found
+    listed = git(root, "ls-tree", "-r", "--name-only", ref, "--", "velaris",
+                 *single)
+    paths = [p for p in listed.splitlines()
+             if p in single or re.fullmatch(r"velaris/.+\.py", p)]
+    return {p: git(root, "show", f"{ref}:{p}") for p in paths}
+
+
+def _trees(sources: dict[str, str]) -> list[Any]:
+    trees = []
+    for path, source in sorted(sources.items()):
+        try:
+            trees.append(ast.parse(source))
+        except (SyntaxError, ValueError, RecursionError, MemoryError) as e:
+            raise Unanswered(f"{path} does not parse: {type(e).__name__}: {e}")
+    return trees
+
+
+def error_codes(sources: dict[str, str]) -> set[str]:
+    """Every error code the compiler's source holds: every text that is one
+    code and nothing else, wherever it is written. ERROR_TABLE's keys are
+    such texts, and so is a code added by a subscript, by update(), through
+    a splat or in a sub-package, which the literal table alone did not show
+    (8.2, the adversarial pass). A code built from pieces while running
+    is not seen."""
+    return {n.value for tree in _trees(sources) for n in ast.walk(tree)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str)
+            and CODE.fullmatch(n.value)}
+
+
+def cli_flags(sources: dict[str, str]) -> set[str]:
+    """Every flag the command line and the MCP server know: a text that is
+    one --flag and nothing else, wherever it is written."""
+    return {n.value for tree in _trees(sources) for n in ast.walk(tree)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str)
+            and FLAG.fullmatch(n.value)}
+
+
+def _constants(trees: list[Any]) -> dict[str, list[Any]]:
+    """{name: [value, ...]} of every module-level assignment to a name."""
+    values: dict[str, list[Any]] = {}
+    for tree in trees:
+        for node in tree.body:
+            if isinstance(node, (ast.Assign, ast.AnnAssign)) \
+                    and node.value is not None:
+                targets = node.targets if isinstance(node, ast.Assign) \
+                    else [node.target]
+                for t in targets:
+                    if isinstance(t, ast.Name):
+                        values.setdefault(t.id, []).append(node.value)
+    return values
+
+
+def _resolved(expr: Any, values: dict[str, list[Any]], depth: int = 0) -> str:
+    """An expression's source, with each name of a module constant that is
+    assigned once replaced by that constant's own expression, five deep: a
+    default read from another constant changes when that one does."""
+    import copy
+
+    class Inline(ast.NodeTransformer):
+        def visit_Name(self, node: ast.Name) -> Any:
+            got = values.get(node.id)
+            if depth < 5 and got and len(got) == 1 \
+                    and isinstance(node.ctx, ast.Load):
+                inner = _resolved(got[0], values, depth + 1)
+                return ast.parse(inner, mode="eval").body
+            return node
+    return ast.unparse(Inline().visit(copy.deepcopy(expr)))
+
+
+def state_names(sources: dict[str, str]) -> set[str]:
+    """The run state's variables: velaris/state.py's module-level names."""
+    if STATE_MODULE not in sources:
+        return set()
+    return {name for name in _constants(_trees({STATE_MODULE:
+                                                 sources[STATE_MODULE]}))
+            if STATE_NAME.match(name)}
+
+
+def defaults(sources: dict[str, str],
+             watched: set[str] | frozenset[str] = frozenset()) -> dict[str, str]:
+    """Every default, as source text with other constants read through: a
+    module-level constant named as one, a variable of the run state
+    (`watched`), and the default of each parameter of the library
+    STABILITY.md covers. A name defined in two modules is both texts. A
+    default computed in a function body is not seen."""
+    trees = _trees(sources)
+    values = _constants(trees)
+    found_all: dict[str, list[str]] = {}
+    for tree in trees:
+        for node in tree.body:
+            if isinstance(node, (ast.Assign, ast.AnnAssign)) \
+                    and node.value is not None:
+                targets = node.targets if isinstance(node, ast.Assign) \
+                    else [node.target]
+                for t in targets:
+                    name = getattr(t, "id", None)
+                    if name and (DEFAULT_NAME.match(name)
+                                 or name in KNOWN_DEFAULTS
+                                 or name in watched):
+                        found_all.setdefault(name, []).append(
+                            _resolved(node.value, values))
+            functions = []
+            if isinstance(node, ast.FunctionDef) and node.name in COVERED_CALLS:
+                functions.append((node.name, node))
+            if isinstance(node, ast.ClassDef) and node.name == COVERED_CLASS:
+                functions += [(f"{node.name}.{f.name}", f) for f in node.body
+                              if isinstance(f, ast.FunctionDef)
+                              and (f.name == "__init__"
+                                   or not f.name.startswith("_"))]
+            for label, fn in functions:
+                args = fn.args
+                positional = args.posonlyargs + args.args
+                for a, d in zip(positional[len(positional)
+                                           - len(args.defaults):],
+                                args.defaults):
+                    found_all.setdefault(f"{label}({a.arg})", []).append(
+                        _resolved(d, values))
+                for a, kd in zip(args.kwonlyargs, args.kw_defaults):
+                    if kd is not None:
+                        found_all.setdefault(f"{label}({a.arg})", []).append(
+                            _resolved(kd, values))
+    return {k: " | ".join(sorted(v)) for k, v in found_all.items()}
+
+
+def covered_changes(root: Path, since: str) -> list[str]:
+    """What the commits after `since` change that STABILITY.md covers and a
+    minor or patch release must explain: an error code added to the table,
+    a flag no longer known, a default that is not what it was."""
+    before, after = velaris_sources(root, since), velaris_sources(root)
+    out = [f"adds the error code {c}"
+           for c in sorted(error_codes(after) - error_codes(before))]
+    out += [f"removes the flag {f}"
+            for f in sorted(cli_flags(before) - cli_flags(after))]
+    watched = state_names(before) | state_names(after)
+    was, now = defaults(before, watched), defaults(after, watched)
+    out += [f"changes the default {k} from {was[k]} to {now[k]}"
+            for k in sorted(set(was) & set(now)) if was[k] != now[k]]
+    # a parameter that had a default and has none: a call that left it out
+    # no longer works
+    out += [f"removes the default of {k}, which was {was[k]}"
+            for k in sorted(set(was) - set(now)) if "(" in k]
+    return out
+
+
+def says(body: str, prefix: str) -> bool:
+    """Whether a CHANGELOG entry makes the statement `prefix` asks for: a
+    line of prose beginning with it at the start of the line, followed by
+    what it says - four words at least, and not a placeholder. A line inside
+    a fenced or an indented code block or an HTML comment, one with nothing
+    after the colon, and one saying TODO do not count: before the 8.2
+    adversarial pass each of them let a new error code through."""
+    fence, comment = "", False
+    for raw in body.splitlines():
+        text = raw.strip()
+        if comment:
+            comment = "-->" not in text
+            continue
+        if fence:
+            if text.startswith(fence):
+                fence = ""
+            continue
+        opening = re.match(r"(`{3,}|~{3,})", text)
+        if opening:
+            fence = opening.group(1)
+            continue
+        if text.startswith("<!--"):
+            comment = "-->" not in text[4:]
+            continue
+        if raw[:1] in (" ", "\t") or not raw.lower().startswith(prefix):
+            continue
+        said = raw[len(prefix):].strip()
+        if len(said.split()) >= 4 and not PLACEHOLDER.match(said):
+            return True
+    return False
+
+
+def api_golden_changed(root: Path, since: str) -> bool:
+    """Whether tests/api/golden.json differs from the one at `since`; False
+    when `since` has none (8.2.0 is the first release with one)."""
+    try:
+        before = git(root, "show", f"{since}:{API_GOLDEN}")
+    except Unanswered:
+        return False
+    return cast(bool, _load_json(before) != _load_json(_read(root, API_GOLDEN)))
+
+
 # ---- the gate ----------------------------------------------------------------
 
-def gate(root: Path, expect_sha: str | None = None) -> dict:
+def gate(root: Path, expect_sha: str | None = None) -> dict[Any, Any]:
     """Whether HEAD of `root` is a release: the step outputs, and 'line',
-    the one line that says why. A release needs velaris.py's VERSION to be
+    the one line that says why. A release needs the compiler's VERSION to be
     newer than every tag, a CHANGELOG entry heading for it, and every
     version file to agree with it. 'refused' is set when all of that holds
-    but HEAD is not `expect_sha`, the commit the tests passed on."""
+    but a minor or patch release changes what STABILITY.md covers - an error
+    code added, a flag removed, a default changed - and its entry has no
+    line beginning 'compatibility:'; or the API golden moved and the entry
+    has no line beginning 'api:'; or HEAD is not `expect_sha`, the commit
+    the tests passed on."""
     claims = version_claims(root)
     version = claims[0][1] or ""
+    if parse_version(version) is None:
+        version = ""             # never an output: it came from the commit
     head = git(root, "rev-parse", "HEAD")
     tags = [t for t in git(root, "tag", "--list", "v*").splitlines()
             if parse_version(t)]
-    newest = max(tags, key=parse_version) if tags else ""
+    newest = max(tags, key=cast("Callable[[str], tuple[int, int, int]]",
+                                parse_version)) if tags else ""
     answer = {"release": False, "refused": False, "version": version,
               "tag": f"v{version}" if version else "",
               "previous_tag": newest, "sha": head}
 
-    def no(why: str) -> dict:
+    def no(why: str) -> dict[Any, Any]:
         answer["line"] = f"no release: {why}"
         return answer
 
     if parse_version(version) is None:
-        return no('velaris.py has no VERSION = "X.Y.Z" line')
+        return no(f'{claims[0][0]} has no VERSION = "X.Y.Z" line')
     tag = answer["tag"]
     if tag == newest:
         return no(f"VERSION is {version} and {tag} is already the newest "
@@ -181,11 +427,13 @@ def gate(root: Path, expect_sha: str | None = None) -> dict:
     if tag in tags:
         return no(f"VERSION is {version} and {tag} already exists (the "
                   f"newest tag is {newest})")
-    if newest and parse_version(version) <= parse_version(newest):
+    if newest and (cast("tuple[int, int, int]", parse_version(version))
+                   <= cast("tuple[int, int, int]", parse_version(newest))):
         return no(f"VERSION {version} is not newer than the newest tag, "
                   f"{newest}")
     if changelog_entry(root, version) is None:
-        major, minor, patch = parse_version(version)
+        major, minor, patch = cast("tuple[int, int, int]",
+                                   parse_version(version))
         forms = f"'## {version} - <title>'"
         if patch == 0 and version.count(".") == 2:
             forms += f" or '## {major}.{minor} - <title>'"
@@ -194,11 +442,43 @@ def gate(root: Path, expect_sha: str | None = None) -> dict:
     disagree = [f"{name} says {said}" for name, said in claims[1:]
                 if said != version]
     if disagree:
-        return no(f"velaris.py says {version} but " + ", ".join(disagree))
+        return no(f"{claims[0][0]} says {version} but "
+                  + ", ".join(disagree))
     kinds = registry_packages(root)
     if "pypi" not in kinds or "npm" not in kinds:
         return no(f"{VERSION_FILES[-1]} must list both the pypi and the npm "
                   f"package; it lists {', '.join(kinds) or 'none'}")
+    body = cast("tuple[str, str]", changelog_entry(root, version))[1]
+    if newest:
+        try:
+            covered = covered_changes(root, newest)
+            moved = api_golden_changed(root, newest)
+        except Unanswered as e:
+            answer["refused"] = True
+            answer["line"] = (f"refused: what {version} changes since {newest} "
+                              f"cannot be told, so it is not released: {e}")
+            return answer
+        major = (cast("tuple[int, int, int]", parse_version(version))[0]
+                 > cast("tuple[int, int, int]", parse_version(newest))[0])
+        if covered and not major and not says(body, COMPATIBILITY_LINE):
+            kind = ("patch"
+                    if cast("tuple[int, int, int]", parse_version(version))[:2]
+                    == cast("tuple[int, int, int]", parse_version(newest))[:2]
+                    else "minor")
+            answer["refused"] = True
+            answer["line"] = (
+                f"refused: {version} is a {kind} release, and since {newest} "
+                f"it {'; it '.join(covered)} - but its CHANGELOG entry has no "
+                f"line beginning 'compatibility:' saying why that is not a "
+                f"breaking change (STABILITY.md rule 1; RELEASING.md)")
+            return answer
+        if moved and not says(body, API_LINE):
+            answer["refused"] = True
+            answer["line"] = (
+                f"refused: {API_GOLDEN} is not {newest}'s, and the CHANGELOG "
+                f"entry for {version} has no line beginning 'api:' saying "
+                f"what changed (check_api.py; RELEASING.md)")
+            return answer
     if expect_sha and head != expect_sha:
         answer["refused"] = True
         answer["line"] = (
@@ -214,7 +494,7 @@ def gate(root: Path, expect_sha: str | None = None) -> dict:
 
 # ---- asking PyPI, npm, the registry, the Marketplace and GitHub --------------
 
-def _github_auth(base: str) -> dict:
+def _github_auth(base: str) -> dict[Any, Any]:
     """GitHub's token, only ever for api.github.com."""
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
     if token and base == "https://api.github.com":
@@ -224,7 +504,7 @@ def _github_auth(base: str) -> dict:
 
 
 def _fetch(url: str, *, data: bytes | None = None,
-           headers: dict | None = None, attempts: int = 3):
+           headers: dict[Any, Any] | None = None, attempts: int = 3) -> tuple[Any, ...]:
     """(status, body). An HTTP status is an answer, 404 included; a
     network failure or a 5xx on every attempt is not, and raises."""
     head = {"User-Agent": "velaris-release-checks",
@@ -247,14 +527,14 @@ def _fetch(url: str, *, data: bytes | None = None,
     raise Unanswered(f"no answer from {url}: {last}")
 
 
-def _json_of(raw: bytes):
+def _json_of(raw: bytes) -> Any:
     try:
         return json.loads(raw.decode("utf-8"))
     except (ValueError, UnicodeDecodeError):
         return None
 
 
-def _dig(doc, *keys):
+def _dig(doc: Any, *keys: Any) -> Any:
     for key in keys:
         if not isinstance(doc, dict):
             return None
@@ -412,7 +692,7 @@ def _section(text: str, title: str) -> str | None:
     return rest[:following.start()] if following else rest
 
 
-def advisory_body(text: str) -> dict:
+def advisory_body(text: str) -> dict[Any, Any]:
     """The request body for POST /repos/{owner}/{repo}/security-advisories,
     which makes a draft. From an advisory written like
     advisory-proof-cache.md: its '# ' title is the summary, everything from
@@ -477,7 +757,7 @@ def _escape(line: str) -> str:
     return line.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
 
-def emit(args, line: str, level: str | None = "notice", **outputs) -> None:
+def emit(args: Any, line: str, level: str | None = "notice", **outputs: Any) -> None:
     """Print one line - as a notice, a warning or an error with --annotate -
     and write it to the summary and its outputs to the step outputs."""
     print(f"::{level}::{_escape(line)}" if args.annotate and level else line)
@@ -485,12 +765,18 @@ def emit(args, line: str, level: str | None = "notice", **outputs) -> None:
         with open(args.summary, "a", encoding="utf-8") as fh:
             fh.write(line + "\n\n")
     if args.github_output and outputs:
+        broken = [k for k, v in outputs.items() if "\n" in str(v)
+                  or "\r" in str(v)]
+        if broken:
+            # a line break in a value would write outputs of its own
+            raise Unanswered(f"the step output {', '.join(broken)} would hold "
+                             f"a line break; nothing is written")
         with open(args.github_output, "a", encoding="utf-8") as fh:
             for key, value in outputs.items():
                 fh.write(f"{key}={value}\n")
 
 
-def _write(args, text: str) -> None:
+def _write(args: Any, text: str) -> None:
     if args.output:
         with open(args.output, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(text)
@@ -498,7 +784,7 @@ def _write(args, text: str) -> None:
         sys.stdout.write(text)
 
 
-def cmd_gate(args) -> int:
+def cmd_gate(args: Any) -> int:
     answer = gate(Path(args.repo), args.expect_sha)
     line = answer["line"]
     if args.dry_run:
@@ -513,7 +799,40 @@ def cmd_gate(args) -> int:
     return 1 if answer["refused"] and not args.dry_run else 0
 
 
-def cmd_title(args) -> int:
+def cmd_covered(args: Any) -> int:
+    changes = covered_changes(Path(args.repo), args.since)
+    for line in changes:
+        print(line)
+    if not changes:
+        print(f"nothing STABILITY.md covers changed since {args.since}")
+    return 0
+
+
+# RELEASE_PAUSED, a variable of the release environment. Anything but these
+# pauses: a value nobody meant is a reason to stop, not to publish.
+NOT_PAUSED = ("", "0", "false", "no", "off")
+
+
+def paused(value: str | None) -> bool:
+    """Whether RELEASE_PAUSED stops a release."""
+    return (value or "").strip().lower() not in NOT_PAUSED
+
+
+def cmd_paused(args: Any) -> int:
+    value = os.environ.get("RELEASE_PAUSED")
+    if paused(value):
+        emit(args, f"release paused: RELEASE_PAUSED is {value!r} in the "
+                   f"release environment, so nothing is tagged or published. "
+                   f"The tests and the builds still ran. To release this "
+                   f"commit, clear the variable and re-run all jobs of this "
+                   f"run; the gate decides again.", "warning", paused="true")
+    else:
+        emit(args, "not paused: RELEASE_PAUSED is not set in the release "
+                   "environment", None, paused="false")
+    return 0
+
+
+def cmd_title(args: Any) -> int:
     entry = changelog_entry(Path(args.repo), args.version)
     if entry is None:
         print(f"CHANGELOG.md has no entry for {args.version}", file=sys.stderr)
@@ -522,7 +841,7 @@ def cmd_title(args) -> int:
     return 0
 
 
-def cmd_notes(args) -> int:
+def cmd_notes(args: Any) -> int:
     entry = changelog_entry(Path(args.repo), args.version)
     if entry is None:
         print(f"CHANGELOG.md has no entry for {args.version}", file=sys.stderr)
@@ -550,7 +869,7 @@ def cmd_notes(args) -> int:
     return 0
 
 
-def cmd_published(args) -> int:
+def cmd_published(args: Any) -> int:
     where = NAMES[args.target]
     try:
         there = published(args.target, args.version)
@@ -567,7 +886,7 @@ def cmd_published(args) -> int:
     return 0
 
 
-def _waiting_for(rows) -> str:
+def _waiting_for(rows: Any) -> str:
     """What a poll is still waiting on, as one line. A row is a sentence
     (registry-ready, or a target that could not be asked) or a (target,
     report, agrees) row from consistency(), named only when it disagrees.
@@ -578,7 +897,7 @@ def _waiting_for(rows) -> str:
                      for row in rows if isinstance(row, str) or not row[2])
 
 
-def _poll(args, ask):
+def _poll(args: Any, ask: Any) -> tuple[Any, ...]:
     """Ask until the answer is good or --timeout runs out: (good, rows)."""
     deadline = time.monotonic() + args.timeout
     while True:
@@ -589,8 +908,8 @@ def _poll(args, ask):
         time.sleep(args.interval)
 
 
-def cmd_registry_ready(args) -> int:
-    def ask():
+def cmd_registry_ready(args: Any) -> int:
+    def ask() -> tuple[Any, ...]:
         try:
             missing = registry_prerequisites(args.version)
         except Unanswered as e:
@@ -606,8 +925,8 @@ def cmd_registry_ready(args) -> int:
     return 1
 
 
-def cmd_consistent(args) -> int:
-    def ask():
+def cmd_consistent(args: Any) -> int:
+    def ask() -> tuple[Any, ...]:
         try:
             rows = consistency(args.version)
         except Unanswered as e:
@@ -632,13 +951,13 @@ def cmd_consistent(args) -> int:
     return 1
 
 
-def cmd_advisories(args) -> int:
+def cmd_advisories(args: Any) -> int:
     for name in added_advisories(Path(args.repo), args.since, args.until):
         print(name)
     return 0
 
 
-def cmd_advisory_body(args) -> int:
+def cmd_advisory_body(args: Any) -> int:
     try:
         text = Path(args.file).read_text(encoding="utf-8")
         body = advisory_body(text)
@@ -650,7 +969,7 @@ def cmd_advisory_body(args) -> int:
     return 0
 
 
-def cmd_advisory_commands(args) -> int:
+def cmd_advisory_commands(args: Any) -> int:
     tag = args.tag or "the release"
     emit(args, f"{args.file} is new in {tag}. No advisory was created: "
                f"GITHUB_TOKEN cannot be given the permission to create one. "
@@ -666,7 +985,7 @@ def cmd_advisory_commands(args) -> int:
     return 0
 
 
-def main(argv=None) -> int:
+def main(argv: Any = None) -> int:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--repo", default=".",
                         help="the repository (default: here)")
@@ -687,6 +1006,15 @@ def main(argv=None) -> int:
     p.add_argument("--dry-run", action="store_true",
                    help="decide, but release nothing")
     p.set_defaults(run=cmd_gate)
+
+    p = sub.add_parser("covered", parents=[common],
+                       help="what STABILITY.md covers that changed since a tag")
+    p.add_argument("since")
+    p.set_defaults(run=cmd_covered)
+
+    p = sub.add_parser("paused", parents=[common],
+                       help="does RELEASE_PAUSED stop publishing?")
+    p.set_defaults(run=cmd_paused)
 
     p = sub.add_parser("title", parents=[common],
                        help="the CHANGELOG title of a version")
@@ -739,7 +1067,7 @@ def main(argv=None) -> int:
 
     args = parser.parse_args(argv)
     try:
-        return args.run(args)
+        return cast(int, args.run(args))
     except Unanswered as e:
         print(f"release_checks.py: {e}", file=sys.stderr)
         return 2

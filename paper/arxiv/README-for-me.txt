@@ -40,10 +40,10 @@ Gowri Shankar Palakurthi
 
 Abstract (1729 characters, one line, plain ASCII; the limit is 1920;
 no character needed replacing - the abstract has none outside ASCII):
-Code written by language models is increasingly run by people who have not read it. Velaris is a small programming language for that situation. A function's signature declares which of seven effects it may perform, and the compiler checks the declaration across the whole call graph. A runtime refuses any operation outside a budget the operator writes - before the operation happens, and in a way the program cannot catch. Contracts are checked by the Z3 prover where it can settle them, and at run time where it cannot. A repository can commit a baseline of the capability surface its programs need, and a check fails any change that needs more. The central claim is about that surface. Suppose a repository's Velaris programs are held to a committed baseline by a required check. If a change makes a program need an effect, path, host, module or operation count the baseline does not grant, the check fails. It goes on failing at every later commit at which the program still compiles and still needs it, until a person edits the baseline. The claim is not about which function an effect is attributed to: a function renamed in the change that gives it an effect its program already had escapes the function-level rule. On a benchmark of 67 programs, 59 with one defect and 8 correct, each written in Velaris, in JavaScript for Deno and in Python, Velaris caught 57 of the 59 defects, 45 of them before running; Deno caught 35 and Python 28; none of the three flagged a correct program. One of Velaris's two misses is a logic error with no contract; the other no tool should catch. The capability format is published separately, under CC0, with a conformance corpus of 444 cases that an implementation in any language can run.
+Code written by language models is increasingly run by people who have not read it. Velaris is a small programming language for that situation. A function's signature declares which of seven effects it may perform, and the compiler checks the declaration across the whole call graph. A runtime refuses any operation outside a budget the operator writes - before the operation happens, and in a way the program cannot catch. Contracts are checked by the Z3 prover where it can settle them, and at run time where it cannot. A repository can commit a baseline of the capability surface its programs need, and a check fails any change that needs more. The central claim is about that surface. Suppose a repository's Velaris programs are held to a committed baseline by a required check. If a change makes a program need an effect, path, host, module or operation count the baseline does not grant, the check fails. It goes on failing at every later commit at which the program still compiles and still needs it, until a person edits the baseline. The claim is not about which function an effect is attributed to: a function renamed in the change that gives it an effect its program already had escapes the function-level rule. On a benchmark of 68 programs, 60 with one defect and 8 correct, each written in Velaris, in JavaScript for Deno and in Python, Velaris caught 58 of the 60 defects, 46 of them before running; Deno caught 36 and Python 28; none of the three flagged a correct program. One of Velaris's two misses is a logic error with no contract; the other no tool should catch. The capability format is published separately, under CC0, with a conformance corpus of 456 cases that an implementation in any language can run.
 
 Comments:
-12 pages, 1 figure, 2 tables. Code: https://github.com/gowrishankar-infra/velaris-lang ; format and conformance corpus: https://github.com/gowrishankar-infra/velaris-spec
+13 pages, 1 figure, 2 tables. Code: https://github.com/gowrishankar-infra/velaris-lang ; format and conformance corpus: https://github.com/gowrishankar-infra/velaris-spec
 
 Primary category:
 cs.PL (Programming Languages)
@@ -242,3 +242,16 @@ REBUILT 2026-09-13 (velaris-lang 7.1.0: the benchmark's twelfth category)
   pandoc 3.11; velaris.bbl unchanged; step 3 again gives 12 pages, no
   undefined reference, no overfull or underfull box. The abstract did not
   change, so the form field above stands.
+
+  2026-09-14 (8.2.0). The figures are regenerated for 8.2.0: the
+  benchmark's from benchmark/results.json (68 programs, 60 with one
+  defect and 8 correct; Velaris 58 of 60, 46 before running; Deno 36,
+  Python 28), the conformance corpus's from velaris-spec
+  tests/index.json (456 cases: 307 at L1, 40 at L2, 109 at L3; 19
+  scenarios left out). The reproducibility section checks out v8.2.0.
+  velaris.tex regenerated with pandoc 3.11; velaris.bbl unchanged. The
+  form's abstract above is updated to match (1729 characters, plain
+  ASCII), and the Comments field reads 13 pages: velaris.tex and
+  velaris.bbl alone in an empty folder, MiKTeX pdflatex three times, no
+  bibtex, give 13 pages, no undefined reference, no overfull box. Read
+  the PDF arXiv builds before confirming.

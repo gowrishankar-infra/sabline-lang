@@ -1,0 +1,3 @@
+fn shared() -> Int {
+    return 1
+}

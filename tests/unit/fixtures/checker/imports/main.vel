@@ -1,0 +1,6 @@
+import "geo.vel" as geo
+
+fn main() uses io {
+    let geo = 1
+    print(geo.area(2, 3))
+}

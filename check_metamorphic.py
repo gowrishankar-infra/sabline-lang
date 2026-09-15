@@ -22,18 +22,19 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
-isolate("check_metamorphic")          # its own proof cache
+isolate("check_metamorphic")          # its own directory
 
 PASS = FAIL = 0
 
 
-def ok(label, cond, detail=""):
+def ok(label: Any, cond: Any, detail: str = "") -> None:
     global PASS, FAIL
     if cond:
         PASS += 1
@@ -43,7 +44,7 @@ def ok(label, cond, detail=""):
         print(f"  CHANGED  {label}   {detail}")
 
 
-def surface(src, path=None):
+def surface(src: Any, path: Any = None) -> dict[str, Any]:
     """The security-relevant surface of an audit, as a comparable dict."""
     a = velaris.audit(src, path=path)
     return {
@@ -114,7 +115,7 @@ fn main() uses io, fs, net, clock {
 '''
 
 
-def split_across_files():
+def split_across_files() -> Any:
     """BASE with store and pull moved into an imported library."""
     d = tempfile.mkdtemp(prefix="velaris-metamorphic-")
     lib = os.path.join(d, "lib.vel")

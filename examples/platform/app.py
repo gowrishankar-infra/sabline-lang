@@ -36,6 +36,7 @@ from pathlib import Path
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+from typing import Any
 
 # so the example runs from a clone; pip install velaris-lang makes this
 # line unnecessary
@@ -54,10 +55,10 @@ TIMEOUT_S, MEMORY_MB = 5, 256
 AUDIT_TIMEOUT_S, AUDIT_MEMORY_MB = 20, 1024
 
 
-def grants(spec: str) -> list:
+def grants(spec: str) -> list[Any]:
     """A budget as separate grants. `ffi:a,b` is one grant: its module
     names follow it as bare items, which is how the grammar has them."""
-    out: list = []
+    out: list[Any] = []
     for item in spec.split(","):
         if out and ":" not in item and item not in velaris.ALL_EFFECTS:
             out[-1] += "," + item
@@ -78,28 +79,28 @@ SURFACE = velaris.Budget.parse(re.sub(r"@\d+", "", PLATFORM_ALLOW))
 POOL = velaris.Pool(size=2, allow=set(grants(PLATFORM_ALLOW)),
                     timeout=TIMEOUT_S, max_memory_mb=MEMORY_MB)
 
-SCRIPTS: dict = {}          # an example: no database, no tenants
+SCRIPTS: dict[Any, Any] = {}          # an example: no database, no tenants
 
 app = FastAPI(title="Velaris scripts")
 
 
 # ---- what the platform reads off an audit -----------------------------
 
-def would_need_granting(asked: str) -> list:
+def would_need_granting(asked: str) -> list[Any]:
     """Every grant in `asked` this platform does not already cover - what
     an operator would have to add to PLATFORM_ALLOW to accept it."""
     return [g for g in grants(asked)
             if SURFACE.covers(velaris.Budget.parse(g))]
 
 
-def problems(items: list) -> list:
+def problems(items: list[Any]) -> list[Any]:
     """A customer sent text, not a file, so the temporary path Velaris
     gave it is noise."""
     return [{k: v for k, v in p.as_dict().items() if k != "file"}
             for p in items]
 
 
-def declaration(report) -> dict:
+def declaration(report: Any) -> dict[str, Any]:
     """What a script says about itself, from the audit alone. Every field
     here comes from velaris.audit/1, whose shape is stable."""
     return {
@@ -122,7 +123,7 @@ def declaration(report) -> dict:
     }
 
 
-def as_shown(script: dict) -> dict:
+def as_shown(script: dict[Any, Any]) -> dict[str, Any]:
     """A stored script as the platform shows it to a customer."""
     return {"id": script["id"], "name": script["name"],
             "declares": script["declares"],
@@ -130,8 +131,8 @@ def as_shown(script: dict) -> dict:
             "limits": {"timeout_s": TIMEOUT_S, "memory_mb": MEMORY_MB}}
 
 
-def stored(sid: str) -> dict:
-    script = SCRIPTS.get(sid)
+def stored(sid: str) -> dict[Any, Any]:
+    script: dict[Any, Any] | None = SCRIPTS.get(sid)
     if script is None:
         raise HTTPException(404, "no such script")
     return script
@@ -140,7 +141,7 @@ def stored(sid: str) -> dict:
 # ---- the three endpoints ----------------------------------------------
 
 @app.get("/")
-def policy() -> dict:
+def policy() -> dict[str, Any]:
     """What this platform permits, and what it holds."""
     return {"platform_allows": PLATFORM_ALLOW,
             "limits": {"timeout_s": TIMEOUT_S, "memory_mb": MEMORY_MB},
@@ -151,7 +152,7 @@ def policy() -> dict:
 
 @app.post("/scripts", status_code=201)
 def submit(source: str = Body(..., media_type="text/plain"),
-           name: str = "untitled"):
+           name: str = "untitled") -> Any:
     """Audit it, decide, store it. This never runs the script."""
     report = velaris.audit(source, timeout=AUDIT_TIMEOUT_S,
                            max_memory_mb=AUDIT_MEMORY_MB)
@@ -184,13 +185,13 @@ def submit(source: str = Body(..., media_type="text/plain"),
 
 
 @app.get("/scripts/{sid}")
-def inspect(sid: str) -> dict:
+def inspect(sid: str) -> dict[Any, Any]:
     """What this script declares, as a customer is shown it."""
     return as_shown(stored(sid))
 
 
 @app.post("/scripts/{sid}/run")
-def run(sid: str) -> dict:
+def run(sid: str) -> dict[str, Any]:
     """Run it under the platform's budget - not the script's. The pool
     was made with one budget, pool.run takes no allow argument, and the
     worker reinstalls that budget before every program."""

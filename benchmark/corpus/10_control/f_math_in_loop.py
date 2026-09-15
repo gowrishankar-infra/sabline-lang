@@ -2,7 +2,7 @@
 import math
 
 
-def sum_of_roots(n):
+def sum_of_roots(n: int) -> float:
     total = 0.0
     i = 1
     while i <= n:

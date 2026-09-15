@@ -1,0 +1,4 @@
+fn main() uses io {
+    let total = money(100, "INR") + money(100, "USD")
+    print(text_of(total))
+}

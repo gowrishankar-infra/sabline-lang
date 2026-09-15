@@ -1,0 +1,9 @@
+fn next(n: Int) -> Int
+    requires n + 1
+{
+    return n + 1
+}
+
+fn main() uses io {
+    print(next(1))
+}

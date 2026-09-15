@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
@@ -29,7 +30,7 @@ KYVERNO = HERE / "policies" / "kyverno" / "require-capability-attestation.yaml"
 PASS = FAIL = 0
 
 
-def ok(label, cond, detail=""):
+def ok(label: Any, cond: Any, detail: str = "") -> None:
     global PASS, FAIL
     if cond:
         PASS += 1
@@ -41,7 +42,7 @@ def ok(label, cond, detail=""):
             print(f"          {str(detail)[:400]}")
 
 
-def notice(text):
+def notice(text: Any) -> None:
     if os.environ.get("GITHUB_ACTIONS") == "true":
         print(f"::notice::{text}")
     print(f"  skipped {text}")
@@ -102,7 +103,7 @@ def main() -> int:
         data = WORK / "platform.json"
         data.write_text(json.dumps(PLATFORM), encoding="utf-8")
 
-        def deny_for(label, source):
+        def deny_for(label: Any, source: Any) -> tuple[Any, ...]:
             program = WORK / f"{label}.vel"
             program.write_text(source, encoding="utf-8")
             statement = WORK / f"{label}.intoto.json"
@@ -159,7 +160,7 @@ def main() -> int:
     try:
         import yaml
     except ImportError:
-        yaml = None
+        yaml = None  # type: ignore[assignment]  # PyYAML is optional here
     if yaml is None:
         notice("PyYAML is not installed, so the Kyverno policy was read by "
                "its lines")

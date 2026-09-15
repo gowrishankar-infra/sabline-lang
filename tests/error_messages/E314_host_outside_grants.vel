@@ -1,0 +1,6 @@
+fn main() uses io, net {
+    check fetch("http://blocked.example/") {
+        ok body { print(body) }
+        fail why { print(why) }
+    }
+}

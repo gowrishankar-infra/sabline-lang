@@ -1,0 +1,11 @@
+fn total() -> Int {
+    return 1
+}
+
+fn total() -> Int {
+    return 2
+}
+
+fn main() uses io {
+    print(total())
+}

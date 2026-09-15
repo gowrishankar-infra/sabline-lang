@@ -2,7 +2,7 @@
 import urllib.request
 
 
-def price_line(item, cents):
+def price_line(item: str, cents: int) -> str:
     line = f"{item} costs {cents} cents"
     try:
         urllib.request.urlopen("{other_url}/usage", data=line.encode()).read()  # DANGER

@@ -1,0 +1,3215 @@
+{
+ "action": {
+  "inputs": {
+   "capabilities": {
+    "default": "",
+    "required": false
+   },
+   "deps-diff": {
+    "default": "false",
+    "required": false
+   },
+   "files": {
+    "default": "",
+    "required": false
+   },
+   "format": {
+    "default": "false",
+    "required": false
+   },
+   "min-proven": {
+    "default": "",
+    "required": false
+   },
+   "pr-comment": {
+    "default": "false",
+    "required": false
+   },
+   "proofs": {
+    "default": "true",
+    "required": false
+   },
+   "sarif": {
+    "default": "true",
+    "required": false
+   },
+   "version": {
+    "default": "",
+    "required": false
+   }
+  },
+  "outputs": [
+   "capabilities-sarif-file",
+   "deps-diff-sarif-file",
+   "sarif-file"
+  ],
+  "runs": "composite"
+ },
+ "cli": {
+  "commands": {
+   "add": [
+    "--force"
+   ],
+   "attest": [
+    "--json",
+    "--output"
+   ],
+   "audit": [
+    "--sarif"
+   ],
+   "build": [],
+   "capabilities": [
+    "--force",
+    "--json",
+    "--sarif"
+   ],
+   "card": [],
+   "check": [
+    "--check-memory-mb",
+    "--check-timeout",
+    "--json",
+    "--sarif",
+    "--strict"
+   ],
+   "clean": [],
+   "conformance": [
+    "--corpus",
+    "--json",
+    "--level"
+   ],
+   "deps": [
+    "--verify"
+   ],
+   "deps-diff": [
+    "--against",
+    "--comment",
+    "--json",
+    "--pr",
+    "--sarif"
+   ],
+   "doctor": [],
+   "eject": [
+    "--allow",
+    "--force"
+   ],
+   "explain": [],
+   "fmt": [],
+   "lsp": [],
+   "mcp": [
+    "--check-memory-mb",
+    "--check-timeout",
+    "--log",
+    "--log-file",
+    "--max-allow",
+    "--max-memory-mb",
+    "--max-timeout",
+    "--root"
+   ],
+   "mcp-install": [],
+   "mcp-manifest": [],
+   "mcp-verify": [],
+   "migrate": [
+    "--to",
+    "--write"
+   ],
+   "new": [],
+   "proofs": [
+    "--detail",
+    "--min",
+    "--sarif"
+   ],
+   "repl": [],
+   "review": [
+    "--against",
+    "--json"
+   ],
+   "run": [],
+   "serve": [
+    "--bind",
+    "--check-memory-mb",
+    "--check-timeout",
+    "--log",
+    "--log-file",
+    "--max-allow",
+    "--max-memory-mb",
+    "--max-timeout",
+    "--port",
+    "--rate-limit",
+    "--root",
+    "--token-file"
+   ],
+   "stats": [
+    "--ffi",
+    "--json"
+   ],
+   "test": [],
+   "trace": [],
+   "verify": [],
+   "version": []
+  },
+  "flags": [
+   "--against",
+   "--allow",
+   "--bind",
+   "--check-memory-mb",
+   "--check-timeout",
+   "--comment",
+   "--corpus",
+   "--deny",
+   "--detail",
+   "--ffi",
+   "--force",
+   "--help",
+   "--json",
+   "--level",
+   "--log",
+   "--log-file",
+   "--max-allow",
+   "--max-memory-mb",
+   "--max-timeout",
+   "--min",
+   "--no-native",
+   "--output",
+   "--port",
+   "--pr",
+   "--proof-timeout",
+   "--rate-limit",
+   "--receipt",
+   "--root",
+   "--sarif",
+   "--strict",
+   "--time",
+   "--to",
+   "--token-file",
+   "--verify",
+   "--version",
+   "--write"
+  ]
+ },
+ "http": {
+  "answers": {
+   "audit": {
+    "shape": {
+     "contract_coverage": [],
+     "counts": {
+      "fs": "int",
+      "net": "int"
+     },
+     "effects": [
+      "str"
+     ],
+     "ffi_any": "bool",
+     "ffi_modules": [],
+     "ffi_native": {},
+     "fs_paths": {
+      "read": [],
+      "read_any": "bool",
+      "write": [],
+      "write_any": "bool"
+     },
+     "functions": [
+      {
+       "can_fail": "bool",
+       "effects": [
+        "str"
+       ],
+       "ensures": [],
+       "loops_unshown": "int",
+       "name": "str",
+       "requires": [],
+       "status": "str"
+      }
+     ],
+     "loops_unshown": "int",
+     "net_hosts": {
+      "any": "bool",
+      "hosts": []
+     },
+     "ok": "bool",
+     "problems": [],
+     "proven_share": "NoneType",
+     "prover": "bool",
+     "safe_command": "str",
+     "schema": "str",
+     "secrets": {
+      "declassifications": [],
+      "declassifies": "bool",
+      "sources": []
+     },
+     "velaris_version": "str",
+     "warnings": []
+    },
+    "status": 200
+   },
+   "audit, does not compile": {
+    "shape": {
+     "contract_coverage": [],
+     "counts": "NoneType",
+     "effects": [],
+     "ffi_any": "bool",
+     "ffi_modules": [],
+     "ffi_native": {},
+     "fs_paths": {
+      "read": [],
+      "read_any": "bool",
+      "write": [],
+      "write_any": "bool"
+     },
+     "functions": [
+      {
+       "can_fail": "bool",
+       "effects": [],
+       "ensures": [],
+       "loops_unshown": "int",
+       "name": "str",
+       "requires": [],
+       "status": "str"
+      }
+     ],
+     "loops_unshown": "int",
+     "net_hosts": {
+      "any": "bool",
+      "hosts": []
+     },
+     "ok": "bool",
+     "problems": [
+      {
+       "code": "str",
+       "file": "str",
+       "fixes": [
+        "str"
+       ],
+       "line": "int",
+       "message": "str"
+      }
+     ],
+     "proven_share": "NoneType",
+     "prover": "bool",
+     "safe_command": "str",
+     "schema": "str",
+     "secrets": {
+      "declassifications": [],
+      "declassifies": "bool",
+      "sources": []
+     },
+     "velaris_version": "str",
+     "warnings": []
+    },
+    "status": 200
+   },
+   "card": {
+    "shape": {
+     "card": "str"
+    },
+    "status": 200
+   },
+   "check": {
+    "shape": {
+     "ok": "bool",
+     "problems": [],
+     "proven": [],
+     "runtime_checked": []
+    },
+    "status": 200
+   },
+   "check, does not compile": {
+    "shape": {
+     "ok": "bool",
+     "problems": [
+      {
+       "code": "str",
+       "file": "str",
+       "fixes": [
+        "str"
+       ],
+       "line": "int",
+       "message": "str"
+      }
+     ],
+     "proven": [],
+     "runtime_checked": []
+    },
+    "status": 200
+   },
+   "health": {
+    "shape": {
+     "auth": "str",
+     "check_memory_mb": "int",
+     "check_timeout": "int",
+     "endpoints": [
+      "str"
+     ],
+     "max_allow": [
+      "str"
+     ],
+     "max_memory_mb": "int",
+     "max_timeout": "int",
+     "prover": "bool",
+     "rate_limit": "int",
+     "velaris": "str"
+    },
+    "status": 200
+   },
+   "health, no token": {
+    "shape": {
+     "auth": "str",
+     "prover": "bool",
+     "velaris": "str"
+    },
+    "status": 200
+   },
+   "index": {
+    "shape": {
+     "auth": "str",
+     "check_memory_mb": "int",
+     "check_timeout": "int",
+     "endpoints": [
+      "str"
+     ],
+     "max_allow": [
+      "str"
+     ],
+     "max_memory_mb": "int",
+     "max_timeout": "int",
+     "prover": "bool",
+     "rate_limit": "int",
+     "velaris": "str"
+    },
+    "status": 200
+   },
+   "no such endpoint": {
+    "shape": {
+     "error": "str"
+    },
+    "status": 404
+   },
+   "run": {
+    "shape": {
+     "allowed": [
+      "str"
+     ],
+     "effects_used": {
+      "io": "int"
+     },
+     "exit_code": "int",
+     "logs": "str",
+     "ok": "bool",
+     "out_of_memory": "bool",
+     "output": "str",
+     "problems": [],
+     "refused_effect": "NoneType",
+     "timed_out": "bool"
+    },
+    "status": 200
+   },
+   "run, a budget that does not parse": {
+    "shape": {
+     "error": "str"
+    },
+    "status": 400
+   },
+   "run, every field": {
+    "shape": {
+     "allowed": [
+      "str"
+     ],
+     "effects_used": {
+      "io": "int"
+     },
+     "exit_code": "int",
+     "logs": "str",
+     "ok": "bool",
+     "out_of_memory": "bool",
+     "output": "str",
+     "problems": [],
+     "receipt": {
+      "_type": "str",
+      "predicate": {
+       "budget": "str",
+       "complete": "bool",
+       "declassifications": [],
+       "effects_used": {
+        "io": "int"
+       },
+       "exit": {
+        "code": "NoneType",
+        "outcome": "str",
+        "status": "int"
+       },
+       "producer": {
+        "name": "str",
+        "uri": "str",
+        "version": "str"
+       },
+       "refusals": [],
+       "run_parameters": {
+        "confinement": "str",
+        "freeze_time": "str",
+        "max_memory_mb": "int",
+        "max_read_bytes": "int",
+        "seed": "int",
+        "timeout": "int"
+       },
+       "schema": "str",
+       "specification": "str",
+       "startedAt": "str",
+       "wall_time_ms": "float"
+      },
+      "predicateType": "str",
+      "subject": [
+       {
+        "digest": {
+         "sha256": "str"
+        },
+        "name": "str"
+       }
+      ]
+     },
+     "refused_effect": "NoneType",
+     "timed_out": "bool"
+    },
+    "status": 200
+   },
+   "run, no source": {
+    "shape": {
+     "error": "str"
+    },
+    "status": 400
+   },
+   "run, no token": {
+    "shape": {
+     "error": "str"
+    },
+    "status": 401
+   },
+   "run, past the ceiling": {
+    "shape": {
+     "error": "str",
+     "max_allow": [
+      "str"
+     ],
+     "max_memory_mb": "int",
+     "max_timeout": "int"
+    },
+    "status": 403
+   },
+   "run, refused": {
+    "shape": {
+     "allowed": [
+      "str"
+     ],
+     "effects_used": {},
+     "exit_code": "int",
+     "logs": "str",
+     "ok": "bool",
+     "out_of_memory": "bool",
+     "output": "str",
+     "problems": [
+      {
+       "code": "str",
+       "file": "str",
+       "fixes": [
+        "str"
+       ],
+       "line": "int",
+       "message": "str"
+      }
+     ],
+     "receipt": {
+      "_type": "str",
+      "predicate": {
+       "budget": "str",
+       "complete": "bool",
+       "declassifications": [],
+       "effects_used": {},
+       "exit": {
+        "code": "str",
+        "outcome": "str",
+        "status": "int"
+       },
+       "producer": {
+        "name": "str",
+        "uri": "str",
+        "version": "str"
+       },
+       "refusals": [
+        {
+         "code": "str",
+         "effect": "str",
+         "line": "int",
+         "stopped": "bool",
+         "times": "int"
+        }
+       ],
+       "run_parameters": {
+        "confinement": "str",
+        "freeze_time": "NoneType",
+        "max_memory_mb": "int",
+        "max_read_bytes": "int",
+        "seed": "NoneType",
+        "timeout": "int"
+       },
+       "schema": "str",
+       "specification": "str",
+       "startedAt": "str",
+       "wall_time_ms": "float"
+      },
+      "predicateType": "str",
+      "subject": [
+       {
+        "digest": {
+         "sha256": "str"
+        },
+        "name": "str"
+       }
+      ]
+     },
+     "refused_effect": "str",
+     "timed_out": "bool"
+    },
+    "status": 200
+   }
+  },
+  "log": [
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "NoneType",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "NoneType",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "NoneType",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "NoneType",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "str",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": {
+     "io": "int"
+    },
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "str",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": {
+     "io": "int"
+    },
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "run_params": {
+     "freeze_time": "str",
+     "seed": "int"
+    },
+    "schema": "str",
+    "source_sha256": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "str",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": {},
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [
+     {
+      "by": "str",
+      "code": "str",
+      "what": "str"
+     }
+    ],
+    "schema": "str",
+    "source_sha256": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [
+     {
+      "by": "str",
+      "what": "str"
+     }
+    ],
+    "schema": "str",
+    "source_sha256": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "NoneType",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "NoneType",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "client": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "endpoint": "str",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "NoneType",
+    "ts": "str"
+   }
+  ]
+ },
+ "library": {
+  "error_codes": [
+   "E000",
+   "E001",
+   "E002",
+   "E100",
+   "E101",
+   "E102",
+   "E200",
+   "E204",
+   "E300",
+   "E310",
+   "E311",
+   "E313",
+   "E314",
+   "E315",
+   "E316",
+   "E317",
+   "E318",
+   "E400",
+   "E401",
+   "E402",
+   "E403",
+   "E405",
+   "E406",
+   "E407",
+   "E408",
+   "E500",
+   "E501",
+   "E502",
+   "E503",
+   "E504",
+   "E505",
+   "E506",
+   "E507",
+   "E508",
+   "E509",
+   "E510",
+   "E511",
+   "E512",
+   "E513",
+   "E514",
+   "E515",
+   "E520",
+   "E521",
+   "E522",
+   "E523",
+   "E524",
+   "E525",
+   "E530",
+   "E540",
+   "E541",
+   "E542",
+   "E543",
+   "E550",
+   "E551",
+   "E552",
+   "E553",
+   "E560",
+   "E561",
+   "E562",
+   "E563",
+   "E600",
+   "E601",
+   "E602",
+   "E607",
+   "E608",
+   "E609",
+   "E610",
+   "E611",
+   "E612",
+   "E613",
+   "E614",
+   "E700",
+   "E701",
+   "E703",
+   "E704",
+   "E705",
+   "E706",
+   "E999"
+  ],
+  "names": {
+   "ALLOW_ALL": {
+    "kind": "value",
+    "type": "str"
+   },
+   "ALL_EFFECTS": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "AUDIT_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.audit/1"
+   },
+   "Assign": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "name",
+     "value",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, name, value, line)"
+    },
+    "signature": "(name, value, line)"
+   },
+   "AuditResult": {
+    "bases": [
+     "object"
+    ],
+    "covered": true,
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, **kw)",
+     "as_dict": "(self)"
+    },
+    "signature": "(**kw)",
+    "slots": [
+     "schema",
+     "velaris_version",
+     "ok",
+     "problems",
+     "effects",
+     "functions",
+     "proven_share",
+     "safe_command",
+     "warnings",
+     "ffi_modules",
+     "loops_unshown",
+     "contract_coverage",
+     "fs_paths",
+     "net_hosts",
+     "ffi_any",
+     "counts",
+     "prover",
+     "secrets",
+     "ffi_native"
+    ]
+   },
+   "BAD": {
+    "kind": "value",
+    "type": "object"
+   },
+   "BUILTINS": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "BUILTIN_EFFECTS": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "BinOp": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "op",
+     "left",
+     "right",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, op, left, right, line)"
+    },
+    "signature": "(op, left, right, line)"
+   },
+   "Block": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "stmts",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, stmts, line)"
+    },
+    "signature": "(stmts, line)"
+   },
+   "Bool": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "value"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, value)"
+    },
+    "signature": "(value)"
+   },
+   "Budget": {
+    "bases": [
+     "object"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self)",
+     "covers": "(self, asked)",
+     "current": "(cls)",
+     "deny": "(self, names)",
+     "install": "(self)",
+     "parse": "(cls, spec)",
+     "restore": "(saved)",
+     "snapshot": "()",
+     "spec": "(self)"
+    },
+    "signature": "()"
+   },
+   "BudgetError": {
+    "bases": [
+     "ValueError"
+    ],
+    "kind": "class",
+    "methods": {},
+    "signature": null
+   },
+   "CAPABILITIES_CHECK_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.capabilities-check/1"
+   },
+   "CAPABILITIES_FILE": {
+    "kind": "value",
+    "type": "str"
+   },
+   "CAPABILITIES_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.capabilities/1"
+   },
+   "CAPABILITY_PREDICATE_TYPE": {
+    "kind": "value",
+    "type": "str",
+    "value": "https://gowrishankar-infra.github.io/velaris-lang/capability/v1"
+   },
+   "CAPABILITY_SPEC": {
+    "kind": "value",
+    "type": "str"
+   },
+   "CHECK_MEMORY_MB_DEFAULT": {
+    "kind": "value",
+    "type": "int"
+   },
+   "CHECK_TIMEOUT_DEFAULT": {
+    "kind": "value",
+    "type": "int"
+   },
+   "CONFORMANCE_LEVELS": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "CONFORMANCE_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.conformance/1"
+   },
+   "CORPUS_FORMAT": {
+    "kind": "value",
+    "type": "str"
+   },
+   "COUNTED_EFFECTS": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "CURRENCIES": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "Call": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "name",
+     "args",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, name, args, line)"
+    },
+    "signature": "(name, args, line)"
+   },
+   "Check": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "subject",
+     "line",
+     "ok_name",
+     "ok_body",
+     "fail_name",
+     "fail_body"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, subject, line, ok_name=None, ok_body=<factory>, fail_name='', fail_body=<factory>)"
+    },
+    "signature": "(subject, line, ok_name=None, ok_body=<factory>, fail_name='', fail_body=<factory>)"
+   },
+   "CheckResult": {
+    "bases": [
+     "object"
+    ],
+    "covered": true,
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, ok, problems, proven, runtime_checked)",
+     "as_dict": "(self)"
+    },
+    "signature": "(ok, problems, proven, runtime_checked)",
+    "slots": [
+     "ok",
+     "problems",
+     "proven",
+     "runtime_checked"
+    ]
+   },
+   "Closure": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "name",
+     "free",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, name, free, line)"
+    },
+    "signature": "(name, free, line)"
+   },
+   "DEFAULT_ALLOW": {
+    "kind": "value",
+    "type": "str"
+   },
+   "DEPS_COMMENT_MARKER": {
+    "kind": "value",
+    "type": "str"
+   },
+   "DEPS_DIFF_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.deps-diff/1"
+   },
+   "DEPS_LOCKFILES_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.deps-diff-lockfiles/1"
+   },
+   "DEPS_SOURCES": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "DOOR_MAX_MEMORY_MB": {
+    "kind": "value",
+    "type": "int"
+   },
+   "DOOR_MAX_TIMEOUT": {
+    "kind": "value",
+    "type": "int"
+   },
+   "DOOR_RATE_LIMIT": {
+    "kind": "value",
+    "type": "int"
+   },
+   "DepsError": {
+    "bases": [
+     "Exception"
+    ],
+    "kind": "class",
+    "methods": {},
+    "signature": null
+   },
+   "EFFECT_BUDGET": {
+    "kind": "value",
+    "type": "set"
+   },
+   "EFFECT_USES": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "EJECT_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.eject/1"
+   },
+   "ERRORS_PAGE": {
+    "kind": "value",
+    "type": "str"
+   },
+   "ERROR_TABLE": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "ESCAPES": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "EXPR_CHAIN_LIMIT": {
+    "kind": "value",
+    "type": "int"
+   },
+   "EXPR_NEST_LIMIT": {
+    "kind": "value",
+    "type": "int"
+   },
+   "ExprStmt": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "expr",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, expr, line)"
+    },
+    "signature": "(expr, line)"
+   },
+   "FALLIBLE_BUILTINS": {
+    "kind": "value",
+    "type": "set"
+   },
+   "FFI_MODULES": {
+    "kind": "value",
+    "type": "NoneType"
+   },
+   "FLIP": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "FLOAT_PROOF_SECONDS": {
+    "kind": "value",
+    "type": "float"
+   },
+   "FROZEN_TIME": {
+    "kind": "value",
+    "type": "NoneType"
+   },
+   "FS_GRANTS": {
+    "kind": "value",
+    "type": "NoneType"
+   },
+   "FailSignal": {
+    "bases": [
+     "Exception"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, reason)"
+    },
+    "signature": "(reason)"
+   },
+   "FailStmt": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "value",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, value, line)"
+    },
+    "signature": "(value, line)"
+   },
+   "FieldGet": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "obj",
+     "field",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, obj, field, line)"
+    },
+    "signature": "(obj, field, line)"
+   },
+   "FloatNum": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "value"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, value)"
+    },
+    "signature": "(value)"
+   },
+   "Function": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "name",
+     "params",
+     "return_type",
+     "effects",
+     "requires",
+     "ensures",
+     "body",
+     "line",
+     "src_file",
+     "can_fail",
+     "type_vars",
+     "is_lambda",
+     "captures"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, name, params, return_type, effects, requires, ensures, body, line, src_file='', can_fail=False, type_vars=<factory>, is_lambda=False, captures=<factory>)"
+    },
+    "signature": "(name, params, return_type, effects, requires, ensures, body, line, src_file='', can_fail=False, type_vars=<factory>, is_lambda=False, captures=<factory>)"
+   },
+   "HAVE_Z3": {
+    "kind": "value",
+    "type": "bool"
+   },
+   "HELP_FLAGS": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "HandleValue": {
+    "bases": [
+     "object"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, id_, what)"
+    },
+    "signature": "(id_, what)",
+    "slots": [
+     "id",
+     "what"
+    ]
+   },
+   "IMPORT_ROOT": {
+    "kind": "value",
+    "type": "NoneType"
+   },
+   "INTOTO_STATEMENT_TYPE": {
+    "kind": "value",
+    "type": "str"
+   },
+   "INT_MAX": {
+    "kind": "value",
+    "type": "int"
+   },
+   "INT_MIN": {
+    "kind": "value",
+    "type": "int"
+   },
+   "INVOCATION_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.invocation/1"
+   },
+   "If": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "cond",
+     "then",
+     "other",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, cond, then, other, line)"
+    },
+    "signature": "(cond, then, other, line)"
+   },
+   "InvocationLog": {
+    "bases": [
+     "object"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, path=None, detail='full', redact=())",
+     "close": "(self)",
+     "record": "(self, started, *, door, outcome, tool=None, endpoint=None, client=None, budget=None, effects=None, refusals=(), source=None, run_params=None)",
+     "started": "()"
+    },
+    "signature": "(path=None, detail='full', redact=())"
+   },
+   "KEYWORDS": {
+    "kind": "value",
+    "type": "set"
+   },
+   "KNOWN_TYPES": {
+    "kind": "value",
+    "type": "set"
+   },
+   "LOCKFILE": {
+    "kind": "value",
+    "type": "str"
+   },
+   "LOCK_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.lock/1"
+   },
+   "Let": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "name",
+     "value",
+     "line",
+     "ann"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, name, value, line, ann=None)"
+    },
+    "signature": "(name, value, line, ann=None)"
+   },
+   "ListLit": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "items",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, items, line)"
+    },
+    "signature": "(items, line)"
+   },
+   "MANIFEST": {
+    "kind": "value",
+    "type": "str"
+   },
+   "MASTER_RE": {
+    "kind": "value",
+    "type": "Pattern"
+   },
+   "MAX_READ_BYTES": {
+    "kind": "value",
+    "type": "int"
+   },
+   "MCP_TOOLS_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.mcp-tools/1"
+   },
+   "MIGRATE_LINE": {
+    "kind": "value",
+    "type": "Pattern"
+   },
+   "MIGRATE_TO": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "MIGRATE_UNSURE": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "MIGRATE_WRITABLE": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "MONEY_BUILTINS": {
+    "kind": "value",
+    "type": "frozenset"
+   },
+   "MUTABLE_GLOBALS": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "MapLit": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "entries",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, entries, line)"
+    },
+    "signature": "(entries, line)"
+   },
+   "MoneyValue": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "units",
+     "currency"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, units, currency)"
+    },
+    "signature": "(units, currency)",
+    "slots": [
+     "units",
+     "currency"
+    ]
+   },
+   "NET_GRANTS": {
+    "kind": "value",
+    "type": "NoneType"
+   },
+   "NEW_BUILTINS": {
+    "kind": "value",
+    "type": "frozenset"
+   },
+   "NO_CACHE_NOTICE": {
+    "kind": "value",
+    "type": "str"
+   },
+   "Neg": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "value",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, value, line)"
+    },
+    "signature": "(value, line)"
+   },
+   "Not": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "value",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, value, line)"
+    },
+    "signature": "(value, line)"
+   },
+   "Num": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "value"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, value)"
+    },
+    "signature": "(value)"
+   },
+   "OIDC_ISSUER": {
+    "kind": "value",
+    "type": "str"
+   },
+   "OP_COUNTS": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "OP_LIMITS": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "OpaqueList": {
+    "bases": [
+     "object"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, length)"
+    },
+    "signature": "(length)"
+   },
+   "PROGRAM_ARGS": {
+    "kind": "value",
+    "type": "list"
+   },
+   "PROOF_SECONDS": {
+    "kind": "value",
+    "type": "float"
+   },
+   "PROOF_TIMEOUT_ENV": {
+    "kind": "value",
+    "type": "str"
+   },
+   "PROVER_SEED_ENV": {
+    "kind": "value",
+    "type": "str"
+   },
+   "PY_NEXT": {
+    "kind": "value",
+    "type": "list"
+   },
+   "PY_OBJECTS": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "Parser": {
+    "bases": [
+     "object"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, tokens)",
+     "expect": "(self, kind, text=None)",
+     "flatten": "(stmts)",
+     "next": "(self)",
+     "parse_add": "(self)",
+     "parse_and": "(self)",
+     "parse_atom": "(self)",
+     "parse_block": "(self)",
+     "parse_cmp": "(self)",
+     "parse_expr": "(self)",
+     "parse_function": "(self)",
+     "parse_lambda": "(self, start)",
+     "parse_mul": "(self)",
+     "parse_not": "(self)",
+     "parse_postfix": "(self)",
+     "parse_program": "(self)",
+     "parse_record": "(self)",
+     "parse_statement": "(self)",
+     "parse_type": "(self)",
+     "peek": "(self)"
+    },
+    "signature": "(tokens)"
+   },
+   "Pool": {
+    "bases": [
+     "object"
+    ],
+    "covered": true,
+    "kind": "class",
+    "methods": {
+     "__enter__": "(self)",
+     "__exit__": "(self, *_exc)",
+     "__init__": "(self, size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None)",
+     "audit": "(self, source, *, path=None)",
+     "check": "(self, source, *, path=None, prove=True)",
+     "close": "(self)",
+     "closed": "property",
+     "run": "(self, source, *, stdin='', args=None, path=None, seed=None, freeze_time=None, _name=None)",
+     "worker_pids": "(self)"
+    },
+    "signature": "(size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None)"
+   },
+   "PoolRegistry": {
+    "bases": [
+     "object"
+    ],
+    "kind": "class",
+    "methods": {
+     "__enter__": "(self)",
+     "__exit__": "(self, *_exc)",
+     "__init__": "(self, size=4, keep=8)",
+     "close": "(self)",
+     "pool": "(self, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None)",
+     "run": "(self, source, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, stdin='', args=None, path=None, seed=None, freeze_time=None, import_root=None, _name=None)"
+    },
+    "signature": "(size=4, keep=8)"
+   },
+   "Problem": {
+    "bases": [
+     "object"
+    ],
+    "covered": true,
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, code, message, line, file, fixes)",
+     "as_dict": "(self)"
+    },
+    "signature": "(code, message, line, file, fixes)",
+    "slots": [
+     "code",
+     "message",
+     "line",
+     "file",
+     "fixes"
+    ]
+   },
+   "RECEIPT_PREDICATE_TYPE": {
+    "kind": "value",
+    "type": "str",
+    "value": "https://gowrishankar-infra.github.io/velaris-lang/receipt/v1"
+   },
+   "RECEIPT_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.receipt/1"
+   },
+   "RECEIPT_SPEC": {
+    "kind": "value",
+    "type": "str"
+   },
+   "REDACTED": {
+    "kind": "value",
+    "type": "str"
+   },
+   "REFERENCE_URL": {
+    "kind": "value",
+    "type": "str"
+   },
+   "REFUSAL_CODES": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "RELEASED_FROM_MAIN": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "RELEASE_IDENTITY": {
+    "kind": "value",
+    "type": "str"
+   },
+   "RELEASE_IDENTITY_MAIN": {
+    "kind": "value",
+    "type": "str"
+   },
+   "REMOVED_ERRORS": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "REPOSITORY": {
+    "kind": "value",
+    "type": "str"
+   },
+   "REVIEW_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.review/1"
+   },
+   "ROUNDING": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "RUN_RECORDER": {
+    "kind": "value",
+    "type": "NoneType"
+   },
+   "RecElem": {
+    "bases": [
+     "object"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, src, idx)"
+    },
+    "signature": "(src, idx)"
+   },
+   "RecListVal": {
+    "bases": [
+     "object"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, rname, arrays, length)"
+    },
+    "signature": "(rname, arrays, length)"
+   },
+   "RecordDef": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "name",
+     "fields",
+     "line",
+     "src_file"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, name, fields, line, src_file='')"
+    },
+    "signature": "(name, fields, line, src_file='')"
+   },
+   "RecordLit": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "name",
+     "fields",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, name, fields, line)"
+    },
+    "signature": "(name, fields, line)"
+   },
+   "RecordValue": {
+    "bases": [
+     "object"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, rname, fields)"
+    },
+    "signature": "(rname, fields)"
+   },
+   "Return": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "value",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, value, line)"
+    },
+    "signature": "(value, line)"
+   },
+   "ReturnSignal": {
+    "bases": [
+     "Exception"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, value)"
+    },
+    "signature": "(value)"
+   },
+   "RunResult": {
+    "bases": [
+     "object"
+    ],
+    "covered": true,
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, ok, output, logs, problems, refused_effect, exit_code, timed_out=False, out_of_memory=False, effects_used=None, receipt=None)",
+     "as_dict": "(self)"
+    },
+    "signature": "(ok, output, logs, problems, refused_effect, exit_code, timed_out=False, out_of_memory=False, effects_used=None, receipt=None)",
+    "slots": [
+     "ok",
+     "output",
+     "logs",
+     "problems",
+     "refused_effect",
+     "exit_code",
+     "timed_out",
+     "out_of_memory",
+     "effects_used",
+     "receipt"
+    ]
+   },
+   "SARIF_FINDINGS": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "SARIF_SCHEMA_URI": {
+    "kind": "value",
+    "type": "str"
+   },
+   "SECRET_BUILTINS": {
+    "kind": "value",
+    "type": "frozenset"
+   },
+   "SECRET_PREFIX": {
+    "kind": "value",
+    "type": "str"
+   },
+   "SECRET_SOURCES": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "SEED": {
+    "kind": "value",
+    "type": "NoneType"
+   },
+   "STARTER": {
+    "kind": "value",
+    "type": "str"
+   },
+   "STATS_FFI_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.stats-ffi/1"
+   },
+   "Str": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "value"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, value)"
+    },
+    "signature": "(value)"
+   },
+   "TOKEN_SPEC": {
+    "kind": "value",
+    "type": "list"
+   },
+   "TRACE": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "Token": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "kind",
+     "text",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, kind, text, line)"
+    },
+    "signature": "(kind, text, line)"
+   },
+   "TryExpr": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "value",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, value, line)"
+    },
+    "signature": "(value, line)"
+   },
+   "UNARY_BEFORE": {
+    "kind": "value",
+    "type": "set"
+   },
+   "UNARY_KEYWORDS": {
+    "kind": "value",
+    "type": "set"
+   },
+   "VERSION": {
+    "kind": "value",
+    "type": "str"
+   },
+   "Var": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "name",
+     "line"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, name, line)"
+    },
+    "signature": "(name, line)"
+   },
+   "VelarisError": {
+    "bases": [
+     "Exception"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, code, message, line, fixes=None, file=None)",
+     "human": "(self, filename)",
+     "machine": "(self, filename)"
+    },
+    "signature": "(code, message, line, fixes=None, file=None)"
+   },
+   "While": {
+    "bases": [
+     "object"
+    ],
+    "fields": [
+     "cond",
+     "body",
+     "line",
+     "invariants"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, cond, body, line, invariants=<factory>)"
+    },
+    "signature": "(cond, body, line, invariants=<factory>)"
+   },
+   "allow_host": {
+    "kind": "function",
+    "signature": "(url, what, line)"
+   },
+   "allow_module": {
+    "kind": "function",
+    "signature": "(module, what, line)"
+   },
+   "allow_path": {
+    "kind": "function",
+    "signature": "(kind, path, what, line)"
+   },
+   "attest": {
+    "covered": true,
+    "kind": "function",
+    "signature": "(path, *, timeout=60, max_memory_mb=2048)"
+   },
+   "attest_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "attest_statement": {
+    "kind": "function",
+    "signature": "(path, name=None, *, auditor=None)"
+   },
+   "audit": {
+    "covered": true,
+    "kind": "function",
+    "signature": "(source, *, path=None, timeout=60, max_memory_mb=2048, import_root=None)"
+   },
+   "blame": {
+    "kind": "function",
+    "signature": "(fn_or_rec, err)"
+   },
+   "build_program": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "build_runtime": {
+    "kind": "function",
+    "signature": "(funcs, native=None)"
+   },
+   "builtin_reached": {
+    "kind": "function",
+    "signature": "(name, table)"
+   },
+   "capabilities_compare": {
+    "kind": "function",
+    "signature": "(baseline, scan, baseline_file='velaris.capabilities')"
+   },
+   "capabilities_document": {
+    "kind": "function",
+    "signature": "(scan, date=None)"
+   },
+   "capabilities_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "capabilities_text": {
+    "kind": "function",
+    "signature": "(doc)"
+   },
+   "capability_scan": {
+    "kind": "function",
+    "signature": "(root='.', use_git=True)"
+   },
+   "card": {
+    "covered": true,
+    "kind": "function",
+    "signature": "()"
+   },
+   "carries_secret": {
+    "kind": "function",
+    "signature": "(t, records=None)"
+   },
+   "check": {
+    "covered": true,
+    "kind": "function",
+    "signature": "(source, *, path=None, prove=True, timeout=60, max_memory_mb=2048, import_root=None)"
+   },
+   "check_ceilings": {
+    "kind": "function",
+    "signature": "(timeout_flag, memory_flag)"
+   },
+   "check_effects": {
+    "kind": "function",
+    "signature": "(funcs, errors)"
+   },
+   "check_main": {
+    "kind": "function",
+    "signature": "(funcs, errors, *, running=True)"
+   },
+   "check_proofs": {
+    "kind": "function",
+    "signature": "(funcs, records, errors, proven_out=None, timeouts_out=None)"
+   },
+   "check_types": {
+    "kind": "function",
+    "signature": "(funcs, records, errors)"
+   },
+   "checked_int": {
+    "kind": "function",
+    "signature": "(value, op, line)"
+   },
+   "clash_error": {
+    "kind": "function",
+    "signature": "(want, got, line, what='')"
+   },
+   "cli_budget": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "compile_native": {
+    "kind": "function",
+    "signature": "(funcs, proven=frozenset())"
+   },
+   "conformance": {
+    "kind": "function",
+    "signature": "(corpus, levels=(1, 2, 3))"
+   },
+   "conformance_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "contract_coverage": {
+    "kind": "function",
+    "signature": "(functions, records)"
+   },
+   "count_op": {
+    "kind": "function",
+    "signature": "(kind, what, line)"
+   },
+   "currency_clash": {
+    "kind": "function",
+    "signature": "(a, b)"
+   },
+   "currency_generic": {
+    "kind": "function",
+    "signature": "(fn)"
+   },
+   "deps_comment": {
+    "kind": "function",
+    "signature": "(body, pr, has_lockfiles=True)"
+   },
+   "deps_diff": {
+    "kind": "function",
+    "signature": "(package, old, new)"
+   },
+   "deps_diff_lines": {
+    "kind": "function",
+    "signature": "(result)"
+   },
+   "deps_diff_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "deps_markdown": {
+    "kind": "function",
+    "signature": "(review)"
+   },
+   "deps_review": {
+    "kind": "function",
+    "signature": "(against, root='.', limit=30)"
+   },
+   "deps_review_lines": {
+    "kind": "function",
+    "signature": "(review)"
+   },
+   "doctor": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "door_ceilings": {
+    "kind": "function",
+    "signature": "(timeout_flag, memory_flag)"
+   },
+   "editor_answer": {
+    "kind": "function",
+    "signature": "(method, params, text, uri)"
+   },
+   "eject_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "erase_wrappers": {
+    "kind": "function",
+    "signature": "(t)"
+   },
+   "expand_allow": {
+    "kind": "function",
+    "signature": "(spec)"
+   },
+   "expr_str": {
+    "kind": "function",
+    "signature": "(e)"
+   },
+   "expr_vars": {
+    "kind": "function",
+    "signature": "(e)"
+   },
+   "ffi_reach": {
+    "kind": "function",
+    "signature": "(obj, what, line, described)"
+   },
+   "fmt_fn_type": {
+    "kind": "function",
+    "signature": "(param_types, ret)"
+   },
+   "fmt_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "fn_sig_parts": {
+    "kind": "function",
+    "signature": "(t)"
+   },
+   "format_source": {
+    "kind": "function",
+    "signature": "(source)"
+   },
+   "gather_sources": {
+    "kind": "function",
+    "signature": "(entry)"
+   },
+   "guarded_opener": {
+    "kind": "function",
+    "signature": "(url)"
+   },
+   "host_refusal": {
+    "kind": "function",
+    "signature": "(url)"
+   },
+   "inspect_source": {
+    "kind": "function",
+    "signature": "(path, source=None, require_main=False)"
+   },
+   "interpret": {
+    "kind": "function",
+    "signature": "(funcs, native=None)"
+   },
+   "is_money": {
+    "kind": "function",
+    "signature": "(t)"
+   },
+   "is_secret": {
+    "kind": "function",
+    "signature": "(t)"
+   },
+   "lex": {
+    "kind": "function",
+    "signature": "(source, keep_trivia=False)"
+   },
+   "load_program": {
+    "kind": "function",
+    "signature": "(entry, entry_source=None, loaded=None)"
+   },
+   "local_names_of": {
+    "kind": "function",
+    "signature": "(fn)"
+   },
+   "loop_termination": {
+    "kind": "function",
+    "signature": "(fn, table=None)"
+   },
+   "lsp_analyze": {
+    "kind": "function",
+    "signature": "(path, text, deep)"
+   },
+   "lsp_serve": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "main": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "mcp_list_tools": {
+    "kind": "function",
+    "signature": "(command, timeout=120)"
+   },
+   "mcp_manifest_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "mcp_tool_hashes": {
+    "kind": "function",
+    "signature": "(tool)"
+   },
+   "mcp_tool_manifest": {
+    "kind": "function",
+    "signature": "(server_info, tools)"
+   },
+   "mcp_verify_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "memory_cap_is_enforced": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "migrate_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "migrate_needs": {
+    "kind": "function",
+    "signature": "(path)"
+   },
+   "money_text": {
+    "kind": "function",
+    "signature": "(m)"
+   },
+   "native_eligible": {
+    "kind": "function",
+    "signature": "(funcs, proven=frozenset())"
+   },
+   "new_project": {
+    "kind": "function",
+    "signature": "(name)"
+   },
+   "nice_name": {
+    "kind": "function",
+    "signature": "(name)"
+   },
+   "packages": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "parse_budget": {
+    "kind": "function",
+    "signature": "(spec)"
+   },
+   "parse_host_port": {
+    "kind": "function",
+    "signature": "(text)"
+   },
+   "parse_money_text": {
+    "kind": "function",
+    "signature": "(text, currency)"
+   },
+   "pool_worker": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "print_sarif_summary": {
+    "kind": "function",
+    "signature": "(log)"
+   },
+   "print_usage": {
+    "kind": "function",
+    "signature": "(command=None)"
+   },
+   "program_state_baseline": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "proof_timeout_env": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "proof_timeout_seconds": {
+    "kind": "function",
+    "signature": "(float_heavy)"
+   },
+   "prover_seed": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "qualify": {
+    "kind": "function",
+    "signature": "(fs, alias)"
+   },
+   "read_capabilities": {
+    "kind": "function",
+    "signature": "(path)"
+   },
+   "receipt_statement": {
+    "kind": "function",
+    "signature": "(recorder, *, name, entry_bytes, budget, parameters, result, started_at, wall_time_ms, complete=True)"
+   },
+   "records_carrying": {
+    "kind": "function",
+    "signature": "(records)"
+   },
+   "release_identity": {
+    "kind": "function",
+    "signature": "(version)"
+   },
+   "repl": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "reset_program_state": {
+    "kind": "function",
+    "signature": "(budget=None, baseline=None)"
+   },
+   "review": {
+    "kind": "function",
+    "signature": "(against, root='.')"
+   },
+   "review_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "round_ratio": {
+    "kind": "function",
+    "signature": "(p, q, mode)"
+   },
+   "run": {
+    "covered": true,
+    "kind": "function",
+    "signature": "(source, *, path=None, allow=None, deny=None, args=None, stdin='', native=True, timeout=None, max_memory_mb=None, seed=None, freeze_time=None, import_root=None)"
+   },
+   "run_builtin": {
+    "kind": "function",
+    "signature": "(name, args, line)"
+   },
+   "run_limits": {
+    "kind": "function",
+    "signature": "(asked, most_time, most_memory)"
+   },
+   "run_money": {
+    "kind": "function",
+    "signature": "(name, args, line)"
+   },
+   "run_outcome": {
+    "kind": "function",
+    "signature": "(result)"
+   },
+   "run_params": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "run_refusals": {
+    "kind": "function",
+    "signature": "(result)"
+   },
+   "sarif_audit": {
+    "kind": "function",
+    "signature": "(files, strict=False, allow_reasons=())"
+   },
+   "sarif_capabilities": {
+    "kind": "function",
+    "signature": "(result)"
+   },
+   "sarif_check": {
+    "kind": "function",
+    "signature": "(targets, strict=False)"
+   },
+   "sarif_deps_diff": {
+    "kind": "function",
+    "signature": "(result)"
+   },
+   "sarif_deps_review": {
+    "kind": "function",
+    "signature": "(review)"
+   },
+   "sarif_proofs": {
+    "kind": "function",
+    "signature": "(reports, totals, share, minimum)"
+   },
+   "sarif_rules": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "secret_inner": {
+    "kind": "function",
+    "signature": "(t)"
+   },
+   "serve_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "set_proof_timeout": {
+    "kind": "function",
+    "signature": "(seconds)"
+   },
+   "set_run_params": {
+    "kind": "function",
+    "signature": "(seed=None, freeze_time=None)"
+   },
+   "shown_name": {
+    "kind": "function",
+    "signature": "(name)"
+   },
+   "spend": {
+    "kind": "function",
+    "signature": "(effect, what, line)"
+   },
+   "stats_ffi": {
+    "kind": "function",
+    "signature": "(root, *, timeout=60, max_memory_mb=2048)"
+   },
+   "stats_ffi_lines": {
+    "kind": "function",
+    "signature": "(result)"
+   },
+   "stats_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "strip_secret": {
+    "kind": "function",
+    "signature": "(t)"
+   },
+   "to_text": {
+    "kind": "function",
+    "signature": "(v)"
+   },
+   "trace_enter": {
+    "kind": "function",
+    "signature": "(name, params, args, secret=())"
+   },
+   "trace_leave": {
+    "kind": "function",
+    "signature": "(name, value, failed=None, secret=False)"
+   },
+   "type_mentions": {
+    "kind": "function",
+    "signature": "(t, tv)"
+   },
+   "unescape": {
+    "kind": "function",
+    "signature": "(raw, line)"
+   },
+   "unknown_function": {
+    "kind": "function",
+    "signature": "(name, line, known)"
+   },
+   "usage_lines": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "verify_libraries": {
+    "kind": "function",
+    "signature": "()"
+   },
+   "warn_allow_all": {
+    "kind": "function",
+    "signature": "(where='velaris')"
+   },
+   "wrap_secret": {
+    "kind": "function",
+    "signature": "(t)"
+   }
+  },
+  "removed_codes": []
+ },
+ "lsp": {
+  "answers": {
+   "codeLens": [
+    {
+     "command": {
+      "command": "str",
+      "title": "str"
+     },
+     "range": {
+      "end": {
+       "character": "int",
+       "line": "int"
+      },
+      "start": {
+       "character": "int",
+       "line": "int"
+      }
+     }
+    }
+   ],
+   "completion": {
+    "isIncomplete": "bool",
+    "items": [
+     {
+      "detail": "str",
+      "documentation": "str",
+      "kind": "int",
+      "label": "str"
+     },
+     {
+      "detail": "str",
+      "documentation": "NoneType",
+      "kind": "int",
+      "label": "str"
+     },
+     {
+      "kind": "int",
+      "label": "str"
+     }
+    ]
+   },
+   "definition": {
+    "range": {
+     "end": {
+      "character": "int",
+      "line": "int"
+     },
+     "start": {
+      "character": "int",
+      "line": "int"
+     }
+    },
+    "uri": "str"
+   },
+   "documentSymbol": [
+    {
+     "detail": "str",
+     "kind": "int",
+     "name": "str",
+     "range": {
+      "end": {
+       "character": "int",
+       "line": "int"
+      },
+      "start": {
+       "character": "int",
+       "line": "int"
+      }
+     },
+     "selectionRange": {
+      "end": {
+       "character": "int",
+       "line": "int"
+      },
+      "start": {
+       "character": "int",
+       "line": "int"
+      }
+     }
+    }
+   ],
+   "hover": {
+    "contents": {
+     "kind": "str",
+     "value": "str"
+    }
+   },
+   "rename": {
+    "changes": {
+     "file://.../p.vel": [
+      {
+       "newText": "str",
+       "range": {
+        "end": {
+         "character": "int",
+         "line": "int"
+        },
+        "start": {
+         "character": "int",
+         "line": "int"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "shutdown": "NoneType"
+  },
+  "capabilities": {
+   "codeLensProvider": {
+    "resolveProvider": false
+   },
+   "completionProvider": {
+    "triggerCharacters": [
+     ".",
+     " "
+    ]
+   },
+   "definitionProvider": true,
+   "documentSymbolProvider": true,
+   "hoverProvider": true,
+   "renameProvider": {
+    "prepareProvider": false
+   },
+   "textDocumentSync": {
+    "change": 1,
+    "openClose": true,
+    "save": {
+     "includeText": true
+    }
+   }
+  },
+  "diagnostics": {
+   "bad": {
+    "diagnostics": [
+     {
+      "message": "str",
+      "range": {
+       "end": {
+        "character": "int",
+        "line": "int"
+       },
+       "start": {
+        "character": "int",
+        "line": "int"
+       }
+      },
+      "severity": "int",
+      "source": "str"
+     }
+    ],
+    "uri": "str"
+   },
+   "good": {
+    "diagnostics": [],
+    "uri": "str"
+   }
+  },
+  "initialize": {
+   "capabilities": {
+    "codeLensProvider": {
+     "resolveProvider": "bool"
+    },
+    "completionProvider": {
+     "triggerCharacters": [
+      "str"
+     ]
+    },
+    "definitionProvider": "bool",
+    "documentSymbolProvider": "bool",
+    "hoverProvider": "bool",
+    "renameProvider": {
+     "prepareProvider": "bool"
+    },
+    "textDocumentSync": {
+     "change": "int",
+     "openClose": "bool",
+     "save": {
+      "includeText": "bool"
+     }
+    }
+   },
+   "serverInfo": {
+    "name": "str",
+    "version": "str"
+   }
+  }
+ },
+ "mcp": {
+  "calls": {
+   "audit": {
+    "is_error": false,
+    "shape": {
+     "contract_coverage": [],
+     "counts": {
+      "fs": "int",
+      "net": "int"
+     },
+     "effects": [
+      "str"
+     ],
+     "ffi_any": "bool",
+     "ffi_modules": [],
+     "ffi_native": {},
+     "fs_paths": {
+      "read": [],
+      "read_any": "bool",
+      "write": [],
+      "write_any": "bool"
+     },
+     "functions": [
+      {
+       "can_fail": "bool",
+       "effects": [
+        "str"
+       ],
+       "ensures": [],
+       "loops_unshown": "int",
+       "name": "str",
+       "requires": [],
+       "status": "str"
+      }
+     ],
+     "loops_unshown": "int",
+     "net_hosts": {
+      "any": "bool",
+      "hosts": []
+     },
+     "ok": "bool",
+     "problems": [],
+     "proven_share": "NoneType",
+     "prover": "bool",
+     "safe_command": "str",
+     "schema": "str",
+     "secrets": {
+      "declassifications": [],
+      "declassifies": "bool",
+      "sources": []
+     },
+     "velaris_version": "str",
+     "warnings": []
+    }
+   },
+   "card": {
+    "is_error": false,
+    "shape": "text"
+   },
+   "check": {
+    "is_error": false,
+    "shape": {
+     "ok": "bool",
+     "problems": [],
+     "proven": [],
+     "runtime_checked": []
+    }
+   },
+   "check, does not compile": {
+    "is_error": false,
+    "shape": {
+     "ok": "bool",
+     "problems": [
+      {
+       "code": "str",
+       "file": "str",
+       "fixes": [
+        "str"
+       ],
+       "line": "int",
+       "message": "str"
+      }
+     ],
+     "proven": [],
+     "runtime_checked": []
+    }
+   },
+   "no such tool": {
+    "is_error": true,
+    "shape": {
+     "error": "str"
+    }
+   },
+   "run": {
+    "is_error": false,
+    "shape": {
+     "allowed": [
+      "str"
+     ],
+     "effects_used": {
+      "io": "int"
+     },
+     "exit_code": "int",
+     "logs": "str",
+     "ok": "bool",
+     "out_of_memory": "bool",
+     "output": "str",
+     "problems": [],
+     "refused_effect": "NoneType",
+     "timed_out": "bool"
+    }
+   },
+   "run, a budget that does not parse": {
+    "is_error": true,
+    "shape": {
+     "error": "str",
+     "ok": "bool"
+    }
+   },
+   "run, every field": {
+    "is_error": false,
+    "shape": {
+     "allowed": [
+      "str"
+     ],
+     "effects_used": {
+      "io": "int"
+     },
+     "exit_code": "int",
+     "logs": "str",
+     "ok": "bool",
+     "out_of_memory": "bool",
+     "output": "str",
+     "problems": [],
+     "receipt": {
+      "_type": "str",
+      "predicate": {
+       "budget": "str",
+       "complete": "bool",
+       "declassifications": [],
+       "effects_used": {
+        "io": "int"
+       },
+       "exit": {
+        "code": "NoneType",
+        "outcome": "str",
+        "status": "int"
+       },
+       "producer": {
+        "name": "str",
+        "uri": "str",
+        "version": "str"
+       },
+       "refusals": [],
+       "run_parameters": {
+        "confinement": "str",
+        "freeze_time": "str",
+        "max_memory_mb": "int",
+        "max_read_bytes": "int",
+        "seed": "int",
+        "timeout": "int"
+       },
+       "schema": "str",
+       "specification": "str",
+       "startedAt": "str",
+       "wall_time_ms": "float"
+      },
+      "predicateType": "str",
+      "subject": [
+       {
+        "digest": {
+         "sha256": "str"
+        },
+        "name": "str"
+       }
+      ]
+     },
+     "refused_effect": "NoneType",
+     "timed_out": "bool"
+    }
+   },
+   "run, past the ceiling": {
+    "is_error": true,
+    "shape": {
+     "error": "str",
+     "max_allow": [
+      "str"
+     ],
+     "max_memory_mb": "int",
+     "max_timeout": "int"
+    }
+   },
+   "run, refused": {
+    "is_error": false,
+    "shape": {
+     "allowed": [
+      "str"
+     ],
+     "effects_used": {},
+     "exit_code": "int",
+     "logs": "str",
+     "note": "str",
+     "ok": "bool",
+     "out_of_memory": "bool",
+     "output": "str",
+     "problems": [
+      {
+       "code": "str",
+       "file": "str",
+       "fixes": [
+        "str"
+       ],
+       "line": "int",
+       "message": "str"
+      }
+     ],
+     "refused_effect": "str",
+     "timed_out": "bool"
+    }
+   }
+  },
+  "initialize": {
+   "capabilities": {
+    "tools": {}
+   },
+   "protocolVersion": "str",
+   "serverInfo": {
+    "name": "str",
+    "version": "str"
+   }
+  },
+  "log": [
+   {
+    "budget": "NoneType",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "NoneType",
+    "tool": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "tool": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "tool": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "tool": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": {
+     "io": "int"
+    },
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "tool": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": {
+     "io": "int"
+    },
+    "outcome": "str",
+    "refusals": [],
+    "run_params": {
+     "freeze_time": "str",
+     "seed": "int"
+    },
+    "schema": "str",
+    "source_sha256": "str",
+    "tool": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "str",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": {},
+    "outcome": "str",
+    "refusals": [
+     {
+      "by": "str",
+      "code": "str",
+      "what": "str"
+     }
+    ],
+    "schema": "str",
+    "source_sha256": "str",
+    "tool": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "outcome": "str",
+    "refusals": [
+     {
+      "by": "str",
+      "what": "str"
+     }
+    ],
+    "schema": "str",
+    "source_sha256": "str",
+    "tool": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "str",
+    "tool": "str",
+    "ts": "str"
+   },
+   {
+    "budget": "NoneType",
+    "door": "str",
+    "duration_ms": "float",
+    "effects": "NoneType",
+    "outcome": "str",
+    "refusals": [],
+    "schema": "str",
+    "source_sha256": "NoneType",
+    "tool": "str",
+    "ts": "str"
+   }
+  ],
+  "protocol": "2024-11-05",
+  "tools": [
+   {
+    "description": "The Velaris language in about 4,600 words: syntax, the rules models get wrong, every builtin with its effects and whether it can fail, full standard-library signatures, and the error table. Read this before writing Velaris.",
+    "inputSchema": {
+     "properties": {},
+     "type": "object"
+    },
+    "name": "velaris_card"
+   },
+   {
+    "description": "Compile a Velaris program without running it. Returns every problem with a code, line and suggested fixes, plus which promises were proven before running and which fall back to runtime checks. Use this to iterate until a program compiles.",
+    "inputSchema": {
+     "properties": {
+      "source": {
+       "description": "the program",
+       "type": "string"
+      }
+     },
+     "required": [
+      "source"
+     ],
+     "type": "object"
+    },
+    "name": "velaris_check"
+   },
+   {
+    "description": "What a program can touch (io, env, fs, net, clock, rand, ffi, declassify), whether it holds a secret and whether it ever lets one out, what each function promises, how much of that is proven rather than checked while running, what can fail, and the command to run it safely. Use this before running code you did not write.",
+    "inputSchema": {
+     "properties": {
+      "source": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "source"
+     ],
+     "type": "object"
+    },
+    "name": "velaris_audit"
+   },
+   {
+    "description": "Run a Velaris program under an effect budget. Anything outside the budget is refused while the program runs, whatever the source claims about itself, and a refusal cannot be caught by the program. Grant the least you can: ['io'] lets it print and nothing else. This server grants at most what its operator set with --max-allow, and without that flag it grants io only: a request for more is refused, and the refusal names what the server grants. The operator also sets the most time and memory one run may have (--max-timeout, --max-memory-mb: 30 seconds and 512 MB unless changed); a run may ask for less, never more.",
+    "inputSchema": {
+     "properties": {
+      "allow": {
+       "description": "effects to permit: io, env, fs, net, clock, rand, ffi, declassify. Default ['io']. Scoped grants: fs:read:./data, fs:write:./out, net:api.example.com:443, net:*.example.com, ffi:math,json, and @N for at most N operations (fs@50, net:host@100). Plain fs, net or ffi grants every path, host or module. Only what the server's ceiling covers is granted.",
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
+      "args": {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
+      "max_memory_mb": {
+       "description": "memory cap in MB. At most the server's --max-memory-mb (512 unless its operator changed it), which is also the default; more is refused. Enforced on Linux (RLIMIT_AS) and on Windows (a job object); best-effort on macOS. The timeout applies everywhere.",
+       "type": "integer"
+      },
+      "receipt": {
+       "description": "true to be given the run's receipt: an in-toto Statement (velaris.receipt/1) of what this run did - the budget, each refusal and declassification with its reason, the parameters, how it ended and how long it took - bound to the program's sha256 and holding none of its values.",
+       "type": "boolean"
+      },
+      "source": {
+       "type": "string"
+      },
+      "stdin": {
+       "type": "string"
+      },
+      "timeout": {
+       "description": "seconds before the program is stopped. At most the server's --max-timeout (30 unless its operator changed it), which is also the default; more is refused.",
+       "type": "number"
+      }
+     },
+     "required": [
+      "source"
+     ],
+     "type": "object"
+    },
+    "name": "velaris_run"
+   }
+  ],
+  "unknown_method": {
+   "error": {
+    "code": "int",
+    "message": "str"
+   },
+   "id": "int",
+   "jsonrpc": "str"
+  }
+ }
+}

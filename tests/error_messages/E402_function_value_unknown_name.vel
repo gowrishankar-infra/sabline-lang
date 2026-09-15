@@ -1,0 +1,5 @@
+import "std.vel"
+
+fn main() uses io {
+    print(keep_if([1, 5], fn(n: Int) -> Bool { return n > nothing_here }))
+}

@@ -1,0 +1,67 @@
+// Lists (SPEC.md 9.3 and LLM.md "What the prover can and cannot reach"):
+// lengths, reads in range (E705, the classic off-by-one), lists a loop
+// builds, and lists of lists.
+
+// ==== push_adds_one
+// expect: proven add_one
+fn add_one(xs: List of Int) -> List of Int
+    ensures length(result) == length(xs) + 1
+{
+    return push(xs, 1)
+}
+
+// ==== a_read_past_the_end
+// expect: E705 line 3
+fn last_bad(xs: List of Int) -> Int {
+    return get(xs, length(xs))
+}
+
+// ==== a_read_the_requires_guards
+// expect: runtime first
+fn first(xs: List of Int) -> Int
+    requires length(xs) > 0
+{
+    return get(xs, 0)
+}
+
+// ==== the_classic_off_by_one
+// expect: E705 line 6
+fn total(xs: List of Int) -> Int {
+    let i = 0
+    let t = 0
+    while i <= length(xs) {
+        t = t + get(xs, i)
+        i = i + 1
+    }
+    return t
+}
+
+// ==== list_equality
+// expect: proven copy
+fn copy(xs: List of Int) -> List of Int
+    ensures result == xs
+{
+    return xs
+}
+
+// ==== a_loop_builds_a_list_of_known_length
+// expect: proven range_list
+fn range_list(n: Int) -> List of Int
+    requires n >= 0
+    ensures length(result) == n
+{
+    let out: List of Int = []
+    for i in 0 to n {
+        out = push(out, i)
+    }
+    return out
+}
+
+// ==== a_list_of_lists
+// expect: proven row_length
+fn row_length(g: List of List of Int) -> Int
+    requires length(g) > 0
+    ensures result >= 0
+{
+    return length(get(g, 0))
+}

@@ -14,13 +14,14 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any, Callable, cast
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
-# its own directory and proof cache, so two runs at once do not collide
+# its own directory, so two runs at once do not collide
 WORK = isolate("check_library")
 
 # three checks below are about PROOFS, so they can only be made when the
@@ -87,13 +88,13 @@ fn main() {
 # implementation to each of them. Nothing in these tables depends on
 # Python: they are budget text and Velaris source.
 
-def grants(*effects, ffi=None, fs=None, net=None, counts=None) -> dict:
+def grants(*effects: Any, ffi: Any = None, fs: Any = None, net: Any = None, counts: Any = None) -> dict[Any, Any]:
     """A parsed budget as the corpus writes one. `ffi`, `fs` and `net` are
     "any" (unscoped) or a list: module names; (direction, path) pairs,
     path None for any path in that direction, and path as written after
     its %-escapes are decoded, before velaris-spec 5.1 resolves it; (host,
     port) pairs, port None for any port."""
-    out = {"effects": sorted(effects)}
+    out: dict[str, Any] = {"effects": sorted(effects)}
     if ffi is not None:
         out["ffi"] = ffi if ffi == "any" else sorted(ffi)
     if fs is not None:
@@ -258,7 +259,7 @@ BUDGETS = [
 ]
 
 
-def malformed_budgets() -> list:
+def malformed_budgets() -> list[Any]:
     """Budgets that must each be refused with a readable budget error and
     never a traceback (spec Q6): `fs@²` used to stop the parser with a
     ValueError from int(); an unknown effect, a doubled colon, a stray
@@ -295,30 +296,30 @@ def malformed_budgets() -> list:
     return sorted(set(out))
 
 
-def _fns(*rows) -> list:
+def _fns(*rows: Any) -> list[Any]:
     return [{"name": n, "effects": sorted(e), "can_fail": f}
             for n, e, f in rows]
 
 
-def _paths(read=(), write=(), read_any=False, write_any=False) -> dict:
+def _paths(read: Any = (), write: Any = (), read_any: bool = False, write_any: bool = False) -> dict[str, Any]:
     return {"read": sorted(read), "write": sorted(write),
             "read_any": read_any, "write_any": write_any}
 
 
-def _hosts(*hosts, any_host=False) -> dict:
+def _hosts(*hosts: Any, any_host: bool = False) -> dict[str, Any]:
     return {"hosts": sorted(hosts), "any": any_host}
 
 
-def _secrets(sources=(), declassifications=()) -> dict:
+def _secrets(sources: Any = (), declassifications: Any = ()) -> dict[str, Any]:
     """velaris.audit/1's secrets (6.0, velaris-spec 8.6)."""
     return {"sources": sorted(sources),
             "declassifies": bool(declassifications),
             "declassifications": list(declassifications)}
 
 
-def surface(effects, functions, safe_command, ffi_modules=(),
-            ffi_any=False, fs_paths=None, net_hosts=None,
-            secrets=None) -> dict:
+def surface(effects: Any, functions: Any, safe_command: Any, ffi_modules: Any = (),
+            ffi_any: bool = False, fs_paths: Any = None, net_hosts: Any = None,
+            secrets: Any = None) -> dict[Any, Any]:
     """What velaris.audit/1 must say of a program that compiles: the
     fields that do not depend on a prover (velaris-spec 8.2).
 
@@ -334,7 +335,7 @@ def surface(effects, functions, safe_command, ffi_modules=(),
     return out
 
 
-def refused(*codes) -> dict:
+def refused(*codes: Any) -> dict[str, Any]:
     """What velaris.audit/1 must say of a program that does not compile:
     ok is false and a problem carries each code."""
     return {"ok": False, "problems_include": list(codes)}
@@ -343,7 +344,7 @@ def refused(*codes) -> dict:
 # Programs and the effect surface velaris.audit/1 must report for each
 # (velaris-spec 3.2, 8). `files` maps names to source; the first is the
 # file audited.
-AUDITS = [
+AUDITS: list[dict[str, Any]] = [
     dict(id="pure", description="a program with no uses clause declares "
          "nothing, and its safe_command grants nothing",
          files={"main.vel": '''fn add(a: Int, b: Int) -> Int {
@@ -788,7 +789,7 @@ def _refuses_budget(text: str) -> bool:
         return True
 
 
-def _budget_error(argv: list) -> bool:
+def _budget_error(argv: list[Any]) -> bool:
     """True when a command line is refused as a budget error rather than
     raising something else."""
     try:
@@ -800,18 +801,18 @@ def _budget_error(argv: list) -> bool:
         return False
 
 
-def _json_version(path) -> str:
+def _json_version(path: Any) -> str:
     import json as _j
-    return _j.loads(path.read_text(encoding="utf-8"))["version"]
+    return cast(str, _j.loads(path.read_text(encoding="utf-8"))["version"])
 
 
 def main() -> int:
     passed = failed = 0
 
-    def skip(label, why="needs the prover"):
+    def skip(label: Any, why: str = "needs the prover") -> None:
         print(f"  skip     {label} ({why})")
 
-    def ok(label, condition, detail=""):
+    def ok(label: Any, condition: Any, detail: object = "") -> None:
         nonlocal passed, failed
         if condition:
             print(f"  ok       {label}")
@@ -825,26 +826,26 @@ def main() -> int:
     print("the library")
     print("-" * 62)
 
-    r = velaris.check(PURE)
-    ok("check accepts a good program", r.ok, str(r.problems))
+    c = velaris.check(PURE)
+    ok("check accepts a good program", c.ok, str(c.problems))
     if HAVE_PROVER:
-        ok("check reports what was proven", "double" in r.proven,
-           str(r.proven))
+        ok("check reports what was proven", "double" in c.proven,
+           str(c.proven))
     else:
         skip("check reports what was proven")
 
-    r = velaris.check(WONT_COMPILE)
+    c = velaris.check(WONT_COMPILE)
     ok("check reports an undeclared effect",
-       not r.ok and any(p.code == "E300" for p in r.problems),
-       str(r.problems))
+       not c.ok and any(p.code == "E300" for p in c.problems),
+       str(c.problems))
     ok("problems carry fixes",
-       bool(r.problems and r.problems[0].fixes))
+       bool(c.problems and c.problems[0].fixes))
 
     if HAVE_PROVER:
-        r = velaris.check(BROKEN)
+        c = velaris.check(BROKEN)
         ok("check refutes a false promise",
-           not r.ok and any(p.code == "E700" for p in r.problems),
-           str(r.problems))
+           not c.ok and any(p.code == "E700" for p in c.problems),
+           str(c.problems))
     else:
         skip("check refutes a false promise")
         r = velaris.run(BROKEN, allow={"io"})
@@ -863,10 +864,10 @@ def main() -> int:
     # of a second makes it deterministic; the answer is the same one a
     # thirty-second budget gives on a machine that is busy enough.
     if HAVE_PROVER:
-        def in_a_hurry(*args):
+        def in_a_hurry(*args: Any) -> Any:
             return subprocess.run(
                 [sys.executable, str(HERE / "velaris.py"), *args,
-                 "--proof-timeout", "0.2", "--no-cache"],
+                 "--proof-timeout", "0.2"],
                 capture_output=True, text=True, timeout=300,
                 cwd=str(HERE))
 
@@ -1140,10 +1141,10 @@ def main() -> int:
     outside.write_text("outside\n", encoding="utf-8")
     data, out = (box / "data").as_posix(), (box / "out").as_posix()
 
-    ports = {}
+    ports: dict[str, int] = {}
 
     class Local(BaseHTTPRequestHandler):
-        def do_GET(self):
+        def do_GET(self) -> None:
             if self.path.startswith("/go"):
                 self.send_response(302)
                 self.send_header(
@@ -1156,7 +1157,7 @@ def main() -> int:
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, *a):
+        def log_message(self, *a: Any) -> None:
             pass
 
     srv_a = HTTPServer(("127.0.0.1", 0), Local)
@@ -1167,23 +1168,23 @@ def main() -> int:
         _threading.Thread(target=srv.serve_forever, daemon=True).start()
     gp, op = ports["granted"], ports["other"]
 
-    def reads(path):
+    def reads(path: Any) -> str:
         return ("fn main() uses io, fs {\n"
                 f'    check read_file("{path}") {{\n'
                 "        ok t { print(\"READ \" + t) }\n"
                 "        fail w { print(\"failed\") }\n    }\n}\n")
 
-    def writes(path):
+    def writes(path: Any) -> str:
         return ("fn main() uses io, fs {\n"
                 f'    write_file("{path}", "x")\n    print("WROTE")\n}}\n')
 
-    def fetches(url):
+    def fetches(url: Any) -> str:
         return ("fn main() uses io, net {\n"
                 f'    check fetch("{url}") {{\n'
                 "        ok b { print(\"GOT \" + b) }\n"
                 "        fail w { print(\"caught: \" + w) }\n    }\n}\n")
 
-    def refused(label, source, allow, code, effect_prefix):
+    def refused(label: Any, source: Any, allow: Any, code: Any, effect_prefix: Any) -> None:
         r = velaris.run(source, allow=set(allow))
         ok(label, not r.ok and any(p.code == code for p in r.problems)
            and (r.refused_effect or "").startswith(effect_prefix),
@@ -1287,7 +1288,6 @@ def main() -> int:
     outside.unlink(missing_ok=True)
     scoped_ports = (gp, op)
     scoped_servers = (srv_a, srv_b)
-    scoped_data = data
 
     print()
     print("the MCP server")
@@ -1344,7 +1344,7 @@ def main() -> int:
     # The HTTP door always had --max-allow; the MCP server had nothing,
     # so a caller could ask velaris_run for ffi and get it. It now has
     # the same ceiling in the same grammar, io when the flag is absent.
-    def mcp_session(calls, *flags):
+    def mcp_session(calls: Any, *flags: Any) -> tuple[Any, ...]:
         """Run the server over stdio; {id: result} for each tools/call
         (ids from 10), the completed process, and the tools it listed."""
         msgs = [{"jsonrpc": "2.0", "id": 1, "method": "initialize",
@@ -1371,7 +1371,7 @@ def main() -> int:
         listed = got.get(2, {}).get("tools", [])
         return got, done, listed
 
-    def text_of(result):
+    def text_of(result: Any) -> Any:
         try:
             return json.loads(result["content"][0]["text"])
         except Exception:
@@ -1748,7 +1748,7 @@ def main() -> int:
                            else ("python3", "python"))
         _nbox = Path(_tf_npm.mkdtemp(prefix="velaris-npm-"))
         try:
-            def _fake_python(name, version, called):
+            def _fake_python(name: Any, version: Any, called: Any) -> Any:
                 """A venv holding one Velaris, reachable only as `called`."""
                 home = _nbox / name
                 subprocess.run(
@@ -1802,7 +1802,7 @@ def main() -> int:
             _none = _fake_python("none", None, _first)
             _real = _fake_python("real", None, _first)
 
-            def _wrapped(dirs, *args, script=None, extra=None):
+            def _wrapped(dirs: Any, *args: Any, script: Any = None, extra: Any = None) -> Any:
                 """Drive the wrapper with PATH holding only `dirs`.
 
                 cwd is the box, never the repo: with the repo as cwd
@@ -1901,7 +1901,9 @@ def main() -> int:
         # compiler has. Nothing else would notice a new command added
         # without an entry, and the silent failure is the old one back.
         _dispatch = set()
-        _src = (HERE / "velaris.py").read_text(encoding="utf-8")
+        _src = "\n".join(
+            p.read_text(encoding="utf-8")
+            for p in sorted(Path(velaris.__file__).parent.glob("*.py")))
         for _m in _re_npm.finditer(r"argv\[:1\] (?:==|in) (.+)", _src):
             _dispatch |= set(_re_npm.findall(r'"([a-z][a-z-]*)"', _m.group(1)))
         _table = set(_re_npm.findall(
@@ -1932,7 +1934,7 @@ def main() -> int:
         work = lockbox / "project"
         work.mkdir()
 
-        def velaris_in(where, *words):
+        def velaris_in(where: Any, *words: Any) -> Any:
             env = dict(os.environ)
             env["PYTHONPATH"] = str(HERE)
             return subprocess.run(
@@ -1981,12 +1983,12 @@ def main() -> int:
         upstream.write_text(
             upstream.read_text(encoding="utf-8") + "\n// a new version\n",
             encoding="utf-8")
-        refused = velaris_in(work, "add", str(upstream), "as", "greet")
+        overwrite = velaris_in(work, "add", str(upstream), "as", "greet")
         ok("velaris add REFUSES to overwrite different bytes",
-           refused.returncode == 1
-           and "different file" in refused.stderr
+           overwrite.returncode == 1
+           and "different file" in overwrite.stderr
            and vendored.read_bytes() == kept,
-           (refused.stdout + refused.stderr)[:200])
+           (overwrite.stdout + overwrite.stderr)[:200])
         forced = velaris_in(work, "add", str(upstream), "as", "greet",
                             "--force")
         ok("...and --force replaces it and relocks it",
@@ -2009,12 +2011,12 @@ def main() -> int:
 
     import secrets as _secrets
 
-    def free_port():
+    def free_port() -> Any:
         with socket.socket() as probe:    # a port nobody else is using
             probe.bind(("127.0.0.1", 0))
             return probe.getsockname()[1]
 
-    def start_door(*words, env=None, capture=False):
+    def start_door(*words: Any, env: Any = None, capture: bool = False) -> tuple[Any, ...]:
         """velaris serve on a free port, answering /health; VELARIS_TOKEN
         is only in its environment when `env` puts it there."""
         at = free_port()
@@ -2038,8 +2040,8 @@ def main() -> int:
                 time.sleep(0.25)
         return proc, at
 
-    def ask(at, method, path, payload=None, token=None, headers=None,
-            raw=None):
+    def ask(at: Any, method: Any, path: Any, payload: Any = None, token: Any = None, headers: Any = None,
+            raw: Any = None) -> tuple[Any, ...]:
         """(status, body bytes, headers) - never raises on a 4xx."""
         sent = {}
         if payload is not None or raw is not None:
@@ -2058,7 +2060,7 @@ def main() -> int:
         except urllib.error.HTTPError as e:
             return e.code, e.read(), dict(e.headers)
 
-    def as_json(body):
+    def as_json(body: Any) -> Any:
         try:
             return _json.loads(body)
         except Exception:
@@ -2076,7 +2078,7 @@ def main() -> int:
     calls = 0                             # non-health calls made below
     sources = []
     try:
-        def post(path, payload):
+        def post(path: Any, payload: Any) -> Any:
             nonlocal calls
             calls += 1
             if isinstance(payload.get("source"), str):
@@ -2140,7 +2142,7 @@ def main() -> int:
         print()
         print("the HTTP door's token (3.4)")
         print("-" * 62)
-        refused = {}
+        denied = {}
         for label, token, headers in [
                 ("no token", None, None),
                 ("a wrong token", WRONG, None),
@@ -2149,20 +2151,20 @@ def main() -> int:
                 ("the token as a query string", None, None)]:
             calls += 1
             path = "/run" + (f"?token={TOKEN}" if "query" in label else "")
-            refused[label] = ask(port, "POST", path,
+            denied[label] = ask(port, "POST", path,
                                  {"source": PURE, "allow": ["io"]},
                                  token=token, headers=headers)
         ok("the door REFUSES a run with no token (401)",
-           refused["no token"][0] == 401, str(refused["no token"][:2]))
+           denied["no token"][0] == 401, str(denied["no token"][:2]))
         ok("the door REFUSES a run with a wrong token (401)",
-           refused["a wrong token"][0] == 401,
-           str(refused["a wrong token"][:2]))
+           denied["a wrong token"][0] == 401,
+           str(denied["a wrong token"][:2]))
         ok("...and with another scheme, a bare 'Bearer', or the token in "
            "the URL instead of the header (401)",
-           all(refused[k][0] == 401 for k in
+           all(denied[k][0] == 401 for k in
                ("another scheme", "Bearer and nothing",
                 "the token as a query string")),
-           str({k: v[0] for k, v in refused.items()}))
+           str({k: v[0] for k, v in denied.items()}))
         calls += 2
         card_anon = ask(port, "GET", "/card")
         nowhere = ask(port, "POST", "/nowhere", {"source": PURE})
@@ -2170,8 +2172,8 @@ def main() -> int:
            "path is 401 too, so nothing about the door is learned without it",
            card_anon[0] == 401 and nowhere[0] == 401,
            f"{card_anon[0]} {nowhere[0]}")
-        bodies = {v[1] for v in refused.values()} | {card_anon[1], nowhere[1]}
-        challenge = {v[2].get("WWW-Authenticate") for v in refused.values()}
+        bodies = {v[1] for v in denied.values()} | {card_anon[1], nowhere[1]}
+        challenge = {v[2].get("WWW-Authenticate") for v in denied.values()}
         ok("401 leaks nothing: every refusal is the same bytes, whatever was "
            "wrong, with a bare Bearer challenge and no reason",
            bodies == {b'{\n  "error": "unauthorized"\n}'}
@@ -2179,7 +2181,7 @@ def main() -> int:
            and not any(TOKEN.encode() in b or WRONG.encode() in b
                        for b in bodies), str(bodies)[:160])
         ok("...and a program sent without the token did not run",
-           all(b"42" not in v[1] for v in refused.values()))
+           all(b"42" not in v[1] for v in denied.values()))
         calls += 1
         code, body, _ = ask(port, "POST", "/run",
                             {"source": PURE, "allow": ["io"]}, token=TOKEN)
@@ -2350,7 +2352,7 @@ def main() -> int:
         "--max-allow", f"io,fs:read:{data2},net:127.0.0.1:{gp}@5",
         "--token-file", str(token_file))
     try:
-        def post2(path, payload):
+        def post2(path: Any, payload: Any) -> tuple[Any, ...]:
             code, body, _ = ask(port2, "POST", path, payload, token=TOKEN)
             return code, as_json(body)
 
@@ -2397,7 +2399,7 @@ def main() -> int:
     # operator names wider ones.
     server, port3 = start_door(env={"VELARIS_TOKEN": TOKEN})
     try:
-        def post3(payload):
+        def post3(payload: Any) -> tuple[Any, ...]:
             code, body, _ = ask(port3, "POST", "/run", payload, token=TOKEN)
             return code, as_json(body)
 
@@ -2427,12 +2429,12 @@ def main() -> int:
                          "max_memory_mb": 256})
         ok("asking for less runs", code == 200
            and d.get("output", "").strip() == "42", str(d)[:160])
-        codes = [post3({"source": PURE, "timeout": v})[0]
+        statuses = [post3({"source": PURE, "timeout": v})[0]
                  for v in (-1, 0, "30", True)]
-        codes.append(post3({"source": PURE, "max_memory_mb": 1.5})[0])
+        statuses.append(post3({"source": PURE, "max_memory_mb": 1.5})[0])
         ok("a limit that is not a positive number - negative, zero, text, "
            "true, a fraction of a MB - is a bad request (400)",
-           codes == [400] * 5, str(codes))
+           statuses == [400] * 5, str(statuses))
     finally:
         server.terminate()
         server.wait(timeout=30)
@@ -2481,7 +2483,7 @@ def main() -> int:
     # the same budget. This is the escaping rule of spec v0.2 - IPv6 in
     # brackets, and `, @ [ ] %` percent-encoded in a path or host - and
     # it is a property of the budget objects, not a string comparison.
-    def budget_shape(b):
+    def budget_shape(b: Any) -> tuple[Any, ...]:
         return (sorted(b.effects),
                 None if b.modules is None else sorted(b.modules),
                 None if b.fs is None else sorted(b.fs),
@@ -2558,8 +2560,8 @@ def main() -> int:
     # Each entry of BUDGETS is a case in velaris-spec tests/L1: the text,
     # and the grants it parses to, or its refusal. Paths are compared
     # after velaris-spec 5.1's resolution, as a runner of the corpus does.
-    def shape_of(b) -> dict:
-        out = {"effects": sorted(b.effects)}
+    def shape_of(b: Any) -> dict[Any, Any]:
+        out: dict[str, Any] = {"effects": sorted(b.effects)}
         if "ffi" in b.effects:
             out["ffi"] = "any" if b.modules is None else sorted(b.modules)
         if "fs" in b.effects:
@@ -2572,7 +2574,7 @@ def main() -> int:
                          if n is not None and e in b.effects}
         return out
 
-    def resolved(shape: dict) -> dict:
+    def resolved(shape: dict[Any, Any]) -> dict[Any, Any]:
         out = dict(shape)
         if isinstance(out.get("fs"), list):
             out["fs"] = sorted({(g["direction"], None if g["path"] is None
@@ -2673,7 +2675,7 @@ def main() -> int:
     try:
         from jsonschema import Draft202012Validator as _V2
     except ImportError:
-        _V2 = None
+        _V2 = None  # type: ignore[assignment, misc]  # jsonschema is optional
     box = Path(_tf.mkdtemp(prefix="velaris-attest-"))
     fetch_loop = ('fn ping() -> Int uses net or fail {\n'
                   '    return try fetch_status("https://api.example.com")\n'
@@ -2720,21 +2722,22 @@ def main() -> int:
         for s in statements for x in s["subject"])
     ok("every subject's digest is the sha256 of that file's bytes",
        digests_right)
-    same = [f for f, s in by_file.items()
-            if s["predicate"]["audit"] != velaris.audit(
-                progs[f], path=str(box / f)).as_dict()]
+    mismatched = [f for f, s in by_file.items()
+                  if s["predicate"]["audit"] != velaris.audit(
+                      progs[f], path=str(box / f)).as_dict()]
     ok("each predicate's audit is audit() of the same program, field for "
-       "field", not same, same)
+       "field", not mismatched, mismatched)
     if _V2 is None:
         skip("the Statements validate against the in-toto, predicate and "
              "audit schemas", "jsonschema is not installed")
     else:
-        checks = [("in-toto Statement v1",
-                   HERE / "tests" / "in-toto-statement-v1.schema.json",
-                   lambda s: s),
-                  ("capability/v1 predicate",
-                   HERE / "docs" / "capability" / "v1" / "schema.json",
-                   lambda s: s["predicate"])]
+        checks: list[tuple[str, Path, Callable[[Any], Any]]] = [
+            ("in-toto Statement v1",
+             HERE / "tests" / "in-toto-statement-v1.schema.json",
+             lambda s: s),
+            ("capability/v1 predicate",
+             HERE / "docs" / "capability" / "v1" / "schema.json",
+             lambda s: s["predicate"])]
         if audit_schema.exists():
             checks.append(("velaris.audit/1", audit_schema,
                            lambda s: s["predicate"]["audit"]))
@@ -2743,10 +2746,10 @@ def main() -> int:
                  f"{audit_schema} is not present")
         for label, schema_file, part in checks:
             v = _V2(json.loads(schema_file.read_text(encoding="utf-8")))
-            errs = [(Path(s["subject"][0]["name"]).name, e.message)
-                    for s in statements for e in v.iter_errors(part(s))]
+            statement_errs = [(Path(s["subject"][0]["name"]).name, e.message)
+                              for s in statements for e in v.iter_errors(part(s))]
             ok(f"every Statement validates against the {label} schema",
-               not errs, errs[:3])
+               not statement_errs, statement_errs[:3])
     comp = by_file["computed.vel"]["predicate"]["audit"]
     ok("a module named while running is represented as ffi_any, not as a "
        "list of modules", comp["ffi_any"] is True
@@ -2867,9 +2870,9 @@ def main() -> int:
     try:
         from jsonschema import Draft4Validator
     except ImportError:
-        Draft4Validator = None
+        Draft4Validator = None  # type: ignore[assignment, misc]  # jsonschema is optional
 
-    def sarif_errors(doc):
+    def sarif_errors(doc: Any) -> list[Any]:
         schema = json.loads(schema_file.read_text(encoding="utf-8"))
         v = Draft4Validator(schema,
                             format_checker=Draft4Validator.FORMAT_CHECKER)
@@ -2907,7 +2910,7 @@ def main() -> int:
     wordcount = str(HERE / "examples" / "wordcount.vel")
     rel = [f"_sarif_box/{n}" for n in programs] + [wordcount]
 
-    def velaris_sarif(*words):
+    def velaris_sarif(*words: Any) -> tuple[Any, ...]:
         environ = dict(os.environ, VELARIS_TOKEN="sarif-" + TOKEN)
         done = subprocess.run([sys.executable, str(HERE / "velaris.py"),
                                *words, "--sarif"], cwd=str(WORK),
@@ -2951,7 +2954,7 @@ def main() -> int:
        and any(r["ruleId"] == "contract-coverage" and r["level"] == "note"
                for r in results)
        and levels == {"error", "warning", "note"}, str(sorted(levels)))
-    e300 = next((r for r in results if r["ruleId"] == "E300"), {})
+    e300: dict[str, Any] = next((r for r in results if r["ruleId"] == "E300"), {})
     loc = (e300.get("locations") or [{}])[0].get("physicalLocation", {})
     print_line = 1 + next(i for i, t in enumerate(WONT_COMPILE.split("\n"))
                           if "print" in t)
@@ -2982,11 +2985,12 @@ def main() -> int:
            and by_id[c]["defaultConfiguration"]["level"] == "error"
            for c in table), f"missing: {missing}")
     # the table against the compiler: every E-code string that appears in
-    # velaris.py's syntax tree outside the table itself is one the
+    # the package's syntax trees outside the table itself is one the
     # compiler raises, returns or reports
-    tree = _ast.parse((HERE / "velaris.py").read_text(encoding="utf-8"))
+    trees = [_ast.parse(p.read_text(encoding="utf-8")) for p in
+             sorted(Path(velaris.__file__).parent.glob("*.py"))]
     inside_table = set()
-    for node in tree.body:
+    for node in (n for t in trees for n in t.body):
         if isinstance(node, _ast.Assign) and any(
                 getattr(t, "id", None) in ("ERROR_TABLE", "REMOVED_ERRORS")
                 for t in node.targets):
@@ -2994,11 +2998,11 @@ def main() -> int:
     removed = {c for c, _meaning, _gone in velaris.REMOVED_ERRORS}
     ok("no code is both given and listed as removed (STABILITY.md rule 3)",
        not removed & set(table), sorted(removed & set(table)))
-    emitted = {n.value for n in _ast.walk(tree)
+    emitted = {n.value for t in trees for n in _ast.walk(t)
                if isinstance(n, _ast.Constant) and isinstance(n.value, str)
                and len(n.value) == 4 and n.value[0] == "E"
                and n.value[1:].isdigit() and id(n) not in inside_table}
-    ok("the error table is the compiler's: every code velaris.py can give "
+    ok("the error table is the compiler's: every code Velaris can give "
        "is in it, and nothing else",
        emitted == set(table),
        f"not in the table: {sorted(emitted - set(table))}; "
@@ -3022,9 +3026,9 @@ def main() -> int:
        velaris.REFERENCE_URL.endswith("/llms.txt")
        and velaris.REFERENCE_URL.startswith("https://"),
        velaris.REFERENCE_URL)
-    marker = "# Velaris for language models"
+    card_marker = "# Velaris for language models"
     ok("every compiler error ends with the reference line",
-       marker in card
+       card_marker in card
        and all(f"reference: {velaris.REFERENCE_URL}" in
                velaris.VelarisError("E700", "x", 1).human("f")
                for _ in (0,)))
@@ -3032,7 +3036,7 @@ def main() -> int:
     try:
         with _u.urlopen(velaris.REFERENCE_URL, timeout=20) as r:
             served = r.read(4000).decode("utf-8", "replace")
-        ok("the live REFERENCE_URL serves the card", marker in served,
+        ok("the live REFERENCE_URL serves the card", card_marker in served,
            served[:80])
     except Exception as e:
         skip("the live REFERENCE_URL serves the card",
@@ -3046,12 +3050,12 @@ def main() -> int:
         skip("proofs --sarif, audit --sarif and check --strict --sarif "
              "validate", "jsonschema is not installed")
     else:
-        bad = {name: sarif_errors(d) for name, d in
-               (("proofs", pdoc), ("audit", adoc), ("strict", sdoc))}
+        invalid = {name: sarif_errors(d) for name, d in
+                   (("proofs", pdoc), ("audit", adoc), ("strict", sdoc))}
         ok("proofs --sarif, audit --sarif and check --strict --sarif "
            "validate against the schema too",
-           pdoc and adoc and sdoc and not any(bad.values()),
-           str({k: [e.message for e in v[:1]] for k, v in bad.items()}))
+           pdoc and adoc and sdoc and not any(invalid.values()),
+           str({k: [e.message for e in v[:1]] for k, v in invalid.items()}))
     arun = (adoc.get("runs") or [{}])[0]
     found = {(r["ruleId"], r["level"]) for r in arun.get("results", [])}
     ok("audit --sarif lands capability findings: what each function may "
@@ -3132,29 +3136,30 @@ def main() -> int:
              "no prover: nothing is proven, so nothing stalls")
     ok("the ceiling is the command line's: 60 seconds and 2048 MB unless "
        "raised, for check, audit and attest",
-       all(f.__kwdefaults__["timeout"] == velaris.CHECK_TIMEOUT_DEFAULT == 60
-           and f.__kwdefaults__["max_memory_mb"]
+       all(cast("dict[str, Any]", f.__kwdefaults__)["timeout"]
+           == velaris.CHECK_TIMEOUT_DEFAULT == 60
+           and cast("dict[str, Any]", f.__kwdefaults__)["max_memory_mb"]
            == velaris.CHECK_MEMORY_MB_DEFAULT == 2048
            for f in (velaris.check, velaris.audit, velaris.attest)))
     ok("timeout=None and max_memory_mb=None check in this process, as "
        "before 8.1", velaris.check(PURE, timeout=None,
                                    max_memory_mb=None).ok)
-    wrong = []
+    wrong81 = []
     for kw in ({"timeout": 0}, {"timeout": -1}, {"timeout": "5"},
                {"timeout": True}, {"max_memory_mb": 0},
                {"max_memory_mb": 1.5}):
         try:
             velaris.check(PURE, **kw)
-            wrong.append(kw)
+            wrong81.append(kw)
         except ValueError:
             pass
     ok("a ceiling that is not a number above zero is a ValueError",
-       not wrong, str(wrong))
+       not wrong81, str(wrong81))
     with velaris.Pool(size=1, timeout=2) as cp:
-        first, second = cp.check(INFLATED), cp.check(PURE)
+        first81, second = cp.check(INFLATED), cp.check(PURE)
     ok("Pool.check stops at the pool's timeout, and a fresh worker checks "
-       "the next", [p.code for p in first.problems] == ["E613"]
-       and second.ok, f"{first.as_dict()} {second.as_dict()}"[:200])
+       "the next", [p.code for p in first81.problems] == ["E613"]
+       and second.ok, f"{first81.as_dict()} {second.as_dict()}"[:200])
     began = time.monotonic()
     r = velaris.run(INFLATED, allow={"io"}, timeout=2)
     took = time.monotonic() - began
@@ -3360,7 +3365,7 @@ def main() -> int:
     seen81 = []
     real_compare = _sec81.compare_digest
 
-    def spy(a, b):
+    def spy(a: Any, b: Any) -> Any:
         seen81.append((len(a), len(b)))
         return real_compare(a, b)
 
@@ -3564,17 +3569,17 @@ def main() -> int:
     ok("a receipt's subjects are the attestation's for the same bytes: the "
        "same names, the same digests, imports included",
        r.ok and len(statement81["subject"]) == 2
-       and r.receipt["subject"] == statement81["subject"],
-       f"{r.receipt['subject']} vs {statement81['subject']}")
+       and cast("dict[str, Any]", r.receipt)["subject"] == statement81["subject"],
+       f"{cast('dict[str, Any]', r.receipt)['subject']} vs {statement81['subject']}")
     with velaris.Pool(size=1, allow={"io"}, timeout=30) as rp:
         pr = rp.run(text81, path=str(main81))
     receipts81.append(pr.receipt)
     ok("...from a pool too, with the pool's limits among its parameters and "
        "the effects the run performed",
-       pr.receipt["subject"] == statement81["subject"]
-       and pr.receipt["predicate"]["run_parameters"]["timeout"] == 30
-       and pr.receipt["predicate"]["effects_used"] == {"io": 1},
-       str(pr.receipt["predicate"])[:200])
+       cast("dict[str, Any]", pr.receipt)["subject"] == statement81["subject"]
+       and cast("dict[str, Any]", pr.receipt)["predicate"]["run_parameters"]["timeout"] == 30
+       and cast("dict[str, Any]", pr.receipt)["predicate"]["effects_used"] == {"io": 1},
+       str(cast("dict[str, Any]", pr.receipt)["predicate"])[:200])
     rfile = WORK / "receipt81.json"
     done = subprocess.run([sys.executable, str(HERE / "velaris.py"),
                            str(main81), "--allow", "io", "--receipt",
@@ -3612,7 +3617,7 @@ def main() -> int:
     try:
         from jsonschema import Draft202012Validator
     except ImportError:
-        Draft202012Validator = None
+        Draft202012Validator = None  # type: ignore[assignment, misc]  # jsonschema is optional
     if spec_schema is None or Draft202012Validator is None:
         skip("every receipt above validates against velaris-spec's schema",
              "velaris-spec or jsonschema is not here")

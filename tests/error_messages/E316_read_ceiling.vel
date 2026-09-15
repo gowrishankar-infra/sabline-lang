@@ -1,0 +1,6 @@
+fn main() uses io, fs {
+    check read_file("big.txt") {
+        ok text { print(length(text)) }
+        fail why { print(why) }
+    }
+}

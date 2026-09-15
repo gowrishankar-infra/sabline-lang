@@ -10,6 +10,7 @@ import html
 import re
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 sys.path.insert(0, str(Path(__file__).parent))
 import velaris  # noqa: E402
@@ -181,7 +182,7 @@ def md_to_html(md: str) -> str:
     return "\n".join(out)
 
 
-def fn_signature(f) -> str:
+def fn_signature(f: Any) -> str:
     ps = ", ".join(f"{n}: {t}" for n, t in f.params)
     sig = f"fn {f.name}({ps})"
     if f.return_type and f.return_type != "Unit":
@@ -233,7 +234,7 @@ def library_page() -> str:
         body.append(f"<tr><td><code>{name}</code>{fall}</td>"
                     f"<td>{eff}</td>"
                     f"<td>{html.escape(', '.join(info['types']))}</td>"
-                    f"<td>{html.escape(info['ret'])}</td></tr>")
+                    f"<td>{html.escape(cast(str, info['ret']))}</td></tr>")
     body.append("</table><p style='font-size:13.5px;color:var(--mut)'>"
                 "get on a map can also fail (missing key); get_or "
                 "never fails.</p>")
@@ -242,10 +243,11 @@ def library_page() -> str:
 
 def errors_page() -> str:
     # The rows are velaris.ERROR_TABLE, the one list of codes, which
-    # check_library.py holds against every code velaris.py can give; the
+    # check_library.py holds against every code Velaris can give; the
     # message templates are scraped from the source beside it. Each row
     # has an id, because `velaris check --sarif` points a help URI at it.
-    src = (HERE / "velaris.py").read_text(encoding="utf-8")
+    src = "\n".join(p.read_text(encoding="utf-8")
+                    for p in sorted((HERE / "velaris").glob("*.py")))
     found: dict[str, str] = {}
     for m in re.finditer(
             r'(?:VelarisError|Problem)\(\s*"(E\d+)",\s*'

@@ -1,0 +1,15 @@
+import "std.vel"
+import "lib/geo.vel" as geo
+
+fn shapes() -> Int {
+    let xs = [1, 2, 3]
+    let nested = [[1], [2, 3], []]
+    let ages = {"gowri": 30, "asha": 41}
+    let by_id = {1: "one", 2: "two"}
+    let none: List of Int = []
+    let empty: Map of Text to Int = {}
+    let p = Point(x: 1, y: -2)
+    let area = geo.area(p.x, p.y)
+    xs = push(xs, 4)
+    return length(xs)
+}

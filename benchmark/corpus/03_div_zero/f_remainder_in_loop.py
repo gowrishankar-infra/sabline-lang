@@ -2,7 +2,7 @@
 import sys
 
 
-def bucket_all(xs, step):
+def bucket_all(xs: list[int], step: int) -> int:
     hits = 0
     for x in xs:
         if x % step == 0:  # DANGER

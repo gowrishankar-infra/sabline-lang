@@ -1,0 +1,10 @@
+import "money.vel" as money
+
+fn units_of(n: Int) -> Int {
+    return n
+}
+
+fn main() uses io {
+    let parts = money.split(money(1000, "INR"), 3)
+    print(units_of(7))
+}

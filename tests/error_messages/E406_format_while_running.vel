@@ -1,0 +1,4 @@
+fn main() uses io {
+    let template = "{} and {}"
+    print(format(template, 1))
+}

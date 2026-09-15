@@ -1,0 +1,26 @@
+fn parse_age(text: Text) -> Int or fail {
+    let years = try to_int(text)
+    if years < 0 {
+        fail "negative age: " + text
+    }
+    return years
+}
+
+fn main() uses io {
+    check parse_age("30") {
+        ok years {
+            print(years)
+        }
+        fail why {
+            print(why)
+        }
+    }
+    check write_all() {
+        ok {
+            print("done")
+        }
+        fail why {
+            print(why)
+        }
+    }
+}

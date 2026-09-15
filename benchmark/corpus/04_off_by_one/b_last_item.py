@@ -1,7 +1,7 @@
 # Takes the last item at position length instead of length - 1.
 
 
-def last(xs):
+def last(xs: list[int]) -> int:
     return xs[len(xs)]  # DANGER
 
 

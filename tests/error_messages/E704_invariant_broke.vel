@@ -1,0 +1,10 @@
+fn main() uses io {
+    let n = length(args())
+    let i = 0
+    while i < 3
+    invariant i <= n
+    {
+        i = i + 1
+    }
+    print(i)
+}

@@ -3,7 +3,7 @@ import sys
 import urllib.request
 
 
-def probe(url):
+def probe(url: str) -> str:
     req = urllib.request.Request(url, headers={"X-Probe": "1"})
     urllib.request.urlopen(req).read()  # DANGER
     return "probe answered"

@@ -1,0 +1,11 @@
+fn by_twos(n: Int) -> Int {
+    let i = 0
+    while i < n {
+        i = i + 2
+    }
+    return i
+}
+
+fn main() uses io {
+    print(by_twos(7))
+}

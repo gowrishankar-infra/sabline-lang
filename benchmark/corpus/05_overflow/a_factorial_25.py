@@ -1,7 +1,7 @@
 # 25! does not fit in 64 bits; the loop passes that point at 21!.
 
 
-def factorial(n):
+def factorial(n: int) -> int:
     f = 1
     for i in range(1, n + 1):
         f = f * i  # DANGER

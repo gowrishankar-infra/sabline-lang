@@ -32,6 +32,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any, cast
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
@@ -39,12 +40,12 @@ sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
-isolate("check_ratchet")              # its own proof cache
+isolate("check_ratchet")              # its own directory
 
 try:
     from jsonschema import Draft4Validator
 except ImportError:                        # the SARIF case says it skipped
-    Draft4Validator = None
+    Draft4Validator = None  # type: ignore[assignment, misc]  # jsonschema is optional
 
 HAVE_GIT = shutil.which("git") is not None
 
@@ -52,7 +53,7 @@ HAVE_GIT = shutil.which("git") is not None
 class Tree:
     """A scratch directory of .vel files, optionally a git repository."""
 
-    def __init__(self, files: dict, git: bool = False):
+    def __init__(self, files: dict[Any, Any], git: bool = False) -> None:
         self.root = Path(tempfile.mkdtemp(prefix="velaris-ratchet-"))
         self.git_repo = git
         if git:
@@ -64,7 +65,7 @@ class Tree:
                 self.git("config", key, value)
         self.write(files)
 
-    def write(self, files: dict) -> None:
+    def write(self, files: dict[Any, Any]) -> None:
         for name, text in files.items():
             path = self.root / name
             if text is None:
@@ -73,15 +74,15 @@ class Tree:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8", newline="\n")
 
-    def velaris(self, *words):
+    def velaris(self, *words: Any) -> Any:
         return subprocess.run([sys.executable, str(VELARIS), *words],
                               cwd=str(self.root), capture_output=True,
                               text=True, encoding="utf-8", timeout=600)
 
-    def init(self, *more, root="."):
+    def init(self, *more: Any, root: str = ".") -> Any:
         return self.velaris("capabilities", "init", root, *more)
 
-    def check(self, root="."):
+    def check(self, root: str = ".") -> tuple[Any, ...]:
         """(exit code, the JSON result, or {})"""
         done = self.velaris("capabilities", "check", root, "--json")
         try:
@@ -90,14 +91,14 @@ class Tree:
             return done.returncode, {"_stdout": done.stdout,
                                      "_stderr": done.stderr}
 
-    def review(self, ref):
+    def review(self, ref: Any) -> Any:
         done = self.velaris("review", "--against", ref, "--json")
         try:
             return json.loads(done.stdout)
         except ValueError:
             return {"_stderr": done.stderr, "_stdout": done.stdout}
 
-    def git(self, *words):
+    def git(self, *words: Any) -> Any:
         return subprocess.run(["git", *words], cwd=str(self.root),
                               capture_output=True, text=True, timeout=120)
 
@@ -105,13 +106,14 @@ class Tree:
         self.git("add", "-A")
         self.git("commit", "-q", "-m", message)
 
-    def baseline_path(self, root=".") -> Path:
+    def baseline_path(self, root: str = ".") -> Path:
         return self.root / root / "velaris.capabilities"
 
-    def baseline(self, root=".") -> dict:
-        return json.loads(self.baseline_path(root).read_text(encoding="utf-8"))
+    def baseline(self, root: str = ".") -> dict[Any, Any]:
+        return cast("dict[Any, Any]", json.loads(
+            self.baseline_path(root).read_text(encoding="utf-8")))
 
-    def set_baseline(self, doc: dict, root=".") -> None:
+    def set_baseline(self, doc: dict[Any, Any], root: str = ".") -> None:
         self.baseline_path(root).write_text(
             velaris.capabilities_text(doc), encoding="utf-8", newline="\n")
 
@@ -119,12 +121,12 @@ class Tree:
         shutil.rmtree(self.root, ignore_errors=True)
 
 
-def kinds(result: dict) -> list:
+def kinds(result: dict[Any, Any]) -> list[Any]:
     return sorted((f["kind"], f.get("grant") or f.get("effect")
                    or f.get("function")) for f in result.get("findings", []))
 
 
-def grant_finding(result: dict, grant: str) -> dict:
+def grant_finding(result: dict[Any, Any], grant: str) -> dict[Any, Any]:
     return next((f for f in result.get("findings", [])
                  if f["kind"] == "grant" and f["grant"] == grant), {})
 
@@ -135,22 +137,22 @@ def grant_finding(result: dict, grant: str) -> dict:
 # function, the program, and which of W1 to W5 it fails. Nothing else in
 # a check's report is part of a case.
 
-def grant(g: str, rules, *programs) -> dict:
+def grant(g: str, rules: Any, *programs: Any) -> dict[str, Any]:
     return {"kind": "grant", "grant": g, "rules": list(rules),
             "programs": sorted(programs)}
 
 
-def count(effect: str, program: str, current, rules) -> dict:
+def count(effect: str, program: str, current: Any, rules: Any) -> dict[str, Any]:
     return {"kind": "count", "effect": effect, "program": program,
             "current": current, "rules": list(rules)}
 
 
-def gained(program: str, function: str, effects) -> dict:
+def gained(program: str, function: str, effects: Any) -> dict[str, Any]:
     return {"kind": "function", "program": program, "function": function,
             "gained": sorted(effects), "rules": ["W5"]}
 
 
-def widened(*findings) -> dict:
+def widened(*findings: Any) -> dict[str, Any]:
     return {"verdict": "widened", "widenings": list(findings)}
 
 
@@ -158,7 +160,7 @@ PASS = {"verdict": "pass", "widenings": []}
 CANNOT = {"verdict": "cannot-compare"}
 
 
-def widenings_of(result: dict) -> list:
+def widenings_of(result: dict[Any, Any]) -> list[Any]:
     """A `capabilities check --json` result's findings, as the corpus
     writes them."""
     out = []
@@ -174,8 +176,8 @@ def widenings_of(result: dict) -> list:
     return out
 
 
-def same_widenings(a: list, b: list) -> bool:
-    def key(x):
+def same_widenings(a: list[Any], b: list[Any]) -> bool:
+    def key(x: Any) -> Any:
         return json.dumps(x, sort_keys=True)
     return sorted(a, key=key) == sorted(b, key=key)
 
@@ -213,7 +215,7 @@ fn main() uses io, net {
 '''
 
 
-def pinger(n, host="api.example.com", note="") -> str:
+def pinger(n: Any, host: str = "api.example.com", note: str = "") -> str:
     return (PINGER.replace("{N}", str(n))
             .replace("api.example.com", host)
             .replace("fn main() uses io, net {",
@@ -395,7 +397,7 @@ GRADUAL_STEPS = [
 ]
 
 
-def step(description, change=None, expect=PASS, **more) -> dict:
+def step(description: Any, change: Any = None, expect: Any = PASS, **more: Any) -> dict[Any, Any]:
     return dict(description=description, change=change or {},
                 edit=more.get("edit"), rewrite=more.get("rewrite", False),
                 delete_baseline=more.get("delete_baseline", False),
@@ -409,7 +411,7 @@ def step(description, change=None, expect=PASS, **more) -> dict:
 # step before. A step may edit the baseline (a person accepting a
 # widening), write it again from the tree (`rewrite`), or delete it.
 
-SEQUENCES = [
+SEQUENCES: list[dict[str, Any]] = [
     dict(id="gradual-widening", spec=["9.1", "9.6"],
          description="six changes, each harmless on its own: the first "
          "five pass, the sixth sends a summary to a host three calls below "
@@ -452,8 +454,8 @@ SEQUENCES = [
 # that cannot be read. `change` maps files to their new text, None to
 # delete. `root` is the directory checked, when it is not the tree's.
 
-def case(id, description, tree, change=None, expect=PASS, *, edit=None,
-         baseline=None, root=".", spec=(), requires=(), known_limit=None):
+def case(id: Any, description: Any, tree: Any, change: Any = None, expect: Any = PASS, *, edit: Any = None,
+         baseline: Any = None, root: str = ".", spec: Any = (), requires: Any = (), known_limit: Any = None) -> dict[str, Any]:
     return dict(id=id, description=description, tree=tree,
                 change=change or {}, expect=expect, edit=edit,
                 baseline=baseline, root=root, spec=list(spec),
@@ -464,7 +466,7 @@ PREFIX_EDIT = {"surface": {"grants": ["fs:read:data", "io"]},
                "programs": {"read.vel": {"grants": ["fs:read:data", "io"]}}}
 
 
-def host_edit(g: str) -> dict:
+def host_edit(g: str) -> dict[str, Any]:
     return {"surface": {"grants": ["io", g]},
             "programs": {"poll.vel": {"grants": ["io", g]}}}
 
@@ -871,21 +873,21 @@ CHECKS = [
 # What a writer must record for `tree`: the surface and every program's
 # entry. velaris_version and date are the writer's own.
 
-def entry(file, grants, counts, functions) -> dict:
+def entry(file: Any, grants: Any, counts: Any, functions: Any) -> dict[str, Any]:
     return {"file": file, "grants": list(grants), "counts": dict(counts),
             "functions": dict(sorted(functions.items()))}
 
 
-def broken(file) -> dict:
+def broken(file: Any) -> dict[str, Any]:
     return {"file": file, "compiles": False}
 
 
-def baseline(grants, counts, *programs) -> dict:
+def baseline(grants: Any, counts: Any, *programs: Any) -> dict[str, Any]:
     return {"surface": {"grants": list(grants), "counts": dict(counts)},
             "programs": sorted(programs, key=lambda p: p["file"])}
 
 
-DERIVE = [
+DERIVE: list[dict[str, Any]] = [
     dict(id="library-file-is-a-program", description="every .vel file is "
          "a program; one with no main and no effects needs nothing",
          tree={"app.vel": GREETER, "lib/text.vel": TEXT_LIB},
@@ -1024,7 +1026,7 @@ DERIVE = [
 
 # ---- WRITE_GUARD: a writer does not replace a baseline unasked --------------
 
-WRITE_GUARD = [
+WRITE_GUARD: list[dict[str, Any]] = [
     dict(id="writer-refuses-to-widen-unasked", description="asked to write "
          "the baseline again where one exists and the tree now needs more, "
          "without being told in so many words to replace it, the writer "
@@ -1126,7 +1128,7 @@ BOUNDS = [
 ]
 
 
-def apply_edit(doc: dict, edit: dict) -> dict:
+def apply_edit(doc: dict[Any, Any], edit: dict[Any, Any]) -> dict[Any, Any]:
     """A baseline as a person edits it: each key of `surface` and of a
     program's entry replaced, and velaris_version when given."""
     doc = copy.deepcopy(doc)
@@ -1147,7 +1149,7 @@ def main() -> int:
     passed = failed = 0
     trees = []
 
-    def ok(label, condition, detail=""):
+    def ok(label: Any, condition: Any, detail: object = "") -> None:
         nonlocal passed, failed
         if condition:
             print(f"  ok       {label}")
@@ -1158,15 +1160,15 @@ def main() -> int:
                 print(f"           {str(detail)[:600]}")
             failed += 1
 
-    def skip(label, why):
+    def skip(label: Any, why: Any) -> None:
         print(f"  skip     {label} ({why})")
 
-    def tree(files, git=False):
+    def tree(files: Any, git: bool = False) -> Any:
         t = Tree(files, git)
         trees.append(t)
         return t
 
-    def meets(expect: dict, code: int, result: dict) -> tuple:
+    def meets(expect: dict[Any, Any], code: int, result: dict[Any, Any]) -> tuple[Any, ...]:
         """(does the check's answer meet the expectation, why not)"""
         if verdict(code) != expect["verdict"]:
             return False, (f"{verdict(code)}, expected {expect['verdict']}: "
@@ -1178,7 +1180,7 @@ def main() -> int:
             return False, f"widenings {got}"
         return True, ""
 
-    runs = {}             # case id -> (tree, exit code, result)
+    runs: dict[str, tuple[Any, ...]] = {}  # case id -> (tree, exit code, result)
     reviews = {}          # sequence id -> [risk of each step's review]
     try:
         # ------------------------------------------------------------------
@@ -1240,8 +1242,8 @@ def main() -> int:
             root = d.get("root", ".")
             done = t.init(root=root)
             doc = t.baseline(root) if done.returncode == 0 else {}
-            got = {"surface": doc.get("surface"),
-                   "programs": doc.get("programs")}
+            got: dict[str, Any] | str = {"surface": doc.get("surface"),
+                                         "programs": doc.get("programs")}
             ok(f"derive: {d['description']}", got == d["expect"],
                json.dumps(got))
             runs[d["id"]] = (t, doc)
@@ -1262,8 +1264,8 @@ def main() -> int:
         print("the rules underneath")
         print("-" * 62)
         gp = velaris._grant_parts
-        wrong = [(b, c, want) for b, c, want in COVERING
-                 if velaris._covers(gp(b), gp(c)) != want]
+        wrong: list[tuple[Any, ...]] = [(b, c, want) for b, c, want in COVERING
+                                        if velaris._covers(gp(b), gp(c)) != want]
         ok(f"{len(COVERING)} covering cases: paths by whole components, "
            f"backslashes whole, wildcards one label deep, ports, modules",
            not wrong, wrong)
@@ -1273,7 +1275,7 @@ def main() -> int:
         ok(f"{len(REDUCE)} reduced grant lists keep one spelling of a path "
            f"and drop what another grant covers", not wrong, wrong)
 
-        def bound(source):
+        def bound(source: Any) -> dict[Any, Any]:
             funcs, _ = velaris.load_program("_bound.vel", source)
             b, _ = velaris._operation_bounds(funcs)
             return {k: velaris._as_count(v) for k, v in b["main"].items()}
@@ -1300,8 +1302,8 @@ def main() -> int:
         ok("the sixth change is named as a new effect, outside the surface",
            net.get("new_effect") is True
            and net.get("outside_surface") is True, net)
-        prog = next((q for q in net.get("programs", [])
-                     if q["file"] == "app.vel"), {})
+        prog: dict[str, Any] = next((q for q in net.get("programs", [])
+                                     if q["file"] == "app.vel"), {})
         origin = (prog.get("origins") or [{}])[0]
         ok("...with the file, function and line that introduced it, and "
            "the three calls from main that reach it",
@@ -1323,8 +1325,8 @@ def main() -> int:
                "high, and one commit later sees nothing",
                rv[0].get("risk") == "high" and rv[1].get("risk") == "low"
                and not rv[1].get("surface", {}).get("widened"), rv[1])
-            step_ = next((f for f in rv[7].get("surface", {})
-                          .get("widened", []) if f["kind"] == "count"), {})
+            step_: dict[str, Any] = next((f for f in rv[7].get("surface", {})
+                                          .get("widened", []) if f["kind"] == "count"), {})
             ok("...and of seven small steps shows only the last, 640 to "
                "1000, where the check reports 1000 against the declared 10",
                step_.get("current") == 1000
@@ -1341,8 +1343,8 @@ def main() -> int:
                and removed.get("declared", {}).get("removed") is True,
                removed.get("declared"))
         _, results = runs["merged-widening-keeps-failing"]
-        c1000 = next((f for f in results[7][1].get("findings", [])
-                      if f["kind"] == "count"), {})
+        c1000: dict[str, Any] = next((f for f in results[7][1].get("findings", [])
+                                      if f["kind"] == "count"), {})
         ok("the check reports 1000 against the declared 10",
            c1000.get("current") == 1000 and c1000.get("surface_allows") == 10,
            c1000)
@@ -1423,8 +1425,8 @@ def main() -> int:
         except ValueError:
             log = {}
         results = (log.get("runs") or [{}])[0].get("results", [])
-        hit = next((x for x in results
-                    if x["ruleId"] == "capability-widened"), {})
+        hit: dict[str, Any] = next((x for x in results
+                                    if x["ruleId"] == "capability-widened"), {})
         region = (hit.get("locations") or [{}])[0].get(
             "physicalLocation", {})
         ok("--sarif lands each widening as an error at the line that "

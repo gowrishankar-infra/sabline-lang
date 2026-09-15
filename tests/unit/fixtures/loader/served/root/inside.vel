@@ -1,0 +1,7 @@
+import "sub/inner.vel"
+import "../root/sub/other.vel"
+import "std.vel"
+
+fn main() uses io {
+    print(inner() + other() + first([1]))
+}

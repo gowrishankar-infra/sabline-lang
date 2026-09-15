@@ -1,0 +1,5 @@
+import "lib/util.vel"
+
+fn main() uses io {
+    print(double(21))
+}

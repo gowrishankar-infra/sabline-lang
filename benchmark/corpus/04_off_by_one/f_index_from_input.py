@@ -2,7 +2,7 @@
 import sys
 
 
-def pick(xs, at):
+def pick(xs: list[int], at: int) -> int:
     return xs[at]  # DANGER
 
 

@@ -14,6 +14,10 @@ A language where a function's signature declares what it may touch —
 and the runtime refuses anything you did not allow, whatever the code
 says about itself.
 
+Not a security boundary: an interpreter in the program's own process
+enforces the budget, not the operating system
+([THREAT_MODEL.md](THREAT_MODEL.md)).
+
 [![PyPI](https://img.shields.io/pypi/v/velaris-lang)](https://pypi.org/project/velaris-lang/)
 [![tests](https://github.com/gowrishankar-infra/velaris-lang/actions/workflows/test.yml/badge.svg)](https://github.com/gowrishankar-infra/velaris-lang/actions/workflows/test.yml)
 [![release](https://img.shields.io/github/v/release/gowrishankar-infra/velaris-lang)](https://github.com/gowrishankar-infra/velaris-lang/releases)
@@ -27,7 +31,8 @@ says about itself.
 
 ---
 
-```
+<!-- illustrative lines 1: installs from PyPI -->
+```sh
 pip install velaris-lang
 velaris agent_output.vel
 ```
@@ -63,7 +68,8 @@ now in — running a program someone, or something, else wrote.
 
 ## The other half: promises, proven
 
-```
+<!-- expect: E700 -->
+```vel
 fn discount(price: Int) -> Int
     requires price >= 0
     ensures result >= 0
@@ -72,9 +78,9 @@ fn discount(price: Int) -> Int
 }
 ```
 
-```
-error[E700] promise cannot be kept: 'discount' ensures result >= 0
-  proven without running the program: price = 5 gives result = -5
+<!-- output: codes only; the counterexample is the prover's choice -->
+```text
+error[E700] promise cannot be kept: 'discount' ensures result >= 0 - proven without running the program: price = 5 gives result = -5
 ```
 
 That `ensures` is not a comment or a runtime assert. The Z3 theorem
@@ -88,7 +94,7 @@ This one has the shape most of them have: a percentage off once the
 basket passes a threshold, a flat amount off as well, and a cap on the
 two together.
 
-```
+```vel
 record Rule {
     percent: Int         // this much off, once the basket is
     above: Money of INR  // worth at least this,
@@ -125,13 +131,14 @@ did not write: a discount is never a surcharge, and what is left after
 it is never negative. Both are settled for every basket and every rule
 the types allow, before the program runs.
 [`examples/discount.vel`](examples/discount.vel) is the whole program —
-five of five functions proven, and it runs under `--allow io`.
+<!-- count:discount-proven:word -->five<!-- /count --> of the <!-- count:discount-promised:word -->five<!-- /count --> functions that make a promise
+proven, and it runs under `--allow io`.
 
 [`examples/discount_bad.vel`](examples/discount_bad.vel) is the same
 rule with the last `if` deleted. The cap still holds the discount to a
 fixed ceiling; nothing holds it to what the basket is worth:
 
-```
+```console
 $ velaris check examples/discount_bad.vel
 examples/discount_bad.vel:54: [E700] promise cannot be kept: 'discount_for' ensures total - result >= money(0, "INR") - proven without running the program: rule = Rule(percent: 0, above: 0, flat: 2, cap: 1), total = 0 gives result = 1
 ```
@@ -151,7 +158,7 @@ it printed was the secret. `Secret of T` (6.0, 7.0) is the other half: the
 compiler tracks the value, and refuses any program that hands it to
 anything that emits.
 
-```
+```vel
 fn key() -> Secret of Text uses env {
     return env("API_KEY", "")          // env() gives a Secret of Text
 }
@@ -166,7 +173,7 @@ the request that would carry it, and prints a summary of that request.
 [`examples/secret_bad.vel`](examples/secret_bad.vel) is the same
 program with one more line:
 
-```
+```console
 $ velaris examples/secret_bad.vel --allow env,io
 error[E560] argument 1 of 'print' is Secret of Text, and 'print' performs io - a Secret cannot be printed, written, sent or passed to Python. It came from env(), line 27, through 'key', which returns Secret of Text (line 58)
   --> examples/secret_bad.vel, line 58
@@ -183,7 +190,8 @@ field carries it too, so the whole structure is refused at a sink — a
 `length` and `code_at`, a plain `Bool` from `==` is not one bit, it is
 a loop that reads the whole key out —
 
-```
+<!-- illustrative: a loop taken out of a program -->
+```vel
 while at < 3 {
     for c in alphabet {
         if code_at(key, at) == code_at(c, 0) {   // E563
@@ -204,7 +212,7 @@ the `declassify` grant at run time — and it is what the audit reports,
 so a consumer can ask whether a program ever lets a secret out without
 running it:
 
-```
+```console
 $ velaris audit examples/secret.vel --json | jq .secrets
 {
   "sources": ["env"],
@@ -238,7 +246,7 @@ request into a restricted subset of Python and tags every value with its
 provenance and permitted readers, checking a policy at each tool call;
 [WASI](https://wasi.dev) gives a WebAssembly module only the resources
 its host hands it. Velaris is a small language a model learns from a
-3,700-word card, in which functions declare their effects, the runtime
+card of about <!-- count:card-words -->4,600<!-- /count --> words, in which functions declare their effects, the runtime
 enforces the operator's budget at each operation, and contracts are
 checked by the Z3 theorem prover. From 6.0 it also tracks one kind of
 data: `Secret of T`, which `env()` and `read_file_secret()` produce and
@@ -257,7 +265,7 @@ format is published separately, under CC0, as
 whose [PRIOR_ART.md](https://github.com/gowrishankar-infra/velaris-spec/blob/main/PRIOR_ART.md)
 sets out these differences and the older work in full. From 4.1 it
 holds a conformance corpus an implementation in any language can run -
-456 JSON cases at three levels, declaration, enforcement and the
+<!-- count:conformance-cases -->456<!-- /count --> JSON cases at three levels, declaration, enforcement and the
 ratchet, none needing a prover - written from this repository's suites
 and held to them by a drift test; `velaris conformance` runs it against
 this implementation, and CI does so on every leg.
@@ -288,7 +296,8 @@ reports are treated as [security issues](SECURITY.md).
 
 ## Install
 
-```
+<!-- illustrative lines 1: installs from PyPI -->
+```sh
 pip install velaris-lang
 velaris doctor
 velaris new hello && cd hello && velaris main.vel
@@ -299,13 +308,14 @@ Windows / Linux / macOS from the
 [latest release](https://github.com/gowrishankar-infra/velaris-lang/releases),
 then:
 
-```
+```sh
 velaris doctor
 ```
 
 **With Python 3.10+:**
 
-```
+<!-- illustrative lines 1: installs from PyPI -->
+```sh
 pip install velaris-lang
 velaris new hello && cd hello && velaris main.vel
 ```
@@ -317,11 +327,15 @@ runs the real compiler in your browser.
 Optional extras for source installs: `pip install ".[full]"` adds
 `z3-solver` (compile-time proofs) and `llvmlite` (native speed);
 without them, promises are checked at runtime and everything runs
-interpreted — same language, honestly degraded.
+interpreted — same language, honestly degraded. With `llvmlite`
+installed, native code is the default: a pure function the compiler
+can compile runs as machine code unless `--no-native` forces the
+interpreter. There is no `--native` flag.
 
 ## Everyday ergonomics
 
-```
+<!-- illustrative: calls taken out of programs -->
+```vel
 keep_if(xs, fn(n: Int) -> Bool { return n % 2 == 0 })   // inline functions
 format("hi {}, {} left", name, count)                    // text with holes
 args()                                                   // command line
@@ -330,12 +344,15 @@ post(url, body) / fetch_status(url)                      // not just GET
 
 Function values are lifted to real functions, so proofs and native
 compilation apply to them unchanged — and they can carry their own
-`requires` / `ensures`, proven like any other function's. They can't capture surrounding
-variables — the compiler tells you to pass them in instead.
+`requires` / `ensures`, proven like any other function's. A function
+value takes a copy of the locals around it when it is made
+([SPEC.md §12a](SPEC.md)); a promise on one that does is checked while
+it runs.
 
 ## Where it plugs in
 
-```
+<!-- illustrative: a list of the ways in, not commands to run -->
+```text
 velaris script.vel                    the command (io unless you say more)
 velaris script.vel --receipt r.json   and a signable record of what that run did
 velaris eject script.vel              a directory that runs with nothing from here
@@ -404,8 +421,8 @@ a rule, and it is not one a sandbox can produce.
 
 ## Written by a model, audited by you, run in a box
 
-```
-velaris card > card.md          # ~3,700 words: paste into any model
+```sh
+velaris card > card.md          # ~4,600 words: paste into any model
 velaris audit script.vel        # what it can touch, before you run it
 velaris attest script.vel --output script.intoto.json   # the same, bound to its bytes
 velaris script.vel              # io, and nothing else, unless you say more
@@ -424,7 +441,7 @@ compiles and its promises prove.
 
 ## Running code you did not write
 
-```
+```sh
 velaris agent_output.vel                 # io: it may print, nothing else
 velaris agent_output.vel --allow io,fs:read:./data   # and read that folder
 velaris agent_output.vel --allow all --deny net,ffi  # everything but these
@@ -437,7 +454,8 @@ real guard for running a program you have not read.
 
 ## Checking everything at once
 
-```
+<!-- illustrative lines 1-2,5-10: stress.vel reaches the network, and each suite runs on its own in CI -->
+```sh
 velaris examples/stress.vel --allow clock,env,ffi:datetime,math,sqlite3,io,net:raw.githubusercontent.com
                                 # 33 checks across the whole language
 velaris examples/edges.vel --allow ffi:datetime,io
@@ -457,7 +475,8 @@ network.
 
 ## Measured against other tools
 
-67 small programs — 59 with one deliberate defect, 8 correct controls —
+<!-- count:benchmark-programs -->68<!-- /count --> small programs — <!-- count:benchmark-dangerous -->60<!-- /count --> with one deliberate defect,
+<!-- count:benchmark-controls -->8<!-- /count --> correct controls —
 each written three times with the same behaviour, in Velaris, in
 JavaScript for Deno, and in Python. One harness runs every program
 through every tool and records what was caught before running, what was
@@ -465,13 +484,17 @@ caught while running, and what was missed. The twelfth category (7.1)
 is indirect authority: the calling code is the same before and after,
 and only a dependency's declared budget widened between two versions.
 
+<!-- generated:benchmark-table -->
+
 | | caught before running | caught while running | missed | false positives on the 8 controls |
 |---|---|---|---|---|
-| **Velaris 7.1** | 45 | 12 | 2 | 0 |
-| Deno 2.9 | 5 | 30 | 24 | 0 |
-| Python 3.13 | 0 | 28 | 31 | 0 |
+| **Velaris 8.0** | 46 | 12 | 2 | 0 |
+| Deno 2.9 | 5 | 31 | 24 | 0 |
+| Python 3.13 | 0 | 28 | 32 | 0 |
 
-The two Velaris misses are in the table by design: a loop that stops
+<!-- /generated -->
+
+The <!-- count:benchmark-velaris-missed:word -->two<!-- /count --> Velaris misses are in the table by design: a loop that stops
 one item early with no contract to contradict, and a program that
 prints `rm -rf build` for its caller and touches nothing. Both are
 named, with the reason each is not catchable, in
@@ -479,7 +502,7 @@ named, with the reason each is not catchable, in
 command, `python benchmark/run.py`, which also lists the rows the
 prover settles only while running.
 
-## Two real programs
+## Programs worth running
 
 `examples/ledger.vel` — an expense tracker: records, integer cents,
 file persistence, sorted reports.
@@ -494,7 +517,8 @@ a page, with every network call declared and every failure handled.
 
 ## JSON
 
-```
+<!-- illustrative: calls taken out of programs -->
+```vel
 json_get(doc, "user.name")    json_int(doc, "user.age")
 json_len(doc, "tags")         json_of(Person(name: "gowri", age: 30))
 ```
@@ -505,7 +529,7 @@ is pure.
 
 ## Reaching other languages
 
-```
+```vel
 fn today() -> Text uses ffi or fail {
     let nothing: List of Text = []
     return try py("datetime.date", "today", nothing)
@@ -520,7 +544,8 @@ can fail like anything else that leaves your program.
 
 ## The standard library reaches outside
 
-```
+<!-- illustrative: a sketch; `...` stands for the program's own code -->
+```vel
 import "http.vel" as http     import "db.vel" as db
 import "time.vel" as time     import "env_tools.vel" as sys
 
@@ -534,7 +559,8 @@ can call neither.
 
 ## Libraries
 
-```
+<!-- illustrative lines 1: fetches a library over the network -->
+```sh
 velaris add https://example.com/geo.vel as geo   # vendored into lib/
 velaris deps                                     # what you depend on
 velaris deps --verify                            # unchanged since?
@@ -554,7 +580,8 @@ digests printed; `--force` replaces it.
 
 ## Imports
 
-```
+<!-- illustrative: import lines taken out of a program -->
+```vel
 import "lib/geo.vel" as geo      // named: geo.distance(a, b)
 import "std.vel"                 // flat: sort(xs)
 ```
@@ -567,7 +594,8 @@ other import is refused (E515) before the file is read (8.1).
 
 ## Shipping a program
 
-```
+<!-- illustrative: builds with PyInstaller, which takes minutes -->
+```sh
 velaris build myprogram.vel      # one executable, ~90 MB
 ./myprogram alpha beta           # runs anywhere, nothing installed;
                                  # it takes --allow like the compiler
@@ -579,7 +607,7 @@ velaris build myprogram.vel --for-everyone   # a workflow that builds
 Your program, its imports, the standard library and the compiler, in
 one file. It is compiled and proof-checked before it is built.
 
-```
+```sh
 velaris eject myprogram.vel      # a directory that runs with nothing
 python -I myprogram-ejected/main.py   # installed from this project
 ```
@@ -632,48 +660,6 @@ gives parts that **provably** add up to the payout. See
 [`examples/settlement.vel`](examples/settlement.vel) and
 [SPEC.md §4.3](SPEC.md).
 
-## Remembered proofs
-
-Velaris records the proofs it makes in a directory that belongs to you,
-not to the program - `%LOCALAPPDATA%\velaris\proofs` on Windows,
-`$XDG_CACHE_HOME/velaris/proofs` (or `~/.cache/velaris/proofs`)
-elsewhere; a relative `XDG_CACHE_HOME` or `LOCALAPPDATA` is ignored. A
-program's entries are keyed by its absolute path, a SHA-256 of its exact
-bytes and the compiler's version, and within that by the function's text
-*and* the contracts it depends on. `VELARIS_CACHE_DIR` puts the cache under
-a directory you name instead, as `<dir>/velaris/proofs` (8.1) - which is
-how two test runs from one checkout keep from sharing one.
-
-**Nothing in it is believed (8.1.1).** Every `velaris check`, `proofs`,
-`audit`, `explain` and run proves each function again. A promise is
-"proven" only when that run proved it, only such a function is compiled to
-native code, and a promise not proven in that run is checked while the
-program runs, interpreted or native. A remembered entry sets how long the
-first attempt at that proof is given - a proof that has not settled by then
-is proved under the usual budget - and nothing else, so a second check
-takes about as long as the first. Until 8.1.1 an entry was believed, and a
-process running as you could plant one that made a false promise report
-proven ([advisory-proof-cache-2.md](advisory-proof-cache-2.md)).
-
-A cache file is written whole or not at all: to a new file, flushed to
-disk, then renamed into place, in directories made 0700 on POSIX. A file
-that is not whole, is not for this source, is a link, or on POSIX is
-another user's or writable by one, is ignored.
-
-A `./.velaris/` directory is never read. Until 7.1.2 the cache lived
-there, beside the program, and one shipped with an untrusted program
-could make a false promise report "proven"
-([advisory-proof-cache.md](advisory-proof-cache.md)); `velaris audit`
-prints `ignored: ./.velaris/` when it finds one. If no per-user directory
-can be written, the run goes ahead with no cache. The library, the worker
-pool, the HTTP door, the MCP server, the language server and the GitHub
-Action never use it.
-
-`--no-cache` neither reads nor writes the cache. `velaris clean` deletes
-the per-user `velaris` cache directory; when the current directory holds an
-old `./.velaris/`, it says that directory is ignored and leaves deleting it
-to you.
-
 ## The reference
 
 [SPEC.md](SPEC.md) states precisely what the language means: semantics,
@@ -695,10 +681,16 @@ stable, numbered, and
 
 ## How much is proven
 
-```
-velaris proofs .            # 35 of 58 promise-carrying functions proven (60%)
+```sh
+velaris proofs .            # how many promises are proven, file by file
 velaris proofs . --min 80   # fails the build below 80%
 ```
+
+Over this repository's examples and standard library, `velaris proofs
+examples stdlib` proves the promises of <!-- count:proven -->70<!-- /count --> of the
+<!-- count:promised -->99<!-- /count --> functions that make one before they run, a proven share of
+<!-- count:proven-share -->70.7<!-- /count -->%; the others are checked while they run. Some of those
+examples are built to be refused, and their promises are false on purpose.
 
 ## Using Velaris in CI
 
@@ -821,7 +813,9 @@ versions; an SBOM lists the same dependencies for both.
 
 `velaris deps-diff` compares two versions of one dependency:
 
-```
+<!-- illustrative lines 2-5: they read git, npm and PyPI, or need a git remote -->
+<!-- expect lines 1: exit 1, since 1.5.0 gained something -->
+```sh
 velaris deps-diff dir:vendor/mailer 1.4.0 1.5.0          # a directory per version
 velaris deps-diff git:https://github.com/o/mailer v1.4.0 v1.5.0
 velaris deps-diff npm:some-package 1.0.15 1.0.16
@@ -836,7 +830,8 @@ baseline, and reports what the newer one gained - effects, hosts,
 paths, Python modules, operation counts, and functions that declare an
 effect they did not - with the file, line and call of each:
 
-```
+<!-- output -->
+```text
 GAINED  net:collector.example.net - not in 1.4.0's surface
     in mailer.vel
       mailer.vel:3  send calls post("https://collector.example.net/copy")
@@ -846,8 +841,8 @@ GAINED  net operations in mailer.vel: at most 2 in a run; 1.4.0 had at most 1
 A caller that already declared `net` for its own request compiles
 against both versions, so the compiler has nothing to refuse; the
 difference is in what the dependency declares, and that is what this
-reads. The benchmark's category 12 is three programs of that shape and
-one control.
+reads. The benchmark's category 12 is <!-- count:category-12-dangerous:word -->three<!-- /count --> programs of that shape and
+<!-- count:category-12-controls:word -->one<!-- /count --> control.
 
 For **any other package** it reads what the registry and the package's
 archive declare, and nothing more: the install-time scripts npm or pip
@@ -881,7 +876,7 @@ With `deps-diff: "true"`, on a pull request the Action runs
 request changed - `package-lock.json`, `npm-shrinkwrap.json`,
 `requirements*.txt` pins, `Pipfile.lock`, `poetry.lock`, `uv.lock`,
 `pdm.lock` and `velaris.lock`, whose vendored libraries it compares
-file against file - compares every upgraded dependency, up to 30, and
+file against file - compares every upgraded dependency, up to <!-- count:deps-max-upgrades -->30<!-- /count -->, and
 posts one comment saying what each gained, editing that comment on
 later runs rather than adding another. A lockfile it does not read
 (`yarn.lock`, `pnpm-lock.yaml`, and others) is named in the comment as
@@ -923,7 +918,7 @@ the checks passed; a file that does not compile is reported as such.
 The same SARIF without the Action, for SonarQube
 (`sonar.sarifReportPaths`), Azure DevOps or anything else that reads it:
 
-```
+```sh
 velaris check src/*.vel --sarif > velaris.sarif   # exit 1 as the plain check
 velaris proofs src --sarif > proofs.sarif         # promises left to runtime
 velaris audit src --sarif > audit.sarif           # what each function may touch
@@ -936,7 +931,8 @@ the file, the line and Velaris's message.
 
 Or without installing anything:
 
-```
+<!-- illustrative: needs Docker and a velaris image -->
+```sh
 docker run --rm -v "$PWD:/work" velaris check /work/main.vel
 ```
 
@@ -967,8 +963,9 @@ archive identifiers.
 
 ## Contributing
 
-The entire implementation is one readable file, `velaris.py`, in
-pipeline order — lexer to LSP. Start with
+The implementation is the package [`velaris/`](velaris), one readable
+module per stage, in pipeline order — lexer to command line; `velaris.py`
+starts it. Start with
 [ARCHITECTURE.md](ARCHITECTURE.md) for how it fits together, and
 [MAINTAINERS.md](MAINTAINERS.md) for what review looks like.
 
@@ -977,11 +974,12 @@ pipeline order — lexer to LSP. Start with
 — small, self-contained tasks, each with the file to open and what
 "done" means.
 
-The example programs in [`examples/`](examples) each carry an expected
-verdict, and about half are *designed* to be rejected — each rejection
-demonstrates a guarantee. Before any change ships:
+The <!-- count:examples -->97<!-- /count --> example programs `run_tests.py` runs, in [`examples/`](examples), each
+carry an expected verdict, and <!-- count:examples-rejected -->36<!-- /count --> of them are *designed* to be rejected —
+each rejection demonstrates a guarantee. Before any change ships:
 
-```
+<!-- illustrative lines 1,3: suites of their own, run by CI -->
+```sh
 python run_tests.py                 # every example, expected verdicts
 velaris test examples/std_test.vel  # the library's own tests
 python fuzz_native.py 60            # both engines must agree

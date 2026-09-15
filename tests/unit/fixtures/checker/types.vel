@@ -1,0 +1,72 @@
+// Types (SPEC.md 3 and 4; LLM.md rules 4, 5 and 10; the E4xx and E5xx
+// rows of LLM.md's error table). The last case is SPEC.md 14: checking
+// recovers at statement boundaries and reports every error it can.
+
+// ==== a_well_typed_program
+// expect: ok
+record Expense {
+    label: Text
+    amount: Int
+}
+fn total_of(items: List of Expense) -> Int {
+    let total = 0
+    for item in items {
+        total = total + item.amount
+    }
+    return total
+}
+fn main() uses io {
+    let ages: Map of Text to Int = {}
+    let names = ["a", "b"]
+    let ratio = 1.5 * 2.0
+    let e = Expense(label: "chai", amount: 2500)
+    let joined = "n: " + 5
+    print(format("{} {} {} {}", total_of([e]), length(names), ratio, joined))
+}
+
+// ==== int_plus_float
+// expect: E501 line 3
+fn main() uses io {
+    let x = 1 + 1.5
+}
+
+// ==== let_type_mismatch
+// expect: E501 line 3
+fn main() uses io {
+    let n: Int = "seven"
+}
+
+// ==== argument_type_mismatch
+// expect: E501 line 6
+fn double(n: Int) -> Int {
+    return n * 2
+}
+fn main() uses io {
+    let d = double("2")
+}
+
+// ==== return_of_the_wrong_type
+// expect: E503 line 3
+fn name() -> Text {
+    return 42
+}
+
+// ==== empty_map_without_a_type
+// expect: E506 line 3
+fn main() uses io {
+    let m = {}
+}
+
+// ==== format_holes_and_values_differ
+// expect: E406 line 3
+fn main() uses io {
+    let t = format("{} and {}", 1)
+}
+
+// ==== every_statement_is_checked
+// expect: E501 line 4
+// expect: E503 line 5
+fn f() -> Int {
+    let a: Int = "x"
+    return "y"
+}

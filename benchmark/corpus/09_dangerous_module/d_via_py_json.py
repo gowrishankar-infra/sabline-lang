@@ -3,7 +3,7 @@ import json
 import subprocess
 
 
-def run_spec(spec):
+def run_spec(spec: str) -> str:
     return subprocess.getoutput(*json.loads(spec))  # DANGER
 
 

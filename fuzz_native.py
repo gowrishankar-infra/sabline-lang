@@ -14,22 +14,23 @@ import random
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
 sys.path.insert(0, str(HERE))
 from suite_dirs import isolate  # noqa: E402
 
-# its own directory and proof cache: two runs at once, each with its own
-# random seed, must not run each other's program
+# its own directory: two runs at once, each with its own random seed, must
+# not run each other's program
 WORK = isolate("fuzz_native")
 
 
-def rnd_int(r):
+def rnd_int(r: Any) -> str:
     return str(r.randint(-40, 40))
 
 
-def expr(r, vars_int, depth=0):
+def expr(r: Any, vars_int: Any, depth: int = 0) -> Any:
     """A random Int expression over the given variables."""
     choices = ["num", "var", "add", "sub", "mul", "cmp", "call_len"]
     if depth > 2:
@@ -49,7 +50,7 @@ def expr(r, vars_int, depth=0):
     return f"({a} {op} {b})"
 
 
-def gen_program(r) -> str:
+def gen_program(r: Any) -> str:
     """One random program: a pure function plus a main that prints it."""
     shape = r.choice(["ints", "loop", "list", "text", "float", "branch"])
     if shape == "ints":
@@ -92,7 +93,7 @@ def gen_program(r) -> str:
     return f"{sig} {{\n{body}}}\n\nfn main() uses io {{\n    print({call})\n}}\n"
 
 
-def run(path, native: bool):
+def run(path: Any, native: bool) -> tuple[Any, ...]:
     args = [sys.executable, str(VELARIS), str(path)]
     if not native:
         args.append("--no-native")

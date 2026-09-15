@@ -1,0 +1,303 @@
+name: nightly
+
+# Every artefact a user can install, built from main, installed the way a
+# user installs it, and asked the same two things by check_install.py:
+# examples/discount.vel runs and prints what it always prints, and a program
+# that fetches a URL is refused with E310 and never reaches it (item 17 of
+# 8.2). The released artefacts are watched from outside by
+# gowrishankar-infra/velaris-canary; this watches main's.
+#
+# It commits nothing, tags nothing and publishes nothing. Every job's token
+# reads the repository and nothing more, except the last job's, which may
+# open issues: one per failed job, or a comment on the one already open
+# (open_issues.py). MAINTENANCE.md says what to do with one.
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build the wheel, the sdist, the MCP bundle, the npm package and the VS Code extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: "22"
+      - name: Build each
+        run: |
+          pip install build
+          python -m build --outdir artefacts
+          python build_mcpb.py
+          mv velaris.mcpb artefacts/
+          (cd npm && npm pack --pack-destination ../artefacts)
+          (cd editor/vscode && npx --yes @vscode/vsce package --out ../../artefacts/velaris.vsix)
+          ls -l artefacts
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: artefacts
+          path: artefacts
+          if-no-files-found: error
+
+  pip:
+    name: ${{ matrix.artefact }} on ${{ matrix.os }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        artefact: [wheel, sdist]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: artefacts
+          path: artefacts
+      - name: Install into a new virtual environment, with the prover and the native backend
+        shell: bash
+        run: |
+          python -m venv venv
+          if [ -d venv/Scripts ]; then bin=venv/Scripts; exe=.exe; else bin=venv/bin; exe=; fi
+          echo "BIN=$bin" >> "$GITHUB_ENV"
+          echo "EXE=$exe" >> "$GITHUB_ENV"
+          if [ "${{ matrix.artefact }}" = wheel ]; then f=$(ls artefacts/*.whl); else f=$(ls artefacts/*.tar.gz); fi
+          "$bin/python$exe" -m pip install -c requirements/ci.txt "$f[full]"
+      - name: velaris, the command a user types
+        shell: bash
+        run: python check_install.py --name "${{ matrix.artefact }}, velaris, ${{ matrix.os }}" --command "$BIN/velaris$EXE"
+      - name: python -m velaris
+        shell: bash
+        run: python check_install.py --name "${{ matrix.artefact }}, python -m velaris, ${{ matrix.os }}" --command "$BIN/python$EXE -m velaris"
+
+  mcpb:
+    name: the MCP bundle on ${{ matrix.os }}, with nothing else installed
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: artefacts
+          path: artefacts
+      # started as mcpb/manifest.json starts it: python, the server file,
+      # and PYTHONPATH at the bundle's lib
+      - name: Unpack it and start it as its manifest says
+        shell: bash
+        run: |
+          python -m zipfile -e artefacts/velaris.mcpb bundle
+          python check_install.py --name "MCP bundle, ${{ matrix.os }}" --mcp "python bundle/server/velaris_mcp.py" --pythonpath bundle/server/lib
+
+  npm:
+    name: the npm package on ${{ matrix.os }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: "22"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: artefacts
+          path: artefacts
+      # the package is a wrapper that finds a Python holding the compiler:
+      # the wrapper as the registry serves it, and the compiler from this
+      # run's wheel, so a wrapper already published is held to main
+      - name: Install the compiler, then the wrapper from the npm registry
+        shell: bash
+        run: |
+          python -m pip install -c requirements/ci.txt "$(ls artefacts/*.whl)"
+          npm install -g velaris-lang
+      - name: The package's velaris
+        shell: bash
+        run: python check_install.py --name "npm package, ${{ matrix.os }}" --command "node $(npm root -g)/velaris-lang/bin/velaris.js"
+
+  binary:
+    name: the standalone executable on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: windows-latest, sep: ";", exe: .exe}
+          - {os: ubuntu-latest, sep: ":", exe: ""}
+          - {os: macos-latest, sep: ":", exe: ""}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      # the same command as release.yml's binaries job
+      - name: Build it as a release builds it
+        run: |
+          pip install -c requirements/ci.txt ".[full]" pyinstaller
+          pyinstaller --onefile --name velaris --collect-submodules velaris --collect-all z3 --collect-all llvmlite --add-data "stdlib${{ matrix.sep }}stdlib" velaris.py
+      - name: The executable
+        shell: bash
+        run: python check_install.py --name "standalone executable, ${{ matrix.os }}" --command "dist/velaris${{ matrix.exe }}"
+
+  docker:
+    name: the Docker image
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: artefacts
+          path: artefacts
+      # the repository's Dockerfile, unchanged, told to install this run's
+      # wheel rather than the release on PyPI
+      - name: Build the Dockerfile with this run's wheel
+        run: |
+          wheel=$(basename "$(ls artefacts/*.whl)")
+          (cd artefacts && python -m http.server 8765 --bind 127.0.0.1 > /dev/null 2>&1 &)
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            curl -sf -o /dev/null "http://127.0.0.1:8765/$wheel" && break
+            sleep 1
+          done
+          docker build --network host --build-arg "VELARIS=velaris-lang[full] @ http://127.0.0.1:8765/$wheel" -t velaris:nightly .
+      - name: The image
+        run: python check_install.py --name "Docker image" --docker velaris:nightly
+
+  pre-commit:
+    name: the pre-commit hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - name: Both hooks, from this checkout, on a repository holding discount.vel
+        run: |
+          pip install pre-commit
+          mkdir -p "$RUNNER_TEMP/hooks"
+          cp examples/discount.vel "$RUNNER_TEMP/hooks/"
+          cd "$RUNNER_TEMP/hooks"
+          git init -q
+          git add discount.vel
+          pre-commit try-repo "$GITHUB_WORKSPACE" velaris-check --files discount.vel --verbose
+          pre-commit try-repo "$GITHUB_WORKSPACE" velaris-fmt --files discount.vel --verbose
+      - name: The velaris the hooks installed
+        run: |
+          velaris=$(ls -d ~/.cache/pre-commit/repo*/py_env-*/bin/velaris | head -n 1)
+          echo "the hooks' velaris: $velaris"
+          python check_install.py --name "pre-commit hook environment" --command "$velaris"
+
+  action:
+    name: the GitHub Action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      # the Action installs velaris-lang from PyPI, at its own version when
+      # that is there, so on an unreleased commit it is the newest release
+      - uses: ./
+        with:
+          files: examples/discount.vel
+          sarif: "false"
+          capabilities: "off"
+      - name: The velaris the Action installed
+        run: python check_install.py --name "GitHub Action" --command velaris --any-version
+
+  vscode:
+    name: the VS Code extension and the language server it starts
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: artefacts
+          path: artefacts
+      - name: The extension holds its entry point, at this version
+        run: |
+          python - artefacts/velaris.vsix <<'EOF'
+          import json, re, sys, zipfile
+          names = zipfile.ZipFile(sys.argv[1]).namelist()
+          manifest = json.loads(zipfile.ZipFile(sys.argv[1]).read("extension/package.json"))
+          version = re.search(r'^VERSION = "([^"]+)"', open("velaris/version.py").read(), re.M).group(1)
+          assert "extension/extension.js" in names, names
+          assert manifest["version"] == version, (manifest["version"], version)
+          print("velaris.vsix", manifest["version"], len(names), "files")
+          EOF
+      # the extension carries no compiler: it starts `velaris lsp`, which a
+      # user installs from PyPI; this run's wheel stands in for it
+      - name: The language server the extension starts
+        run: |
+          python -m pip install -c requirements/ci.txt "$(ls artefacts/*.whl)"
+          python check_install.py --name "VS Code extension's language server" --lsp "velaris lsp"
+
+  report:
+    name: one issue per failed job
+    needs: [build, pip, mcpb, npm, binary, docker, pre-commit, action, vscode]
+    if: ${{ !cancelled() && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read              # which jobs failed, and their logs
+      issues: write              # open or comment; nothing else
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - name: Open them
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python open_issues.py jobs --workflow nightly --run-id "${{ github.run_id }}" --label nightly

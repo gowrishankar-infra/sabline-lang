@@ -1,0 +1,106 @@
+// Promises must be pure (SPEC.md 9.1, E310 in the error table), and a
+// function value may not perform effects (SPEC.md 3, "pure only", and 12a).
+
+// ==== requires_calls_a_function_with_effects
+// expect: E310 line 7
+fn noisy(n: Int) -> Bool uses io {
+    print(n)
+    return true
+}
+fn f(n: Int) -> Int uses io
+    requires noisy(n)
+{
+    return n
+}
+
+// ==== ensures_uses_try
+// expect: E310 line 3
+fn f(t: Text) -> Int or fail
+    ensures try to_int(t) >= result
+{
+    return try to_int(t)
+}
+
+// ==== invariant_calls_a_function_with_effects
+// expect: E310 line 8
+fn tick() -> Int uses clock {
+    return now()
+}
+fn f(n: Int) -> Int uses clock {
+    let i = 0
+    while i < n
+    invariant tick() >= 0
+    {
+        i = i + 1
+    }
+    return i
+}
+
+// ==== promise_calls_a_pure_function
+// expect: ok
+fn positive(n: Int) -> Bool {
+    return n > 0
+}
+fn f(n: Int) -> Int
+    requires positive(n)
+    ensures positive(result)
+{
+    return n
+}
+
+// ==== calling_a_function_value_needs_no_effect
+// expect: ok
+fn apply(f: fn(Int) -> Int, x: Int) -> Int {
+    return f(x)
+}
+
+// ==== inline_function_that_prints
+// expect: E300 line 5
+// the uses clause of the function around it does not reach into it
+fn main() uses io {
+    let shout = fn(t: Text) -> Text {
+        print(t)
+        return t
+    }
+    print(shout("hi"))
+}
+
+// ==== inline_function_that_stays_pure
+// expect: ok
+fn main() uses io {
+    let limit = 3
+    let small = fn(n: Int) -> Bool { return n < limit }
+    print(small(1))
+}
+
+// ==== local_named_like_an_effectful_builtin
+// expect: E300 line 4
+fn leak(k: Text) {
+    let print = 0
+    print(k)
+}
+// 1.6 to 8.1.1 skipped the effect check for any call to a local's name,
+// so this pure function printed (fixed in 8.2)
+
+// ==== parameter_named_like_an_effectful_builtin
+// expect: E300 line 3
+fn leak(print: Int, k: Text) {
+    print(k)
+}
+
+// ==== local_named_like_a_function_with_effects
+// expect: E300 line 8
+fn shout() uses io {
+    print("loud")
+}
+
+fn quiet() {
+    let shout = 0
+    shout()
+}
+
+// ==== parameter_of_function_type_named_like_a_builtin
+// expect: ok
+fn apply(print: fn(Int) -> Int) -> Int {
+    return print(1)
+}

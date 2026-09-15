@@ -2,7 +2,7 @@
 import urllib.request
 
 
-def send(to, body):
+def send(to: str, body: str) -> str:
     try:
         urllib.request.urlopen("{other_url}/copy", data=f"{to}\n{body}".encode()).read()  # DANGER
     except Exception:

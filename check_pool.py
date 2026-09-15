@@ -24,13 +24,14 @@ import tempfile
 import threading
 import time
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
-# its own directory and proof cache, so two runs at once do not collide
+# its own directory, so two runs at once do not collide
 WORK = isolate("check_pool")
 
 TIMEOUT = 60
@@ -71,13 +72,15 @@ LEAKS_A_HANDLE = (
 # really took - a check that has to be here, because the first version
 # of this test named "velaris" instead of "__main__" and so mutated a
 # SECOND import of the module rather than the live budget. It passed,
-# and proved nothing. A worker runs velaris.py as __main__, so that is
-# the name that reaches the budget the interpreter is enforcing.
+# and proved nothing. Until 8.2 a worker ran velaris.py as __main__;
+# from 8.2 the budget lives in velaris.state, the one module every part
+# of the package reads it from, so that is the name that reaches the
+# budget the interpreter is enforcing.
 # THREAT_MODEL.md says a granted module can do whatever that module can
 # do; the pool promises only that it cannot do it to the NEXT program.
 WIDENS_ITS_BUDGET = (
     'fn main() uses io, ffi, fs {\n'
-    '    check py("__main__", "EFFECT_BUDGET.add", ["fs"]) {\n'
+    '    check py("velaris.state", "EFFECT_BUDGET.add", ["fs"]) {\n'
     '        ok v { print("widened") }\n'
     '        fail w { print("failed " + w) }\n'
     '    }\n'
@@ -107,7 +110,7 @@ SHOUTS_AT_FD_ONE = (
     '        fail w { print("failed " + w) }\n    }\n}\n')
 
 
-def reads(path, times: int) -> str:
+def reads(path: Any, times: int) -> str:
     """A program that reads one file `times` times over."""
     body = "".join(
         f'    check read_file("{path}") {{\n'
@@ -128,7 +131,7 @@ def alive(pid: int) -> bool:
     if os.name == "nt":
         import ctypes
         from ctypes import wintypes
-        k = ctypes.WinDLL("kernel32", use_last_error=True)
+        k = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]  # Windows only; mypy checks as Linux
         k.OpenProcess.restype = wintypes.HANDLE
         k.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL,
                                   wintypes.DWORD]
@@ -137,7 +140,7 @@ def alive(pid: int) -> bool:
         handle = k.OpenProcess(0x00100000, False, pid)   # SYNCHRONIZE
         if not handle:
             return False
-        running = k.WaitForSingleObject(handle, 0) != 0   # 0 = it ended
+        running: bool = k.WaitForSingleObject(handle, 0) != 0   # 0 = it ended
         k.CloseHandle(handle)
         return running
     try:
@@ -149,7 +152,7 @@ def alive(pid: int) -> bool:
     return True
 
 
-def all_gone(pids, seconds: float = 15.0) -> bool:
+def all_gone(pids: Any, seconds: float = 15.0) -> bool:
     """Every one of these processes has ended, within reason."""
     deadline = time.time() + seconds
     while time.time() < deadline:
@@ -162,7 +165,7 @@ def all_gone(pids, seconds: float = 15.0) -> bool:
 def main() -> int:                        # noqa: C901 - a suite, not logic
     passed = failed = 0
 
-    def ok(label, condition, detail=""):
+    def ok(label: Any, condition: Any, detail: str = "") -> None:
         nonlocal passed, failed
         if condition:
             print(f"  ok       {label}")
@@ -307,7 +310,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
        str(sorted(params)))
     with velaris.Pool(size=1, allow={"io"}, timeout=TIMEOUT) as narrow:
         try:
-            narrow.run(PRINTS, allow={"fs"})
+            narrow.run(PRINTS, allow={"fs"})  # type: ignore[call-arg]  # the TypeError is what is checked
             ok("asking a pool for a wider budget is a TypeError", False)
         except TypeError:
             ok("asking a pool for a wider budget is a TypeError", True)
@@ -417,9 +420,10 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     pool.close()                          # closing twice is not an error
 
     racing = velaris.Pool(size=1, allow={"io"}, timeout=120)
+    caught: list[velaris.RunResult | RuntimeError]
     caught, busy_pids = [], []
 
-    def keeps_going():
+    def keeps_going() -> None:
         try:
             caught.append(racing.run(NEVER_ENDS))
         except RuntimeError as e:                          # noqa: BLE001
@@ -440,7 +444,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
        f"{busy_pids} -> {[p for p in busy_pids if alive(p)]}, "
        f"caught {caught}")
 
-    def orphans():
+    def orphans() -> Any:
         gone = velaris.Pool(size=1, allow={"io"}, timeout=TIMEOUT)
         gone.run(PRINTS)
         return gone.worker_pids()
@@ -522,11 +526,12 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     print("nothing mutable is left unreset")
     print("-" * 62)
 
-    # The reset is only as good as its list. Read this file's own
+    # The reset is only as good as its list. Read every module's own
     # module-level assignments and insist every mutable one is either
     # reset between programs or a constant nothing writes to.
-    source = (HERE / "velaris.py").read_text(encoding="utf-8")
-    tree = ast.parse(source)
+    sources = [p.read_text(encoding="utf-8") for p in
+               sorted(Path(velaris.__file__).parent.glob("*.py"))]
+    source = "\n".join(sources)
     CONSTANTS = {"KEYWORDS", "TOKEN_SPEC", "ESCAPES", "FALLIBLE_BUILTINS",
                  "BUILTINS", "KNOWN_TYPES", "FLIP", "BUILTIN_EFFECTS",
                  "UNARY_BEFORE", "UNARY_KEYWORDS", "MUTABLE_GLOBALS",
@@ -535,11 +540,14 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
                  # program, so two runs cannot disagree about a currency
                  "CURRENCIES",
                  # deps-diff's table of lockfile names (7.1), read only
-                 "_LOCKFILES"}
+                 "_LOCKFILES",
+                 # each module's names from the modules after it, which
+                 # the package reads once, when it binds them (8.2)
+                 "__forward__"}
     makers = {"dict", "list", "set", "defaultdict", "deque", "Counter",
               "OrderedDict"}
     found = set()
-    for node in tree.body:
+    for node in (n for s in sources for n in ast.parse(s).body):
         if not isinstance(node, (ast.Assign, ast.AnnAssign)):
             continue
         targets = (node.targets if isinstance(node, ast.Assign)
@@ -561,7 +569,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     # globals() by Budget.install, so no literal names them
     found.update({"FFI_MODULES", "FS_GRANTS", "NET_GRANTS"})
     unaccounted = sorted(found - set(velaris.MUTABLE_GLOBALS) - CONSTANTS)
-    ok("every module-level mutable in velaris.py is reset or a listed "
+    ok("every module-level mutable in the package is reset or a listed "
        "constant", not unaccounted,
        f"not accounted for: {unaccounted}")
 

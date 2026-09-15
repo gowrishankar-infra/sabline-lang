@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional, Type
+from typing import List, Optional, Type, Any
 
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
@@ -18,17 +18,17 @@ class _RunInput(BaseModel):
                             description="command-line arguments")
 
 
-class VelarisCardTool(BaseTool):
+class VelarisCardTool(BaseTool):  # type: ignore[misc]  # langchain_core is not installed by the lint job
     name: str = "velaris_card"
     description: str = (
-        "The Velaris language in about 3,700 words. Read it before "
+        "The Velaris language in about 4,600 words. Read it before "
         "writing Velaris.")
 
-    def _run(self, *_, **__) -> str:
+    def _run(self, *_: Any, **__: Any) -> str:
         return velaris.card()
 
 
-class VelarisAuditTool(BaseTool):
+class VelarisAuditTool(BaseTool):  # type: ignore[misc]  # langchain_core is not installed by the lint job
     name: str = "velaris_audit"
     description: str = (
         "Audit a Velaris program before running it: which effects it can "
@@ -41,7 +41,7 @@ class VelarisAuditTool(BaseTool):
         return json.dumps(velaris.audit(source).as_dict(), indent=2)
 
 
-class VelarisRunTool(BaseTool):
+class VelarisRunTool(BaseTool):  # type: ignore[misc]  # langchain_core is not installed by the lint job
     name: str = "velaris_run"
     description: str = (
         "Run a Velaris program in a sandbox. Effects outside the budget "

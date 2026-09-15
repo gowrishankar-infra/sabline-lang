@@ -1,0 +1,9 @@
+fn main() uses io {
+    let s = "xxxxxxxxxxxxxxxx"
+    let i = 0
+    while i < 40 {
+        s = s + s
+        i = i + 1
+    }
+    print(length(s))
+}

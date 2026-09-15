@@ -18,7 +18,10 @@ LABEL org.opencontainers.image.description="A language where signatures declare 
 LABEL org.opencontainers.image.source="https://github.com/gowrishankar-infra/velaris-lang"
 LABEL org.opencontainers.image.licenses="MIT"
 
-RUN pip install --no-cache-dir "velaris-lang[full]" && velaris doctor
+# What to install. The nightly install test (nightly.yml) builds this file
+# with the wheel it built from main; everyone else gets the release on PyPI.
+ARG VELARIS="velaris-lang[full]"
+RUN pip install --no-cache-dir "$VELARIS" && velaris doctor
 
 WORKDIR /work
 ENTRYPOINT ["velaris"]

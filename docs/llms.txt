@@ -97,9 +97,12 @@ These are the mistakes that actually happen. Read them twice.
    `Secret` out, rule 17). Declare all that apply: `uses io, fs`.
 
 2. **Failure cannot be ignored.** These can fail: `to_int`,
-   `read_file`, `fetch`, `post`, `fetch_status`, `request`, `get` on a
-   **map**, `py`, `py_int`, `py_float`, `py_json`, `py_new`, `py_do`,
-   `py_field`, `json_get`, `json_int`, `json_float`, `json_len`.
+   `read_file`, `read_file_secret`, `fetch`, `post`, `fetch_status`,
+   `request`, `get` on a **map**, `pop`, `slice`, `set_at`,
+   `add_or_fail`, `sub_or_fail`, `mul_or_fail`, `div_or_fail`,
+   `mod_or_fail`, `divide_or_fail`, `parse_money`, `py`, `py_int`,
+   `py_float`, `py_json`, `py_new`, `py_do`, `py_field`, `json_get`,
+   `json_int`, `json_float`, `json_len`.
    Handle with `check`, or pass up with `try` **only inside a function
    whose signature says `or fail`**.
 
@@ -119,14 +122,15 @@ These are the mistakes that actually happen. Read them twice.
 7. **Inline functions capture by value.** `fn(n: Int) -> Bool { ... }`
    may read locals from the surrounding function; their values are
    copied when the function value is made, so later changes to those
-   locals do not affect it. Effects still apply: an inline function
-   that prints needs the surrounding function to allow it, and a
-   function value passed to a library must still be pure. A name that
-   exists nowhere is E402 as before.
+   locals do not affect it. An inline function is pure: one that
+   prints or reads is refused (E300) whatever the surrounding
+   function declares, and a function passed as a value must have no
+   effects and must not fail (E530). A name that exists nowhere is
+   E402 as before.
 
 8. **`main` cannot fail** and takes no parameters.
 
-9. **There are no closures, exceptions, classes, inheritance, `null`,
+9. **There are no exceptions, classes, inheritance, `null`,
    threads, `break` or `continue`.** To leave a loop early, put the
    exit in the loop test where the prover can see it:
    `while i < n and not found { ... }` - afterward the prover knows
@@ -574,7 +578,7 @@ them as structured data for a fix loop.
 | E314 | a host or port outside the run's `net:` grants | grant it: `--allow net:<host>:<port>` |
 | E315 | the run's `fs` or `net` operation count was reached | grant more: `@<count>`, or do less |
 | E401 | wrong number of arguments | count them |
-| E402 | unknown variable | declare it; inline functions cannot capture |
+| E402 | unknown variable | declare it, or pass it in |
 | E403 | divide by zero at runtime | guard the divisor |
 | E406 | `format` holes do not match values | count the `{}` |
 | E407 | number too big for 64 bits | use smaller units |
@@ -598,13 +602,14 @@ them as structured data for a fix loop.
 | E509 | unknown record field | check the field name |
 | E513 | redefining an imported function | rename yours |
 | E521 | `try` outside an `or fail` function | add `or fail`, or use check |
-| E523 | `main` declares `or fail` | handle failures inside main |
+| E523 | `fail` in a function without `or fail` | add `or fail` to the signature |
+| E524 | `main` declares `or fail` | handle failures inside main |
 | E525 | binding the result of a void fallible call | use check without ok-binding |
 | E608 | a file could not be written | check the folder exists and is writable |
 | E609 | recursion 2000 deep | move toward the base case, or use a loop |
 | E612 | a loop's end could not be shown (only under `check --strict`) | make one counter move one step toward a limit the body does not change |
 | E613/E614 | a check or audit ran past its time or memory ceiling | simplify the promise or split the program; the operator can raise `--check-timeout` |
-| E542 | function value of the wrong shape | match the parameter's fn type |
+| E542 | a function value that does not fit a generic function's parameter once its type variables are bound; a wrong shape anywhere else, a wrong `all_of`/`any_of` predicate included, is E501 | make the arguments agree on what `T` is |
 | E550 | two currencies met | convert on purpose, or keep one currency |
 | E551 | a currency that is not known, or not written in the call | write a listed code: `money(1250, "INR")` |
 | E552 | a rounding mode missing or not written in the call | pass `"half_up"`, `"half_even"` or `"down"` |
@@ -673,7 +678,7 @@ fn main() uses io {
 - Is every fallible call wrapped in `check`, or `try` inside a function
   that says `or fail`?
 - Do empty `[]` and `{}` have types?
-- Do inline functions use only their own parameters?
+- Are inline functions pure - no printing, reading or failing?
 - Do `format` holes match the values given?
 - Would `velaris check` pass? If unsure, prefer fewer contracts and
   simpler code over clever code with promises that may not prove.

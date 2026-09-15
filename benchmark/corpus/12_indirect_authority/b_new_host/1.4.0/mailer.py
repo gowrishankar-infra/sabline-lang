@@ -2,7 +2,7 @@
 import urllib.request
 
 
-def send(to, body):
+def send(to: str, body: str) -> str:
     try:
         urllib.request.urlopen("{url}/send", data=f"{to}\n{body}".encode()).read()
         return f"sent to {to}"

@@ -1,0 +1,36 @@
+// Float in genuine IEEE-754 rather than as real numbers (SPEC.md 9.3):
+// NaN is not equal to itself, and adding one need not make a Float larger.
+
+// ==== nan_is_not_equal_to_itself
+// expect: E700 line 3
+fn same(x: Float) -> Float
+    ensures result == x
+{
+    return x
+}
+
+// ==== adding_one_need_not_grow
+// expect: E700 line 3
+fn grow(x: Float) -> Float
+    ensures result > x
+{
+    return x + 1.0
+}
+
+// ==== order_proven_in_a_range
+// expect: proven add_one
+fn add_one(x: Float) -> Float
+    requires x > 1.0 and x < 2.0
+    ensures result > x
+{
+    return x + 1.0
+}
+
+// ==== positive_stays_positive
+// expect: proven keep
+fn keep(x: Float) -> Float
+    requires x > 0.0
+    ensures result > 0.0
+{
+    return x
+}

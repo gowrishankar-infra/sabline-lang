@@ -15,7 +15,7 @@ inputs:
     required: false
     default: ""
   version:
-    description: "Which Velaris version to install. Default: the Action's own version - the tag it was used at (`@v8.1.0` installs velaris-lang 8.1.0), or, when it is pinned to a commit, the version that commit's velaris.py names; the newest on PyPI only if that version is not there."
+    description: "Which Velaris version to install. Default: the Action's own version - the tag it was used at (`@v8.1.0` installs velaris-lang 8.1.0), or, when it is pinned to a commit, the version that commit's velaris/version.py names; the newest on PyPI only if that version is not there."
     required: false
     default: ""
   proofs:
@@ -77,11 +77,12 @@ runs:
           # default to the Action's own version, so the compiler and the
           # Action agree: the tag it was used at (@v8.1.0 installs 8.1.0),
           # or - pinned to a commit, as the README shows - the version that
-          # commit's velaris.py names. Only when neither gives a version
+          # commit's velaris/version.py names (velaris.py before 8.2). Only
+          # when neither gives a version
           # that installs does it fall back to the newest on PyPI.
           ver="${ACTION_REF#v}"
           if ! echo "$ver" | grep -qE '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
-            ver=$(sed -n 's/^VERSION = "\([0-9.]*\)"$/\1/p' "$ACTION_PATH/velaris.py" 2>/dev/null | head -n 1)
+            ver=$(sed -n 's/^VERSION = "\([0-9.]*\)"$/\1/p' "$ACTION_PATH/velaris/version.py" "$ACTION_PATH/velaris.py" 2>/dev/null | head -n 1)
           fi
           if [ -n "$ver" ]; then
             pkg="velaris-lang==$ver"
@@ -106,10 +107,6 @@ runs:
     # With sarif (the default), the check writes SARIF 2.1.0 to a file and
     # still prints each finding to the log; it fails the step exactly as
     # the plain check does. The file is uploaded by the next step.
-    # Every command here that proves runs with --no-cache (8.1.1): a
-    # runner's cache directory can be restored from another workflow's
-    # run, and from 8.1.1 the cache is never believed anyway, so reading it
-    # would only add a directory the Action cannot vouch for.
     - name: Check
       id: check
       shell: bash
@@ -129,9 +126,9 @@ runs:
         if [ "$SARIF" = "true" ]; then
           sarif="$RUNNER_TEMP/velaris.sarif"
           echo "sarif-file=$sarif" >> "$GITHUB_OUTPUT"
-          velaris check $files --sarif --no-cache > "$sarif"
+          velaris check $files --sarif > "$sarif"
         else
-          velaris check $files --no-cache
+          velaris check $files
         fi
 
     # Runs whether the check passed or not: the findings of a failing
@@ -201,7 +198,7 @@ runs:
     - name: Proven share
       if: ${{ inputs.min-proven != '' }}
       shell: bash
-      run: velaris proofs . --min "${{ inputs.min-proven }}" --no-cache
+      run: velaris proofs . --min "${{ inputs.min-proven }}"
 
     - name: Formatting
       if: ${{ inputs.format == 'true' }}
@@ -251,7 +248,7 @@ runs:
         # the proven share, new fallible functions, new hosts and paths,
         # and a risk word computed from those alone
         review_file=""
-        if [ "$scope" = "changed" ] && velaris review --against "$BASE_SHA" --json --no-cache \
+        if [ "$scope" = "changed" ] && velaris review --against "$BASE_SHA" --json \
             > "$RUNNER_TEMP/velaris-review.json" 2> "$RUNNER_TEMP/velaris-review.err"; then
           review_file="$RUNNER_TEMP/velaris-review.json"
         fi

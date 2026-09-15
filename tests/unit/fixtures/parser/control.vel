@@ -1,0 +1,31 @@
+fn classify(n: Int) -> Text {
+    if n < 0 {
+        return "negative"
+    } else if n == 0 {
+        return "zero"
+    } else {
+        return "positive"
+    }
+}
+
+fn count(n: Int) -> Int
+    requires n >= 0
+{
+    let i = 0
+    let total: Int = 0
+    while i < n
+    invariant total >= 0
+    invariant i <= n
+    {
+        total = total + i
+        i = i + 1
+    }
+    return total
+}
+
+fn only_if(n: Int) -> Int {
+    if n > 0 {
+        return 1
+    }
+    return 0
+}

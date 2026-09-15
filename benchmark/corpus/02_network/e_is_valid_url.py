@@ -3,8 +3,8 @@ import sys
 import urllib.request
 
 
-def is_valid(url):
-    code = urllib.request.urlopen(url).status  # DANGER
+def is_valid(url: str) -> bool:
+    code: int = urllib.request.urlopen(url).status  # DANGER
     return 200 <= code < 300
 
 

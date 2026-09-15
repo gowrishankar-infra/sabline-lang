@@ -31,18 +31,18 @@ Paths are written with "/" on every platform.
 
     python check_sandbox.py
 """
-import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
 sys.path.insert(0, str(HERE))
 from suite_dirs import isolate  # noqa: E402
 
-isolate("check_sandbox")              # its own proof cache
+isolate("check_sandbox")              # its own directory
 
 # words a program prints only if it got past the refusal
 MARKERS = ("READ IT", "WROTE IT", "REACHED IT", "CALLED IT", "OPENED IT",
@@ -61,7 +61,7 @@ PYTHON_HOST = ("needs a Python host to run the granted call; the corpus "
                "runs no host code")
 
 
-def _read(path) -> str:
+def _read(path: Any) -> str:
     return (
         "fn main() uses io, fs {\n"
         f'    check read_file("{path}") {{\n'
@@ -70,14 +70,14 @@ def _read(path) -> str:
         "    }\n}\n")
 
 
-def _write(path) -> str:
+def _write(path: Any) -> str:
     return (
         "fn main() uses io, fs {\n"
         f'    write_file("{path}", "escaped")\n'
         "    print(\"WROTE IT\")\n}\n")
 
 
-def _fetch(url) -> str:
+def _fetch(url: Any) -> str:
     return (
         "fn main() uses io, net {\n"
         f'    check fetch("{url}") {{\n'
@@ -86,9 +86,9 @@ def _fetch(url) -> str:
         "    }\n}\n")
 
 
-def escape(id, name, source, *, allow=None, deny=None, refused,
-           creates=None, stdout=(), stderr=(), requires=(), spec=(),
-           not_in_corpus=None):
+def escape(id: Any, name: Any, source: Any, *, allow: Any = None, deny: Any = None, refused: Any,
+           creates: Any = None, stdout: Any = (), stderr: Any = (), requires: Any = (), spec: Any = (),
+           not_in_corpus: Any = None) -> Any:
     """A program that must be refused with `refused`, print none of
     MARKERS, create nothing at `creates`, and print each of `stdout`
     before the refusal.
@@ -104,8 +104,8 @@ def escape(id, name, source, *, allow=None, deny=None, refused,
                 spec=list(spec), not_in_corpus=not_in_corpus)
 
 
-def honest(id, name, source, *, allow=None, deny=None, args=(), stdout=(),
-           stderr=(), requires=(), spec=(), not_in_corpus=None):
+def honest(id: Any, name: Any, source: Any, *, allow: Any = None, deny: Any = None, args: Any = (), stdout: Any = (),
+           stderr: Any = (), requires: Any = (), spec: Any = (), not_in_corpus: Any = None) -> Any:
     """A program that must run to its end and print each of `stdout`."""
     return dict(id=id, name=name, source=source.lstrip(), allow=allow,
                 deny=deny, args=list(args), refused=None, creates=None,
@@ -770,7 +770,7 @@ fn main() uses io, fs {
 ]
 
 
-def fixture(root: Path, ports: tuple, symlink: bool) -> dict:
+def fixture(root: Path, ports: tuple[Any, ...], symlink: bool) -> dict[str, Any]:
     """Make the directories and files the placeholders name, and return
     the placeholders' values. `symlink` asks for {DATA}/link.txt, a
     symbolic link to {OUTSIDE}; False when the system cannot make one."""
@@ -792,7 +792,7 @@ def fixture(root: Path, ports: tuple, symlink: bool) -> dict:
             "{PORT_B}": str(ports[1]), "_symlink": made_link}
 
 
-def fill(text, values: dict):
+def fill(text: Any, values: dict[Any, Any]) -> Any:
     if text is None:
         return None
     for key, value in values.items():
@@ -801,14 +801,14 @@ def fill(text, values: dict):
     return text
 
 
-def local_servers():
+def local_servers() -> tuple[Any, ...]:
     """Two local http servers: the first redirects /go to the second."""
     import threading
     from http.server import BaseHTTPRequestHandler, HTTPServer
-    ports = {}
+    ports: dict[str, int] = {}
 
     class H(BaseHTTPRequestHandler):
-        def do_GET(self):
+        def do_GET(self) -> None:
             if self.path.startswith("/go"):
                 self.send_response(302)
                 self.send_header("Location",
@@ -821,7 +821,7 @@ def local_servers():
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, *a):
+        def log_message(self, *a: Any) -> None:
             pass
 
     a = HTTPServer(("127.0.0.1", 0), H)
@@ -833,7 +833,7 @@ def local_servers():
     return a, b, ports["granted"], ports["other"]
 
 
-def run(case: dict, values: dict, root: Path):
+def run(case: dict[Any, Any], values: dict[Any, Any], root: Path) -> tuple[Any, ...]:
     """(exit code, stdout, stderr) of the case run from the command line,
     in the fixture's root."""
     prog = root / "_sandbox_check.vel"
@@ -850,7 +850,7 @@ def run(case: dict, values: dict, root: Path):
     return done.returncode, done.stdout or "", done.stderr or ""
 
 
-def refusal_code(stderr: str):
+def refusal_code(stderr: str) -> Any:
     import re
     m = re.search(r"error\[(E\d{3})\]", stderr)
     return m.group(1) if m else None

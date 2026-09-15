@@ -37,6 +37,7 @@ Needs no theorem prover: every rule here is a type rule.
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
@@ -45,7 +46,7 @@ sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
-# its own directory and proof cache, so two runs at once do not collide
+# its own directory, so two runs at once do not collide
 SCRATCH = isolate("check_secret") / "_secret_check.vel"
 
 PASS = [0]
@@ -61,15 +62,15 @@ def ok(label: str, good: bool, detail: str = "") -> None:
         print(f"  WRONG {label}" + (f"\n          {detail}" if detail else ""))
 
 
-def check(source: str) -> tuple:
+def check(source: str) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
-        [sys.executable, str(VELARIS), "check", str(SCRATCH), "--no-cache"],
+        [sys.executable, str(VELARIS), "check", str(SCRATCH)],
         capture_output=True, text=True, timeout=300, cwd=str(HERE))
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
 
-def run(source: str, allow: str) -> tuple:
+def run(source: str, allow: str) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
         [sys.executable, str(VELARIS), str(SCRATCH), "--allow", allow],
@@ -84,7 +85,7 @@ def said(out: str) -> str:
                      if not ln.startswith("note: ")).strip()
 
 
-def refused(label: str, source: str, code: str, says=()) -> None:
+def refused(label: str, source: str, code: str, says: Any = ()) -> None:
     """This program must not compile, with this code, saying these."""
     got, out = check(source)
     missing = [s for s in says if s not in out]
@@ -106,7 +107,7 @@ def prints(label: str, source: str, allow: str, want: str) -> None:
        f"wanted {want!r}, got {said(out)!r}")
 
 
-def audit_of(source: str) -> dict:
+def audit_of(source: str) -> dict[Any, Any]:
     SCRATCH.write_text(source, encoding="utf-8")
     return velaris.audit(source, path=str(SCRATCH)).as_dict()
 

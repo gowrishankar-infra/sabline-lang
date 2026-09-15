@@ -2,11 +2,11 @@
 import sys
 
 
-def persist(path, text):
+def persist(path: str, text: str) -> None:
     open(path, "w").write(text)  # DANGER
 
 
-def summarise(path, amounts):
+def summarise(path: str, amounts: list[int]) -> int:
     total = sum(amounts)
     persist(path, "total %d" % total)
     return total

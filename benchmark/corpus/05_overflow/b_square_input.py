@@ -2,7 +2,7 @@
 import sys
 
 
-def square(n):
+def square(n: int) -> int:
     return n * n  # DANGER
 
 

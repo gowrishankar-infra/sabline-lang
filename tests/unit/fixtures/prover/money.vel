@@ -1,0 +1,42 @@
+// Amounts prove as the whole numbers they are (SPEC.md 9.3), percent_of
+// is the exact rounding the interpreter performs, and "text_of,
+// parse_money and divide_or_fail are not modelled at all: a function
+// that uses one keeps its promises as runtime checks".
+
+// ==== an_amount_proves_as_its_minor_units
+// expect: proven fee
+fn fee(m: Money of INR) -> Money of INR
+    requires m >= money(0, "INR")
+    ensures result >= money(0, "INR")
+{
+    return percent_of(m, 25, 1000, "half_up")
+}
+
+// ==== a_negative_amount_refuted
+// expect: E700 line 3
+fn refund(m: Money of INR) -> Money of INR
+    ensures result >= money(0, "INR")
+{
+    return m
+}
+
+// ==== divide_or_fail_is_modelled_where_it_does_not_fail
+// expect: proven share
+fn share(m: Money of INR) -> Money of INR or fail
+    requires m >= money(0, "INR")
+    ensures result >= money(0, "INR")
+{
+    return try divide_or_fail(m, 3, "down")
+}
+
+// ==== parse_money_is_modelled_where_it_does_not_fail
+// expect: proven read_price
+fn read_price(t: Text) -> Money of INR or fail
+    ensures result >= money(0, "INR")
+{
+    let m = try parse_money(t, "INR")
+    if m < money(0, "INR") {
+        fail "a price is not negative"
+    }
+    return m
+}

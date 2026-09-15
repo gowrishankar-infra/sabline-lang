@@ -20,13 +20,13 @@ verifier has to get right about it:
 
     python check_money.py
 """
-import json
 import random
 import subprocess
 import sys
 from decimal import Decimal, ROUND_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP
 from decimal import getcontext
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 VELARIS = HERE / "velaris.py"
@@ -35,7 +35,7 @@ sys.path.insert(0, str(HERE))
 import velaris  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
-# its own directory and proof cache, so two runs at once do not collide
+# its own directory, so two runs at once do not collide
 SCRATCH = isolate("check_money") / "_money_check.vel"
 
 getcontext().prec = 80
@@ -43,7 +43,7 @@ PASS = [0]
 FAIL = [0]
 
 
-def ok(label: str, good: bool, detail: str = "") -> None:
+def ok(label: str, good: bool, detail: object = "") -> None:
     if good:
         PASS[0] += 1
         print(f"  ok    {label}")
@@ -59,7 +59,7 @@ def without_notes(text: str) -> str:
                      if not ln.startswith("note: ")).strip()
 
 
-def run(source: str, *args: str) -> tuple:
+def run(source: str, *args: str) -> tuple[Any, ...]:
     """Run a program; (exit code, its output)."""
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
@@ -68,7 +68,7 @@ def run(source: str, *args: str) -> tuple:
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
 
-def check(source: str, *args: str) -> tuple:
+def check(source: str, *args: str) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
         [sys.executable, str(VELARIS), "check", str(SCRATCH), *args],

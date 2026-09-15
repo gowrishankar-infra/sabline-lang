@@ -2,7 +2,7 @@
 import os
 
 
-def config(name):
+def config(name: str) -> str:
     return os.environ.get(name, "unset")  # DANGER
 
 

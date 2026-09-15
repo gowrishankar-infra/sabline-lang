@@ -1,0 +1,9 @@
+fn positive(n: Int) -> Int
+    requires n > 0
+{
+    return n
+}
+
+fn main() uses io {
+    print(positive(length(args())))
+}

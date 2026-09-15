@@ -1,0 +1,6 @@
+import "std.vel" as std
+
+fn main() uses io {
+    let std = 5
+    print(std)
+}

@@ -23,7 +23,7 @@ Two tools (plus a third that returns the language reference):
 
 Velaris is a small language built for this: a function's signature
 declares its effects and its promises, and a theorem prover checks the
-promises before execution. A model learns it from a ~3,700-word card
+promises before execution. A model learns it from a ~4,600-word card
 (the third tool returns it), so an agent can write it without prior
 training.
 

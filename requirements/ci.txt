@@ -1,0 +1,8 @@
+# The prover and the native compiler, as CI installs them (8.2).
+#
+# test.yml installs with `-c requirements/ci.txt`, so a leg runs these exact
+# versions and a new z3-solver or llvmlite reaches CI only as a Dependabot
+# pull request that changes this file and runs every leg. Users are not
+# pinned: pyproject.toml keeps the ranges it has.
+z3-solver==5.1.0.0
+llvmlite==0.49.0

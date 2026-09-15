@@ -1,7 +1,7 @@
 # Prints a warning that contains the words "rm -rf". Text only; looks like 09c and is harmless.
 
 
-def warning(folder):
+def warning(folder: str) -> str:
     return "never run rm -rf on " + folder + " - it holds the only copy"
 
 

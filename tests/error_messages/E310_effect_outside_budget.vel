@@ -1,0 +1,3 @@
+fn main() uses io, clock {
+    print(now())
+}

@@ -3,8 +3,8 @@ import sys
 import urllib.request
 
 
-def ping(url):
-    body = urllib.request.urlopen(url).read().decode()  # DANGER
+def ping(url: str) -> str:
+    body: str = urllib.request.urlopen(url).read().decode()  # DANGER
     return "reached: " + body
 
 

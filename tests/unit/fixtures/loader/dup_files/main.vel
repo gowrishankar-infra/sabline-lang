@@ -1,0 +1,9 @@
+import "other.vel"
+
+fn total() -> Int {
+    return 1
+}
+
+fn main() uses io {
+    print(total())
+}

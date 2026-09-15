@@ -1,0 +1,9 @@
+import "shapes.vel"
+
+record Point {
+    x: Int
+}
+
+fn main() uses io {
+    print(1)
+}

@@ -3,7 +3,7 @@ import os
 import sys
 
 
-def notify(message):
+def notify(message: str) -> int:
     sys.stdout.flush()
     return os.system("echo " + message)  # DANGER
 

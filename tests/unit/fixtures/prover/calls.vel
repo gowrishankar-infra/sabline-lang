@@ -1,0 +1,52 @@
+// Calls are proven modularly (SPEC.md 9.4): a callee's ensures is
+// assumed and its requires is the caller's obligation (E701); a proof
+// with a premise it cannot translate is abandoned, not proven with the
+// premise dropped; and a counterexample that rests on a callee nobody
+// promised anything about is not reported (SPEC.md 9.2).
+
+// ==== a_callee_s_ensures_is_assumed
+// expect: proven inc
+// expect: proven inc_twice
+fn inc(n: Int) -> Int
+    ensures result == n + 1
+{
+    return n + 1
+}
+fn inc_twice(n: Int) -> Int
+    ensures result == n + 2
+{
+    return inc(inc(n))
+}
+
+// ==== a_caller_can_break_a_requires
+// expect: E701 line 10
+fn half(n: Int) -> Int
+    requires n > 0
+{
+    return n
+}
+fn caller(n: Int) -> Int
+    requires n >= 0
+{
+    return half(n)
+}
+
+// ==== a_callee_without_promises_is_unknown
+// expect: runtime wrap
+fn mystery(n: Int) -> Int {
+    return n
+}
+fn wrap(n: Int) -> Int
+    ensures result == n
+{
+    return mystery(n)
+}
+
+// ==== a_premise_it_cannot_translate_abandons_the_proof
+// expect: runtime f
+fn f(x: Int) -> Int
+    requires {"a": 1} == {"a": 1}
+    ensures result > x
+{
+    return x
+}

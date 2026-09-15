@@ -1,0 +1,7 @@
+fn make(n: Int) -> List of T for any T {
+    return []
+}
+
+fn main() uses io {
+    print("hi")
+}

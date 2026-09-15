@@ -7,6 +7,7 @@
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any, Callable, cast
 
 sys.path.insert(0, str(Path(__file__).parent))
 from suite_dirs import isolate  # noqa: E402
@@ -152,18 +153,19 @@ def check_versions() -> None:
     """The packaged version and the compiler's version must agree."""
     import re as _re
     root = Path(__file__).parent
-    src = (root / "velaris.py").read_text(encoding="utf-8")
+    src = (root / "velaris" / "version.py").read_text(encoding="utf-8")
     tom = (root / "pyproject.toml").read_text(encoding="utf-8")
-    a = _re.search(r'VERSION = "([\d.]+)"', src).group(1)
-    b = _re.search(r'version = "([\d.]+)"', tom).group(1)
+    a = cast("_re.Match[str]", _re.search(r'VERSION = "([\d.]+)"', src)).group(1)
+    b = cast("_re.Match[str]", _re.search(r'version = "([\d.]+)"', tom)).group(1)
     if a != b:
-        print(f"VERSION MISMATCH: velaris.py says {a}, "
+        print(f"VERSION MISMATCH: velaris/version.py says {a}, "
               f"pyproject.toml says {b}")
         raise SystemExit(1)
     # every other place a version lives: an npm package or an .mcpb
     # manifest claiming a different version than the compiler is a lie
     # a user would meet, so the guard covers them too
     import json as _j
+    read: Callable[[Path], Any]
     for label, path, read in (
             ("the npm package", root / "npm" / "package.json",
              lambda p: _j.loads(p.read_text(encoding="utf-8"))["version"]),
@@ -172,7 +174,7 @@ def check_versions() -> None:
         if path.exists():
             got = read(path)
             if got != a:
-                print(f"VERSION MISMATCH: velaris.py says {a}, "
+                print(f"VERSION MISMATCH: velaris/version.py says {a}, "
                       f"{label} says {got}")
                 raise SystemExit(1)
 
@@ -181,7 +183,7 @@ def check_versions() -> None:
         import json as _json
         c = _json.loads(ext.read_text(encoding="utf-8"))["version"]
         if c != a:
-            print(f"VERSION MISMATCH: velaris.py says {a}, "
+            print(f"VERSION MISMATCH: velaris/version.py says {a}, "
                   f"the VS Code extension says {c}")
             raise SystemExit(1)
 
@@ -192,7 +194,7 @@ def check_versions() -> None:
         doc = _j.loads(reg.read_text(encoding="utf-8"))
         said = [doc["version"]] + [p["version"] for p in doc["packages"]]
         if any(v != a for v in said):
-            print(f"VERSION MISMATCH: velaris.py says {a}, "
+            print(f"VERSION MISMATCH: velaris/version.py says {a}, "
                   f"the MCP registry manifest says {said}")
             raise SystemExit(1)
 
@@ -207,7 +209,7 @@ def check_versions() -> None:
             encoding="utf-8"), _re.M)
         got = m.group(1) if m else None
         if got != a:
-            print(f"VERSION MISMATCH: velaris.py says {a}, CITATION.cff "
+            print(f"VERSION MISMATCH: velaris/version.py says {a}, CITATION.cff "
                   f"says {got}")
             raise SystemExit(1)
 
@@ -226,7 +228,7 @@ def check_versions() -> None:
 REPOSITORY_URL = "https://github.com/gowrishankar-infra/velaris-lang.git"
 
 
-def _tag_commits(root: Path) -> dict:
+def _tag_commits(root: Path) -> dict[Any, Any]:
     """{tag: the commit it names} for every v* tag, asked of the repository
     on GitHub (a CI checkout is shallow and has no tags), or of this
     checkout when GitHub cannot be reached; {} when neither answers."""
@@ -240,6 +242,8 @@ def _tag_commits(root: Path) -> dict:
             continue
         if done.returncode != 0:
             continue
+        found: dict[str, str]
+        peeled: dict[str, str]
         found, peeled = {}, {}
         for line in done.stdout.splitlines():
             m = _re.match(r"^([0-9a-f]{40})\s+refs/tags/(v[\d.]+)(\^\{\})?$",
@@ -300,7 +304,7 @@ def check_action_pins(root: Path) -> None:
               "Action pin was held to its form and not to a tag")
         return
 
-    def order(t):
+    def order(t: Any) -> Any:
         return tuple(int(x) for x in t[1:].split("."))
 
     newest = max(tags, key=order)

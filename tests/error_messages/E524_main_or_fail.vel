@@ -1,0 +1,3 @@
+fn main() uses io or fail {
+    print("hi")
+}

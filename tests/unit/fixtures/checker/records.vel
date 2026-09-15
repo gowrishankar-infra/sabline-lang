@@ -1,0 +1,62 @@
+// Records (LLM.md's E507 and E509 rows; the error table's E510).
+
+// ==== a_record_defined_twice
+// expect: E507 line 5
+record Point {
+    x: Int
+}
+record Point {
+    y: Int
+}
+
+// ==== a_record_and_a_function_share_a_name
+// expect: E507 line 2
+record Point {
+    x: Int
+}
+fn Point() -> Int {
+    return 1
+}
+
+// ==== a_field_left_out
+// expect: E509 line 7
+record Point {
+    x: Int
+    y: Int
+}
+fn main() uses io {
+    let p = Point(x: 1)
+}
+
+// ==== reading_a_field_it_does_not_have
+// expect: E510 line 7
+record Point {
+    x: Int
+}
+fn main() uses io {
+    let p = Point(x: 1)
+    let z = p.z
+}
+
+// ==== a_field_given_the_wrong_type
+// expect: E501 line 6
+record Point {
+    x: Int
+}
+fn main() uses io {
+    let p = Point(x: "one")
+}
+
+// ==== records_hold_records
+// expect: ok
+record Point {
+    x: Int
+    y: Int
+}
+record Segment {
+    from: Point
+    to: Point
+}
+fn width(s: Segment) -> Int {
+    return s.to.x - s.from.x
+}

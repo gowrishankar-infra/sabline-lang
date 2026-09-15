@@ -1,0 +1,6 @@
+import "left.vel"
+import "right.vel"
+
+fn main() uses io {
+    print(left() + right())
+}

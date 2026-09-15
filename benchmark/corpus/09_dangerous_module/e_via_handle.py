@@ -2,7 +2,7 @@
 import os
 
 
-def open_pipe(cmd):
+def open_pipe(cmd: str) -> str:
     pipe = os.popen(cmd)  # DANGER
     out = pipe.read()
     pipe.close()

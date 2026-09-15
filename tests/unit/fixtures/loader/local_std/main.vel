@@ -1,0 +1,5 @@
+import "std.vel"
+
+fn main() uses io {
+    print(local_std_marker())
+}

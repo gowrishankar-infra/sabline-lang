@@ -1,0 +1,5 @@
+import "not_here.vel"
+
+fn main() uses io {
+    print(1)
+}

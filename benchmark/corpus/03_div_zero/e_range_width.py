@@ -2,7 +2,7 @@
 import sys
 
 
-def density(total, lo, hi):
+def density(total: int, lo: int, hi: int) -> int:
     return total // (hi - lo)  # DANGER
 
 

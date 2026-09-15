@@ -2,7 +2,7 @@
 import sys
 
 
-def count_words(line):
+def count_words(line: str) -> int:
     return len([p for p in line.split(" ") if p])
 
 

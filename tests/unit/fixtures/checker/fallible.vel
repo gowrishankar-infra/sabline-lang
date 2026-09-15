@@ -1,0 +1,89 @@
+// Failure (SPEC.md 8; LLM.md rules 2 and 3): a call that can fail is
+// handled with check or passed up with try inside an 'or fail' function.
+// get on a map can fail and get on a list cannot.
+
+// ==== ignored_failure_of_a_builtin
+// expect: E520 line 3
+fn main() uses io {
+    let n = to_int("42")
+}
+
+// ==== handled_with_check
+// expect: ok
+fn main() uses io {
+    check to_int("42") {
+        ok n {
+            print(n)
+        }
+        fail why {
+            print(why)
+        }
+    }
+}
+
+// ==== passed_up_with_try
+// expect: ok
+fn parse(t: Text) -> Int or fail {
+    let n = try to_int(t)
+    if n < 0 {
+        fail "negative"
+    }
+    return n
+}
+
+// ==== try_outside_an_or_fail_function
+// expect: E521 line 3
+fn parse(t: Text) -> Int {
+    return try to_int(t)
+}
+
+// ==== try_on_a_call_that_cannot_fail
+// expect: E522 line 3
+fn f(xs: List of Int) -> Int or fail {
+    return try get(xs, 0)
+}
+
+// ==== ignored_failure_of_a_program_function
+// expect: E520 line 6
+fn parse(t: Text) -> Int or fail {
+    return try to_int(t)
+}
+fn main() uses io {
+    let n = parse("1")
+}
+
+// ==== get_on_a_map_can_fail
+// expect: E520 line 4
+fn main() uses io {
+    let m = {"a": 1}
+    let v = get(m, "a")
+}
+
+// ==== get_on_a_list_cannot
+// expect: ok
+fn main() uses io {
+    let xs = [1, 2]
+    let v: Int = get(xs, 0)
+}
+
+// ==== get_or_is_a_total_map_lookup
+// expect: ok
+fn main() uses io {
+    let m = {"a": 1}
+    let v: Int = get_or(m, "b", 0)
+    check get(m, "a") {
+        ok found {
+            print(found + v)
+        }
+        fail why {
+            print(why)
+        }
+    }
+}
+
+// ==== list_position_is_an_int
+// expect: E501 line 4
+fn main() uses io {
+    let xs = [1, 2]
+    let v = get(xs, "0")
+}

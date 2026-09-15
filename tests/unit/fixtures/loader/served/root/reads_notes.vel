@@ -1,0 +1,5 @@
+import "notes.txt"
+
+fn main() uses io {
+    print(notes())
+}

@@ -9,7 +9,7 @@ class Account:
     balance: int
 
 
-def apply_rate(acc, rate):
+def apply_rate(acc: Account, rate: int) -> Account:
     return Account(acc.owner, acc.balance * rate)  # DANGER
 
 

@@ -1,0 +1,7 @@
+fn parse(t: Text) -> Int {
+    return try to_int(t)
+}
+
+fn main() uses io {
+    print(parse("5"))
+}

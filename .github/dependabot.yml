@@ -1,0 +1,23 @@
+# Dependabot (8.2). It opens pull requests; it merges nothing. Each pull
+# request runs test.yml in full - every leg, the benchmark's verdict check on
+# the full legs - like any other, and a person merges it.
+version: 2
+updates:
+  # the prover and the native compiler, pinned for CI in requirements/ci.txt:
+  # a new z3-solver or llvmlite reaches CI only through one of these
+  - package-ecosystem: pip
+    directory: "/requirements"
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-name: "z3-solver"
+      - dependency-name: "llvmlite"
+    labels: ["dependencies"]
+    open-pull-requests-limit: 4
+  # every action the workflows pin, by commit and by tag
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies"]
+    open-pull-requests-limit: 8

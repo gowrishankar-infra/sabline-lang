@@ -20,11 +20,12 @@ import os
 import shutil
 import sys
 from pathlib import Path
+from typing import Any
 
 SERVER_NAME = "velaris"
 
 
-def homes() -> dict:
+def homes() -> dict[str, Any]:
     """Where each client keeps its configuration, per platform."""
     home = Path.home()
     if sys.platform == "win32":
@@ -66,12 +67,12 @@ def homes() -> dict:
     }
 
 
-def entry() -> dict:
+def entry() -> dict[str, Any]:
     """How to start the server, using this very Python."""
     return {"command": sys.executable, "args": ["-m", "velaris_mcp"]}
 
 
-def load(path: Path) -> dict:
+def load(path: Path) -> dict[Any, Any]:
     if not path.exists():
         return {}
     try:
@@ -108,11 +109,11 @@ def install_into(path: Path, remove: bool = False) -> str:
     return action
 
 
-def main(argv: list) -> int:
+def main(argv: list[Any]) -> int:
     listing = "--list" in argv
     remove = "--remove" in argv
 
-    print(f"looking for assistants that speak MCP")
+    print("looking for assistants that speak MCP")
     print("-" * 62)
     found = 0
     for label, path in homes().items():

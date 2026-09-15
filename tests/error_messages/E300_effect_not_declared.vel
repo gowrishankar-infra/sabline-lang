@@ -1,0 +1,7 @@
+fn greet(name: Text) {
+    print("hello " + name)
+}
+
+fn main() uses io {
+    greet("gowri")
+}

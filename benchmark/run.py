@@ -33,6 +33,7 @@ import sys
 import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any, cast
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -45,14 +46,14 @@ TOOLS = ("velaris", "deno", "python")
 VERDICTS = ("caught-before-run", "caught-during-run", "missed",
             "not-applicable", "false-positive", "tool-absent")
 SCOPED_KINDS = ("fs-scope", "net-scope", "env")
-PORTS_IN_USE: list = []          # every listener port, masked in evidence
+PORTS_IN_USE: list[Any] = []          # every listener port, masked in evidence
 EXT = {"velaris": ".vel", "deno": ".js", "python": ".py"}
 
 sys.path.insert(0, ROOT)
 import velaris  # noqa: E402  (the checkout being benchmarked)
 from suite_dirs import isolate  # noqa: E402
 
-isolate("benchmark")                  # its own proof cache (8.1)
+isolate("benchmark")                  # its own directory
 HAVE_PROVER = velaris.HAVE_Z3
 
 
@@ -63,7 +64,7 @@ class CorpusError(Exception):
 
 # ---------------------------------------------------------------- corpus
 
-def load_corpus():
+def load_corpus() -> tuple[Any, ...]:
     with open(os.path.join(HERE, "corpus.json"), encoding="utf-8") as f:
         data = json.load(f)
     programs = []
@@ -93,7 +94,7 @@ def load_corpus():
     return data["categories"], programs
 
 
-def marker_line(prog, tool):
+def marker_line(prog: Any, tool: Any) -> Any:
     """The 1-based line carrying the DANGER marker, or None. For a program
     with a dependency the marker is in the dependency's new version: the
     caller and the old version must carry none, since the danger is the
@@ -118,7 +119,7 @@ def marker_line(prog, tool):
     return hits[0] if hits else None
 
 
-def loop_span(path, danger_line):
+def loop_span(path: Any, danger_line: Any) -> tuple[Any, ...] | None:
     """(header line, line after the loop) for the innermost loop that
     contains danger_line in a brace-delimited file, else None. Used only
     to decide whether a Deno diagnostic is about the dangerous loop."""
@@ -150,31 +151,32 @@ def loop_span(path, danger_line):
 # ---------------------------------------------------------- the listener
 
 class Hits(BaseHTTPRequestHandler):
-    paths: list = []
-    by_port: list = []           # (the listener's port, path), category 12
+    paths: list[Any] = []
+    by_port: list[Any] = []           # (the listener's port, path), category 12
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         self._hit()
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         n = int(self.headers.get("Content-Length") or 0)
         self.rfile.read(n)
         self._hit()
 
-    def _hit(self):
+    def _hit(self) -> None:
         Hits.paths.append(self.path)
-        Hits.by_port.append((self.server.server_address[1], self.path))
+        Hits.by_port.append((cast("tuple[str, int]",
+                                  self.server.server_address)[1], self.path))
         body = b"ok\n"
         self.send_response(200)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, *args):
+    def log_message(self, *args: Any) -> None:
         pass
 
 
-def start_listener():
+def start_listener() -> tuple[Any, ...]:
     server = ThreadingHTTPServer(("127.0.0.1", 0), Hits)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server, server.server_address[1]
@@ -182,8 +184,8 @@ def start_listener():
 
 # ------------------------------------------------------- child processes
 
-def _posix_cap():
-    def pre():
+def _posix_cap() -> Any:
+    def pre() -> None:
         try:
             import resource
             cap = MEMORY_MB * 1024 * 1024
@@ -197,11 +199,11 @@ class _WindowsJob:
     """A job object capping the child's memory; also kills the child's
     own children when the job closes."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         import ctypes
         import ctypes.wintypes as w
         self.ctypes = ctypes
-        k = ctypes.windll.kernel32
+        k = ctypes.windll.kernel32  # type: ignore[attr-defined]  # Windows only; mypy checks as Linux
 
         class IO_COUNTERS(ctypes.Structure):
             _fields_ = [(n, ctypes.c_ulonglong) for n in (
@@ -239,16 +241,16 @@ class _WindowsJob:
             raise OSError("SetInformationJobObject failed")
         self.k = k
 
-    def assign(self, proc):
+    def assign(self, proc: Any) -> None:
         if not self.k.AssignProcessToJobObject(self.job, int(proc._handle)):
             raise OSError("AssignProcessToJobObject failed")
-        self.ctypes.windll.ntdll.NtResumeProcess(int(proc._handle))
+        self.ctypes.windll.ntdll.NtResumeProcess(int(proc._handle))  # type: ignore[attr-defined]  # Windows only; mypy checks as Linux
 
-    def close(self):
+    def close(self) -> None:
         self.k.CloseHandle(self.job)
 
 
-def run_child(cmd, stdin_text, env=None):
+def run_child(cmd: Any, stdin_text: Any, env: Any = None) -> dict[str, Any]:
     """Run cmd with the benchmark's timeout and memory cap. Returns a
     dict with exit, stdout, stderr, timed_out and which cap applied."""
     full_env = dict(os.environ)
@@ -256,7 +258,7 @@ def run_child(cmd, stdin_text, env=None):
                      "PYTHONUTF8": "1", "BENCH_SECRET": SECRET})
     full_env.update(env or {})
     cap = "none"
-    kwargs = dict(stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+    kwargs: dict[str, Any] = dict(stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                   stderr=subprocess.PIPE, env=full_env, cwd=HERE)
     job = None
     if os.name == "nt":
@@ -295,7 +297,7 @@ def run_child(cmd, stdin_text, env=None):
             "stderr": err.decode("utf-8", "replace"), "cap": cap}
 
 
-def find_deno(explicit=None):
+def find_deno(explicit: Any = None) -> Any:
     if explicit:
         return explicit if os.path.exists(explicit) else None
     found = shutil.which("deno")
@@ -319,7 +321,7 @@ def find_deno(explicit=None):
 
 # -------------------------------------------------------------- evidence
 
-def tidy(text, port=None, paths=True):
+def tidy(text: Any, port: Any = None, paths: bool = True) -> Any:
     """Strip machine-specific detail so two runs produce the same file.
     paths=False leaves paths alone, for text whose scratch directory is
     already written as <workdir>."""
@@ -335,7 +337,7 @@ def tidy(text, port=None, paths=True):
     return text.strip()
 
 
-def first_error_line(stderr):
+def first_error_line(stderr: Any) -> Any:
     lines = [ln.strip() for ln in stderr.split("\n") if ln.strip()]
     for ln in lines:
         if ln.startswith("error") or "Error" in ln or "NotCapable" in ln \
@@ -344,7 +346,7 @@ def first_error_line(stderr):
     return lines[-1] if lines else ""
 
 
-def observed(kind, prog_id, tool, work_path, stdout):
+def observed(kind: Any, prog_id: Any, tool: Any, work_path: Any, stdout: Any) -> Any:
     """Did the dangerous effect actually happen? None when there is no
     effect to observe (a wrong number, a slow loop, a string)."""
     if kind == "fs":
@@ -371,7 +373,7 @@ def observed(kind, prog_id, tool, work_path, stdout):
     return None
 
 
-def verdict_for(prog, absent, flagged_before, stopped, seen):
+def verdict_for(prog: Any, absent: Any, flagged_before: Any, stopped: Any, seen: Any) -> Any:
     if absent:
         return "tool-absent"
     if not prog["dangerous"]:
@@ -392,7 +394,7 @@ def verdict_for(prog, absent, flagged_before, stopped, seen):
 
 # ------------------------------------------------------------ the tools
 
-def velaris_row(prog, stdin_text, work_path, needs_filled=None, placed=None):
+def velaris_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = None, placed: Any = None) -> dict[str, Any]:
     path = placed["caller"] if placed else prog["files"]["velaris"]
     with open(path, encoding="utf-8") as f:
         source = f.read()
@@ -456,7 +458,7 @@ def velaris_row(prog, stdin_text, work_path, needs_filled=None, placed=None):
         before["deps_diff"] = deps
         flagged_before = flagged_before or found["gained"]
 
-    during = {"ran": False}
+    during: dict[str, Any] = {"ran": False}
     stopped = False
     seen = None
     if chk.ok:
@@ -520,8 +522,8 @@ def velaris_row(prog, stdin_text, work_path, needs_filled=None, placed=None):
             "before": before, "during": during, "observed": seen}
 
 
-def deno_row(prog, stdin_text, work_path, deno, port, deno_flags=(),
-             placed=None):
+def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, deno_flags: Any = (),
+             placed: Any = None) -> dict[str, Any]:
     if deno is None:
         return {"verdict": "tool-absent", "evidence": "deno not installed",
                 "before": None, "during": None, "observed": None}
@@ -547,6 +549,7 @@ def deno_row(prog, stdin_text, work_path, deno, port, deno_flags=(),
             except ValueError:
                 pass
         else:
+            m: re.Match[str] | None
             for m in re.finditer(r"\.js:(\d+):\d+", text):
                 diagnostics.append({"tool": "check", "code": "check",
                                     "line": int(m.group(1)),
@@ -613,7 +616,7 @@ def deno_row(prog, stdin_text, work_path, deno, port, deno_flags=(),
             "before": before, "during": during, "observed": seen}
 
 
-def python_row(prog, stdin_text, work_path, port, placed=None):
+def python_row(prog: Any, stdin_text: Any, work_path: Any, port: Any, placed: Any = None) -> dict[str, Any]:
     path = placed["caller"] if placed else prog["files"]["python"]
     res = run_child([sys.executable, path], stdin_text)
     stopped = res["timed_out"] or res["exit"] != 0
@@ -647,7 +650,7 @@ def python_row(prog, stdin_text, work_path, port, placed=None):
 
 # --------------------------------------------------------------- driver
 
-def settle_memory_row(prog, result):
+def settle_memory_row(prog: Any, result: Any) -> Any:
     """A memory-growth program is stopped by the 256 MB cap or by the
     5 s deadline, and which one fires first depends on how loaded the
     machine is - it changed from run to run. Both are the same verdict;
@@ -676,8 +679,8 @@ SECRET = "bench-secret-7f3a"     # in the environment of every child;
                                  # a program that prints it reached env
 
 
-def fill(text, work_path, workdir, port, other, prog_id, tool,
-         slashes=False):
+def fill(text: Any, work_path: Any, workdir: Any, port: Any, other: Any, prog_id: Any, tool: Any,
+         slashes: bool = False) -> Any:
     """The placeholders a program's needs, stdin and flags may use. With
     slashes the paths are written with / on every platform, so that the
     filled text is a string literal all three languages read the same way:
@@ -700,7 +703,7 @@ def fill(text, work_path, workdir, port, other, prog_id, tool,
             .replace("{port}", str(port)).replace("{other}", str(other)))
 
 
-def place_dependency(prog, tool, workdir, filled):
+def place_dependency(prog: Any, tool: Any, workdir: Any, filled: Any) -> dict[str, Any]:
     """Category 12: the caller and the new version of its dependency side
     by side in a scratch directory, where the run finds the import, and
     both versions under <tool>-versions/<version>/ for deps-diff - every
@@ -710,7 +713,7 @@ def place_dependency(prog, tool, workdir, filled):
     here = os.path.join(workdir, prog["id"], tool)
     versions = os.path.join(workdir, prog["id"], tool + "-versions")
 
-    def put(src, dest):
+    def put(src: Any, dest: Any) -> None:
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         with open(src, encoding="utf-8") as fh:
             text = fh.read()
@@ -727,7 +730,7 @@ def place_dependency(prog, tool, workdir, filled):
     spellings = sorted({workdir, workdir.replace("\\", "/")}, key=len,
                        reverse=True)
 
-    def mask(text):
+    def mask(text: Any) -> Any:
         for s in spellings:
             text = text.replace(s, "<workdir>")
         return text
@@ -735,7 +738,7 @@ def place_dependency(prog, tool, workdir, filled):
     return {"caller": caller, "versions": versions, "mask": mask}
 
 
-def run_program(prog, deno, port, other, workdir):
+def run_program(prog: Any, deno: Any, port: Any, other: Any, workdir: Any) -> Any:
     row = {k: prog[k] for k in ("id", "category", "category_title", "name",
                                 "description", "dangerous", "kind", "needs")}
     if prog.get("dependency"):
@@ -754,7 +757,7 @@ def run_program(prog, deno, port, other, workdir):
         if os.path.exists(work_path):
             os.remove(work_path)
 
-        def f(t, tool=tool, work_path=work_path):
+        def f(t: Any, tool: Any = tool, work_path: Any = work_path) -> Any:
             return fill(t, work_path, workdir, port, other, prog["id"], tool)
 
         stdin_text = f(prog["stdin"])
@@ -782,7 +785,7 @@ def run_program(prog, deno, port, other, workdir):
     return row
 
 
-def summarise(categories, rows):
+def summarise(categories: Any, rows: Any) -> Any:
     out = []
     for cat in categories:
         entry = {"number": cat["number"], "title": cat["title"], "tools": {}}
@@ -798,7 +801,7 @@ def summarise(categories, rows):
     return out
 
 
-def totals(rows):
+def totals(rows: Any) -> Any:
     out = {}
     for tool in TOOLS:
         counts = {v: 0 for v in VERDICTS}
@@ -862,13 +865,13 @@ KIND_WHY = {
 }
 
 
-def short_cell(tool_result):
+def short_cell(tool_result: Any) -> Any:
     v = tool_result["verdict"]
     e = tool_result["evidence"]
     return f"**{v}**<br>{e}" if e else f"**{v}**"
 
 
-def results_markdown(meta, categories, rows, summary, tot):
+def results_markdown(meta: Any, categories: Any, rows: Any, summary: Any, tot: Any) -> str:
     L = []
     L.append("# Benchmark results")
     L.append("")
@@ -906,7 +909,7 @@ def results_markdown(meta, categories, rows, summary, tot):
     L.append("## Results, by category")
     L.append("")
 
-    def row_line(r):
+    def row_line(r: Any) -> str:
         dl = r["danger_line"]
         where = (f"yes, line {dl['velaris']}/{dl['deno']}/{dl['python']} "
                  f"(vel/js/py)" if r["dangerous"] else "no")
@@ -971,16 +974,16 @@ def results_markdown(meta, categories, rows, summary, tot):
     return "\n".join(L) + "\n"
 
 
-def narrative(meta, rows, tot):
+def narrative(meta: Any, rows: Any, tot: Any) -> Any:
     P = []
     dangerous = [r for r in rows if r["dangerous"]]
     control = [r for r in rows if not r["dangerous"]]
     deno_absent = not meta["deno"]
 
-    def v(r, t):
+    def v(r: Any, t: Any) -> Any:
         return r["tools"][t]["verdict"]
 
-    def ids(items):
+    def ids(items: Any) -> Any:
         return ", ".join(r["id"] for r in items) if items else "none"
 
     caught = {t: [r for r in dangerous if v(r, t).startswith("caught")]
@@ -1052,7 +1055,7 @@ def narrative(meta, rows, tot):
                     and v(r, "python") == "missed"
                     and (deno_absent or v(r, "deno") == "missed")]
     if only_velaris:
-        kinds = {}
+        kinds: dict[str, list[str]] = {}
         for r in only_velaris:
             kinds.setdefault(r["kind"], []).append(r["id"])
         s = ("What Velaris caught that " + ("Python" if deno_absent else
@@ -1203,7 +1206,7 @@ def narrative(meta, rows, tot):
     return P
 
 
-def print_table(rows):
+def print_table(rows: Any) -> None:
     w = max(len(r["id"]) + len(r["name"]) + 1 for r in rows)
     print(f"{'program':<{w}}  {'velaris':<20} {'deno':<20} {'python':<20}")
     for r in rows:
@@ -1212,7 +1215,7 @@ def print_table(rows):
             f"{r['tools'][t]['verdict']:<20}" for t in TOOLS))
 
 
-def compare(rows, path):
+def compare(rows: Any, path: Any) -> Any:
     """Verdicts must match the committed results.json (tool-absent on
     either side is skipped). Returns a list of differences."""
     if not os.path.exists(path):
@@ -1247,7 +1250,7 @@ def compare(rows, path):
     return diffs
 
 
-def main(argv=None):
+def main(argv: Any = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--quick", action="store_true",
                     help="one program per category; table on stdout only")

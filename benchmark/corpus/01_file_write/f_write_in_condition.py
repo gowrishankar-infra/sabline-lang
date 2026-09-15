@@ -2,7 +2,7 @@
 import sys
 
 
-def ready(path):
+def ready(path: str) -> bool:
     open(path, "w").write("ready")  # DANGER
     return True
 

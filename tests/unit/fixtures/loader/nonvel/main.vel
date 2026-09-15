@@ -1,0 +1,5 @@
+import "settings.env"
+
+fn main() uses io {
+    print(1)
+}

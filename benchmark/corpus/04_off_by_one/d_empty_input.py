@@ -2,7 +2,7 @@
 import sys
 
 
-def last_word(words):
+def last_word(words: list[str]) -> str:
     return words[len(words) - 1]  # DANGER
 
 

@@ -1,0 +1,5 @@
+import "../outside.vel"
+
+fn main() uses io {
+    print(outside())
+}

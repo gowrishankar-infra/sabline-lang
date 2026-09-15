@@ -1,0 +1,3 @@
+fn main() uses io {
+    exit_with(300)
+}

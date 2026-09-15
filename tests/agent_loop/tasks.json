@@ -1,0 +1,119 @@
+{
+  "about": "Ten tasks for agent_loop.py --metric. Each holds the replies a model gave, in order; --offline replays them, so the loop and its metric run with no model and no network. The first reply of each has one mistake the compiler names.",
+  "tasks": [
+    {
+      "id": "sum",
+      "task": "Print the sum of the whole numbers from 1 to 10.",
+      "effects": [
+        "io"
+      ],
+      "replies": [
+        "```velaris\nfn main() {\n    let total = 0\n    let i = 1\n    while i <= 10 {\n        total = total + i\n        i = i + 1\n    }\n    print(to_text(total))\n}\n```",
+        "```velaris\nfn main() uses io {\n    let total = 0\n    let i = 1\n    while i <= 10 {\n        total = total + i\n        i = i + 1\n    }\n    print(to_text(total))\n}\n```"
+      ]
+    },
+    {
+      "id": "parse",
+      "task": "Read the text \"42\" as a whole number and print one more than it, saying why if the text is not a number.",
+      "effects": [
+        "io"
+      ],
+      "replies": [
+        "```velaris\nfn main() uses io {\n    let n = to_int(\"42\")\n    print(to_text(n + 1))\n}\n```",
+        "```velaris\nfn main() uses io {\n    check to_int(\"42\") {\n        ok n { print(to_text(n + 1)) }\n        fail why { print(why) }\n    }\n}\n```"
+      ]
+    },
+    {
+      "id": "larger",
+      "task": "Write a function that returns the larger of two whole numbers, promising the result is at least each of them, and print it for 3 and 7.",
+      "effects": [
+        "io"
+      ],
+      "replies": [
+        "```velaris\nfn larger(a: Int, b: Int) -> Int\n    ensures result >= a\n    ensures result >= b\n{\n    if a > b {\n        return a\n    }\n    return \"b\"\n}\n\nfn main() uses io {\n    print(to_text(larger(3, 7)))\n}\n```",
+        "```velaris\nfn larger(a: Int, b: Int) -> Int\n    ensures result >= a\n    ensures result >= b\n{\n    if a > b {\n        return a\n    }\n    return b\n}\n\nfn main() uses io {\n    print(to_text(larger(3, 7)))\n}\n```"
+      ]
+    },
+    {
+      "id": "write",
+      "task": "Write the text hello to a file named out.txt, then say it was written.",
+      "effects": [
+        "fs",
+        "io"
+      ],
+      "replies": [
+        "```velaris\nfn main() uses io {\n    write_file(\"out.txt\", \"hello\")\n    print(\"written\")\n}\n```",
+        "```velaris\nfn main() uses fs, io {\n    write_file(\"out.txt\", \"hello\")\n    print(\"written\")\n}\n```"
+      ]
+    },
+    {
+      "id": "fetch",
+      "task": "Fetch https://example.com/ and print how many characters came back, or why it could not be fetched.",
+      "effects": [
+        "io",
+        "net"
+      ],
+      "replies": [
+        "```velaris\nfn main() uses io {\n    check fetch(\"https://example.com/\") {\n        ok body { print(to_text(length(body))) }\n        fail why { print(why) }\n    }\n}\n```",
+        "```velaris\nfn main() uses io, net {\n    check fetch(\"https://example.com/\") {\n        ok body { print(to_text(length(body))) }\n        fail why { print(why) }\n    }\n}\n```"
+      ]
+    },
+    {
+      "id": "evens",
+      "task": "Print how many of the numbers 1, 2, 3, 4, 5 and 6 are even.",
+      "effects": [
+        "io"
+      ],
+      "replies": [
+        "```velaris\nfn main() uses io {\n    let count = 0\n    for n in [1, 2, 3, 4, 5, 6] {\n        if n % 2 == 0 {\n            count = count + 1\n        }\n    }\n    print(to_text(cuont))\n}\n```",
+        "```velaris\nfn main() uses io {\n    let count = 0\n    for n in [1, 2, 3, 4, 5, 6] {\n        if n % 2 == 0 {\n            count = count + 1\n        }\n    }\n    print(to_text(count))\n}\n```"
+      ]
+    },
+    {
+      "id": "split_bill",
+      "task": "Split a bill of 100.00 INR between 3 people so the parts add up exactly, and print each part.",
+      "effects": [
+        "io"
+      ],
+      "replies": [
+        "```velaris\nfn main() uses io {\n    let parts = money.split(money(10000, \"INR\"), 3)\n    for part in parts {\n        print(text_of(part))\n    }\n}\n```",
+        "```velaris\nimport \"money.vel\" as money\n\nfn main() uses io {\n    let parts = money.split(money(10000, \"INR\"), 3)\n    for part in parts {\n        print(text_of(part))\n    }\n}\n```"
+      ]
+    },
+    {
+      "id": "points",
+      "task": "Define a point with whole-number x and y, a function that adds two points, and print the x of 1,2 plus 3,4.",
+      "effects": [
+        "io"
+      ],
+      "replies": [
+        "```velaris\nrecord Point {\n    x: Int\n    y: Int\n}\n\nfn add(a: Point, b: Point) -> Point {\n    return Point(x: a.x + b.x, y: a.y + b.y)\n}\n\nfn main() uses io {\n    let p = add(Point(x: 1, y: 2), Point(x: 3, y: 4))\n    print(to_text(p.z))\n}\n```",
+        "```velaris\nrecord Point {\n    x: Int\n    y: Int\n}\n\nfn add(a: Point, b: Point) -> Point {\n    return Point(x: a.x + b.x, y: a.y + b.y)\n}\n\nfn main() uses io {\n    let p = add(Point(x: 1, y: 2), Point(x: 3, y: 4))\n    print(to_text(p.x))\n}\n```"
+      ]
+    },
+    {
+      "id": "home_set",
+      "task": "Say whether the environment variable HOME is set, without printing its value.",
+      "effects": [
+        "declassify",
+        "env",
+        "io"
+      ],
+      "replies": [
+        "```velaris\nfn main() uses io, env {\n    let home = env(\"HOME\", \"\")\n    print(home)\n}\n```",
+        "```velaris\nfn main() uses io, env, declassify {\n    let home = env(\"HOME\", \"\")\n    let missing = declassify(home == \"\", \"whether HOME is set is not its value\")\n    if missing {\n        print(\"HOME is not set\")\n    } else {\n        print(\"HOME is set\")\n    }\n}\n```"
+      ]
+    },
+    {
+      "id": "positive",
+      "task": "Write a pure function that says whether a whole number is positive, and print its answer for -3.",
+      "effects": [
+        "io"
+      ],
+      "replies": [
+        "```velaris\nfn positive(n: Int) -> Bool {\n    print(\"checking\")\n    return n > 0\n}\n\nfn main() uses io {\n    print(to_text(positive(-3)))\n}\n```",
+        "```velaris\nfn positive(n: Int) -> Bool {\n    return n > 0\n}\n\nfn main() uses io {\n    print(to_text(positive(-3)))\n}\n```"
+      ]
+    }
+  ]
+}

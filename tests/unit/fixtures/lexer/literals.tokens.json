@@ -1,0 +1,14 @@
+{
+  "about": "SPEC.md 2, the literal table: Int, Float, Text with its escapes kept raw in the token, Bool. A minus sign is an operator before the literal, which the parser turns into a negation.",
+  "keep_trivia": false,
+  "tokens": [
+    ["NUMBER", "0", 1], ["NUMBER", "42", 1], ["NUMBER", "007", 1],
+    ["FLOAT", "1.5", 2], ["FLOAT", "0.0", 2], ["FLOAT", "2.25", 2],
+    ["OP", "-", 3], ["NUMBER", "7", 3], ["OP", "-", 3], ["FLOAT", "2.25", 3],
+    ["STRING", "\"hello\"", 4], ["STRING", "\"\"", 4],
+    ["STRING", "\"a\\nb\"", 4], ["STRING", "\"tab\\there\"", 4],
+    ["STRING", "\"say \\\"hi\\\"\"", 4], ["STRING", "\"back\\\\slash\"", 4],
+    ["KEYWORD", "true", 5], ["KEYWORD", "false", 5],
+    ["EOF", "", 6]
+  ]
+}

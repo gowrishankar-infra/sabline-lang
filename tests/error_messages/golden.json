@@ -1,0 +1,839 @@
+{
+  "E000_unexpected_character": {
+    "code": "E000",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "unexpected character '$'"
+  },
+  "E001_file_not_found": {
+    "code": "E001",
+    "how": {
+      "argv": [
+        "missing.vel",
+        "--json"
+      ],
+      "via": "cli"
+    },
+    "line": 1,
+    "message": "cannot find file 'missing.vel'"
+  },
+  "E002_unknown_escape": {
+    "code": "E002",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "unknown escape '\\q' in text"
+  },
+  "E100_expected_token": {
+    "code": "E100",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "expected ':' but found 'Int'"
+  },
+  "E101_unexpected_token": {
+    "code": "E101",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "unexpected ')'"
+  },
+  "E102_expression_too_deep": {
+    "code": "E102",
+    "how": {
+      "argv": [
+        "check",
+        "<file>",
+        "--json"
+      ],
+      "via": "cli"
+    },
+    "line": 2,
+    "message": "this expression nests, or chains operators, too deeply"
+  },
+  "E200_unknown_function": {
+    "code": "E200",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "unknown function 'shout'"
+  },
+  "E204_shadows_builtin": {
+    "code": "E204",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "'length' is the name of a built-in, so a function called 'length' would shadow it; through 7.x the built-in silently won and this function was never reached"
+  },
+  "E300_effect_not_declared": {
+    "code": "E300",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "function 'greet' calls 'print' which needs effect 'io', but 'greet' declares no effects (it is pure)"
+  },
+  "E300_not_an_effect": {
+    "code": "E300",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "function 'main' declares 'teleport', which is not an effect; the effects are io, env, fs, net, clock, rand, ffi, declassify"
+  },
+  "E310_effect_outside_budget": {
+    "code": "E310",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "'now' needs the 'clock' effect, which this run does not allow (it allows: io)"
+  },
+  "E310_promise_with_effects": {
+    "code": "E310",
+    "how": {
+      "via": "check"
+    },
+    "line": 6,
+    "message": "the 'requires' promise of 'later' calls 'stamp' which has effects (clock); promises must be pure"
+  },
+  "E311_ffi_module_outside_budget": {
+    "code": "E311",
+    "how": {
+      "allow": [
+        "io",
+        "ffi:math"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "'py' reaches into Python module 'os', which this run does not allow"
+  },
+  "E313_path_outside_grants": {
+    "code": "E313",
+    "how": {
+      "allow": [
+        "io",
+        "fs:read:<dir>/allowed"
+      ],
+      "dirs": [
+        "allowed"
+      ],
+      "via": "run",
+      "write": {
+        "secret.txt": "not for this run\n"
+      }
+    },
+    "line": 2,
+    "message": "'read_file' reaches 'secret.txt' (resolved: <dir>/secret.txt), which this run's fs grants do not cover"
+  },
+  "E314_host_outside_grants": {
+    "code": "E314",
+    "how": {
+      "allow": [
+        "io",
+        "net:allowed.example"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "'fetch' reaches host 'blocked.example', which this run does not allow: host blocked.example:80 is not in this run's net grants (allow it: --allow net:blocked.example:80)"
+  },
+  "E315_operation_count": {
+    "code": "E315",
+    "how": {
+      "allow": [
+        "io",
+        "fs:read:<dir>@1"
+      ],
+      "via": "run",
+      "write": {
+        "a.txt": "a\n"
+      }
+    },
+    "line": 6,
+    "message": "'read_file' is the 2nd fs operation, and this run allows 1"
+  },
+  "E316_read_ceiling": {
+    "code": "E316",
+    "how": {
+      "argv": [
+        "<file>",
+        "--allow",
+        "io,fs:read:<dir>",
+        "--max-read",
+        "1",
+        "--json"
+      ],
+      "setup": "big_file",
+      "via": "cli"
+    },
+    "line": 2,
+    "message": "'big.txt' is 1048586 bytes, over the read ceiling of 1048576 bytes - a file is read whole, into memory, so a large one is capped"
+  },
+  "E317_ambient_proxy": {
+    "code": "E317",
+    "how": {
+      "allow": [
+        "io",
+        "net:api.vendor.example"
+      ],
+      "env": {
+        "HTTP_PROXY": "http://127.0.0.1:9",
+        "NO_PROXY": null,
+        "REQUEST_METHOD": null,
+        "http_proxy": "http://127.0.0.1:9",
+        "no_proxy": null
+      },
+      "via": "run"
+    },
+    "line": 0,
+    "message": "an ambient proxy (http://127.0.0.1:9) would carry this request, and its host 127.0.0.1:9 is outside this run's net grants: a net grant bounds the URL's host, and from 8.0 also the socket's peer"
+  },
+  "E318_credential_location": {
+    "code": "E318",
+    "how": {
+      "allow": [
+        "io",
+        "fs:read:<dir>"
+      ],
+      "via": "run",
+      "write": {
+        "x.pem": "PEM\n"
+      }
+    },
+    "line": 2,
+    "message": "'read_file' reaches 'x.pem' (resolved: <dir>/x.pem), a documented credential location; a plain read returns ordinary text that can be printed or sent"
+  },
+  "E400_no_main": {
+    "code": "E400",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 1,
+    "message": "no 'main' function found"
+  },
+  "E401_argument_count": {
+    "code": "E401",
+    "how": {
+      "via": "check"
+    },
+    "line": 6,
+    "message": "'add' expects 2 argument(s) but got 1"
+  },
+  "E401_main_parameters": {
+    "code": "E401",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "'main' takes no parameters, but this one asks for 1"
+  },
+  "E402_function_value_unknown_name": {
+    "code": "E402",
+    "how": {
+      "via": "check"
+    },
+    "line": 4,
+    "message": "unknown variable 'nothing_here': it is not defined where this function value is written, nor in it"
+  },
+  "E402_unknown_variable": {
+    "code": "E402",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "unknown variable 'total'"
+  },
+  "E403_division_by_zero": {
+    "code": "E403",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "division by zero"
+  },
+  "E405_random_below_one": {
+    "code": "E405",
+    "how": {
+      "allow": [
+        "io",
+        "rand"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "random(n) needs n greater than 0"
+  },
+  "E406_format_placeholders": {
+    "code": "E406",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "this text has 2 placeholder(s) but got 1 value(s)"
+  },
+  "E406_format_while_running": {
+    "code": "E406",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 3,
+    "message": "format has 2 placeholder(s) but got 1 value(s)"
+  },
+  "E407_integer_overflow": {
+    "code": "E407",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 3,
+    "message": "this '+' made a number too big to hold (whole numbers go from -9223372036854775808 to 9223372036854775807)"
+  },
+  "E408_exit_code_range": {
+    "code": "E408",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "an exit code must be between 0 and 255, not 300"
+  },
+  "E500_unknown_type": {
+    "code": "E500",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "unknown type 'Integer' for parameter 'n' of 'twice'"
+  },
+  "E501_types_do_not_match": {
+    "code": "E501",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "cannot add Int and Float"
+  },
+  "E502_value_from_nothing": {
+    "code": "E502",
+    "how": {
+      "via": "check"
+    },
+    "line": 6,
+    "message": "'x' would hold nothing: that function returns no value"
+  },
+  "E503_return_type": {
+    "code": "E503",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "'broken' promises to return Int but this returns Text"
+  },
+  "E504_condition_not_bool": {
+    "code": "E504",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "'if' needs a yes/no condition (Bool), but this is Int"
+  },
+  "E505_promise_not_bool": {
+    "code": "E505",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "'requires' must be a yes/no promise (Bool)"
+  },
+  "E506_empty_list": {
+    "code": "E506",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "cannot tell what an empty list holds"
+  },
+  "E507_field_given_twice": {
+    "code": "E507",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "record 'Point' has field 'x' twice"
+  },
+  "E507_record_and_function": {
+    "code": "E507",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "'Point' is used for both a record and a function"
+  },
+  "E508_unknown_record": {
+    "code": "E508",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "unknown record 'Point'"
+  },
+  "E509_missing_field": {
+    "code": "E509",
+    "how": {
+      "via": "check"
+    },
+    "line": 7,
+    "message": "record 'Point' is missing field(s): y"
+  },
+  "E510_no_such_field": {
+    "code": "E510",
+    "how": {
+      "via": "check"
+    },
+    "line": 8,
+    "message": "record 'Point' has no field 'z'"
+  },
+  "E511_record_changed_in_place": {
+    "code": "E511",
+    "how": {
+      "via": "check"
+    },
+    "line": 8,
+    "message": "records cannot be changed in place"
+  },
+  "E512_import_not_found": {
+    "code": "E512",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "cannot find imported file '<dir>/nowhere.vel'"
+  },
+  "E513_defined_in_two_files": {
+    "code": "E513",
+    "how": {
+      "files": {
+        "helpers.vel": "E513_defined_in_two_files.helpers.vel"
+      },
+      "via": "check"
+    },
+    "line": 3,
+    "message": "function 'double' is defined in both '<dir>/helpers.vel' and '<file>'"
+  },
+  "E514_variable_named_like_import": {
+    "code": "E514",
+    "how": {
+      "via": "check"
+    },
+    "line": 4,
+    "message": "'std' is the name of an import, so it cannot also be a variable"
+  },
+  "E515_import_outside_root": {
+    "code": "E515",
+    "how": {
+      "dirs": [
+        "root"
+      ],
+      "import_root": "<dir>/root",
+      "via": "check"
+    },
+    "line": 1,
+    "message": "cannot import '<dir>/outside.vel': it resolves to <dir>/outside.vel, outside the directory this program is served from (<dir>/root)"
+  },
+  "E520_failure_ignored": {
+    "code": "E520",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "'to_int' can fail - that cannot be ignored"
+  },
+  "E521_try_in_function_that_cannot_fail": {
+    "code": "E521",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "'try' passes failure up, but 'parse' cannot fail"
+  },
+  "E522_try_on_call_that_cannot_fail": {
+    "code": "E522",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "'length' cannot fail - call it directly without 'try'"
+  },
+  "E523_fail_not_declared": {
+    "code": "E523",
+    "how": {
+      "via": "check"
+    },
+    "line": 3,
+    "message": "'fail' is used, but 'checked' does not declare it can fail"
+  },
+  "E524_main_or_fail_checked": {
+    "code": "E524",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "'main' cannot fail - there is nobody above it to catch"
+  },
+  "E524_main_or_fail": {
+    "code": "E524",
+    "how": {
+      "argv": [
+        "<file>",
+        "--json"
+      ],
+      "via": "cli"
+    },
+    "line": 1,
+    "message": "'main' cannot be 'or fail' - there is no one above it to handle the failure"
+  },
+  "E525_check_result_unnamed": {
+    "code": "E525",
+    "how": {
+      "via": "check"
+    },
+    "line": 6,
+    "message": "name the result: 'ok value { ... }'"
+  },
+  "E530_effectful_function_as_value": {
+    "code": "E530",
+    "how": {
+      "via": "check"
+    },
+    "line": 7,
+    "message": "'loud' uses effects (io) - only pure functions can be passed as values"
+  },
+  "E540_type_variable_only_in_return": {
+    "code": "E540",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "type variable 'T' must appear in at least one parameter (a T only in the return type cannot be inferred)"
+  },
+  "E541_type_variable_named_like_type": {
+    "code": "E541",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "type variable 'Int' shadows a real type"
+  },
+  "E542_function_value_wrong_shape": {
+    "code": "E542",
+    "how": {
+      "via": "check"
+    },
+    "line": 10,
+    "message": "'apply' argument 2 should look like fn(T) -> T, but this is fn(Text) -> Text (so far: T = Int)"
+  },
+  "E543_generic_function_as_value": {
+    "code": "E543",
+    "how": {
+      "via": "check"
+    },
+    "line": 6,
+    "message": "'identity' is generic - generic functions cannot be passed as values yet"
+  },
+  "E550_currencies_mixed": {
+    "code": "E550",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "the right side is Money of USD, where Money of INR is needed - amounts in two currencies do not mix"
+  },
+  "E551_unknown_currency": {
+    "code": "E551",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "'XYZ' is not a currency Velaris knows"
+  },
+  "E552_rounding_mode": {
+    "code": "E552",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "the rounding mode must be written in the call: \"half_up\", \"half_even\" or \"down\""
+  },
+  "E553_amount_divided": {
+    "code": "E553",
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "'/' on an amount would round without saying how"
+  },
+  "E560_secret_printed": {
+    "code": "E560",
+    "how": {
+      "via": "check"
+    },
+    "line": 3,
+    "message": "argument 1 of 'print' is Secret of Text, and 'print' performs io - a Secret cannot be printed, written, sent or passed to Python. It came from env(), line 2"
+  },
+  "E561_declassify_reason": {
+    "code": "E561",
+    "how": {
+      "via": "check"
+    },
+    "line": 4,
+    "message": "the reason given to 'declassify' must be written as text in the call"
+  },
+  "E562_secret_of_secret": {
+    "code": "E562",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "a Secret of a Secret is the same secret; write Secret of Text"
+  },
+  "E563_branch_on_secret": {
+    "code": "E563",
+    "how": {
+      "via": "check"
+    },
+    "line": 3,
+    "message": "'if' would branch on Secret of Bool, which came from env(), line 2 - a program does not choose what to do by looking at a secret. A comparison over one gives a Secret of Bool exactly so that this is refused: in a loop it would read the secret out a character at a time"
+  },
+  "E600_requires_broke": {
+    "code": "E600",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "broken promise: 'positive' requires n > 0  (n = 0)"
+  },
+  "E601_ensures_broke": {
+    "code": "E601",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "broken promise: 'same' ensures to_text(result) == \"5\"  (result = 4)"
+  },
+  "E602_position_outside_list": {
+    "code": "E602",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "this list has 0 item(s), so there is no position 0"
+  },
+  "E607_no_input": {
+    "code": "E607",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "stdin": "",
+      "via": "run"
+    },
+    "line": 2,
+    "message": "no input available to read"
+  },
+  "E608_write_failed": {
+    "code": "E608",
+    "how": {
+      "allow": [
+        "io",
+        "fs:write:<dir>"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "could not write 'missing_dir/out.txt': No such file or directory"
+  },
+  "E609_recursion_too_deep": {
+    "code": "E609",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "'forever' called itself 2000 deep - this looks like recursion that never stops"
+  },
+  "E609_split_by_empty_text": {
+    "code": "E609",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "cannot split by empty text"
+  },
+  "E610_run_time_limit": {
+    "code": "E610",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "timeout": 1,
+      "via": "run"
+    },
+    "line": 0,
+    "message": "the program ran longer than 1 second(s) and was stopped"
+  },
+  "E611_run_memory_cap": {
+    "code": "E611",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "max_memory_mb": 150,
+      "needs": "memory cap",
+      "timeout": 60,
+      "via": "run"
+    },
+    "line": 0,
+    "message": "the program used more than 150 MB and was stopped"
+  },
+  "E612_loop_end_not_shown": {
+    "code": "E612",
+    "how": {
+      "argv": [
+        "check",
+        "<file>",
+        "--strict",
+        "--json"
+      ],
+      "needs": "prover",
+      "via": "cli"
+    },
+    "line": 3,
+    "message": "this loop may never end - --strict needs a counter that moves toward the limit"
+  },
+  "E613_check_time_ceiling": {
+    "code": "E613",
+    "how": {
+      "source": "fn main() uses io {\n    let m = {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": {\"a\": 1}}}}}}}}}}}}}}}}}}}}}}\n    print(\"built\")\n}\n",
+      "timeout": 2,
+      "via": "check"
+    },
+    "line": 0,
+    "message": "the check did not finish within 2 second(s) and was stopped; the source may be crafted to stall the checker"
+  },
+  "E614_check_memory_ceiling": {
+    "code": "E614",
+    "how": {
+      "max_memory_mb": 150,
+      "source": "fn spread(x: T) -> fn(T, T, T, T) -> T for any T {\n    return x\n}\n\nfn main() uses io {\n    let y = spread(spread(spread(spread(spread(spread(spread(spread(spread(spread(spread(spread(1))))))))))))\n    print(\"built\")\n}\n",
+      "needs": "memory cap",
+      "timeout": 60,
+      "via": "check"
+    },
+    "line": 0,
+    "message": "the check used more than 150 MB and was stopped; the source may be crafted to bloat the checker"
+  },
+  "E700_false_promise": {
+    "code": "E700",
+    "how": {
+      "needs": "prover",
+      "via": "check"
+    },
+    "line": 3,
+    "message": "promise cannot be kept: 'discount' ensures result >= 0 - proven without running the program: price = 0 gives result = -10"
+  },
+  "E701_call_breaks_requires": {
+    "code": "E701",
+    "how": {
+      "needs": "prover",
+      "via": "check"
+    },
+    "line": 8,
+    "message": "this call can break a promise: 'positive' requires n > 0, but 'main' can call it with n = 0 - proven without running the program"
+  },
+  "E703_invariant_unprovable": {
+    "code": "E703",
+    "how": {
+      "needs": "prover",
+      "via": "check"
+    },
+    "line": 6,
+    "message": "cannot prove the loop keeps 'invariant i > 0' when the loop starts in 'count' - the promises allow: i = 0"
+  },
+  "E704_invariant_broke": {
+    "code": "E704",
+    "how": {
+      "allow": [
+        "io"
+      ],
+      "via": "run"
+    },
+    "line": 5,
+    "message": "loop broke its promise: invariant i <= n  (i = 1, n = 0)"
+  },
+  "E705_list_read_past_end": {
+    "code": "E705",
+    "how": {
+      "needs": "prover",
+      "via": "check"
+    },
+    "line": 4,
+    "message": "this 'get' can reach position 1, but the list has 1 item(s) - proven without running the program"
+  },
+  "E706_divisor_can_be_zero": {
+    "code": "E706",
+    "how": {
+      "needs": "prover",
+      "via": "check"
+    },
+    "line": 4,
+    "message": "this can divide by zero: people = 0 - proven without running the program"
+  },
+  "E999_doctor_self_test": {
+    "code": "E999",
+    "how": {
+      "call": "doctor_self_test",
+      "via": "library"
+    },
+    "line": 1,
+    "message": "self-test failed"
+  }
+}

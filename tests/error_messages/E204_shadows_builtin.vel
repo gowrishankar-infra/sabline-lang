@@ -1,0 +1,7 @@
+fn length(t: Text) -> Int {
+    return 1
+}
+
+fn main() uses io {
+    print(length("abc"))
+}

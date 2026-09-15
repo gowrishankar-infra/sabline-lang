@@ -1,0 +1,9 @@
+fn same(n: Int) -> Int
+    ensures to_text(result) == "5"
+{
+    return n
+}
+
+fn main() uses io {
+    print(same(4))
+}

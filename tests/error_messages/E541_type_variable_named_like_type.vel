@@ -1,0 +1,7 @@
+fn same(x: Int) -> Int for any Int {
+    return x
+}
+
+fn main() uses io {
+    print(same(1))
+}

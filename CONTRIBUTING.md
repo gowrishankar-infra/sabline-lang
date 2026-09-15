@@ -22,10 +22,13 @@ venv). CI enforces this across Linux/Windows and Python 3.10/3.12.
 
 ## Layout
 
-Everything is one readable file, `velaris.py`, in pipeline order:
-lexer -> parser -> loader -> effect checker -> type checker -> proof
-checker (Z3) -> native compiler (LLVM) -> interpreter -> formatter ->
-LSP -> REPL -> CLI. Examples live in `examples/` (half are DESIGNED to
+The compiler is the package `velaris/`, one module per stage, in
+pipeline order: lexer -> parser -> loader -> effect checker -> type
+checker -> termination -> proof checker (Z3) -> native compiler (LLVM) ->
+interpreter -> editor and LSP -> formatter -> ... -> CLI (ARCHITECTURE.md
+lists every module; until 8.2 it was one file, `velaris.py`, now a
+launcher). `tests/unit/test_pipeline_order.py` fails if a module imports
+one after it. Examples live in `examples/` (half are DESIGNED to
 be rejected - each rejection demonstrates a guarantee). The standard
 library is `stdlib/std.vel`, written in Velaris.
 

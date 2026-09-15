@@ -1,5 +1,289 @@
 # Velaris changelog
 
+## 8.2 - Held to it
+
+A minor version with no language features. It is about what holds Velaris
+to what it says: tests, gates, and the work of keeping them running. Along
+the way the new suites found holes, and they are fixed here: three with an
+advisory, and several more named below.
+
+compatibility: the proof cache is removed. Velaris keeps no proofs between runs, and every promise is proven in the process that reports on it or runs it, as 8.1.1 already required. `--no-cache` is accepted everywhere it was and does nothing, with one notice on stderr, and `velaris clean` does nothing and exits 0. Both are removed in 9.0 (STABILITY.md, "Deprecations in force"). No program, budget or report changes.
+compatibility: on a run, `--` ends Velaris's own flags, and every word after it is the program's `args()`. A flag written after `--` used to apply to the run: `-- --allow all` granted every effect (advisory-cli-double-dash.md). `args()` no longer holds the `--` itself. A flag written before `--`, or with no `--` at all, is read as before.
+compatibility: a local or parameter named like a builtin, or like one of the program's functions, no longer hides a call to that name from the effect check (E300) or the Secret check (E560). The runtime always called the builtin or the function, so each such program already did what the checks now say.
+compatibility: unary minus of the smallest whole number, and that number divided by -1, stop with E407, as every other arithmetic past 64 bits did (advisory-int-negation.md). `to_int`, `json_int` and `py_int` fail on a number outside the range, `round` of a value with no whole number in range stops with E407, and native code refuses an argument outside the range with E407.
+compatibility: blocks nested more than 4,000 deep, `else if` chains included, are refused with E102. Past some thousands they ended in a Python traceback; 3,000 deep runs on every leg.
+compatibility: `velaris check` and the library give a `main` marked `or fail` E524, as a run always did; they gave E523. E523 is now only `fail` in a function that does not declare `or fail`. The descriptions of E102, E542 and E609 in the error table say what the compiler gives them for.
+compatibility: `read_file` of a path holding a NUL character fails with a reason the program can handle, `write_file` of one stops with E608, and `file_exists` of one is false. Each was a Python traceback.
+api: tests/api/golden.json is new in 8.2 and records the library, the command line, both doors, the MCP tools and the Action, with signatures written without their annotations; against 8.1.1 the surface moved in two places, both text: `velaris check --help` lists `--json`, and the `velaris_card` tool's description says about 4,600 words.
+
+### What was wrong
+
+**Unary minus was not range-checked (Goal A; `advisory-int-negation.md`;
+2.14 through 8.1.1).** `-n` of the smallest whole number was 2^63 in the
+interpreter and wrapped back to itself in native code, and the smallest
+number divided by -1 was unchecked in the interpreter. A function proven to
+return `result > 0` from `-n` for `n < 0` ran as native code and returned a
+negative number, exit 0. Found by the corpus of false promises
+(`check_prover_lies.py`), which this release extends.
+
+**Words after `--` were Velaris's flags (Goal C;
+`advisory-cli-double-dash.md`; 5.0.0 through 8.1.1).** Every flag read in
+the command line scanned the whole command line, and the first occurrence
+won. A wrapper that passed someone else's words after `--`, with no
+`--allow` of its own, handed them the budget. Found by
+`check_self_budget.py`.
+
+**A program given to the library as text imported from the temp directory
+(Goal C; `advisory-source-temp-import.md`; 2.52 through 8.1.1).** The text
+was written to a file directly in the system temp directory, and its
+imports resolved beside that file first. A `std.vel` another local user
+planted in `/tmp` ran instead of the standard library's, under the
+caller's budget, and the audit reported it. Found by `check_self_budget.py`.
+
+**A local named like a builtin hid a call from the checks (Goal B).** The
+effect check skipped every call to a local's name (1.6 through 8.1.1), so
+`let print = 0` let a pure function print, and `let shout = 0` let it call
+a function with effects. From 7.0.0 the Secret check did too: a `Secret`
+reached `print`, and `velaris audit` said no secret left the program. The
+budget still held - the run had been granted `io`. Found by the stage unit
+tests.
+
+**The standalone executables could not check (8.0.0 through 8.1.1).** The
+check ceiling runs a check in a child process, and the executable started
+`velaris.py` for it, which it does not hold: every `velaris check` and
+`velaris audit` failed with E001. The release workflow's smoke test ran
+`--version`, `doctor` and a program, and not a check. Found by the new
+canary on its first run. 8.2 starts the executable itself, and the smoke
+test and the nightly install test run `check`.
+
+**Tracebacks, and a hang.** `check_hostile.py` found five:
+- a value nested some thousands deep, printed, compared, encoded or
+  formatted, ended in a Python `RecursionError` (now E609);
+- blocks nested past some thousands deep did the same in every command
+  (now E102, above);
+- a NUL in a path reached `open` (above);
+- printing a character a cp1252 console cannot show ended the run with a
+  `UnicodeEncodeError`; standard output now writes an escape for it, as
+  standard error always did;
+- native compilation emitted the left side of every `+` twice, so a sum of
+  n terms emitted 2^n trees and a 20-term sum never finished compiling.
+
+**`proofs` and `audit --sarif` left out any path holding ".velaris" (Goal
+B; 2.33 through 8.1.1).** The test was a substring, meant for the old
+project-local cache folder, so `cfg.velaris.d/` was skipped too. Both now
+read a directory as `capabilities check` does: every directory but `.git`.
+
+**The standing adversarial pass, run against the split and the gate,
+found six more, all fixed before release.**
+- The new gate counted a `compatibility:` line in a code block, in an HTML
+  comment, with nothing after the colon, or saying TODO. A line now counts
+  only as prose that says something.
+- It saw only a code written in the literal `ERROR_TABLE`; a code added by a
+  subscript, by `update()` or in a sub-package went past it. Any text in the
+  source that is one code now counts.
+- It compared defaults as text, so a default read from another constant,
+  a variable of the run state such as `EFFECT_BUDGET`, and a parameter that
+  lost its default went past it. Each is now seen; a default computed in a
+  function body still is not.
+- A `VERSION` holding line breaks could write step outputs of its own (in
+  the gate since 7.2). A VERSION that is not `X.Y.Z` now writes none, and
+  no output may hold a line break.
+- A module that is not UTF-8 or does not parse made the gate stop with a
+  traceback; it fails closed as before, now in one line.
+- **The split made a write to a run-state name silent (Goal C, 8.2 before
+  release).** `velaris.IMPORT_ROOT = root` set the global the runtime read
+  while Velaris was one file; in the package it set an attribute nothing
+  read, and imports stopped being confined. A write to such a name now
+  reaches `velaris.state` (`check_adversarial.py` SPLIT-1 and SPLIT-2). No
+  release had this.
+
+**Smaller.** `velaris check` and a run gave `main ... or fail` two codes
+(above). The loader left each file it read open until the garbage collector
+closed it. On Linux, `check_adversarial.py` stopped with a TypeError when a
+child it timed out had printed something. `examples/bench.vel` said both its
+functions run as machine code; `fib` is recursive, which native code
+refuses, so only `burn` does, and the comment now says so. The documents said things the
+code did not; `check_docs.py` found them, and each is corrected: README's
+benchmark and proven-share figures and its card length, SPEC.md's escapes,
+import cycles, what the prover models of Money, and its lists of fallible
+builtins, LLM.md's rules 2 and 7 and its E523, E524 and E542 rows, and the
+paper's benchmark and conformance figures, which are now generated from
+`benchmark/results.json` and velaris-spec's index.
+
+### The proof cache is gone
+
+8.1.1 stopped believing the cache; 8.2 removes it. There is no cache
+directory, no `VELARIS_CACHE_DIR`, no loader and no saver. `CACHE-1` to
+`CACHE-10` in `check_adversarial.py` now plant what used to work - 8.1.1's
+file, under the key 8.1.1 computed, where 8.1.1 looked - and hold that
+nothing reads it. THREAT_MODEL.md's cache rows say "removed in 8.2".
+
+### The release gate
+
+- **A minor or patch release says what it changes that STABILITY.md
+  covers.** The gate compares the previous tag with this commit: an error
+  code added anywhere in the compiler's source, a flag the command line or
+  the MCP server no longer knows, a default that is not what it was - a
+  named default, a variable of the run state, or a parameter default of
+  the library, read through any constant it names. Any one of them in a
+  minor or patch release needs a `compatibility:` line in the entry, and the
+  refusal names what it found. A moved `tests/api/golden.json` needs an
+  `api:` line in any release. RELEASING.md step 7 and STABILITY.md rule 5.
+- **`RELEASE_PAUSED`**, a variable of the `release` environment, stops the
+  tag and every publish while the tests and builds still run.
+- **Held to the previous release.** Before tagging, `perf` fails the release
+  if pure-numeric time, native or interpreted, is more than 25% slower than
+  the previous tag's (`perf_gates.py`), and `differential` fails it if the
+  examples, the conformance corpus or the quick benchmark print anything
+  the entry does not name (`check_differential.py`).
+- `check_release.py` runs release.yml job by job against a stand-in for
+  PyPI, npm, the Marketplace, GitHub and the MCP registry: a publish that
+  fails midway, the re-run that finishes it with every publish made exactly
+  once, a second run that publishes nothing, and a paused run that tags and
+  publishes nothing. It holds 80 cases, the adversarial pass's among them.
+
+### One file became a package
+
+`velaris.py` is now `velaris/`, one module per stage in pipeline order, with
+run state in `velaris/state.py` (decisions/0001-split-the-file.md says why
+the single file aged out; ARCHITECTURE.md maps it). `velaris.py` remains as a
+launcher. `import velaris` and the command line are what they were:
+`check_api.py` records every public name and signature, every command's
+usage, both doors' request and response shapes, the MCP tools and the
+Action, and holds them to a golden. `tests/unit/test_pipeline_order.py`
+fails if a module imports one after it. The package and every script are
+typed: `mypy --strict` and `ruff check` report nothing over 182 files.
+
+### The test ladder
+
+| Suite | What it holds | 8.2 |
+|---|---|---|
+| `run_unit_tests.py` | each stage alone - lexer, parser, loader, effects, checker, prover - on its own fixtures, and the modules' order | 293 tests |
+| `check_properties.py` | Hypothesis over generated programs: `parse(fmt(p)) == parse(p)`, `fmt` idempotent, `check` deterministic, the audit's effects are the ones a run attempts, one effect edit moves the audit by exactly it | 5 properties, 25 examples each in CI |
+| `check_docs.py`, `build_readme.py` | every code block in README, SPEC, EMBEDDING and LLM.md runs or says why not; every inline `velaris` command's words are real; every count in README is generated; every E-code cited matches the table | 83 code blocks, 56 run or checked and 27 marked with a reason; 39 inline commands |
+| `check_api.py` | the library, the command line, the doors, the MCP tools and the Action, against a golden | |
+| `check_cli.py` | `--help` on every command; `stats --ffi`; z3 and llvmlite imported only when used | 82 |
+| `check_error_messages.py` | every error code's exact message, from a program that produces it | 86 cases, 78 of 78 codes |
+| `check_prover_lies.py` | 137 false promises across floats, overflow, Money, quantifiers and recursion, and the 64-bit edges, under five Z3 seeds: none proven | 568 assertions held, on Python 3.13 and 3.10 |
+| `check_hostile.py` | recursion in every path, file descriptors, a disk filling, a 3 GB read, long Windows paths, a cp1252 console, a 10,000-line program, 500 parameters: a coded error, never a traceback | 64, and 2 that run on POSIX only |
+| `check_self_budget.py` | the working directory, `args()`, the environment, `velaris.toml`, `velaris.lock`, `add --force`, hidden directories: none changes what a program may do or what its audit says | 110 |
+| `fuzz_parsers.py` | the parser, JSON, CSV, `py_json` and the contract translator, coverage-guided | 30 iterations a target on every leg; 20 minutes monthly |
+| `check_identical.py` | the audit and SARIF, byte for byte, on Linux, Windows and macOS | |
+| `check_install.py` | every artefact, installed as a user installs it, runs `examples/discount.vel` and refuses the network | nightly |
+| `check_differential.py`, `perf_gates.py` | above | |
+| `check_mutants.py` | would a suite notice a change to a line a guarantee rests on | monthly; below |
+| `check_pool_soak.py` | a pool over thousands of runs: flat memory, kills, sixteen threads, nothing left behind | monthly, 5,000 runs |
+| `check_urls.py` | every URL the documents name, and llms.txt serving LLM.md | monthly |
+| `check_workflows.py` | the scheduled workflows report and change nothing | 73 |
+| `check_lint.py` | mypy --strict and ruff over the package and every script, and the complexity report | 0 findings over 182 files |
+
+`check_adversarial.py` gains N1 to N4, SHADOW-1 to SHADOW-5 and SPLIT-1 and
+SPLIT-2, 131 cases in all.
+
+### What runs, and where
+
+- **test.yml** is 18 legs: Linux, Windows and macOS x64 on Python 3.10 and
+  3.12, with and without z3 and llvmlite; Linux and macOS arm64 on 3.12;
+  and Python 3.14 on Linux, run and reported and allowed to fail. Plus the
+  suites twice at once, the cross-system comparison, and lint. CI installs
+  z3-solver and llvmlite at the versions in `requirements/ci.txt`.
+- **nightly.yml** installs every artefact built from main - wheel, sdist,
+  MCP bundle, npm wrapper, standalone executables, Docker image, pre-commit
+  hooks, the Action, the VS Code extension's language server.
+- **monthly.yml** fuzzes for 20 minutes, mutates for 90, soaks the pool for
+  5,000 runs, asks every URL, compares against the previous release over
+  the full benchmark, and runs native code and the parsers under
+  AddressSanitizer and UndefinedBehaviorSanitizer.
+- **adversarial-models.yml**, weekly, sends the standing adversarial prompt
+  and one area of the compiler to Claude, Gemini and Grok, and skips any
+  whose key is not set.
+- **Dependabot** watches z3-solver, llvmlite and every action.
+- **[velaris-canary](https://github.com/gowrishankar-infra/velaris-canary)**,
+  a public repository, checks the newest release every day from outside, as
+  a user installs it, with the Action holding a committed
+  `velaris.capabilities`.
+
+Every scheduled job reports failures as issues - one per failed job, per
+surviving mutant, per adversarial finding - and nothing scheduled commits;
+MAINTENANCE.md is the long form, including the kill switch and the
+reference-runtime variable reserved for 9.0.
+
+### Measured
+
+Measured by `perf_gates.py --against v8.1.1` on Windows 11 (AMD64, 16
+CPUs, 4% busy when it began), Python 3.13.13, z3-solver 5.1.0.0 and
+llvmlite 0.49.0: medians of 5 runs after one warm-up. Wall-clock figures;
+another machine will differ.
+
+| Measure | 8.2.0 |
+|---|---|
+| Cold start, `velaris --version` | 145 ms |
+| Cold start, `velaris check` of a one-line file | 337 ms |
+| Check, per 1,000 lines (a 1,013- and a 10,013-line program) | 0.87 s; 0.05 s without proofs |
+| Proof time per example with contracts, p50 / p95 | 18 ms / 415 ms, over 56 files |
+| Native code on `examples/bench.vel`: compile, and llvmlite's import | 62 ms, and 63 ms; `burn` compiled |
+| `examples/bench.vel`, native / `--no-native` | 4.32 s / 10.27 s, 2.38 times faster, 5.95 s saved |
+| `--lite` build | there is none |
+| Pool worker's memory, after 1 run and after 1,000 more | 23.4 MB, 24.3 MB |
+| z3 or llvmlite imported by `velaris --version`, or by `check` of a program with no promise | neither |
+| Importing z3 when a command needs it | +119 ms at cold start |
+| Importing llvmlite when a command needs it | +138 ms at cold start |
+| Pure numeric against v8.1.1, native (`bench.vel` and an integer loop) | 4.32 s against 4.40 s, -1.9% (the gate allows +25%) |
+| Pure numeric against v8.1.1, interpreted | 12.82 s against 12.55 s, +2.2% |
+
+`check_differential.py` against v8.1.1: the 97 examples, velaris-spec's 456
+conformance cases and the 13 programs of the quick benchmark give the same
+output under 8.2.0 as under 8.1.1, so no difference needed naming.
+
+`velaris stats --ffi examples`: 106 programs, 70 of which compile. 8 call
+Python, and all 8 name every module they call (a grant like `ffi:math`);
+none names a module while running. The modules named: `builtins` in 4
+(native), `datetime` in 3, `math` in 3 (native), `sqlite3` in 3, `base64`
+in 1.
+
+Proven share over examples/ and stdlib/: 70 of 99 promise-carrying
+functions (70.7%), generated into README and held by `check_docs.py`.
+
+`agent_loop.py --metric --offline`, the ten tasks with recorded replies:
+10 of 10 compile, each in its second round after the compiler named the
+first round's mistake, with the effects each task needs; 1 of 1 promise
+proven. No live model was run for this release.
+
+Mutation, locally for 25 minutes on `wrappers`: 9 of 17 mutants killed
+(52.9%). The 8 survivors are in `strip_secret`, `currency_clash` and
+`carries_secret`.
+
+### Known open
+
+- **A declared effect can move a promise from proven to checked at run
+  time.** A call the prover does not model (`env`, `read_file`, `fetch`,
+  `now`, `py`, `declassify`, ...), and a `let`-bound call to a function
+  that declares an effect, abandon the proof of the function they are in
+  (SPEC.md 9.4). A limit of precision, not of soundness; found by
+  `check_properties.py`, whose fifth property allows exactly that.
+- **The prover spends its whole budget on a loop invariant beside
+  `upper` or `lower`** in a function with nothing else to prove: 3 seconds
+  a query where 0.02 would do.
+- **Deeply nested map and list literals are slow to type-check**: 14
+  levels take about 27 seconds. A check or an audit stops at its ceiling
+  with E613; a run has no such ceiling unless given `--timeout`.
+- **`velaris capabilities check` and `velaris review` have no check
+  ceiling.** They compile every program under the directory in this
+  process, so a program built to exhaust the type checker - a map literal
+  nested twenty deep - stalls them, and the Action's ratchet step, until
+  the job's own timeout. A check and an audit have stopped at their ceiling
+  since 8.0. Until the ratchet does too, give a job that runs it on other
+  people's pull requests a `timeout-minutes`. This repository keeps the two
+  programs that test the check's ceilings as text in
+  `tests/error_messages/golden.json`, not as `.vel` files, so its own
+  ratchet does not compile them.
+- **The standalone executables of 8.0.0 to 8.1.1 cannot check** (above);
+  there is no patch release for them. Use the wheel, or 8.2.
+
+velaris-spec is unchanged: its `tools/check_sync.py` finds SPEC.md
+sections 6, 7 and 7.1 and both predicate schemas as it quotes them, and no
+document format changed.
+
 ## 8.1.1 - The proof cache can no longer lie
 
 A patch release with one fix. Compatibility: a patch under STABILITY.md
