@@ -130,10 +130,15 @@ GitHub does the rest:
     6. The attestation and the receipt, attached to the release.
 
     A step that fails stops the ones after it (the Marketplace aside).
-13. **Consistency.** PyPI, npm, the MCP registry and the GitHub release
-    must all report this version, and the release must hold all 27
-    files (24 before 8.1.0, which added the receipt). The indexes cache, so it keeps asking for fifteen minutes;
-    then it fails and names what differs.
+13. **Consistency.** PyPI, npm, the MCP registry, the GitHub release and
+    the VS Code Marketplace must all report this version as their latest,
+    and the release must hold all 27 files (24 before 8.1.0, which added
+    the receipt). The indexes cache, so it keeps asking for fifteen
+    minutes; then it fails and names what differs. The Marketplace was
+    added after 8.2.1: until then a release whose extension never
+    published passed here. A Marketplace outage that outlasts the vscode
+    job therefore fails this job too; re-run the failed jobs once the
+    extension is listed.
 14. **Advisory.** If a commit since the previous tag adds an
     `advisory-*.md`, see below.
 

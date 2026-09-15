@@ -231,6 +231,7 @@ def in_process(*words: str) -> tuple[int, str]:
 
 class StandIn(BaseHTTPRequestHandler):
     routes: dict[Any, Any] = {}
+    posted: list[bytes] = []          # every POST body, in order
 
     def _answer(self, method: str) -> None:
         answer = self.routes.get((method, self.path.split("?")[0]),
@@ -251,7 +252,8 @@ class StandIn(BaseHTTPRequestHandler):
         self._answer("GET")
 
     def do_POST(self) -> None:
-        self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        StandIn.posted.append(
+            self.rfile.read(int(self.headers.get("Content-Length") or 0)))
         self._answer("POST")
 
     def log_message(self, *_: Any) -> None:
@@ -1166,10 +1168,37 @@ def main() -> int:
            code == 1 and "::error::" in out and "mcp-name" in out, out)
 
         StandIn.routes = all_at("7.2.0")
+        StandIn.posted.clear()
         code, out = in_process("consistent", "7.2.0", "--annotate")
-        ok("consistent: PyPI, npm, the registry and the GitHub release all "
-           "report 7.2.0 (exit 0)",
-           code == 0 and "::notice::consistent" in out, out)
+        ok("consistent: PyPI, npm, the registry, the GitHub release and the "
+           "VS Code Marketplace all report 7.2.0 (exit 0)",
+           code == 0 and "::notice::consistent" in out
+           and "ok       the VS Code Marketplace: latest is 7.2.0" in out, out)
+        asked = [json.loads(b).get("flags") for b in StandIn.posted]
+        ok("...the Marketplace asked for its latest version only "
+           "(IncludeVersions | IncludeLatestVersionOnly)",
+           asked == [release_checks.MARKETPLACE_LATEST] == [0x201], asked)
+        extension = ("POST", "/_apis/public/gallery/extensionquery")
+        extension_behind = (200, {"results": [{"extensions": [{"versions": [
+            {"version": "7.1.2"}]}]}]})
+        routes = all_at("7.2.0")
+        routes[extension] = extension_behind
+        StandIn.routes = routes
+        code, out = in_process("consistent", "7.2.0", "--annotate")
+        ok("...the extension still at 7.1.2 on the Marketplace fails red and "
+           "names the Marketplace alone",
+           code == 1 and "::error::inconsistent: the VS Code Marketplace "
+                         "(latest is 7.1.2) - does not report 7.2.0" in out,
+           out)
+        routes = all_at("7.2.0")
+        routes[extension] = (200, {"results": [{"extensions": [
+            {"versions": []}]}]})
+        StandIn.routes = routes
+        code, out = in_process("consistent", "7.2.0", "--annotate")
+        ok("...and an extension the Marketplace lists with no version fails "
+           "red too",
+           code == 1 and "::error::inconsistent: the VS Code Marketplace "
+                         "(no version listed)" in out, out)
         routes = all_at("7.2.0")
         routes[("GET", "/velaris-lang")] = (200, {"dist-tags": {
             "latest": "7.1.1"}})
@@ -1220,6 +1249,31 @@ def main() -> int:
            "until then, and fails red naming it",
            code == 1 and out.count("not yet: PyPI (latest is 7.1.1)") >= 2
            and "::error::inconsistent: PyPI (latest is 7.1.1)" in out, out)
+
+        # The extension lagging behind the rest. Until this check asked the
+        # Marketplace, 8.2.0's extension, which never published, passed.
+        routes = all_at("7.2.0")
+        routes[extension] = [extension_behind, all_at("7.2.0")[extension]]
+        StandIn.routes = routes
+        code, out = polled("consistent", "7.2.0", "--timeout", "30",
+                           "--interval", "0", "--annotate")
+        ok("consistent: an extension one poll behind is 'not yet', naming the "
+           "Marketplace, and the next poll finds every target agreeing",
+           code == 0
+           and "not yet: the VS Code Marketplace (latest is 7.1.2)\n" in out
+           and "::notice::consistent" in out, out)
+        routes = all_at("7.2.0")
+        routes[extension] = extension_behind
+        StandIn.routes = routes
+        code, out = polled("consistent", "7.2.0", "--timeout", "0.3",
+                           "--interval", "0.05", "--annotate")
+        ok("...and one still behind when --timeout runs out fails red, naming "
+           "the Marketplace and nothing else",
+           code == 1
+           and out.count("not yet: the VS Code Marketplace (latest is "
+                         "7.1.2)") >= 2
+           and "::error::inconsistent: the VS Code Marketplace (latest is "
+               "7.1.2) - does not report 7.2.0" in out, out)
         routes = all_at("7.2.0")
         routes[("GET", "/pypi/velaris-lang/7.2.0/json")] = [
             (404, {}),
@@ -1322,20 +1376,26 @@ def main() -> int:
             release.fail.add("vscode")
             results, outputs = fresh_results()
             attempt(jobs, release, results, outputs)
+            differs = [target for target, _, agrees
+                       in release_checks.consistency("7.2.0") if not agrees]
             ok("attempt 1 with the Marketplace's publish failing: the vscode "
-               "job is red, and the GitHub release, the registry, the "
-               "attestation and consistency run all the same",
+               "job is red, the GitHub release, the registry and the "
+               "attestation run all the same, and consistency is red too, "
+               "naming the Marketplace alone",
                results.get("vscode") == "failure"
                and all(results.get(n) == "success" for n in (
-                   "github_release", "mcp_registry", "attach_attestation",
-                   "consistency"))
+                   "github_release", "mcp_registry", "attach_attestation"))
+               and results.get("consistency") == "failure"
+               and differs == ["the VS Code Marketplace"]
                and release.made["vscode"] == 0,
-               f"{results} {dict(release.made)}")
+               f"{results} {dict(release.made)} differs={differs}")
             attempt(jobs, release, results, outputs,
                     only=descendants(jobs, {"vscode"}))
-            ok("...re-running the failed job and the jobs after it publishes "
-               "the extension once, and nothing else again",
+            ok("...re-running the failed jobs and the jobs after them "
+               "publishes the extension once, nothing else again, and "
+               "consistency passes",
                results.get("vscode") == "success"
+               and results.get("consistency") == "success"
                and all(release.made[p] == 1 for p in PUBLISHES),
                f"{dict(release.made)} {results}")
 

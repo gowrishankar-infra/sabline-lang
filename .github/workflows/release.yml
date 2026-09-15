@@ -920,7 +920,7 @@ jobs:
           gh release upload "$TAG" "${missing[@]}"
 
   consistency:
-    name: PyPI, npm, the registry and the release all say this version
+    name: PyPI, npm, the registry, the release and the extension all say this version
     needs: [gate, attach_attestation]
     if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.attach_attestation.result == 'success' }}
     runs-on: ubuntu-latest

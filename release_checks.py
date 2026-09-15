@@ -547,9 +547,17 @@ def _server_path() -> str:
     return "/v0.1/servers/" + urllib.parse.quote(SERVER, safe="")
 
 
-def marketplace_versions() -> list[str]:
+# The Marketplace's ExtensionQueryFlags: IncludeVersions lists every version,
+# newest first; with IncludeLatestVersionOnly (0x200) it lists the one the
+# Marketplace serves as the latest.
+MARKETPLACE_ALL, MARKETPLACE_LATEST = 0x1, 0x201
+
+
+def _marketplace(flags: int) -> tuple[int, list[str] | None]:
+    """(HTTP status, the extension's versions as the Marketplace lists them
+    under `flags`), the list None when the answer is not one."""
     body = json.dumps({"filters": [{"criteria": [
-        {"filterType": 7, "value": EXTENSION}]}], "flags": 1}).encode()
+        {"filterType": 7, "value": EXTENSION}]}], "flags": flags}).encode()
     status, raw = _fetch(
         ENDPOINTS["vscode"] + "/_apis/public/gallery/extensionquery",
         data=body, headers={
@@ -557,11 +565,18 @@ def marketplace_versions() -> list[str]:
             "Accept": "application/json;api-version=3.0-preview.1"})
     doc = _json_of(raw)
     if status != 200 or not isinstance(doc, dict):
+        return status, None
+    return status, [str(v.get("version"))
+                    for result in doc.get("results") or []
+                    for extension in result.get("extensions") or []
+                    for v in extension.get("versions") or []]
+
+
+def marketplace_versions() -> list[str]:
+    status, versions = _marketplace(MARKETPLACE_ALL)
+    if versions is None:
         raise Unanswered(f"the Marketplace answered HTTP {status}")
-    return [str(v.get("version"))
-            for result in doc.get("results") or []
-            for extension in result.get("extensions") or []
-            for v in extension.get("versions") or []]
+    return versions
 
 
 def published(target: str, version: str) -> bool:
@@ -632,7 +647,9 @@ def expected_assets(version: str) -> list[str]:
 
 def consistency(version: str) -> list[tuple[str, str, bool]]:
     """(target, what it reports, whether that is `version`) for PyPI, npm,
-    the MCP registry and the GitHub release."""
+    the MCP registry, the GitHub release and the VS Code Marketplace. The
+    Marketplace was added after 8.2.1: until then a release whose extension
+    never published passed this check."""
     rows = []
     status, raw = _fetch(f"{ENDPOINTS['pypi']}/pypi/{PACKAGE}/json")
     said = _dig(_json_of(raw), "info", "version") if status == 200 else None
@@ -666,6 +683,12 @@ def consistency(version: str) -> list[tuple[str, str, bool]]:
         report = f"latest is {tag}, with all {len(held)} files"
     rows.append(("the GitHub release", report,
                  tag == f"v{version}" and not lacks))
+    status, listed = _marketplace(MARKETPLACE_LATEST)
+    said = listed[0] if listed else None
+    rows.append(("the VS Code Marketplace",
+                 f"latest is {said}" if said
+                 else f"HTTP {status}" if listed is None
+                 else "no version listed", said == version))
     return rows
 
 
@@ -968,8 +991,9 @@ def cmd_consistent(args: Any) -> int:
     for target, report, agrees in rows:
         print(f"  {'ok' if agrees else 'DIFFERS':8} {target}: {report}")
     if good:
-        emit(args, f"consistent: PyPI, npm, the MCP registry and the GitHub "
-                   f"release all report {args.version}")
+        emit(args, f"consistent: PyPI, npm, the MCP registry, the GitHub "
+                   f"release and the VS Code Marketplace all report "
+                   f"{args.version}")
         return 0
     differ = [f"{target} ({report})" for target, report, agrees in rows
               if not agrees]
