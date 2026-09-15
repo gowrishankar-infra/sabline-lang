@@ -685,9 +685,12 @@ jobs:
     if: needs.gate.outputs.release == 'true'
     runs-on: ubuntu-latest
     environment: release
-    # as before: a Marketplace outage never holds up a release, and the
-    # summary says what happened
-    continue-on-error: true
+    # Six attempts of about three minutes, 15.5 minutes of waiting between
+    # them, and up to 15 minutes asking whether the extension landed.
+    # There is no continue-on-error on this job (8.2.1): the jobs after it
+    # still run whatever it did (github_release asks only that it was not
+    # cancelled), and a job that published nothing is red.
+    timeout-minutes: 75
     env:
       V: ${{ needs.gate.outputs.version }}
     steps:
@@ -699,95 +702,79 @@ jobs:
         id: there
         run: python3 release_checks.py published vscode "$V" --annotate --github-output "$GITHUB_OUTPUT"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        if: steps.there.outputs.published == 'false'
         with:
           node-version: "22"        # Node 20 is in maintenance; 22 is LTS
       # The Marketplace times out - "Request timeout: /_apis/gallery" -
-      # often enough that it took out 3.3.0, 3.4.0 and 4.3.0. That is
-      # their outage, not this release's, so: three attempts with a
-      # growing wait, and a publish that landed anyway counts. Anything
-      # that is NOT a timeout (a bad token, a manifest the Marketplace
-      # rejects) still fails the step, because that is this repository's
-      # problem to fix. Either way the summary below says which, so a
-      # red mark here never has to be remembered and ignored.
+      # often enough that it took out 3.3.0, 3.4.0, 4.3.0 and 8.2.0. So a
+      # timeout is tried again, up to five times, 30 s after the first
+      # attempt and twice as long before each retry after that, and a
+      # publish that landed anyway counts. Anything that is not an outage
+      # (no token, a token or a manifest the Marketplace refuses) is not
+      # tried again. This step does not decide the job; the next one does.
       - name: Publish to the Marketplace
         id: publish
+        if: steps.there.outputs.published == 'false'
+        continue-on-error: true
         working-directory: editor/vscode
         run: |
-          say() {
-            echo "verdict=$1" >> "$GITHUB_OUTPUT"
-            echo "detail=$2" >> "$GITHUB_OUTPUT"
-          }
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-          if [ "$ALREADY" = true ]; then
-            say published "$V was already on the Marketplace; nothing was attempted"
-            exit 0
-          fi
+          say() { echo "detail=$1" >> "$GITHUB_OUTPUT"; echo "$1"; }
           if [ -z "$VSCE_TOKEN" ]; then
-            echo "no VSCE_TOKEN secret set - skipping"
-            say skipped "no VSCE_TOKEN secret is set on this repository"
-            exit 0
+            say "no VSCE_TOKEN secret is set, so nothing was attempted"
+            exit 1
           fi
           npm install -g @vscode/vsce
           npm version "$V" --no-git-tag-version --allow-same-version
-          landed() { vsce show gowrishankar-infra.velaris | grep -q "$V"; }
+          landed() { vsce show gowrishankar-infra.velaris | grep -qF "$V"; }
           # what an outage looks like in vsce's own words
           outage="Request timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED"
           outage="$outage|socket hang up|EAI_AGAIN|503|502|504"
+          retries=5
+          wait=30
           attempt=0
-          for wait in 30 120 stop; do
+          while :; do
             attempt=$((attempt + 1))
-            echo "--- attempt $attempt of 3"
+            echo "--- attempt $attempt of $((retries + 1))"
             if vsce publish --pat "$VSCE_TOKEN" > publish.log 2>&1; then
               cat publish.log
-              say published "published on attempt $attempt of 3"
+              say "published on attempt $attempt"
               exit 0
             fi
             cat publish.log
             if landed; then
-              say published "$V was already on the Marketplace"
+              say "attempt $attempt failed, but $V is on the Marketplace"
               exit 0
             fi
             if ! grep -Eqi "$outage" publish.log; then
-              echo "this is not a Marketplace outage - not retrying"
-              say failed "vsce refused the publish; the log says why"
+              say "vsce refused the publish on attempt $attempt, and not for an outage; its log says why"
               exit 1
             fi
-            if [ "$wait" = stop ]; then
-              break
+            if [ "$attempt" -gt "$retries" ]; then
+              say "the Marketplace timed out on all $attempt attempts"
+              exit 1
             fi
-            echo "the Marketplace timed out; waiting ${wait}s before the next attempt"
+            echo "the Marketplace timed out; retry $attempt of $retries in ${wait}s"
             sleep "$wait"
+            wait=$((wait * 2))
           done
-          say timed-out "the Marketplace timed out on all 3 attempts (30s and 120s apart)"
-          exit 0
         env:
-          ALREADY: ${{ steps.there.outputs.published }}
           VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
-      # One line, always written, saying whether the extension is on the
-      # Marketplace or not. Nothing else in this job needs reading.
-      - name: Whether the extension published
+      # The job's verdict, asked of the Marketplace itself, and the line in
+      # its summary: the extension is there, or this step fails and the job
+      # is red. It keeps asking for a while, because the Marketplace lists a
+      # version some minutes after accepting it.
+      - name: Is it on the Marketplace now?
         if: always()
         env:
-          VERDICT: ${{ steps.publish.outputs.verdict }}
           DETAIL: ${{ steps.publish.outputs.detail }}
-          EXTV: ${{ steps.publish.outputs.version }}
         run: |
-          case "$VERDICT" in
-            published)
-              LINE="PUBLISHED - the VS Code extension $EXTV is on the Marketplace ($DETAIL)." ;;
-            timed-out)
-              LINE="NOT PUBLISHED - $DETAIL. The release is unaffected; publish $EXTV by hand with 'vsce publish', or re-run this job." ;;
-            skipped)
-              LINE="NOT PUBLISHED - $DETAIL, so nothing was attempted." ;;
-            failed)
-              LINE="NOT PUBLISHED - $DETAIL. This one needs fixing; it is not a Marketplace outage." ;;
-            *)
-              LINE="NOT PUBLISHED - the publish step did not run to a verdict. Read its log." ;;
-          esac
           echo "### VS Code extension" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "$LINE" >> "$GITHUB_STEP_SUMMARY"
-          echo "$LINE"
+          if [ -n "$DETAIL" ]; then
+            echo "The publish step: $DETAIL." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          python3 release_checks.py published vscode "$V" --require --timeout 900 --interval 30 --annotate --summary "$GITHUB_STEP_SUMMARY"
 
   github_release:
     name: the GitHub release, with every artefact

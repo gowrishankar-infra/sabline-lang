@@ -1,5 +1,89 @@
 # Velaris changelog
 
+## 8.2.1 - Two things that should have been red
+
+A patch release with no features. Under 8.2.0, printing one kind of
+counterexample ended in a Python traceback instead of its error, and the
+release workflow's Marketplace job ended green having published nothing.
+Two gaps are closed with them: `velaris capabilities check` gets the check
+ceiling, and the perf gate no longer accepts fewer than three runs a side.
+
+compatibility: `velaris capabilities check` runs under the ceiling `check` and `audit` have had since 8.0 - 60 seconds and 2048 MB, raised with `--check-timeout` and `--check-memory-mb`, removed with `--no-check-ceiling` - and a check past it stops with E613 or E614 and exit 2. A tree whose check takes longer than 60 seconds needs `--check-timeout`; this repository's takes 0 to 3 seconds on each CI leg. No program that compiled under 8.2.0 is refused, and no report, audit or proof changes.
+api: against 8.2.0 the command line moved in one place: `velaris capabilities` takes `--check-timeout` and `--check-memory-mb`, as `check` and `audit` do.
+
+### What was wrong
+
+**A counterexample that could not name a value ended in a traceback.**
+When the prover finds that a call can break its callee's `requires`
+(E701), the message gives each argument's value in the counterexample. An
+argument the prover does not translate - in the program found, `put(...)`
+of a map - has no value in the model, and printing it asked Z3 to evaluate
+nothing: `check`, `proofs`, `audit` and the library's `check()` each ended
+in `AttributeError: 'NoneType' object has no attribute 'as_ast'` instead of
+E701. The verdict was reached before the printing, and nothing reported
+proven depends on it. Such a value is now shown as `<unknown>`:
+
+```
+[E701] this call can break a promise: 'f0' requires false, but 'caller' can call it with p0 = <unknown> - proven without running the program
+```
+
+In that program `proofs` reports `abs_of` proven and `f0` and `caller`
+checked at runtime. `fuzz_parsers.py 30` found it under seeds 493132804
+and 769080785, on test.yml's macOS legs for f64552f, which is why no
+release followed that commit; both seeds reproduce it at 8.2.0 on Python
+3.13 and 3.10. The printing dates from 0.13. Which releases could reach it
+was not traced.
+
+- `check_hostile.py` holds the program as found (section 1c: `check`,
+  `proofs`, `audit` and `velaris.check()`).
+- `fuzz_parsers.py` runs `FIXED_SEEDS` after its own seed whenever it is
+  given a number of iterations and no `--seed`, with Python's hash seed
+  fixed as `--seed` fixes it, so every leg runs the two seeds. Run against
+  8.2.0's prover, it reports the AttributeError under each of them.
+
+**The Marketplace job ended green having published nothing.** The release
+workflow's `vscode` job had run with `continue-on-error` since 2.22, and
+its publish step exited 0 after three Marketplace timeouts. 8.2.0's release
+run (34923131050) reported the job a success with NOT PUBLISHED in its
+summary, and the extension 8.2.0 did not reach the Marketplace in that run.
+Because the job had succeeded, `gh run rerun --failed` had nothing to
+re-run.
+
+The job now has no `continue-on-error`. A timeout is retried up to five
+times, 30, 60, 120, 240 and 480 seconds apart; a failure that is not an
+outage (no token, a token or a manifest the Marketplace refuses) is not
+retried. Whatever the publish step did, the job's last step runs
+`release_checks.py published vscode <version> --require --timeout 900`,
+which asks the Marketplace until it lists the version and exits 1 if it
+does not, so the job is red whenever the extension is not listed at its
+end. The jobs after it run either way, as before. `check_release.py` runs
+the job's steps in bash with stand-ins for `vsce`, `npm` and `sleep` -
+every attempt timing out, timeouts that clear, a version listed after a
+timeout, a refused token, no token, a version already listed - and runs a
+failed Marketplace publish, and its re-run, through the job-by-job
+simulation.
+
+### Also
+
+- **`velaris capabilities check` stops at the check ceiling.** It compiled
+  every program under the directory in its own process with no ceiling, so
+  a program built to stall the type checker held it, and the Action's
+  ratchet step, until the job's own timeout; 8.2 listed this as known
+  open. `check_ratchet.py` adds a map literal nested 22 deep to a tree and
+  holds the check to E613 after `--check-timeout 2` and after
+  `--check-timeout 5`. THREAT_MODEL.md's known-open table no longer lists
+  it. `velaris review` has the same gap and stays listed; the Action runs it
+  in its pull-request comment step.
+- **The perf gate compares medians of three runs.** release.yml's `perf`
+  job already ran `perf_gates.py --runs 3`, and each side's figure was the
+  median of its three runs, taken in turns (8.2.0's job logged "round 3 of
+  3 done"). What changes is that `--against` refuses fewer than three runs,
+  so no gate compares one run with one run. The limit is still 25%.
+  `check_release.py` holds the gate to one slow or one fast run on either
+  side.
+
+velaris-spec is unchanged.
+
 ## 8.2 - Held to it
 
 A minor version with no language features. It is about what holds Velaris

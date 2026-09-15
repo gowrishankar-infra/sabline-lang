@@ -22,8 +22,12 @@ release notes, the advisory detection and the draft-advisory request; the
 publish, registry and consistency checks against a stand-in for PyPI,
 npm, the MCP registry, the Marketplace and GitHub; RELEASE_PAUSED; and
 release.yml itself, run job by job against the stand-in, with a publish
-that fails midway and the re-run that finishes it (8.2). Nothing here
-leaves 127.0.0.1.
+that fails midway and the re-run that finishes it (8.2). From 8.2.1:
+`published --require`, which ends a publish; the vscode job's own steps,
+run in bash with stand-ins for vsce, npm and sleep, which must leave the
+job red whenever the Marketplace does not list the version at its end;
+and the perf gate's medians of three runs a side. Nothing here leaves
+127.0.0.1.
 
     python check_release.py
 """
@@ -233,6 +237,8 @@ class StandIn(BaseHTTPRequestHandler):
                                  (404, {"detail": "not found"}))
         if isinstance(answer, list):    # answers in turn; the last one stays
             answer = answer.pop(0) if len(answer) > 1 else answer[0]
+        if callable(answer):            # an answer that depends on what ran
+            answer = answer()
         status, body = answer
         raw = json.dumps(body).encode()
         self.send_response(status)
@@ -481,6 +487,164 @@ def fresh_results(paused: str = "false") -> tuple[dict[Any, Any], dict[Any, Any]
 
 PUBLISHES = ("tag", "pypi", "npm", "vscode", "github", "registry",
              "attestation")
+
+
+# ---- the vscode job's own steps, in bash, with stand-ins for vsce and npm ----
+
+def posix_bash() -> str | None:
+    """A bash for the job's scripts: Git's on Windows, where the first bash
+    on PATH can be WSL's, which runs in another file system."""
+    if os.name != "nt":
+        return shutil.which("bash")
+    for base in (os.environ.get("ProgramW6432"), os.environ.get("ProgramFiles"),
+                 r"C:\Program Files"):
+        candidate = Path(base or "") / "Git" / "bin" / "bash.exe"
+        if base and candidate.is_file():
+            return str(candidate)
+    return None
+
+
+def _slashed(path: Path) -> str:
+    return str(path).replace("\\", "/")
+
+
+# vsce as the Marketplace answers: one word a publish, from $VSCE_ANSWERS
+# (the last word is kept), and `show` naming $V once it has landed
+FAKE_VSCE = r"""#!/usr/bin/env bash
+if [ "$1" = show ]; then
+  if [ -f "$FAKE/landed" ]; then echo "Version: $V"; fi
+  exit 0
+fi
+n=$(( $(cat "$FAKE/attempts" 2>/dev/null || echo 0) + 1 ))
+echo "$n" > "$FAKE/attempts"
+answer=$(echo "$VSCE_ANSWERS" | tr ',' '\n' | sed -n "${n}p")
+[ -n "$answer" ] || answer=${VSCE_ANSWERS##*,}
+case "$answer" in
+  ok) touch "$FAKE/landed"; echo "DONE  Published gowrishankar-infra.velaris v$V." ;;
+  timeout) echo " ERROR  Request timeout: /_apis/gallery"; exit 1 ;;
+  landed) touch "$FAKE/landed"; echo " ERROR  Request timeout: /_apis/gallery"; exit 1 ;;
+  refused) echo " ERROR  Failed request: (401)"; exit 1 ;;
+esac
+"""
+FAKE_NPM = '#!/usr/bin/env bash\necho "npm $*" >> "$FAKE/npm.log"\n'
+FAKE_SLEEP = '#!/usr/bin/env bash\necho "$1" >> "$FAKE/sleeps"\n'
+
+
+def run_vscode_job(job: dict[Any, Any], bash: str, base: str, answers: str,
+                   token: str = "a-token", version: str = "7.2.0",
+                   already: bool = False) -> dict[str, Any]:
+    """The vscode job's steps in order, as a runner takes them, with vsce,
+    npm and sleep stood in for and python3 running release_checks.py
+    against the stand-in, whose Marketplace lists `version` once the fake
+    vsce has landed it (or from the start, `already`). A `uses:` step
+    succeeds; `if:` is always() or a steps.<id>.outputs.<key> == '<value>'
+    test, and a step without one runs only while no step before it has
+    failed; a failed step without continue-on-error fails the job. The
+    final step's 900 s of asking is cut to 0.3 s."""
+    work = Path(tempfile.mkdtemp(prefix="vscode-job-", dir=SCRATCH))
+    fake = work / "bin"
+    fake.mkdir()
+
+    def listing() -> tuple[int, dict[str, Any]]:
+        versions = [{"version": "7.1.2"}]
+        if already or (fake / "landed").exists():
+            versions.insert(0, {"version": version})
+        return 200, {"results": [{"extensions": [{"versions": versions}]}]}
+
+    StandIn.routes = {("POST", "/_apis/public/gallery/extensionquery"): listing}
+    shim = work / "release_checks_shim.py"
+    shim.write_text(
+        "import sys\n"
+        f"sys.path.insert(0, {str(HERE)!r})\n"
+        "import release_checks\n"
+        f"release_checks.ENDPOINTS.update("
+        f"{{k: {base!r} for k in release_checks.ENDPOINTS}})\n"
+        "release_checks.RETRY_WAIT = 0\n"
+        "assert sys.argv[1] == 'release_checks.py', sys.argv\n"
+        "sys.exit(release_checks.main(sys.argv[2:]))\n", encoding="utf-8")
+    python3 = (f'#!/usr/bin/env bash\nexec "{_slashed(Path(sys.executable))}" '
+               f'"{_slashed(shim)}" "$@"\n')
+    for name, text in (("vsce", FAKE_VSCE), ("npm", FAKE_NPM),
+                       ("sleep", FAKE_SLEEP), ("python3", python3)):
+        (fake / name).write_bytes(text.encode("utf-8"))
+        (fake / name).chmod(0o755)
+    summary = work / "summary.md"
+    summary.write_text("", encoding="utf-8")
+    outputs: dict[str, dict[str, str]] = {}
+    steps: dict[str, str] = {}
+    log: list[str] = []
+    failed = False
+
+    def value(expr: Any) -> str:
+        text = str(expr)
+        if re.fullmatch(r"\$\{\{\s*secrets\.VSCE_TOKEN\s*\}\}", text):
+            return token
+        m = re.fullmatch(r"\$\{\{\s*steps\.([\w-]+)\.outputs\.([\w-]+)\s*\}\}",
+                         text)
+        if not m:
+            raise Unreadable(f"cannot read {text!r} in the vscode job")
+        return outputs.get(m.group(1), {}).get(m.group(2), "")
+
+    for i, step in enumerate(job.get("steps", [])):
+        name = str(step.get("id") or step.get("name") or step.get("uses"))
+        cond = str(step.get("if") or "").strip()
+        if cond == "always()":
+            runs = True
+        elif not cond:
+            runs = not failed
+        else:
+            m = re.fullmatch(r"steps\.([\w-]+)\.outputs\.([\w-]+) == '([^']*)'",
+                             cond)
+            if not m:
+                raise Unreadable(f"cannot decide {cond!r} in the vscode job")
+            runs = not failed and outputs.get(m.group(1), {}).get(
+                m.group(2)) == m.group(3)
+        if not runs:
+            steps[name] = "skipped"
+            continue
+        if "uses" in step:
+            steps[name] = "success"
+            continue
+        script = re.sub(r"--timeout \d+", "--timeout 0.3", str(step["run"]))
+        script = re.sub(r"--interval \d+", "--interval 0.05", script)
+        where = work / str(step.get("working-directory", "."))
+        where.mkdir(parents=True, exist_ok=True)
+        (work / f"step-{i}.sh").write_bytes(script.encode("utf-8"))
+        runner = work / f"run-{i}.sh"
+        runner.write_bytes((
+            'fakebin=$FAKE\n'
+            'if command -v cygpath > /dev/null; then '
+            'fakebin=$(cygpath -u "$FAKE"); fi\n'
+            'export PATH="$fakebin:$PATH"\n'
+            f'. "{_slashed(work / f"step-{i}.sh")}"\n').encode("utf-8"))
+        out_file = work / f"output-{i}"
+        out_file.write_text("", encoding="utf-8")
+        env = dict(os.environ, V=version, FAKE=_slashed(fake),
+                   VSCE_ANSWERS=answers, GITHUB_OUTPUT=_slashed(out_file),
+                   GITHUB_STEP_SUMMARY=_slashed(summary))
+        env.update({k: value(v) for k, v in (step.get("env") or {}).items()})
+        done = subprocess.run(
+            [bash, "--noprofile", "--norc", "-eo", "pipefail", _slashed(runner)],
+            cwd=str(where), env=env, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=300)
+        log.append(f"--- {name}: exit {done.returncode}\n"
+                   + done.stdout + done.stderr)
+        outputs[name] = dict(
+            line.split("=", 1) for line in
+            out_file.read_text(encoding="utf-8").splitlines() if "=" in line)
+        steps[name] = "success" if done.returncode == 0 else "failure"
+        if done.returncode != 0 and not step.get("continue-on-error"):
+            failed = True
+
+    def words(name: str) -> list[str]:
+        path = fake / name
+        return path.read_text(encoding="utf-8").split() if path.exists() else []
+
+    return {"result": "failure" if failed else "success", "steps": steps,
+            "log": "\n".join(log),
+            "summary": summary.read_text(encoding="utf-8"),
+            "sleeps": words("sleeps"),
+            "attempts": int((words("attempts") or ["0"])[0])}
 
 
 # ---- the cases -----------------------------------------------------------------
@@ -1068,6 +1232,47 @@ def main() -> int:
            "would not find, then goes green",
            code == 0 and "not yet: " in out and "PyPI" in out, out)
 
+        # --require, the end of a publish (8.2.1): the Marketplace's job
+        # ended green after three timeouts on 8.2.0, saying NOT PUBLISHED
+        query = ("POST", "/_apis/public/gallery/extensionquery")
+        without = (200, {"results": [{"extensions": [{"versions": [
+            {"version": "7.1.2"}]}]}]})
+        StandIn.routes = all_at("7.2.0")
+        code, out = polled("published", "vscode", "7.2.0", "--require",
+                           "--annotate")
+        ok("published --require: a version the Marketplace lists is exit 0, "
+           "PUBLISHED",
+           code == 0 and out.startswith(
+               "::notice::PUBLISHED - 7.2.0 is on the VS Code Marketplace"),
+           out)
+        routes = all_at("7.2.0")
+        routes[query] = [without, all_at("7.2.0")[query]]
+        StandIn.routes = routes
+        code, out = polled("published", "vscode", "7.2.0", "--require",
+                           "--timeout", "30", "--interval", "0", "--annotate")
+        ok("...one it lists a poll later is 'not yet', then PUBLISHED",
+           code == 0 and "not yet: 7.2.0 is not on the VS Code Marketplace\n"
+           in out and "::notice::PUBLISHED" in out, out)
+        StandIn.routes = {query: without}
+        code, out = polled("published", "vscode", "7.2.0", "--require",
+                           "--timeout", "0.3", "--interval", "0.05",
+                           "--annotate")
+        ok("...one still not listed when --timeout runs out is exit 1, "
+           "NOT PUBLISHED, as an error",
+           code == 1 and "::error::NOT PUBLISHED - 7.2.0 is not on the VS "
+                         "Code Marketplace after 0.3 s of asking" in out, out)
+        StandIn.routes = {query: (503, {})}
+        code, out = polled("published", "vscode", "7.2.0", "--require",
+                           "--annotate")
+        ok("...and a Marketplace that does not answer is exit 2, never 0",
+           code == 2 and out.startswith("::error::could not tell"), out)
+        StandIn.routes = {query: without}
+        code, out = polled("published", "vscode", "7.2.0", "--annotate")
+        ok("...while without --require, not there is still exit 0 and "
+           "'publishing it', as every publish step asks first",
+           code == 0 and "is not on the VS Code Marketplace yet; publishing "
+                         "it" in out, out)
+
         print()
         print("release.yml, job by job: a publish that fails midway, and the "
               "re-run")
@@ -1110,12 +1315,134 @@ def main() -> int:
                "published", not release.made
                and all(results.get(n) == "skipped"
                        for n in set(jobs) - BEFORE_TAG), f"{results}")
+
+            # The Marketplace's publish failing (8.2.1): the vscode job has
+            # no continue-on-error, so it is red, and the jobs after it run.
+            release = Release("7.2.0")
+            release.fail.add("vscode")
+            results, outputs = fresh_results()
+            attempt(jobs, release, results, outputs)
+            ok("attempt 1 with the Marketplace's publish failing: the vscode "
+               "job is red, and the GitHub release, the registry, the "
+               "attestation and consistency run all the same",
+               results.get("vscode") == "failure"
+               and all(results.get(n) == "success" for n in (
+                   "github_release", "mcp_registry", "attach_attestation",
+                   "consistency"))
+               and release.made["vscode"] == 0,
+               f"{results} {dict(release.made)}")
+            attempt(jobs, release, results, outputs,
+                    only=descendants(jobs, {"vscode"}))
+            ok("...re-running the failed job and the jobs after it publishes "
+               "the extension once, and nothing else again",
+               results.get("vscode") == "success"
+               and all(release.made[p] == 1 for p in PUBLISHES),
+               f"{dict(release.made)} {results}")
+
+            print()
+            print("the vscode job's own steps, in bash, with stand-ins for "
+                  "vsce and npm")
+            print("-" * 62)
+            vscode = jobs["vscode"]
+            ok("the vscode job has no continue-on-error of its own, so a job "
+               "that fails is red", "continue-on-error" not in vscode,
+               vscode.get("continue-on-error"))
+            found_bash = posix_bash()
+            if found_bash is None:
+                print("  skip     the vscode job's steps (no POSIX bash here)")
+            else:
+                shell: str = found_bash
+
+                def job(answers: str, **more: Any) -> dict[str, Any]:
+                    return run_vscode_job(vscode, shell, base, answers, **more)
+
+                def told(r: dict[str, Any]) -> str:
+                    return (f"{r['result']} attempts={r['attempts']} "
+                            f"sleeps={r['sleeps']} steps={r['steps']} "
+                            f"summary={r['summary']!r} log={r['log'][-900:]}")
+
+                not_listed = ("NOT PUBLISHED - 7.2.0 is not on the VS Code "
+                              "Marketplace")
+                listed = "PUBLISHED - 7.2.0 is on the VS Code Marketplace"
+                r = job("timeout")
+                ok("a Marketplace that times out every time: six attempts, "
+                   "30, 60, 120, 240 and 480 s apart, then the job is red, "
+                   "saying NOT PUBLISHED",
+                   r["result"] == "failure" and r["attempts"] == 6
+                   and r["sleeps"] == ["30", "60", "120", "240", "480"]
+                   and "timed out on all 6 attempts" in r["summary"]
+                   and not_listed in r["summary"], told(r))
+                r = job("timeout,timeout,ok")
+                ok("two timeouts and then a publish: two retries, 30 and 60 s "
+                   "apart, and the job is green, saying PUBLISHED",
+                   r["result"] == "success" and r["attempts"] == 3
+                   and r["sleeps"] == ["30", "60"]
+                   and "published on attempt 3" in r["summary"]
+                   and listed in r["summary"], told(r))
+                r = job("landed")
+                ok("a timeout after which the Marketplace lists the version "
+                   "counts: one attempt, and green",
+                   r["result"] == "success" and r["attempts"] == 1
+                   and not r["sleeps"] and listed in r["summary"], told(r))
+                r = job("refused")
+                ok("a token the Marketplace refuses is not tried again, and "
+                   "the job is red",
+                   r["result"] == "failure" and r["attempts"] == 1
+                   and not r["sleeps"] and "not for an outage" in r["summary"]
+                   and not_listed in r["summary"], told(r))
+                r = job("ok", token="")
+                ok("no VSCE_TOKEN: nothing is attempted, and the job is red",
+                   r["result"] == "failure" and r["attempts"] == 0
+                   and "no VSCE_TOKEN" in r["summary"]
+                   and not_listed in r["summary"], told(r))
+                r = job("refused", already=True)
+                ok("a version already listed: nothing is attempted, and the "
+                   "job is green",
+                   r["result"] == "success" and r["attempts"] == 0
+                   and r["steps"].get("publish") == "skipped"
+                   and listed in r["summary"], told(r))
         except Unreadable as e:
             ok("release.yml is one this simulation can read", False, str(e))
     finally:
         release_checks.ENDPOINTS.update(saved)
         stand_in.shutdown()
         shutil.rmtree(SCRATCH, ignore_errors=True)
+
+    print()
+    print("perf: the median of three runs a side, not one run")
+    print("-" * 62)
+    import perf_gates
+
+    def verdicts(new: list[float], ref: list[float]) -> list[bool]:
+        numeric = {"ms": {"examples/bench.vel": {
+            engine: {"working tree": perf_gates.summary(new),
+                     "v8.2.0": perf_gates.summary(ref)}
+            for engine in perf_gates.ENGINES}}}
+        return [v["ok"] for v in perf_gates.gate(
+            numeric, "working tree", "v8.2.0").values()]
+
+    ok("one slow run of three does not fail a tree that is not slower",
+       all(verdicts([1000, 4000, 1010], [1000, 990, 1005])))
+    ok("...one fast run of three does not pass a tree 30% slower",
+       not any(verdicts([1300, 900, 1310], [1000, 1000, 1000])))
+    ok("...one fast run on the previous release's side does not fail a "
+       "tree that is not slower",
+       all(verdicts([1000, 1000, 1010], [600, 1000, 1000])))
+    err = io.StringIO()
+    refused: Any = None
+    try:
+        with contextlib.redirect_stderr(err):
+            perf_gates.main(["--only", "numeric", "--against", "v8.2.0",
+                             "--runs", "1"])
+    except SystemExit as e:
+        refused = e.code
+    ok("...perf_gates.py --against refuses --runs 1, before it measures "
+       "anything", refused == 2 and "at least 3 runs" in err.getvalue(),
+       err.getvalue())
+    runs = [int(n) for s in release_jobs()["perf"].get("steps", [])
+            for n in re.findall(r"--runs (\d+)", str(s.get("run", "")))]
+    ok("...and release.yml's perf job asks for at least that many",
+       bool(runs) and min(runs) >= perf_gates.GATE_RUNS, runs)
 
     print()
     print(f"{passed} passed, {failed} broken")

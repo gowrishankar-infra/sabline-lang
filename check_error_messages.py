@@ -19,9 +19,9 @@ line endings become \\n, and the version string becomes <version>.
 
 golden.json maps a case id to its code, how it is reached, its line and
 its message. The program, where there is one, is <id>.vel beside it,
-or the text of the case's "source" when <id>.vel would stall the
-repository's own capability ratchet, which compiles every .vel file with
-no check ceiling: the two cases that push a check past its ceilings.
+or the text of the case's "source" when <id>.vel would stop the
+repository's own capability ratchet, which compiles every .vel file, at
+its check ceiling: the two cases that push a check past its ceilings.
 How a case is reached is one of:
 
     check    velaris.check(source, path=<file>, timeout=None,

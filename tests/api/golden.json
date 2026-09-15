@@ -59,6 +59,8 @@
    ],
    "build": [],
    "capabilities": [
+    "--check-memory-mb",
+    "--check-timeout",
     "--force",
     "--json",
     "--sarif"

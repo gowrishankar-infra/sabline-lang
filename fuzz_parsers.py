@@ -18,9 +18,11 @@ traceback, a RecursionError, a process that dies or stops making progress
                ill-typed, through check_effects / check_types /
                check_proofs (needs z3-solver; skipped without it)
 
-    python fuzz_parsers.py 30               30 iterations per target
+    python fuzz_parsers.py 30               30 iterations per target, under
+                                            a random seed and then each of
+                                            FIXED_SEEDS
     python fuzz_parsers.py --minutes 20     a time budget, split evenly
-    python fuzz_parsers.py 500 --seed 7     reproducible
+    python fuzz_parsers.py 500 --seed 7     reproducible: that seed alone
     python fuzz_parsers.py --target json    one target
     python fuzz_parsers.py --engine builtin (or atheris)
     python fuzz_parsers.py --target json --minimize <saved input>
@@ -76,6 +78,16 @@ MAX_RESTARTS = 10        # process deaths per target before it is given up
 PROGRESS_SECONDS = 15.0  # how often a child reports, so a death loses little
 SLOW_SECONDS = 10.0      # an input this slow is saved and reported
 FFI_MODULE = "velaris_fuzz_ffi"
+
+# Seeds that found a defect, run after the run's own seed whenever it is
+# given a number of iterations and no --seed (8.2.1), so every leg of CI
+# fuzzes from them again. A seed goes where it went only while the coverage
+# that steers it is what it was, so the input each one found is also held
+# as a case of its own (check_hostile.py).
+FIXED_SEEDS = (
+    493132804,   # 8.2.0: a counterexample naming a value it could not show
+    769080785,   # 8.2.0: the same, reached from another generated program
+)
 NULL_OUT = open(os.devnull, "w", encoding="utf-8", errors="replace")
 
 
@@ -1530,7 +1542,10 @@ def absorb(total: dict[Any, Any], events: list[Any]) -> Any:
     return last
 
 
-def supervise(index: Any, name: Any, args: Any, engine: Any, seed: Any, iters: Any, secs: Any, crashes: Any) -> dict[Any, Any]:
+def supervise(index: Any, name: Any, args: Any, engine: Any, seed: Any, iters: Any, secs: Any, crashes: Any,
+              pinned: bool = False) -> dict[Any, Any]:
+    """One target under one seed. `pinned` fixes Python's hash seed from
+    it as well, for a run given --seed and for a fixed seed."""
     total: dict[str, Any]
     total = {"iterations": 0, "seeds": 0, "corpus": 0, "lines": set(),
              "signatures": {}, "error": None, "coverage": "", "slowest": 0.0,
@@ -1556,7 +1571,7 @@ def supervise(index: Any, name: Any, args: Any, engine: Any, seed: Any, iters: A
         except OSError:
             pass
         env = dict(os.environ)
-        if args.seed is not None:
+        if pinned:
             env["PYTHONHASHSEED"] = str(seed % (1 << 32))
         log = open(WORK / ("%s-%d.log" % (name, run)), "wb") if engine == "atheris" else None
         try:
@@ -1709,37 +1724,50 @@ def main(argv: Any = None) -> int:
     iters = None if args.minutes is not None else (200 if args.iterations is None
                                                    else args.iterations)
     secs = None if args.minutes is None else args.minutes * 60.0 / max(1, len(names))
+    # given a number of iterations and no --seed: the run's own seed, then
+    # each of FIXED_SEEDS; given --seed or --minutes: that one seed
+    fixed = list(FIXED_SEEDS) if args.seed is None and iters is not None else []
     budget = ("%d iterations per target" % iters if iters is not None
               else "%.1f minutes (%.0fs per target)" % (args.minutes, cast(float, secs)))
     method = "sys.monitoring" if hasattr(sys, "monitoring") else "sys.settrace"
     print("fuzz_parsers: engine %s, line coverage by %s, seed %d, %s, Python %s"
           % (engine, method, seed, budget, sys.version.split()[0]), flush=True)
+    if fixed:
+        print("then the fixed seeds, the same way: %s"
+              % ", ".join(str(s) for s in fixed), flush=True)
     if no_z3:
         print("contracts  skipped: z3-solver is not installed, so there is no "
               "contract translator to fuzz (pip install z3-solver)", flush=True)
 
-    found, errors = 0, 0
-    for index, name in enumerate(TARGETS):
-        if name not in names:
-            continue
-        t = supervise(index, name, args, engine, seed, iters, secs, crashes)
-        if t["error"]:
-            errors += 1
-            print("%-10s ERROR: %s" % (name, t["error"]), flush=True)
-            continue
-        found += len(t["signatures"])
-        seeds = " (%d seeds)" % t["seeds"] if engine == "builtin" else ""
-        print("%-10s iterations %d%s  corpus %d  lines covered %d  findings %d  %.1fs"
-              % (name, t["iterations"], seeds, t["corpus"], len(t["lines"]),
-                 len(t["signatures"]), t["seconds"]), flush=True)
-        if t["slowest"] >= SLOW_SECONDS:
-            print("           slowest input took %.1fs (not a finding)%s"
-                  % (t["slowest"], "; saved: " + ascii_text(t["slow_file"])
-                     if t["slow_file"] else ""), flush=True)
+    found: set[Any] = set()
+    errors = 0
+    for k, run_seed in enumerate([seed] + fixed):
+        if fixed:
+            print("seed %d%s" % (run_seed, " (fixed)" if k else ""), flush=True)
+        for index, name in enumerate(TARGETS):
+            if name not in names:
+                continue
+            # a fixed seed fixes Python's hash seed as --seed does, so that
+            # it goes where it went when it was found
+            t = supervise(index, name, args, engine, run_seed, iters, secs,
+                          crashes, pinned=args.seed is not None or k > 0)
+            if t["error"]:
+                errors += 1
+                print("%-10s ERROR: %s" % (name, t["error"]), flush=True)
+                continue
+            found |= {(name, sig) for sig in t["signatures"]}
+            seeds = " (%d seeds)" % t["seeds"] if engine == "builtin" else ""
+            print("%-10s iterations %d%s  corpus %d  lines covered %d  findings %d  %.1fs"
+                  % (name, t["iterations"], seeds, t["corpus"], len(t["lines"]),
+                     len(t["signatures"]), t["seconds"]), flush=True)
+            if t["slowest"] >= SLOW_SECONDS:
+                print("           slowest input took %.1fs (not a finding)%s"
+                      % (t["slowest"], "; saved: " + ascii_text(t["slow_file"])
+                         if t["slow_file"] else ""), flush=True)
     if found:
         where = ("" if args.crashes else " (the work directory is removed at exit; "
                  "--crashes DIR keeps them)")
-        print("\n%d finding(s); inputs saved in %s%s" % (found, ascii_text(crashes), where))
+        print("\n%d finding(s); inputs saved in %s%s" % (len(found), ascii_text(crashes), where))
         return 1
     if errors:
         return 2

@@ -1294,13 +1294,30 @@ def sarif_capabilities(result: dict[Any, Any]) -> dict[Any, Any]:
 
 def capabilities_main(argv: list[Any]) -> int:
     """velaris capabilities init [path] [--force]
-    velaris capabilities check [path] [--json | --sarif]"""
+    velaris capabilities check [path] [--json | --sarif] [--check-timeout S]
+        [--check-memory-mb M] [--no-check-ceiling]"""
     usage = ("usage: velaris capabilities init [path] [--force]\n"
-             "       velaris capabilities check [path] [--json | --sarif]")
+             "       velaris capabilities check [path] [--json | --sarif]\n"
+             "              [--check-timeout S] [--check-memory-mb M] "
+             "[--no-check-ceiling]")
     if not argv or argv[0] not in ("init", "check"):
         print(usage, file=sys.stderr)
         return 2
     sub, rest = argv[0], argv[1:]
+    if sub == "check":
+        # The check ceiling's flags (8.2.1). main() takes them off before it
+        # starts the child that works under the ceiling; with
+        # --no-check-ceiling they reach here, with nothing left to do.
+        kept: list[str] = []
+        i = 0
+        while i < len(rest):
+            if rest[i] in ("--check-timeout", "--check-memory-mb"):
+                i += 2
+                continue
+            if rest[i] != "--no-check-ceiling":
+                kept.append(rest[i])
+            i += 1
+        rest = kept
     allowed = {"init": {"--force"}, "check": {"--json", "--sarif"}}[sub]
     flags = {a for a in rest if a.startswith("-")}
     places = [a for a in rest if not a.startswith("-")]

@@ -955,6 +955,99 @@ def native_chain_cases() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 1c. A counterexample that cannot name a value
+# ---------------------------------------------------------------------------
+
+# fuzz_parsers.py found this on 8.2.0 (its fixed seeds 493132804 and
+# 769080785), as generated. caller passes f0 put(...) of a map, which the
+# prover does not translate, and f0 requires false: E701 is decided, and
+# printing the counterexample then asked Z3 to evaluate nothing. check,
+# proofs, audit and the library each ended in an AttributeError traceback.
+# From 8.2.1 the value is shown as <unknown>.
+UNNAMED_VALUE = (
+    "record Pt {\n"
+    "    x: Int\n"
+    "    y: Int\n"
+    "}\n"
+    "\n"
+    "fn is_pos(n: Int) -> Bool {\n"
+    "    return n > 0\n"
+    "}\n"
+    "\n"
+    "fn abs_of(n: Int) -> Int\n"
+    "    ensures result >= 0\n"
+    "{\n"
+    "    if n < 0 {\n"
+    "        return 0 - n\n"
+    "    }\n"
+    "    return n\n"
+    "}\n"
+    "\n"
+    "fn f0(p0: Map of Text to Int)\n"
+    "    requires false\n"
+    "    requires (all_of([0, 2], is_pos) or not contains(\"\\n\", \"\u00e9\"))\n"
+    "    ensures contains(\"\u00e9\", (to_text(9223372036854775807) + "
+    "get([\"a\"], 9223372036854775807)))\n"
+    "{\n"
+    "    let i = 0\n"
+    "    while i < (get([1, 2, 3], units_of(money(100, \"INR\"))) % -100)\n"
+    "        invariant i >= 0\n"
+    "    {\n"
+    "        i = i + 1\n"
+    "    }\n"
+    "}\n"
+    "\n"
+    "fn caller(a: Int, t: Text, xs: List of Int) -> Int\n"
+    "    requires all_of(push([a, a], code_at(t, a)), is_pos)\n"
+    "{\n"
+    "    f0(put({\"a\": 1, \"b\": 2}, t, units_of(money(1, \"INR\"))))\n"
+    "    return 0\n"
+    "}\n")
+
+
+def counterexample_cases() -> None:
+    print("1c. A counterexample that cannot name a value")
+    d = new_dir("unnamed_value")
+    write(d, UNNAMED_VALUE)
+    code, out, secs = run_cli(["check", "p.vel"], cwd=str(d))
+    if HAVE_Z3:
+        ok("check -> E701, the value it cannot name shown as <unknown>, "
+           "no traceback",
+           code == 1 and clean(out) and codes(out) == ["E701"]
+           and "'caller' can call it with p0 = <unknown>" in out,
+           "code=%s %s" % (code, out.strip()[-160:]), finding=not clean(out))
+    else:
+        ok("check, no prover -> no traceback", clean(out) and code in (0, 1),
+           "code=%s %s" % (code, out.strip()[-160:]), finding=not clean(out))
+    # what is reported proven: abs_of, and neither function of the call
+    code, out, secs = run_cli(["proofs", "p.vel", "--detail"], cwd=str(d))
+    marks = re.findall(r"\[(proven |runtime|timeout)\] (\w+)", out)
+    proven = sorted(name for mark, name in marks if mark == "proven ")
+    ok("proofs -> no traceback; f0 and caller are not reported proven",
+       clean(out) and ("runtime", "caller") in marks
+       and proven == (["abs_of"] if HAVE_Z3 else []),
+       "code=%s marks=%s %s" % (code, marks, out.strip()[-120:]),
+       finding=not clean(out))
+    code, out, secs = run_cli(["audit", "p.vel"], cwd=str(d))
+    ok("audit -> no traceback%s" % (", and the E701" if HAVE_Z3 else ""),
+       clean(out) and (("E701" in out and code == 1) if HAVE_Z3 else True),
+       "code=%s %s" % (code, out.strip()[-160:]), finding=not clean(out))
+    try:
+        result = velaris.check(UNNAMED_VALUE, path=str(d / "p.vel"),
+                               timeout=None, max_memory_mb=None)
+        got = [(p.code, p.line) for p in result.problems]
+        said = " ".join(p.message for p in result.problems)
+        raised = ""
+    except Exception as e:                  # the defect: reported, not raised
+        got, said, raised = [], "", "%s: %s" % (type(e).__name__, e)
+    ok("velaris.check() -> %s, no exception"
+       % ("E701 at line 35, p0 = <unknown>" if HAVE_Z3 else "no E701"),
+       not raised and ((got == [("E701", 35)] and "p0 = <unknown>" in said)
+                       if HAVE_Z3 else ("E701", 35) not in got),
+       raised or "%s %s" % (got, said[:120]), finding=bool(raised))
+
+
+# ---------------------------------------------------------------------------
 
 def main() -> Any:
     t0 = time.perf_counter()
@@ -969,6 +1062,7 @@ def main() -> Any:
     recursion_depth_cases()
     recursion_blocks_cases()
     native_chain_cases()
+    counterexample_cases()
     fd_cases()
     disk_cases()
     big_read_cases()

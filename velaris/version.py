@@ -23,7 +23,7 @@ def _launch_command() -> list[Any]:
     return [sys.executable, os.path.join(_PACKAGE_DIR, "__main__.py")]
 
 
-VERSION = "8.2.0"
+VERSION = "8.2.1"
 
 
 # Every compiler error and every runtime refusal ends with one line

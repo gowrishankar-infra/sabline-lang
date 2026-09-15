@@ -562,31 +562,41 @@ def check_proofs(funcs: list[Function], records: list[Any],
         return any(uninterpreted_in(c) for c in e.children())
 
     def show_val(name: Any, v: Any, model: Any) -> str:
+        # Printed after the verdict is reached, and never part of it. A
+        # value the model cannot name - an argument the prover did not
+        # translate, such as put(...) of a map - is shown as <unknown>.
+        # Until 8.2.1 it reached model.eval(None), and the command ended
+        # in an AttributeError traceback instead of its E701.
+        def shown(e: Any) -> str:
+            if e is None:
+                return "<unknown>"
+            try:
+                return str(model.eval(e, model_completion=True))
+            except (z3.Z3Exception, AttributeError, TypeError):
+                return "<unknown>"
+
         if isinstance(v, RecVal):
             def field_text(f: Any, x: Any) -> Any:
                 if isinstance(x, RecVal):
                     return show_val(f, x, model).split(" = ", 1)[-1]
                 if isinstance(x, ListVal):
-                    n = model.eval(x.length, model_completion=True)
-                    return f"{f}: a list of {n}"
+                    return f"{f}: a list of {shown(x.length)}"
                 if isinstance(x, MapVal):
                     return f"{f}: a map"
-                return f"{f}: {model.eval(x, model_completion=True)}"
+                return f"{f}: {shown(x)}"
             inner = ", ".join(field_text(f, x) for f, x in v.fields.items())
             return f"{name} = {v.rname}({inner})"
         if isinstance(v, ListVal):
-            return f"length({name}) = {model.eval(v.length, model_completion=True)}"
+            return f"length({name}) = {shown(v.length)}"
         if isinstance(v, MapVal):
             return f"{name} = a map"        # keys are symbolic here
         if isinstance(v, GridVal):
-            return (f"length({name}) = "
-                    f"{model.eval(v.length, model_completion=True)}")
+            return f"length({name}) = {shown(v.length)}"
         if isinstance(v, (RecListVal, OpaqueList)):
             # a list of records, or one whose items are not modelled: its
             # length is what the prover knows (8.2; printing it crashed)
-            return (f"length({name}) = "
-                    f"{model.eval(v.length, model_completion=True)}")
-        return f"{name} = {model.eval(v, model_completion=True)}"
+            return f"length({name}) = {shown(v.length)}"
+        return f"{name} = {shown(v)}"
 
     def bind_params(fnB: Function, args_z3: list[Any]) -> dict[Any, Any]:
         return {pname: a for (pname, _), a in zip(fnB.params, args_z3)}

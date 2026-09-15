@@ -31,6 +31,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, cast
 
@@ -48,6 +49,14 @@ except ImportError:                        # the SARIF case says it skipped
     Draft4Validator = None  # type: ignore[assignment, misc]  # jsonschema is optional
 
 HAVE_GIT = shutil.which("git") is not None
+
+# For the check ceiling (8.2.1): a program that needs io, and one built to
+# stall the type checker - a map literal nested 22 deep, whose check time
+# grows with every level (14 take about 27 seconds).
+# tests/error_messages/golden.json holds the same program for E613.
+HELLO = 'fn main() uses io {\n    print("hi")\n}\n'
+STALL = ('fn main() uses io {\n    let m = ' + '{"a": ' * 22 + "1" + "}" * 22
+         + '\n    print("built")\n}\n')
 
 
 class Tree:
@@ -1444,6 +1453,52 @@ def main() -> int:
             errs = list(Draft4Validator(schema).iter_errors(log))
             ok("...and the log validates against SARIF 2.1.0", log
                and not errs, [e.message for e in errs[:2]])
+
+        # ------------------------------------------------------------------
+        print()
+        print("capabilities check stops at the check ceiling (8.2.1)")
+        print("-" * 62)
+        # Until 8.2.1 it compiled every program under the directory in its
+        # own process, with no ceiling: a program built to stall the type
+        # checker held it, and the Action's ratchet step with it, until the
+        # job's own timeout. It now runs under check's and audit's ceiling.
+        t = tree({"app.vel": HELLO})
+        made = t.init()
+        given = t.velaris("capabilities", "check", ".", "--json",
+                          "--check-timeout", "120", "--check-memory-mb", "4096")
+        try:
+            given_doc = json.loads(given.stdout)
+        except ValueError:
+            given_doc = {}
+        ok("with --check-timeout and --check-memory-mb given, a tree inside "
+           "its surface passes, and --json is still the result",
+           made.returncode == 0 and given.returncode == 0
+           and given_doc.get("schema") == "velaris.capabilities-check/1"
+           and given_doc.get("widened") is False,
+           given.stderr or given.stdout)
+        unbounded = t.velaris("capabilities", "check", ".",
+                              "--no-check-ceiling")
+        ok("--no-check-ceiling is accepted, as by check and audit",
+           unbounded.returncode == 0 and "no widening" in unbounded.stdout,
+           unbounded.stderr)
+        bad = t.velaris("capabilities", "check", ".", "--check-timeout", "0")
+        ok("--check-timeout 0 is refused, as by check",
+           bad.returncode == 2
+           and "--check-timeout needs a whole number" in bad.stderr, bad.stderr)
+        t.write({"stall.vel": STALL})
+        for seconds in (2, 5):
+            began = time.monotonic()
+            done = t.velaris("capabilities", "check", ".", "--json",
+                             "--check-timeout", str(seconds))
+            took = time.monotonic() - began
+            ok(f"a program built to stall the type checker is stopped after "
+               f"--check-timeout {seconds}: E613, exit 2, nothing on stdout",
+               done.returncode == 2 and not done.stdout.strip()
+               and f"error[E613] capabilities check did not finish within "
+                   f"{seconds} second(s)" in done.stderr
+               and seconds <= took < seconds + 45,
+               f"exit {done.returncode} after {took:.1f}s: "
+               f"{done.stderr.strip()[-300:]}")
 
         # ------------------------------------------------------------------
         print()

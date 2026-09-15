@@ -14,6 +14,7 @@ pushing:
     python release_checks.py title 7.2.0       its CHANGELOG title
     python release_checks.py notes 7.2.0 --sha SHA --previous v7.1.2
     python release_checks.py published pypi 7.2.0
+    python release_checks.py published vscode 7.2.0 --require --timeout 900
     python release_checks.py registry-ready 7.2.0 --timeout 900
     python release_checks.py consistent 7.2.0 --timeout 900
     python release_checks.py advisories v7.1.2 HEAD
@@ -870,13 +871,40 @@ def cmd_notes(args: Any) -> int:
 
 
 def cmd_published(args: Any) -> int:
+    """Before a publish: whether the version is there already, as a step
+    output. With --require, after one (8.2.1): asked until it is there or
+    --timeout runs out, and a version that is not there is exit 1, so a
+    publish job that published nothing fails. Until 8.2.1 the Marketplace's
+    job ended green after three timeouts, saying NOT PUBLISHED."""
     where = NAMES[args.target]
-    try:
-        there = published(args.target, args.version)
-    except Unanswered as e:
+    doubt: list[str] = []
+
+    def ask() -> tuple[Any, ...]:
+        doubt.clear()
+        try:
+            if published(args.target, args.version):
+                return True, []
+        except Unanswered as e:
+            doubt.append(str(e))
+            return False, [str(e)]
+        return False, [f"{args.version} is not on {where}"]
+
+    there, _ = _poll(args, ask) if args.require else ask()
+    if doubt:
         emit(args, f"could not tell whether {args.version} is on {where}, so "
-                   f"nothing was published there: {e}", "error")
+                   + ("it is not known to be published" if args.require
+                      else "nothing was published there")
+                   + f": {doubt[0]}", "error")
         return 2
+    if args.require:
+        if there:
+            emit(args, f"PUBLISHED - {args.version} is on {where}",
+                 published="true")
+            return 0
+        emit(args, f"NOT PUBLISHED - {args.version} is not on {where}"
+                   + (f" after {args.timeout:g} s of asking"
+                      if args.timeout else ""), "error", published="false")
+        return 1
     if there:
         emit(args, f"{args.version} is already on {where}; skipping that "
                    f"publish", published="true")
@@ -1033,6 +1061,12 @@ def main(argv: Any = None) -> int:
                        help="is a version already at a target?")
     p.add_argument("target", choices=sorted(ENDPOINTS))
     p.add_argument("version")
+    p.add_argument("--require", action="store_true",
+                   help="after a publish: exit 1 unless the version is there")
+    p.add_argument("--timeout", type=float, default=0,
+                   help="with --require, seconds to keep asking (default: "
+                        "ask once)")
+    p.add_argument("--interval", type=float, default=30)
     p.set_defaults(run=cmd_published)
 
     for name, run, what in (

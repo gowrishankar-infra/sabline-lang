@@ -111,9 +111,13 @@ GitHub does the rest:
     1. PyPI, by trusted publishing (OIDC; no token is stored).
     2. npm, from `npm/`, by trusted publishing (OIDC; npm adds
        provenance by itself).
-    3. The VS Code Marketplace, with the `VSCE_TOKEN` secret, as before.
-       A Marketplace outage is reported in the summary and does not hold
-       up the rest.
+    3. The VS Code Marketplace, with the `VSCE_TOKEN` secret. A timeout
+       is tried again up to five times, 30 s, 60 s, 120 s, 240 s and 480 s
+       apart; then the job asks the Marketplace, for up to fifteen
+       minutes, whether it lists the version, and fails if it does not
+       (8.2.1; until then the job ended green after three timeouts). The
+       steps after it run either way. Re-run the failed jobs once the
+       Marketplace answers.
     4. The GitHub release, with the CHANGELOG entry as its notes and
        every file: the wheel, the sdist, the SBOM, the MCP tool manifest,
        the `.mcpb` bundle and the three executables, each with its
@@ -146,9 +150,9 @@ from the workflow's GitHub identity, so no publish credential for them
 is stored anywhere and none can leak from the repository. The
 Marketplace has no equivalent: `vsce publish` needs a personal access
 token, which must be stored as a repository secret and rotated by hand.
-It is scoped to publishing this extension and nothing else, its job
-runs `continue-on-error` so a Marketplace outage never holds up a
-release, and it is the credential to audit first. When the Marketplace
+It is scoped to publishing this extension and nothing else, a
+Marketplace outage never holds up the rest of a release (its job fails,
+and the jobs after it run), and it is the credential to audit first. When the Marketplace
 offers OIDC publishing, this secret should go the way the PyPI and npm
 tokens already have.
 
@@ -221,11 +225,16 @@ attempt made.
 
 `check_release.py` holds this to release.yml itself (8.2): it runs the
 jobs from the tag on against a stand-in for PyPI, npm, the Marketplace,
-GitHub and the MCP registry, makes one publish fail - npm, the registry,
-the GitHub release - re-runs the failed jobs and the jobs after them, as
-GitHub does, and checks that every publish was made exactly once, none
-was skipped, and the consistency check passes; and that a whole second
-run publishes nothing again.
+GitHub and the MCP registry, makes one publish fail - npm, the
+Marketplace, the registry, the GitHub release - re-runs the failed jobs
+and the jobs after them, as GitHub does, and checks that every publish
+was made exactly once, none was skipped, and the consistency check
+passes; and that a whole second run publishes nothing again. From 8.2.1
+it also runs the Marketplace job's own steps in bash, with stand-ins for
+`vsce`, `npm` and `sleep`: a timeout on every attempt, timeouts that
+clear, a version listed after a timeout, a refused token, no token, and
+a version already listed. The job must be red whenever the Marketplace
+does not list the version at its end.
 
 **Never finish a publish by hand with a token.** Trusted publishing
 means no long-lived publish token exists; making one to get past a

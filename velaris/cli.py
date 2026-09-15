@@ -196,7 +196,8 @@ Usage:
   velaris capabilities init [path]         record the capability surface in
                                            velaris.capabilities (--force)
   velaris capabilities check [path]        fail if the surface widened past
-                                           it (--json, --sarif)
+        [--check-timeout S]                it (--json, --sarif), under the
+        [--check-memory-mb M]              check ceiling: 60 s and 2048 MB
   velaris review --against REF [path]      what changed since a git ref:
                                            surface, proofs, risk (--json)
   velaris deps-diff <package> OLD NEW      what a dependency's newer version
@@ -404,6 +405,7 @@ def _check_ceiling(argv: list[Any]) -> int:
         limits[flag] = int(rest[at + 1])
         del rest[at:at + 2]
     timeout, memory = limits["--check-timeout"], limits["--check-memory-mb"]
+    what = " ".join(rest[:2]) if rest[0] == "capabilities" else rest[0]
     # the child caps itself from VELARIS_CHECK_MEMORY_MB on POSIX (main);
     # 8.0.0 passed it nothing, so there the cap was named and never set
     env = dict(os.environ, VELARIS_CHECK_CHILD="1",
@@ -418,7 +420,7 @@ def _check_ceiling(argv: list[Any]) -> int:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.communicate()
-            print(f"error[E613] {rest[0]} did not finish within {timeout} "
+            print(f"error[E613] {what} did not finish within {timeout} "
                   f"second(s) and was stopped: the source may be crafted to "
                   f"stall the checker. Raise the ceiling with "
                   f"--check-timeout, or run it in a sandbox you control.\n"
@@ -434,7 +436,7 @@ def _check_ceiling(argv: list[Any]) -> int:
     if proc.returncode != 0 and (_out_of_memory(said)
                                  or proc.returncode in (-9, 137)):
         sys.stdout.write(shown)
-        print(f"error[E614] {rest[0]} used more than {memory} MB and was "
+        print(f"error[E614] {what} used more than {memory} MB and was "
               f"stopped: the source may be crafted to bloat the checker. "
               f"Raise the cap with --check-memory-mb, or run it in a sandbox "
               f"you control.\n  reference: {REFERENCE_URL}", file=sys.stderr)
@@ -444,7 +446,7 @@ def _check_ceiling(argv: list[Any]) -> int:
     if proc.returncode not in (0, 1, 2):
         # The child ended without an answer of its own - a crash, not a
         # verdict. Until 8.2 that came through as a bare exit status.
-        print(f"error[E000] {rest[0]} stopped without an answer (exit "
+        print(f"error[E000] {what} stopped without an answer (exit "
               f"status {proc.returncode}), so nothing was decided. Please "
               f"report it, with the program, at https://github.com/"
               f"gowrishankar-infra/velaris-lang/issues\n"
@@ -557,9 +559,12 @@ def main() -> int:
             # first, as a pool worker does: POSIX caps itself here; on
             # Windows the parent put this process in a job object already
             _cap_this_process(os.environ["VELARIS_CHECK_MEMORY_MB"])
-    # check and audit run under a ceiling (8.0), unless we are already the
-    # child doing so, or --no-check-ceiling was asked for
-    if argv[:1] in (["check"], ["audit"]) \
+    # check and audit run under a ceiling (8.0), and so does `capabilities
+    # check` (8.2.1), which compiles every program under a directory - in
+    # the Action's ratchet step, a pull request's among them. Not when we
+    # are already the child doing so, or --no-check-ceiling was asked for
+    if (argv[:1] in (["check"], ["audit"])
+            or argv[:2] == ["capabilities", "check"]) \
             and os.environ.get("VELARIS_CHECK_CHILD") != "1" \
             and "--no-check-ceiling" not in argv:
         return _check_ceiling(argv)

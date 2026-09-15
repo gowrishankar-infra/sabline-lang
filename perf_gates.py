@@ -59,7 +59,9 @@ the numeric measurement there too, on the same two program files, under the
 same Python, interleaved: in every round each program and engine runs in the
 working tree and then at REF, so both see the same load. For each engine the
 two programs' medians are added up, and when the working tree's total is more
-than SLOWER_LIMIT (25%) above REF's the exit status is 1.
+than SLOWER_LIMIT (25%) above REF's the exit status is 1. Each median is of
+--runs runs, and --against refuses fewer than GATE_RUNS (3): one run a side
+would compare one noisy sample with another.
 
 NOISE. These are wall-clock figures on a shared machine. Medians after a
 warm-up remove some of the noise and none of the bias of a busy machine; the
@@ -93,6 +95,7 @@ from suite_dirs import isolate  # noqa: E402
 MEASURES = ("cold", "check", "proof", "jit", "lite", "pool", "imports",
             "numeric")
 SLOWER_LIMIT = 0.25            # --against fails past +25% on either engine
+GATE_RUNS = 3                  # --against: the median of at least 3 runs a side
 PROCESS_TIMEOUT = 1800
 POOL_RUNS = 1000
 CHECK_SIZES = (1000, 10000)
@@ -993,6 +996,10 @@ def main(argv: Any = None) -> int:
     args = ap.parse_args(argv)
     if args.runs < 1 or args.pool_runs < 1:
         ap.error("--runs and --pool-runs must be at least 1")
+    if args.against and args.runs < GATE_RUNS:
+        # one run a side is one noisy sample against another (8.2.1)
+        ap.error(f"--against compares the median of at least {GATE_RUNS} "
+                 f"runs on each side; --runs is {args.runs}")
     chosen = ([m.strip() for m in args.only.split(",") if m.strip()]
               if args.only else list(MEASURES))
     unknown = [m for m in chosen if m not in MEASURES]
