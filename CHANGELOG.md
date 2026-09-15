@@ -186,7 +186,9 @@ SPLIT-2, 131 cases in all.
   3.12, with and without z3 and llvmlite; Linux and macOS arm64 on 3.12;
   and Python 3.14 on Linux, run and reported and allowed to fail. Plus the
   suites twice at once, the cross-system comparison, and lint. CI installs
-  z3-solver and llvmlite at the versions in `requirements/ci.txt`.
+  z3-solver and llvmlite at the versions in `requirements/ci.txt`: llvmlite
+  0.49.0, and 0.45.1 on macOS x86_64, where llvmlite publishes no wheel of
+  anything newer.
 - **nightly.yml** installs every artefact built from main - wheel, sdist,
   MCP bundle, npm wrapper, standalone executables, Docker image, pre-commit
   hooks, the Action, the VS Code extension's language server.

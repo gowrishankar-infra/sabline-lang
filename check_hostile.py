@@ -396,9 +396,14 @@ def recursion_runtime_cases() -> None:
         traced = not clean(out)
         detail = ("traceback: %s" % out.strip().splitlines()[-1][:80]
                   if traced else "code=%s %s" % (code, codes(out)))
-        ok("a %d-deep value, %s -> coded error, no traceback"
+        # a coded error, or - where the Python underneath walks the value
+        # without running out of stack, as 3.14 compares and encodes it - the
+        # program's own answer; never a traceback and never a hang
+        answered = code == 0 and bool(out.strip())
+        ok("a %d-deep value, %s -> a coded error or the answer, no traceback"
            % (DEEP_N, op),
-           clean(out) and code != 0 and bool(codes(out)) and code != -99,
+           clean(out) and code != -99 and (answered or (code != 0
+                                                        and bool(codes(out)))),
            detail, finding=traced or code == -99)
 
 

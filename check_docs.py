@@ -569,11 +569,21 @@ def scratch(lines: list[Any]) -> Path:
 
 
 def corpus_found() -> bool:
+    """Whether velaris-spec's corpus is here - and, when it is, the commands
+    this suite runs are told where, through VELARIS_CONFORMANCE_CORPUS. They
+    run from a scratch directory, and an installed velaris looks beside the
+    working directory and beside its own install, neither of which is this
+    checkout: CI checks velaris-spec out inside it, so every documented
+    `velaris conformance` exited 2 there until 8.2 said where."""
     places = [HERE / "velaris-spec" / "tests",
               HERE.parent / "velaris-spec" / "tests"]
     if os.environ.get("VELARIS_CONFORMANCE_CORPUS"):
         places.insert(0, Path(os.environ["VELARIS_CONFORMANCE_CORPUS"]))
-    return any((p / "index.json").is_file() for p in places)
+    for place in places:
+        if (place / "index.json").is_file():
+            ENV.setdefault("VELARIS_CONFORMANCE_CORPUS", str(place.resolve()))
+            return True
+    return False
 
 
 def usage_commands() -> set[Any]:

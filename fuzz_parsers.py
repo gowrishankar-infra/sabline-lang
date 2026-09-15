@@ -1438,13 +1438,14 @@ def child_main(args: Any) -> int:
         finally:
             cov.uninstall()
 
-    # a running program's builtins run where the interpreter runs them: on a
-    # big thread stack before 3.11 (_run_on_big_stack); the compiler runs on
-    # the calling thread, as `velaris file.vel` runs it
-    big = None
-    if target.runtime:
-        big = getattr(V, "_run_on_big_stack", None) or getattr(
-            getattr(V, "interpret", None), "__globals__", {}).get("_run_on_big_stack")
+    # every target runs where Velaris runs the same work: on a big thread
+    # stack before 3.11 (_run_on_big_stack). From 8.2 that is the whole
+    # command, the compiler included, and the library's check, audit and run;
+    # until then only a running program's builtins were, and a deep contract
+    # fuzzed on the calling thread overflowed CPython 3.10's stack on Windows
+    # in a way no entry point of Velaris would
+    big = getattr(V, "_run_on_big_stack", None) or getattr(
+        getattr(V, "interpret", None), "__globals__", {}).get("_run_on_big_stack")
     result, slow = big(go) if big is not None else go()
     if result["slowest"] >= SLOW_SECONDS:
         path = Path(args.crashes) / (name + "-slowest.bin")
@@ -1622,7 +1623,7 @@ def minimize(args: Any) -> int:
     target = make_target(args.target)
     target.setup()
     data = Path(args.minimize).read_bytes()
-    big = getattr(V, "_run_on_big_stack", None) if target.runtime else None
+    big = getattr(V, "_run_on_big_stack", None)
 
     def attempt(d: Any) -> Any:
         exc = big(lambda: run_one(target, d)) if big else run_one(target, d)
