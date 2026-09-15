@@ -28,3 +28,7 @@ paper/arxiv-submission.zip
 
 # advisory bodies `release_checks.py advisory-body` writes from advisory-*.md
 advisory-*.json
+
+# what Lighthouse CI writes when site.yml's steps run in a checkout
+.lighthouseci/
+lighthouse-reports/

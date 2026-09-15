@@ -1,0 +1,63 @@
+name: site
+
+# The documentation site (8.3.1). build_docs.py writes it; check_site.py
+# holds it, here with Chrome, so a page that is wider than a phone, logs an
+# error or has a dead menu, search or theme toggle fails; and Lighthouse CI
+# measures six pages on a phone profile against lighthouserc.json and
+# budget.json, and fails under 95 for performance, accessibility or best
+# practices. test.yml runs check_site.py on every leg without Chrome.
+# check_workflows.py holds this file to what it says.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    name: the documentation site, in Chrome and in Lighthouse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: "22"
+      - name: Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4  # v2.2.0
+        with:
+          chrome-version: stable
+      # the generators import the checkout itself, which needs nothing
+      # installed
+      - name: Build the playground and the site
+        run: |
+          python build_playground.py
+          python build_docs.py
+      - name: The site holds what it says, in Chrome (check_site.py)
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: python check_site.py --require-chrome
+      - name: Lighthouse on a phone profile, 95 or over, within budget.json
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          npx --yes @lhci/cli@0.15.1 collect --config=lighthouserc.json
+          npx --yes @lhci/cli@0.15.1 assert --config=lighthouserc.json
+          npx --yes @lhci/cli@0.15.1 assert --no-lighthouserc --budgetsFile=budget.json
+      - name: Keep the Lighthouse reports
+        if: ${{ !cancelled() }}
+        run: npx --yes @lhci/cli@0.15.1 upload --config=lighthouserc.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: lighthouse-reports
+          path: lighthouse-reports
+          if-no-files-found: ignore

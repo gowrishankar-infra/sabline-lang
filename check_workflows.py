@@ -23,10 +23,21 @@ log cannot be read yet, a close only with a comment, only of an issue it
 opened, and only when every job of the run passed (which nightly.yml alone
 asks for), one issue per finding, keys struck out.
 
+Last, site.yml, the documentation site's job (8.3.1), with lighthouserc.json
+and budget.json: pushes to main and pull requests, a read-only token, every
+action pinned by commit sha with its version, no credential kept, no secret;
+the playground and the site built, check_site.py run with Chrome, and one
+exact @lhci/cli collecting and asserting; six pages docs/ has, measured on a
+phone profile, an error under 95 for performance, accessibility and best
+practices, reports kept as files; one stylesheet, one script, no third party
+and 100 KB a page; and test.yml running check_site.py. Each rule is also
+broken once in a copy, and must be caught.
+
     python check_workflows.py
 """
 from __future__ import annotations
 
+import copy
 import json
 import os
 import re
@@ -418,10 +429,152 @@ def models() -> None:
        "repository", "subprocess" not in source and "os.system" not in source)
 
 
+SHA_PINNED = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
+LHCI = re.compile(r"npx\s+--yes\s+@lhci/cli@(\S+)")
+
+
+def site_problems(doc: dict[Any, Any], text: str, rc: dict[str, Any],
+                  budget: list[dict[str, Any]], test_yml: str) -> list[str]:
+    """What is wrong with site.yml, lighthouserc.json and budget.json, and
+    test.yml's use of check_site.py; nothing when they hold."""
+    found = []
+    triggers = doc.get("on", doc.get(True)) or {}
+    if set(triggers) != {"push", "pull_request"} or \
+            (triggers.get("push") or {}).get("branches") != ["main"]:
+        found.append(f"triggers: {triggers}")
+    jobs: dict[str, dict[str, Any]] = doc.get("jobs") or {}
+    if doc.get("permissions") != {"contents": "read"} or any(
+            job.get("permissions") for job in jobs.values()):
+        found.append("a token that may do more than read the repository")
+    for line in re.findall(r"^\s*(?:-\s+)?uses:\s*(.*)$", text, re.M):
+        action, _, comment = line.partition("#")
+        if not SHA_PINNED.match(action.strip()) or not re.match(r"\s*v\d", comment):
+            found.append(f"not pinned by commit sha with its version: {line.strip()}")
+    for name, job in jobs.items():
+        for s in steps(job):
+            if str(s.get("uses", "")).startswith("actions/checkout@") and \
+                    (s.get("with") or {}).get("persist-credentials") is not False:
+                found.append(f"{name}: a checkout that keeps its credential")
+        if re.search(r"secrets\.", json.dumps(job)):
+            found.append(f"{name}: names a secret")
+    runs = "\n".join(str(s.get("run", "")) for job in jobs.values()
+                     for s in steps(job))
+    order = ["python build_playground.py", "python build_docs.py",
+             "python check_site.py --require-chrome", "collect --config=lighthouserc.json",
+             "assert --config=lighthouserc.json", "--budgetsFile=budget.json"]
+    at = [runs.find(o) for o in order]
+    if -1 in at or at != sorted(at):
+        found.append(f"does not build, check with Chrome, then collect and assert "
+                     f"in that order: {dict(zip(order, at))}")
+    versions = set(LHCI.findall(runs))
+    if len(versions) != 1 or not re.fullmatch(r"\d+\.\d+\.\d+", next(iter(versions), "")):
+        found.append(f"@lhci/cli is not run at one exact version: {sorted(versions)}")
+    if "CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}" not in text:
+        found.append("Chrome is not handed to check_site.py and Lighthouse")
+    collect = rc.get("ci", {}).get("collect", {})
+    if collect.get("staticDistDir") != "./docs":
+        found.append("lighthouserc.json does not serve docs/ itself")
+    urls = collect.get("url") or []
+    for url in urls:
+        m = re.fullmatch(r"http://localhost/(.+)", str(url))
+        if not m or not (HERE / "docs" / m.group(1)).is_file():
+            found.append(f"lighthouserc.json measures a page docs/ does not have: {url}")
+    if len(urls) < 3:
+        found.append("lighthouserc.json measures fewer than three pages")
+    settings = collect.get("settings") or {}
+    if settings.get("formFactor") != "mobile" or \
+            not (settings.get("screenEmulation") or {}).get("mobile"):
+        found.append("lighthouserc.json does not measure on a phone profile")
+    assertions = rc.get("ci", {}).get("assert", {}).get("assertions") or {}
+    for category in ("performance", "accessibility", "best-practices"):
+        rule = assertions.get(f"categories:{category}")
+        if not (isinstance(rule, list) and rule[0] == "error"
+                and float(rule[1].get("minScore", 0)) >= 0.95):
+            found.append(f"categories:{category} is not an error under 0.95: {rule}")
+    target = rc.get("ci", {}).get("upload", {}).get("target")
+    if target != "filesystem":
+        found.append(f"reports are uploaded to {target}, not kept as files")
+    sizes = {r.get("resourceType"): r.get("budget")
+             for b in budget for r in b.get("resourceSizes", [])}
+    counts = {r.get("resourceType"): r.get("budget")
+              for b in budget for r in b.get("resourceCounts", [])}
+    if not (counts.get("third-party") == 0 and counts.get("stylesheet") == 1
+            and counts.get("script") == 1 and sizes.get("third-party") == 0
+            and 0 < (sizes.get("document") or 101) <= 100):
+        found.append(f"budget.json does not hold one stylesheet, one script, no "
+                     f"third party and 100 KB a page: {sizes}, {counts}")
+    if "python check_site.py" not in test_yml:
+        found.append("test.yml does not run check_site.py")
+    return found
+
+
+def site() -> None:
+    print()
+    print("site.yml, lighthouserc.json and budget.json")
+    print("-" * 62)
+    text = (HERE / ".github" / "workflows" / "site.yml").read_text(encoding="utf-8")
+    doc = workflow("site.yml")
+    rc = json.loads((HERE / "lighthouserc.json").read_text(encoding="utf-8"))
+    budget = json.loads((HERE / "budget.json").read_text(encoding="utf-8"))
+    test_yml = (HERE / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
+    problems = site_problems(doc, text, rc, budget, test_yml)
+    ok("site.yml runs on pushes to main and pull requests with a read-only "
+       "token, pins every action by sha, builds, runs check_site.py with "
+       "Chrome and one exact @lhci/cli; lighthouserc.json measures pages docs/ "
+       "has on a phone profile and fails under 95; budget.json allows one "
+       "stylesheet, one script, no third party and 100 KB a page; test.yml "
+       "runs check_site.py", not problems, "\n          ".join(problems))
+
+    def broken(label: str, want: str, **change: Any) -> None:
+        """site_problems on a copy with one thing broken must name it."""
+        d, r, b = copy.deepcopy(doc), copy.deepcopy(rc), copy.deepcopy(budget)
+        t, y = text, test_yml
+        if "text" in change:
+            t = change["text"](t)
+        if "rc" in change:
+            change["rc"](r)
+        if "budget" in change:
+            change["budget"](b)
+        if "test_yml" in change:
+            y = change["test_yml"](y)
+        if "doc" in change:
+            change["doc"](d)
+        got = site_problems(d, t, r, b, y)
+        ok(f"...and it is refused {label}", any(want in g for g in got), str(got))
+
+    def moving(d: dict[Any, Any]) -> None:
+        for s in d["jobs"]["site"]["steps"]:
+            if "run" in s:
+                s["run"] = str(s["run"]).replace("@lhci/cli@0.15.1", "@lhci/cli@latest")
+
+    broken("with an action pinned by tag", "not pinned by commit sha",
+           text=lambda t: t.replace(
+               "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4",
+               "actions/setup-node@v4"))
+    broken("with @lhci/cli at a moving version", "one exact version", doc=moving)
+    broken("with accessibility allowed down to 0.9", "categories:accessibility",
+           rc=lambda r: r["ci"]["assert"]["assertions"].__setitem__(
+               "categories:accessibility", ["error", {"minScore": 0.9}]))
+    broken("with the reports sent to a public store", "not kept as files",
+           rc=lambda r: r["ci"]["upload"].__setitem__(
+               "target", "temporary-public-storage"))
+    broken("measuring a page the site does not have", "does not have",
+           rc=lambda r: r["ci"]["collect"]["url"].append(
+               "http://localhost/no-such-page.html"))
+    broken("with a third-party request allowed", "no third party",
+           budget=lambda b: b[0]["resourceCounts"].append(
+               {"resourceType": "third-party", "budget": 3}))
+    broken("with a token that may write", "more than read",
+           doc=lambda d: d.__setitem__("permissions", {"contents": "write"}))
+    broken("when test.yml stops running check_site.py", "test.yml",
+           test_yml=lambda y: y.replace("python check_site.py", "python other.py"))
+
+
 def main() -> int:
     structure()
     issues()
     models()
+    site()
     print("-" * 62)
     print(f"{PASS} correct, {FAIL} wrong")
     return 1 if FAIL else 0
