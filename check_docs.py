@@ -105,8 +105,8 @@ from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_docs")
 VELARIS_PY = str(HERE / "velaris.py")
-DOCS = ("README.md", "SPEC.md", "EMBEDDING.md")
-CODE_DOCS = (["SPEC.md", "README.md", "EMBEDDING.md", "LLM.md"]
+DOCS = ("README.md", "SPEC.md", "EMBEDDING.md", "TUTORIAL.md")
+CODE_DOCS = (["SPEC.md", "README.md", "EMBEDDING.md", "LLM.md", "TUTORIAL.md"]
              + sorted(f"docs/{p.name}" for p in (HERE / "docs").glob("*.md")))
 
 try:

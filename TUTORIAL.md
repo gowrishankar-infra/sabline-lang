@@ -10,7 +10,8 @@ You can follow along in the browser — the
 [playground](https://velaris-lang.dev/playground.html)
 runs the real compiler — or install it:
 
-```
+<!-- illustrative lines 1: installs from PyPI -->
+```sh
 pip install velaris-lang
 velaris doctor
 velaris new hello && cd hello && velaris main.vel
@@ -18,7 +19,7 @@ velaris new hello && cd hello && velaris main.vel
 
 ## 1. Hello
 
-```
+```vel
 fn main() uses io {
     print("hello!")
 }
@@ -33,7 +34,7 @@ declared, not assumed**.
 
 ## 2. Values and types
 
-```
+```vel
 fn main() uses io {
     let name = "Gowri"           // Text
     let age = 30                 // Int
@@ -61,7 +62,7 @@ mess at runtime.
 
 ## 3. Functions and effects
 
-```
+```vel
 fn double(n: Int) -> Int {
     return n * 2
 }
@@ -81,7 +82,8 @@ time), and `rand` (randomness).
 
 ## 4. Promises, proven
 
-```
+<!-- expect: E700 -->
+```vel
 fn discount(price: Int) -> Int
     requires price >= 0
     ensures result >= 0
@@ -93,7 +95,8 @@ fn discount(price: Int) -> Int
 `requires` is what the function needs from you. `ensures` is what it
 promises in return. Run this and the compiler answers:
 
-```
+<!-- output: codes only; the counterexample is the prover's choice -->
+```text
 error[E700] promise cannot be kept: 'discount' ensures result >= 0
   proven without running the program: price = 5 gives result = -5
 ```
@@ -101,7 +104,7 @@ error[E700] promise cannot be kept: 'discount' ensures result >= 0
 It did not test the function. It proved the promise false and handed
 back the input that breaks it. Fix the code, or fix the promise:
 
-```
+```vel
 fn discount(price: Int) -> Int
     requires price >= 0
     ensures result >= 0
@@ -117,7 +120,7 @@ Now it compiles, and `velaris explain` will say `[proven]`.
 
 Promises can talk about lists, maps, records and floats too:
 
-```
+```vel
 fn bump(counts: Map of Text to Int, word: Text) -> Map of Text to Int
     ensures get_or(result, word, 0) == get_or(counts, word, 0) + 1
 {
@@ -131,7 +134,7 @@ false. See [docs/floats.md](docs/floats.md) for why that matters.
 
 ## 5. Loops
 
-```
+```vel
 fn count_up(n: Int) -> Int
     requires n >= 0
     ensures result >= 0
@@ -150,7 +153,8 @@ No `invariant` line needed: the compiler works out the boring ones
 itself (each counter never goes below where it started). When you need
 something richer — "this total stays positive" — write it:
 
-```
+<!-- illustrative: a part of a loop, not a whole program -->
+```vel
     while i < length(xs)
     invariant total >= 0
     {
@@ -163,7 +167,7 @@ something richer — "this total stays positive" — write it:
 Some things genuinely fail. In Velaris that is part of the signature,
 and ignoring it does not compile:
 
-```
+```vel
 fn parse_age(t: Text) -> Int or fail {
     return try to_int(t)
 }
@@ -188,7 +192,7 @@ fallback than a failure.
 
 ## 7. Records and lists
 
-```
+```vel
 record Expense {
     what: Text
     amount: Int
@@ -208,7 +212,7 @@ the compiler can prove it, and reported cleanly when it cannot.
 
 ## 8. Function values
 
-```
+```vel
 import "std.vel"
 
 fn main() uses io {
@@ -224,7 +228,8 @@ proven like any other function's.
 
 ## 9. Using libraries
 
-```
+<!-- illustrative: lib/geo.vel stands for a library of your own -->
+```vel
 import "std.vel"                    // sort(xs), first(xs), join(...)
 import "lib/geo.vel" as geo         // geo.distance(a, b)
 ```
@@ -236,22 +241,23 @@ standard library is written in Velaris and keeps its own promises:
 
 ## 10. The tools
 
-```
-velaris program.vel          run it, with io and nothing else
-velaris program.vel --allow io,fs:read:./data   grant exactly that
-velaris program.vel --allow all                every effect (it says so)
-velaris migrate --to 5.0 .   the budget each program here needs
-velaris check program.vel    compile it without running
-velaris explain program.vel  what each function does, needs and promises
-velaris explain .            the same for a whole project
-velaris trace program.vel    watch every call as it happens
-velaris repl                 try things, proofs and all
-velaris fmt program.vel      canonical formatting
-velaris doctor               check your setup
-velaris new myproject        start something
-velaris build program.vel    one executable you can give to anyone
-velaris add <url or path>    vendor a library into lib/
-velaris verify               check your libraries are unchanged
+<!-- illustrative lines 9,13-14: repl waits for what you type, build needs PyInstaller, and add names a library of your own -->
+```sh
+velaris program.vel                              # run it, with io and nothing else
+velaris program.vel --allow io,fs:read:./data    # grant exactly that
+velaris program.vel --allow all                  # every effect (it says so)
+velaris migrate --to 5.0 .                       # the budget each program here needs
+velaris check program.vel                        # compile it without running
+velaris explain program.vel                      # what each function does, needs and promises
+velaris explain .                                # the same for a whole project
+velaris trace program.vel                        # watch every call as it happens
+velaris repl                                     # try things, proofs and all
+velaris fmt program.vel                          # canonical formatting
+velaris doctor                                   # check your setup
+velaris new myproject                            # start something
+velaris build program.vel                        # one executable you can give to anyone
+velaris add <url or path>                        # vendor a library into lib/
+velaris verify                                   # check your libraries are unchanged
 ```
 
 `velaris explain` is the one to reach for when you meet unfamiliar
