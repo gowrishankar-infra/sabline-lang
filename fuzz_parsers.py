@@ -1491,6 +1491,21 @@ def exit_text(code: Any) -> str:
     return str(code)
 
 
+def hang_budget(args: Any) -> float:
+    """How long a child may show no new input before it is called stalled.
+
+    Coverage is `sys.monitoring` from 3.12 and `sys.settrace` before it, and
+    the tracer costs about twenty-five times as much on a target that runs
+    Velaris code: one 16 KiB input through `stdlib/csv.vel` takes about 3
+    seconds untraced on 3.10 and about 80 traced. A budget meant for
+    untraced work therefore calls a merely slow input a hang, so before 3.12
+    it is multiplied (8.3). A child that is really stuck still shows no new
+    input at all, and is still caught.
+    """
+    return float(args.hang_seconds) * (1.0 if hasattr(sys, "monitoring")
+                                       else 5.0)
+
+
 def watch(proc: Any, journal_path: Path, hang: float, seconds_left: Any) -> tuple[Any, ...]:
     """Wait for the child. (exit code, stalled): stalled when the journal
     shows no new input for `hang` seconds, or the time budget is long gone."""
@@ -1576,7 +1591,8 @@ def supervise(index: Any, name: Any, args: Any, engine: Any, seed: Any, iters: A
         log = open(WORK / ("%s-%d.log" % (name, run)), "wb") if engine == "atheris" else None
         try:
             proc = subprocess.Popen(cmd, env=env, stderr=log)
-            code, stalled = watch(proc, journal_path, args.hang_seconds, secs_left)
+            code, stalled = watch(proc, journal_path, hang_budget(args),
+                                  secs_left)
         finally:
             if log:
                 log.close()
@@ -1595,7 +1611,7 @@ def supervise(index: Any, name: Any, args: Any, engine: Any, seed: Any, iters: A
         if engine == "atheris" and code == 0 and not stalled:
             replay(name, args, crashes, total)
             break
-        why = ("made no progress for %gs and was stopped" % args.hang_seconds
+        why = ("made no progress for %gs and was stopped" % hang_budget(args)
                if stalled else "died with exit code " + exit_text(code))
         sig, data = "the process " + why, noted[1]
         if sig not in total["signatures"] or len(data) < total["signatures"][sig]:

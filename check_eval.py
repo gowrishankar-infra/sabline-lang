@@ -285,12 +285,22 @@ def stops() -> None:
                     "--timeout", "300")
     took = time.monotonic() - began
     p = receipt_of("inflated.json").get("predicate", {})
+    # The compile is stalled by 900 functions of 999 additions each, which on
+    # some machines exhausts the profile's memory before the grace period is
+    # up. Either way the run ends without the worker ever seeing the stop,
+    # its receipt is incomplete, and it says which happened.
+    exit_now = p.get("exit", {})
+    stop_now = p.get("stop") or {}
+    grace_killed = (exit_now.get("code") == "E615"
+                    and stop_now.get("honoured")
+                    == "worker killed after the grace period")
+    out_of_memory = (exit_now.get("code") == "E611"
+                     and stop_now.get("honoured") == "the run had already "
+                     "ended")
     ok("a stop the worker cannot see ends with it killed after the grace "
-       "period: E615, and an incomplete receipt",
-       p.get("exit", {}).get("code") == "E615" and p.get("complete") is False
-       and (p.get("stop") or {}).get("honoured")
-       == "worker killed after the grace period" and took < 60,
-       f"{took:.1f}s {p.get('exit')} {p.get('stop')}")
+       "period (or by the memory ceiling first): an incomplete receipt",
+       (grace_killed or out_of_memory) and p.get("complete") is False
+       and took < 60, f"{took:.1f}s {exit_now} {stop_now}")
     stop.unlink()
     done = run_eval("spin.vel", "--receipt", "timeout.json", "--timeout", "2")
     p = receipt_of("timeout.json").get("predicate", {})
@@ -322,11 +332,12 @@ def stops() -> None:
     out, err = proc.communicate(timeout=120)
     report = json.loads(out or "{}")
     # Where eval runs off the main thread - CPython before 3.11 - no handler
-    # is installed, so the run says `signals: false`, and on Windows the
-    # break ends the process (0xC000013A) before it can say even that.
+    # is installed, so the run says `signals: false`; and with no handler the
+    # signal's own disposition ends the process before it can say even that:
+    # a console break on Windows (0xC000013A), SIGTERM elsewhere (-15).
+    killed_unhandled = proc.returncode in (0xC000013A, -signal.SIGTERM)
     no_signals = report.get("signals") is False or (
-        not report and os.name == "nt" and sys.version_info < (3, 11)
-        and proc.returncode == 0xC000013A)
+        not report and killed_unhandled and sys.version_info < (3, 11))
     if no_signals:
         skip("a signal asks for a stop as the stop file does",
              "eval runs off the main thread here (CPython before 3.11), "

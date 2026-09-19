@@ -297,6 +297,19 @@ a trailing slash, padded, a list, null, or given twice.
   `job-one-process` holds neither files nor the network (docs/eval.md).
 - **`velaris review` still has no check ceiling** (8.2.1's entry).
 - **`db.vel` builds SQL from text**; parameterized queries are 9.0.
+- **`csv.vel` assembles a quoted field one character at a time.** Text is
+  immutable, so `field = field + c` copies what it has each turn: a single
+  quoted field of n characters costs n² work. Ordinary data never meets it -
+  a line with no double quote takes `split`, and a quoted field is usually
+  short - but one field of 16,000 double quotes takes seconds, and under the
+  fuzzer's tracer (`sys.settrace`, CPython before 3.12) long enough that the
+  run is stopped for making no progress. Reading a field as a slice of the
+  line it came from would be linear, but `slice` can fail and nothing in the
+  standard library handles it yet; that, or a `join` builtin, is 9.0.
+  `fuzz_parsers.py` multiplies its no-progress budget before 3.12, where
+  coverage is `sys.settrace` rather than `sys.monitoring`, so that a slow
+  input is not reported as a hang; a child that is really stuck shows no
+  new input at all and is still caught.
 - **Two lists equal in every item can be refused with E700.** The prover
   compares two `List of Int` values as equal arrays and equal lengths, which
   asks more than that they hold the same items, so a true promise such as
