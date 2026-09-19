@@ -242,7 +242,7 @@ def serve_main(argv: list[Any]) -> int:
                   "command line. Put it in a file and pass --token-file "
                   "<path>, or set VELARIS_TOKEN.", file=sys.stderr)
             return 2
-        if a == "--no-auth":
+        if a in ("--no-auth", "--no-confine"):
             opts[a] = True
             i += 1
             continue
@@ -375,12 +375,21 @@ def serve_main(argv: list[Any]) -> int:
     # time that budget is seen and closed when the door stops. The
     # ceiling is checked before a pool is asked for, so a pool never
     # exists for a budget this server would refuse.
-    pools = _self.PoolRegistry()
+    # From 8.4 each worker also asks the operating system to hold its
+    # pool's budget. --no-confine is the operator's, on this command line:
+    # no request can carry it.
+    confined = "--no-confine" not in opts
+    if not confined:
+        print("velaris serve: --no-confine: the operating system is not "
+              "asked to hold any run; the budget is the only boundary",
+              file=sys.stderr)
+    pools = _self.PoolRegistry(confine=confined)
     # checks and audits run on their own workers, under the check ceiling,
     # so a crafted program answers E613 or E614 instead of holding a
     # request thread (8.1); a worker that answers is kept
     checker = _self.Pool(size=2, timeout=check_time,
-                         max_memory_mb=check_memory, import_root=served)
+                         max_memory_mb=check_memory, import_root=served,
+                         confine=confined)
     endpoints = {("GET", "/health"), ("GET", "/"), ("GET", "/card"),
                  ("POST", "/check"), ("POST", "/audit"), ("POST", "/run")}
 

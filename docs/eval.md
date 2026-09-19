@@ -47,21 +47,26 @@ velaris eval --confinement-probe
   which is CPython 3.11 and later; before that no handler is installed,
   `--json` says `signals: false`, and on Windows a console break ends the
   process outright. `--stop-file` works everywhere.
-- **Confinement where the operating system offers it, and the level named.**
-  The worker is also held by what the OS offers without privileges:
-
-  | Level | Where | What it refuses |
-  |---|---|---|
-  | `landlock-net` | Linux, Landlock ABI 4 or later | writing, removing or making a file outside the `fs:write` directories and the run's own temporary directory; starting a program; a TCP connection or listening socket |
-  | `landlock` | Linux, Landlock ABI 1 to 3 | the same, except TCP |
-  | `job-one-process` | Windows, where the job object can be made | starting any process beyond the ones the worker took to start: its own, and a launcher's where `python.exe` is one (a virtual environment's) |
-  | `sandbox-exec` | macOS, when a trial of the profile starts Python | the network; forking; writing outside the `fs:write` directories and the run's temporary directory |
-  | `none` | anywhere else | nothing: the budget is the only boundary |
+- **Confinement by the operating system, fully or partly - or no run.** The
+  worker asks the operating system to hold the run's budget before it is
+  sent anything, as every pool worker does from 8.4
+  ([Confinement](confinement.md)): on Linux, Landlock holds reads to the
+  directory the program is served from and the `fs:read` grants, and writes
+  to the `fs:write` grants and the run's own temporary directory, and
+  seccomp-bpf refuses every socket and every new process; on macOS a sandbox
+  profile holds writes, the network and fork/exec; on Windows a job object
+  refuses a second process and, when the budget grants no write, a low
+  integrity level refuses every write to the user's files. The receipt's
+  `run_parameters` name the level (`confinement`: `full` or `partial`), why
+  (`confinement_reason`), the layers applied (`confinement_layers`) and the
+  sha256 of the OS policy the budget derives (`os_policy_sha256`). A worker
+  that got **none** is not sent the program: eval refuses, exit 2, and says
+  why. Until 8.4 such a run went ahead under the budget alone.
 
   `velaris eval --confinement-probe` starts a worker confined as a run is,
-  has it try a TCP connection, a write outside the granted directories and
-  a process start, prints what was refused, and exits 1 if a refusal the
-  level claims did not hold.
+  has it try a TCP connection, a write and a read outside the granted
+  directories and a process start, prints what was refused, and exits 1 if a
+  refusal the level claims did not hold.
 - **Nothing it runs reads the proof cache.** Velaris has kept no proofs
   between runs since 8.2, so there is no cache for `--no-cache` to turn off.
 
@@ -73,19 +78,19 @@ program's `args()` and never eval's flags.
 
 ## What it does not guarantee
 
-- **That the OS confinement is there.** The level is what was applied, not
-  what was asked for: a kernel without Landlock, a job object that could not
-  be made, or a sandbox profile that failed its trial is `none`, and the run
-  goes ahead under the budget alone. Read `confinement` in the receipt, and
-  refuse `none` in whatever consumes it if that matters to you.
-- **Reads.** No level confines reading. The budget holds a program's reads;
-  the worker itself reads Python's own files as it runs.
-- **More than it lists.** `job-one-process` does not hold files or the
-  network, and it counts the processes the worker was already using when it
-  became ready rather than insisting on exactly one; `landlock` does not hold TCP, and no Landlock level holds UDP or
-  a Unix socket. A write grant's directory is confined as the nearest
-  directory that exists, so a grant naming a file not made yet lets the OS
-  layer allow its siblings; the budget still refuses them.
+- **More confinement than the level says.** The level is what was applied,
+  not what was asked for. `partial` is a run: on macOS reads are refused
+  only under the home directory and /Volumes, and on Windows reads, the
+  network, and writes under a budget that grants any, are not held. Read
+  `confinement` and `confinement_reason` in the receipt, and refuse
+  `partial` in whatever consumes it if that matters to you.
+- **More than the table lists.** [Confinement](confinement.md) says what
+  each system holds for each budget item and what it leaves: a write grant
+  naming a file not made yet is held to the nearest directory that exists,
+  and the level says partial; a hard link or a bind mount inside a granted
+  path is that path's content; on Windows the worker's own job object holds
+  one process while the memory job its parent made counts the launcher too,
+  where `python.exe` is one.
 - **A stop the worker cannot see, in less than the grace period.** A stop
   lands at a call or a loop turn. A worker compiling the program, or inside
   one long builtin, sees no stop point until it finishes that, and is killed
@@ -109,5 +114,5 @@ The program's own exit status when it ran and its receipt was delivered;
 124 when the time limit stopped it; 2 when eval refused the command line; 3
 when the program ran and the receipt could not be written or sent.
 `--json` prints `velaris.eval/1` (provisional): the outcome, the code, the
-confinement, whether signals could be taken, the stop, whether the receipt
+confinement level with its layers and reason, whether signals could be taken, the stop, whether the receipt
 was delivered, and the program's output and logs.

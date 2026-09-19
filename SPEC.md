@@ -6,7 +6,7 @@ programming. It exists so that anyone deciding whether to depend on
 this language can find out exactly what it promises — and what it
 does not.
 
-Version 8.3.1. Where this document and the implementation disagree,
+Version 8.4.0. Where this document and the implementation disagree,
 that is a bug in one of them; please report it.
 
 ## 1. Programs
@@ -762,7 +762,9 @@ consequences. A tool that acts on one error acts on the first.
 Codes are grouped: E0xx lexing, E1xx parsing, E2xx names — E204 among
 them, for a function named like a built-in (§10.1) — E3xx effects —
 E317 a proxy the net budget does not cover, E318 a credential location a
-plain read may not touch — E4xx arity and runtime arithmetic, E5xx
+plain read may not touch, E319 an effect the runtime itself attempted that
+the operating system's confinement refused (given only under the reference
+implementation's fault-injection hook) — E4xx arity and runtime arithmetic, E5xx
 types — E56x among them, for a Secret that must not escape (§3.1) — E6xx
 runtime contract violations, E7xx proof results.
 

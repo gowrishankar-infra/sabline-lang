@@ -541,6 +541,9 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
                  "CURRENCIES",
                  # deps-diff's table of lockfile names (7.1), read only
                  "_LOCKFILES",
+                 # confinement's tables (8.4): what a granted module widens
+                 # the OS policy to, and seccomp's numbers for each machine
+                 "FFI_WIDENS", "_AUDIT_ARCH", "_SYSCALLS", "_SYS_SECCOMP",
                  # each module's names from the modules after it, which
                  # the package reads once, when it binds them (8.2)
                  "__forward__"}

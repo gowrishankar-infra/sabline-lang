@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Confinement - Velaris 8.4.0</title>
+<meta name="description" content="From 8.4 a process that runs a Velaris program asks the operating system to hold the budget it was given, before the program&#x27;s first statement runs. The ...">
+<meta name="velaris-version" content="8.4.0">
+<link rel="canonical" href="https://velaris-lang.dev/confinement.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.4.0, all versions"><span>8.4.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html" aria-current="page">Confinement</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-2.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="confinement">Confinement</h1>
+<p>From 8.4 a process that runs a Velaris program asks the operating system to
+hold the budget it was given, before the program's first statement runs. The
+budget is still enforced by the interpreter, at the moment each effect is
+attempted, exactly as before. Confinement is the second guard under it: if a
+defect in Velaris itself - in the interpreter, in a builtin, in the budget's
+own checks - attempts an effect the budget does not grant, the kernel refuses
+it, and the fault is a crash inside a box and not an escape.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris program.vel                     # confined, where the system can
+velaris program.vel --no-confine        # not confined, and stderr says so
+velaris doctor                          # what this machine offers
+velaris eval --confinement-probe        # what a confined worker could do</code></pre></div>
+<p>It is on by default on the command line, in <code>velaris.run(timeout=...)</code>, in
+<code>velaris.Pool</code>, on the HTTP door, on the MCP server and under <code>velaris eval</code>.
+<code>--no-confine</code> (and <code>confine=False</code> in the library) turns it off and writes
+one line to stderr. It is a flag of the operator's command line: a program's
+words after <code>--</code>, a door's request and an MCP tool call cannot carry it.</p>
+<h2 id="one-derivation">One derivation <a class="anchor" href="#one-derivation" aria-label="Link to this section">#</a></h2>
+<p><code>velaris/confine.py</code>'s <code>os_policy(budget)</code> is the only place a budget becomes
+an OS policy. It reads nothing of the machine, so the same budget gives the
+same policy everywhere, and a receipt records its sha256. The policy says
+which paths may be read and which written (or that a direction is not
+restricted), whether the network is closed, open, or open to named hosts, that
+no process is started, and which granted Python modules widened it.</p>
+<p>The full table - every budget item, and what Linux, macOS and Windows enforce
+for it - is in <a href="threat-model.html">THREAT_MODEL.md</a>, under <strong>What the
+operating system enforces</strong>, and <code>check_confine.py</code> holds that table to the
+module word for word. In short:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th></th><th>Linux</th><th>macOS</th><th>Windows</th></tr></thead>
+<tbody>
+<tr><td>Mechanism</td><td>Landlock and seccomp-bpf</td><td>a sandbox profile (<code>sandbox_init</code>, the call <code>sandbox-exec</code> makes)</td><td>a job object, a token with its privileges removed, a low integrity level</td></tr>
+<tr><td>Files read</td><td>held to the <code>fs:read</code> grants and what the interpreter itself reads</td><td>refused under the home directory and /Volumes only</td><td>not held</td></tr>
+<tr><td>Files written</td><td>held to the <code>fs:write</code> grants</td><td>held to the <code>fs:write</code> grants</td><td>held only when the budget grants no write at all</td></tr>
+<tr><td>Network</td><td>no socket without <code>net</code>; with Landlock ABI 4 or later, TCP ports of the grants</td><td>closed without <code>net</code>; open with it</td><td>not held</td></tr>
+<tr><td>A new process</td><td>refused</td><td>refused</td><td>refused</td></tr>
+<tr><td>The level of a run under <code>io</code></td><td>full</td><td>partial</td><td>partial</td></tr>
+</tbody></table></div>
+<p><code>@N</code> counts stay in the language on every system. So does the host in a
+<code>net:HOST</code> grant: no kernel here can hold a host name, and a run with one says
+partial.</p>
+<h2 id="the-level-and-its-reason">The level, and its reason <a class="anchor" href="#the-level-and-its-reason" aria-label="Link to this section">#</a></h2>
+<p>Every confined run reports one of three levels, with the reason:</p>
+<ul>
+<li><strong>full</strong> - every file, network and process limit of this run's budget is
+held by the kernel.</li>
+<li><strong>partial</strong> - some are, and the reason names each that is not.</li>
+<li><strong>none</strong> - nothing is: <code>--no-confine</code>, a granted module that widens the
+policy to nothing enforced, a system that offers nothing, or a run that is
+exempt (below).</li>
+</ul>
+<p>The level is what was applied and held, not what was asked for. It is in three
+places:</p>
+<ul>
+<li><strong>The receipt.</strong> <code>run_parameters.confinement</code> is the level,
+<code>confinement_reason</code> why, <code>confinement_layers</code> what was applied
+(<code>landlock-abi3</code>, <code>seccomp</code>, <code>sandbox-profile</code>, <code>job-object</code>,
+<code>token-privileges-removed</code>, <code>low-integrity</code>), and <code>os_policy_sha256</code> the
+digest of the OS policy the budget derives. <code>velaris receipts diff</code> names a
+run whose level is not one an earlier run of the same program had, and says
+when it is weaker.</li>
+<li><strong>The audit.</strong> <code>velaris audit --json</code> has <code>confinement</code>: for the program's
+<code>safe_command</code>, the level and reason on each of the three systems where
+every layer that system has is there, and <code>widened_by</code>, the granted Python
+modules that widen the OS policy and to what. It reads nothing of the
+machine, so the audit stays the same bytes wherever it is made. The command
+line's audit prints what this machine would give.</li>
+<li><strong><code>velaris doctor</code>.</strong> What this machine offers, and the level a run under
+the default budget gets on it.</li>
+</ul>
+<p><code>velaris eval</code> requires full or partial, and refuses to run at none.</p>
+<h2 id="python-modules-widen-it">Python modules widen it <a class="anchor" href="#python-modules-widen-it" aria-label="Link to this section">#</a></h2>
+<p>A granted <code>ffi</code> module does whatever that module does, so the OS policy is
+widened to what the module needs: nothing for <code>ffi:math</code> or <code>ffi:json</code>, any
+path for <code>ffi:sqlite3</code> or <code>ffi:pathlib</code>, any host for <code>ffi:socket</code> or
+<code>ffi:urllib</code>, and nothing enforced for <code>ffi:os</code>, <code>ffi:subprocess</code>, plain <code>ffi</code>
+and any module the table in THREAT_MODEL.md does not name. The audit says
+which, and a run under such a budget says <code>none</code> and why.</p>
+<h2 id="what-is-not-confined">What is not confined <a class="anchor" href="#what-is-not-confined" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>An in-process <code>velaris.run()</code></strong> - one with no <code>timeout</code> and no
+<code>max_memory_mb</code> - runs in the caller's process. Landlock, seccomp, a sandbox
+profile and a lowered token cannot be taken off again, so Velaris does not
+put them on a process that is not its own. Pass a limit, or use a <code>Pool</code>.</li>
+<li><strong>The REPL, <code>velaris test</code> and <code>velaris bench</code></strong> run many programs in one
+process.</li>
+<li><strong>A <code>Pool</code> made without <code>import_root</code></strong> holds writes, the network and
+processes, not reads: its workers compile each program they are sent, and an
+import may name any <code>.vel</code> file. Give the pool an <code>import_root</code>, as both
+doors do, and reads are held too.</li>
+<li><strong>Compiling, proving and native code generation</strong> happen before the policy
+is applied in a single run, because imports are read from wherever they are.
+The program's first statement runs after it.</li>
+</ul>
+<h2 id="what-it-does-not-make-true">What it does not make true <a class="anchor" href="#what-it-does-not-make-true" aria-label="Link to this section">#</a></h2>
+<p>Confinement is as good as the kernel, and it narrows a process without making
+it another user. A host in a <code>net:</code> grant, a credential location under a broad
+grant, <code>env</code>, a hard link or a bind mount that was inside a granted path before
+the run, and timing, are outside it on every system; macOS and Windows are
+partial, for the reasons THREAT_MODEL.md gives; and Apple has deprecated
+sandbox profiles. Run code you have not read as a different user, or in a
+container or a virtual machine, when the stakes warrant it.</p>
+<h2 id="how-it-is-tested">How it is tested <a class="anchor" href="#how-it-is-tested" aria-label="Link to this section">#</a></h2>
+<p><code>check_confine.py</code> runs on every leg of CI. Its fault-injection hook
+(<code>VELARIS_FAULT_INJECT</code>) makes the runtime itself, from Python and not from
+Velaris, read a file, write one, open a connection, start a process and send a
+signal outside the budget. Under confinement, what that system's row of the
+table says is held is refused by the kernel and the run ends with
+<a href="errors.html#E319">E319</a> naming the layers; what the row says is not held goes
+through; and with <code>--no-confine</code> every one goes through. All three outcomes are
+asserted, so the table is held to be true in both directions.</p>
+<p>It also runs every escape target of <code>check_sandbox.py</code>, and the file and <code>ffi</code>
+targets of <code>check_adversarial.py</code>, on a Velaris whose budget checks have been
+knocked out, and records which the kernel stops and which only the language
+does (<code>tests/confine/kernel-linux.json</code>, <code>kernel-windows.json</code>).</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/docs/confinement.md">docs/confinement.md</a> by build_docs.py, for Velaris 8.4.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#one-derivation">One derivation</a></li><li><a href="#the-level-and-its-reason">The level, and its reason</a></li><li><a href="#python-modules-widen-it">Python modules widen it</a></li><li><a href="#what-is-not-confined">What is not confined</a></li><li><a href="#what-it-does-not-make-true">What it does not make true</a></li><li><a href="#how-it-is-tested">How it is tested</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

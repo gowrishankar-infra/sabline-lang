@@ -276,7 +276,8 @@ DOCUMENTS = [("TUTORIAL.md", "tutorial.html"), ("SPEC.md", "spec.html"),
 # a docs/*.md page's section; one not named here goes under Threat model,
 # those in DOCS_ORDER first and in that order, the rest by name
 DOCS_SECTION = {"floats.md": "Floats"}
-DOCS_ORDER = ["eval.md", "structurally-impossible.md", "crosswalk.md"]
+DOCS_ORDER = ["confinement.md", "eval.md", "structurally-impossible.md",
+              "crosswalk.md"]
 MISSING: list[str] = []         # links to a repository file that is not here
 
 
@@ -581,8 +582,10 @@ def start_page() -> Page:
         "runs, the Z3 theorem prover proves the promises it can, and the "
         "runtime refuses every effect outside the budget the operator "
         "grants.</p>",
-        "<p>It is not a security boundary: an interpreter in the program's own "
-        "process enforces the budget, not the operating system. The "
+        "<p>It is not a security boundary by itself: an interpreter in the "
+        "program's own process enforces the budget. From 8.4 the operating "
+        "system is asked to hold the same budget under it - fully on Linux, "
+        "partly on macOS and on Windows. The "
         f'<a href="{internal("threat-model.html")}">threat model</a> says '
         "what that leaves open.</p>",
         '<div class="routes">',
@@ -771,7 +774,10 @@ def receipt_page() -> Page:
     "budget": "clock,fs:read:/work/report.txt,fs:write:/work/report.txt,io,rand",
     "run_parameters": {"seed": null, "freeze_time": null, "timeout": null,
                        "max_memory_mb": null, "max_read_bytes": 67108864,
-                       "confinement": "none"},
+                       "confinement": "full",
+                       "confinement_reason": "the operating system holds every file, network and process limit of this budget",
+                       "confinement_layers": ["landlock-abi4", "seccomp"],
+                       "os_policy_sha256": "2702413c15253be6589ce6f39dbfbb129c9578d6ce62576d996f895b6faa9994"},
     "effects_used": {"clock": 1, "rand": 1, "fs": 2, "io": 4},
     "refusals": [],
     "declassifications": [],
@@ -788,9 +794,13 @@ def receipt_page() -> Page:
          "grammar"),
         ("<code>run_parameters</code>", "<code>seed</code>, "
          "<code>freeze_time</code>, <code>timeout</code>, "
-         "<code>max_memory_mb</code>, <code>max_read_bytes</code>, and "
-         "<code>confinement</code>: <code>none</code> when the budget was the "
-         "only boundary"),
+         "<code>max_memory_mb</code>, <code>max_read_bytes</code>, and what "
+         "the operating system held of the run (8.4): "
+         "<code>confinement</code> - <code>full</code>, <code>partial</code>, "
+         "or <code>none</code> when the budget was the only boundary - with "
+         "<code>confinement_reason</code>, <code>confinement_layers</code> "
+         "and <code>os_policy_sha256</code>, the digest of the OS policy the "
+         "budget derives"),
         ("<code>effects_used</code>", "each effect and how many operations of "
          "it the budget let through; null when the run was stopped from outside "
          "before it could say"),

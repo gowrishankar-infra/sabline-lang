@@ -190,19 +190,40 @@ environment's variable, the tag needs it and runs only when it says not
 paused, every job that publishes comes after the tag, and no build job
 waits on it.
 
-## After the release: move the Action pins
+## After the release: the workflow moves the Action pins
 
 README.md and EMBEDDING.md show the Action pinned by commit, with the tag in
 a comment beside it (`@<commit>  # vX.Y.Z`), and `run_tests.py` fails unless
-that commit is the one the newest `v*` tag names. So once the workflow has
-tagged a release, the next push to main must move the pins:
+that commit is the one the newest `v*` tag names. A release commit cannot
+name its own hash, so from the moment the tag exists main's first test step
+fails until the pins name it. Until 8.4 a person made that commit, and main
+was red until they did - twenty of twenty-one jobs, after 8.3.1.
+
+From 8.4 the run that made the tag makes the commit. The `move_pins` job
+runs once the tag exists, whatever the publishes after it did. It checks out
+main, runs `python3 release_checks.py move-pins vX.Y.Z --commit <sha>` - the
+pins in both files, the `version:` example beside them, the pre-commit
+`rev:` - rebuilds the pages with `build_docs.py`, and commits exactly that:
+it fails if anything outside README.md, EMBEDDING.md and docs/ changed. The
+message is `Move the Action pins to vX.Y.Z`. Before pushing it asks the gate
+about the new commit, and pushes only when the gate says it is not a release
+(its version is already tagged). If main moved meanwhile, it does it again
+on top of the new tip, up to five times. A push made with GITHUB_TOKEN starts
+no workflow, so the job then starts `tests` on main by name
+(`workflow_dispatch`); the `release` run that follows those tests is skipped
+at its gate, which takes only a push's tests.
+
+Run again - a re-run of failed jobs reaches it - it finds the pins already
+moved and pushes nothing. `check_release.py` runs the job's own steps in
+bash on a throwaway copy of this repository with a simulated tag, and holds
+the result to be that one commit and nothing else: five lines in the two
+documents, pages under docs/, no tag made or moved, the tests started once.
+
+If the job fails, move the pins by hand, the same way:
 
     git fetch --tags
-    git rev-parse "vX.Y.Z^{commit}"
-
-Put that commit and `# vX.Y.Z` in both files, and the `version:` example
-with it. That push is not a release - its version is already tagged - and
-its tests are what hold the pins to the tag.
+    python release_checks.py move-pins vX.Y.Z --commit "$(git rev-parse 'vX.Y.Z^{commit}')"
+    python build_docs.py
 
 ## Why the tag is not signed
 

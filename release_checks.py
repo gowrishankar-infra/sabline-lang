@@ -1003,6 +1003,78 @@ def cmd_consistent(args: Any) -> int:
     return 1
 
 
+# ---- after the release: the Action pins (8.4) ---------------------------------
+
+PIN_DOCS = ("README.md", "EMBEDDING.md")
+_PIN = re.compile(r"(gowrishankar-infra/velaris-lang@)[0-9a-f]{40}"
+                  r"([ \t]+#[ \t]*)v\d+\.\d+\.\d+")
+_INSTALLS = re.compile(r'^([ \t]*version:[ \t]*")\d+\.\d+\.\d+("[^\r\n]*)$',
+                       re.M)
+_OWN_VERSION = re.compile(r"(the Action's own version \()\d+\.\d+\.\d+(\))")
+_PRE_COMMIT = re.compile(
+    r"(repo:[ \t]*https://github\.com/gowrishankar-infra/velaris-lang[ \t]*\r?\n"
+    r"[ \t]*rev:[ \t]*)v\d+\.\d+\.\d+")
+
+
+def moved_pins(text: str, tag: str, commit: str) -> str:
+    """One document with every Action pin naming `commit` as `tag`, the
+    `version:` example beside a pin installing that version, and the
+    pre-commit `rev:` naming the tag. Nothing else in it changes."""
+    version = tag[1:]
+    text = _PIN.sub(lambda m: f"{m.group(1)}{commit}{m.group(2)}{tag}", text)
+
+    def install(m: Any) -> str:
+        rest = _OWN_VERSION.sub(lambda o: f"{o.group(1)}{version}{o.group(2)}",
+                                m.group(2))
+        return f"{m.group(1)}{version}{rest}"
+
+    text = _INSTALLS.sub(install, text)
+    return _PRE_COMMIT.sub(lambda m: f"{m.group(1)}{tag}", text)
+
+
+def move_pins(root: Path, tag: str, commit: str) -> list[str]:
+    """Move the pins in README.md and EMBEDDING.md to `tag` on `commit`, as
+    run_tests.py's check_action_pins wants them once the tag exists, and
+    give the documents that changed. Unanswered when the tag or the commit
+    is not one, or when README.md shows no pin to move: a document this
+    cannot read must stop the job, not pass as already moved."""
+    if not re.fullmatch(r"v\d+\.\d+\.\d+", tag):
+        raise Unanswered(f"{tag!r} is not a tag of the form vX.Y.Z")
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise Unanswered(f"{commit!r} is not a full commit hash")
+    changed = []
+    for doc in PIN_DOCS:
+        path = root / doc
+        try:
+            with open(path, encoding="utf-8", newline="") as fh:
+                before = fh.read()
+        except OSError as e:
+            raise Unanswered(f"{doc} could not be read: {e.strerror or e}")
+        if doc == "README.md" and not _PIN.search(before):
+            raise Unanswered(
+                "README.md shows no Action pin of the form "
+                "gowrishankar-infra/velaris-lang@<commit>  # vX.Y.Z")
+        after = moved_pins(before, tag, commit)
+        left = [m.group(0) for m in _PIN.finditer(after)
+                if commit not in m.group(0) or not m.group(0).endswith(tag)]
+        if left:
+            raise Unanswered(f"{doc} still pins {left[0]!r}")
+        if after != before:
+            with open(path, "w", encoding="utf-8", newline="") as fh:
+                fh.write(after)
+            changed.append(doc)
+    return changed
+
+
+def cmd_move_pins(args: Any) -> int:
+    changed = move_pins(Path(args.repo), args.tag, args.commit)
+    emit(args, f"the Action pins name {args.tag} ({args.commit}): "
+         + (f"moved in {', '.join(changed)}" if changed else
+            "they already did, and nothing was changed"),
+         moved=str(bool(changed)).lower())
+    return 0
+
+
 def cmd_advisories(args: Any) -> int:
     for name in added_advisories(Path(args.repo), args.since, args.until):
         print(name)
@@ -1122,6 +1194,13 @@ def main(argv: Any = None) -> int:
     p.add_argument("file")
     p.add_argument("--tag", default="")
     p.set_defaults(run=cmd_advisory_commands)
+
+    p = sub.add_parser("move-pins", parents=[common],
+                       help="after a release: the Action pins, moved to its tag")
+    p.add_argument("tag")
+    p.add_argument("--commit", required=True,
+                   help="the commit the tag names")
+    p.set_defaults(run=cmd_move_pins)
 
     args = parser.parse_args(argv)
     try:

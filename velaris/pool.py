@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 from . import state as _state
 from .version import VERSION, _launch_command
-from .confine import confine_worker, probe as probe_confinement
+from . import confine as _confine
 from .recorder import _RunRecorder, _entry_name, _utc_now_ms
 from .budget import Budget, BudgetError, set_run_params
 from .results import AuditResult, CheckResult, Problem, RunResult, _problem_of
@@ -62,7 +62,8 @@ MUTABLE_GLOBALS = ("PROGRAM_ARGS", "EFFECT_BUDGET", "FFI_MODULES",
                    "FS_GRANTS", "NET_GRANTS", "OP_LIMITS", "OP_COUNTS",
                    "EFFECT_USES", "PY_OBJECTS", "PY_NEXT", "TRACE",
                    "_NATIVE_KEEPALIVE", "SEED", "FROZEN_TIME", "_RNG",
-                   "RUN_RECORDER", "IMPORT_ROOT", "STOP_FILE", "RESPONSES")
+                   "RUN_RECORDER", "IMPORT_ROOT", "STOP_FILE", "RESPONSES",
+                   "PROGRAM_FILES")
 
 
 def program_state_baseline() -> dict[str, Any]:
@@ -95,6 +96,7 @@ def reset_program_state(budget: "Budget | None" = None,
         TRACE               the tracer's switch, depth and call count
         _NATIVE_KEEPALIVE   the JIT engines, and the text arena each
                             engine owns
+        PROGRAM_FILES       the files the program was read from (8.4)
 
     Nothing about one program's proofs survives to reach the next: a
     proof is made when it is needed and kept nowhere (8.2).
@@ -110,6 +112,7 @@ def reset_program_state(budget: "Budget | None" = None,
     inherited from whatever ran last.
     """
     _state.PROGRAM_ARGS[:] = []
+    _state.PROGRAM_FILES[:] = []
     _state.PY_OBJECTS.clear()
     _state.PY_NEXT[0] = 1
     _state._NATIVE_KEEPALIVE.clear()
@@ -203,7 +206,24 @@ def pool_worker(argv: list[Any]) -> int:
     # directories the operating system may let it write
     if "--stop-file" in argv:
         vars(_state)["STOP_FILE"] = argv[argv.index("--stop-file") + 1]
-    confined = "--confine" in argv
+
+    def listed(flag: str) -> list[str]:
+        try:
+            found = json.loads(argv[argv.index(flag) + 1]) \
+                if flag in argv else []
+        except (ValueError, IndexError):
+            found = []
+        return [str(p) for p in found if isinstance(p, str)] \
+            if isinstance(found, list) else []
+
+    # confinement (8.4): at the start, for a pool that serves program after
+    # program; at the first statement, for a pool made for one run, whose
+    # program is read from wherever its imports are before anything is held
+    confine_at = None if "--no-confine" in argv else (
+        argv[argv.index("--confine-at") + 1]
+        if "--confine-at" in argv else "start")
+    confine_temp = (argv[argv.index("--confine-temp") + 1]
+                    if "--confine-temp" in argv else None)
     try:
         budget = Budget.parse(spec)
     except BudgetError as e:
@@ -222,17 +242,55 @@ def pool_worker(argv: list[Any]) -> int:
     os.dup2(null, 1)
     os.close(null)
 
-    # confinement, before anything of anyone's is read: after this the
-    # worker cannot write outside those directories, start a program, or -
-    # where the kernel offers it - make a TCP connection
-    confinement = "none"
-    if confined:
-        try:
-            writable = json.loads(argv[argv.index("--confine") + 1])
-        except (ValueError, IndexError):
-            writable = []
-        confinement = confine_worker([str(w) for w in writable
-                                      if isinstance(w, str)])
+    # The operating system is asked to hold the pool's budget (8.4), before
+    # anything of anyone's is read - or, for a pool of one run, once that
+    # run's program has been read and compiled. The policy is derived here,
+    # from this worker's own budget: a request carries none.
+    policy = _confine.os_policy(budget, confine=confine_at is not None)
+    import_root = _state.IMPORT_ROOT
+
+    def confine_now() -> dict[str, Any]:
+        return _confine.apply(
+            policy, reads=listed("--confine-reads")
+            + ([import_root] if import_root else [])
+            + list(_state.PROGRAM_FILES),
+            writes=listed("--confine-writes"), temp=confine_temp,
+            read_any=confine_at == "start" and import_root is None)
+
+    confinement: dict[str, Any]
+    if confine_at is None:
+        confinement = _confine.unconfined(
+            policy, "confine=False: the budget is the only boundary")
+        vars(_state)["BEFORE_FIRST_STATEMENT"] = \
+            lambda: _confine.inject_fault(None)
+    elif confine_at == "start":
+        confinement = confine_now()
+        vars(_state)["BEFORE_FIRST_STATEMENT"] = \
+            lambda: _confine.inject_fault(confinement)
+    else:
+        confinement = _confine.report("pending", "applied at the run's first "
+                                      "statement", [], policy)
+
+        def at_first_statement() -> None:
+            applied = confine_now()
+            _msg_write(replies, {"confinement": applied})
+            _confine.inject_fault(applied)
+
+        vars(_state)["BEFORE_FIRST_STATEMENT"] = at_first_statement
+    vars(_state)["WORKER_CONFINEMENT"] = confinement
+    # what the next program's receipt says of this worker's confinement is
+    # the worker's, not the last program's: a program granted ffi can reach
+    # these names, so they are put back after every one, like the budget
+    hook = _state.BEFORE_FIRST_STATEMENT
+
+    def keep_confinement_state() -> None:
+        g = vars(_state)
+        g["BEFORE_FIRST_STATEMENT"] = hook
+        g["CONFINE"] = confine_at is not None
+        if confine_at != "run":
+            g["WORKER_CONFINEMENT"] = dict(confinement)
+            g["CONFINEMENT"] = dict(confinement) \
+                if confine_at == "start" else None
 
     baseline = program_state_baseline()
     reset_program_state(budget, baseline)
@@ -242,17 +300,23 @@ def pool_worker(argv: list[Any]) -> int:
     while True:
         request = _msg_read(requests)
         if request is None or request.get("stop"):
-            return 0                       # the parent closed the pipe
+            # the parent closed the pipe. It removes this worker's temporary
+            # directory when it disposes of the worker; a parent that was
+            # killed cannot, so the worker tries on its way out (8.4)
+            _remove_tree(confine_temp)
+            return 0
         reset_program_state(budget, baseline)
+        keep_confinement_state()
 
         def emit(event: Any) -> None:
             _msg_write(replies, {"event": event})
 
         op = request.get("op") or "run"
         try:
-            if op == "probe" and confined:
-                answer: dict[str, Any] = {"probe": probe_confinement(
-                    request.get("port"), request.get("write"))}
+            if op == "probe" and "--confine-probe" in argv:
+                answer: dict[str, Any] = {"probe": _confine.probe(
+                    request.get("port"), request.get("write"),
+                    request.get("read"))}
             elif op == "check":
                 answer = {"check": _check_here(
                     request.get("source") or "", path=request.get("path"),
@@ -289,6 +353,9 @@ class _Worker:
         import subprocess
         self.killed_by_timeout = False
         self.dead = False
+        # set by the pool once the worker is up; here first, so a worker
+        # that never starts is disposed of without it
+        self.temp: str | None = None
         # handed each event as it arrives, when set (velaris eval's stream)
         self.on_event: Any = None
         self._kill_lock = threading.Lock()
@@ -306,7 +373,11 @@ class _Worker:
             raise RuntimeError("a pool worker did not start: "
                                + (self.stderr() or "it said nothing"))
         self.allow = hello.get("allow") or ""
-        self.confinement = str(hello.get("confinement") or "none")
+        said = hello.get("confinement")
+        self.confinement: dict[str, Any] = dict(said) \
+            if isinstance(said, dict) else {"level": "none", "layers": [],
+                                            "reason": "the worker named none",
+                                            "policy_sha256": None}
         # Now that the worker is up, the job holds the processes starting
         # it took - its own, and a launcher's where python.exe is one -
         # and refuses any further process (8.3, velaris eval).
@@ -344,6 +415,12 @@ class _Worker:
                 return None, events
             while True:
                 message = _msg_read(self.proc.stdout)
+                if message is not None and len(message) == 1 and isinstance(
+                        message.get("confinement"), dict):
+                    # a pool of one run is confined at its first statement,
+                    # and says what it got as it happens
+                    self.confinement = dict(message["confinement"])
+                    continue
                 if message is None or "event" not in message:
                     return message, events
                 if isinstance(message["event"], dict):
@@ -385,6 +462,7 @@ class _Worker:
 
     def dispose(self) -> None:
         self.kill()
+        _remove_tree(self.temp)
         for stream in (self.proc.stdin, self.proc.stdout, self.proc.stderr):
             try:
                 stream.close()
@@ -394,6 +472,12 @@ class _Worker:
             self._drain.join(timeout=2)
         except Exception:
             pass
+
+
+def _remove_tree(path: str | None) -> None:
+    if path:
+        import shutil
+        shutil.rmtree(path, ignore_errors=True)
 
 
 def _kill_workers(live: set[Any], lock: Any) -> None:
@@ -489,10 +573,14 @@ class Pool:
     def __init__(self, size: int = 4, *, allow: set[str] | str | None = None,
                  deny: set[str] | None = None, timeout: float | None = None,
                  max_memory_mb: int | None = None, native: bool = True,
-                 import_root: Any = None) -> None:
+                 import_root: Any = None, confine: bool = True) -> None:
         if int(size) < 1:
             raise ValueError("a pool needs at least one worker")
         self.size = int(size)
+        # whether each worker asks the operating system to hold the budget
+        # too (8.4); fixed like the budget, and nothing a program can reach
+        self.confine = bool(confine)
+        self._confine_at = "start"
         self.timeout = timeout
         self.max_memory_mb = max_memory_mb
         self.native = native
@@ -545,7 +633,7 @@ class Pool:
             result = self._no_answer(worker, answer, path)
         result.receipt = self._receipt(
             source, path, _name, seed, freeze_time, answer, events, result,
-            started_at, seconds)
+            started_at, seconds, worker)
         return result
 
     def check(self, source: str, *, path: str | None = None,
@@ -650,7 +738,22 @@ class Pool:
             cmd += ["--max-memory-mb", str(int(self.max_memory_mb))]
         if self.import_root is not None:
             cmd += ["--import-root", self.import_root]
+        if not self.confine:
+            cmd.append("--no-confine")
+        else:
+            cmd += ["--confine-at", self._confine_at]
         return cmd
+
+    def _worker_temp(self) -> str | None:
+        """A private temporary directory for one worker, which its
+        confinement lets it write and which is removed with it."""
+        import tempfile
+        if not self.confine:
+            return None
+        try:
+            return tempfile.mkdtemp(prefix="velaris-worker-")
+        except OSError:
+            return None
 
     def _worker_options(self) -> dict[str, Any]:
         """What else a worker is started with: nothing, for a pool; velaris
@@ -661,8 +764,21 @@ class Pool:
         """A worker has started and said it is ready."""
 
     def _start(self) -> "_Worker":
-        worker = _Worker(self._worker_command(), self.max_memory_mb,
-                         **self._worker_options())
+        options = self._worker_options()
+        cmd = self._worker_command()
+        temp = self._worker_temp()
+        if temp is not None:
+            cmd += ["--confine-temp", temp]
+            env = dict(options.get("env") or os.environ)
+            for name in ("TMPDIR", "TEMP", "TMP"):
+                env[name] = temp
+            options["env"] = env
+        try:
+            worker = _Worker(cmd, self.max_memory_mb, **options)
+        except BaseException:
+            _remove_tree(temp)
+            raise
+        worker.temp = temp
         self._started(worker)
         with self._lock:
             # close() may have run between the check in run() and here.
@@ -743,13 +859,15 @@ class Pool:
         return Problem("E000", detail, 0, where, [])
 
     def _receipt(self, source: Any, path: Any, name: Any, seed: Any, freeze_time: Any, answer: Any,
-                 events: Any, result: Any, started_at: Any, seconds: Any) -> dict[Any, Any]:
+                 events: Any, result: Any, started_at: Any, seconds: Any,
+                 worker: Any) -> dict[Any, Any]:
         """The receipt of a run on this pool. The worker's own, when it
         answered, with the limits, the start and the wall time this process
         measured; otherwise one made here from what it streamed before it
         was stopped, marked incomplete."""
         parameters = _run_parameters(seed, freeze_time, self.timeout,
-                                     self.max_memory_mb)
+                                     self.max_memory_mb,
+                                     confinement=worker.confinement)
         doc = (answer or {}).get("receipt")
         if isinstance(doc, dict) and isinstance(doc.get("predicate"), dict):
             doc["predicate"]["run_parameters"] = parameters
@@ -787,8 +905,13 @@ class PoolRegistry:
         pools.close()
     """
 
-    def __init__(self, size: int = 4, keep: int = 8) -> None:
+    def __init__(self, size: int = 4, keep: int = 8,
+                 confine: bool = True) -> None:
         self.size, self.keep = int(size), max(1, int(keep))
+        # every pool it makes asks the operating system to hold its budget
+        # (8.4) unless the registry was made with confine=False; a request
+        # names a budget, never this
+        self.confine = bool(confine)
         self._pools: dict[Any, Pool] = {}            # key -> Pool, least used first
         self._lock = threading.Lock()
 
@@ -806,7 +929,8 @@ class PoolRegistry:
             if found is None or found.closed:
                 found = Pool(self.size, allow=allow, deny=deny,
                              timeout=timeout, max_memory_mb=max_memory_mb,
-                             native=native, import_root=import_root)
+                             native=native, import_root=import_root,
+                             confine=self.confine)
             self._pools[key] = found       # most recently used, last
             while len(self._pools) > self.keep:
                 stale.append(self._pools.pop(next(iter(self._pools))))

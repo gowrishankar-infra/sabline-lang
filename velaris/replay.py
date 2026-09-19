@@ -193,6 +193,11 @@ def compare(recorded: dict[str, Any], replayed: dict[str, Any]) -> list[Any]:
     for key in _PARAMETERS:
         a = old["run_parameters"].get(key)
         b = new["run_parameters"].get(key)
+        if key == "confinement" and \
+                "os_policy_sha256" not in old["run_parameters"]:
+            # a receipt from before 8.4 names a mechanism, or `none` for a
+            # run nobody asked the system to hold; neither is a level
+            continue
         if a != b:
             out.append({"field": f"run_parameters.{key}", "recorded": a,
                         "replayed": b})
@@ -258,6 +263,12 @@ def _replay(report: dict[str, Any], receipt: dict[str, Any],
                           f"{read_most} bytes, which a run in another process "
                           f"is not given")
     replayer = load_responses(responses) if responses is not None else None
+    # read now: once the run has reached its first statement this process is
+    # confined (8.4), and a file outside the run's budget cannot be opened
+    expected = None
+    if expect_output is not None:
+        with open(expect_output, encoding="utf-8", newline="") as fh:
+            expected = fh.read().replace("\r\n", "\n")
     entry, data = snapshot(receipt, root, home)
     try:
         source = data.decode("utf-8")
@@ -278,9 +289,10 @@ def _replay(report: dict[str, Any], receipt: dict[str, Any],
         with eval_pool:
             result = eval_pool.run(source, stdin=stdin, args=args, path=entry,
                                    seed=seed, freeze_time=frozen, _name=name)
+        from .receipts import _confinement_fields
         cast("dict[str, Any]", result.receipt)["predicate"][
-            "run_parameters"].update(confinement=eval_pool.confinement,
-                                     profile="eval")
+            "run_parameters"].update(
+                **_confinement_fields(eval_pool.confinement), profile="eval")
     elif bounded:
         with Pool(size=1, allow=asked.spec(), timeout=params.get("timeout"),
                   max_memory_mb=params.get("max_memory_mb"),
@@ -302,9 +314,7 @@ def _replay(report: dict[str, Any], receipt: dict[str, Any],
             g["IMPORT_ROOT"], g["MAX_READ_BYTES"], g["RESPONSES"] = saved
     report["differences"] = compare(receipt,
                                     cast("dict[str, Any]", result.receipt))
-    if expect_output is not None:
-        with open(expect_output, encoding="utf-8", newline="") as fh:
-            expected = fh.read().replace("\r\n", "\n")
+    if expected is not None:
         got = result.output.replace("\r\n", "\n")
         if got != expected:
             a, b = expected.split("\n"), got.split("\n")
@@ -355,6 +365,15 @@ def replay_main(argv: list[Any], program_words: list[str] | None = None) -> int:
     if "--stdin" in opts:
         with open(opts["--stdin"], encoding="utf-8") as fh:
             stdin = fh.read()
+    # a replay on the command line is one run in this process, confined at
+    # its first statement as `velaris program.vel` is (8.4). Its copy of the
+    # program is made in a temporary directory of the run's own, which the
+    # confinement lets it remove again.
+    from . import confine as _confine
+    _made, temp_rule = _confine.private_temp()
+    vars(_state)["BEFORE_FIRST_STATEMENT"] = \
+        lambda: _confine.confine_this_run(
+            None, files=list(_state.PROGRAM_FILES), temp_rule=temp_rule)
     report = replay(receipt, root=opts.get("--root", "."),
                     max_allow=opts.get("--max-allow",
                                        REPLAY_MAX_ALLOW_DEFAULT),

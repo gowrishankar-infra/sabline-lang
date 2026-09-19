@@ -303,6 +303,14 @@ jobs:
           # executable started velaris.py for it, which it does not hold,
           # and every check failed with E001 (found by velaris-canary)
           ./dist/velaris* check examples/discount.vel
+          # the executable confines its runs too (8.4): a process the runtime
+          # itself tries to start is refused by the operating system on all
+          # three systems, and is started under --no-confine
+          if VELARIS_FAULT_INJECT=spawn ./dist/velaris* examples/hello.vel 2> fault.txt; then
+            cat fault.txt; echo "::error::the executable's run was not confined"; exit 1
+          fi
+          grep -q 'E319' fault.txt
+          VELARIS_FAULT_INJECT=spawn ./dist/velaris* examples/hello.vel --no-confine
       - name: Rename asset
         shell: bash
         run: |
@@ -978,3 +986,81 @@ jobs:
         with:
           name: advisory-requests
           path: advisory-requests/
+
+  # ---- after the release: the pins, moved by the run that made the tag -----
+
+  # README.md and EMBEDDING.md pin the Action by commit, and run_tests.py
+  # holds that commit to the newest tag - so from the moment the tag exists,
+  # main's first test step fails until the pins name it. A release commit
+  # cannot name its own hash; until 8.4 a person moved the pins afterwards,
+  # and main was red until they did. This job makes that commit: the pins,
+  # the version: example, the pre-commit rev:, and the pages built from those
+  # documents, and nothing else. The gate is asked about the commit before
+  # it is pushed and must say it is not a release. A push made with
+  # GITHUB_TOKEN starts no workflow, so the tests are started by name.
+  move_pins:
+    name: move the Action pins to the tag
+    needs: [gate, tag, consistency]
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.tag.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write            # push the commit to main
+      actions: write             # start the tests on it
+    env:
+      TAG: ${{ needs.gate.outputs.tag }}
+      SHA: ${{ needs.gate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Move the pins, rebuild the pages, and push exactly that
+        id: move
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          attempt=0
+          while :; do
+            attempt=$((attempt + 1))
+            git fetch --quiet --tags origin main
+            git checkout --quiet --detach origin/main
+            git reset --quiet --hard origin/main
+            test "$(git rev-parse "$TAG^{commit}")" = "$SHA"
+            git merge-base --is-ancestor "$SHA" HEAD
+            python3 release_checks.py move-pins "$TAG" --commit "$SHA"
+            python3 build_docs.py > /dev/null
+            git add -- README.md EMBEDDING.md docs
+            if [ -n "$(git status --porcelain --untracked-files=all | grep -v '^[MA]  ' || true)" ]; then
+              echo "::error::moving the pins changed more than README.md, EMBEDDING.md and docs/"
+              git status --porcelain --untracked-files=all
+              exit 1
+            fi
+            if git diff --cached --quiet; then
+              echo "::notice::the pins already name $TAG; nothing to push"
+              echo "pushed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git commit --quiet -m "Move the Action pins to $TAG" \
+              -m "$TAG tags $SHA, so the pins in README.md and EMBEDDING.md, the version: example beside them, the pre-commit rev:, and the pages built from those documents name that commit. Made by release.yml in the run that tagged it; this push is not a release."
+            decided=$(mktemp)
+            python3 release_checks.py gate --github-output "$decided"
+            if ! grep -qx 'release=false' "$decided"; then
+              echo "::error::the gate reads the pin commit as a release; not pushing it"
+              exit 1
+            fi
+            if git push --quiet origin "HEAD:refs/heads/main"; then
+              echo "::notice::pushed $(git rev-parse HEAD) to main: the Action pins name $TAG"
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if [ "$attempt" -ge 5 ]; then
+              echo "::error::main moved five times while the pins were being pushed"
+              exit 1
+            fi
+            echo "::notice::main moved; moving the pins again on top of it"
+          done
+      - name: Start the tests on that commit
+        if: steps.move.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run test.yml --ref main

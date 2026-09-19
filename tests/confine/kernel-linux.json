@@ -1,0 +1,273 @@
+{
+  "platform": "linux",
+  "velaris": "8.4.0",
+  "kernel": 19,
+  "language_only": 20,
+  "not_applicable": 5,
+  "targets": [
+    {
+      "suite": "check_sandbox",
+      "id": "read-under-io",
+      "name": "reading a file",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "write-under-io",
+      "name": "writing a file",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "net-under-io",
+      "name": "reaching the network",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-under-io",
+      "name": "calling Python",
+      "stopped_by": "not applicable"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-handle-under-io",
+      "name": "opening a database through a handle",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "clock-under-io",
+      "name": "asking the clock",
+      "stopped_by": "not applicable"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "rand-under-io",
+      "name": "asking for randomness",
+      "stopped_by": "not applicable"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "effect-behind-two-helpers",
+      "name": "hiding the effect behind a helper",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "refusal-cannot-be-caught",
+      "name": "catching the refusal to carry on anyway",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "default-refuses-fs",
+      "name": "a program that writes a file, with no --allow at all",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "default-refusal-names-the-effect-and-the-flag",
+      "name": "the refusal under the default says which effect and how to grant it",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "default-refuses-net",
+      "name": "a program that reaches the network, with no --allow at all",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "deny-one",
+      "name": "denying one effect while allowing the rest",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "deny-narrows-the-default",
+      "name": "--deny narrows what the default granted; it does not widen it back to every effect",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-module-outside-list",
+      "name": "reaching a module outside the ffi allow-list",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-submodule-path",
+      "name": "dodging the allow-list with a submodule path",
+      "stopped_by": "not applicable"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-through-py-json",
+      "name": "dodging the allow-list through py_json",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-through-handle",
+      "name": "dodging the allow-list through a handle",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "deny-several",
+      "name": "denying several at once",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-reach-codecs-through-json",
+      "name": "reaching codecs through a granted json",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-reach-os-system-through-os",
+      "name": "reaching os.system through a granted os, subprocess-free",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-reach-importlib",
+      "name": "using a granted importlib to reach another module",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-reach-builtins-type",
+      "name": "reaching a builtins type through a granted module's value",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-reach-globals",
+      "name": "laundering through __globals__ to reach builtins",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "ffi-reach-handle-foreign-object",
+      "name": "a handle exposing an object from another module",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "fs-read-outside-prefix",
+      "name": "reading outside the granted prefix",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "fs-write-under-read-grant",
+      "name": "writing with only read granted",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "fs-dotdot-escape",
+      "name": "escaping the prefix with ..",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "net-host-not-in-list",
+      "name": "a host not in the list",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "net-wildcard-parent-domain",
+      "name": "a wildcard must not match the parent domain",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "net-port-not-in-list",
+      "name": "a port not in the list",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "fs-count-reached",
+      "name": "the file operation count reached",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "net-count-reached",
+      "name": "the network operation count reached",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "env-under-io",
+      "name": "env() with only io granted",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "declassify-not-granted",
+      "name": "declassify() with env and io granted but not declassify",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "fs-symlink-escape",
+      "name": "escaping the prefix through a symlink",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "fs-count-zero",
+      "name": "@0 grants the effect and permits no operation",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "fs-count-spent-by-failed-operation",
+      "name": "an operation that fails has still spent its count",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_sandbox",
+      "id": "net-no-scheme-is-https",
+      "name": "a URL with no scheme is HTTPS at port 443, outside a port-80 grant",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_adversarial",
+      "id": "FFI1",
+      "name": "FFI1 codecs via json",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_adversarial",
+      "id": "FFI2",
+      "name": "FFI2 os.system under ffi:math",
+      "stopped_by": "language only"
+    },
+    {
+      "suite": "check_adversarial",
+      "id": "FFI5",
+      "name": "FFI5 __class__ to builtins",
+      "stopped_by": "not applicable"
+    },
+    {
+      "suite": "check_adversarial",
+      "id": "FS1",
+      "name": "FS1 dotdot",
+      "stopped_by": "kernel"
+    },
+    {
+      "suite": "check_adversarial",
+      "id": "FS2",
+      "name": "FS2 abs sibling",
+      "stopped_by": "kernel"
+    }
+  ]
+}

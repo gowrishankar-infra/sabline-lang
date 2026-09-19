@@ -31,7 +31,7 @@ imports one after it.
 | `nodes` | the AST dataclasses (`Function`, `Call`, `Let`, `Closure`, ...) |
 | `parser` | tokens to the AST; `for` becomes `while`, inline functions are lifted |
 | `tables` | `BUILTINS`, `FALLIBLE_BUILTINS`, `NEW_BUILTINS`, `builtin_reached`, the check ceilings |
-| `confine` | the confinement levels `velaris eval` gives its worker, and `probe` |
+| `confine` | `os_policy`, the one derivation of an OS policy from a budget; `ENFORCES` and `FFI_WIDENS`, the tables THREAT_MODEL.md prints; Landlock, seccomp-bpf, the macOS profile and the Windows job, token and integrity level; the fault-injection hook and `probe` (8.4) |
 | `state` | everything a run can change: the budget, the program's arguments, Python handles, the import root |
 | `recorder` | `_RunRecorder`, the notes a receipt is made from |
 | `loader` | imports, blame, `_import_refusal` (E515) |
@@ -201,6 +201,7 @@ run has a function to compile (`check_cli.py` measures it).
 | `check_eject.py` | does an ejected program run from a fresh virtual environment with nothing from here, and hold its budget |
 | `check_policies.py` | do the OPA policy and its Kyverno twin ask what they say (`opa` when installed) |
 | `check_eval.py` | does `velaris eval` refuse every relaxation of its profile, honour a stop from outside, kill a worker past its grace, and write a receipt that names its confinement - and does each refusal that confinement claims hold |
+| `check_confine.py` | does the operating system hold what THREAT_MODEL.md's table says it holds, and no more: the runtime itself attempts an effect outside the budget and the kernel refuses it (E319), or lets it through where the table says it is not held, and always lets it through under `--no-confine`; is every escape target stopped at the kernel where the recorded run says it is |
 | `check_receipts.py` | does `receipts diff` name each kind of difference from an audit and from earlier receipts, does `replay` run the recorded bytes or refuse, and does `verify` refuse what it says it refuses |
 | `check_from_contracts.py` | does a witness the prover finds break an `ensures` left to runtime, pass a true one, and is a function with effects refused |
 | `check_impossible.py` | is each class docs/structurally-impossible.md lists tried, and refused |

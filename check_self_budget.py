@@ -860,7 +860,7 @@ KNOWN_ENV = {
     "VELARIS_CONFORMANCE_CORPUS", "VELARIS_PYPI_URL", "VELARIS_NPM_REGISTRY",
     "HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "PYTHONPATH",
     "SOURCE_DATE_EPOCH", "GITHUB_TOKEN", "GITHUB_REPOSITORY",
-    "GITHUB_API_URL"}
+    "GITHUB_API_URL", "VELARIS_FAULT_INJECT"}
 
 
 def env_names_read() -> Any:
@@ -901,6 +901,12 @@ def env_cases() -> None:
          {"VELARIS_CHECK_MEMORY_MB": "1"}, False),
         ("C6 VELARIS_TOKEN set",
          {"VELARIS_TOKEN": "self-budget-token-" + "a" * 24}, False),
+        # the fault-injection hook (8.4) grants a program nothing: a value
+        # that names no fault leaves every audit and every run as they were.
+        # What a value that does name one makes the RUNTIME attempt, and
+        # that the kernel refuses it, is check_confine.py's on every leg
+        ("C14 VELARIS_FAULT_INJECT naming no fault",
+         {"VELARIS_FAULT_INJECT": "widen-the-budget"}, False),
         ("C7 VELARIS_CACHE_DIR naming a directory of planted proof files",
          {"VELARIS_CACHE_DIR": str(cache)}, False),
         ("C11 every other variable velaris/*.py reads, set "

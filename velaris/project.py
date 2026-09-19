@@ -541,6 +541,17 @@ def doctor() -> int:
         lines.append(f"{BAD} compiler self-test failed - please report "
                      f"this at github.com/gowrishankar-infra/"
                      f"velaris-lang/issues")
+    # what the operating system will be asked to hold of a run (8.4)
+    from . import confine as _confine
+    from .budget import Budget
+    from .tables import DEFAULT_ALLOW
+    offered, what = _confine.supported()
+    would = _confine.predict(_confine.os_policy(Budget.parse(DEFAULT_ALLOW)))
+    lines.append(f"{OK if would['level'] != _confine.NONE else OPT} "
+                 f"confinement: {would['level']} for a run under "
+                 f"--allow {DEFAULT_ALLOW} - {what}")
+    if would["level"] != _confine.FULL:
+        lines.append(f"       why: {would['reason']}")
     print(f"velaris doctor - {VERSION}")
     print("-" * 60)
     for ln in lines:

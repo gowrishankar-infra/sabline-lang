@@ -1214,7 +1214,10 @@ it did. It is an in-toto Statement of the predicate type
    "budget": "clock,fs:read:/work/report.txt,fs:write:/work/report.txt,io,rand",
    "run_parameters": {"seed": null, "freeze_time": null, "timeout": null,
                       "max_memory_mb": null, "max_read_bytes": 67108864,
-                      "confinement": "none"},
+                      "confinement": "none",
+                      "confinement_reason": "a run in the caller's own process is not confined: ...",
+                      "confinement_layers": [],
+                      "os_policy_sha256": "9f2c..."},
    "effects_used": {"clock": 1, "fs": 2, "io": 4, "rand": 1},
    "refusals": [],
    "declassifications": [],
@@ -1226,7 +1229,7 @@ it did. It is an in-toto Statement of the predicate type
 |---|---|
 | `subject` | the program by the sha256 of the text that ran - named as given, or `<source>` - then each file it imported: the subjects `velaris attest` writes for the same bytes, so an attestation and a receipt of one program match by digest |
 | `budget` | the budget the run had, in the budget grammar, paths absolute |
-| `run_parameters` | `seed` and `freeze_time`; `timeout` and `max_memory_mb`, null when there were none; `max_read_bytes`; `confinement`, `"none"` when the budget was the only boundary |
+| `run_parameters` | `seed` and `freeze_time`; `timeout` and `max_memory_mb`, null when there were none; `max_read_bytes`; and, from 8.4, what the operating system held of the run: `confinement` - `"full"`, `"partial"`, or `"none"` when the budget was the only boundary - `confinement_reason`, `confinement_layers` and `os_policy_sha256` ([docs/confinement.md](docs/confinement.md)). Until 8.4 `confinement` was `"none"` everywhere but under `velaris eval`, where it named a mechanism |
 | `effects_used` | each effect and how many operations the budget let through; null when the run was killed before it could say |
 | `refusals` | `{"code", "effect", "line", "stopped", "times"}` for each place the budget refused - `stopped` is false for a refused redirect, which the program is told about and may carry on from |
 | `declassifications` | `{"reason", "line", "times"}` for each place the program declassified |
@@ -1274,6 +1277,35 @@ A signed receipt says its signer ran this Velaris on these bytes, under
 this budget, and saw this run. It is no stronger than the machine it ran
 on, and it says nothing about any other run.
 
+## The operating system holds the budget too (8.4)
+
+A run with a `timeout` or a `max_memory_mb`, every `Pool` worker and every
+run on either door asks the operating system to hold its budget before the
+program's first statement: Landlock and seccomp-bpf on Linux, a sandbox
+profile on macOS, a job object, a token without privileges and a low
+integrity level on Windows. Nothing changes for a program that stays inside
+its budget. The receipt's `run_parameters` say what the run got -
+`confinement` is `full`, `partial` or `none`, with `confinement_reason` -
+and [docs/confinement.md](docs/confinement.md) says what each system holds
+and what it leaves.
+
+```python
+result = velaris.run(source, allow={"io"}, timeout=30)
+result.receipt["predicate"]["run_parameters"]["confinement"]   # "full" on Linux
+
+velaris.run(source, timeout=30, confine=False)                 # do not ask
+velaris.Pool(size=4, allow={"io"}, confine=False)
+velaris.PoolRegistry(confine=False)
+```
+
+A `run()` with neither limit happens in your process, which Velaris does not
+confine - it could not be taken off again - and its receipt says `none` and
+why. A `Pool` holds reads only when it is given an `import_root`, as both
+doors give theirs; without one its workers must be able to read whatever
+`.vel` file an import names. `velaris serve --no-confine` and `python -m
+velaris_mcp --no-confine` are the operator's switch on the doors, and no
+request can carry it.
+
 ## A run as an evaluation harness runs it (8.3)
 
 <!-- illustrative: runs a program and writes its receipt -->
@@ -1284,8 +1316,9 @@ velaris eval --confinement-probe
 
 `velaris eval` runs one program under a profile its command line cannot
 relax: no net, ffi or env; time and memory limits always; a stop from
-outside honoured and recorded; the worker confined where the operating
-system offers it, and the level in the receipt; and a receipt always,
+outside honoured and recorded; the worker confined by the operating
+system, fully or partly, the level in the receipt, and no run at all where
+the system holds none of it (8.4); and a receipt always,
 outside every grant or sent to a URL. [docs/eval.md](docs/eval.md) says
 exactly what it guarantees and what it does not.
 

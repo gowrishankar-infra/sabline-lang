@@ -33,11 +33,34 @@ def _receipt_subjects(entry: str, name: str, entry_bytes: bytes,
     return subjects
 
 
-def _run_parameters(seed: Any, freeze_time: Any, timeout: Any, max_memory_mb: Any) -> dict[str, Any]:
+def _confinement_fields(confinement: Any) -> dict[str, Any]:
+    """A confinement report as a receipt's run_parameters say it (8.4): the
+    level, why it is that level, the layers that were applied, and the
+    sha256 of the OS policy derived from the budget."""
+    said = confinement if isinstance(confinement, dict) else {}
+    level = str(said.get("level") or "none")
+    return {"confinement": level if level != "pending" else "none",
+            "confinement_reason": str(
+                said.get("reason") or "nothing was asked of the operating "
+                "system") if level != "pending" else
+            "the run stopped before its first statement, where the "
+            "confinement is applied",
+            "confinement_layers": [str(x) for x in said.get("layers") or []],
+            "os_policy_sha256": said.get("policy_sha256")}
+
+
+def _run_parameters(seed: Any, freeze_time: Any, timeout: Any, max_memory_mb: Any,
+                    confinement: Any = None) -> dict[str, Any]:
     """What a run was given besides its budget, as its receipt says it.
-    ValueError for a freeze_time that is not an instant."""
+    ValueError for a freeze_time that is not an instant. `confinement` is
+    the report of what the operating system held (velaris/confine.py); not
+    given, it is what was applied to this process, and none when nothing
+    was."""
     import datetime
+    from . import confine as _confine
     frozen = _frozen_epoch(freeze_time)
+    if confinement is None:
+        confinement = _confine.current() or _state.WORKER_CONFINEMENT
     return {"seed": None if seed is None else int(seed),
             "freeze_time": None if frozen is None else
             datetime.datetime.fromtimestamp(frozen, datetime.timezone.utc)
@@ -46,7 +69,7 @@ def _run_parameters(seed: Any, freeze_time: Any, timeout: Any, max_memory_mb: An
             "max_memory_mb": (None if max_memory_mb is None
                               else int(max_memory_mb)),
             "max_read_bytes": _state.MAX_READ_BYTES,
-            "confinement": "none"}
+            **_confinement_fields(confinement)}
 
 
 def receipt_statement(recorder: Any, *, name: Any, entry_bytes: Any, budget: Any, parameters: Any,

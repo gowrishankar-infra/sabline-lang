@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Stability - Velaris 8.3.1</title>
+<title>Stability - Velaris 8.4.0</title>
 <meta name="description" content="What this project will not change without a major version, what it does not promise to keep, the rules for changing either, and the record of the times it ...">
-<meta name="velaris-version" content="8.3.1">
+<meta name="velaris-version" content="8.4.0">
 <link rel="canonical" href="https://velaris-lang.dev/stability.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
@@ -18,7 +18,7 @@
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
 <a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<a class="badge" href="versions.html" aria-label="Version 8.4.0, all versions"><span>8.4.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,7 +52,7 @@
 <ul><li><a href="stability.html" aria-current="page">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-2.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -355,6 +355,23 @@ redirect to a host outside the URL's origin.</strong></li>
 (rule 3). <code>velaris.audit/1</code> gains <code>ffi_native</code> within version 1 (an
 addition, not a break), and the invocation log gains an optional
 <code>run_params</code>. Nothing published before 8.0 is moved.</p>
+<p><strong>8.4 (minor): a default that refuses nothing a budget allows.</strong> From 8.4
+a run in a process of its own asks the operating system to hold its budget
+(docs/confinement.md). It is recorded here because it is a default that
+changed, and a reader of this file should find every one. It is not a
+break by this file's rules: a program that compiles and runs under 8.3.1
+inside its budget compiles and runs the same way, with the same output and
+the same exit status, because what the system is asked to refuse is only
+what the budget already refused - and a granted <code>ffi</code> module the table does
+not know widens the OS policy to nothing rather than risk refusing what it
+needs. <code>--no-confine</code> and <code>confine=False</code> restore 8.3.1 exactly. Two things
+a consumer of documents can see: a receipt's <code>run_parameters.confinement</code>,
+<code>"none"</code> in 8.3 for every run but <code>velaris eval</code>'s, is now the level
+(<code>full</code>, <code>partial</code>, <code>none</code>) with three fields beside it, and under <code>velaris eval</code> the mechanism names 8.3 wrote there (<code>landlock-net</code>, <code>landlock</code>,
+<code>job-one-process</code>, <code>sandbox-exec</code>) moved to <code>confinement_layers</code>; and
+<code>velaris eval</code>, which 8.3 ran under the budget alone where the system
+offered nothing, now refuses to run there, which is the one refusal 8.4
+adds and is of a command documented as provisional.</p>
 <p><strong>8.1 (minor), and two refusals it adds.</strong> Both are listed in its CHANGELOG
 under "What 8.1 refuses that 8.0 did not", and are recorded here so the
 record stays whole.</p>
@@ -381,7 +398,7 @@ this applies that reading to the library. A check that needs longer passes
 </ul>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/STABILITY.md">STABILITY.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/STABILITY.md">STABILITY.md</a> by build_docs.py, for Velaris 8.4.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#what-semantic-versioning-covers">What semantic versioning covers</a></li><li><a href="#what-it-does-not-cover">What it does not cover</a></li><li><a href="#the-rules">The rules</a><ul><li><a href="#deprecations-in-force">Deprecations in force</a></li></ul></li><li><a href="#breaks-we-have-made">Breaks we have made</a></li></ul></nav>

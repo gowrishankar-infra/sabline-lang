@@ -321,11 +321,19 @@ operators set ceilings callers cannot exceed, and a GitHub Action that
 runs the capability check and uploads findings as SARIF. Every error
 has a stable code; the compiler's table holds 62.
 
-The budget is not a security boundary. It is enforced by an interpreter
-written in Python, in the same process as the compiler and, unless a
-limit is set, the program. It is a guard against a program doing what
-it was not asked to, and it belongs inside an operating-system sandbox
-when the stakes warrant one.
+The budget is not a security boundary by itself. It is enforced by an
+interpreter written in Python, in the same process as the compiler and,
+unless a limit is set, the program. From Velaris 8.4.0, which postdates
+the version the rest of this section describes, a run in a process of
+its own also asks the operating system to hold the same budget before
+the program's first statement runs: Landlock and seccomp-bpf on Linux,
+where a run under the default budget is fully held; a sandbox profile
+on macOS and a job object with a lowered token on Windows, where it is
+partly held. One function derives the operating-system policy from the
+budget, and each run's receipt says which level it got and why. It
+remains a guard against a program doing what it was not asked to, and
+it still belongs inside a separate account or a virtual machine when
+the stakes warrant one.
 
 ## 4. Evaluation
 
@@ -352,8 +360,9 @@ running, missed, or, for a control, clean or a false positive - and
 after every run the harness observes whether the dangerous effect
 actually happened: a file created, a request received by a local
 listener, a subprocess's sentinel printed. The committed results were
-produced by Velaris 8.3.0, Deno 2.9.6 and Python 3.13.13 on Windows 11,
-in ten consecutive runs that wrote identical files, and the 68 programs
+produced by Velaris 8.4.0, Deno 2.9.6 and Python 3.13.13 on Windows 11;
+every program kept the verdict it had at Velaris 8.3.0, where ten
+consecutive runs had written identical files, and the 68 programs
 of the first thirteen categories kept every verdict they had at Velaris
 8.2.0. Before that, the 67 programs of the first twelve categories kept
 every verdict and every line of evidence they had at Velaris 7.1.1, and
@@ -371,7 +380,7 @@ evidence.
 | Python | 0 | 31 | 35 | 0 |
 
 Table 1: the 66 dangerous programs and the 10 controls, from
-`benchmark/results.json` at Velaris 8.3.0.
+`benchmark/results.json` at Velaris 8.4.0.
 
 Where the catches come from differs by tool. Velaris's catches before
 running come from effects in signatures (the file, network and module
@@ -689,10 +698,24 @@ These are stated as velaris-lang's THREAT_MODEL.md states them.
   soundness and sandbox reports are promised within a week, and nothing
   else is promised.
 - **Not a security boundary.** The budget is enforced by a Python
-  interpreter in the same process as the compiler. A defective or
-  altered `velaris.py` holds nothing. Side channels, resource use below
-  the limits, where a granted host name resolves, and what a granted
-  host does with a request are outside the model.
+  interpreter in the same process as the compiler, and an altered
+  compiler holds nothing. Until 8.4.0 a defective one held nothing
+  either. From 8.4.0 the operating system holds the same budget under
+  the interpreter, and a test on every platform has the runtime itself
+  attempt a read, a write, a connection, a new process and a signal
+  outside the budget: on Linux the kernel refuses all five; on macOS
+  reads are refused only under the home directory; on Windows a new
+  process is refused, a write is refused only under a budget that
+  grants none, and reads and the network are not held at all. With the
+  interpreter's own budget checks removed, 19 of the 39 applicable
+  escape attempts of the suites still fail on Linux, at the kernel,
+  and 8 of 38 on Windows; the rest - a host inside a `net` grant, the
+  operation counts, `env`, and a Python object reached inside the same
+  process - are held by the language alone. A granted `ffi` module
+  widens what the system is asked to hold, to nothing for `ffi:os`.
+  Side channels, resource use below the limits, where a granted host
+  name resolves, and what a granted host does with a request are
+  outside the model.
 - **The ratchet.** The declared surface cannot widen without the check
   failing (section 2.4); these are its known limits, each held as a case
   in `check_ratchet.py` and in the corpus with the outcome it has today.
@@ -750,9 +773,12 @@ that are recorded in its changelog.
 
 This paper describes Velaris 4.2.1 and velaris-spec 0.5.1, and every
 number in it was verified against those two tags except the
-benchmark's: the benchmark figures of the abstract, section 4.1,
-Table 1 and the conclusion are from `benchmark/results.json` at
-Velaris 8.3.0. Releases after 4.2.1
+benchmark's and the confinement figures of section 6: the benchmark
+figures of the abstract, section 4.1, Table 1 and the conclusion are
+from `benchmark/results.json` at Velaris 8.4.0, and section 6's counts
+of escape attempts stopped by the kernel are from
+`tests/confine/kernel-linux.json` and `kernel-windows.json` at the same
+tag. Releases after 4.2.1
 postdate the paper and are not reflected in it: 4.3.0 added `Money of
 CUR`, an exact decimal whose split is proven to add back up; 4.3.1 made
 a proof that exhausts its time budget say so rather than fall silently
@@ -770,9 +796,11 @@ proof cache to report a false promise as proven; 7.2.0 changed how
 releases are made; 8.0.0 made four changes that break programs or
 commands 7.x accepted, and added the benchmark's thirteenth category;
 8.1.0 added receipts of a run; 8.2.0 split the compiler into one
-module per stage and keeps no proof cache at all; and 8.3.0 added an
+module per stage and keeps no proof cache at all; 8.3.0 added an
 evaluation profile, a comparison and a replay of receipts, and the
-benchmark's fourteenth and fifteenth categories. Later
+benchmark's fourteenth and fifteenth categories; and 8.4.0 asks the
+operating system to hold a run's budget, which sections 3 and 6 now
+describe. Later
 patches corrected documentation and packaging. What each one changed is
 in the two repositories' changelogs.
 The tags below are therefore the ones to check out, not the current
@@ -786,10 +814,13 @@ at their tags:
     git -C velaris-spec checkout v0.5.1
     cd velaris-lang
 
-    # Table 1, at v8.3.0 (Deno 2.x on PATH for the Deno column; 4 to 8 minutes)
-    git checkout v8.3.0
+    # Table 1, at v8.4.0 (Deno 2.x on PATH for the Deno column; 4 to 8 minutes)
+    git checkout v8.4.0
     pip install ".[full,test]"         # the prover, the native compiler, jsonschema
     python benchmark/run.py --check    # exit 1 if any verdict differs
+
+    # section 6's confinement counts, on the system they are for
+    python check_confine.py            # fails if a recorded kernel stop gets through
 
     # everything else, from v4.2.1
     git checkout v4.2.1
@@ -819,9 +850,10 @@ Where each number comes from:
 
 | Number | File |
 |---|---|
-| 76 programs, 66 dangerous, 10 controls, fifteen categories; 52/12/2, 8/34/24, 0/31/35; 0 false positives; Velaris 8.3.0, Deno 2.9.6, Python 3.13.13, Windows 11; 5 s timeout, 256 MB cap; the misses `04c` and `09c`; 61 of 63 in categories 1 to 11 and 13 to 15; category 12's three upgrades and one control; category 13's program, its verdicts and E318; categories 14 and 15 | `benchmark/results.json` at v8.3.0 |
-| three of each six programs written against the tools; about four minutes for a full run, five to eight on a slower machine | `benchmark/README.md` at v8.3.0 |
-| the 68 programs of categories 1 to 13 unchanged in verdict since 8.2.0; ten identical runs at 8.3.0; categories 14 and 15 added in 8.3 | `benchmark/results.json` at v8.2.0 and at v8.3.0, and `CHANGELOG.md`, 8.3 entry |
+| 76 programs, 66 dangerous, 10 controls, fifteen categories; 52/12/2, 8/34/24, 0/31/35; 0 false positives; Velaris 8.4.0, Deno 2.9.6, Python 3.13.13, Windows 11; 5 s timeout, 256 MB cap; the misses `04c` and `09c`; 61 of 63 in categories 1 to 11 and 13 to 15; category 12's three upgrades and one control; category 13's program, its verdicts and E318; categories 14 and 15 | `benchmark/results.json` at v8.4.0 |
+| three of each six programs written against the tools; about four minutes for a full run, five to eight on a slower machine | `benchmark/README.md` at v8.4.0 |
+| the 68 programs of categories 1 to 13 unchanged in verdict since 8.2.0; ten identical runs at 8.3.0; categories 14 and 15 added in 8.3; every verdict unchanged at 8.4.0 | `benchmark/results.json` at v8.2.0, v8.3.0 and v8.4.0, and `CHANGELOG.md`, 8.3 and 8.4 entries |
+| the runtime's own five attempts and what each system refuses; 19 of 39 and 8 of 38 escape attempts stopped at the kernel with the budget checks removed | `check_confine.py`, and `tests/confine/kernel-linux.json` and `kernel-windows.json`, at v8.4.0 |
 | the 67 programs of categories 1 to 12 unchanged in verdict and evidence since 7.1.1 | `benchmark/results.json` at v7.1.1 and at v8.2.0 |
 | category 13 added in 8.0 | `CHANGELOG.md`, 8.0 entry |
 | ten identical runs at 7.1.0; the verdicts of the 63 earlier programs unchanged from 4.1.0; the run at 7.1.1 differing only in its version | `CHANGELOG.md`, 7.1 and 7.1.1 entries |

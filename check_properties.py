@@ -1278,14 +1278,19 @@ KNOWN_AUDIT_FIELDS = {
     "schema", "velaris_version", "ok", "problems", "effects", "functions",
     "proven_share", "safe_command", "warnings", "ffi_modules",
     "loops_unshown", "contract_coverage", "fs_paths", "net_hosts",
-    "ffi_any", "counts", "prover", "secrets", "ffi_native"}
+    "ffi_any", "counts", "prover", "secrets", "ffi_native", "confinement"}
 # what moves with any effect (checked in detail below) ...
 MOVES_WITH_ANY = {"effects", "safe_command", "functions"}
 # ... and what moves with one effect in particular (check_metamorphic.py)
 MOVES_WITH = {"io": set(), "clock": set(), "rand": set(),
               "env": {"secrets"}, "declassify": {"secrets"},
-              "fs": {"fs_paths", "counts"}, "net": {"net_hosts", "counts"},
-              "ffi": {"ffi_modules", "ffi_native", "warnings"}}
+              # confinement (8.4) is derived from the budget: a write grant
+              # changes what Windows holds, a host what any kernel can, and
+              # a Python module widens the OS policy
+              "fs": {"fs_paths", "counts", "confinement"},
+              "net": {"net_hosts", "counts", "confinement"},
+              "ffi": {"ffi_modules", "ffi_native", "warnings",
+                      "confinement"}}
 
 
 def audit_doc(src: str) -> dict[Any, Any]:

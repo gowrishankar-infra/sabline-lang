@@ -483,7 +483,30 @@ def _unfinished_audit(problem: "Problem") -> AuditResult:
         fs_paths={"read": [], "write": [], "read_any": False,
                   "write_any": False},
         net_hosts={"hosts": [], "any": False}, ffi_any=False, counts=None,
-        prover=False, secrets=None, ffi_native={})
+        prover=False, secrets=None, ffi_native={}, confinement=None)
+
+
+def _audit_confinement(safe_budget: str) -> dict[str, Any] | None:
+    """The audit's `confinement` (8.4): what a run under the audit's
+    safe_command gets from the operating system, on each of the three
+    systems where every layer that system has is there - the level and why -
+    and the granted Python modules that widen the OS policy, each with what
+    it widens it to. It reads nothing of the machine, so the audit is the
+    same bytes wherever it is made; what one run actually got is in its
+    receipt, and what this machine offers is `velaris doctor`'s to say.
+    None when the budget does not parse."""
+    from . import confine as _confine
+    try:
+        policy = _confine.os_policy(Budget.parse(
+            "" if safe_budget == "''" else safe_budget))
+    except BudgetError:
+        return None
+    systems = {}
+    for system in _confine.SYSTEMS:
+        would = _confine.predict(policy, system=system)
+        systems[system] = {"level": would["level"],
+                           "reason": would["reason"]}
+    return {"widened_by": policy["widened_by"], "systems": systems}
 
 
 @_on_big_stack
@@ -615,6 +638,8 @@ def _audit_here(source: str, *, path: str | None = None) -> AuditResult:
             counts=counts,
             secrets=secrets,
             ffi_native=_ffi_native(modules_named) if modules_named else {},
+            confinement=_audit_confinement(",".join(_safe_grants(
+                effects, modules_named, paths_named, hosts_named)) or "''"),
             prover=bool(compiled and report.get("proofs")),
             warnings=warnings)
     finally:
@@ -627,7 +652,7 @@ def run(source: str, *, path: str | None = None,
         native: bool = True, timeout: float | None = None,
         max_memory_mb: int | None = None,
         seed: int | None = None, freeze_time: Any = None,
-        import_root: Any = None) -> RunResult:
+        import_root: Any = None, confine: bool = True) -> RunResult:
     """Run a program under an effect budget and capture what it did.
 
     allow={"io"} means it cannot read files, reach the network, call
@@ -662,13 +687,21 @@ def run(source: str, *, path: str | None = None,
     The result's `receipt` (8.1) is the signed-to-be record of this run
     (receipt_statement). `import_root` as in check(): the directory
     imports must stay inside, for a source someone else wrote.
+
+    From 8.4 a run in a separate process - one with a timeout or a memory
+    cap - also asks the operating system to hold its budget, once the
+    program has been read and compiled (velaris/confine.py; the receipt's
+    run_parameters name the level). confine=False does not ask. A run with
+    neither limit happens in the caller's process, which Velaris does not
+    confine - it could not be taken off again - and its receipt says
+    `none`, and why.
     """
     if timeout is not None or max_memory_mb is not None:
         return _run_bounded(source, path=path, allow=allow, deny=deny,
                             args=args, stdin=stdin, native=native,
                             timeout=timeout, max_memory_mb=max_memory_mb,
                             seed=seed, freeze_time=freeze_time,
-                            import_root=import_root)
+                            import_root=import_root, confine=confine)
     budget = _budget_from(allow, deny)
     saved = _state.IMPORT_ROOT
     if import_root is not None:
@@ -708,11 +741,19 @@ def _run_in_process(source: Any, *, path: Any, budget: Any, args: Any, stdin: An
                               freeze_time=freeze_time, name=name)
     finally:
         vars(_state)["RUN_RECORDER"] = saved_recorder
+    from . import confine as _confine
+    confinement = _confine.current() or _state.WORKER_CONFINEMENT or \
+        _confine.unconfined(
+            _confine.os_policy(budget, confine=False),
+            "a run in the caller's own process is not confined: it could "
+            "not be taken off again; pass timeout= or max_memory_mb=, or "
+            "use a Pool")
     result.receipt = receipt_statement(
         recorder, name=_entry_name(path, name),
         entry_bytes=source.encode("utf-8", "surrogatepass"),
         budget=budget.spec(),
-        parameters=_run_parameters(seed, freeze_time, None, None),
+        parameters=_run_parameters(seed, freeze_time, None, None,
+                                   confinement=confinement),
         result=result, started_at=started_at,
         wall_time_ms=(_time.monotonic() - t0) * 1000)
     return result
@@ -741,6 +782,7 @@ def _run_program(source: Any, *, path: Any, budget: Any, args: Any, stdin: Any, 
             load_program(where, source if path else None, loaded=read)
         except Exception:                  # the check below says why
             pass
+        _state.PROGRAM_FILES[:] = [where] + [str(p) for p in read]
         if _state.RUN_RECORDER is not None:
             _state.RUN_RECORDER.set_subjects(_receipt_subjects(
                 where, _entry_name(path, name),
@@ -1121,7 +1163,7 @@ def memory_cap_is_enforced() -> bool:
 
 def _run_bounded(source: Any, *, path: Any, allow: Any, deny: Any, args: Any, stdin: Any, native: Any,
                  timeout: Any, max_memory_mb: Any, seed: Any = None, freeze_time: Any = None,
-                 import_root: Any = None) -> RunResult:
+                 import_root: Any = None, confine: bool = True) -> RunResult:
     """run() in a child process that can be killed: a pool of one worker,
     made for this run and closed after it.
 
@@ -1134,7 +1176,10 @@ def _run_bounded(source: Any, *, path: Any, allow: Any, deny: Any, args: Any, st
     has one."""
     with Pool(size=1, allow=allow, deny=deny, timeout=timeout,
               max_memory_mb=max_memory_mb, native=native,
-              import_root=import_root) as pool:
+              import_root=import_root, confine=confine) as pool:
+        # one run: the worker reads and compiles it from wherever its
+        # imports are, and is confined at its first statement (8.4)
+        pool._confine_at = "run"
         return pool.run(source, stdin=stdin, args=args, path=path,
                         seed=seed, freeze_time=freeze_time)
 

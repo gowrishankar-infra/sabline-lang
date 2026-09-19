@@ -18,8 +18,8 @@ authors:
 repository-code: "https://github.com/gowrishankar-infra/velaris-lang"
 url: "https://velaris-lang.dev/"
 license: MIT
-version: 8.3.1
-date-released: "2026-09-15"
+version: 8.4.0
+date-released: "2026-09-19"
 keywords:
   - programming language
   - effect system

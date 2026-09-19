@@ -99,7 +99,7 @@ REQUEST_FILE = ".velaris-request.vel"
 USAGE = ("usage: python -m velaris_mcp [--max-allow GRANTS] "
          "[--max-timeout SECONDS] [--max-memory-mb MB] "
          "[--log-file PATH] [--log full|minimal] [--root DIR] "
-         "[--check-timeout SECONDS] [--check-memory-mb MB]")
+         "[--check-timeout SECONDS] [--check-memory-mb MB] [--no-confine]")
 
 # One pool per distinct budget a caller asks for, made the first time
 # that budget is seen and closed when the server stops. An assistant
@@ -108,11 +108,16 @@ USAGE = ("usage: python -m velaris_mcp [--max-allow GRANTS] "
 # from the request, inside the ceiling, and a pool never mixes two.
 POOLS = None
 
+# Whether each worker asks the operating system to hold its budget too
+# (8.4). The operator's --no-confine turns it off, and says so on stderr; a
+# tool call cannot.
+CONFINE = True
+
 
 def pools() -> Any:
     global POOLS
     if POOLS is None:
-        POOLS = velaris.PoolRegistry()
+        POOLS = velaris.PoolRegistry(confine=CONFINE)
     return POOLS
 
 
@@ -135,7 +140,7 @@ def checker() -> Any:
     if CHECKER is None:
         CHECKER = velaris.Pool(size=1, timeout=CHECK_TIMEOUT,
                                max_memory_mb=CHECK_MEMORY_MB,
-                               import_root=root())
+                               import_root=root(), confine=CONFINE)
     return CHECKER
 
 
@@ -172,11 +177,18 @@ def configure(argv: list[Any]) -> str | None:
     """Read the operator's flags. None when they are fine, else what is
     wrong with them."""
     global CEILING, LOG, MAX_TIMEOUT, MAX_MEMORY_MB, ROOT
-    global CHECK_TIMEOUT, CHECK_MEMORY_MB
+    global CHECK_TIMEOUT, CHECK_MEMORY_MB, CONFINE
     opts = {}
     i = 0
     while i < len(argv):
         a = argv[i]
+        if a == "--no-confine":
+            CONFINE = False
+            print("velaris mcp: --no-confine: the operating system is not "
+                  "asked to hold any run; the budget is the only boundary",
+                  file=sys.stderr)
+            i += 1
+            continue
         if a in ("--max-allow", "--max-timeout", "--max-memory-mb",
                  "--log-file", "--log", "--root", "--check-timeout",
                  "--check-memory-mb"):

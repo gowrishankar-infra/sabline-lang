@@ -319,6 +319,25 @@ Three new error codes, E204, E317 and E318; none reuses a meaning
 addition, not a break), and the invocation log gains an optional
 `run_params`. Nothing published before 8.0 is moved.
 
+**8.4 (minor): a default that refuses nothing a budget allows.** From 8.4
+a run in a process of its own asks the operating system to hold its budget
+(docs/confinement.md). It is recorded here because it is a default that
+changed, and a reader of this file should find every one. It is not a
+break by this file's rules: a program that compiles and runs under 8.3.1
+inside its budget compiles and runs the same way, with the same output and
+the same exit status, because what the system is asked to refuse is only
+what the budget already refused - and a granted `ffi` module the table does
+not know widens the OS policy to nothing rather than risk refusing what it
+needs. `--no-confine` and `confine=False` restore 8.3.1 exactly. Two things
+a consumer of documents can see: a receipt's `run_parameters.confinement`,
+`"none"` in 8.3 for every run but `velaris eval`'s, is now the level
+(`full`, `partial`, `none`) with three fields beside it, and under `velaris
+eval` the mechanism names 8.3 wrote there (`landlock-net`, `landlock`,
+`job-one-process`, `sandbox-exec`) moved to `confinement_layers`; and
+`velaris eval`, which 8.3 ran under the budget alone where the system
+offered nothing, now refuses to run there, which is the one refusal 8.4
+adds and is of a command documented as provisional.
+
 **8.1 (minor), and two refusals it adds.** Both are listed in its CHANGELOG
 under "What 8.1 refuses that 8.0 did not", and are recorded here so the
 record stays whole.

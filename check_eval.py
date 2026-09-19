@@ -99,17 +99,14 @@ def receipt_of(name: str) -> dict[str, Any]:
 
 
 def expected_level() -> set[str]:
-    """What this platform should give, as confine.py names it."""
-    if os.name == "nt":
-        return {confine.WINDOWS_JOB} if velaris.memory_cap_is_enforced() \
-            else {confine.NONE}
+    """The level this platform should give a run under the profile, as
+    velaris/confine.py names levels from 8.4: full where Landlock and
+    seccomp are both there, partial on macOS and on Windows. Never none:
+    the profile refuses to run there."""
     if sys.platform.startswith("linux"):
-        abi = confine.landlock_abi()
-        return ({confine.NONE} if abi < 1 else
-                {confine.LANDLOCK} if abi < 4 else {confine.LANDLOCK_NET})
-    if sys.platform == "darwin":
-        return {confine.MAC_SANDBOX, confine.NONE}
-    return {confine.NONE}
+        return {confine.FULL} if confine.landlock_abi() >= 3 \
+            and confine.seccomp_arch() else {confine.PARTIAL}
+    return {confine.PARTIAL}
 
 
 def refusals() -> None:

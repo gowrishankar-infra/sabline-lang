@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Changelog: 8.x: 8.2 to 8.0 - Velaris 8.3.1</title>
+<title>Changelog: 8.x: 8.2.1 to 8.0 - Velaris 8.4.0</title>
 <meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
-<meta name="velaris-version" content="8.3.1">
+<meta name="velaris-version" content="8.4.0">
 <link rel="canonical" href="https://velaris-lang.dev/changelog-8-2.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
@@ -18,7 +18,7 @@
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
 <a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<a class="badge" href="versions.html" aria-label="Version 8.4.0, all versions"><span>8.4.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,13 +52,86 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html" aria-current="page">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-2.html" aria-current="page">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
-<h1 id="changelog">Changelog: 8.x: 8.2 to 8.0</h1>
+<h1 id="changelog">Changelog: 8.x: 8.2.1 to 8.0</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="821---two-things-that-should-have-been-red">8.2.1 - Two things that should have been red <a class="anchor" href="#821---two-things-that-should-have-been-red" aria-label="Link to this section">#</a></h2>
+<p>A patch release with no features. Under 8.2.0, printing one kind of
+counterexample ended in a Python traceback instead of its error, and the
+release workflow's Marketplace job ended green having published nothing.
+Two gaps are closed with them: <code>velaris capabilities check</code> gets the check
+ceiling, and the perf gate no longer accepts fewer than three runs a side.</p>
+<p>compatibility: <code>velaris capabilities check</code> runs under the ceiling <code>check</code> and <code>audit</code> have had since 8.0 - 60 seconds and 2048 MB, raised with <code>--check-timeout</code> and <code>--check-memory-mb</code>, removed with <code>--no-check-ceiling</code> - and a check past it stops with E613 or E614 and exit 2. A tree whose check takes longer than 60 seconds needs <code>--check-timeout</code>; this repository's takes 0 to 3 seconds on each CI leg. No program that compiled under 8.2.0 is refused, and no report, audit or proof changes.
+api: against 8.2.0 the command line moved in one place: <code>velaris capabilities</code> takes <code>--check-timeout</code> and <code>--check-memory-mb</code>, as <code>check</code> and <code>audit</code> do.</p>
+<h3 id="what-was-wrong">What was wrong <a class="anchor" href="#what-was-wrong" aria-label="Link to this section">#</a></h3>
+<p><strong>A counterexample that could not name a value ended in a traceback.</strong>
+When the prover finds that a call can break its callee's <code>requires</code>
+(E701), the message gives each argument's value in the counterexample. An
+argument the prover does not translate - in the program found, <code>put(...)</code>
+of a map - has no value in the model, and printing it asked Z3 to evaluate
+nothing: <code>check</code>, <code>proofs</code>, <code>audit</code> and the library's <code>check()</code> each ended
+in <code>AttributeError: 'NoneType' object has no attribute 'as_ast'</code> instead of
+E701. The verdict was reached before the printing, and nothing reported
+proven depends on it. Such a value is now shown as <code>&lt;unknown&gt;</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>[E701] this call can break a promise: 'f0' requires false, but 'caller' can call it with p0 = &lt;unknown&gt; - proven without running the program</code></pre></div>
+<p>In that program <code>proofs</code> reports <code>abs_of</code> proven and <code>f0</code> and <code>caller</code>
+checked at runtime. <code>fuzz_parsers.py 30</code> found it under seeds 493132804
+and 769080785, on test.yml's macOS legs for f64552f, which is why no
+release followed that commit; both seeds reproduce it at 8.2.0 on Python
+3.13 and 3.10. The printing dates from 0.13. Which releases could reach it
+was not traced.</p>
+<ul>
+<li><code>check_hostile.py</code> holds the program as found (section 1c: <code>check</code>,
+<code>proofs</code>, <code>audit</code> and <code>velaris.check()</code>).</li>
+<li><code>fuzz_parsers.py</code> runs <code>FIXED_SEEDS</code> after its own seed whenever it is
+given a number of iterations and no <code>--seed</code>, with Python's hash seed
+fixed as <code>--seed</code> fixes it, so every leg runs the two seeds. Run against
+8.2.0's prover, it reports the AttributeError under each of them.</li>
+</ul>
+<p><strong>The Marketplace job ended green having published nothing.</strong> The release
+workflow's <code>vscode</code> job had run with <code>continue-on-error</code> since 2.22, and
+its publish step exited 0 after three Marketplace timeouts. 8.2.0's release
+run (34923131050) reported the job a success with NOT PUBLISHED in its
+summary, and the extension 8.2.0 did not reach the Marketplace in that run.
+Because the job had succeeded, <code>gh run rerun --failed</code> had nothing to
+re-run.</p>
+<p>The job now has no <code>continue-on-error</code>. A timeout is retried up to five
+times, 30, 60, 120, 240 and 480 seconds apart; a failure that is not an
+outage (no token, a token or a manifest the Marketplace refuses) is not
+retried. Whatever the publish step did, the job's last step runs
+<code>release_checks.py published vscode &lt;version&gt; --require --timeout 900</code>,
+which asks the Marketplace until it lists the version and exits 1 if it
+does not, so the job is red whenever the extension is not listed at its
+end. The jobs after it run either way, as before. <code>check_release.py</code> runs
+the job's steps in bash with stand-ins for <code>vsce</code>, <code>npm</code> and <code>sleep</code> -
+every attempt timing out, timeouts that clear, a version listed after a
+timeout, a refused token, no token, a version already listed - and runs a
+failed Marketplace publish, and its re-run, through the job-by-job
+simulation.</p>
+<h3 id="also">Also <a class="anchor" href="#also" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong><code>velaris capabilities check</code> stops at the check ceiling.</strong> It compiled
+every program under the directory in its own process with no ceiling, so
+a program built to stall the type checker held it, and the Action's
+ratchet step, until the job's own timeout; 8.2 listed this as known
+open. <code>check_ratchet.py</code> adds a map literal nested 22 deep to a tree and
+holds the check to E613 after <code>--check-timeout 2</code> and after
+<code>--check-timeout 5</code>. THREAT_MODEL.md's known-open table no longer lists
+it. <code>velaris review</code> has the same gap and stays listed; the Action runs it
+in its pull-request comment step.</li>
+<li><strong>The perf gate compares medians of three runs.</strong> release.yml's <code>perf</code>
+job already ran <code>perf_gates.py --runs 3</code>, and each side's figure was the
+median of its three runs, taken in turns (8.2.0's job logged "round 3 of
+3 done"). What changes is that <code>--against</code> refuses fewer than three runs,
+so no gate compares one run with one run. The limit is still 25%.
+<code>check_release.py</code> holds the gate to one slow or one fast run on either
+side.</li>
+</ul>
+<p>velaris-spec is unchanged.</p>
 <h2 id="82---held-to-it">8.2 - Held to it <a class="anchor" href="#82---held-to-it" aria-label="Link to this section">#</a></h2>
 <p>A minor version with no language features. It is about what holds Velaris
 to what it says: tests, gates, and the work of keeping them running. Along
@@ -254,7 +327,7 @@ a user installs it, with the Action holding a committed
 surviving mutant, per adversarial finding - and nothing scheduled commits;
 MAINTENANCE.md is the long form, including the kill switch and the
 reference-runtime variable reserved for 9.0.</p>
-<h3 id="measured-1">Measured <a class="anchor" href="#measured-1" aria-label="Link to this section">#</a></h3>
+<h3 id="measured-2">Measured <a class="anchor" href="#measured-2" aria-label="Link to this section">#</a></h3>
 <p>Measured by <code>perf_gates.py --against v8.1.1</code> on Windows 11 (AMD64, 16
 CPUs, 4% busy when it began), Python 3.13.13, z3-solver 5.1.0.0 and
 llvmlite 0.49.0: medians of 5 runs after one warm-up. Wall-clock figures;
@@ -293,7 +366,7 @@ proven. No live model was run for this release.</p>
 <p>Mutation, locally for 25 minutes on <code>wrappers</code>: 9 of 17 mutants killed
 (52.9%). The 8 survivors are in <code>strip_secret</code>, <code>currency_clash</code> and
 <code>carries_secret</code>.</p>
-<h3 id="known-open-2">Known open <a class="anchor" href="#known-open-2" aria-label="Link to this section">#</a></h3>
+<h3 id="known-open-3">Known open <a class="anchor" href="#known-open-3" aria-label="Link to this section">#</a></h3>
 <ul>
 <li><strong>A declared effect can move a promise from proven to checked at run
 time.</strong> A call the prover does not model (<code>env</code>, <code>read_file</code>, <code>fetch</code>,
@@ -697,10 +770,10 @@ post, caught before running.</li>
 <p><code>velaris-spec</code> goes to 0.9.0 for the two added <code>velaris.audit/1</code> fields.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.4.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#82---held-to-it">8.2 - Held to it</a></li><li><a href="#811---the-proof-cache-can-no-longer-lie">8.1.1 - The proof cache can no longer lie</a></li><li><a href="#81---receipts-and-what-a-policy-can-ask">8.1 - Receipts, and what a policy can ask</a></li><li><a href="#80---what-the-socket-reaches-and-other-things-the-audit-now-says">8.0 - What the socket reaches, and other things the audit now says</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#821---two-things-that-should-have-been-red">8.2.1 - Two things that should have been red</a></li><li><a href="#82---held-to-it">8.2 - Held to it</a></li><li><a href="#811---the-proof-cache-can-no-longer-lie">8.1.1 - The proof cache can no longer lie</a></li><li><a href="#81---receipts-and-what-a-policy-can-ask">8.1 - Receipts, and what a policy can ask</a></li><li><a href="#80---what-the-socket-reaches-and-other-things-the-audit-now-says">8.0 - What the socket reaches, and other things the audit now says</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>
