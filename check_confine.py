@@ -1019,6 +1019,13 @@ def describe_macos() -> None:
                                   [], None)
     for line in profile.splitlines():
         print("  " + line[:1500])
+    # is a file the profile allows again, under the home directory it
+    # denies, readable? Python's own os.py, and its compiled copy
+    hello = program("describe.vel", HELLO)
+    import importlib.util
+    for target in (os.__file__, importlib.util.cache_from_source(os.__file__)):
+        _code, _out, err = cli(hello, env={confine.FAULT_ENV: f"read:{target}"})
+        print(f"  a read of {target}: {err.strip().splitlines()[0][:300]}")
     print()
 
 
