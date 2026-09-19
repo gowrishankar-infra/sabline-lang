@@ -68,6 +68,8 @@ jobs:
         run: python run_tests.py
       - name: Each stage on its own (unit tests, and the modules' pipeline order)
         run: python run_unit_tests.py
+      - name: The operating system holds the budget too, and says truthfully how much (8.4)
+        run: python check_confine.py
       - name: Native and interpreted agree (random programs)
         run: python fuzz_native.py 60
       - name: The parsers, JSON, CSV, py_json and the contract translator, fuzzed (30 each)
@@ -94,8 +96,6 @@ jobs:
         run: python check_money.py
       - name: The sandbox cannot be escaped
         run: python check_sandbox.py
-      - name: The operating system holds the budget too, and says truthfully how much (8.4)
-        run: python check_confine.py
       - name: A Secret reaches nothing that emits it
         run: python check_secret.py
       - name: A worker pool leaks nothing between programs

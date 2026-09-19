@@ -349,11 +349,15 @@ def table_cases() -> None:
 
 def attempts(outside: Path, port: int) -> dict[str, str]:
     (outside / "held.txt").write_text("outside every grant", encoding="utf-8")
-    return {"read": f"read:{outside / 'held.txt'}",
-            "write": f"write:{outside / 'written.txt'}",
-            "connect": f"connect:127.0.0.1:{port}",
-            "spawn": "spawn",
-            "signal": f"signal:{os.getpid()}"}
+    tried = {"read": f"read:{outside / 'held.txt'}",
+             "write": f"write:{outside / 'written.txt'}",
+             "connect": f"connect:127.0.0.1:{port}",
+             "spawn": "spawn"}
+    if PLATFORM != "windows":
+        # Windows has no signal to send; os.kill's 0 there is CTRL_C_EVENT,
+        # which would interrupt this suite and whatever started it
+        tried["signal"] = f"signal:{os.getpid()}"
+    return tried
 
 
 def honesty_cases() -> None:

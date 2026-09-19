@@ -1404,6 +1404,13 @@ def inject_fault(confinement: dict[str, Any] | None) -> None:
             with socket.create_connection((host, int(port)), timeout=5):
                 pass
         elif kind == "signal":
+            if os.name == "nt":
+                # Windows has no signal to send: os.kill's 0 there is
+                # CTRL_C_EVENT, which interrupts the console's every process
+                print(f"velaris: fault injection: {what} is not attempted "
+                      f"on Windows, which has no such signal",
+                      file=sys.stderr)
+                return
             os.kill(int(rest), 0)
         elif kind == "unix-socket":
             import socket
