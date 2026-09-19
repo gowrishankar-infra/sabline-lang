@@ -1005,8 +1005,28 @@ def target_cases(record: bool) -> None:
            "through it now", not worse, worse)
 
 
+def describe_macos() -> None:
+    """On macOS, what the profile is built from, for whoever reads a failed
+    leg: where Python is, as named and as resolved, and the profile itself."""
+    print("macOS: what the sandbox profile is built from")
+    print("-" * 62)
+    for name in ("prefix", "base_prefix", "exec_prefix", "executable"):
+        value = str(getattr(sys, name))
+        print(f"  sys.{name}: {value}
+    resolves to {os.path.realpath(value)}")
+    print(f"  home: {Path.home()} -> {os.path.realpath(Path.home())}")
+    print(f"  os.__file__: {os.__file__} -> {os.path.realpath(os.__file__)}")
+    profile = confine.mac_profile(confine.os_policy(Budget.parse("io")), [],
+                                  [], None)
+    for line in profile.splitlines():
+        print("  " + line[:1500])
+    print()
+
+
 def main() -> int:
     record = "--record" in sys.argv[1:]
+    if PLATFORM == "macos":
+        describe_macos()
     policy_cases()
     filter_cases()
     table_cases()
