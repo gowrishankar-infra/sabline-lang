@@ -94,7 +94,9 @@ ENFORCES: tuple[tuple[str, str, str, str], ...] = (
      "Landlock: no file read, written, made or removed but what the "
      "interpreter itself needs (below)",
      "writes refused everywhere but the private temporary directory; reads "
-     "refused under the home directory and /Volumes",
+     "refused under the home directory and /Volumes, but for the names in "
+     "the working directory and in each directory above it, which getcwd "
+     "reads",
      "low integrity level: no write to anything of the user's; reads not "
      "held"),
     ("`fs:read:DIR`",
@@ -751,7 +753,6 @@ def _apply_linux(policy: dict[str, Any], reads: list[str], writes: list[str],
     # everything this needs is imported and opened before anything is held
     plan = _landlock_plan(policy, abi, reads, writes, temp, read_any) \
         if abi else None
-    threads_before = _thread_count()
     failed = None
     if plan is not None:
         failed = _landlock_restrict(plan, abi)
@@ -768,9 +769,18 @@ def _apply_linux(policy: dict[str, Any], reads: list[str], writes: list[str],
                 covered += 1
         if failed is None:
             layers.append(f"{LANDLOCK}-abi{abi}")
-            if threads_before > covered:
-                notes.append(f"{threads_before - covered} thread(s) started "
-                             f"before confinement are not held by Landlock")
+            # a thread that has ended stays listed until the kernel has
+            # reaped it, so one on its way out is given a moment to go
+            # before it is counted as a thread Landlock does not hold
+            import time
+            waited = 0
+            while _thread_count() > covered and waited < 40:
+                time.sleep(0.005)
+                waited += 1
+            unheld = _thread_count() - covered
+            if unheld > 0:
+                notes.append(f"{unheld} thread(s) started before confinement "
+                             f"are not held by Landlock")
     if abi and failed is None and plan is not None:
         if policy["fs_read"] is not None:
             held["fs_read"] = "yes" if plan["hold_reads"] else \
@@ -847,11 +857,21 @@ def mac_profile(policy: dict[str, Any], reads: list[str], writes: list[str],
         allowed = interpreter_reads(policy["net"] != "none") + _existing(
             list(policy["fs_read"]) + reads + ([temp] if temp else []))
         # a directory is allowed with what is beneath it, a file as itself
+        # getcwd() opens the working directory, and failing that reads each
+        # directory above it, so those directories themselves - the names in
+        # them, not the files - stay readable: a relative path cannot be
+        # resolved otherwise
+        above, step = [], os.path.realpath(os.getcwd())
+        while step not in above:
+            above.append(step)
+            step = os.path.dirname(step)
         lines += [f"(deny file-read-data (subpath {_sbpl_text(home)}) "
                   f'(subpath "/Volumes"))',
                   "(allow file-read* " + " ".join(
                       f"({'subpath' if os.path.isdir(p) else 'literal'} "
-                      f"{_sbpl_text(p)})" for p in allowed) + ")"]
+                      f"{_sbpl_text(p)})" for p in allowed) + ")",
+                  "(allow file-read* " + " ".join(
+                      f"(literal {_sbpl_text(p)})" for p in above) + ")"]
     return "\n".join(lines)
 
 

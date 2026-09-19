@@ -248,6 +248,9 @@ def pool_worker(argv: list[Any]) -> int:
     # from this worker's own budget: a request carries none.
     policy = _confine.os_policy(budget, confine=confine_at is not None)
     import_root = _state.IMPORT_ROOT
+    # what this process looked like before anything was held or run: asked
+    # now, because a confined process may not be let to ask where it is
+    baseline = program_state_baseline()
 
     def confine_now() -> dict[str, Any]:
         return _confine.apply(
@@ -292,7 +295,6 @@ def pool_worker(argv: list[Any]) -> int:
             g["CONFINEMENT"] = dict(confinement) \
                 if confine_at == "start" else None
 
-    baseline = program_state_baseline()
     reset_program_state(budget, baseline)
     _msg_write(replies, {"ready": VERSION, "pid": os.getpid(),
                          "allow": budget.spec(),
@@ -370,8 +372,12 @@ class _Worker:
         hello = _msg_read(self.proc.stdout)
         if hello is None or not hello.get("ready"):
             self.dispose()
-            raise RuntimeError("a pool worker did not start: "
-                               + (self.stderr() or "it said nothing"))
+            said = self.stderr() or "it said nothing"
+            # a traceback's last line is what went wrong; say it first, so
+            # a caller that shows only the start of this still shows it
+            last = said.strip().splitlines()[-1] if said.strip() else said
+            raise RuntimeError(f"a pool worker did not start: {last}"
+                               + (f" - {said}" if said != last else ""))
         self.allow = hello.get("allow") or ""
         said = hello.get("confinement")
         self.confinement: dict[str, Any] = dict(said) \

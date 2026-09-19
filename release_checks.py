@@ -1008,8 +1008,9 @@ def cmd_consistent(args: Any) -> int:
 PIN_DOCS = ("README.md", "EMBEDDING.md")
 _PIN = re.compile(r"(gowrishankar-infra/velaris-lang@)[0-9a-f]{40}"
                   r"([ \t]+#[ \t]*)v\d+\.\d+\.\d+")
-_INSTALLS = re.compile(r'^([ \t]*version:[ \t]*")\d+\.\d+\.\d+("[^\r\n]*)$',
-                       re.M)
+# (a line may end \r\n: a Windows checkout's does, and `$` is before \n only)
+_INSTALLS = re.compile(
+    r'^([ \t]*version:[ \t]*")\d+\.\d+\.\d+("[^\r\n]*)(?=\r?\n|\Z)', re.M)
 _OWN_VERSION = re.compile(r"(the Action's own version \()\d+\.\d+\.\d+(\))")
 _PRE_COMMIT = re.compile(
     r"(repo:[ \t]*https://github\.com/gowrishankar-infra/velaris-lang[ \t]*\r?\n"
