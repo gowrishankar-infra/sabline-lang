@@ -684,7 +684,7 @@ magic has always done and which 5.0 made true everywhere else too.</p>
 
 steps:
   - uses: actions/checkout@v5
-  - uses: gowrishankar-infra/velaris-lang@60e5428cb32019552441424bf96f43df3c091a5d  # v8.3.0
+  - uses: gowrishankar-infra/velaris-lang@d457f50acba198b4a712db71788780de0903df65  # v8.3.1
     with:
       min-proven: "80"
       pr-comment: "true"
@@ -1155,7 +1155,7 @@ again to take a later one.</li>
 <h2 id="as-a-commit-hook">As a commit hook <a class="anchor" href="#as-a-commit-hook" aria-label="Link to this section">#</a></h2>
 <div class="code"><div class="code-bar"><span class="code-lang">YAML</span></div><pre tabindex="0"><code>repos:
   - repo: https://github.com/gowrishankar-infra/velaris-lang
-    rev: v8.3.0
+    rev: v8.3.1
     hooks:
       - id: velaris-check      # it compiles, and the promises hold
       - id: velaris-fmt        # canonically formatted
