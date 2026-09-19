@@ -23,7 +23,7 @@ enforces the budget, not the operating system
 [![release](https://img.shields.io/github/v/release/gowrishankar-infra/velaris-lang)](https://github.com/gowrishankar-infra/velaris-lang/releases)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-[**Playground**](https://gowrishankar-infra.github.io/velaris-lang/playground.html) · [**Documentation**](https://gowrishankar-infra.github.io/velaris-lang/) · [**Reference**](SPEC.md) · [**Library**](https://gowrishankar-infra.github.io/velaris-lang/library.html) · [**Errors**](https://gowrishankar-infra.github.io/velaris-lang/errors.html)
+[**Playground**](https://velaris-lang.dev/playground.html) · [**Documentation**](https://velaris-lang.dev/) · [**Reference**](SPEC.md) · [**Library**](https://velaris-lang.dev/library.html) · [**Errors**](https://velaris-lang.dev/errors.html)
 
 </div>
 
@@ -321,7 +321,7 @@ velaris new hello && cd hello && velaris main.vel
 ```
 
 **Zero install** — the
-[playground](https://gowrishankar-infra.github.io/velaris-lang/playground.html)
+[playground](https://velaris-lang.dev/playground.html)
 runs the real compiler in your browser.
 
 Optional extras for source installs: `pip install ".[full]"` adds
@@ -439,6 +439,20 @@ release carries one, signed, for an example program.
 --json` hands back errors with fixes, and it iterates until the program
 compiles and its promises prove.
 
+From 8.3, the rest of a run's life: `velaris eval` runs a program as an
+evaluation harness does, under a profile its command line cannot relax (no
+net, ffi or env, time and memory limits, a stop honoured, the worker
+confined where the operating system offers it, and a receipt always -
+[docs/eval.md](docs/eval.md)); `velaris receipts diff` names what a run did
+that its audit, or its earlier runs, did not; `velaris replay` makes a run
+again from its receipt on the same bytes, or refuses; `velaris test
+--from-contracts` runs each promise on the inputs the prover finds its
+`requires` allows; and `velaris verify` holds an attestation or a receipt to
+its type and its bytes. [docs/structurally-impossible.md](docs/structurally-impossible.md)
+lists what cannot occur in a Velaris program, each with a test, and
+[docs/crosswalk.md](docs/crosswalk.md) maps each guarantee and each known
+gap onto the OWASP, AIUC-1 and NIST frameworks.
+
 ## Running code you did not write
 
 ```sh
@@ -475,8 +489,8 @@ network.
 
 ## Measured against other tools
 
-<!-- count:benchmark-programs -->68<!-- /count --> small programs — <!-- count:benchmark-dangerous -->60<!-- /count --> with one deliberate defect,
-<!-- count:benchmark-controls -->8<!-- /count --> correct controls —
+<!-- count:benchmark-programs -->76<!-- /count --> small programs — <!-- count:benchmark-dangerous -->66<!-- /count --> with one deliberate defect,
+<!-- count:benchmark-controls -->10<!-- /count --> correct controls —
 each written three times with the same behaviour, in Velaris, in
 JavaScript for Deno, and in Python. One harness runs every program
 through every tool and records what was caught before running, what was
@@ -486,11 +500,11 @@ and only a dependency's declared budget widened between two versions.
 
 <!-- generated:benchmark-table -->
 
-| | caught before running | caught while running | missed | false positives on the 8 controls |
+| | caught before running | caught while running | missed | false positives on the 10 controls |
 |---|---|---|---|---|
-| **Velaris 8.0** | 46 | 12 | 2 | 0 |
-| Deno 2.9 | 5 | 31 | 24 | 0 |
-| Python 3.13 | 0 | 28 | 32 | 0 |
+| **Velaris 8.3** | 52 | 12 | 2 | 0 |
+| Deno 2.9 | 8 | 34 | 24 | 0 |
+| Python 3.13 | 0 | 31 | 35 | 0 |
 
 <!-- /generated -->
 
@@ -641,7 +655,7 @@ Written in Velaris, in [`stdlib/std.vel`](stdlib/std.vel) — and it
 keeps its own promises: `sort` carries `ensures is_sorted(result)`,
 `max_of` requires a nonempty list, and violating a library `requires`
 is a compile error at *your* call site. Full
-[reference](https://gowrishankar-infra.github.io/velaris-lang/library.html),
+[reference](https://velaris-lang.dev/library.html),
 generated from the real compiler.
 
 ## Numbers
@@ -677,7 +691,7 @@ removing, and every time this project has broken the rule, 3.3 and 3.4
 among them. CI tests every push on Linux, Windows and macOS, Python
 3.10 and 3.12, with and without the optional dependencies. Errors are
 stable, numbered, and
-[fully documented](https://gowrishankar-infra.github.io/velaris-lang/errors.html).
+[fully documented](https://velaris-lang.dev/errors.html).
 
 ## How much is proven
 
@@ -741,7 +755,7 @@ print to the job log either way.
 
 One alert per finding, on the line that caused it, with a link to its
 row on the
-[errors page](https://gowrishankar-infra.github.io/velaris-lang/errors.html).
+[errors page](https://velaris-lang.dev/errors.html).
 These are the rule IDs, and a real message from each:
 
 | rule | level | what an alert says |
@@ -886,6 +900,28 @@ public package of the same name would be a different package; so is
 every pin of a `requirements*.txt` that sets another index. The
 findings go to code scanning when `sarif` is on. It needs
 `pull-requests: write`, and it never fails the job.
+
+### The permissions a pull request gives its workflows
+
+With `permissions-ratchet: "true"` (8.3), on a `pull_request` event the
+Action runs `velaris permissions-ratchet --against` the pull request's base
+commit. It compares the `permissions:` blocks of every workflow file in
+`.github/workflows` at the head with the base, job by job, and fails the job
+on any widening, with an error on the file and line. A widening is a scope
+whose level rises (none < read < write); a job left with no block, its own or
+the workflow's, so that it takes the repository's default token permissions;
+or a new job or workflow file that gives any permission. A narrowing is
+reported and does not fail. A job renamed is a job removed plus a new job,
+and the new job is compared with no permissions. The input is off by default.
+It is the one input that helps a repository with no `.vel` file, and it runs
+whether or not there is one. A workflow it cannot read with confidence - an
+anchor, a tab, a key written twice, a second document - fails the step rather
+than being taken as having no permissions; so does a base commit it cannot
+fetch. It compares files, not what GitHub runs, so it does not see the
+permissions of a reusable workflow a job calls, which that workflow's own
+block governs; the repository's default token setting; or the base branch's
+copy of a `pull_request_target` workflow, which is what runs. `--json` writes
+`velaris.permissions-ratchet/1`, which is provisional.
 
 ### Everything else the Action takes
 

@@ -163,7 +163,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libssl-dev zlib1g-dev libffi-dev libbz2-dev libsqlite3-dev liblzma-dev
           cd cpython
-          ./configure --prefix="$RUNNER_TEMP/san" --with-address-sanitizer --with-undefined-behavior-sanitizer --without-pymalloc > configure.log 2>&1 || { tail -n 60 configure.log; exit 1; }
+          # CPython 3.12.11's own tokenizer (Parser/tokenizer.c:376) trips
+          # UBSan's pointer-overflow check while the build freezes its
+          # modules, and halt_on_error stops the build there (monthly run
+          # 34978389207). That one check is left out of the build; every
+          # other ASan and UBSan check stays on.
+          CFLAGS="-fno-sanitize=pointer-overflow" ./configure --prefix="$RUNNER_TEMP/san" --with-address-sanitizer --with-undefined-behavior-sanitizer --without-pymalloc > configure.log 2>&1 || { tail -n 60 configure.log; exit 1; }
           make -j"$(nproc)" > make.log 2>&1 || { tail -n 100 make.log; exit 1; }
           make install > install.log 2>&1 || { tail -n 100 install.log; exit 1; }
           "$RUNNER_TEMP/san/bin/python3" -c "import sysconfig; print(sysconfig.get_config_var('CONFIG_ARGS'))"

@@ -24,12 +24,14 @@ imports one after it.
 
 | Module | Holds |
 |---|---|
-| `version` | `VERSION`, where the package and its standard library are, `_launch_command` |
+| `version` | `VERSION`, `SITE` and `REFERENCE_URL`, where the package and its standard library are, `_launch_command` |
+| `predicates` | the predicate type names, the earlier names each is read as, `predicate_kind` |
 | `errors` | `VelarisError`, `ERROR_TABLE`, `REMOVED_ERRORS` |
 | `lexer` | text to tokens |
 | `nodes` | the AST dataclasses (`Function`, `Call`, `Let`, `Closure`, ...) |
 | `parser` | tokens to the AST; `for` becomes `while`, inline functions are lifted |
 | `tables` | `BUILTINS`, `FALLIBLE_BUILTINS`, `NEW_BUILTINS`, `builtin_reached`, the check ceilings |
+| `confine` | the confinement levels `velaris eval` gives its worker, and `probe` |
 | `state` | everything a run can change: the budget, the program's arguments, Python handles, the import root |
 | `recorder` | `_RunRecorder`, the notes a receipt is made from |
 | `loader` | imports, blame, `_import_refusal` (E515) |
@@ -42,6 +44,7 @@ imports one after it.
 | `prover` | Z3: `check_proofs` |
 | `native` | llvmlite: `compile_native` |
 | `runtime` | the interpreter: `interpret`, `run_builtin` |
+| `witnesses` | `velaris test --from-contracts` |
 | `editor` | `inspect_source`, `editor_answer`, `lsp_serve` |
 | `formatter` | `velaris fmt` |
 | `project` | `add`, `deps`, `verify`, `build`, `new` |
@@ -57,9 +60,14 @@ imports one after it.
 | `conform` | `velaris conformance` |
 | `attestation` | `attest_statement` and `attest` |
 | `receipts` | `receipt_statement` |
+| `statements` | `velaris verify` of an attestation or a receipt |
+| `receipt_diff` | `velaris receipts diff` |
+| `evaluation` | `velaris eval` and its pool |
+| `replay` | `velaris replay` and the recorded tool responses |
 | `upgrades` | `deps-diff` |
 | `stats` | `velaris stats --ffi` |
 | `eject` | `velaris eject` and the launcher it writes |
+| `permissions` | the workflow-permissions ratchet |
 | `cli` | `main`, `usage_lines`, `--help` |
 
 ## The stages
@@ -137,6 +145,12 @@ run has a function to compile (`check_cli.py` measures it).
 | Where imports may come from | `IMPORT_ROOT` (`state`) and `_import_refusal` (`loader`), checked in `load_program` before a file is opened (E515). The doors set it to the directory they serve and compile a request as a file there; a program given to the library as text is written into a directory of its own (`_source_to_file`, 8.2) |
 | The command line's own flags | `main` (`cli`): on a run, `--` ends them, and every word after it is the program's `args()` (8.2) |
 | What an upgrade gained | `upgrades`: `deps_diff` reads two versions of one dependency; `_deps_velaris` runs the ratchet's `capabilities_compare` with the older version as the baseline; `_hooks_diff` and `_declared_diff` compare install-time scripts and declared dependencies. Nothing there derives an effect from code that is not Velaris |
+| A predicate type's name | `predicates`: the capability/v1 and receipt/v1 names on velaris-lang.dev, the earlier names each is also read as, and `predicate_kind`, which every reader asks - `statements`, `receipt_diff`, `replay` - so a type Velaris does not define is refused in one place (8.3) |
+| The evaluation profile | `evaluation`: `eval_budget` refuses what the profile does not take before the program is read; `_EvalPool` starts a one-process worker with `--stop-file` and `--confine`; `confine` holds each level (`confine_linux`, the job object's one-process limit from `library`, `mac_wrapper`) and `probe`. The stop is `stop_point` (`runtime`), polled every `STOP_EVERY` calls and loop turns (8.3) |
+| Comparing, replaying and verifying receipts | `receipt_diff`: `against_audit` and `against_receipts`; `replay`: `snapshot` holds each subject to its digest and copies it, `compare` names every field that differs, `ResponseLog` and `ResponseReplay` record and give back `py` calls (E616); `statements`: `unwrap`, `subject_file` and `verify_file` (8.3) |
+| Witnesses from contracts | `find_witnesses` inside `check_proofs` (`prover`) asks Z3 for argument lists the `requires` allows, boundaries first; `witnesses`: `from_contracts` runs each, interpreted, with no effect granted (8.3) |
+| A value in a log line | `log_line` (`values`): `log`, `stdlib/log.vel` and `velaris trace` write every control character, DEL, U+2028 and U+2029 escaped, so a call writes one line (8.3) |
+| The workflow-permissions ratchet | `permissions`: `read_workflow` reads each `permissions:` block with no YAML dependency, `permissions_compare` holds the head to the base; the Action's `permissions-ratchet` input runs it (8.3) |
 | Ejecting | `eject`: `eject_main` copies the program, its imports, the package and the standard library files it uses, and writes `main.py` from `_EJECT_LAUNCHER`, which fixes the budget, checks the digests, and refuses a budget that writes into its own directory or where Python imports from |
 | Keeping suites apart | `suite_dirs.py`: each suite's own temporary directory, so two runs from one checkout never write the same file |
 | The release gate | `release_checks.py`; its fixtures are `check_release.py` (RELEASING.md) |
@@ -164,7 +178,7 @@ run has a function to compile (`check_cli.py` measures it).
 | `check_secret.py` | can a `Secret` reach anything that emits it, and is `declassify` the only way out |
 | `check_ratchet.py` | does every widening of the capability surface fail, against the declared baseline and not the previous commit, and does every change that does not widen pass |
 | `check_deps.py` | does `deps-diff` report what an upgrade gained - a Velaris library's declared surface; for anything else only its install-time scripts and declared dependencies, with the surface said to be unknown - and is its pull-request comment edited rather than duplicated |
-| `check_adversarial.py` | do the attempts of every adversarial pass stay refused - the proof cache that is gone, the proxy, the prover's names, imports, receipts, eject, the door's rate, 64-bit edges, names that shadow |
+| `check_adversarial.py` | do the attempts of every adversarial pass stay refused - the proof cache that is gone, the proxy, the prover's names, imports, receipts, eject, the door's rate, 64-bit edges, names that shadow, and 8.3's eval, receipts diff, replay, witnesses, log lines and verifier |
 | `check_prover_lies.py` | is a false promise ever reported proven, under five Z3 seeds |
 | `check_metamorphic.py` | is the audit unchanged by renaming, reordering and splitting, and changed by exactly one added effect |
 | `check_properties.py` | over generated programs: does the formatter round-trip, is check deterministic, does the audit match what a run did |
@@ -175,6 +189,7 @@ run has a function to compile (`check_cli.py` measures it).
 | `check_differential.py` | does every difference from the previous release appear in the CHANGELOG |
 | `perf_gates.py` | the numbers each release publishes, and pure-numeric time against the previous tag |
 | `check_mutants.py` | would the suites notice a change to a line a guarantee rests on (monthly) |
+| `check_mutant_kills.py` | does a test now fail for every mutant a monthly run found surviving - the ceiling, credential, proxy, range, effect, currency and prover lines - where it is not shown equivalent |
 | `check_release.py` | does the release gate decide what RELEASING.md says, and does the kill switch stop a release |
 | `check_workflows.py` | do the scheduled workflows report and change nothing |
 | `check_install.py` | does every artefact, installed as a user installs it, run discount.vel and refuse the network (nightly) |
@@ -184,6 +199,11 @@ run has a function to compile (`check_cli.py` measures it).
 | `check_platform.py` | does the reference platform refuse at submission, at run time and at its audit limit what it says it refuses |
 | `check_eject.py` | does an ejected program run from a fresh virtual environment with nothing from here, and hold its budget |
 | `check_policies.py` | do the OPA policy and its Kyverno twin ask what they say (`opa` when installed) |
+| `check_eval.py` | does `velaris eval` refuse every relaxation of its profile, honour a stop from outside, kill a worker past its grace, and write a receipt that names its confinement - and does each refusal that confinement claims hold |
+| `check_receipts.py` | does `receipts diff` name each kind of difference from an audit and from earlier receipts, does `replay` run the recorded bytes or refuse, and does `verify` refuse what it says it refuses |
+| `check_from_contracts.py` | does a witness the prover finds break an `ensures` left to runtime, pass a true one, and is a function with effects refused |
+| `check_impossible.py` | is each class docs/structurally-impossible.md lists tried, and refused |
+| `check_permissions.py` | does every widening of a workflow's `permissions:` fail, and nothing else, from 30 base and head fixtures |
 | `velaris test examples/std_test.vel` | does the standard library behave |
 | `velaris conformance` | does this implementation pass velaris-spec's corpus, at L1, L2 and L3 |
 | `velaris migrate --to 5.0` | the narrowest budget each program needs, now that a run with no `--allow` gets `io` |

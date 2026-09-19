@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gowrishankar-infra.github.io/velaris-lang/receipt/v1/schema.json",
-  "title": "https://gowrishankar-infra.github.io/velaris-lang/receipt/v1",
-  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://gowrishankar-infra.github.io/velaris-lang/receipt/v1: a velaris.receipt/1 document recording one run of the program that is the statement's first subject - the budget it was given, each refusal and declassification, the parameters it ran under, how it ended and how long it took. velaris-spec SPEC.md section 8.7 defines it. No field holds a value the program handled. Within v1 fields may be added and consumers must ignore fields they do not know.",
+  "$id": "https://velaris-lang.dev/receipt/v1/schema.json",
+  "title": "https://velaris-lang.dev/receipt/v1",
+  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://velaris-lang.dev/receipt/v1: a velaris.receipt/1 document recording one run of the program that is the statement's first subject - the budget it was given, each refusal and declassification, the parameters it ran under, how it ended and how long it took. velaris-spec SPEC.md section 8.7 defines it. No field holds a value the program handled. Within v1 fields may be added and consumers must ignore fields they do not know.",
   "type": "object",
   "required": ["schema", "producer", "budget", "run_parameters", "refusals", "declassifications", "exit", "wall_time_ms", "complete"],
   "properties": {
@@ -45,7 +45,8 @@
         "timeout": {"description": "The most seconds the run was allowed, or null for no limit.", "type": ["number", "null"], "exclusiveMinimum": 0},
         "max_memory_mb": {"description": "The most memory the run was allowed, in MB, or null for no cap.", "type": ["integer", "null"], "minimum": 1},
         "max_read_bytes": {"description": "The largest file a read accepted, in bytes.", "type": ["integer", "null"], "minimum": 0},
-        "confinement": {"description": "What operating-system confinement the run had. 'none' when the budget was the only boundary.", "type": "string", "minLength": 1}
+        "confinement": {"description": "What operating-system confinement the run had. 'none' when the budget was the only boundary. Under the reference's eval profile it is landlock-net, landlock, job-one-process, sandbox-exec or none (section 8.9).", "type": "string", "minLength": 1},
+        "profile": {"description": "Added in velaris-spec 0.11.0, within version 1: the name of a profile the run was held to beyond its budget, as 'eval' (section 8.9). Absent when there was none.", "type": "string", "minLength": 1}
       }
     },
     "effects_used": {
@@ -89,6 +90,17 @@
         "status": {"description": "The exit status the producer reported.", "type": ["integer", "null"]},
         "outcome": {"enum": ["ok", "refused", "failed", "did_not_compile", "timeout", "out_of_memory"]},
         "code": {"description": "The code of the error that ended the run, or null.", "type": ["string", "null"], "pattern": "^E[0-9]{3}$"}
+      }
+    },
+    "stop": {
+      "description": "Added in velaris-spec 0.11.0, within version 1: present when a stop was asked for from outside the run. What asked (a signal, or a stop file appearing), how long after the run began, and how the stop was honoured - at a call or loop turn, by killing the worker after the grace period, or not at all because the run had already ended.",
+      "type": "object",
+      "required": ["asked", "honoured"],
+      "properties": {
+        "asked": {"type": "string"},
+        "honoured": {"type": "string"},
+        "after_ms": {"type": "number", "minimum": 0},
+        "grace_seconds": {"type": "number", "exclusiveMinimum": 0}
       }
     },
     "complete": {

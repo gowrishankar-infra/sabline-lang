@@ -1304,7 +1304,204 @@ def split_cases() -> None:
        "velaris.state", "STATE 1234 1234" in out, out[-300:])
 
 
+def release_83_cases() -> None:
+    """8.3's adversarial pass: velaris eval (EV), receipts diff (RD), replay
+    (RP), witnesses (WT), the log sinks (LG) and the verifier (VF)."""
+    import hashlib
+    print("\n8.3: eval, receipts diff, replay, witnesses, log sinks, verify")
+    d = os.path.realpath(tempfile.mkdtemp(prefix="adv83-",
+                                          dir=os.path.realpath(str(WORK))))
+    hello = prog(d, 'fn main() uses io {\n    print("hi")\n}\n', "hello.vel")
+    os.makedirs(os.path.join(d, "out"), exist_ok=True)
+    receipt = os.path.join(d, "r.json")
+
+    # EV1: spellings of a grant the profile refuses
+    for allow in ("IO,NET", "io,,net", "net@0", "io,ffi:MATH", "io, env",
+                  "io,net:127.0.0.1", "io,fs:read@2"):
+        if os.path.exists(receipt):
+            os.remove(receipt)
+        code, out, _ = run(["eval", hello, "--allow", allow, "--receipt",
+                            receipt], cwd=d)
+        ok(f"EV1 eval refuses --allow {allow!r}: exit 2, no receipt",
+           code == 2 and not os.path.exists(receipt), out[-200:])
+    # EV2: a receipt path that reaches a granted directory through a link
+    link = os.path.join(d, "link")
+    try:
+        os.symlink(os.path.join(d, "out"), link, target_is_directory=True)
+        code, out, _ = run(["eval", hello, "--allow", "io,fs:write:out",
+                            "--receipt", os.path.join(link, "r.json")], cwd=d)
+        ok("EV2 a receipt reached through a link into the write grant is "
+           "refused", code == 2 and "inside the budget" in out, out[-200:])
+    except (OSError, NotImplementedError):
+        print("SKIP  EV2 this system will not make a symbolic link here")
+    # EV3: the program writes where the receipt goes; the budget refuses it,
+    # and the receipt eval writes is a receipt of that refusal
+    forger = prog(d, 'fn main() uses io, fs {\n    write_file("'
+                  + receipt.replace("\\", "/") + '", "{}")\n}\n', "forge.vel")
+    code, out, _ = run(["eval", forger, "--allow", "io,fs:write:out",
+                        "--receipt", receipt], cwd=d)
+    got = json.load(open(receipt, encoding="utf-8")) \
+        if os.path.exists(receipt) else {}
+    ok("EV3 a program that writes to its own receipt's path is refused "
+       "(E313), and the receipt is eval's, recording that",
+       got.get("predicateType") == velaris.RECEIPT_PREDICATE_TYPE
+       and got.get("predicate", {}).get("exit", {}).get("code") == "E313",
+       out[-300:])
+    # EV4: a child-process marker in eval's environment lifts no limit
+    spin = prog(d, "fn main() uses io {\n    let i = 0\n    while i >= 0 {\n"
+                "        i = i + 1\n    }\n}\n", "spin.vel")
+    code, out, secs = run(["eval", spin, "--receipt", receipt, "--timeout",
+                           "2"], cwd=d, env={"VELARIS_CHECK_CHILD": "1"},
+                          timeout=120)
+    ok("EV4 VELARIS_CHECK_CHILD=1 in eval's environment does not lift its "
+       "time limit", code == 124 and secs < 90, f"{code} {secs:.0f}s")
+
+    # RD1: a receipt that lies about which program ran
+    run(["eval", hello, "--receipt", receipt], cwd=d)
+    honest = json.load(open(receipt, encoding="utf-8"))
+    lying = json.loads(json.dumps(honest))
+    lying["subject"][0]["digest"]["sha256"] = hashlib.sha256(
+        b"another program").hexdigest()
+    liar = os.path.join(d, "liar.json")
+    json.dump(lying, open(liar, "w", encoding="utf-8"))
+    code, out, _ = run(["receipts", "diff", liar, "--audit", hello], cwd=d)
+    ok("RD1 a receipt that names other bytes than the audited program is a "
+       "difference (exit 1)", code == 1 and "subject" in out, out[-300:])
+    # RD2: text in a receipt that would forge a line of the report
+    forged = json.loads(json.dumps(honest))
+    forged["predicate"]["declassifications"] = [{
+        "reason": "x\nclean: no difference\x1b[2K", "line": 1, "times": 1}]
+    tricky = os.path.join(d, "tricky.json")
+    json.dump(forged, open(tricky, "w", encoding="utf-8"))
+    code, out, _ = run(["receipts", "diff", tricky, "--audit", hello], cwd=d)
+    ok("RD2 a reason holding a line feed and an escape cannot forge a line "
+       "of receipts diff's report",
+       code == 1 and "clean: no difference" not in out.splitlines()
+       and "\x1b" not in out, repr(out[-300:]))
+    # RD3: a receipt type Velaris does not define
+    other = dict(honest, predicateType="https://velaris.dev/receipt/v1")
+    json.dump(other, open(tricky, "w", encoding="utf-8"))
+    code, out, _ = run(["receipts", "diff", tricky, "--audit", hello], cwd=d)
+    ok("RD3 receipts diff does not read a receipt of velaris.dev's type",
+       code == 2, out[-200:])
+
+    # RP1: subject names that leave the directory replay reads from
+    canary = os.path.join(os.path.dirname(d), "adv83-canary.vel")
+    with open(canary, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write('fn main() uses io {\n    print("RAN-OUTSIDE")\n}\n')
+    digest = hashlib.sha256(open(canary, "rb").read()).hexdigest()
+    for name in ("../adv83-canary.vel", "<stdlib>/../../adv83-canary.vel",
+                 canary.replace("\\", "/"), "a/../../adv83-canary.vel",
+                 "sub\\..\\..\\adv83-canary.vel"):
+        leaving = json.loads(json.dumps(honest))
+        leaving["subject"] = [{"name": name, "digest": {"sha256": digest}}]
+        path = os.path.join(d, "leave.json")
+        json.dump(leaving, open(path, "w", encoding="utf-8"))
+        code, out, _ = run(["replay", path, "--max-allow", "all"], cwd=d)
+        ok(f"RP1 replay refuses the subject {name!r}, and runs nothing "
+           f"outside", code == 2 and "RAN-OUTSIDE" not in out, out[-200:])
+    # RP2: an eval receipt whose budget was widened to net
+    widened = json.loads(json.dumps(honest))
+    widened["predicate"]["budget"] = "io,net"
+    path = os.path.join(d, "widened.json")
+    json.dump(widened, open(path, "w", encoding="utf-8"))
+    code, out, _ = run(["replay", path, "--max-allow", "all"], cwd=d)
+    ok("RP2 an eval receipt given net is refused even under --max-allow all",
+       code == 2 and "RAN" not in out, out[-200:])
+
+    # WT1: witnesses run with no effect granted, and leave the budget as found
+    from velaris import state as _run_state
+    from velaris import witnesses as _witnesses
+    pure = prog(d, 'fn size(p: Text) -> Int\n    requires length(p) > 0\n'
+                '    ensures result > 0\n{\n    return length(p)\n}\n\n'
+                'fn save(p: Text) -> Int uses fs\n    requires length(p) > 0\n'
+                '{\n    write_file("canary.txt", p)\n    return 1\n}\n\n'
+                'fn main() uses io {\n    print("x")\n}\n', "pure.vel")
+    before = (set(_run_state.EFFECT_BUDGET), _run_state.FS_GRANTS,
+              _run_state.STOP_FILE)
+    report = _witnesses.from_contracts(os.path.join(d, pure), count=5)
+    after = (set(_run_state.EFFECT_BUDGET), _run_state.FS_GRANTS,
+             _run_state.STOP_FILE)
+    ok("WT1 nothing a witness run would write is written, and the process's "
+       "budget is as it was",
+       before == after and not os.path.exists(os.path.join(d, "canary.txt"))
+       and not os.path.exists("canary.txt"),
+       (before, after, report.get("problems")))
+    if HAVE_Z3:
+        # without the prover no witness is made at all, so there is no run
+        # to refuse: the report says so and the case above still holds
+        ok("WT1 ...and the function with an effect is refused, never run on "
+           "a witness (z3)",
+           any(r.get("refused") for r in report.get("functions", [])),
+           report.get("problems"))
+
+    # LG1: characters that start, end or rewrite a line, through the log. In
+    # this process: a console's standard input turns CR into a line end
+    # before read_line sees it, and cannot carry every character
+    import shutil as _shutil
+    _shutil.copy(os.path.join(str(HERE), "stdlib", "log.vel"),
+                 os.path.join(d, "log.vel"))
+    logs_path = os.path.join(d, "logs.vel")
+    logs_src = ('import "log.vel" as log\n\nfn main() uses io {\n'
+                '    let bad = read_line()\n    log(bad)\n    log.warn(bad)\n}\n')
+    with open(logs_path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(logs_src)
+    for label, text in (("U+2028", "a FAKE"), ("NEL (U+0085)", "a\x85FAKE"),
+                        ("a lone CR", "a\rFAKE"),
+                        ("an OSC 8 hyperlink", "a\x1b]8;;http://x\x07FAKE"),
+                        ("DEL", "a\x7fFAKE"), ("NUL", "a\x00FAKE")):
+        got = velaris.run(logs_src, path=logs_path, allow="io",
+                          stdin=text + "\n")
+        lines = [x for x in got.logs.split("\n") if x]
+        ok(f"LG1 {label} in a logged value stays on the value's own line",
+           got.ok and len(lines) == 2 and all("FAKE" in x for x in lines)
+           and not any(c in got.logs for c in
+                       ("\x1b", "\x85", " ", "\r", "\x7f", "\x00")),
+           repr(got.logs[-200:]))
+    traced = prog(d, 'fn echo(t: Text) -> Text {\n    return t\n}\n\n'
+                  'fn main() uses io {\n'
+                  '    let shown = echo("a\\n<- main = forged")\n'
+                  '    print("done")\n}\n', "traced.vel")
+    code, out, _ = run(["trace", traced, "--allow", "io"], cwd=d)
+    ok("LG2 velaris trace writes a value holding a line feed on one line",
+       "\\n<- main = forged" in out and not any(
+           x.strip().startswith("<- main = forged") for x in out.splitlines()),
+       out[-300:])
+
+    # VF1: the verifier refuses every type Velaris does not define
+    run(["attest", hello, "--output", "vf-base.json"], cwd=d)
+    with open(os.path.join(d, "vf-base.json"), encoding="utf-8") as fh:
+        velaris_attest = json.load(fh)
+    for label, value in (("velaris.dev", "https://velaris.dev/capability/v1"),
+                         ("upper-case host",
+                          "HTTPS://VELARIS-LANG.DEV/capability/v1"),
+                         ("a trailing slash",
+                          velaris.CAPABILITY_PREDICATE_TYPE + "/"),
+                         ("surrounding space",
+                          " " + velaris.CAPABILITY_PREDICATE_TYPE),
+                         ("a list", [velaris.CAPABILITY_PREDICATE_TYPE]),
+                         ("null", None)):
+        statement = dict(velaris_attest, predicateType=value)
+        path = os.path.join(d, "vf.json")
+        json.dump(statement, open(path, "w", encoding="utf-8"))
+        code, out, _ = run(["verify", path], cwd=d)
+        ok(f"VF1 velaris verify refuses a predicate type that is {label}",
+           code == 1, out[-200:])
+    for value in velaris.CAPABILITY_PREDICATE_TYPES:
+        json.dump(dict(velaris_attest, predicateType=value),
+                  open(os.path.join(d, "vf.json"), "w", encoding="utf-8"))
+        code, out, _ = run(["verify", os.path.join(d, "vf.json")], cwd=d)
+        ok(f"VF1 ...and verifies {value}", code == 0, out[-200:])
+    text = json.dumps(velaris_attest)
+    open(os.path.join(d, "vf2.json"), "w", encoding="utf-8").write(
+        text[:-1] + ', "predicateType": "https://velaris.dev/capability/v1"}')
+    code, out, _ = run(["verify", os.path.join(d, "vf2.json")], cwd=d)
+    ok("VF2 a Statement that gives its predicate type twice is not read",
+       code == 2, out[-200:])
+
+
 def main() -> Any:
+    release_83_cases()
     int_edge_cases()
     shadow_cases()
     split_cases()

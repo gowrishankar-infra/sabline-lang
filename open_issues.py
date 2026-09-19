@@ -114,6 +114,10 @@ class Opener:
         self.done += 1
         body = body[:BODY_LIMIT] + SIGNATURE
         number = self.open_titles().get(title)
+        if number == 0:
+            print(f"already opened in this call, with no number to comment "
+                  f"on: {title}")
+            return
         if number is not None:
             print(f"commenting on #{number}: {title}")
             if not self.dry_run:
@@ -121,10 +125,20 @@ class Opener:
                     (again + "\n\n" + body)[:BODY_LIMIT]])
             return
         print(f"opening: {title}")
+        created = None
         if not self.dry_run:
-            gh(["issue", "create", "--title", title, "--label", self.label,
-                "--body", body])
-        self.open_titles()[title] = -1
+            url = gh(["issue", "create", "--title", title, "--label",
+                      self.label, "--body", body]).strip()
+            tail = url.rstrip("/").rsplit("/", 1)[-1]
+            created = int(tail) if tail.isdigit() else None
+        if created is not None:
+            self.open_titles()[title] = created
+        else:
+            # a dry run opened nothing, and gh named no number: a second
+            # report of this title in this call is left out rather than
+            # sent to a number that is not an issue (8.3: the monthly run
+            # 34978389207 commented on "#-1" and stopped)
+            self.open_titles()[title] = 0
 
     def close(self, number: int, title: str, why: str) -> None:
         print(f"closing #{number}: {title}")

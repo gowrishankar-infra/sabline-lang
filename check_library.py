@@ -3042,6 +3042,20 @@ def main() -> int:
         skip("the live REFERENCE_URL serves the card",
              f"could not fetch it now ({type(e).__name__}); it serves after "
              f"this release's docs deploy")
+    # 8.3: the site is velaris-lang.dev, and the errors 8.0 to 8.2.1 print
+    # name the card at the earlier address, which must redirect here
+    ok("REFERENCE_URL is the card on velaris-lang.dev (8.3)",
+       velaris.REFERENCE_URL == "https://velaris-lang.dev/llms.txt"
+       and velaris.REFERENCE_URL == velaris.SITE + "/llms.txt",
+       velaris.REFERENCE_URL)
+    import check_urls as _check_urls
+    moved, where = _check_urls.redirect_of(_check_urls.EARLIER_CARD_URL)
+    if moved is None:
+        skip("the card's earlier address redirects to REFERENCE_URL",
+             f"could not ask it now ({where})")
+    else:
+        ok("the card's earlier address redirects to REFERENCE_URL", moved,
+           where)
 
     pdoc, pdone = velaris_sarif("proofs", "_sarif_box")
     adoc, adone = velaris_sarif("audit", "_sarif_box/capable.vel")

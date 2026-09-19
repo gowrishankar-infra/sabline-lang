@@ -38,6 +38,7 @@ from .values import OpaqueList, RecElem, RecListVal
 from .wrappers import currency_generic, erase_wrappers
 from .budget import _ascii_digits
 from .effects import local_names_of
+from .tables import INT_MAX, INT_MIN
 from typing import Any, Callable, cast
 
 # ---------------------------------------------------------------------------
@@ -136,9 +137,17 @@ def _shown_name(z3_name: str) -> str:
     return z3_name
 
 
+# what velaris test --from-contracts makes witnesses for (8.3), and how large
+WITNESS_TYPES = ("Int", "Bool", "Text", "Float", "List of Int", "List of Text")
+WITNESS_TEXT_MOST = 64
+WITNESS_LIST_MOST = 16
+
+
 def check_proofs(funcs: list[Function], records: list[Any],
                  errors: list[Any], proven_out: set[Any] | None = None,
-                 timeouts_out: list[Any] | None = None) -> None:
+                 timeouts_out: list[Any] | None = None,
+                 witnesses_out: dict[str, Any] | None = None,
+                 witness_count: int = 20) -> None:
     # Nothing to prove means nothing to import. Loading z3 costs about
     # 350ms, and most programs - every hello world, every script whose
     # functions carry no promises - were paying it for no work at all.
@@ -497,14 +506,32 @@ def check_proofs(funcs: list[Function], records: list[Any],
                 out[f] = mk_rec(f"{prefix}.{f}", ft)
         return RecVal(rname, out)
 
+    def symbolic(v: Any) -> bool:
+        """Whether Python's operators on `v` mean what Velaris's do: a Z3
+        expression, or a plain constant. A MapVal, GridVal, ListVal,
+        RecVal, RecListVal or OpaqueList is not - == on two of them asks
+        whether they are the same Python object (8.3)."""
+        return z3.is_expr(v) or isinstance(v, (bool, int, float, str))
+
     def rec_eq(l: "RecVal", r: "RecVal") -> Any:  # noqa: E741
         parts = []
         for f, ft in rec_fields[l.rname]:
             a, b = l.fields[f], r.fields[f]
-            if isinstance(a, RecVal):
+            if isinstance(a, RecVal) and isinstance(b, RecVal):
                 parts.append(rec_eq(a, b))
-            else:
+            elif isinstance(a, ListVal) and isinstance(b, ListVal):
+                # a List of Int field: as == on two lists, below
+                parts.append(z3.And(a.arr == b.arr, a.length == b.length))
+            elif symbolic(a) and symbolic(b) and not (z3.is_fp(a)
+                                                      or z3.is_fp(b)):
                 parts.append(a == b)
+            else:
+                # A Float field is left to runtime (8.3). A run compares
+                # two records by Python's == over their fields, which
+                # calls one NaN equal to itself and two NaNs made apart
+                # unequal - neither IEEE's rule (fpEQ) nor Z3's `=`, and a
+                # proof under either could be false.
+                raise Unprovable()
         return z3.And(*parts) if parts else z3.BoolVal(True)
 
     def fresh(t: str, base: str) -> Any:
@@ -980,6 +1007,13 @@ def check_proofs(funcs: list[Function], records: list[Any],
                 if op == "!=":
                     return z3.Not(z3.And(l.arr == r.arr,
                                          l.length == r.length))
+                raise Unprovable()
+            if not (symbolic(l) and symbolic(r)):
+                # a map, a list of lists, a list of records, a list known
+                # only by its length: Python's == would compare the two
+                # objects rather than what they hold - a constant False,
+                # which made a branch on it look unreachable and its
+                # promises proven (8.3). Nothing here models them.
                 raise Unprovable()
             if op == "+":
                 return l + r
@@ -1600,6 +1634,108 @@ def check_proofs(funcs: list[Function], records: list[Any],
             i += 1
         return [(ctx, FELL_OFF, dict(env))]
 
+    def find_witnesses(fn: Any, env: Any, ctx: Any,
+                       count: int) -> dict[str, Any]:
+        """Up to `count` argument lists the function's requires allow, as Z3
+        finds them (8.3, velaris test --from-contracts): first the least
+        and the greatest each whole number, text length and list length
+        can be, then others, each differing from those before in a whole
+        number, a truth, a text, a decimal or a list's length. Whole numbers
+        are held to 64 bits, texts to WITNESS_TEXT_MOST characters and lists
+        to WITNESS_LIST_MOST items."""
+        import struct
+        kinds = []
+        for pname, ptype in fn.params:
+            t = erase_wrappers(ptype)
+            if "Money" in ptype or t not in WITNESS_TYPES or pname not in env:
+                return {"skipped": f"parameter {pname} is {ptype}, for which "
+                                   f"no witness is made"}
+            kinds.append((pname, t))
+        base = list(ctx.assum)
+        for pname, t in kinds:
+            v = env[pname]
+            if t == "Int":
+                base += [v >= INT_MIN, v <= INT_MAX]
+            elif t == "Text":
+                base.append(z3.Length(v) <= WITNESS_TEXT_MOST)
+            elif t.startswith("List of "):
+                base.append(v.length <= WITNESS_LIST_MOST)
+                k = z3.Int(f"!{pname}#witness")
+                item = z3.Select(v.arr, k)
+                bound = (z3.And(item >= INT_MIN, item <= INT_MAX)
+                         if t == "List of Int"
+                         else z3.Length(item) <= WITNESS_TEXT_MOST)
+                base.append(z3.ForAll([k], z3.Implies(
+                    z3.And(k >= 0, k < v.length), bound)))
+
+        def value(m: Any, pname: str, t: str) -> Any:
+            v = env[pname]
+            if t == "Int":
+                return m.eval(v, model_completion=True).as_long()
+            if t == "Bool":
+                return bool(z3.is_true(m.eval(v, model_completion=True)))
+            if t == "Text":
+                return m.eval(v, model_completion=True).as_string()
+            if t == "Float":
+                bits = m.eval(z3.fpToIEEEBV(v), model_completion=True).as_long()
+                return struct.unpack(">d", bits.to_bytes(8, "big"))[0]
+            n = max(0, m.eval(v.length, model_completion=True).as_long())
+            items = [m.eval(z3.Select(v.arr, z3.IntVal(i)),
+                            model_completion=True) for i in range(n)]
+            return ([x.as_long() for x in items] if t == "List of Int"
+                    else [x.as_string() for x in items])
+
+        found: list[dict[str, Any]] = []
+        seen: set[str] = set()
+
+        def take(m: Any, why: str) -> None:
+            args = [value(m, pname, t) for pname, t in kinds]
+            key = repr(args)
+            if key not in seen:
+                seen.add(key)
+                found.append({"args": args, "why": why})
+
+        for pname, t in kinds:
+            v = env[pname]
+            target = (v if t == "Int" else z3.Length(v) if t == "Text"
+                      else v.length if t.startswith("List of ") else None)
+            if target is None:
+                continue
+            what = ("value of " if t == "Int" else "length of ") + pname
+            for goal in ("minimize", "maximize"):
+                if len(found) >= count:
+                    break
+                o = z3.Optimize()
+                o.set("timeout", solver_budget())
+                o.add(*base)
+                getattr(o, goal)(target)
+                if o.check() == z3.sat:
+                    take(o.model(), f"the {'least' if goal == 'minimize' else 'greatest'} "
+                                    f"{what} the requires allow")
+        s = new_solver()
+        s.add(*base)
+        while len(found) < count:
+            if s.check() != z3.sat:
+                break
+            m = s.model()
+            take(m, "a value the requires allow")
+            block = []
+            for pname, t in kinds:
+                v = env[pname]
+                if t == "Float":
+                    block.append(z3.fpToIEEEBV(v) != m.eval(
+                        z3.fpToIEEEBV(v), model_completion=True))
+                elif t.startswith("List of "):
+                    block.append(v.length != m.eval(v.length,
+                                                    model_completion=True))
+                else:
+                    block.append(v != m.eval(v, model_completion=True))
+            if not block:
+                break
+            s.add(z3.Or(*block))
+        return {"witnesses": found,
+                "uninterpreted": any(uninterpreted_in(a) for a in ctx.assum)}
+
     for fn in funcs:
         current_fn[0] = fn
         saw_fp[0] = False              # FP budget only when FP appears
@@ -1690,6 +1826,9 @@ def check_proofs(funcs: list[Function], records: list[Any],
         if any(mentions(p, ("split",)) for p in parts):
             list_facts.extend(SPLIT_AXIOMS)
         ctx = Ctx([], list(list_facts), list(list_facts), fn.name)
+        if witnesses_out is not None and fn.requires:
+            witnesses_out[fn.name] = {
+                "skipped": "its requires could not be given to the prover"}
         try:
             for r_expr, _ in fn.requires:
                 # If a premise cannot be translated, the whole proof is
@@ -1698,6 +1837,14 @@ def check_proofs(funcs: list[Function], records: list[Any],
                 fact = to_z3(r_expr, dict(env), None)
                 ctx.assum.append(fact)
                 ctx.param_assum.append(fact)
+            if witnesses_out is not None and fn.requires:
+                try:
+                    witnesses_out[fn.name] = find_witnesses(
+                        fn, env, ctx, witness_count)
+                except z3.Z3Exception as e:
+                    witnesses_out[fn.name] = {
+                        "skipped": f"the prover could not make witnesses: "
+                                   f"{e}"}
             paths = explore(list(fn.body), dict(env), ctx)
             if not fn.ensures:
                 continue

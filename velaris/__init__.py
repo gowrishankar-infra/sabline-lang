@@ -12,27 +12,43 @@ import types as _types
 import typing as _typing
 
 _MODULES = (
-    "version", "errors", "lexer", "nodes", "parser",
-    "tables", "state", "recorder", "loader", "values",
+    "version", "predicates", "errors", "lexer", "nodes", "parser",
+    "tables", "confine", "state", "recorder", "loader", "values",
     "wrappers", "budget", "effects", "checker", "termination",
-    "prover", "native", "runtime", "editor", "formatter",
+    "prover", "native", "runtime", "witnesses", "editor", "formatter",
     "project", "session", "results", "library", "pool",
     "findings", "mcp_manifest", "doors", "migrate", "ratchet",
-    "conform", "attestation", "receipts", "upgrades", "stats",
-    "eject", "cli",
+    "conform", "attestation", "receipts", "statements", "receipt_diff",
+    "evaluation", "replay",
+    "upgrades", "stats",
+    "eject", "permissions", "cli",
 )
 
-from . import version, errors, lexer, nodes, parser, tables  # noqa: E402,F401
-from . import state, recorder, loader, values, wrappers, budget  # noqa: E402,F401
+from . import version, predicates, errors, lexer, nodes, parser  # noqa: E402,F401
+from . import tables, confine, state, recorder, loader, values  # noqa: E402,F401
+from . import wrappers, budget  # noqa: E402,F401
 from . import effects, checker, termination, prover, native, runtime  # noqa: E402,F401
+from . import witnesses  # noqa: E402,F401
 from . import editor, formatter, project, session, results, library  # noqa: E402,F401
 from . import pool, findings, mcp_manifest, doors, migrate, ratchet  # noqa: E402,F401
-from . import conform, attestation, receipts, upgrades, stats, eject  # noqa: E402,F401
+from . import conform, attestation, receipts, statements  # noqa: E402,F401
+from . import receipt_diff, evaluation, replay  # noqa: E402,F401
+from . import upgrades  # noqa: E402,F401
+from . import stats, eject  # noqa: E402,F401
+from . import permissions  # noqa: E402,F401
 from . import cli  # noqa: E402,F401
 
 from .version import (  # noqa: E402
     REFERENCE_URL as REFERENCE_URL,
+    SITE as SITE,
     VERSION as VERSION,
+)
+from .predicates import (  # noqa: E402
+    CAPABILITY_PREDICATE_TYPE as CAPABILITY_PREDICATE_TYPE,
+    CAPABILITY_PREDICATE_TYPES as CAPABILITY_PREDICATE_TYPES,
+    RECEIPT_PREDICATE_TYPE as RECEIPT_PREDICATE_TYPE,
+    RECEIPT_PREDICATE_TYPES as RECEIPT_PREDICATE_TYPES,
+    predicate_kind as predicate_kind,
 )
 from .errors import (  # noqa: E402
     ERROR_TABLE as ERROR_TABLE,
@@ -111,7 +127,6 @@ from .tables import (  # noqa: E402
     shown_name as shown_name,
 )
 from .recorder import (  # noqa: E402
-    RECEIPT_PREDICATE_TYPE as RECEIPT_PREDICATE_TYPE,
     RECEIPT_SCHEMA as RECEIPT_SCHEMA,
     RECEIPT_SPEC as RECEIPT_SPEC,
     REFUSAL_CODES as REFUSAL_CODES,
@@ -480,7 +495,6 @@ from .conform import (  # noqa: E402
     conformance_main as conformance_main,
 )
 from .attestation import (  # noqa: E402
-    CAPABILITY_PREDICATE_TYPE as CAPABILITY_PREDICATE_TYPE,
     CAPABILITY_SPEC as CAPABILITY_SPEC,
     INTOTO_STATEMENT_TYPE as INTOTO_STATEMENT_TYPE,
     _attest as _attest,
@@ -576,6 +590,18 @@ from .eject import (  # noqa: E402
     _eject_write_reach as _eject_write_reach,
     _velaris_license as _velaris_license,
     eject_main as eject_main,
+)
+from .permissions import (  # noqa: E402
+    PERMISSIONS_RATCHET_SCHEMA as PERMISSIONS_RATCHET_SCHEMA,
+    PERMISSION_LEVELS as PERMISSION_LEVELS,
+    PERMISSION_SCOPES as PERMISSION_SCOPES,
+    WorkflowUnreadable as WorkflowUnreadable,
+    permissions_compare as permissions_compare,
+    permissions_exit as permissions_exit,
+    permissions_lines as permissions_lines,
+    permissions_main as permissions_main,
+    permissions_ratchet as permissions_ratchet,
+    read_workflow as read_workflow,
 )
 from .cli import (  # noqa: E402
     HELP_FLAGS as HELP_FLAGS,

@@ -4,7 +4,7 @@ import json
 import os
 import sys
 
-from .version import REFERENCE_URL, VERSION
+from .version import REFERENCE_URL, SITE, VERSION
 from .errors import ERROR_TABLE
 from .tables import ALL_EFFECTS, HAVE_Z3
 from .recorder import REFUSAL_CODES
@@ -33,7 +33,7 @@ from typing import Any
 SARIF_SCHEMA_URI = ("https://docs.oasis-open.org/sarif/sarif/v2.1.0/"
                     "errata01/os/schemas/sarif-schema-2.1.0.json")
 REPOSITORY = "https://github.com/gowrishankar-infra/velaris-lang"
-ERRORS_PAGE = "https://gowrishankar-infra.github.io/velaris-lang/errors.html"
+ERRORS_PAGE = SITE + "/errors.html"
 
 _EFFECT_WORDS = {"io": "the console", "env": "environment variables",
                  "fs": "files", "net": "the network", "clock": "the time",

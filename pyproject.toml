@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "velaris-lang"
-version = "8.2.1"
+version = "8.3.0"
 description = "The language where you can trust code you didn't write - signatures declare types, effects, and machine-checked promises."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -26,7 +26,10 @@ test = ["jsonschema>=4.18", "fastapi", "httpx", "pyyaml", "hypothesis"]
 velaris = "velaris:main"
 
 [project.urls]
-Homepage = "https://github.com/gowrishankar-infra/velaris-lang"
+Homepage = "https://velaris-lang.dev/"
+Documentation = "https://velaris-lang.dev/"
+Source = "https://github.com/gowrishankar-infra/velaris-lang"
+Changelog = "https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 only-include = ["velaris", "velaris_mcp.py", "velaris_mcp_install.py", "velaris_magic.py"]

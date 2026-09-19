@@ -1,6 +1,6 @@
 # Velaris for VS Code
 
-Language support for [Velaris](https://gowrishankar-infra.github.io/velaris-lang/) —
+Language support for [Velaris](https://velaris-lang.dev/) —
 the language where a function's signature declares its types, its
 effects, whether it can fail, and promises that a theorem prover checks
 before the program runs.

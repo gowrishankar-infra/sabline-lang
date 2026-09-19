@@ -179,7 +179,7 @@ use them".
 ## Try it
 
 The compiler runs in your browser, no install:
-<https://gowrishankar-infra.github.io/velaris-lang/playground.html>
+<https://velaris-lang.dev/playground.html>
 
 Paste the function at the top of this page and watch it refuse. Then
 change `ensures result == x + 0.2` to something IEEE actually

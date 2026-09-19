@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gowrishankar-infra.github.io/velaris-lang/capability/v1/schema.json",
-  "title": "https://gowrishankar-infra.github.io/velaris-lang/capability/v1",
-  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://gowrishankar-infra.github.io/velaris-lang/capability/v1: a velaris.audit/1 document for the source file that is the statement's first subject, and the producer that wrote it. velaris-spec SPEC.md section 8.5 defines it. This schema checks the predicate's shape; the audit field must also validate against velaris.audit.1.schema.json (velaris-spec schemas/), which is not repeated here. Within v1 fields may be added and consumers must ignore fields they do not know.",
+  "$id": "https://velaris-lang.dev/capability/v1/schema.json",
+  "title": "https://velaris-lang.dev/capability/v1",
+  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://velaris-lang.dev/capability/v1: a velaris.audit/1 document for the source file that is the statement's first subject, and the producer that wrote it. velaris-spec SPEC.md section 8.5 defines it. This schema checks the predicate's shape; the audit field must also validate against velaris.audit.1.schema.json (velaris-spec schemas/), which is not repeated here. Within v1 fields may be added and consumers must ignore fields they do not know.",
   "type": "object",
   "required": ["producer", "audit"],
   "properties": {

@@ -66,6 +66,6 @@ than mysterious. If you ask for a subcommand that version does not
 have, it says which command and which version introduced it instead of
 handing it over. `pip install -U velaris-lang` upgrades the compiler.
 
-[Documentation](https://gowrishankar-infra.github.io/velaris-lang/) ·
-[Playground](https://gowrishankar-infra.github.io/velaris-lang/playground.html) ·
+[Documentation](https://velaris-lang.dev/) ·
+[Playground](https://velaris-lang.dev/playground.html) ·
 [Source](https://github.com/gowrishankar-infra/velaris-lang)

@@ -23,13 +23,18 @@ def _launch_command() -> list[Any]:
     return [sys.executable, os.path.join(_PACKAGE_DIR, "__main__.py")]
 
 
-VERSION = "8.2.1"
+VERSION = "8.3.0"
 
+
+# The documentation site, on a domain this project holds (8.3). Until 8.3
+# it was the project's GitHub Pages address, which now redirects here.
+SITE = "https://velaris-lang.dev"
 
 # Every compiler error and every runtime refusal ends with one line
 # pointing here, so a person - or a model - who meets an error has a
 # card to read (8.0). It is llms.txt, the language for a model, served
 # at the documentation site; build_docs.py writes it from LLM.md, and a
-# CI test fetches it to prove the card is really there. --json and SARIF
-# carry it as a field rather than a trailing line.
-REFERENCE_URL = "https://gowrishankar-infra.github.io/velaris-lang/llms.txt"
+# CI test fetches it to prove the card is really there, and that the
+# earlier address redirects to it. --json and SARIF carry it as a field
+# rather than a trailing line.
+REFERENCE_URL = SITE + "/llms.txt"

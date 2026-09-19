@@ -140,4 +140,4 @@ export const NOT_INSTALLED =
   "Velaris needs its compiler, which is a Python package:\n" +
   "\n    pip install velaris-lang\n" +
   "\nOr try it with nothing installed:\n" +
-  "    https://gowrishankar-infra.github.io/velaris-lang/playground.html";
+  "    https://velaris-lang.dev/playground.html";

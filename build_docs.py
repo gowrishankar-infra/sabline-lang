@@ -403,8 +403,9 @@ scanning with <code>--sarif</code>.
 error table in the compiler source.</p>"""
 
 
-PREDICATE_TYPE = ("https://gowrishankar-infra.github.io/velaris-lang/"
-                  "capability/v1")
+# the types velaris/predicates.py names: at velaris-lang.dev from 8.3, and
+# the earlier spelling each is still read under
+PREDICATE_TYPE = velaris.CAPABILITY_PREDICATE_TYPE
 SPEC_REPO = "https://github.com/gowrishankar-infra/velaris-spec"
 
 
@@ -423,7 +424,7 @@ def capability_page() -> str:
   "predicate": {
     "producer": {"name": "velaris-lang",
                  "uri": "https://github.com/gowrishankar-infra/velaris-lang"},
-    "specification": "velaris-spec 0.5",
+    "specification": "%s",
     "auditedAt": "2026-09-11T00:00:00Z",
     "audit": {"schema": "velaris.audit/1", "velaris_version": "%s",
               "ok": true, "effects": ["clock", "fs", "io", "rand"],
@@ -431,7 +432,7 @@ def capability_page() -> str:
               "counts": {"fs": 2, "net": 0}, "prover": true,
               "...": "the rest of the audit"}
   }
-}""" % (PREDICATE_TYPE, velaris.VERSION))
+}""" % (PREDICATE_TYPE, velaris.CAPABILITY_SPEC, velaris.VERSION))
     return f"""
 <div class="eyebrow">An in-toto predicate type</div>
 <h1>capability/v1</h1>
@@ -441,7 +442,9 @@ effects the program declares, the paths, hosts and modules it names,
 and the narrowest budget to run it under.</p>
 
 <p><b>Predicate type:</b> <code>{PREDICATE_TYPE}</code> - this
-page.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
+page.<br><b>Also read as this type:</b> <code>{velaris.CAPABILITY_PREDICATE_TYPES[1]}</code>,
+the name Statements written by velaris-lang 4.2 to 8.2.1 carry; that address
+redirects here.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
 draft 2020-12, for the predicate.<br><b>Definition:</b>
 <a href="{SPEC_REPO}/blob/main/SPEC.md#85-the-audit-as-an-in-toto-predicate">velaris-spec
 SPEC.md section 8.5</a>, dedicated to the public domain under CC0.</p>
@@ -471,7 +474,7 @@ of the implementation that wrote the audit, and optionally
 <code>uri</code>; its version is the audit's
 <code>velaris_version</code></td></tr>
 <tr><td><code>predicate.specification</code></td><td>no</td><td>the
-velaris-spec version followed, as <code>velaris-spec 0.5</code></td></tr>
+velaris-spec version followed, as <code>{velaris.CAPABILITY_SPEC}</code></td></tr>
 <tr><td><code>predicate.auditedAt</code></td><td>no</td><td>when the audit
 was made, RFC 3339 in UTC, by the producer's clock</td></tr>
 <tr><td><code>predicate.conformance</code></td><td>no</td><td>the
@@ -506,8 +509,7 @@ example</a> was written by <code>velaris attest</code>.</p>
 """
 
 
-RECEIPT_TYPE = ("https://gowrishankar-infra.github.io/velaris-lang/"
-                "receipt/v1")
+RECEIPT_TYPE = velaris.RECEIPT_PREDICATE_TYPE
 
 
 def receipt_page() -> str:
@@ -555,7 +557,9 @@ names. The attestation is what the program may do; the receipt is what one
 run of it did.</p>
 
 <p><b>Predicate type:</b> <code>{RECEIPT_TYPE}</code> - this
-page.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
+page.<br><b>Also read as this type:</b> <code>{velaris.RECEIPT_PREDICATE_TYPES[1]}</code>,
+the name receipts written by velaris-lang 8.1 to 8.2.1 carry; that address
+redirects here.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
 draft 2020-12, for the predicate.<br><b>Definition:</b>
 <a href="{SPEC_REPO}/blob/main/SPEC.md#87-velarisreceipt1-a-record-of-one-run">velaris-spec
 SPEC.md section 8.7</a>, dedicated to the public domain under CC0.</p>

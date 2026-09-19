@@ -1048,9 +1048,12 @@ velaris attest src --output src.jsonl               # one Statement per file
 ```
 
 `velaris attest` writes an in-toto Statement v1 whose predicate type is
-`https://gowrishankar-infra.github.io/velaris-lang/capability/v1`
+`https://velaris-lang.dev/capability/v1`
 (velaris-spec section 8.5; the URL is the type's description and
-schema). Its subjects are the audited file and every file it imports,
+schema). Until 8.3 the same type was named at the project's earlier
+documentation address, which now redirects there; a Statement written by
+4.2 to 8.2.1 carries that name, and `velaris verify` (below) reads either
+as this type and refuses every other. Its subjects are the audited file and every file it imports,
 each by the sha256 of its bytes - a file of the standard library named
 `<stdlib>/NAME` - and its predicate is
 
@@ -1095,7 +1098,7 @@ job's identity in CI:
 cosign attest-blob --yes --statement effects.intoto.json \
     --bundle effects.intoto.sigstore.json
 cosign verify-blob-attestation --bundle effects.intoto.sigstore.json \
-    --type https://gowrishankar-infra.github.io/velaris-lang/capability/v1 \
+    --type https://velaris-lang.dev/capability/v1 \
     --certificate-identity you@example.com \
     --certificate-oidc-issuer https://github.com/login/oauth \
     examples/effects.vel
@@ -1108,7 +1111,7 @@ or with a key pair (`cosign generate-key-pair`):
 cosign attest-blob --yes --key cosign.key --statement effects.intoto.json \
     --bundle effects.intoto.sigstore.json
 cosign verify-blob-attestation --key cosign.pub --bundle effects.intoto.sigstore.json \
-    --type https://gowrishankar-infra.github.io/velaris-lang/capability/v1 \
+    --type https://velaris-lang.dev/capability/v1 \
     examples/effects.vel
 ```
 
@@ -1151,6 +1154,37 @@ Every release carries one: `velaris-attestation-X.Y.Z.intoto.json` for
 identity and verified in that workflow before it is attached
 ([SECURITY.md](SECURITY.md)).
 
+**Verifying a Statement** (8.3). `velaris verify` reads an attestation or a
+receipt - a Statement as `attest` or `--receipt` wrote it, the JSON Lines a
+directory gives, a DSSE envelope, or a Sigstore bundle holding one - and
+says whether its predicate type is one Velaris defines, whether its
+predicate has that type's shape, and whether each subject is the bytes on
+this disk:
+
+<!-- illustrative: needs a Statement written by velaris attest, and the file it names -->
+```sh
+velaris verify effects.intoto.json                   # beside examples/, as attested
+velaris verify effects.intoto.json --root checkout   # subjects read under checkout/
+velaris verify effects.intoto.sigstore.json \
+    --identity you@example.com --issuer https://github.com/login/oauth
+velaris verify effects.intoto.json --json            # velaris.verify/1
+```
+
+It exits 0 when the type is capability/v1 or receipt/v1, at velaris-lang.dev
+or where 8.2.1 and earlier named it, and every subject matches; 1 when the
+type is any other - `https://velaris.dev/capability/v1` among them - or the
+predicate has the wrong shape, or a subject's bytes differ; and 2 when it
+could not check: a file it cannot read as a Statement, a key written twice
+in one object (so two readers cannot see two different types), a subject
+that is missing, or whose name is absolute or leads outside `--root` (such a
+name is not read at all), or a signature it was not told how to check. A
+Sigstore bundle's signature is checked against `--identity` and `--issuer`
+with sigstore-python, if it is installed; a bare DSSE envelope's signature
+needs the key that made it, so check it with cosign and pass
+`--skip-signature`. An unsigned Statement verifies only as what it is: a
+claim anyone could write. `velaris verify` with no file is still the older
+spelling of `velaris deps --verify`. `velaris.verify/1` is provisional.
+
 ## A receipt of what one run did (8.1)
 
 ```sh
@@ -1166,13 +1200,13 @@ result.receipt               # the same Statement, as a dict
 
 An attestation says what a program may do. A receipt says what one run of
 it did. It is an in-toto Statement of the predicate type
-`https://gowrishankar-infra.github.io/velaris-lang/receipt/v1`
+`https://velaris-lang.dev/receipt/v1`
 (velaris-spec section 8.7), whose predicate is `velaris.receipt/1`:
 
 ```json
 {"_type": "https://in-toto.io/Statement/v1",
  "subject": [{"name": "examples/effects.vel", "digest": {"sha256": "e483..."}}],
- "predicateType": "https://gowrishankar-infra.github.io/velaris-lang/receipt/v1",
+ "predicateType": "https://velaris-lang.dev/receipt/v1",
  "predicate": {
    "schema": "velaris.receipt/1",
    "producer": {"name": "velaris-lang", "version": "8.1.0", "uri": "..."},
@@ -1223,7 +1257,7 @@ type:
 cosign attest-blob --yes --statement effects.receipt.json \
     --bundle effects.receipt.sigstore.json
 cosign verify-blob-attestation --bundle effects.receipt.sigstore.json \
-    --type https://gowrishankar-infra.github.io/velaris-lang/receipt/v1 \
+    --type https://velaris-lang.dev/receipt/v1 \
     --certificate-identity you@example.com \
     --certificate-oidc-issuer https://github.com/login/oauth \
     examples/effects.vel
@@ -1239,6 +1273,80 @@ signed both ways and verified in the release workflow before it is attached
 A signed receipt says its signer ran this Velaris on these bytes, under
 this budget, and saw this run. It is no stronger than the machine it ran
 on, and it says nothing about any other run.
+
+## A run as an evaluation harness runs it (8.3)
+
+<!-- illustrative: runs a program and writes its receipt -->
+```sh
+velaris eval task.vel --allow io,fs:read:data --receipt ../receipts/task.json
+velaris eval --confinement-probe
+```
+
+`velaris eval` runs one program under a profile its command line cannot
+relax: no net, ffi or env; time and memory limits always; a stop from
+outside honoured and recorded; the worker confined where the operating
+system offers it, and the level in the receipt; and a receipt always,
+outside every grant or sent to a URL. [docs/eval.md](docs/eval.md) says
+exactly what it guarantees and what it does not.
+
+## A receipt compared, and a run made again (8.3)
+
+<!-- illustrative: needs receipts written by earlier runs -->
+```sh
+velaris receipts diff run.json --audit task.vel          # against the program's audit
+velaris receipts diff run.json --against receipts/       # against earlier runs of the same bytes
+velaris replay run.json --max-allow io,fs:read --expect-output run.out
+```
+
+`velaris receipts diff` names what a run did that its program's audit
+does not say - an effect it used or was refused, a host, path or module its
+budget granted that the audit does not name, a declassification the audit
+does not record, a count past the audit's bound, bytes other than the
+audited ones - and, against earlier receipts of the same bytes, what is new:
+a host, a path, a module, a count above the earlier maximum, a first
+declassification. A receipt names no path or host a run reached, only what
+its budget granted, so that is what is compared. It exits 0 when nothing
+differs, 1 when something does, and 2 when it could not compare;
+`velaris.receipts-diff/1` is provisional.
+
+`velaris replay` makes the run again from its receipt: each subject is read
+from disk under `--root`, held to its digest - a subject that is missing,
+different, or named by an absolute path or one that leaves the directory is
+refused before anything runs - and copied into a directory of its own, to
+which imports are held. The run gets the receipt's budget, no wider than
+`--max-allow` (`io` unless raised, since a receipt is text from somewhere
+else), its seed, frozen clock, time and memory limits, and eval's profile
+when the receipt says it ran under it. The new receipt is compared with the
+recorded one and every difference is named. A receipt holds no output or
+input: give the input again (`--stdin FILE`, and words after `--`), and the
+output with `--expect-output FILE` to have it compared.
+
+A program that calls tools reaches them through Python. `velaris
+program.vel --record-responses FILE` records what each `py`, `py_int`,
+`py_float` and `py_json` call gave back, in order, and `velaris replay
+--responses FILE` gives those back in place of calling Python - after the
+budget and the module grants are checked, as for any call. A call that is not
+the one recorded in its place stops the run with E616. Handles are not
+recorded, and a recording holds values the program handled, so keep it as
+you would its output.
+
+## Promises exercised on the inputs they allow (8.3)
+
+<!-- illustrative: needs the prover -->
+```sh
+velaris test pricing.vel --from-contracts --count 20
+```
+
+For each function with a `requires`, the prover is asked for up to
+`--count` argument lists it allows - the least and greatest value of each
+whole number, text length and list length first - and the function is run
+on each, interpreted, so its `ensures` is checked every time it returns. A
+promise the prover proved holds already; this is for the ones it left to
+runtime. A function that declares an effect is not run, and what is run has
+no effect granted. A call that does not return within `--witness-seconds`
+is stopped and counted as a failure. It exits 1 when a witness breaks a
+promise, stops a call or does not finish, and 2 when nothing could be run;
+without the prover there are no witnesses.
 
 ## What a policy asks of it (8.1)
 
@@ -1279,7 +1387,7 @@ compiled. The attestation is attached to the image with cosign:
 ```sh
 velaris attest agent.vel --json | jq .predicate > capability.json
 cosign attest --yes \
-    --type https://gowrishankar-infra.github.io/velaris-lang/capability/v1 \
+    --type https://velaris-lang.dev/capability/v1 \
     --predicate capability.json registry.example.com/agents/agent@sha256:...
 ```
 
@@ -1338,5 +1446,5 @@ repos:
 pipx run --spec velaris-lang velaris hello.vel --allow io
 ```
 
-Or open the [playground](https://gowrishankar-infra.github.io/velaris-lang/playground.html) -
+Or open the [playground](https://velaris-lang.dev/playground.html) -
 the real compiler, in a browser, nothing to install.

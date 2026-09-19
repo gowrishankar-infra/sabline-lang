@@ -21,6 +21,10 @@
     "default": "",
     "required": false
    },
+   "permissions-ratchet": {
+    "default": "false",
+    "required": false
+   },
    "pr-comment": {
     "default": "false",
     "required": false
@@ -94,6 +98,19 @@
     "--allow",
     "--force"
    ],
+   "eval": [
+    "--allow",
+    "--confinement-probe",
+    "--freeze-time",
+    "--grace",
+    "--json",
+    "--max-memory-mb",
+    "--receipt",
+    "--receipt-url",
+    "--seed",
+    "--stop-file",
+    "--timeout"
+   ],
    "explain": [],
    "fmt": [],
    "lsp": [],
@@ -115,12 +132,30 @@
     "--write"
    ],
    "new": [],
+   "permissions-ratchet": [
+    "--against",
+    "--json",
+    "--root"
+   ],
    "proofs": [
     "--detail",
     "--min",
     "--sarif"
    ],
+   "receipts": [
+    "--against",
+    "--audit",
+    "--json"
+   ],
    "repl": [],
+   "replay": [
+    "--expect-output",
+    "--json",
+    "--max-allow",
+    "--responses",
+    "--root",
+    "--stdin"
+   ],
    "review": [
     "--against",
     "--json"
@@ -144,24 +179,42 @@
     "--ffi",
     "--json"
    ],
-   "test": [],
+   "test": [
+    "--count",
+    "--from-contracts",
+    "--json",
+    "--witness-seconds"
+   ],
    "trace": [],
-   "verify": [],
+   "verify": [
+    "--identity",
+    "--json",
+    "--root",
+    "--skip-signature"
+   ],
    "version": []
   },
   "flags": [
    "--against",
    "--allow",
+   "--audit",
    "--bind",
    "--check-memory-mb",
    "--check-timeout",
    "--comment",
+   "--confinement-probe",
    "--corpus",
+   "--count",
    "--deny",
    "--detail",
+   "--expect-output",
    "--ffi",
    "--force",
+   "--freeze-time",
+   "--from-contracts",
+   "--grace",
    "--help",
+   "--identity",
    "--json",
    "--level",
    "--log",
@@ -177,14 +230,23 @@
    "--proof-timeout",
    "--rate-limit",
    "--receipt",
+   "--receipt-url",
+   "--record-responses",
+   "--responses",
    "--root",
    "--sarif",
+   "--seed",
+   "--skip-signature",
+   "--stdin",
+   "--stop-file",
    "--strict",
    "--time",
+   "--timeout",
    "--to",
    "--token-file",
    "--verify",
    "--version",
+   "--witness-seconds",
    "--write"
   ]
  },
@@ -875,6 +937,8 @@
    "E612",
    "E613",
    "E614",
+   "E615",
+   "E616",
    "E700",
    "E701",
    "E703",
@@ -1043,7 +1107,11 @@
    "CAPABILITY_PREDICATE_TYPE": {
     "kind": "value",
     "type": "str",
-    "value": "https://gowrishankar-infra.github.io/velaris-lang/capability/v1"
+    "value": "https://velaris-lang.dev/capability/v1"
+   },
+   "CAPABILITY_PREDICATE_TYPES": {
+    "kind": "value",
+    "type": "tuple"
    },
    "CAPABILITY_SPEC": {
     "kind": "value",
@@ -1601,6 +1669,19 @@
     },
     "signature": "(length)"
    },
+   "PERMISSIONS_RATCHET_SCHEMA": {
+    "kind": "value",
+    "type": "str",
+    "value": "velaris.permissions-ratchet/1"
+   },
+   "PERMISSION_LEVELS": {
+    "kind": "value",
+    "type": "tuple"
+   },
+   "PERMISSION_SCOPES": {
+    "kind": "value",
+    "type": "tuple"
+   },
    "PROGRAM_ARGS": {
     "kind": "value",
     "type": "list"
@@ -1710,7 +1791,11 @@
    "RECEIPT_PREDICATE_TYPE": {
     "kind": "value",
     "type": "str",
-    "value": "https://gowrishankar-infra.github.io/velaris-lang/receipt/v1"
+    "value": "https://velaris-lang.dev/receipt/v1"
+   },
+   "RECEIPT_PREDICATE_TYPES": {
+    "kind": "value",
+    "type": "tuple"
    },
    "RECEIPT_SCHEMA": {
     "kind": "value",
@@ -1752,6 +1837,10 @@
    "REPOSITORY": {
     "kind": "value",
     "type": "str"
+   },
+   "RESPONSES": {
+    "kind": "value",
+    "type": "NoneType"
    },
    "REVIEW_SCHEMA": {
     "kind": "value",
@@ -1899,6 +1988,10 @@
     "kind": "value",
     "type": "NoneType"
    },
+   "SITE": {
+    "kind": "value",
+    "type": "str"
+   },
    "STARTER": {
     "kind": "value",
     "type": "str"
@@ -1907,6 +2000,10 @@
     "kind": "value",
     "type": "str",
     "value": "velaris.stats-ffi/1"
+   },
+   "STOP_FILE": {
+    "kind": "value",
+    "type": "NoneType"
    },
    "Str": {
     "bases": [
@@ -2012,6 +2109,16 @@
     },
     "signature": "(cond, body, line, invariants=<factory>)"
    },
+   "WorkflowUnreadable": {
+    "bases": [
+     "Exception"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, line, reason)"
+    },
+    "signature": "(line, reason)"
+   },
    "allow_host": {
     "kind": "function",
     "signature": "(url, what, line)"
@@ -2106,7 +2213,7 @@
    },
    "check_proofs": {
     "kind": "function",
-    "signature": "(funcs, records, errors, proven_out=None, timeouts_out=None)"
+    "signature": "(funcs, records, errors, proven_out=None, timeouts_out=None, witnesses_out=None, witness_count=20)"
    },
    "check_types": {
     "kind": "function",
@@ -2352,9 +2459,33 @@
     "kind": "function",
     "signature": "(text, currency)"
    },
+   "permissions_compare": {
+    "kind": "function",
+    "signature": "(base, head, against='')"
+   },
+   "permissions_exit": {
+    "kind": "function",
+    "signature": "(result)"
+   },
+   "permissions_lines": {
+    "kind": "function",
+    "signature": "(result)"
+   },
+   "permissions_main": {
+    "kind": "function",
+    "signature": "(argv)"
+   },
+   "permissions_ratchet": {
+    "kind": "function",
+    "signature": "(against, root='.')"
+   },
    "pool_worker": {
     "kind": "function",
     "signature": "(argv)"
+   },
+   "predicate_kind": {
+    "kind": "function",
+    "signature": "(predicate_type)"
    },
    "print_sarif_summary": {
     "kind": "function",
@@ -2387,6 +2518,10 @@
    "read_capabilities": {
     "kind": "function",
     "signature": "(path)"
+   },
+   "read_workflow": {
+    "kind": "function",
+    "signature": "(text)"
    },
    "receipt_statement": {
     "kind": "function",

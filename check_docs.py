@@ -1023,7 +1023,15 @@ def check_codes() -> Result:
     used_paraphrases = set()
     for doc in CODE_DOCS:
         lines = (HERE / doc).read_text(encoding="utf-8").splitlines()
+        section = ""
         for n, line in enumerate(lines, 1):
+            if line.startswith("## "):
+                section = line[3:].strip()
+            # docs/crosswalk.md quotes AIUC-1's requirement identifiers, whose
+            # E001 to E017 are AIUC-1's and not Velaris's error codes (8.3)
+            if doc == "docs/crosswalk.md" and (
+                    section == "AIUC-1" or "AIUC-1:" in line):
+                continue
             for m in CODE.finditer(line):
                 code = "E" + m.group(1)
                 cited += 1
@@ -1245,6 +1253,165 @@ def build_readme_check() -> Result:
 
 # ---------------------------------------------------------------------------
 
+OLD_HOST = "gowrishankar-infra.github.io"
+# 8.3: the documentation site is velaris-lang.dev. These are the only tracked
+# files that may name its earlier address, each for the reason given.
+OLD_HOST_ALLOWED = {
+    "CHANGELOG.md": "the history of the releases that named it",
+    "check_urls.py": "the test that the card's earlier address redirects",
+    "check_docs.py": "this check",
+    "velaris/predicates.py": "the earlier spelling of the two predicate "
+                             "types, which a reader of Statements accepts",
+    "policies/opa/capability.rego": "the policy admits a Statement written "
+                                    "before 8.3",
+    "policies/opa/capability_test.rego": "the test that it does",
+    "docs/capability/v1/index.html": "the type's page names the spelling it "
+                                     "is also read under",
+    "docs/receipt/v1/index.html": "the type's page names the spelling it is "
+                                  "also read under",
+    "playground/index.html": "it holds the velaris package, predicates.py "
+                             "among it",
+    "docs/playground.html": "it holds the velaris package, predicates.py "
+                            "among it",
+}
+SITE_URL = re.compile(r"https?://velaris-lang\.dev(?:/[^\s<>\"'`)\]}|\\&]*)?")
+
+
+def domain_check() -> Result:
+    """No tracked file names the documentation site's earlier address but
+    those OLD_HOST_ALLOWED lists, and every velaris-lang.dev URL a tracked
+    file names is a page under docs/, which GitHub Pages serves there."""
+    import urllib.parse
+    res = Result("domain")
+    try:
+        listed = subprocess.run(["git", "ls-files", "-z"], cwd=HERE,
+                                capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as e:
+        res.skip(f"the tracked files could not be listed ({e})")
+        return res
+    if listed.returncode != 0:
+        res.skip("not a git checkout, so the tracked files cannot be listed")
+        return res
+    named: list[str] = []
+    urls: dict[str, str] = {}
+    for rel in sorted(f for f in listed.stdout.decode("utf-8", "replace")
+                      .split("\0") if f):
+        try:
+            text = (HERE / rel).read_bytes().decode("utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if OLD_HOST in text and rel not in OLD_HOST_ALLOWED:
+            named.append(f"{rel}:{text[:text.index(OLD_HOST)].count(chr(10)) + 1}")
+        for m in SITE_URL.finditer(text):
+            urls.setdefault(m.group(0).rstrip(".,;:!?*_"), rel)
+    if named:
+        res.wrong(f"{OLD_HOST}, the documentation site's earlier address, is "
+                  f"named in {', '.join(named)}; the site is velaris-lang.dev")
+    else:
+        res.ok(f"no tracked file names {OLD_HOST} but the "
+               f"{len(OLD_HOST_ALLOWED)} listed with their reasons")
+    missing = []
+    for url, rel in sorted(urls.items()):
+        path = urllib.parse.unquote(urllib.parse.urlsplit(url).path)
+        page = HERE / "docs" / path.lstrip("/")
+        if path in ("", "/") or path.endswith("/") or page.is_dir():
+            page = page / "index.html"
+        if not page.is_file():
+            missing.append(f"{url} (named in {rel})")
+    if missing:
+        res.wrong("a velaris-lang.dev URL that docs/ does not serve: "
+                  + "; ".join(missing))
+    else:
+        res.ok(f"every velaris-lang.dev URL a tracked file names "
+               f"({len(urls)}) is a page docs/ serves")
+    return res
+
+
+def _section_headings(text: str, section: str) -> list[str]:
+    """The ### headings under one ## heading of a Markdown page."""
+    part = text.split(f"\n## {section}", 1)
+    if len(part) < 2:
+        return []
+    body = part[1].split("\n## ", 1)[0]
+    return [h.strip() for h in re.findall(r"^### (.+)$", body, re.M)]
+
+
+def _table_first_cells(text: str, heading: str) -> list[str]:
+    """The first cell of every row of the first table under a heading,
+    bold and backticks taken off."""
+    part = text.split(heading, 1)
+    if len(part) < 2:
+        return []
+    rows = []
+    for line in part[1].split("\n\n## ", 1)[0].splitlines():
+        if not line.startswith("|") or line.startswith("|---"):
+            continue
+        cell = line.split("|")[1].strip().replace("**", "")
+        rows.append(cell)
+    return rows[1:]                        # the header row
+
+
+def crosswalk_check() -> Result:
+    """docs/crosswalk.md (8.3) names every guarantee in README.md's "Why
+    Velaris" table and every row of THREAT_MODEL.md's Known open table, and
+    nothing that is not one; every row it has gives one of the four words."""
+    res = Result("crosswalk")
+    page = HERE / "docs" / "crosswalk.md"
+    if not page.exists():
+        res.wrong("docs/crosswalk.md is missing")
+        return res
+    text = page.read_text(encoding="utf-8")
+    readme = (HERE / "README.md").read_text(encoding="utf-8")
+    threat = (HERE / "THREAT_MODEL.md").read_text(encoding="utf-8")
+    guarantees = _table_first_cells(readme, "## Why Velaris")
+    listed = _section_headings(text, "Every guarantee, and where it lands")
+    listed = [h for h in listed if h != "Rows that rest on no guarantee"]
+    if set(guarantees) != set(listed) or not guarantees:
+        res.wrong(f"the crosswalk's guarantees are not README's: README has "
+                  f"{sorted(set(guarantees) - set(listed))} the crosswalk "
+                  f"does not, and the crosswalk has "
+                  f"{sorted(set(listed) - set(guarantees))} README does not")
+    else:
+        res.ok(f"the crosswalk names README's {len(guarantees)} guarantees, "
+               f"and no other")
+    open_rows = [c.replace("`", "") for c in
+                 _table_first_cells(threat, "## Known open")]
+    open_listed = [h.replace("`", "") for h in _section_headings(
+        text, "Every known-open item, and where it lands")]
+    if set(open_rows) != set(open_listed) or not open_rows:
+        res.wrong(f"the crosswalk's known-open items are not THREAT_MODEL's: "
+                  f"missing {sorted(set(open_rows) - set(open_listed))}, "
+                  f"extra {sorted(set(open_listed) - set(open_rows))}")
+    else:
+        res.ok(f"the crosswalk names THREAT_MODEL.md's {len(open_rows)} "
+               f"known-open items, and no other")
+    words = ("enforced", "recorded", "partial", "not addressed")
+    bad = []
+    in_controls = False
+    rows = 0
+    for line in text.splitlines():
+        if not line.startswith("|"):
+            in_controls = False
+            continue
+        cells = [c.strip() for c in line.split("|")[1:-1]]
+        if cells == ["Control", "Velaris", "Status", "Where"]:
+            in_controls = True
+            continue
+        if not in_controls or cells[0].startswith("---"):
+            continue
+        rows += 1
+        if len(cells) != 4 or cells[2] not in words:
+            bad.append(cells[0][:40])
+    if not rows:
+        bad.append("no control table at all")
+    if bad:
+        res.wrong(f"a control row whose status is not one of {words}: {bad}")
+    else:
+        res.ok("every control row gives enforced, recorded, partial or not "
+               "addressed")
+    return res
+
+
 def main() -> int:
     started = time.time()
     documents = {doc: read_document(doc) for doc in DOCS}
@@ -1300,7 +1467,9 @@ def main() -> int:
         setup.wrong(f"INLINE_LISTED has {s!r}, which no document has now")
 
     readme_blocks, readme_prose, _ = documents["README.md"]
-    drift_tasks = [("build_readme", build_readme_check),
+    drift_tasks = [("domain", domain_check),
+                   ("crosswalk", crosswalk_check),
+                   ("build_readme", build_readme_check),
                    ("codes", check_codes),
                    ("numbers", lambda: readme_numbers(readme_blocks,
                                                       readme_prose)),

@@ -1,6 +1,6 @@
 {
   "name": "velaris-lang",
-  "version": "8.2.1",
+  "version": "8.3.0",
   "mcpName": "io.github.gowrishankar-infra/velaris",
   "description": "Run code you did not write. A language where a signature declares its effects and promises, and the runtime refuses anything you did not allow.",
   "keywords": [
@@ -13,7 +13,7 @@
     "mcp",
     "prover"
   ],
-  "homepage": "https://gowrishankar-infra.github.io/velaris-lang/",
+  "homepage": "https://velaris-lang.dev/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gowrishankar-infra/velaris-lang.git"

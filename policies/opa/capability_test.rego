@@ -10,7 +10,7 @@ platform := {"effects": ["io", "net"], "hosts": ["api.example.com", "*.cdn.examp
 statement(ok, effects, hosts, any) := {
 	"_type": "https://in-toto.io/Statement/v1",
 	"subject": [{"name": "app.vel", "digest": {"sha256": "0000000000000000000000000000000000000000000000000000000000000000"}}],
-	"predicateType": "https://gowrishankar-infra.github.io/velaris-lang/capability/v1",
+	"predicateType": "https://velaris-lang.dev/capability/v1",
 	"predicate": {
 		"producer": {"name": "velaris-lang"},
 		"audit": {
@@ -65,6 +65,20 @@ test_refuses_an_audit_that_did_not_compile if {
 
 test_refuses_another_predicate_type if {
 	some msg in capability.deny with input as object.union(statement(true, ["io"], [], false), {"predicateType": "https://slsa.dev/provenance/v1"})
+		with data.platform as platform
+	startswith(msg, "the predicate type is")
+}
+
+# a Statement written by Velaris 4.2 to 8.2.1 names the type at the project's
+# earlier documentation address: the same type
+test_admits_the_type_as_written_before_8_3 if {
+	count(capability.deny) == 0 with input as object.union(statement(true, ["io"], [], false), {"predicateType": "https://gowrishankar-infra.github.io/velaris-lang/capability/v1"})
+		with data.platform as platform
+}
+
+# velaris.dev was never this project's domain: a type under it is another type
+test_refuses_the_type_under_a_domain_velaris_does_not_hold if {
+	some msg in capability.deny with input as object.union(statement(true, ["io"], [], false), {"predicateType": "https://velaris.dev/capability/v1"})
 		with data.platform as platform
 	startswith(msg, "the predicate type is")
 }

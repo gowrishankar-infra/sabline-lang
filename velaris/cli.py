@@ -167,6 +167,9 @@ Usage:
   velaris clean                            does nothing: 8.2 keeps no proofs
                                            (it says so; removed in 9.0)
   velaris test program.vel                 run every test_ function
+  velaris test f.vel --from-contracts      run each function on arguments Z3
+        [--count 20] [--json]              finds its requires allow, ensures
+        [--witness-seconds 5]              checked; one with effects is refused
   velaris trace program.vel                show every call as it happens
   velaris explain program.vel              walk through what it does
   velaris audit program.vel                what it can touch, before you run it
@@ -205,10 +208,29 @@ Usage:
                                            npm:NAME, git:URL or dir:PATH
   velaris deps-diff --against REF [path]   the same for every upgrade in the
         [--comment --pr N]                 lockfiles changed since REF
+  velaris permissions-ratchet              fail if a workflow's permissions:
+        --against REF [--json]             block gives a job more than REF
+        [--root DIR]                       did (exit 1; 2 if one is unreadable)
   velaris conformance [--level 1|2|3]      run velaris-spec's conformance
         [--json] [--corpus DIR]            corpus against this Velaris
   velaris attest <path> [--output FILE]    the audit as an in-toto Statement,
         [--json]                           each file by its sha256 (unsigned)
+  velaris eval program.vel --receipt FILE  a run as an evaluation sandbox runs
+        [--receipt-url URL] [--allow G]    it: no net, ffi or env, time and
+        [--timeout S] [--max-memory-mb M]  memory limits, confined where the OS
+        [--stop-file F] [--grace S]        offers it, a stop honoured, and a
+        [--seed N] [--freeze-time T]       receipt always (docs/eval.md)
+        [--json] [--confinement-probe]
+  velaris receipts diff <receipt>          what a run did that its audit does
+        [--audit PROGRAM|AUDIT|STATEMENT]  not name, or that earlier runs of
+        [--against RECEIPT|DIR] [--json]   the same bytes did not (exit 1)
+  velaris replay <receipt> [--root DIR]    the run again, from the receipt's
+        [--max-allow G] [--stdin FILE]     bytes, seed, clock, budget and
+        [--expect-output FILE]             limits; every difference named
+        [--responses FILE] [--json]        (exit 1), different bytes refused
+  velaris <file> --record-responses FILE   and record what its py, py_int,
+                                           py_float and py_json calls gave
+                                           back, for velaris replay
   velaris eject program.vel [-o DIR]       a directory that runs with nothing
         [--allow G] [--force]              from here, its budget fixed in it
   velaris stats --ffi [dir] [--json]       the ffi grants a directory of
@@ -222,6 +244,9 @@ Usage:
   velaris deps                             what this project depends on
   velaris deps --verify                    do the libraries match velaris.lock?
   velaris verify                           the same check, older spelling
+  velaris verify <statement> [--root DIR]  an attestation or a receipt: its
+        [--identity ID] [--json]           type is Velaris's and each subject
+        [--skip-signature]                 is these bytes, and its signature
   velaris lsp                              language server (for editors)
   velaris version                          print the version
   python velaris.py program.vel            run a program (it gets io)
@@ -366,9 +391,15 @@ from .ratchet import capabilities_main, review_main
 from .conform import conformance_main
 from .attestation import attest_main
 from .receipts import _receipt_subjects, _run_parameters, receipt_statement
+from .statements import verify_main
+from .evaluation import eval_main
+from .receipt_diff import receipts_main
+from .replay import ResponseLog, replay_main
 from .upgrades import deps_diff_main
 from .stats import stats_main
 from .eject import eject_main
+from .witnesses import from_contracts_main
+from .permissions import permissions_main
 from typing import Any, cast
 
 
@@ -525,7 +556,7 @@ def main() -> int:
     # anything reads a flag; mcp-verify and mcp-manifest keep theirs, which
     # comes before a server command.
     program_words: list[Any] = []
-    if "--" in argv and (argv[0] in ("run", "trace")
+    if "--" in argv and (argv[0] in ("run", "trace", "eval", "replay")
                          or argv[0] not in usage_lines()):
         at = argv.index("--")
         program_words = argv[at + 1:]
@@ -593,7 +624,7 @@ def main() -> int:
         argv.remove(a)
         sys.argv = [sys.argv[0]] + argv
     if "--max-memory-mb" in argv and argv[:1] not in (
-            ["serve"], ["mcp"], ["mcp-verify"], ["mcp-manifest"]):
+            ["serve"], ["mcp"], ["mcp-verify"], ["mcp-manifest"], ["eval"]):
         # before anything else this process does: a cap asked for late
         # is a cap that missed whatever was allocated first. Not for the
         # door or the MCP server, whose --max-memory-mb is the most each
@@ -636,6 +667,10 @@ def main() -> int:
         return fmt_main(argv[1:])
     if argv[:1] == ["lsp"]:
         return lsp_serve()
+    # `velaris verify` alone is the older spelling of `deps --verify`; given a
+    # file, it is the check of an attestation or a receipt (8.3)
+    if argv[:1] == ["verify"] and any(not a.startswith("-") for a in argv[1:]):
+        return verify_main(argv[1:])
     if argv[:1] in (["add"], ["deps"], ["verify"]):
         return packages(argv)
     if argv[:1] == ["proofs"]:
@@ -745,10 +780,18 @@ def main() -> int:
         return review_main(argv[1:])
     if argv[:1] == ["deps-diff"]:
         return deps_diff_main(argv[1:])
+    if argv[:1] == ["permissions-ratchet"]:
+        return permissions_main(argv[1:])
     if argv[:1] == ["conformance"]:
         return conformance_main(argv[1:])
     if argv[:1] == ["attest"]:
         return attest_main(argv[1:])
+    if argv[:1] == ["eval"]:
+        return eval_main(argv[1:], program_words)
+    if argv[:1] == ["receipts"]:
+        return receipts_main(argv[1:])
+    if argv[:1] == ["replay"]:
+        return replay_main(argv[1:], program_words)
     if argv[:1] == ["eject"]:
         return eject_main(argv[1:])
     if argv[:1] == ["stats"]:
@@ -1032,6 +1075,8 @@ def main() -> int:
             ["--"] + program_words if program_words else [])
         return main()
     if argv[:1] == ["test"]:
+        if "--from-contracts" in argv:
+            return from_contracts_main(argv[1:])
         if len(argv) < 2:
             print("usage: velaris test program.vel", file=sys.stderr)
             return 1
@@ -1331,7 +1376,8 @@ def main() -> int:
     # took for itself. Until 2.62 `--allow io` leaked in as two words.
     FLAGS = {"--json", "--no-native", "--time", "--check"}
     VALUED = {"--allow", "--deny", "--timeout", "--max-memory-mb",
-              "--max-read", "--seed", "--freeze-time", "--receipt"}
+              "--max-read", "--seed", "--freeze-time", "--receipt",
+              "--record-responses"}
     rest, skip = [], False
     for a in sys.argv[2:]:
         if skip:
@@ -1341,6 +1387,33 @@ def main() -> int:
         elif a not in FLAGS:
             rest.append(a)
     _state.PROGRAM_ARGS[:] = rest + program_words
+    if "--record-responses" in sys.argv:
+        # code mode (8.3): what each py, py_int, py_float and py_json call
+        # gave back, in order, written when the run ends - for velaris replay
+        try:
+            record_to = cast(str, _flag_value(sys.argv, "--record-responses"))
+        except BudgetError as e:
+            print(str(e), file=sys.stderr)
+            return 2
+        log = ResponseLog()
+        vars(_state)["RESPONSES"] = log
+        try:
+            return _cli_run_receipt_or_not(filename, as_json, budget)
+        finally:
+            vars(_state)["RESPONSES"] = None
+            try:
+                with open(record_to, "w", encoding="utf-8",
+                          newline="\n") as fh:
+                    fh.write(json.dumps(log.document(), indent=2,
+                                        ensure_ascii=False) + "\n")
+            except OSError as e:
+                print(f"velaris: the responses could not be written to "
+                      f"{record_to}: {e.strerror or e}", file=sys.stderr)
+    return _cli_run_receipt_or_not(filename, as_json, budget)
+
+
+def _cli_run_receipt_or_not(filename: str, as_json: bool,
+                            budget: "Budget") -> int:
     if "--receipt" in sys.argv:
         try:
             receipt_to = _flag_value(sys.argv, "--receipt")

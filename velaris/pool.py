@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 from . import state as _state
 from .version import VERSION, _launch_command
+from .confine import confine_worker, probe as probe_confinement
 from .recorder import _RunRecorder, _entry_name, _utc_now_ms
 from .budget import Budget, BudgetError, set_run_params
 from .results import AuditResult, CheckResult, Problem, RunResult, _problem_of
@@ -61,7 +62,7 @@ MUTABLE_GLOBALS = ("PROGRAM_ARGS", "EFFECT_BUDGET", "FFI_MODULES",
                    "FS_GRANTS", "NET_GRANTS", "OP_LIMITS", "OP_COUNTS",
                    "EFFECT_USES", "PY_OBJECTS", "PY_NEXT", "TRACE",
                    "_NATIVE_KEEPALIVE", "SEED", "FROZEN_TIME", "_RNG",
-                   "RUN_RECORDER", "IMPORT_ROOT")
+                   "RUN_RECORDER", "IMPORT_ROOT", "STOP_FILE", "RESPONSES")
 
 
 def program_state_baseline() -> dict[str, Any]:
@@ -115,6 +116,7 @@ def reset_program_state(budget: "Budget | None" = None,
     _state.TRACE.update({"on": False, "depth": 0, "calls": 0, "limit": 4000})
     set_run_params(None, None)         # --seed / --freeze-time, per program
     vars(_state)["RUN_RECORDER"] = None   # a receipt is one program's (8.1)
+    vars(_state)["RESPONSES"] = None      # recorded responses are one run's (8.3)
     (budget if budget is not None else Budget()).install()
     if baseline is None:
         return
@@ -197,6 +199,11 @@ def pool_worker(argv: list[Any]) -> int:
     vars(_state)["_IN_CHILD"] = True
     if "--import-root" in argv:
         vars(_state)["IMPORT_ROOT"] = argv[argv.index("--import-root") + 1]
+    # velaris eval's worker (8.3): where a stop is asked for, and the
+    # directories the operating system may let it write
+    if "--stop-file" in argv:
+        vars(_state)["STOP_FILE"] = argv[argv.index("--stop-file") + 1]
+    confined = "--confine" in argv
     try:
         budget = Budget.parse(spec)
     except BudgetError as e:
@@ -215,10 +222,23 @@ def pool_worker(argv: list[Any]) -> int:
     os.dup2(null, 1)
     os.close(null)
 
+    # confinement, before anything of anyone's is read: after this the
+    # worker cannot write outside those directories, start a program, or -
+    # where the kernel offers it - make a TCP connection
+    confinement = "none"
+    if confined:
+        try:
+            writable = json.loads(argv[argv.index("--confine") + 1])
+        except (ValueError, IndexError):
+            writable = []
+        confinement = confine_worker([str(w) for w in writable
+                                      if isinstance(w, str)])
+
     baseline = program_state_baseline()
     reset_program_state(budget, baseline)
     _msg_write(replies, {"ready": VERSION, "pid": os.getpid(),
-                         "allow": budget.spec()})
+                         "allow": budget.spec(),
+                         "confinement": confinement})
     while True:
         request = _msg_read(requests)
         if request is None or request.get("stop"):
@@ -230,8 +250,11 @@ def pool_worker(argv: list[Any]) -> int:
 
         op = request.get("op") or "run"
         try:
-            if op == "check":
-                answer: dict[str, Any] = {"check": _check_here(
+            if op == "probe" and confined:
+                answer: dict[str, Any] = {"probe": probe_confinement(
+                    request.get("port"), request.get("write"))}
+            elif op == "check":
+                answer = {"check": _check_here(
                     request.get("source") or "", path=request.get("path"),
                     prove=bool(request.get("prove", True))).as_dict()}
             elif op == "audit":
@@ -261,15 +284,19 @@ def pool_worker(argv: list[Any]) -> int:
 class _Worker:
     """One child process, and the pipe its pool talks to it over."""
 
-    def __init__(self, cmd: list[Any], max_memory_mb: Any) -> None:
+    def __init__(self, cmd: list[Any], max_memory_mb: Any,
+                 one_process: bool = False, **popen_kw: Any) -> None:
         import subprocess
         self.killed_by_timeout = False
         self.dead = False
+        # handed each event as it arrives, when set (velaris eval's stream)
+        self.on_event: Any = None
         self._kill_lock = threading.Lock()
         self._noise: list[Any] = []
         self.proc, self.job, self.cap = _spawn_capped(
-            cmd, max_memory_mb, stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            cmd, max_memory_mb, one_process=one_process,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, **popen_kw)
         self.pid = self.proc.pid
         self._drain = threading.Thread(target=self._read_stderr, daemon=True)
         self._drain.start()
@@ -279,6 +306,13 @@ class _Worker:
             raise RuntimeError("a pool worker did not start: "
                                + (self.stderr() or "it said nothing"))
         self.allow = hello.get("allow") or ""
+        self.confinement = str(hello.get("confinement") or "none")
+        # Now that the worker is up, the job holds the processes starting
+        # it took - its own, and a launcher's where python.exe is one -
+        # and refuses any further process (8.3, velaris eval).
+        self.processes_held = (self.job.hold_current()
+                               if one_process and self.job is not None
+                               else None)
 
     def _read_stderr(self) -> None:
         try:
@@ -314,6 +348,11 @@ class _Worker:
                     return message, events
                 if isinstance(message["event"], dict):
                     events.append(message["event"])
+                    if self.on_event is not None:
+                        try:
+                            self.on_event(message["event"])
+                        except Exception:
+                            pass
         finally:
             if alarm is not None:
                 alarm.cancel()
@@ -601,7 +640,8 @@ class Pool:
             return sorted(w.pid for w in self._live)
 
     # ---- the machinery -----------------------------------------------
-    def _start(self) -> "_Worker":
+    def _worker_command(self) -> list[Any]:
+        """How a worker of this pool is started."""
         cmd = _launch_command() + ["--pool-worker",
                                    "--allow", self._budget.spec()]
         if not self.native:
@@ -610,7 +650,20 @@ class Pool:
             cmd += ["--max-memory-mb", str(int(self.max_memory_mb))]
         if self.import_root is not None:
             cmd += ["--import-root", self.import_root]
-        worker = _Worker(cmd, self.max_memory_mb)
+        return cmd
+
+    def _worker_options(self) -> dict[str, Any]:
+        """What else a worker is started with: nothing, for a pool; velaris
+        eval's adds its own (8.3)."""
+        return {}
+
+    def _started(self, worker: "_Worker") -> None:
+        """A worker has started and said it is ready."""
+
+    def _start(self) -> "_Worker":
+        worker = _Worker(self._worker_command(), self.max_memory_mb,
+                         **self._worker_options())
+        self._started(worker)
         with self._lock:
             # close() may have run between the check in run() and here.
             # A worker added after close() drained the set would outlive

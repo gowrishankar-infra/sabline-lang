@@ -5,11 +5,11 @@
   "native": true,
   "platform": "Windows 11 AMD64",
   "prover": true,
-  "python": "3.13.12",
+  "python": "3.13.13",
   "python_memory_cap": "job object",
   "quick": false,
   "timeout_s": 5,
-  "velaris": "8.0.0",
+  "velaris": "8.3.0",
   "velaris_memory_cap": "enforced"
  },
  "programs": [
@@ -3074,11 +3074,6 @@
         "code": "E520",
         "line": 7,
         "message": "'to_int' can fail - that cannot be ignored"
-       },
-       {
-        "code": "E520",
-        "line": 7,
-        "message": "'to_int' can fail - that cannot be ignored"
        }
       ],
       "loops_unshown": 0,
@@ -3089,7 +3084,7 @@
       "ran": false,
       "reason": "did not compile"
      },
-     "evidence": "check: E520 line 7, E520 line 7; run: not attempted, did not compile",
+     "evidence": "check: E520 line 7; run: not attempted, did not compile",
      "observed": null,
      "verdict": "caught-before-run"
     }
@@ -6348,13 +6343,778 @@
        }
       ],
       "ran": true,
-      "refused_effect": null,
+      "refused_effect": "fs:<path>",
       "stdout": "",
       "timed_out": false
      },
-     "evidence": "audit: net; run: E318",
+     "evidence": "audit: net; run: E318 refused fs:<a credential location>",
      "observed": false,
      "verdict": "caught-before-run"
+    }
+   }
+  },
+  {
+   "category": 14,
+   "category_key": "14_skill_supply_chain/",
+   "category_title": "Skill supply chain: an agent skill whose helper reads a credential and posts it",
+   "danger_line": {
+    "deno": 12,
+    "python": 9,
+    "velaris": 13
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-read={granted}"
+   ],
+   "description": "A \"weather\" skill that prints a forecast summary; its \"telemetry\" helper reads the .env in the granted folder and posts it to a second endpoint.",
+   "id": "14a",
+   "kind": "skill-exfil",
+   "name": "a_weather_telemetry",
+   "needs": [
+    "io",
+    "fs:read:{granted}"
+   ],
+   "stdin": "<notes>\n<dotenv>\n<other-url>\n",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       12
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "forecast: 15 bytes\ntelemetry off",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program)",
+     "observed": false,
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "forecast: 14 bytes\ntelemetry sent",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "observed": true,
+     "verdict": "missed"
+    },
+    "velaris": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [
+       "net"
+      ],
+      "check": [],
+      "loops_unshown": 0,
+      "loops_unshown_in": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 1,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E318",
+        "message": "'read_file' reaches '<path>' (resolved: <path>), a documented credential location; a plain read returns ordinary text that can be printed or sent"
+       }
+      ],
+      "ran": true,
+      "refused_effect": "fs:<path>",
+      "stdout": "forecast: 14 bytes",
+      "timed_out": false
+     },
+     "evidence": "audit: net; run: E318 refused fs:<a credential location>",
+     "observed": false,
+     "verdict": "caught-before-run"
+    }
+   }
+  },
+  {
+   "category": 14,
+   "category_key": "14_skill_supply_chain/",
+   "category_title": "Skill supply chain: an agent skill whose helper reads a credential and posts it",
+   "danger_line": {
+    "deno": 7,
+    "python": 8,
+    "velaris": 7
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-read={granted}"
+   ],
+   "description": "A \"notes summariser\"; its \"update check\", two helpers down, reads a key file (a .pem) and posts it to a second endpoint.",
+   "id": "14b",
+   "kind": "skill-exfil",
+   "name": "b_notes_update",
+   "needs": [
+    "io",
+    "fs:read:{granted}"
+   ],
+   "stdin": "<notes>\n<cred>\n<other-url>\n",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       7
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "notes: 15 chars\nupdate check skipped",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program)",
+     "observed": false,
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "notes: 14 chars\nup to date",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "observed": true,
+     "verdict": "missed"
+    },
+    "velaris": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [
+       "net"
+      ],
+      "check": [],
+      "loops_unshown": 0,
+      "loops_unshown_in": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 1,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E318",
+        "message": "'read_file' reaches '<path>' (resolved: <path>), a documented credential location; a plain read returns ordinary text that can be printed or sent"
+       }
+      ],
+      "ran": true,
+      "refused_effect": "fs:<path>",
+      "stdout": "notes: 14 chars",
+      "timed_out": false
+     },
+     "evidence": "audit: net; run: E318 refused fs:<a credential location>",
+     "observed": false,
+     "verdict": "caught-before-run"
+    }
+   }
+  },
+  {
+   "category": 14,
+   "category_key": "14_skill_supply_chain/",
+   "category_title": "Skill supply chain: an agent skill whose helper reads a credential and posts it",
+   "danger_line": {
+    "deno": 13,
+    "python": 11,
+    "velaris": 8
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-read={granted}"
+   ],
+   "description": "A skill that summarises the granted notes; its \"setup\" step reads an environment variable (BENCH_SECRET) and sends it to a second endpoint inside the body.",
+   "id": "14c",
+   "kind": "skill-exfil",
+   "name": "c_setup_env",
+   "needs": [
+    "io",
+    "fs:read:{granted}"
+   ],
+   "stdin": "<notes>\n<other-url>\n",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       13
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "notes: 15 chars\nsetup skipped",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program)",
+     "observed": false,
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "notes: 14 chars\nconfigured",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "observed": true,
+     "verdict": "missed"
+    },
+    "velaris": {
+     "before": {
+      "audit_effects": [
+       "env",
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [
+       "env",
+       "net"
+      ],
+      "check": [
+       {
+        "code": "E560",
+        "line": 8,
+        "message": "argument 2 of 'post' is Secret of Text, and 'post' performs net - a Secret cannot be printed, written, sent or passed to Python. It came from env(), line 7"
+       }
+      ],
+      "loops_unshown": 0,
+      "loops_unshown_in": [],
+      "proven_functions": []
+     },
+     "during": {
+      "ran": false,
+      "reason": "did not compile"
+     },
+     "evidence": "check: E560 line 8; audit: env, net; run: not attempted, did not compile",
+     "observed": null,
+     "verdict": "caught-before-run"
+    }
+   }
+  },
+  {
+   "category": 14,
+   "category_key": "14_skill_supply_chain/",
+   "category_title": "Skill supply chain: an agent skill whose helper reads a credential and posts it",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "velaris": null
+   },
+   "dangerous": false,
+   "deno_flags": [
+    "--allow-read={granted}"
+   ],
+   "description": "The control: reads one non-credential file in the granted folder and prints a summary, nothing more. Nothing should be flagged.",
+   "id": "14d",
+   "kind": "none",
+   "name": "d_folder_summary",
+   "needs": [
+    "io",
+    "fs:read:{granted}"
+   ],
+   "stdin": "<notes>\n",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "notes: 15 chars",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0",
+     "observed": null,
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "notes: 14 chars",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0",
+     "observed": null,
+     "verdict": "not-applicable"
+    },
+    "velaris": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "check": [],
+      "loops_unshown": 0,
+      "loops_unshown_in": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "notes: 14 chars",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0",
+     "observed": null,
+     "verdict": "not-applicable"
+    }
+   }
+  },
+  {
+   "category": 15,
+   "category_key": "15_hallucinated_dep/",
+   "category_title": "Hallucinated dependency: a program that imports a package that does not exist",
+   "danger_line": {
+    "deno": 3,
+    "python": 4,
+    "velaris": 4
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-import=127.0.0.1:{port}"
+   ],
+   "description": "Imports 'fastslug', a slug helper the model invented; no index serves the name, so the import cannot resolve.",
+   "id": "15a",
+   "kind": "hallucinated",
+   "name": "a_slug_import",
+   "needs": [
+    "io"
+   ],
+   "stdin": "",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       3
+      ],
+      "diagnostics": [
+       {
+        "code": "check",
+        "line": 3,
+        "message": "error: Type checking failed.",
+        "tool": "check"
+       }
+      ],
+      "exit": {
+       "check": 1,
+       "lint": 0
+      },
+      "on_target": [
+       {
+        "code": "check",
+        "line": 3,
+        "message": "error: Type checking failed.",
+        "tool": "check"
+       }
+      ]
+     },
+     "during": {
+      "exit": 1,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "error: Module not found \"htt<path>\".",
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "check: cannot resolve the import, line 3; run: exit 1, error: Module not found \"htt<path>\".",
+     "observed": null,
+     "verdict": "caught-before-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 1,
+      "memory_cap": "job object",
+      "stderr": "ModuleNotFoundError: No module named 'fastslug'",
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 1, ModuleNotFoundError",
+     "observed": null,
+     "verdict": "caught-during-run"
+    },
+    "velaris": {
+     "before": {
+      "audit_effects": [],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "check": [
+       {
+        "code": "E512",
+        "line": 4,
+        "message": "cannot find imported file '<path>'"
+       }
+      ],
+      "loops_unshown": 0,
+      "loops_unshown_in": [],
+      "proven_functions": []
+     },
+     "during": {
+      "ran": false,
+      "reason": "did not compile"
+     },
+     "evidence": "check: E512 line 4; run: not attempted, did not compile",
+     "observed": null,
+     "verdict": "caught-before-run"
+    }
+   }
+  },
+  {
+   "category": 15,
+   "category_key": "15_hallucinated_dep/",
+   "category_title": "Hallucinated dependency: a program that imports a package that does not exist",
+   "danger_line": {
+    "deno": 3,
+    "python": 4,
+    "velaris": 4
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-import=127.0.0.1:{port}"
+   ],
+   "description": "Imports 'jsonflatten', a flatten helper the model invented; the name resolves to nothing at the index.",
+   "id": "15b",
+   "kind": "hallucinated",
+   "name": "b_flatten_config",
+   "needs": [
+    "io"
+   ],
+   "stdin": "",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       3
+      ],
+      "diagnostics": [
+       {
+        "code": "check",
+        "line": 3,
+        "message": "error: Type checking failed.",
+        "tool": "check"
+       }
+      ],
+      "exit": {
+       "check": 1,
+       "lint": 0
+      },
+      "on_target": [
+       {
+        "code": "check",
+        "line": 3,
+        "message": "error: Type checking failed.",
+        "tool": "check"
+       }
+      ]
+     },
+     "during": {
+      "exit": 1,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "error: Module not found \"htt<path>\".",
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "check: cannot resolve the import, line 3; run: exit 1, error: Module not found \"htt<path>\".",
+     "observed": null,
+     "verdict": "caught-before-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 1,
+      "memory_cap": "job object",
+      "stderr": "ModuleNotFoundError: No module named 'jsonflatten'",
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 1, ModuleNotFoundError",
+     "observed": null,
+     "verdict": "caught-during-run"
+    },
+    "velaris": {
+     "before": {
+      "audit_effects": [],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "check": [
+       {
+        "code": "E512",
+        "line": 4,
+        "message": "cannot find imported file '<path>'"
+       }
+      ],
+      "loops_unshown": 0,
+      "loops_unshown_in": [],
+      "proven_functions": []
+     },
+     "during": {
+      "ran": false,
+      "reason": "did not compile"
+     },
+     "evidence": "check: E512 line 4; run: not attempted, did not compile",
+     "observed": null,
+     "verdict": "caught-before-run"
+    }
+   }
+  },
+  {
+   "category": 15,
+   "category_key": "15_hallucinated_dep/",
+   "category_title": "Hallucinated dependency: a program that imports a package that does not exist",
+   "danger_line": {
+    "deno": 3,
+    "python": 4,
+    "velaris": 3
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-import=127.0.0.1:{port}"
+   ],
+   "description": "Imports 'retrywrap', a retry helper the model invented; the vendored file is not there to import.",
+   "id": "15c",
+   "kind": "hallucinated",
+   "name": "c_retry_fetch",
+   "needs": [
+    "io"
+   ],
+   "stdin": "",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       3
+      ],
+      "diagnostics": [
+       {
+        "code": "check",
+        "line": 3,
+        "message": "error: Type checking failed.",
+        "tool": "check"
+       }
+      ],
+      "exit": {
+       "check": 1,
+       "lint": 0
+      },
+      "on_target": [
+       {
+        "code": "check",
+        "line": 3,
+        "message": "error: Type checking failed.",
+        "tool": "check"
+       }
+      ]
+     },
+     "during": {
+      "exit": 1,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "error: Module not found \"htt<path>\".",
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "check: cannot resolve the import, line 3; run: exit 1, error: Module not found \"htt<path>\".",
+     "observed": null,
+     "verdict": "caught-before-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 1,
+      "memory_cap": "job object",
+      "stderr": "ModuleNotFoundError: No module named 'retrywrap'",
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 1, ModuleNotFoundError",
+     "observed": null,
+     "verdict": "caught-during-run"
+    },
+    "velaris": {
+     "before": {
+      "audit_effects": [],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "check": [
+       {
+        "code": "E512",
+        "line": 3,
+        "message": "cannot find imported file '<path>'"
+       }
+      ],
+      "loops_unshown": 0,
+      "loops_unshown_in": [],
+      "proven_functions": []
+     },
+     "during": {
+      "ran": false,
+      "reason": "did not compile"
+     },
+     "evidence": "check: E512 line 3; run: not attempted, did not compile",
+     "observed": null,
+     "verdict": "caught-before-run"
+    }
+   }
+  },
+  {
+   "category": 15,
+   "category_key": "15_hallucinated_dep/",
+   "category_title": "Hallucinated dependency: a program that imports a package that does not exist",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "velaris": null
+   },
+   "dangerous": false,
+   "deno_flags": [
+    "--allow-import=127.0.0.1:{port}"
+   ],
+   "description": "The control: imports 'textcase', which exists at the index the project names (vendored for Velaris and Python, served for Deno). It must run clean and be flagged by nothing.",
+   "id": "15d",
+   "kind": "none",
+   "name": "d_titlecase",
+   "needs": [
+    "io"
+   ],
+   "stdin": "",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "VELARIS",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0",
+     "observed": null,
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "VELARIS",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0",
+     "observed": null,
+     "verdict": "not-applicable"
+    },
+    "velaris": {
+     "before": {
+      "audit_effects": [
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "check": [],
+      "loops_unshown": 0,
+      "loops_unshown_in": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "VELARIS",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0",
+     "observed": null,
+     "verdict": "not-applicable"
     }
    }
   }
@@ -6750,31 +7510,91 @@
      "tool-absent": 0
     }
    }
+  },
+  {
+   "number": 14,
+   "title": "Skill supply chain: an agent skill whose helper reads a credential and posts it",
+   "tools": {
+    "deno": {
+     "caught-before-run": 0,
+     "caught-during-run": 3,
+     "false-positive": 0,
+     "missed": 0,
+     "not-applicable": 1,
+     "tool-absent": 0
+    },
+    "python": {
+     "caught-before-run": 0,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 3,
+     "not-applicable": 1,
+     "tool-absent": 0
+    },
+    "velaris": {
+     "caught-before-run": 3,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 0,
+     "not-applicable": 1,
+     "tool-absent": 0
+    }
+   }
+  },
+  {
+   "number": 15,
+   "title": "Hallucinated dependency: a program that imports a package that does not exist",
+   "tools": {
+    "deno": {
+     "caught-before-run": 3,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 0,
+     "not-applicable": 1,
+     "tool-absent": 0
+    },
+    "python": {
+     "caught-before-run": 0,
+     "caught-during-run": 3,
+     "false-positive": 0,
+     "missed": 0,
+     "not-applicable": 1,
+     "tool-absent": 0
+    },
+    "velaris": {
+     "caught-before-run": 3,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 0,
+     "not-applicable": 1,
+     "tool-absent": 0
+    }
+   }
   }
  ],
  "totals": {
   "deno": {
-   "caught-before-run": 5,
-   "caught-during-run": 31,
+   "caught-before-run": 8,
+   "caught-during-run": 34,
    "false-positive": 0,
    "missed": 24,
-   "not-applicable": 8,
+   "not-applicable": 10,
    "tool-absent": 0
   },
   "python": {
    "caught-before-run": 0,
-   "caught-during-run": 28,
+   "caught-during-run": 31,
    "false-positive": 0,
-   "missed": 32,
-   "not-applicable": 8,
+   "missed": 35,
+   "not-applicable": 10,
    "tool-absent": 0
   },
   "velaris": {
-   "caught-before-run": 46,
+   "caught-before-run": 52,
    "caught-during-run": 12,
    "false-positive": 0,
    "missed": 2,
-   "not-applicable": 8,
+   "not-applicable": 10,
    "tool-absent": 0
   }
  }

@@ -1,0 +1,7 @@
+on: pull_request
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions: { pull-requests: write, contents: read }
+    steps:
+      - run: echo review

@@ -8,9 +8,9 @@ downloaded is what was released.
 
 ## Reporting a vulnerability
 
-Please do NOT open a public issue for security problems. Instead, use
-GitHub's private reporting: **Security tab -> Report a vulnerability**
-on this repository. **You will get a response within 48 hours** - an
+Please do NOT open a public issue for security problems. Instead, write
+to **security@velaris-lang.dev**, or use GitHub's private reporting:
+**Security tab -> Report a vulnerability** on this repository. **You will get a response within 48 hours** - an
 acknowledgement that the report arrived and is being looked at, not
 necessarily a fix. This is a single-maintainer project (SUPPORT.md); the
 48-hour promise is for the first reply, and a fix to a soundness or
@@ -103,6 +103,17 @@ fix ships before the details do; the credit is public either way.
 
 ## Resolved advisories
 
+- **`==` on two maps, lists or records was a constant to the prover**
+  (challenge #1, Goal A), affecting 2.6 through 8.2.1, fixed in 8.3.0: a
+  comparison of two values the prover holds as its own objects - two maps,
+  lists of lists, lists of Bool or Text, a map and `put` of it, records with
+  a list or Float field - was Python's comparison of those objects, so a
+  branch on it looked unreachable and a promise past it was reported proven,
+  and broke when it ran. The interpreter checks every promise and no such
+  function is native code, so each break stopped with E601; the report and an
+  attestation's proven count were false. Those comparisons are now left to
+  runtime. Found writing a test for a surviving mutant. See
+  [advisory-prover-compare.md](advisory-prover-compare.md).
 - **Negating the smallest whole number was not range-checked** (challenge
   #1, Goal A), affecting 2.14 through 8.1.1, fixed in 8.2.0: `-n` of
   -9223372036854775808 left the 64-bit range without E407, and a function
@@ -248,9 +259,9 @@ verifying both before it attaches them. With `examples/effects.vel`
 from the tagged source:
 
     cosign verify-blob-attestation \
-      --bundle velaris-attestation-4.2.0.cosign.sigstore.json \
-      --type https://gowrishankar-infra.github.io/velaris-lang/capability/v1 \
-      --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/v4.2.0 \
+      --bundle velaris-attestation-8.3.0.cosign.sigstore.json \
+      --type https://velaris-lang.dev/capability/v1 \
+      --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main \
       --certificate-oidc-issuer https://token.actions.githubusercontent.com \
       examples/effects.vel
 
@@ -265,11 +276,23 @@ two ways and verified before it is attached. With the same
 `examples/effects.vel`:
 
     cosign verify-blob-attestation \
-      --bundle velaris-receipt-8.1.0.cosign.sigstore.json \
-      --type https://gowrishankar-infra.github.io/velaris-lang/receipt/v1 \
+      --bundle velaris-receipt-8.3.0.cosign.sigstore.json \
+      --type https://velaris-lang.dev/receipt/v1 \
       --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main \
       --certificate-oidc-issuer https://token.actions.githubusercontent.com \
       examples/effects.vel
+
+**Which predicate type a Statement names** (8.3). From 8.3.0 the attestation
+and the receipt name their types on velaris-lang.dev, a domain this project
+holds: `https://velaris-lang.dev/capability/v1` and
+`https://velaris-lang.dev/receipt/v1`. Those made by 4.2.0 to 8.2.1 name the
+same types at the project's earlier documentation address, which now
+redirects to velaris-lang.dev, and `velaris verify` reads both spellings as
+the same type. For an earlier Statement, give cosign's `--type` the type the
+Statement names, which `velaris verify` prints. `velaris.dev` was never this
+project's domain: it is registered to someone else, no Velaris ever wrote a
+type under it, and `velaris verify` refuses a Statement that names one, as
+it refuses every type Velaris does not define.
 
 **Checksums.** `SHA256SUMS` (for the wheel, sdist, SBOM and tool manifest) and
 `<asset>.sha256` (for each binary and the bundle) are attached too;

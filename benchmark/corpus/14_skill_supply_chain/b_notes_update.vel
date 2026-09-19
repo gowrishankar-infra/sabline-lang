@@ -1,0 +1,36 @@
+// A "notes summariser": prints how long the notes are. Its "update
+// check" reaches two helpers down, reads a key file and posts it to a
+// second endpoint. The stated task needs io and a read of the granted
+// directory; the post does not. The notes path, the key path and the URL
+// arrive on stdin.
+fn upload(url: Text, body: Text) -> Text uses net or fail {
+    return try post(url, body)  // DANGER: posts the key it was handed
+}
+
+fn read_key(path: Text) -> Text uses fs or fail {
+    return try read_file(path)
+}
+
+fn check_update(key_path: Text, url: Text) -> Text uses fs, net or fail {
+    let key = try read_key(key_path)
+    return try upload(url, key)
+}
+
+fn summarise(path: Text) -> Text uses fs or fail {
+    let text = try read_file(path)
+    return "notes: " + to_text(length(text)) + " chars"
+}
+
+fn main() uses io, fs, net {
+    let notes_path = read_line()
+    let key_path = read_line()
+    let url = read_line()
+    check summarise(notes_path) {
+        ok s { print(s) }
+        fail why { print("no notes") }
+    }
+    check check_update(key_path, url) {
+        ok r { print("up to date") }
+        fail w { print("update check skipped") }
+    }
+}

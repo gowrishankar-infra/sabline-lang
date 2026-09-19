@@ -7,6 +7,7 @@ import sys
 
 from . import state as _state
 from .version import _INSTALL_DIR
+from .predicates import CAPABILITY_PREDICATE_TYPE as CAPABILITY_PREDICATE_TYPE
 from .tables import CHECK_MEMORY_MB_DEFAULT, CHECK_TIMEOUT_DEFAULT
 from .loader import load_program
 from .library import _audit_here, _ceiling_args
@@ -32,9 +33,9 @@ from typing import Any
 
 
 INTOTO_STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
-CAPABILITY_PREDICATE_TYPE = ("https://gowrishankar-infra.github.io/"
-                             "velaris-lang/capability/v1")
-CAPABILITY_SPEC = "velaris-spec 0.5"
+# the type is velaris/predicates.py's: at velaris-lang.dev from 8.3, and the
+# version of velaris-spec that names it there
+CAPABILITY_SPEC = "velaris-spec 0.11.0"
 
 
 def _attested_at() -> str:

@@ -1,5 +1,363 @@
 # Velaris changelog
 
+## 8.3 - What a run can show
+
+A minor version. A receipt has said, since 8.1, what one run did; 8.3 adds
+what can be done with one - a profile for running code in an evaluation
+harness that always leaves a receipt, a comparison of a receipt with its
+program's audit and with earlier runs, a replay of a run from its receipt, and
+a verifier for attestations and receipts. Beside them: promises exercised on
+the inputs the prover finds, a page of what cannot occur in a Velaris program
+with a test for each, RFC 4180 quoting in `csv.vel`, log lines a value cannot
+forge, two benchmark categories, a workflow-permissions ratchet for the
+Action, and a crosswalk onto four agent-security frameworks. The project's
+documentation moved to velaris-lang.dev, and every name of it moved with it.
+A test written for a surviving mutant found a fault in the prover, which
+reported proven a promise past a comparison of two maps or lists; it is
+fixed, and has an advisory.
+
+compatibility: E615 is given only under `velaris eval`, new in 8.3, to a run that was asked to stop from outside; no run of 8.2.1 or earlier can meet it.
+compatibility: E616 is given only under `velaris replay --responses`, new in 8.3, to a call a recording of tool responses does not hold in that place; no earlier run can meet it.
+compatibility: `check`, `proofs`, `explain`, `audit`, `attest` and the library no longer report a promise proven when its proof passes through `==` or `!=` on two maps, two lists other than `List of Int`, a map and `put` of it, or two records holding a Float field: until 8.3 each such comparison was a constant to the prover, and a promise past it could be reported proven and then break when the program ran (Goal A, advisory-prover-compare.md). Such a promise is now checked while the program runs, as every unproven promise is, so the count of proven promises a report, an audit or an attestation gives can fall. Two records with a `List of Int` field now compare as two such lists do, so a false promise past that comparison, reported proven until 8.3, can be refused with E700. Against v8.2.1 no example's output and no conformance verdict changes.
+compatibility: every compiler error's and refusal's `reference:` line, the `reference` field of `--json` output and of SARIF, and each SARIF rule's `helpUri` name https://velaris-lang.dev/llms.txt and https://velaris-lang.dev/errors.html, where they named the same pages at the project's GitHub Pages address, which now redirects there. Only that text changes; no code, message, exit status or verdict does, and a reader following the earlier address reaches the same page.
+compatibility: `velaris attest` writes the predicate type https://velaris-lang.dev/capability/v1, and a receipt names https://velaris-lang.dev/receipt/v1, where 4.2 to 8.2.1 named both at the project's GitHub Pages address (https://gowrishankar-infra.github.io/velaris-lang/...). `velaris verify`, `velaris receipts diff`, `velaris replay` and the OPA policy read each earlier name as the same type, so every attestation and receipt signed until now still verifies with Velaris; a verifier outside Velaris that pins one type name - cosign's `--type`, the Kyverno policy - takes the name the Statement carries. velaris.dev was never this project's domain: it is registered to someone else, 4.1 chose not to use it, no Velaris ever wrote a type under it, and `velaris verify` refuses a Statement naming one as it refuses every type Velaris does not define. The types now name a domain the project controls. A Statement's `specification` and a receipt's say velaris-spec 0.11.0, the version that records the new names.
+compatibility: `velaris verify` given a file checks it as an attestation or a receipt (exit 0 verified, 1 refused or naming other bytes, 2 not checked); with no file it is the older spelling of `velaris deps --verify`, as before. Until 8.3 a file given to `velaris verify` was ignored and the vendored libraries were checked.
+compatibility: `log`, every function of `stdlib/log.vel`, and `velaris trace` write a line feed, a carriage return, an escape, a NUL, every other C0 and C1 control character but tab, DEL, U+2028 and U+2029 in a value as an escape (`\n`, `\r`, `\xNN`, `\uNNNN`), so each call writes one line. Output changes only for a logged or traced value holding one of those characters, which until 8.3 reached the error channel as it was and could end its line, begin another, or move a terminal's cursor over one; `print` is unchanged.
+compatibility: `stdlib/csv.vel` quotes as RFC 4180 does. `line_of` changes its output only for a value holding a comma, a double quote, a carriage return or a line feed, which it now writes between double quotes with each double quote doubled: a value with a comma never came back from `fields` as one field, and one with a double quote, a carriage return or a line feed came back from `fields` but was split by `rows_of` and by any RFC 4180 reader. `fields` and `column` change only for a line with a field that begins with a double quote, now read as a quoted field; `rows_of` changes only for text in which a line feed falls inside such a field, which now stays in its row.
+compatibility: a receipt may carry `stop` and `run_parameters.profile`, added within `velaris.receipt/1` (velaris-spec 0.11.0, section 8.7); only a run of `velaris eval` writes them, and a reader ignores a field it does not know.
+api: the command line gains `velaris eval`, `velaris receipts diff`, `velaris replay`, `velaris permissions-ratchet`, `velaris test --from-contracts` (with `--count`, `--witness-seconds` and `--json`), `velaris verify <file>` (with `--root`, `--identity`, `--skip-signature` and `--json`) and `--record-responses` on a run; the library gains `SITE`, `CAPABILITY_PREDICATE_TYPES`, `RECEIPT_PREDICATE_TYPES`, `predicate_kind`, the run-state names `STOP_FILE` and `RESPONSES`, and the permissions ratchet's `read_workflow`, `permissions_compare`, `permissions_ratchet`, `permissions_lines`, `permissions_exit`, `permissions_main`, `WorkflowUnreadable`, `PERMISSION_SCOPES`, `PERMISSION_LEVELS` and `PERMISSIONS_RATCHET_SCHEMA`; `check_proofs` gains `witnesses_out` and `witness_count`; `CAPABILITY_PREDICATE_TYPE` and `RECEIPT_PREDICATE_TYPE` are the velaris-lang.dev names; and the Action gains the `permissions-ratchet` input, off by default.
+differential: 14a - a program of benchmark category 14, new in 8.3, so v8.2.1 has no verdict for it
+differential: 15a - a program of benchmark category 15, new in 8.3, so v8.2.1 has no verdict for it
+
+Against v8.2.1 (`check_differential.py`), velaris-spec's 456 conformance
+cases give the same verdicts, and the quick benchmark differs only in the
+two programs above. Of the 97 examples, 36 print something different, and
+in every one the only line that differs is the `reference:` line of an
+error, which names velaris-lang.dev (the compatibility line above): `examples/avg_bad.vel`, `examples/builtin_unhandled.vel`, `examples/callsite_bad.vel`, `examples/caught.vel`, `examples/conj_bad.vel`, `examples/contract_broken.vel`, `examples/contract_impure.vel`, `examples/discount_bad.vel`, `examples/div_bad.vel`, `examples/fail_proof_bad.vel`, `examples/failing_bad.vel`, `examples/floats_bad.vel`, `examples/fp_proof_bad.vel`, `examples/funcs_bad.vel`, `examples/generics_bad.vel`, `examples/grid_bad.vel`, `examples/import_bad.vel`, `examples/lambda_contract_bad.vel`, `examples/list_mixed.vel`, `examples/list_oob.vel`, `examples/list_proof_bad.vel`, `examples/loop_bad.vel`, `examples/loop_proof_bad.vel`, `examples/many_errors.vel`, `examples/map_bad.vel`, `examples/maps_bad.vel`, `examples/ns_bad.vel`, `examples/offbyone_bad.vel`, `examples/proof_catch.vel`, `examples/qlist_bad.vel`, `examples/rec_proof_bad.vel`, `examples/records_bad.vel`, `examples/secret_bad.vel`, `examples/sneaky.vel`, `examples/std_bad.vel`, `examples/types_bad.vel`.
+
+### A promise past a comparison was reported proven
+
+A test written for a mutant the monthly run left alive found a Goal A break
+in the prover as released, from 2.6 through 8.2.1
+([advisory-prover-compare.md](advisory-prover-compare.md)). `==` and `!=` on
+two values the prover holds as its own objects - two maps, two lists of
+lists, two lists of Bool or of Text, a map and `put` of it - were Python's
+comparison of those objects, a constant. So a branch taken when two maps are
+equal looked unreachable, a promise past it was reported proven, and it broke
+with E601 when the program ran. Two records compared field by field had the
+same fault for a `List of Int` field; for a `Float` field, the prover's
+equality and a run's disagree about NaN whichever rule the prover takes.
+Those comparisons now leave the promise to runtime, as SPEC.md 9.4 says a
+premise the prover cannot translate does, and a record's `List of Int` field
+compares as two such lists do.
+
+The interpreter checks every promise, proven or not, and no function that can
+hold such a comparison is compiled to native code, so no run went unchecked.
+What was false is the report: `check`, `proofs`, `explain`, the audit, an
+attestation's count of proven promises, the library's `proven`, and the proof
+of any function that relied on such a function's `ensures`.
+`check_prover_lies.py` gains nine lies (COMPARED), `check_mutant_kills.py`
+V6 holds the map case, and SECURITY.md lists the advisory; a CVE is requested
+for it, as for every Goal A finding.
+
+### The documentation moved to velaris-lang.dev
+
+The project holds velaris-lang.dev, and GitHub Pages serves this repository's
+`docs/` there; the earlier address redirects. Every link that names the
+project's home moved: README, SPEC, TUTORIAL, LLM.md (and so `llms.txt`),
+EMBEDDING, SECURITY, STABILITY, docs, CITATION.cff, `pyproject.toml`'s
+Homepage and Documentation, the npm package, the VS Code extension, the MCP
+bundle and registry manifest, the Homebrew and winget manifests, and the
+release workflow. The two predicate types moved too, as the compatibility
+lines above say, and `velaris/predicates.py` holds both names of each;
+velaris-spec 0.11.0 records the new names and lists the earlier ones as
+accepted for verification.
+
+- SECURITY.md's contact is security@velaris-lang.dev, beside GitHub's private
+  reporting, and it says which predicate type a Statement names.
+- THREAT_MODEL.md's Known open table gains a row: a predicate type is a name
+  on a domain, and a domain can change hands. A type is an identifier, not a
+  signature.
+- `check_docs.py` holds that no tracked file names the earlier address but
+  the ten it lists with a reason (this entry's history, the redirect test,
+  the readers of the earlier type names, the pages that name them, and the
+  playground, which embeds the package), and that every velaris-lang.dev URL
+  a tracked file names is a page `docs/` serves. `check_library.py` fetches
+  the card at its new address and asserts the earlier address redirects to
+  it; `check_urls.py`, monthly, asks both.
+- The site does not enforce HTTPS yet, so the earlier address redirects to
+  `http://velaris-lang.dev/`; the checks accept either scheme and say so.
+
+### What a run can show
+
+**`velaris eval`** runs one program as an evaluation harness runs code it was
+handed, under a profile its command line cannot relax: no net, ffi or env,
+and an fs grant only under a named path; a time and a memory limit always (30
+seconds and 512 MB unless given, at most 600 and 4096); the program
+interpreted, so a stop asked for from outside - a signal, or `--stop-file`
+appearing - lands at the next call or loop turn with E615, and a worker that
+has not stopped after `--grace` is killed; a receipt always, written outside
+every fs grant or streamed to `--receipt-url` (`velaris.receipt-stream/1`),
+with the stop and `profile: "eval"` in it; and the worker confined where the
+operating system offers it without privileges, the level named in the
+receipt: `landlock-net` or `landlock` on Linux, `job-one-process` on Windows,
+`sandbox-exec` on macOS when a trial of its profile starts Python, `none`
+otherwise. The Windows job holds the processes starting the worker took -
+its own, and a launcher's where `python.exe` is one, as a virtual
+environment's is - and refuses any further process; a job that insisted on
+exactly one stopped the worker before it began in every venv this was tried
+in ("Unable to create process", "Not enough quota is available to process
+this command"), which is how it was found. A signal is taken only where eval
+runs on the main thread, CPython 3.11 and later; `--stop-file` works
+everywhere. `--confinement-probe` has a confined worker try a TCP connection,
+a write outside its directories and a process start, and fails if a refusal
+its level claims did not hold. Anything that would relax the profile is
+refused before the program is read, exit 2. [docs/eval.md](docs/eval.md) is
+the one page of what it guarantees and what it does not. `check_eval.py`
+holds every relaxation refused, a run's receipt matching the profile, a stop
+file honoured and a signal where eval can take one, a stalled compile killed
+after the grace period,
+the stream, and the probe; on Windows and on WSL Ubuntu 24.04, whose kernel
+offers Landlock ABI 3 and so `landlock`.
+
+**`velaris receipts diff`** holds a receipt to its program's audit - an
+effect used or refused, a host, path or module granted, a declassification or
+a count past the audit's bound that the audit does not have, and bytes that
+are not the audited ones - and to earlier receipts of the same bytes: a new
+host, path or module, a count above the earlier maximum, a first
+declassification, a new reason. A receipt names no host or path a run
+reached, only what its budget granted, and that is what is compared. Exit 0
+clean, 1 with a difference, 2 when it could not compare; `--json` is the
+provisional `velaris.receipts-diff/1`, whose shape velaris-spec 8.8 records.
+
+**`velaris replay`** makes a run again from its receipt: each subject is held
+to its digest and copied before anything runs, imports are held to the copy,
+the budget is no wider than `--max-allow` (`io` unless raised), and the
+recorded seed, clock, limits and read ceiling, and eval's profile, apply;
+every difference from the recorded receipt is named, and output is compared
+with `--expect-output`. Code mode: `--record-responses FILE` on a run records
+what each `py`, `py_int`, `py_float` and `py_json` call gave back, and
+`replay --responses FILE` gives those back after the grants are checked; a
+call not recorded in its place stops the run with E616. No tool-calling door
+exists yet, so the door this stubs is the one a tool reaches a program
+through today: Python.
+
+**`velaris verify`** reads an attestation or a receipt - a Statement, JSON
+Lines of them, a DSSE envelope or a Sigstore bundle - refuses any type but
+capability/v1 and receipt/v1 under either name, a predicate without its
+type's shape, and a key given twice, reads a subject only inside `--root`,
+and checks a bundle's signature against `--identity`. `mcp-verify` checks a
+tool manifest signed as bytes, which names no predicate type, so nothing in
+it changed.
+
+`check_receipts.py` holds each shape of difference and each refusal against
+real runs.
+
+### Promises exercised, and what cannot occur
+
+- **`velaris test --from-contracts`** asks the prover for up to `--count`
+  argument lists each function's `requires` allows - the least and greatest
+  value of each whole number, text length and list length first - and runs
+  the function on each, interpreted, with no effect granted; a function that
+  declares an effect is refused. `check_from_contracts.py`: a false `ensures`
+  the prover left to runtime is broken by the witness at the requires'
+  boundary; the true one passes; effects are refused; a witness that never
+  returns is stopped. Stopping one raced its own stop file on Windows -
+  the timer thread writing it while the call's end removed it, which
+  WinError 32 refuses - and ended the command in a traceback about one run
+  in three; writer and remover now share a lock. The suite's spinning
+  witness was rewritten to spin whatever the prover picks, so the race is
+  met on every run rather than sometimes.
+- **[docs/structurally-impossible.md](docs/structurally-impossible.md)**:
+  CWE-78, CWE-95 and CWE-94, CWE-502, CWE-200 by the route of a secret in a
+  path, and CWE-117, each with the grant that would undo it, and CWE-89 under
+  "not structurally impossible": `db.vel`'s `run` takes SQL as text and its
+  `count` builds a query with `format`. Parameterized queries change `run`'s
+  signature and are left for 9.0. `check_impossible.py` tries each class, and
+  fails if the page lists one it does not try.
+- **CSV and logs**, as the compatibility lines say. `check_properties.py`
+  gains a sixth property, `fields(line_of(row)) == row` over rows of commas,
+  quotes, CR and LF. `fields` and `rows_of` read a text holding no double
+  quote with `split`, as 8.2.1's `fields` was: the character-by-character
+  scan runs only where a quote makes it necessary. Without that path a long
+  line cost about a hundred times what it did at 8.2.1, and `fuzz_parsers.py`
+  stopped its CSV target for making no progress for 60 seconds.
+
+### Benchmark categories 14 and 15
+
+Category 14, a skill supply chain: three agent skills whose helper - a
+"telemetry" call, an "update check" two helpers down, a "setup" step - reads
+a credential and posts it to a second endpoint, and a control that reads one
+ordinary file. Velaris caught all three before running: `velaris audit` names
+the net effect none of the stated tasks needs, the `.env` and `.pem` reads are
+refused with E318 inside a broad `fs:read` grant, and the environment read
+does not compile (E560). Deno's permissions stopped each send while running,
+and each program swallowed the denial; Python sent all three.
+
+Category 15, a hallucinated dependency: three programs importing a library
+the model invented, and a control importing one that exists (vendored for
+Velaris and Python, served by a local index for Deno, so no run reaches the
+network). Velaris refuses each import before running (E512), as `deno check`
+does; Python stops with ModuleNotFoundError when the import runs.
+
+Over the 76 programs - 66 dangerous, 10 controls - Velaris caught 52 before
+running and 12 while running and missed 2; Deno 8, 34 and 24; Python 0, 31
+and 35; no tool flagged a control. The 68 programs of categories 1 to 13 keep
+the verdict each tool gave them at 8.2.0. Two of them read differently:
+06d's evidence names E520 once, where the file 8.0.0 wrote named it twice,
+and 13a's names the refused read as a credential location, a wording of the
+runner. Ten consecutive full runs wrote identical `RESULTS.md` and
+`results.json`; README's tables, THREAT_MODEL.md's figures and the paper's
+were written from them.
+
+### The Action's permissions ratchet
+
+With `permissions-ratchet: "true"`, on a pull request the Action compares
+every workflow's `permissions:` blocks with the base branch's and fails on a
+widening - a scope's level rising, a block removed so a job takes the
+repository's default, a new job or workflow that grants anything - naming the
+file and line; a narrowing is reported. It reads the YAML shapes a
+`permissions:` value takes with no dependency, and a file it cannot read with
+confidence fails the step. It is the one input that helps a repository with
+no `.vel` file. `check_permissions.py`: 30 base and head fixtures, the reader
+against PyYAML, the command against real git repositories, and the step's
+bash.
+
+### The crosswalk
+
+[docs/crosswalk.md](docs/crosswalk.md) maps each of README's five guarantees
+and each row of THREAT_MODEL.md's Known open table onto the OWASP Top 10 for
+Agentic Applications, the OWASP Agent Control Standard, AIUC-1 and the NIST AI
+RMF 1.0, one row per control, 151 rows. No row says enforced or recorded:
+every control asks for more than the refusal or the record Velaris makes, and
+the partial rows say which part is covered. The Agent Control Standard is a
+wire specification Velaris does not implement, so all 16 of its rows are not
+addressed. `check_docs.py` holds the page's guarantees to README's table and
+its known-open items to THREAT_MODEL.md's, both ways.
+
+### Housekeeping
+
+The monthly workflow ran by hand before this release (run 34978389207).
+Fuzzing, the pool soak and the differential against 8.2.0 passed. Three jobs
+failed, all on faults of the harness, each fixed here:
+
+- **The report job** opened the first surviving mutant's issue and then ran
+  `gh issue comment -1`: every mutant of a function had the same title, and a
+  just-opened issue was remembered as `-1`. `open_issues.py` now keeps the
+  number gh gives, and `check_mutants.py` titles each mutant by line and
+  operator; `check_workflows.py` holds both. The other 65 surviving mutants'
+  issues were opened with the fixed script from the run's own reports.
+- **`check_urls.py`** asked identifiers the documents quote - a sigstore
+  identity, the OIDC issuers, the Software Heritage API's POST endpoints, a
+  placeholder repository - and called them broken. It leaves those out now.
+- **The sanitizer build** stopped inside CPython 3.12.11's own tokenizer on
+  UndefinedBehaviorSanitizer's pointer-overflow check; that one check is left
+  out of the build. It is verified only by the next monthly run.
+
+Issues #21 and #22 stay open until a monthly run passes.
+
+The mutation job made 521 mutants of the functions a guarantee rests on in
+`budget.py`, `effects.py`, `prover.py` and `wrappers.py`, ran 191 of them in
+its 90 minutes, and 67 survived (66 issues: two differ only in the column on
+one line). `check_mutant_kills.py` holds a test for each. Sixty fail with
+their mutant applied, and so do two sites on the same lines the sample never
+ran - checked against the mutants at 9972e41, where the run found them, with
+`check_mutants.py --only MODULE:LINE:OPERATOR --killers
+check_mutant_kills.py`. Seven change nothing a caller can observe: six turn
+`return False` into `return None` where every caller tests only the result's
+truth, and one flips what `uninterpreted_in` says of a value that is not a
+Z3 expression, which no program that type-checks reaches since the fix
+above. The suite's docstring gives the reason for each. `check_mutants.py`
+gains `--only` and `--killers`, and lists the suite among the killers of the
+four modules. The test written for `uninterpreted_in` is what found the
+prover's fault above.
+
+### The adversarial pass
+
+On eval, receipts diff, replay, witnesses, the log sinks and the verifier,
+kept as `check_adversarial.py` EV1-EV4, RD1-RD3, RP1-RP2, WT1, LG1-LG2 and
+VF1-VF2. It found one thing to fix before release: `velaris verify` and
+`receipts diff` printed text from the file they read - a subject name, a
+declassification reason - as it was, so a crafted receipt could print a line
+reading "clean: no difference". Both now print that text through the same
+escaping the log uses. Refused, each tried: grant spellings eval does not
+take (`IO,NET`, `net@0`, `io, env`, `fs:read@2`); a program writing its own
+receipt's path; `VELARIS_CHECK_CHILD` in eval's environment; a receipt naming
+other bytes; subject names leaving replay's directory (`..`, `<stdlib>/../..`,
+absolute, backslashes); an eval receipt widened to net; a witness run leaving
+the process's budget changed; U+2028, NEL, CR, an OSC 8 escape, DEL and NUL in
+a logged value; and a predicate type that is velaris.dev, upper-cased, given
+a trailing slash, padded, a list, null, or given twice.
+
+### Known open
+
+- **macOS confinement is verified only on CI**: `sandbox-exec` is used when
+  a trial of its profile starts Python, and `none` is written otherwise.
+- **No confinement level holds reads, UDP or a Unix socket**, and
+  `job-one-process` holds neither files nor the network (docs/eval.md).
+- **`velaris review` still has no check ceiling** (8.2.1's entry).
+- **`db.vel` builds SQL from text**; parameterized queries are 9.0.
+- **Two lists equal in every item can be refused with E700.** The prover
+  compares two `List of Int` values as equal arrays and equal lengths, which
+  asks more than that they hold the same items, so a true promise such as
+  `requires length(a) == 0 and length(b) == 0 ensures result == 1` over
+  `if a == b { return 1 } return 0` is refused, with two empty lists as its
+  counterexample. It is a false refusal, not a false proof, it predates 8.3,
+  and a record's `List of Int` field now compares the same way.
+- **Kyverno matches one predicate type per attestation entry**: an image
+  attested before 8.3 is admitted by the Kyverno policy only once attested
+  again with the new type. The OPA policy admits both.
+- **The in-toto predicate registration drafts** (velaris-spec
+  REGISTRY_SUBMISSION.md, now naming the new type) have not been sent.
+- **The documentation site as reference documentation** - navigation,
+  search, versioned builds - is 8.3.1.
+
+### Measured
+
+Measured by `perf_gates.py --against v8.2.1` on Windows 11 (10.0.26200,
+AMD64, 16 CPUs, 7% busy when it began), Python 3.13.13, z3-solver 5.1.0 and
+llvmlite 0.49.0: medians of 5 runs after one warm-up. Wall-clock figures;
+another machine will differ, and this one is slower at a cold start than the
+machine 8.2.0 was measured on.
+
+| Measure | 8.3.0 |
+|---|---|
+| Cold start, `velaris --version` | 202 ms |
+| Cold start, `velaris check` of a one-line file | 421 ms |
+| Check, per 1,000 lines (a 1,013- and a 10,013-line program) | 1.05 s and 0.97 s; 0.06 s and 0.05 s without proofs |
+| Proof time per example with contracts, p50 / p95 | 16 ms / 396 ms, over 56 files |
+| Native code on `examples/bench.vel`: compile, and llvmlite's import | 56 ms, and 49 ms; `burn` compiled |
+| `examples/bench.vel`, native / `--no-native` | 4.40 s / 11.25 s, 2.56 times faster, 6.85 s saved |
+| `--lite` build | there is none |
+| Pool worker's memory, after 1 run and after 1,000 more | 25.6 MB, 26.6 MB |
+| z3 or llvmlite imported by `velaris --version`, or by `check` of a program with no promise | neither |
+| Importing z3 when a command needs it | +134 ms at cold start |
+| Importing llvmlite when a command needs it | +162 ms at cold start |
+| Pure numeric against v8.2.1, native (`bench.vel` and an integer loop) | 4.40 s against 4.89 s, -10.0% (the gate allows +25%) |
+| Pure numeric against v8.2.1, interpreted | 13.80 s against 12.95 s, +6.6% |
+
+`check_differential.py` against v8.2.1: of the 97 examples 36 differ, each in
+the `reference:` line alone and each named above; velaris-spec's 456
+conformance cases give the same verdicts; and of the quick benchmark's 15
+programs the two new categories' are the only ones v8.2.1 has no verdict for.
+
+`velaris stats --ffi examples`: 106 programs, 70 of which compile. 8 call
+Python, and all 8 name every module they call (a grant like `ffi:math`);
+none names a module while running. The modules named: `builtins` in 4
+(native), `datetime` in 3, `math` in 3 (native), `sqlite3` in 3, `base64`
+in 1.
+
+Proven share over examples/ and stdlib/: 70 of 99 promise-carrying
+functions (71%), as at 8.2.0. The prover fix above leaves a promise past a
+comparison of two maps or lists to runtime, and no example or standard
+library function has one.
+
+velaris-spec 0.11.0 records the new predicate type names and accepts the
+earlier ones for verification, adds `stop` and `run_parameters.profile` to
+the receipt, and adds section 8.8 (comparing receipts) and 8.9 (the eval
+profile). Its `tools/check_sync.py` finds SPEC.md sections 6, 7 and 7.1 and
+both predicate schemas as it quotes them.
+
 ## 8.2.1 - Two things that should have been red
 
 A patch release with no features. Under 8.2.0, printing one kind of

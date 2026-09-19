@@ -1,9 +1,12 @@
 # What a policy asks of a Velaris capability attestation.
 #
 # Input: an in-toto Statement v1 whose predicate type is
-#   https://gowrishankar-infra.github.io/velaris-lang/capability/v1
-# which is what `velaris attest program.vel` writes (velaris-spec 8.5):
-# the audit of a program, bound to its bytes by sha256.
+#   https://velaris-lang.dev/capability/v1
+# which is what `velaris attest program.vel` writes from 8.3 (velaris-spec
+# 8.5): the audit of a program, bound to its bytes by sha256. A Statement
+# written by Velaris 4.2 to 8.2.1 names the same type at the project's
+# earlier documentation address, and is admitted as the same type; any
+# other type is refused, velaris.dev/capability/v1 among them.
 #
 # Data: the platform's allow-lists,
 #   {"platform": {"effects": ["io", "net"],
@@ -27,7 +30,10 @@ package velaris.capability
 
 import rego.v1
 
-predicate_type := "https://gowrishankar-infra.github.io/velaris-lang/capability/v1"
+predicate_type := "https://velaris-lang.dev/capability/v1"
+
+# the type as Statements written before 8.3 name it
+predicate_types := {predicate_type, "https://gowrishankar-infra.github.io/velaris-lang/capability/v1"}
 
 default allowed_effects := {"io"}
 
@@ -40,7 +46,7 @@ allowed_hosts := {h | some h in data.platform.hosts} if data.platform.hosts
 audit := object.get(input, ["predicate", "audit"], {})
 
 deny contains msg if {
-	input.predicateType != predicate_type
+	not input.predicateType in predicate_types
 	msg := sprintf("the predicate type is %v, not %v", [input.predicateType, predicate_type])
 }
 

@@ -99,6 +99,14 @@ jobs:
         run: python check_platform.py
       - name: An ejected program runs with nothing from here, and holds its budget
         run: python check_eject.py
+      - name: velaris eval holds its profile, and refuses every relaxation
+        run: python check_eval.py
+      - name: receipts diff names each difference; replay runs the same bytes or refuses
+        run: python check_receipts.py
+      - name: A false promise the prover left to runtime is caught by a witness; effects are refused
+        run: python check_from_contracts.py
+      - name: What docs/structurally-impossible.md says cannot occur, tried
+        run: python check_impossible.py
       - name: The OPA policy and its Kyverno twin ask what they say
         run: python check_policies.py
       - name: Every loop gets the termination verdict it must
@@ -107,6 +115,10 @@ jobs:
         run: python check_ratchet.py
       - name: An upgrade's gained surface is reported, and unknown is said to be unknown
         run: python check_deps.py
+      - name: A widened workflow permission fails, and nothing else does
+        run: python check_permissions.py
+      - name: Every mutant the monthly run left alive in a guarantee's lines is killed by a test
+        run: python check_mutant_kills.py
       - name: This repository needs nothing its velaris.capabilities does not declare
         run: velaris capabilities check .
       - name: velaris-spec's corpus is what these suites say (drift test)

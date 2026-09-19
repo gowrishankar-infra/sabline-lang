@@ -86,7 +86,13 @@ except ImportError:
 
 # Codes with no case, and why none can be made deterministically on every
 # operating system. Kept as small as honesty allows; the suite prints it.
-UNREACHABLE: dict[str, str] = {}
+UNREACHABLE: dict[str, str] = {
+    # 8.3: two codes a program cannot reach by itself in this harness
+    "E615": "given only under velaris eval, to a run asked to stop from "
+            "outside; check_eval.py stops one mid-loop and holds the receipt",
+    "E616": "given only under velaris replay --responses, to a call its "
+            "recording does not hold; check_receipts.py tampers with one",
+}
 
 
 class CaseError(Exception):

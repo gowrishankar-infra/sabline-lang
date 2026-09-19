@@ -1,0 +1,19 @@
+name: ci
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - run: echo build
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo docs

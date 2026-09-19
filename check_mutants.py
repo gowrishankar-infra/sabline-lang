@@ -30,9 +30,25 @@ How:
     python check_mutants.py --minutes 10            a short local run
     python check_mutants.py --minutes 60 --json mutants.json --issues out/
                                                     the monthly run
+    python check_mutants.py --only budget:428:return-none \\
+        --only effects:116:flip-compare:47 --killers check_mutant_kills.py
+                                                    named mutants only
 
 --issues DIR writes one Markdown issue body per surviving mutant; the
 monthly workflow opens an issue for each (MAINTENANCE.md).
+
+--only MODULE:LINE:OPERATOR[:COLUMN[:WHAT]] (repeatable) runs just the
+mutants it names - every site of that operator on that line, or only the
+one at COLUMN, or of a chained comparison at that column only the operator
+WHAT (LtE#1) - in the order named, each applied alone to the one copied
+tree and restored before the next, exactly as a full run does. A name that
+matches no mutant is reported and the run exits 2 before anything runs.
+Line, column and what are those `--list` and `--json` give.
+
+--killers A.py[,B.py] runs those scripts, one after another, as the
+killers of every module chosen, in place of the GUARANTEES table's - to
+check that one suite kills what it was written to kill without waiting
+for all of them.
 """
 from __future__ import annotations
 
@@ -60,15 +76,19 @@ GUARANTEES: dict[str, tuple[tuple[str, ...], tuple[tuple[str, ...], ...]]] = {
                 "ffi_reach", "_ffi_resolve", "spend", "checked_int",
                 "_fs_grant_covers", "_net_grant_covers", "_host_matches",
                 "Budget.covers", "Budget.parse"),
-               (("check_sandbox.py",), ("check_refusals.py",))),
+               (("check_sandbox.py",), ("check_refusals.py",),
+                ("check_mutant_kills.py",))),
     "effects": (("check_effects",),
-                (("check_refusals.py",), ("check_secret.py",))),
+                (("check_refusals.py",), ("check_secret.py",),
+                 ("check_mutant_kills.py",))),
     "wrappers": (("is_secret", "carries_secret", "strip_secret",
                   "records_carrying", "currency_clash"),
-                 (("check_secret.py",), ("check_money.py",))),
+                 (("check_secret.py",), ("check_money.py",),
+                  ("check_mutant_kills.py",))),
     "prover": (("check_proofs.has_fresh", "check_proofs.uninterpreted_in",
                 "check_proofs.prove_invariant", "check_proofs.prove_bounds"),
-               (("check_refusals.py",), ("check_prover_lies.py",))),
+               (("check_refusals.py",), ("check_prover_lies.py",),
+                ("check_mutant_kills.py",))),
     "loader": (("_import_refusal",), (("check_library.py",),)),
     "doors": (("_token_matches", "run_limits", "_RateLimit.take"),
               (("check_library.py",),)),
@@ -243,18 +263,48 @@ def run_killers(tree: Path, killers: Any, deadline: float) -> tuple[bool, str]:
     return True, ""
 
 
+def pick(every: list[dict[Any, Any]],
+         names: list[str]) -> tuple[list[dict[Any, Any]], list[str]]:
+    """The mutants `--only` names (MODULE:LINE:OPERATOR, then optionally
+    :COLUMN and :WHAT), in the order named, and the names that matched
+    none."""
+    out: list[dict[Any, Any]] = []
+    unmatched = []
+    for name in names:
+        parts = name.split(":")
+        found = [m for m in every
+                 if len(parts) in (3, 4, 5) and m["module"] == parts[0]
+                 and str(m["line"]) == parts[1] and m["operator"] == parts[2]
+                 and (len(parts) < 4 or str(m["col"]) == parts[3])
+                 and (len(parts) < 5 or m["what"] == parts[4])]
+        if not found:
+            unmatched.append(name)
+        out.extend(m for m in found if m not in out)
+    return out, unmatched
+
+
 def main(argv: list[str]) -> int:
     chosen = (argv[argv.index("--modules") + 1].split(",")
               if "--modules" in argv else list(GUARANTEES))
+    only = [argv[i + 1] for i in range(len(argv) - 1) if argv[i] == "--only"]
+    if only:
+        named = {name.split(":")[0] for name in only}
+        chosen = [module for module in GUARANTEES if module in named]
     minutes = float(argv[argv.index("--minutes") + 1]) \
         if "--minutes" in argv else 30.0
     seed = int(argv[argv.index("--seed") + 1]) if "--seed" in argv else 8
     every = mutants(chosen)
     random.Random(seed).shuffle(every)          # a fair sample when cut short
+    if only:
+        every, unmatched = pick(every, only)
+        for name in unmatched:
+            print(f"  --only {name} names no mutant")
+        if unmatched:
+            return 2
     if "--list" in argv:
         for m in every:
-            print(f"{m['module']}.{m['function']} line {m['line']} "
-                  f"{m['operator']}: {m['text']}")
+            print(f"{m['module']}.{m['function']} line {m['line']}:{m['col']} "
+                  f"{m['operator']} {m['what']}: {m['text']}")
         print(f"{len(every)} mutant(s)")
         return 0
     deadline = time.monotonic() + minutes * 60
@@ -265,6 +315,10 @@ def main(argv: list[str]) -> int:
         ".git", "__pycache__", "playground", "paper", "node_modules",
         "*.exe", "*.mcpb", "dist", "build", "velaris-spec"))
     killers_of = {module: GUARANTEES[module][1] for module in chosen}
+    if "--killers" in argv:
+        given = tuple((script,) for script in
+                      argv[argv.index("--killers") + 1].split(",") if script)
+        killers_of = {module: given for module in chosen}
     print(f"mutation testing: {len(every)} mutant(s) in "
           f"{', '.join(chosen)}; {minutes:g} minute(s)")
     for module in chosen:
@@ -290,7 +344,7 @@ def main(argv: list[str]) -> int:
         m = dict(m, killed=not passed, by=why)
         results.append(m)
         print(f"  {'killed  ' if not passed else 'SURVIVED'} "
-              f"{m['module']}.{m['function']} line {m['line']} "
+              f"{m['module']}.{m['function']} line {m['line']}:{m['col']} "
               f"{m['operator']}: {m['text'][:70]}")
     killed = sum(r["killed"] for r in results)
     score = 100.0 * killed / len(results) if results else 0.0
@@ -308,9 +362,13 @@ def main(argv: list[str]) -> int:
             if r["killed"]:
                 continue
             name = f"{r['module']}-{r['function']}-{r['line']}-{r['operator']}"
+            # the title names the line and the operator: open_issues.py opens
+            # one issue per title, and until 8.3 every mutant of a function
+            # had the same one
             (out / f"{name}.md").write_text(
-                f"A surviving mutant in `velaris/{r['module']}.py`, in "
-                f"`{r['function']}`, which a guarantee rests on.\n\n"
+                f"A surviving mutant: `velaris/{r['module']}.py` line "
+                f"{r['line']}, `{r['function']}`, {r['operator']}\n\n"
+                f"A guarantee rests on `{r['function']}`.\n\n"
                 f"Line {r['line']}: `{r['text']}`\n\n"
                 f"Operator: `{r['operator']}` ({r['what']}). With this change "
                 f"the suites that should notice it - "

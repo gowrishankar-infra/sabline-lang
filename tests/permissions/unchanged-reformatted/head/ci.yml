@@ -1,0 +1,35 @@
+# Continuous integration.
+# permissions: write-all   <- a comment, not a key
+---
+"name": 'ci'
+on:
+    pull_request:
+        branches:
+        - main
+permissions: {"contents": 'read'}   # quoted, in flow
+jobs:
+
+    # the job that builds
+    build:
+        name: "build
+    permissions: write-all"
+        permissions:
+            id-token: 'write'   # order changed
+            contents: "read"
+        runs-on: ubuntu-latest
+        steps:
+        -   uses: actions/checkout@v5
+        -   run: |
+                echo "permissions: write-all"
+                cat <<'EOF'
+                permissions:
+                  contents: write
+                EOF
+    docs:
+        runs-on: ubuntu-latest
+        env: { NOTE: "permissions: write-all",
+               OTHER: x }
+        steps:
+        - run: >-
+            echo docs
+            permissions: write-all

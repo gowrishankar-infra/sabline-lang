@@ -1352,6 +1352,120 @@ fn main() uses io { print(to_text(nand(true, false))) }
 '''),
 ]
 
+# Found in 8.3 by a test written for a surviving mutant, and a Goal A break:
+# == and != on two maps, two lists of lists, two lists of Bool or Text, or a
+# map and put(...) of it, were Python's comparison of two prover objects - a
+# constant False - so the branch that compared equal looked unreachable and
+# every promise past it came back proven. Each compares equal when it runs.
+COMPARED = [
+    ("compared: two equal maps", "f", "E601", '''
+fn f(m: Map of Text to Int, n: Map of Text to Int) -> Int
+  ensures result == 0
+{
+  if m == n { return 1 }
+  return 0
+}
+fn main() uses io { print(to_text(f({"a": 1}, {"a": 1}))) }
+'''),
+    ("compared: two equal lists of lists", "f", "E601", '''
+fn f(a: List of List of Int, b: List of List of Int) -> Int
+  ensures result == 0
+{
+  if a == b { return 1 }
+  return 0
+}
+fn main() uses io { print(to_text(f([[1]], [[1]]))) }
+'''),
+    ("compared: two equal lists of Bool", "f", "E601", '''
+fn f(a: List of Bool, b: List of Bool) -> Int
+  ensures result == 0
+{
+  if a == b { return 1 }
+  return 0
+}
+fn main() uses io { print(to_text(f([true], [true]))) }
+'''),
+    ("compared: two equal lists of Text", "f", "E601", '''
+fn f(a: List of Text, b: List of Text) -> Int
+  ensures result == 0
+{
+  if a == b { return 1 }
+  return 0
+}
+fn main() uses io { print(to_text(f(["x"], ["x"]))) }
+'''),
+    ("compared: a map and put of the value it already holds", "f", "E601", '''
+fn f(m: Map of Text to Int) -> Int
+  requires get_or(m, "a", 0) == 1 and has(m, "a")
+  ensures result == 0
+{
+  if put(m, "a", 1) == m { return 1 }
+  return 0
+}
+fn main() uses io { print(to_text(f({"a": 1}))) }
+'''),
+    ("compared: two maps that differ, through !=", "f", "E601", '''
+fn f(m: Map of Text to Int, n: Map of Text to Int) -> Int
+  ensures result == 1
+{
+  if m != n { return 0 }
+  return 1
+}
+fn main() uses io { print(to_text(f({"a": 1}, {"a": 2}))) }
+'''),
+    # A record's List of Int field: Python's == on the two prover lists.
+    ("compared: two records whose list fields are equal", "f", "E601", '''
+record Bag {
+  items: List of Int
+}
+fn f(a: Bag, b: Bag) -> Int
+  ensures result == 0
+{
+  if a == b { return 1 }
+  return 0
+}
+fn main() uses io { print(to_text(f(Bag(items: [1]), Bag(items: [1])))) }
+'''),
+    # A record's Float field: Z3's `=` calls every NaN equal, and a run
+    # compares two NaNs made apart as unequal.
+    ("compared: two records holding NaNs made apart", "f", "E601", '''
+record P {
+  x: Float
+}
+fn f(p: P, q: P) -> Int
+  requires not (p.x == p.x) and not (q.x == q.x)
+  ensures result == 1
+{
+  if p == q { return 1 }
+  return 0
+}
+fn main() uses io {
+  let x = 1.0
+  for i in 0 to 400 { x = x * 10.0 }
+  print(to_text(f(P(x: x - x), P(x: x - x))))
+}
+'''),
+    # ...and IEEE's rule calls a NaN unequal to itself, where a run compares
+    # one record with itself as equal: the field is the same Python float.
+    ("compared: a record holding a NaN, with itself", "f", "E601", '''
+record P {
+  x: Float
+}
+fn f(p: P) -> Int
+  requires not (p.x == p.x)
+  ensures result == 0
+{
+  if p == p { return 1 }
+  return 0
+}
+fn main() uses io {
+  let x = 1.0
+  for i in 0 to 400 { x = x * 10.0 }
+  print(to_text(f(P(x: x - x))))
+}
+'''),
+]
+
 CATEGORIES = [
     ("before 8.2", EARLIER),
     ("floats", FLOATS),
@@ -1361,6 +1475,7 @@ CATEGORIES = [
     ("recursion", RECURSION),
     ("loops, lists, maps, records, text, generics, requires, division",
      OTHER),
+    ("maps and lists compared (8.3)", COMPARED),
 ]
 LIES = [case for _, cases in CATEGORIES for case in cases]
 

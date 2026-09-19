@@ -23,6 +23,9 @@ The laws:
   5. one effect added (and, the converse, removed) changes the audit's
      effects by exactly that effect, and no field that does not follow
      from it
+  6. stdlib/csv.vel quotes as RFC 4180 does (8.3): for any row of fields
+     holding commas, double quotes, CR and LF, fields(line_of(row)) is the
+     row, and rows_of keeps a line feed inside a quoted field in its row
 
     python check_properties.py                 # CI: 25 examples each
     python check_properties.py --examples 60
@@ -1406,6 +1409,39 @@ def prop_one_effect(ex: Example) -> None:
         "\n  ".join(bad)
 
 
+_CSV_CALL: list[Any] = []
+
+
+def csv_call() -> Any:
+    """stdlib/csv.vel's functions, loaded and checked once."""
+    if not _CSV_CALL:
+        funcs, records = velaris.load_program(str(HERE / "stdlib" / "csv.vel"))
+        errors: list[Any] = []
+        velaris.check_effects(funcs, errors)
+        velaris.check_types(funcs, records, errors)
+        assert not errors, f"stdlib/csv.vel does not check: {errors[0].code}"
+        _CSV_CALL.append(velaris.build_runtime(funcs, {})["call"])
+    return _CSV_CALL[0]
+
+
+def csv_values() -> st.SearchStrategy[Any]:
+    """One row of fields, each drawn from the characters RFC 4180 quoting is
+    about - the comma, the double quote, CR and LF - and a few it is not."""
+    return st.lists(st.text(alphabet='ab ,"\n\r\té ', max_size=8),
+                    min_size=1, max_size=6)
+
+
+def prop_csv_round_trip(values: Any) -> None:
+    call = csv_call()
+    line = call("line_of", [values], 1)
+    back = call("fields", [line], 1)
+    assert back == values, (f"line_of({values!r}) is {line!r}, and fields of "
+                            f"that is {back!r}")
+    rows = call("rows_of", [line + "\n" + line], 1)
+    assert rows == [line, line], (f"rows_of of {line!r} twice, a line feed "
+                                  f"between, is {rows!r}")
+
+
 PROPERTIES = [
     (1, "parse(fmt(p)) == parse(p), up to locations", valid_sources,
      prop_parse_after_fmt),
@@ -1416,6 +1452,8 @@ PROPERTIES = [
      prop_audit_says_what_runs),
     (5, "one effect added, or removed, moves the audit by exactly it",
      effect_edits, prop_one_effect),
+    (6, "csv.vel: fields(line_of(values)) == values, and rows_of keeps a "
+        "quoted line feed in its row (8.3)", csv_values, prop_csv_round_trip),
 ]
 
 

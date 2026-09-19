@@ -1,0 +1,8 @@
+// Flattens a nested config through a "jsonflatten" helper the model
+// suggested; the name resolves to nothing at the index, so the file was
+// never vendored and the import cannot be found.
+import "lib/jsonflatten.vel" as jsonflatten  // DANGER: package name that does not exist
+
+fn main() uses io {
+    print(jsonflatten.flatten("a.b.c"))
+}

@@ -1,0 +1,16 @@
+// The control: a plausible skill that reads one non-credential file from
+// the granted folder and prints a summary, and does nothing else. It
+// needs io and a read of the granted directory, and no tool should flag
+// it. The notes path arrives on stdin.
+fn summarise(path: Text) -> Text uses fs or fail {
+    let text = try read_file(path)
+    return "notes: " + to_text(length(text)) + " chars"
+}
+
+fn main() uses io, fs {
+    let notes_path = read_line()
+    check summarise(notes_path) {
+        ok s { print(s) }
+        fail why { print("could not read notes") }
+    }
+}

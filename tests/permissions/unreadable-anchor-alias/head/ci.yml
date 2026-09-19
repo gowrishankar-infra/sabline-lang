@@ -1,0 +1,13 @@
+on: pull_request
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions: &readonly
+      contents: read
+    steps:
+      - run: make
+  test:
+    runs-on: ubuntu-latest
+    permissions: *readonly
+    steps:
+      - run: make test

@@ -897,6 +897,138 @@
           "description": "A \"secret scanner\" that posts the file it reads to a URL; the file is a credential (a .pem) and net is beyond what a scanner needs."
         }
       ]
+    },
+    {
+      "number": 14,
+      "key": "14_skill_supply_chain",
+      "title": "Skill supply chain: an agent skill whose helper reads a credential and posts it",
+      "_comment": "Shaped like the ClawHavoc campaign: malicious agent skills on the ClawHub marketplace for OpenClaw agents whose helpers located credentials at predictable places and exfiltrated them (the report read here is Repello AI, 'ClawHavoc Supply Chain Attack', 16 February 2026; the count is reported as 335 skills there and as 341 by Koi Security, whose original post redirected away and could not be read). Each dangerous program's stated task needs only io and a read of the granted directory; a helper reads a credential (a .env, a .pem/.key, or an environment variable) and posts it to a second endpoint ({other_url}) that no task needs. The credential path and the URL arrive on stdin, which the harness owns, as in category 13. Velaris catches all three before running: the audit lists net (and, for c, env) beyond the task's needs. For a and b the .pem and .env inside the granted directory are documented credential locations a broad fs:read grant does not cover, so the run refuses the read (E318) before the post; for c the environment value is a Secret, so posting it to the network does not even compile (E560). The control reads one non-credential file and prints a summary.",
+      "programs": [
+        {
+          "id": "14a",
+          "name": "a_weather_telemetry",
+          "dangerous": true,
+          "kind": "skill-exfil",
+          "needs": [
+            "io",
+            "fs:read:{granted}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}"
+          ],
+          "stdin": "{notes}\n{dotenv}\n{other_url}\n",
+          "description": "A \"weather\" skill that prints a forecast summary; its \"telemetry\" helper reads the .env in the granted folder and posts it to a second endpoint."
+        },
+        {
+          "id": "14b",
+          "name": "b_notes_update",
+          "dangerous": true,
+          "kind": "skill-exfil",
+          "needs": [
+            "io",
+            "fs:read:{granted}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}"
+          ],
+          "stdin": "{notes}\n{cred}\n{other_url}\n",
+          "description": "A \"notes summariser\"; its \"update check\", two helpers down, reads a key file (a .pem) and posts it to a second endpoint."
+        },
+        {
+          "id": "14c",
+          "name": "c_setup_env",
+          "dangerous": true,
+          "kind": "skill-exfil",
+          "needs": [
+            "io",
+            "fs:read:{granted}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}"
+          ],
+          "stdin": "{notes}\n{other_url}\n",
+          "description": "A skill that summarises the granted notes; its \"setup\" step reads an environment variable (BENCH_SECRET) and sends it to a second endpoint inside the body."
+        },
+        {
+          "id": "14d",
+          "name": "d_folder_summary",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io",
+            "fs:read:{granted}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}"
+          ],
+          "stdin": "{notes}\n",
+          "description": "The control: reads one non-credential file in the granted folder and prints a summary, nothing more. Nothing should be flagged."
+        }
+      ]
+    },
+    {
+      "number": 15,
+      "key": "15_hallucinated_dep",
+      "title": "Hallucinated dependency: a program that imports a package that does not exist",
+      "_comment": "The danger is slopsquatting: a model invents a package name a program then imports, and an attacker who registers the name gets their code run (primary account: Spracklen et al., 'We Have a Package for You! A Comprehensive Analysis of Package Hallucinations by Code Generating LLMs', USENIX Security 2025, arXiv 2406.10279). Each dangerous program imports a name no index serves; the control imports one that does. No run touches the real network: the harness serves a one-library index at http://127.0.0.1:<port>/pkg/ from its first listener - textcase.js exists, the invented names 404. Velaris: 'velaris add <url>' vendors a library into lib/, imported as 'import \"lib/NAME.vel\"'; an invented name was never vendored, so velaris check reports E512 on the import line (the DANGER line) before anything runs, and the control's lib/textcase.vel resolves. Deno: the import is a remote URL; 'deno check' is given the same --allow-import the run gets and reports the 404 on the import line, and the control downloads and runs. Python has no static step, so the missing module is a ModuleNotFoundError while running; the control imports a textcase.py vendored beside it. The DANGER marker is on the import line in all three languages.",
+      "programs": [
+        {
+          "id": "15a",
+          "name": "a_slug_import",
+          "dangerous": true,
+          "kind": "hallucinated",
+          "needs": [
+            "io"
+          ],
+          "deno_flags": [
+            "--allow-import=127.0.0.1:{port}"
+          ],
+          "stdin": "",
+          "description": "Imports 'fastslug', a slug helper the model invented; no index serves the name, so the import cannot resolve."
+        },
+        {
+          "id": "15b",
+          "name": "b_flatten_config",
+          "dangerous": true,
+          "kind": "hallucinated",
+          "needs": [
+            "io"
+          ],
+          "deno_flags": [
+            "--allow-import=127.0.0.1:{port}"
+          ],
+          "stdin": "",
+          "description": "Imports 'jsonflatten', a flatten helper the model invented; the name resolves to nothing at the index."
+        },
+        {
+          "id": "15c",
+          "name": "c_retry_fetch",
+          "dangerous": true,
+          "kind": "hallucinated",
+          "needs": [
+            "io"
+          ],
+          "deno_flags": [
+            "--allow-import=127.0.0.1:{port}"
+          ],
+          "stdin": "",
+          "description": "Imports 'retrywrap', a retry helper the model invented; the vendored file is not there to import."
+        },
+        {
+          "id": "15d",
+          "name": "d_titlecase",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io"
+          ],
+          "deno_flags": [
+            "--allow-import=127.0.0.1:{port}"
+          ],
+          "stdin": "",
+          "description": "The control: imports 'textcase', which exists at the index the project names (vendored for Velaris and Python, served for Deno). It must run clean and be flagged by nothing."
+        }
+      ]
     }
   ]
 }

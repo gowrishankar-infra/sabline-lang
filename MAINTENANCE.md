@@ -60,7 +60,7 @@ workflow. The adversarial pass takes an area to attack.
 | release `differential` | an output differs from the previous tag and the CHANGELOG entry does not name it | name it with a `differential:` line if it is meant (`check_differential.py`'s docstring), or fix it |
 | a `nightly` issue | an artefact built from main does not install or does not behave - or the probe is wrong, which `check_nightly.py` exists to catch first | the issue links the job and holds its failure annotations, one per broken check (the report runs before the run ends, and gh reads no log until then); `python check_install.py` runs the same checks against any command. The next run in which every job passes closes the issue; leave the closing to it |
 | a `monthly` issue | a long check failed | the issue names the job; each runs locally (below) |
-| a `mutation` issue | a line a guarantee rests on can change without any suite noticing | write the test that fails with the mutant, or say why the mutant is equivalent, and close it |
+| a `mutation` issue | a line a guarantee rests on can change without any suite noticing | write the test that fails with the mutant in `check_mutant_kills.py`, and check that it does with `python check_mutants.py --only MODULE:LINE:OPERATOR --killers check_mutant_kills.py` (the issue names all three); or say in that suite's docstring why the mutant is equivalent. Then close it |
 | an `adversarial:*` issue | a model claims a hole | reproduce it against main first; most are not holes. A real one is a security report (SECURITY.md) |
 | a canary issue | the newest release, as a user gets it, fails | the same check against main is the nightly; if main is fine, the release needs a patch |
 
@@ -166,10 +166,11 @@ and every script, 182 files at 8.2.0, with 0 findings. Each
     python check_install.py --name local --command "python velaris.py"
     python fuzz_parsers.py --minutes 20
     python check_mutants.py --minutes 30 --modules budget
+    python check_mutants.py --only budget:428:return-none --killers check_mutant_kills.py
     python check_pool_soak.py --runs 5000
     python check_urls.py
     python check_differential.py --spec ../velaris-spec/tests
-    python perf_gates.py --against v8.1.1 --markdown
+    python perf_gates.py --against v8.2.1 --markdown
     python adversarial_models.py prompt --focus budget
     python agent_loop.py --metric --offline
 

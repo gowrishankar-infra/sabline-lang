@@ -139,6 +139,10 @@ ERROR_TABLE = {
     "E612": "a loop whose end cannot be shown (check --strict only)",
     "E613": "a check or audit ran past its time ceiling and was stopped",
     "E614": "a check or audit grew past its memory ceiling and was stopped",
+    "E615": "a run under velaris eval was asked to stop from outside, and "
+            "stopped at the next call or loop turn",
+    "E616": "a run replayed with recorded tool responses made a call the "
+            "recording does not hold, in that place",
     "E700": "a promise that is provably false, with the input that "
             "breaks it",
     "E701": "a call that can break the called function's 'requires', "

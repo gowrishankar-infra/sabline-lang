@@ -48,6 +48,7 @@ from .tables import (
 from .recorder import _note_redirect
 from .loader import blame, unknown_function
 from .values import (
+    log_line,
     FailSignal,
     HandleValue,
     MoneyValue,
@@ -489,77 +490,94 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
             call_args = call_args[:-1]
         call_args = [unwrap_handle(v) for v in call_args]
         target = _ffi_resolve(module, func, name, line)
-        try:
-            out = target(*call_args, **kwargs)
-        except Exception as e:
-            raise FailSignal(f"{module}.{func} failed: {e}")
-        if isinstance(out, (bytes, bytearray)):
-            out = out.decode("utf-8", errors="replace")
-        try:
-            return _json.dumps(out, ensure_ascii=False)
-        except (ValueError, RecursionError):
-            # a cycle, a nesting too deep, a number too long (8.2)
-            raise FailSignal(f"{module}.{func} gave back a value that cannot "
-                             f"be made JSON")
-        except TypeError:                     # not JSON: keep it alive
-            ffi_reach(out, name, line, "the object it returned")
-            _state.PY_NEXT[0] += 1
-            _state.PY_OBJECTS[_state.PY_NEXT[0]] = out
-            return _json.dumps({"handle": _state.PY_NEXT[0]})
+
+        def call_py_json() -> Any:
+            try:
+                out = target(*call_args, **kwargs)
+            except Exception as e:
+                raise FailSignal(f"{module}.{func} failed: {e}")
+            if isinstance(out, (bytes, bytearray)):
+                out = out.decode("utf-8", errors="replace")
+            try:
+                return _json.dumps(out, ensure_ascii=False)
+            except (ValueError, RecursionError):
+                # a cycle, a nesting too deep, a number too long (8.2)
+                raise FailSignal(f"{module}.{func} gave back a value that "
+                                 f"cannot be made JSON")
+            except TypeError:                     # not JSON: keep it alive
+                ffi_reach(out, name, line, "the object it returned")
+                _state.PY_NEXT[0] += 1
+                _state.PY_OBJECTS[_state.PY_NEXT[0]] = out
+                return _json.dumps({"handle": _state.PY_NEXT[0]})
+        # recorded tool responses (8.3): after the grants are checked
+        if _state.RESPONSES is not None:
+            return _state.RESPONSES.answer(
+                name, [str(module), str(func), str(args_json)],
+                call_py_json, line)
+        return call_py_json()
     if name in ("py", "py_int", "py_float"):
         module, func, call_args = args[0], args[1], args[2]
         target = _ffi_resolve(module, func, name, line)
-        def as_number_if_it_is(text: Any) -> Any:
-            """'16' -> 16 and '2.5' -> 2.5, so numeric functions work.
 
-            The arguments arrive as Text (that is the declared type),
-            but math.sqrt("16") is a TypeError in Python. A string that
-            reads as a number is passed as one; anything else stays
-            text. Functions genuinely wanting the text "16" still get
-            it via the all-strings retry below.
-            """
-            s = str(text)
-            try:
-                return int(s)
-            except ValueError:
-                pass
-            try:
-                return float(s)
-            except ValueError:
-                return s
+        def call_py() -> Any:
+            def as_number_if_it_is(text: Any) -> Any:
+                """'16' -> 16 and '2.5' -> 2.5, so numeric functions work.
 
-        attempts = ([as_number_if_it_is(a) for a in call_args],
-                    [str(a) for a in call_args],
-                    [str(a).encode("utf-8") for a in call_args])
-        out, last_err = None, None
-        for formed in attempts:
+                The arguments arrive as Text (that is the declared type),
+                but math.sqrt("16") is a TypeError in Python. A string that
+                reads as a number is passed as one; anything else stays
+                text. Functions genuinely wanting the text "16" still get
+                it via the all-strings retry below.
+                """
+                s = str(text)
+                try:
+                    return int(s)
+                except ValueError:
+                    pass
+                try:
+                    return float(s)
+                except ValueError:
+                    return s
+
+            attempts = ([as_number_if_it_is(a) for a in call_args],
+                        [str(a) for a in call_args],
+                        [str(a).encode("utf-8") for a in call_args])
+            out: Any = None
+            last_err: Exception | None = None
+            for formed in attempts:
+                try:
+                    out = target(*formed)
+                    last_err = None
+                    break
+                except TypeError as e:
+                    last_err = e
+                    continue                 # the next shape may fit
+                except Exception as e:
+                    raise FailSignal(f"{module}.{func} failed: {e}")
+            if last_err is not None:
+                raise FailSignal(f"{module}.{func} failed: {last_err}")
+            if isinstance(out, (bytes, bytearray)):
+                out = out.decode("utf-8", errors="replace")
             try:
-                out = target(*formed)
-                last_err = None
-                break
-            except TypeError as e:
-                last_err = e
-                continue                 # the next shape may fit
-            except Exception as e:
-                raise FailSignal(f"{module}.{func} failed: {e}")
-        if last_err is not None:
-            raise FailSignal(f"{module}.{func} failed: {last_err}")
-        if isinstance(out, (bytes, bytearray)):
-            out = out.decode("utf-8", errors="replace")
-        try:
-            if name == "py_int":
-                value = int(out)
-                if not INT_MIN <= value <= INT_MAX:
-                    raise FailSignal(f"{module}.{func} gave back a whole "
-                                     f"number too big to hold")
-                return value
-            if name == "py_float":
-                return float(out)
-            return str(out)
-        except (TypeError, ValueError, OverflowError, RecursionError):
-            raise FailSignal(
-                f"{module}.{func} gave back something that is not a "
-                f"{'whole number' if name == 'py_int' else 'decimal' if name == 'py_float' else 'text'}")
+                if name == "py_int":
+                    value = int(out)
+                    if not INT_MIN <= value <= INT_MAX:
+                        raise FailSignal(f"{module}.{func} gave back a whole "
+                                         f"number too big to hold")
+                    return value
+                if name == "py_float":
+                    return float(out)
+                return str(out)
+            except (TypeError, ValueError, OverflowError, RecursionError):
+                raise FailSignal(
+                    f"{module}.{func} gave back something that is not a "
+                    f"{'whole number' if name == 'py_int' else 'decimal' if name == 'py_float' else 'text'}")
+        # recorded tool responses (8.3): after the grants are checked
+        if _state.RESPONSES is not None:
+            return _state.RESPONSES.answer(
+                name, [str(module), str(func), [str(x) for x in call_args]],
+                call_py, line)
+        return call_py()
     if name == "code_at":
         t, i = args
         if i < 0 or i >= len(t):
@@ -727,7 +745,10 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
     if name == "args":
         return list(_state.PROGRAM_ARGS)
     if name == "log":
-        print(to_text(args[0]), file=sys.stderr)
+        # one line per call, whatever the value holds (8.3): a line feed, a
+        # carriage return, an escape or a NUL is written as an escape, so a
+        # value cannot forge a line of the log
+        print(log_line(to_text(args[0])), file=sys.stderr)
         return None
     if name == "env":
         return os.environ.get(str(args[0]), str(args[1]))
@@ -770,6 +791,10 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
         return _state._RNG.randrange(n) if _state._RNG is not None else _rand.randrange(n)
 
 
+# how many calls and loop turns pass between two looks for a stop file (8.3)
+STOP_EVERY = 256
+
+
 def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -> dict[str, Any]:
     native = native or {}
     table = {f.name: f for f in funcs}
@@ -777,6 +802,24 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
     # builtins from 4.3 on give way to the program's own function of the
     # same name; '@name' is a library's call bound to the builtin
     hidden = NEW_BUILTINS & set(table)
+
+    # a stop asked for from outside (8.3, velaris eval): the file the parent
+    # makes is looked for every STOP_EVERY calls and loop turns, so a program
+    # that cooperates - one running interpreted, not blocked in Python - stops
+    # at the next of either, with E615, which it cannot catch. STOP_FILE is
+    # None everywhere but eval's worker, and then nothing is looked for.
+    stop_file = _state.STOP_FILE
+    stop_ticks = [0]
+
+    def stop_point(line: int) -> None:
+        stop_ticks[0] += 1
+        if (stop_file is not None and stop_ticks[0] % STOP_EVERY == 0
+                and os.path.exists(stop_file)):
+            raise VelarisError(
+                "E615", "this run was asked to stop from outside, and "
+                "stopped here", line,
+                fixes=["whoever runs it asked it to stop; its receipt "
+                       "records the stop"])
 
     def call(name: str, args: list[Any], line: int) -> Any:
         if name in ("all_of", "any_of"):
@@ -820,6 +863,8 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
         if isinstance(fn, Bound):
             caught, fn = fn.caught, fn.fn
         name = fn.name
+        if stop_file is not None:
+            stop_point(line)
         if depth[0] >= DEPTH_LIMIT:
             raise VelarisError("E609",
                 f"'{name}' called itself {DEPTH_LIMIT} deep - this looks "
@@ -943,6 +988,8 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
                                    "or fix the invariant if it is wrong"])
             check_invariants()
             while eval_(node.cond, env):
+                if stop_file is not None:
+                    stop_point(node.line)
                 for s in node.body:
                     run(s, env)
                 check_invariants()

@@ -105,7 +105,7 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 </style></head><body>
 <nav><div class="in"><a class="brand" href="../../index.html">
 <span class="dot"></span>Velaris</a><a href="../../index.html" class="">Home</a><a href="../../tutorial.html" class="">Tutorial</a><a href="../../spec.html" class="">Reference</a><a href="../../library.html" class="">Library</a><a href="../../errors.html" class="">Errors</a><a href="../../floats.html" class="">Floats</a><a href="../../playground.html" class="">Playground</a>
-<span class="ver">v8.2.1</span></div></nav>
+<span class="ver">v8.3.0</span></div></nav>
 <main class="">
 <div class="eyebrow">An in-toto predicate type</div>
 <h1>capability/v1</h1>
@@ -114,8 +114,10 @@ source files, byte for byte, and reports this capability surface: the
 effects the program declares, the paths, hosts and modules it names,
 and the narrowest budget to run it under.</p>
 
-<p><b>Predicate type:</b> <code>https://gowrishankar-infra.github.io/velaris-lang/capability/v1</code> - this
-page.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
+<p><b>Predicate type:</b> <code>https://velaris-lang.dev/capability/v1</code> - this
+page.<br><b>Also read as this type:</b> <code>https://gowrishankar-infra.github.io/velaris-lang/capability/v1</code>,
+the name Statements written by velaris-lang 4.2 to 8.2.1 carry; that address
+redirects here.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
 draft 2020-12, for the predicate.<br><b>Definition:</b>
 <a href="https://github.com/gowrishankar-infra/velaris-spec/blob/main/SPEC.md#85-the-audit-as-an-in-toto-predicate">velaris-spec
 SPEC.md section 8.5</a>, dedicated to the public domain under CC0.</p>
@@ -134,13 +136,13 @@ so.</p>
     {&quot;name&quot;: &quot;examples/effects.vel&quot;,
      &quot;digest&quot;: {&quot;sha256&quot;: &quot;e483365ce74a20770a1ef503f185f4de2c16b0524797408784a235e78b6baafb&quot;}}
   ],
-  &quot;predicateType&quot;: &quot;https://gowrishankar-infra.github.io/velaris-lang/capability/v1&quot;,
+  &quot;predicateType&quot;: &quot;https://velaris-lang.dev/capability/v1&quot;,
   &quot;predicate&quot;: {
     &quot;producer&quot;: {&quot;name&quot;: &quot;velaris-lang&quot;,
                  &quot;uri&quot;: &quot;https://github.com/gowrishankar-infra/velaris-lang&quot;},
-    &quot;specification&quot;: &quot;velaris-spec 0.5&quot;,
+    &quot;specification&quot;: &quot;velaris-spec 0.11.0&quot;,
     &quot;auditedAt&quot;: &quot;2026-09-11T00:00:00Z&quot;,
-    &quot;audit&quot;: {&quot;schema&quot;: &quot;velaris.audit/1&quot;, &quot;velaris_version&quot;: &quot;8.2.1&quot;,
+    &quot;audit&quot;: {&quot;schema&quot;: &quot;velaris.audit/1&quot;, &quot;velaris_version&quot;: &quot;8.3.0&quot;,
               &quot;ok&quot;: true, &quot;effects&quot;: [&quot;clock&quot;, &quot;fs&quot;, &quot;io&quot;, &quot;rand&quot;],
               &quot;safe_command&quot;: &quot;velaris &lt;file&gt; --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand&quot;,
               &quot;counts&quot;: {&quot;fs&quot;: 2, &quot;net&quot;: 0}, &quot;prover&quot;: true,
@@ -163,7 +165,7 @@ of the implementation that wrote the audit, and optionally
 <code>uri</code>; its version is the audit's
 <code>velaris_version</code></td></tr>
 <tr><td><code>predicate.specification</code></td><td>no</td><td>the
-velaris-spec version followed, as <code>velaris-spec 0.5</code></td></tr>
+velaris-spec version followed, as <code>velaris-spec 0.11.0</code></td></tr>
 <tr><td><code>predicate.auditedAt</code></td><td>no</td><td>when the audit
 was made, RFC 3339 in UTC, by the producer's clock</td></tr>
 <tr><td><code>predicate.conformance</code></td><td>no</td><td>the

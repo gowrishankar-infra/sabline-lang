@@ -1,0 +1,11 @@
+name: ci
+on: pull_request
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+    permissions:
+      contents: write

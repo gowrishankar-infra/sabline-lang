@@ -83,7 +83,13 @@ def main() -> int:
     print("-" * 62)
     rego = (OPA_DIR / "capability.rego").read_text(encoding="utf-8")
     ok("the OPA policy names the capability/v1 predicate type velaris "
-       "writes", f'"{velaris.CAPABILITY_PREDICATE_TYPE}"' in rego)
+       "writes", f'predicate_type := "{velaris.CAPABILITY_PREDICATE_TYPE}"'
+       in rego)
+    ok("...and admits every spelling of that type velaris reads, and no "
+       "other (8.3)",
+       all(f'"{t}"' in rego for t in velaris.CAPABILITY_PREDICATE_TYPES)
+       and "velaris.dev/capability" not in rego.replace(
+           "velaris.dev/capability/v1 among them", ""))
 
     opa = shutil.which(os.environ.get("OPA", "opa"))
     if opa is None:

@@ -1,3 +1,5 @@
 * text=auto
 # vendored byte for byte; check_library.py checks its sha256
 tests/sarif-schema-2.1.0.json -text
+# check_permissions.py reads these line ends as they are: CRLF, and tabs
+tests/permissions/** -text

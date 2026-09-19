@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The Velaris comparison benchmark.
 
-    python benchmark/run.py            # all 67 programs -> RESULTS.md, results.json
+    python benchmark/run.py            # all 76 programs -> RESULTS.md, results.json
     python benchmark/run.py --quick    # one program per category, table on stdout
     python benchmark/run.py --check    # also compare verdicts with results.json
     python benchmark/run.py --only 03a,10c
@@ -153,9 +153,31 @@ def loop_span(path: Any, danger_line: Any) -> tuple[Any, ...] | None:
 class Hits(BaseHTTPRequestHandler):
     paths: list[Any] = []
     by_port: list[Any] = []           # (the listener's port, path), category 12
+    # the small package index (category 15): the one library that exists.
+    # A GET under /pkg/ is served the module or a 404; it is not recorded
+    # as a hit, so it never counts as a net effect and no run touches the
+    # real network.
+    MODULES: dict[str, bytes] = {
+        "textcase.js": b"export function shout(s) { return s.toUpperCase(); }\n"}
 
     def do_GET(self) -> None:
+        if self.path.startswith("/pkg/"):
+            self._serve_module(self.path[len("/pkg/"):])
+            return
         self._hit()
+
+    def _serve_module(self, name: str) -> None:
+        body = Hits.MODULES.get(name)
+        if body is None:
+            self.send_response(404)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/javascript")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self) -> None:
         n = int(self.headers.get("Content-Length") or 0)
@@ -370,6 +392,14 @@ def observed(kind: Any, prog_id: Any, tool: Any, work_path: Any, stdout: Any) ->
                    for port, p in Hits.by_port)
     if kind == "dep-write":
         return os.path.exists(work_path)
+    if kind == "skill-exfil":                # the exfil endpoint (the second
+        prefix = f"/{prog_id}/{tool}"        # listener, which no task needs)
+        other = PORTS_IN_USE[1]              # received the credential
+        return any(port == other and p.startswith(prefix)
+                   for port, p in Hits.by_port)
+    if kind == "hallucinated":               # nothing runs to observe: the
+        return None                          # import is the danger, and it
+        # never resolves at any tool
     return None
 
 
@@ -501,7 +531,9 @@ def velaris_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
         if r.refused_effect:
             what = r.refused_effect
             if what.startswith("fs:") and len(what) > 3:
-                what = "fs:<a path outside the grant>"
+                what = ("fs:<a credential location>"
+                        if r.problems[0].code == "E318"
+                        else "fs:<a path outside the grant>")
             bits.append(f"run: {r.problems[0].code} refused {what}")
         elif r.timed_out:
             bits.append("run: E610 stopped at 5 s")
@@ -523,15 +555,20 @@ def velaris_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
 
 
 def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, deno_flags: Any = (),
-             placed: Any = None) -> dict[str, Any]:
+             placed: Any = None, deno_path: Any = None) -> dict[str, Any]:
     if deno is None:
         return {"verdict": "tool-absent", "evidence": "deno not installed",
                 "before": None, "during": None, "observed": None}
-    path = placed["caller"] if placed else prog["files"]["deno"]
+    path = placed["caller"] if placed else (deno_path or prog["files"]["deno"])
     danger = prog["danger_line"]["deno"]
     diagnostics = []
     static_exits = {}
-    for sub in (["check"], ["lint", "--json"]):
+    # `deno check` must be allowed to fetch a remote import to build the
+    # module graph; give it the same --allow-import the run gets and
+    # nothing else (category 15). `deno lint` reads only the local file.
+    import_flags = [x for x in deno_flags
+                    if str(x).startswith("--allow-import")]
+    for sub in (["check"] + import_flags, ["lint", "--json"]):
         res = run_child([deno] + sub + [path], "")
         static_exits[sub[0]] = res["exit"]
         text = res["stdout"] + res["stderr"]
@@ -591,8 +628,14 @@ def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, d
 
     bits = []
     if on_target:
-        bits.append("lint: " + ", ".join(f"{d['code']} line {d['line']}"
-                                         for d in on_target))
+        lint_hits = [d for d in on_target if d["tool"] == "lint"]
+        check_hits = [d for d in on_target if d["tool"] == "check"]
+        if lint_hits:
+            bits.append("lint: " + ", ".join(f"{d['code']} line {d['line']}"
+                                             for d in lint_hits))
+        if check_hits:
+            bits.append("check: cannot resolve the import, line "
+                        + ", ".join(str(d["line"]) for d in check_hits))
     elif diagnostics and prog["dangerous"]:
         bits.append("lint elsewhere: " + ", ".join(
             f"{d['code']} line {d['line']}" for d in diagnostics))
@@ -688,9 +731,15 @@ def fill(text: Any, work_path: Any, workdir: Any, port: Any, other: Any, prog_id
     paths = {"{path}": work_path,
              "{granted}": os.path.join(workdir, "granted"),
              "{outside}": os.path.join(workdir, "outside", "secret.txt"),
+             # a non-credential file inside the granted dir a stated task
+             # reads (categories 13's sibling and 14's skills)
+             "{notes}": os.path.join(workdir, "granted", "notes.txt"),
              # a credential file inside the granted dir (category 13): a
              # broad fs:read grant covers the dir, but not this .pem (8.0)
-             "{cred}": os.path.join(workdir, "granted", "service.pem")}
+             "{cred}": os.path.join(workdir, "granted", "service.pem"),
+             # a .env inside the granted dir (category 14): another
+             # documented credential location a broad fs:read misses (8.0)
+             "{dotenv}": os.path.join(workdir, "granted", ".env")}
     if slashes:
         paths = {k: v.replace("\\", "/") for k, v in paths.items()}
     return (text.replace("{path}", paths["{path}"])
@@ -699,7 +748,9 @@ def fill(text: Any, work_path: Any, workdir: Any, port: Any, other: Any, prog_id
                      f"http://127.0.0.1:{other}/{prog_id}/{tool}")
             .replace("{granted}", paths["{granted}"])
             .replace("{outside}", paths["{outside}"])
+            .replace("{notes}", paths["{notes}"])
             .replace("{cred}", paths["{cred}"])
+            .replace("{dotenv}", paths["{dotenv}"])
             .replace("{port}", str(port)).replace("{other}", str(other)))
 
 
@@ -738,6 +789,23 @@ def place_dependency(prog: Any, tool: Any, workdir: Any, filled: Any) -> dict[st
     return {"caller": caller, "versions": versions, "mask": mask}
 
 
+def _place_deno_remote(prog: Any, workdir: Any, filled: Any) -> Any:
+    """Category 15: the Deno program imports a remote module whose port
+    only the run knows. Write a copy of the .js with the placeholders
+    filled and return its path, so `deno` reads the real URL. Nothing but
+    the placeholders changes, so the line numbers - and the DANGER marker
+    on the import - stay put. The .vel and .py of this category import a
+    local name and need no such copy."""
+    dest_dir = os.path.join(workdir, prog["id"], "deno")
+    os.makedirs(dest_dir, exist_ok=True)
+    dest = os.path.join(dest_dir, prog["name"] + EXT["deno"])
+    with open(prog["files"]["deno"], encoding="utf-8") as fh:
+        src = fh.read()
+    with open(dest, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(filled(src))
+    return dest
+
+
 def run_program(prog: Any, deno: Any, port: Any, other: Any, workdir: Any) -> Any:
     row = {k: prog[k] for k in ("id", "category", "category_title", "name",
                                 "description", "dangerous", "kind", "needs")}
@@ -748,7 +816,9 @@ def run_program(prog: Any, deno: Any, port: Any, other: Any, workdir: Any) -> An
                     .replace("{url}", "<url>")
                     .replace("{other_url}", "<other-url>")
                     .replace("{outside}", "<outside>")
+                    .replace("{notes}", "<notes>")
                     .replace("{cred}", "<cred>")
+                    .replace("{dotenv}", "<dotenv>")
                     .replace("{granted}", "<granted>"))
     row["deno_flags"] = prog.get("deno_flags", [])
     row["tools"] = {}
@@ -774,9 +844,12 @@ def run_program(prog: Any, deno: Any, port: Any, other: Any, workdir: Any) -> An
             row["tools"][tool] = velaris_row(prog, stdin_text, work_path,
                                              needs, placed)
         elif tool == "deno":
+            deno_path = None
+            if any(str(x).startswith("--allow-import") for x in deno_flags):
+                deno_path = _place_deno_remote(prog, workdir, f)
             row["tools"][tool] = settle_memory_row(
                 prog, deno_row(prog, stdin_text, work_path, deno, port,
-                               deno_flags, placed))
+                               deno_flags, placed, deno_path))
         else:
             row["tools"][tool] = settle_memory_row(
                 prog, python_row(prog, stdin_text, work_path, port, placed))
@@ -862,6 +935,17 @@ KIND_WHY = {
                  "fs:write grant outside the old version's surface before "
                  "anything runs, and the run refuses it under a read-only "
                  "grant",
+    "skill-exfil": "the stated task needs io and a read of the granted "
+                   "directory; the helper adds net (and, in one program, "
+                   "env), which the audit lists beyond those needs before "
+                   "anything runs; the run then refuses the credential read "
+                   "(E318) for the file programs, and for the env program "
+                   "posting the environment value, which is a Secret, does "
+                   "not even compile (E560)",
+    "hallucinated": "the import names a package that is not vendored in "
+                    "lib/, so velaris check reports E512 on the import line "
+                    "before anything runs; the import never resolves, so no "
+                    "attacker code could run in its place",
 }
 
 
@@ -1293,6 +1377,11 @@ def main(argv: Any = None) -> int:
         fh.write("granted-notes\n")
     with open(os.path.join(workdir, "outside", "secret.txt"), "w") as fh:
         fh.write("outside-secret\n")
+    # a .env inside the granted dir, for the skill supply chain (cat 14):
+    # a documented credential location, so read_file refuses it (E318) and
+    # a broad fs:read: grant does not cover it (8.0)
+    with open(os.path.join(workdir, "granted", ".env"), "w") as fh:
+        fh.write("API_TOKEN=bench-not-a-real-token\n")
     # a credential file inside the granted dir, for the TrapDoor (cat 13):
     # a *.pem is a documented credential location, so read_file refuses it
     # (E318) and a broad fs:read: grant does not cover it (8.0)

@@ -36,10 +36,10 @@ which the program still compiles and still needs it, until a person
 edits the baseline. The claim is not about which function an effect is
 attributed to: a function renamed in the change that gives it an effect
 its program already had escapes the function-level rule. On a benchmark
-of 68 programs, 60 with one defect and 8 correct, each written in
-Velaris, in JavaScript for Deno and in Python, Velaris caught 58 of the
-60 defects, 46 of them before running;
-Deno caught 36 and Python 28; none of the three flagged a correct
+of 76 programs, 66 with one defect and 10 correct, each written in
+Velaris, in JavaScript for Deno and in Python, Velaris caught 64 of the
+66 defects, 52 of them before running;
+Deno caught 42 and Python 31; none of the three flagged a correct
 program. One of Velaris's two misses is a logic error with no contract;
 the other no tool should catch. The capability format is published
 separately, under CC0, with a conformance corpus of 456 cases that an
@@ -331,18 +331,20 @@ when the stakes warrant one.
 
 ### 4.1 A benchmark against Deno and Python
 
-The benchmark is 68 small programs, each written three times with the
+The benchmark is 76 small programs, each written three times with the
 same behaviour: in Velaris, in JavaScript for Deno, and in Python.
-Sixty contain one deliberate defect, on one line marked in all three
-sources; eight are correct controls. They fall in thirteen categories: a
+Sixty-six contain one deliberate defect, on one line marked in all three
+sources; ten are correct controls. They fall in fifteen categories: a
 file write hidden in a helper, a network call hidden in a helper,
 division by a value that can be zero, a read past the end of a list,
 integer overflow, an ignored failure, an infinite loop, runaway memory,
 reaching a dangerous module, correct programs that must not be flagged,
 a grant narrower than the effect, indirect authority - a caller
 that does not change while a dependency's declared budget widens
-between two versions - and a TrapDoor, a program whose stated purpose
-and behaviour differ. One harness runs every program
+between two versions - a TrapDoor, a program whose stated purpose
+and behaviour differ, a skill script whose helper reads a credential and
+sends it elsewhere, and an import of a library that does not exist where
+its program names it. One harness runs every program
 through every tool with the same rules: a 5-second timeout, a 256 MB
 memory cap, and for Velaris the narrowest budget each task needs. Each
 program gets one verdict per tool - caught before running, caught while
@@ -350,24 +352,26 @@ running, missed, or, for a control, clean or a false positive - and
 after every run the harness observes whether the dangerous effect
 actually happened: a file created, a request received by a local
 listener, a subprocess's sentinel printed. The committed results were
-produced by Velaris 8.0.0, Deno 2.9.6 and Python 3.13.12 on Windows 11,
-and the 67 programs of the first twelve categories kept every verdict
-and every line of evidence they had at Velaris 7.1.1. Before that, ten
-consecutive runs at 7.1.0 had written identical files, and the run
-at 7.1.1 changed only the version it records. The 63 programs of the
+produced by Velaris 8.3.0, Deno 2.9.6 and Python 3.13.13 on Windows 11,
+in ten consecutive runs that wrote identical files, and the 68 programs
+of the first thirteen categories kept every verdict they had at Velaris
+8.2.0. Before that, the 67 programs of the first twelve categories kept
+every verdict and every line of evidence they had at Velaris 7.1.1, and
+ten consecutive runs at 7.1.0 had written identical files. The 63
+programs of the
 first eleven categories kept the verdict each had under Velaris 4.1.0;
 Velaris 3.0.0, with the same Deno and Python on the same platform, had
 produced that table before 4.1.0, every verdict and every line of
 evidence.
 
-| Tool | Caught before running | Caught while running | Missed | False positives (8 controls) |
+| Tool | Caught before running | Caught while running | Missed | False positives (10 controls) |
 |---|---|---|---|---|
-| Velaris | 46 | 12 | 2 | 0 |
-| Deno | 5 | 31 | 24 | 0 |
-| Python | 0 | 28 | 32 | 0 |
+| Velaris | 52 | 12 | 2 | 0 |
+| Deno | 8 | 34 | 24 | 0 |
+| Python | 0 | 31 | 35 | 0 |
 
-Table 1: the 60 dangerous programs and the 8 controls, from
-`benchmark/results.json` at Velaris 8.2.0, written by Velaris 8.0.0.
+Table 1: the 66 dangerous programs and the 10 controls, from
+`benchmark/results.json` at Velaris 8.3.0.
 
 Where the catches come from differs by tool. Velaris's catches before
 running come from effects in signatures (the file, network and module
@@ -718,8 +722,9 @@ outside a budget its operator wrote, in a way the program cannot catch;
 proves contracts where the prover can; and holds a repository's
 declared capability surface to a baseline that only an edit can widen.
 The first three can be tested program by program, and on the first
-eleven categories and the thirteenth of a 68-program benchmark they
-caught 55 of 57 defects; the fourth's comparison, applied to two versions of a
+eleven categories and the thirteenth to fifteenth of a 76-program
+benchmark they caught 61 of 63 defects; the fourth's comparison,
+applied to two versions of a
 dependency, caught the three defects of the twelfth; and no correct
 program was flagged. The fourth is a property, not a rate: under a required check,
 the declared surface does not widen without the check failing, however
@@ -747,7 +752,7 @@ This paper describes Velaris 4.2.1 and velaris-spec 0.5.1, and every
 number in it was verified against those two tags except the
 benchmark's: the benchmark figures of the abstract, section 4.1,
 Table 1 and the conclusion are from `benchmark/results.json` at
-Velaris 8.2.0, which Velaris 8.0.0 wrote. Releases after 4.2.1
+Velaris 8.3.0. Releases after 4.2.1
 postdate the paper and are not reflected in it: 4.3.0 added `Money of
 CUR`, an exact decimal whose split is proven to add back up; 4.3.1 made
 a proof that exhausts its time budget say so rather than fall silently
@@ -764,8 +769,10 @@ benchmark measures; 7.1.2 and 8.1.1 closed two ways for a planted
 proof cache to report a false promise as proven; 7.2.0 changed how
 releases are made; 8.0.0 made four changes that break programs or
 commands 7.x accepted, and added the benchmark's thirteenth category;
-8.1.0 added receipts of a run; and 8.2.0 split the compiler into one
-module per stage and keeps no proof cache at all. Later
+8.1.0 added receipts of a run; 8.2.0 split the compiler into one
+module per stage and keeps no proof cache at all; and 8.3.0 added an
+evaluation profile, a comparison and a replay of receipts, and the
+benchmark's fourteenth and fifteenth categories. Later
 patches corrected documentation and packaging. What each one changed is
 in the two repositories' changelogs.
 The tags below are therefore the ones to check out, not the current
@@ -779,8 +786,8 @@ at their tags:
     git -C velaris-spec checkout v0.5.1
     cd velaris-lang
 
-    # Table 1, at v8.2.0 (Deno 2.x on PATH for the Deno column; 5 to 8 minutes)
-    git checkout v8.2.0
+    # Table 1, at v8.3.0 (Deno 2.x on PATH for the Deno column; 4 to 8 minutes)
+    git checkout v8.3.0
     pip install ".[full,test]"         # the prover, the native compiler, jsonschema
     python benchmark/run.py --check    # exit 1 if any verdict differs
 
@@ -812,8 +819,9 @@ Where each number comes from:
 
 | Number | File |
 |---|---|
-| 68 programs, 60 dangerous, 8 controls, thirteen categories; 46/12/2, 5/31/24, 0/28/32; 0 false positives; Velaris 8.0.0, Deno 2.9.6, Python 3.13.12, Windows 11; 5 s timeout, 256 MB cap; the misses `04c` and `09c`; 55 of 57 in categories 1 to 11 and 13; category 12's three upgrades and one control; category 13's program, its verdicts and E318 | `benchmark/results.json` at v8.2.0 |
-| three of each six programs written against the tools; 5 to 8 minutes for a full run | `benchmark/README.md` at v8.2.0 |
+| 76 programs, 66 dangerous, 10 controls, fifteen categories; 52/12/2, 8/34/24, 0/31/35; 0 false positives; Velaris 8.3.0, Deno 2.9.6, Python 3.13.13, Windows 11; 5 s timeout, 256 MB cap; the misses `04c` and `09c`; 61 of 63 in categories 1 to 11 and 13 to 15; category 12's three upgrades and one control; category 13's program, its verdicts and E318; categories 14 and 15 | `benchmark/results.json` at v8.3.0 |
+| three of each six programs written against the tools; about four minutes for a full run, five to eight on a slower machine | `benchmark/README.md` at v8.3.0 |
+| the 68 programs of categories 1 to 13 unchanged in verdict since 8.2.0; ten identical runs at 8.3.0; categories 14 and 15 added in 8.3 | `benchmark/results.json` at v8.2.0 and at v8.3.0, and `CHANGELOG.md`, 8.3 entry |
 | the 67 programs of categories 1 to 12 unchanged in verdict and evidence since 7.1.1 | `benchmark/results.json` at v7.1.1 and at v8.2.0 |
 | category 13 added in 8.0 | `CHANGELOG.md`, 8.0 entry |
 | ten identical runs at 7.1.0; the verdicts of the 63 earlier programs unchanged from 4.1.0; the run at 7.1.1 differing only in its version | `CHANGELOG.md`, 7.1 and 7.1.1 entries |

@@ -17,7 +17,7 @@ dependencies = ["langchain-core>=0.2", "velaris-lang>=2.57"]
 proofs = ["z3-solver"]
 
 [project.urls]
-Homepage = "https://gowrishankar-infra.github.io/velaris-lang/"
+Homepage = "https://velaris-lang.dev/"
 Source = "https://github.com/gowrishankar-infra/velaris-lang"
 
 [tool.hatch.build.targets.wheel]

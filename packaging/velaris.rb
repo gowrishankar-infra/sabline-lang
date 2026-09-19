@@ -11,7 +11,7 @@ class Velaris < Formula
   include Language::Python::Virtualenv
 
   desc "Language where signatures declare effects and machine-checked promises"
-  homepage "https://gowrishankar-infra.github.io/velaris-lang/"
+  homepage "https://velaris-lang.dev/"
   url "https://files.pythonhosted.org/packages/source/v/velaris-lang/velaris_lang-2.55.0.tar.gz"
   sha256 "REPLACE_WITH_THE_TARBALL_SHA256"
   license "MIT"

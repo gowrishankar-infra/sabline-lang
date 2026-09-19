@@ -9,8 +9,10 @@ are examples or placeholders by construction (example.com and its kind,
 127.0.0.1, localhost, anything holding `<` or `{`) are not asked. A link
 into this repository at a commit or on main is asked like any other.
 
-Last, https://gowrishankar-infra.github.io/velaris-lang/llms.txt must serve
-LLM.md: every compiler error names it as the reference (8.0).
+Last, https://velaris-lang.dev/llms.txt must serve LLM.md: every compiler
+error names it as the reference (8.0; at velaris-lang.dev from 8.3). The
+documentation site's earlier address must answer that card's old URL with a
+redirect to the new one, since errors printed by 8.0 to 8.2.1 name it.
 
     python check_urls.py            ask every URL
     python check_urls.py --list     only list what would be asked
@@ -21,12 +23,19 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).resolve().parent
-CARD_URL = "https://gowrishankar-infra.github.io/velaris-lang/llms.txt"
+CARD_URL = "https://velaris-lang.dev/llms.txt"
+# the card's address until 8.3, which the errors 8.0 to 8.2.1 print name; it
+# must redirect to CARD_URL. check_docs holds this, check_library's redirect
+# test, the CHANGELOG's history and the readers of earlier predicate types to
+# be the only places in the repository that name the earlier address.
+EARLIER_CARD_URL = "https://gowrishankar-infra.github.io/velaris-lang/llms.txt"
 SOURCES = ["*.md", "docs/*.md", "benchmark/*.md", "paper/*.md", "stdlib/*.md",
            "editor/vscode/*.md", "npm/*.md", "integrations/**/*.md",
            "action.yml", "pyproject.toml", "CITATION.cff",
@@ -37,6 +46,17 @@ NOT_ASKED = re.compile(
     r"://(?:[\w.-]+\.)?(?:example\.(?:com|org|net|invalid)|localhost|"
     r"127\.0\.0\.1|0\.0\.0\.0|\[::1\]|host|api\.vendor\.example|"
     r"collector\.example\.org|evil\.com|good\.com)(?:[:/]|$)|[<{$]")
+# Written in the documents as identifiers, not as pages: a sigstore
+# certificate identity (a workflow file at a ref), the OIDC issuers a
+# signature names, the Software Heritage API endpoints PROVENANCE.md quotes
+# (they answer POST, not GET), and an owner/repository placeholder. The
+# monthly run 34978389207 asked each and called it broken (8.3).
+IDENTIFIERS = re.compile(
+    r"/\.github/workflows/[\w.-]+\.ya?ml@refs/|"
+    r"^https://token\.actions\.githubusercontent\.com/?$|"
+    r"^https://github\.com/login/oauth/?$|"
+    r"^https://archive\.softwareheritage\.org/api/|"
+    r"^https://github\.com/o/[\w.-]+/?$")
 
 
 def urls() -> dict[str, list[str]]:
@@ -49,7 +69,7 @@ def urls() -> dict[str, list[str]]:
             text = path.read_text(encoding="utf-8", errors="replace")
             for m in URL.finditer(text):
                 url = m.group(0).rstrip(".,;:!?*_")
-                if NOT_ASKED.search(url):
+                if NOT_ASKED.search(url) or IDENTIFIERS.search(url):
                     continue
                 found.setdefault(url, []).append(
                     str(path.relative_to(HERE)).replace("\\", "/"))
@@ -108,7 +128,42 @@ def main(argv: list[str]) -> int:
     except (urllib.error.URLError, OSError) as e:
         same = False
         print(f"  BROKEN  {CARD_URL}  ({getattr(e, 'reason', e)})")
-    return 1 if bad or not same else 0
+    moved, said = redirect_of(EARLIER_CARD_URL)
+    print(f"  {'ok' if moved else 'BROKEN'}      {EARLIER_CARD_URL} "
+          f"{'redirects to ' + said if moved else '(' + said + ')'}")
+    return 1 if bad or not same or moved is not True else 0
+
+
+class _Stay(urllib.request.HTTPRedirectHandler):
+    """A redirect handler that follows nothing, so the 3xx itself is seen."""
+
+    def redirect_request(self, req: urllib.request.Request, fp: Any,
+                         code: int, msg: str, headers: Any,
+                         newurl: str) -> urllib.request.Request | None:
+        return None
+
+
+def redirect_of(url: str) -> tuple[bool | None, str]:
+    """(True, the Location) when `url` answers with a redirect to CARD_URL's
+    host and path (either scheme: GitHub Pages redirects to http until the
+    site enforces HTTPS); (False, what it answered instead); (None, why)
+    when it could not be asked at all."""
+    opener = urllib.request.build_opener(_Stay)
+    request = urllib.request.Request(url, headers={
+        "User-Agent": "velaris-check-urls"})
+    try:
+        with opener.open(request, timeout=30) as response:
+            return False, f"HTTP {response.status}, not a redirect"
+    except urllib.error.HTTPError as e:
+        location = e.headers.get("Location") or ""
+        parts = urllib.parse.urlsplit(location)
+        wanted = urllib.parse.urlsplit(CARD_URL)
+        if e.code in (301, 302, 307, 308) and parts.hostname == \
+                wanted.hostname and parts.path == wanted.path:
+            return True, location
+        return False, f"HTTP {e.code} to {location or 'nowhere'}"
+    except (urllib.error.URLError, OSError) as e:
+        return None, str(getattr(e, "reason", e))
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ PackageLocale: en-US
 Publisher: Palakurthi Gowri Shankar
 PublisherUrl: https://github.com/gowrishankar-infra
 PackageName: Velaris
-PackageUrl: https://gowrishankar-infra.github.io/velaris-lang/
+PackageUrl: https://velaris-lang.dev/
 License: MIT
 LicenseUrl: https://github.com/gowrishankar-infra/velaris-lang/blob/main/LICENSE
 ShortDescription: A language where a signature declares its effects and machine-checked promises.

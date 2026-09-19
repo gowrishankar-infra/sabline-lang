@@ -8,7 +8,7 @@ and with the failure modes named. `velaris card` prints it.
 
 `pip install velaris-lang`, then `velaris program.vel`. There is a
 browser playground at
-<https://gowrishankar-infra.github.io/velaris-lang/playground.html> and
+<https://velaris-lang.dev/playground.html> and
 the compiler is one Python file at
 <https://github.com/gowrishankar-infra/velaris-lang>. Write code
 expecting it to actually execute.

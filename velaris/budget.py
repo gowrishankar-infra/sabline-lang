@@ -14,7 +14,7 @@ from .tables import (
     INT_MIN,
     REDACTED,
 )
-from .values import FailSignal, MoneyValue, to_text
+from .values import FailSignal, MoneyValue, log_line, to_text
 from typing import Any, TypeVar, cast
 
 _Num = TypeVar("_Num", bound="int | MoneyValue")
@@ -1014,7 +1014,7 @@ def trace_enter(name: str, params: Any, args: Any, secret: Any = ()) -> None:
         return
     _state.TRACE["calls"] += 1
     shown = ", ".join(
-        f"{p}=" + (REDACTED if p in secret else to_text(a))
+        f"{p}=" + (REDACTED if p in secret else log_line(to_text(a)))
         for (p, _), a in zip(params, args))
     print("  " * _state.TRACE["depth"] + f"-> {name}({shown})", file=sys.stderr)
     _state.TRACE["depth"] += 1
@@ -1026,13 +1026,15 @@ def trace_leave(name: str, value: Any, failed: str | None = None,
         return
     _state.TRACE["depth"] = max(0, _state.TRACE["depth"] - 1)
     if failed is not None:
-        print("  " * _state.TRACE["depth"] + f"<- {name} FAILED: {failed}",
+        print("  " * _state.TRACE["depth"] + f"<- {name} FAILED: "
+              + log_line(failed),
               file=sys.stderr)
     elif value is None:
         print("  " * _state.TRACE["depth"] + f"<- {name}", file=sys.stderr)
     else:
         print("  " * _state.TRACE["depth"] + f"<- {name} = "
-              + (REDACTED if secret else to_text(value)), file=sys.stderr)
+              + (REDACTED if secret else log_line(to_text(value))),
+              file=sys.stderr)
 
 
 def checked_int(value: _Num, op: str, line: int) -> _Num:

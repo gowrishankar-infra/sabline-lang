@@ -7,7 +7,7 @@ Those promises are checked by a theorem prover before your program
 runs.
 
 You can follow along in the browser — the
-[playground](https://gowrishankar-infra.github.io/velaris-lang/playground.html)
+[playground](https://velaris-lang.dev/playground.html)
 runs the real compiler — or install it:
 
 ```
@@ -266,7 +266,7 @@ running.
 - `examples/ledger.vel` — an expense tracker: records, files, reports.
 - `examples/wordcount.vel` — text analysis: maps, lambdas, failure.
 - `examples/fetcher.vel` — an HTTP tool: the network, honestly declared.
-- [The error index](https://gowrishankar-infra.github.io/velaris-lang/errors.html)
+- [The error index](https://velaris-lang.dev/errors.html)
   — every message Velaris can give, scraped from the compiler itself.
 
 If you can make the prover claim something is proven when it is false,

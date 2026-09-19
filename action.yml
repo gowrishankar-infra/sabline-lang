@@ -46,6 +46,10 @@ inputs:
     description: "On a pull_request event, compare every dependency the pull request upgrades in a lockfile and post one comment with what each upgraded version gained, edited in place on later runs (true/false). For a Velaris library that is its declared capability surface; for any other package it is only the install-time scripts and declared dependencies, and the comment says the surface is unknown. It reads what is declared, not what code does. Informational: it does not fail the job. Needs pull-requests: write; findings go to code scanning when sarif is true."
     required: false
     default: "false"
+  permissions-ratchet:
+    description: "On a pull_request event, compare the permissions: blocks of every workflow file in .github/workflows at the pull request's head with its base commit, job by job, and fail the job if any widened: a scope's level rose, a job lost its block and so takes the repository's default token permissions, or a new job or workflow file gives any permission. A narrowing is reported and does not fail. It runs whether or not the repository holds a .vel file. It compares the files, not what GitHub runs: the blocks of a reusable workflow a job calls, the repository's default token setting, and the base branch's copy that a pull_request_target workflow runs are not seen. A workflow it cannot read, or a base commit it cannot fetch, fails the step (true/false)."
+    required: false
+    default: "false"
 
 outputs:
   sarif-file:
@@ -103,6 +107,69 @@ runs:
           fi
         fi
         velaris doctor
+
+    # The permissions each workflow gives its jobs, at the pull request's
+    # head against its base (velaris permissions-ratchet). It reads
+    # .github/workflows, not .vel files, so it runs in a repository that
+    # has none, and it runs before the check so that its failure is the
+    # first one in the log. A base commit that cannot be fetched, a
+    # workflow that cannot be read, or a command that stops without a
+    # result fails the step: a comparison that was not made is not a pass.
+    - name: Workflow permissions ratchet
+      id: permissions
+      if: ${{ !cancelled() && inputs.permissions-ratchet == 'true' && github.event_name == 'pull_request' && steps.install.outcome == 'success' }}
+      shell: bash
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        if [ -z "$BASE_SHA" ]; then
+          echo "::error::permissions-ratchet: the pull request's base commit is not known, so no workflow was compared"
+          exit 2
+        fi
+        if ! git fetch --no-tags --depth=1 origin "$BASE_SHA"; then
+          echo "::error::permissions-ratchet: the base commit $BASE_SHA could not be fetched from origin, so no workflow was compared"
+          exit 2
+        fi
+        saved="$RUNNER_TEMP/velaris-permissions.json"
+        status=0
+        velaris permissions-ratchet --against "$BASE_SHA" --json > "$saved" || status=$?
+        # the same comparison as text, for the log
+        velaris permissions-ratchet --against "$BASE_SHA" || true
+        STATUS="$status" SAVED="$saved" python - <<'PY'
+        import json, os, sys
+
+        def data(text):
+            return str(text).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+        def prop(text):
+            return data(text).replace(":", "%3A").replace(",", "%2C")
+
+        status = os.environ["STATUS"]
+        try:
+            with open(os.environ["SAVED"], encoding="utf-8") as fh:
+                doc = json.load(fh)
+        except (OSError, ValueError):
+            doc = None
+        if not isinstance(doc, dict) or doc.get("schema") != "velaris.permissions-ratchet/1":
+            if status == "2":
+                print("::error::permissions-ratchet could not compare the workflows; the log above says why")
+            else:
+                print("::error::permissions-ratchet stopped without a result (exit status " + status + "), so no workflow was compared")
+            sys.exit(2)
+        for f in doc["widened"]:
+            label = f["job"] if f["where"] == "job" else "workflow"
+            print("::error file=" + prop(f["file"]) + ",line=" + str(f["line"]) + "::"
+                  + data("WIDENED " + label + " " + f["scope"] + ": " + f["before"]
+                         + " -> " + f["after"] + ". " + f["reason"]))
+        for u in doc["unreadable"]:
+            at = ",line=" + str(u["line"]) if u["side"] == "head" and u["line"] else ""
+            print("::error file=" + prop(u["file"]) + at + "::"
+                  + data("could not read this workflow at the " + u["side"] + ": " + u["reason"]))
+        if status not in ("0", "1", "2"):
+            print("::error::permissions-ratchet stopped without an answer (exit status " + status + ")")
+            sys.exit(2)
+        sys.exit(int(status))
+        PY
 
     # With sarif (the default), the check writes SARIF 2.1.0 to a file and
     # still prints each finding to the log; it fails the step exactly as

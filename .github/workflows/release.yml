@@ -337,7 +337,7 @@ jobs:
       contents: read
       id-token: write            # sigstore keyless signing
     env:
-      PREDICATE_TYPE: https://gowrishankar-infra.github.io/velaris-lang/capability/v1
+      PREDICATE_TYPE: https://velaris-lang.dev/capability/v1
       OIDC_ISSUER: https://token.actions.githubusercontent.com
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
@@ -425,7 +425,7 @@ jobs:
           import json, sys
           receipt = json.load(open(sys.argv[1], encoding="utf-8"))
           attestation = json.load(open(sys.argv[2], encoding="utf-8"))
-          assert receipt["predicateType"] == "https://gowrishankar-infra.github.io/velaris-lang/receipt/v1"
+          assert receipt["predicateType"] == "https://velaris-lang.dev/receipt/v1"
           assert receipt["subject"] == attestation["subject"], "not the attestation's subjects"
           assert receipt["predicate"]["exit"]["outcome"] == "ok", receipt["predicate"]["exit"]
           print("receipt: the attestation's subjects, outcome ok")
@@ -449,7 +449,7 @@ jobs:
           EOF
       - name: Both receipt signatures verify, as this workflow, against the example's bytes
         env:
-          RECEIPT_TYPE: https://gowrishankar-infra.github.io/velaris-lang/receipt/v1
+          RECEIPT_TYPE: https://velaris-lang.dev/receipt/v1
         run: |
           IDENTITY="https://github.com/$GITHUB_REPOSITORY/.github/workflows/release.yml@$GITHUB_REF"
           cosign verify-blob-attestation --bundle "$REC.cosign.sigstore.json" \

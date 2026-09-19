@@ -17,7 +17,7 @@ major version.
   run gets when nobody writes one changed in 5.0 - see *Breaks we have
   made*.
 - **The error codes** in `velaris.ERROR_TABLE`, and what each means.
-  The [errors page](https://gowrishankar-infra.github.io/velaris-lang/errors.html)
+  The [errors page](https://velaris-lang.dev/errors.html)
   is built from that table.
 - **`velaris.audit/1`**: the fields and their meanings, as
   [EMBEDDING.md](EMBEDDING.md) and
@@ -67,7 +67,12 @@ major version.
   `velaris.deps-diff-lockfiles/1`, the JSON `velaris deps-diff` writes:
   their fields may change in a minor release, named in the CHANGELOG,
   until a release says they are covered. The command, its flags and its
-  exit codes are covered like any other command's.
+  exit codes are covered like any other command's. From 8.3 the same holds
+  for `velaris.eval/1`, `velaris.receipt-stream/1`,
+  `velaris.receipts-diff/1`, `velaris.replay/1`, `velaris.responses/1`,
+  `velaris.from-contracts/1`, `velaris.verify/1` and
+  `velaris.permissions-ratchet/1`. `velaris.receipt/1` gains `stop` and
+  `run_parameters.profile` within version 1 (velaris-spec section 8.7).
 
 ## The rules
 

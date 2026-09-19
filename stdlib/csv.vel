@@ -1,12 +1,89 @@
-// Comma-separated data, the shape most data arrives in.
+// Comma-separated data, the shape most data arrives in, quoted as RFC 4180
+// quotes it (8.3): a field holding a comma, a double quote, a carriage
+// return or a line feed is written between double quotes, each double
+// quote inside it doubled, and read back the same way. A double quote
+// opens a quoted field only at the start of a field; anywhere else it is
+// an ordinary character. A quoted field that is never closed runs to the
+// end of the text.
 //
 // import "csv.vel" as csv
 // let names = csv.fields(line)
+// let line = csv.line_of(["a, b", "said \"hi\""])   // "a, b","said ""hi"""
 
 fn fields(line: Text) -> List of Text
     ensures length(result) >= 1
 {
-    return split(line, ",")
+    // No double quote anywhere: every comma separates a field and nothing
+    // is quoted, which is what split does - one builtin call instead of a
+    // turn of the loop below for every character. Until 8.3 this call was
+    // the whole function, and it stays the path almost every line takes.
+    if length(split(line, "\"")) == 1 {
+        return split(line, ",")
+    }
+    let cs = chars(line)
+    let out: List of Text = []
+    let field = ""
+    let quoted = false
+    let fresh = true
+    let i = 0
+    while i < length(cs) {
+        let c = get(cs, i)
+        if quoted {
+            if c == "\"" {
+                if i + 1 < length(cs) and get(cs, i + 1) == "\"" {
+                    field = field + "\""
+                    i = i + 1
+                } else {
+                    quoted = false
+                }
+            } else {
+                field = field + c
+            }
+        } else if c == "," {
+            out = push(out, field)
+            field = ""
+            fresh = true
+        } else if fresh and c == "\"" {
+            quoted = true
+            fresh = false
+        } else {
+            field = field + c
+            fresh = false
+        }
+        i = i + 1
+    }
+    return push(out, field)
+}
+
+// One value as a field of a line: as it is, or quoted when it holds a
+// comma, a double quote, a carriage return (code 13, which no escape in
+// Velaris text writes) or a line feed.
+fn quoted_field(value: Text) -> Text {
+    let cs = chars(value)
+    let plain = true
+    let i = 0
+    while i < length(cs) {
+        let c = get(cs, i)
+        if c == "," or c == "\"" or c == "\n" or code_at(c, 0) == 13 {
+            plain = false
+        }
+        i = i + 1
+    }
+    if plain {
+        return value
+    }
+    let out = "\""
+    i = 0
+    while i < length(cs) {
+        let c = get(cs, i)
+        if c == "\"" {
+            out = out + "\"\""
+        } else {
+            out = out + c
+        }
+        i = i + 1
+    }
+    return out + "\""
 }
 
 fn line_of(values: List of Text) -> Text {
@@ -16,14 +93,14 @@ fn line_of(values: List of Text) -> Text {
         if i > 0 {
             out = out + ","
         }
-        out = out + get(values, i)
+        out = out + quoted_field(get(values, i))
         i = i + 1
     }
     return out
 }
 
 fn column(line: Text, at: Int) -> Text or fail {
-    let parts = split(line, ",")
+    let parts = fields(line)
     if at < 0 or at >= length(parts) {
         fail format("this row has {} column(s), so there is no column {}",
         length(parts), at)
@@ -36,8 +113,48 @@ fn column_int(line: Text, at: Int) -> Int or fail {
     return try to_int(raw)
 }
 
+// The rows of a text: a line feed ends a row unless it is inside a quoted
+// field, where it is part of the field.
 fn rows_of(text: Text) -> List of Text
     ensures length(result) >= 1
 {
-    return split(text, "\n")
+    // As in fields: with no double quote, no line feed can be inside a
+    // quoted field, so every one of them ends a row - which is split.
+    if length(split(text, "\"")) == 1 {
+        return split(text, "\n")
+    }
+    let cs = chars(text)
+    let out: List of Text = []
+    let row = ""
+    let quoted = false
+    let fresh = true
+    let i = 0
+    while i < length(cs) {
+        let c = get(cs, i)
+        if quoted {
+            if c == "\"" {
+                if i + 1 < length(cs) and get(cs, i + 1) == "\"" {
+                    row = row + "\"\""
+                    i = i + 1
+                } else {
+                    quoted = false
+                    row = row + c
+                }
+            } else {
+                row = row + c
+            }
+        } else if c == "\n" {
+            out = push(out, row)
+            row = ""
+            fresh = true
+        } else {
+            if fresh and c == "\"" {
+                quoted = true
+            }
+            fresh = c == ","
+            row = row + c
+        }
+        i = i + 1
+    }
+    return push(out, row)
 }

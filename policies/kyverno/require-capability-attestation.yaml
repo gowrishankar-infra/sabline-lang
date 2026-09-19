@@ -6,7 +6,7 @@
 #
 #   velaris attest app.vel --json | jq .predicate > capability.json
 #   cosign attest --yes --type \
-#       https://gowrishankar-infra.github.io/velaris-lang/capability/v1 \
+#       https://velaris-lang.dev/capability/v1 \
 #       --predicate capability.json registry.example.com/agents/app@sha256:...
 #
 # Kyverno's image verification fetches the attestation, checks its
@@ -18,6 +18,12 @@
 # signed answer.
 #
 # Replace imageReferences, the subject and the issuer with your own.
+#
+# The predicate type is the one Velaris writes from 8.3. An image attested
+# with the audit of an earlier Velaris carries the same type at the
+# project's earlier documentation address; Kyverno matches one type per
+# attestation entry, so attest such an image again with this type (the
+# OPA policy admits both spellings).
 #
 # This is Kyverno's established image verification, a kyverno.io/v1
 # ClusterPolicy with verifyImages. Kyverno 1.19 loads it and warns that the
@@ -56,7 +62,7 @@ spec:
           mutateDigest: true
           verifyDigest: true
           attestations:
-            - predicateType: https://gowrishankar-infra.github.io/velaris-lang/capability/v1
+            - predicateType: https://velaris-lang.dev/capability/v1
               attestors:
                 - count: 1
                   entries:

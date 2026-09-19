@@ -1,0 +1,7 @@
+// Retries a step through a "retrywrap" helper the model suggested; no
+// index serves the name, so the vendored file is not there to import.
+import "lib/retrywrap.vel" as retrywrap  // DANGER: package name that does not exist
+
+fn main() uses io {
+    print(retrywrap.retry("sync"))
+}

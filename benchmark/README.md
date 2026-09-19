@@ -1,6 +1,6 @@
 # The comparison benchmark
 
-Sixty-seven small programs, each written three times with the same behaviour -
+Seventy-six small programs, each written three times with the same behaviour -
 in Velaris, in JavaScript for Deno, and in Python - and one harness that
 runs every program through every tool and records what was caught before
 running, what was caught while running, and what was missed. The result
@@ -17,14 +17,15 @@ command that produced it are all here; change one and rerun.
 
 | Tool | Before running | While running |
 |---|---|---|
-| Velaris 7.1 | `velaris check` (types, effects, unhandled failures, and the prover's E705/E706) and `velaris audit` (which effects, Python modules, paths and hosts the program names, and which loops the termination rule cannot show to end - `loops_unshown`, E612 under `--strict`); in category 12, also `velaris deps-diff` on the dependency's two versions | `velaris.run(source, allow=needs, timeout=5, max_memory_mb=256)` - the budget refuses anything the task does not need: an effect (E310), a module (E311), a path outside the granted directory (E313), a host or port outside the grant (E314); the limits stop a runaway (E610/E611) |
-| Deno 2.x | `deno check` and `deno lint --json` | `deno run --no-prompt --v8-flags=--max-old-space-size=256 file.js` with no `--allow-*` flag, except in categories 11 and 12 where the task needs one directory or one host and Deno gets the matching `--allow-read=<dir>` or `--allow-net=<host:port>` |
+| Velaris 7.1 | `velaris check` (types, effects, unhandled failures, and the prover's E705/E706) and `velaris audit` (which effects, Python modules, paths and hosts the program names, and which loops the termination rule cannot show to end - `loops_unshown`, E612 under `--strict`); in category 12, also `velaris deps-diff` on the dependency's two versions; in category 15, `velaris check` reports an import of a file that is not vendored (E512) on the import line | `velaris.run(source, allow=needs, timeout=5, max_memory_mb=256)` - the budget refuses anything the task does not need: an effect (E310), a module (E311), a path outside the granted directory (E313), a host or port outside the grant (E314), a documented credential location (E318); the limits stop a runaway (E610/E611) |
+| Deno 2.x | `deno check` (given the run's `--allow-import` in category 15, so it can fetch the remote module graph) and `deno lint --json` | `deno run --no-prompt --v8-flags=--max-old-space-size=256 file.js` with no `--allow-*` flag, except where the task needs one: `--allow-read=<dir>` in 11a, 12c, 12d, 13a and category 14, `--allow-net=<host:port>` in 11b, 12a and 12b, and `--allow-import=127.0.0.1:<port>` for the package host in category 15 |
 | Plain Python | nothing, by construction | `python file.py` in a subprocess with the same 5 second timeout and, where the platform allows, the same 256 MB cap |
 
 "Needs" is the effect set the task legitimately requires, stated per
-program in `corpus.json`. It is `io` for 59 programs, `io, ffi:math`
+program in `corpus.json`. It is `io` for 63 programs, `io, ffi:math`
 for the two control programs that call the host's `sqrt`,
-`io, fs:read:<the granted directory>` for 11a, 12c and 12d, and
+`io, fs:read:<the granted directory>` for 11a, 12c, 12d, 13a and the
+four skills of category 14, and
 `io, net:127.0.0.1:<the listener's port>` for 11b, 12a and 12b; the
 harness fills the placeholders. `env` is never a need, so a program that reads the
 environment is outside its budget. That is the
@@ -46,9 +47,11 @@ every platform. Python's child gets `RLIMIT_AS` on Linux and macOS
 
 ## The corpus
 
-Twelve categories: ten of six programs each, category 11 of three
-(added with the scoped budgets of 3.0), and category 12 of four (added
-with `velaris deps-diff` in 7.1). In the first ten, programs `a`
+Fifteen categories: ten of six programs each, category 11 of three
+(added with the scoped budgets of 3.0), category 12 of four (added
+with `velaris deps-diff` in 7.1), category 13 of one (the TrapDoor,
+8.2), and categories 14 and 15 of four each (the skill supply chain
+and the hallucinated dependency, 8.3). In the first ten, programs `a`
 to `c` were written first; `d` to `f` were written afterwards, against
 the tools, to hide the same defects better. Every dangerous program has one dangerous
 line, marked `DANGER` in a trailing comment in all three source files;
@@ -72,6 +75,9 @@ they do.
 | 10 | a plain correct program that must not be flagged | `a_expense_total`, `b_word_count`, `c_sqrt_via_math`; `d_warning_text` (prints "rm -rf" harmlessly), `e_reads_own_args`, `f_math_in_loop` (a counted loop and `ffi:math`) |
 | 11 | a grant narrower than the effect (3.0) | `a_read_outside` (granted one directory, reads a file outside it - the path comes on stdin), `b_other_host` (granted one host and port, requests another port - the URL comes on stdin), `c_secret_from_env` (prints an environment variable the harness set) |
 | 12 | indirect authority: the caller is unchanged, and a dependency's declared budget widened between versions (7.1) | `a_gains_net` (pricing 2.3.0 declared nothing; 2.4.0 posts each line to a second host), `b_new_host` (mailer 1.4.0 reached the mail service; 1.5.0 also sends a copy to a second host), `c_gains_write` (settings 3.1.0 read a file; 3.2.0 also writes one); `d_narrows` (report 2.0.0 stops reading from disk - a control) |
+| 13 | a TrapDoor: a program whose stated purpose and behaviour differ (8.2) | `a_scan_and_exfil` (a "secret scanner" that posts the credential it reads to a URL) |
+| 14 | skill supply chain: an agent skill whose helper reads a credential and posts it (8.3) | `a_weather_telemetry` (a "telemetry" helper posts the `.env` it reads), `b_notes_update` (an "update check" two helpers down reads a `.pem` key and posts it), `c_setup_env` (a "setup" step reads an environment variable and sends it in the body); `d_folder_summary` (reads one non-credential file and prints a summary - a control) |
+| 15 | hallucinated dependency: a program imports a package that does not exist at the index its project names (8.3) | `a_slug_import` (`fastslug`), `b_flatten_config` (`jsonflatten`), `c_retry_fetch` (`retrywrap`) - three invented names no index serves; `d_titlecase` (`textcase`, which does exist - a control) |
 
 Two programs are there because Velaris cannot catch them, so that the
 table is not a list of things the language was built to do:
@@ -94,8 +100,8 @@ every loop in it ends (SPEC.md section 9.5), so it is now recorded as a
 control row inside category 7 - slow, not dangerous - and a tool that
 flags it scores a false positive.
 
-Category 10, and the control rows in categories 7 and 12, are there so
-that a tool that flags everything scores badly.
+Category 10, and the control rows in categories 7, 12, 14 and 15, are
+there so that a tool that flags everything scores badly.
 
 Category 12 is here because a reader asked for it. Ali Khater,
 commenting on the dev.to post about this benchmark, proposed "indirect
@@ -130,6 +136,60 @@ declared surface, and the static step that compares two of them is
 to compare, so their static steps are the same as in every other
 category; `velaris deps-diff` on a JavaScript or Python dependency
 reports its surface as unknown.
+
+Category 13 is a TrapDoor (8.2): a "secret scanner" whose stated purpose
+is to read a file and report how many secret-looking lines it holds, and
+whose behaviour is to post the file's contents to a URL. The file it is
+pointed at is a credential (a `.pem`), and the path and URL arrive on
+stdin. Velaris catches it before running - the audit shows `net` beside
+`fs`, which a scanner that only reports does not need - and at run time
+`read_file` of the `.pem` is refused (E318, 8.0). Deno stops it while
+running; Python runs it, and the harness sees the request reach the
+listener.
+
+Category 14 is the skill supply chain (8.3), shaped like the ClawHavoc
+campaign - malicious agent skills whose helpers located credentials at
+predictable places and sent them elsewhere (reported by Repello AI,
+"ClawHavoc Supply Chain Attack", 16 February 2026; the number of skills
+is reported as 335 there and as 341 by Koi Security, whose original post
+we could not read). Each dangerous program's stated task needs only `io`
+and a read of the granted directory; a helper reads a credential - the
+`.env` in the granted folder (`a`), a `.pem` key two helpers down (`b`),
+or the environment variable `BENCH_SECRET` (`c`) - and posts it to a
+second endpoint that no task needs. Velaris flags all three before
+running, because the audit lists `net` (and, for `c`, `env`) beyond the
+task's needs. For `a` and `b` the run then refuses the credential read
+(E318) before the post; for `c` the environment value is a Secret, so
+posting it to the network does not even compile (E560, the Secret of T
+from 6.0). Either way nothing leaves. Deno has
+`--allow-read` for the granted directory but no `--allow-net` (nor
+`--allow-env` for `c`), so it stops each one while running. Python has
+neither a static step nor a budget, so all three run and the harness
+sees the credential reach the second listener. `d_folder_summary` reads
+one non-credential file and prints a summary, and no tool flags it.
+
+Category 15 is the hallucinated dependency (8.3): a program that imports
+a package name a model can invent and an attacker can later register -
+"slopsquatting" (Spracklen et al., "We Have a Package for You! A
+Comprehensive Analysis of Package Hallucinations by Code Generating
+LLMs", USENIX Security 2025). Three dangerous programs import a name no
+index serves (`fastslug`, `jsonflatten`, `retrywrap`); the control
+imports one that does (`textcase`). No run touches the real network: the
+granted listener serves a one-library index at `/pkg/`, where
+`textcase.js` exists and the invented names return 404. In Velaris a
+library is vendored into `lib/` by `velaris add <url>` and imported as
+`import "lib/NAME.vel"`; an invented name was never vendored, so
+`velaris check` reports E512 on the import line - the `DANGER` line -
+before anything runs, and the control's `lib/textcase.vel` resolves. For
+Deno the import is a remote URL, and `deno check` (given the run's
+`--allow-import`) cannot resolve the 404 and reports it on the import
+line; the control downloads and runs. Python has no static step, so the
+missing module is a `ModuleNotFoundError` while running, and the control
+imports a `textcase.py` vendored beside it. So Velaris catches the three
+before running, Deno catches them before running too, and Python catches
+them while running; nothing flags the control. Because the invented name
+resolves to nothing, no attacker code runs in the benchmark - the danger
+it models is what runs once someone registers the name.
 
 The inputs are chosen to trigger the defect: `0` for the divisors, `1`
 where the divisor is `n - 1`, `12a` for the parse, a document without
@@ -179,7 +239,12 @@ must write it in the one shape the rule accepts, and 07c and 10f do.
 In category 12, `velaris.deps_diff("dir:<the two versions>", old, new)`
 as well: anything it reports gained - a grant, a count, or a function
 that declares an effect it did not - counts as flagging the program,
-and for the control it is a false positive.
+and for the control it is a false positive. In category 15 the import
+of a file that is not vendored is itself a problem on the dangerous
+line (E512), which counts; the control's import resolves, so there is
+none. Category 14 needs no special rule: the exfil helper's `net` (and,
+in `c`, `env`) is an effect the audit lists beyond the task's needs
+before anything runs, exactly as in category 13.
 
 **Velaris, while running.** Only when check passed:
 `velaris.run(source, allow=needs, stdin=..., timeout=5, max_memory_mb=256)`.
@@ -199,7 +264,11 @@ nothing. For a control program any diagnostic is a false positive. In
 category 12 the dangerous line is in the dependency, which `deno lint`
 of the caller does not read, so nothing on the caller is credited; a
 diagnostic there is still recorded, and on the control it is a false
-positive.
+positive. In category 15 the import is a remote URL; `deno check` is
+given the same `--allow-import` the run gets, so it can fetch the module
+graph, and a name that returns 404 is reported on the import line - the
+dangerous line. `deno lint` reads only the local file and needs no such
+flag.
 
 **Deno, while running.** `deno run --no-prompt
 --v8-flags=--max-old-space-size=256 file.js`. A non-zero exit or the
@@ -207,7 +276,8 @@ harness timeout counts as stopped. Permission denials under
 `--no-prompt` exit 1 with `NotCapable`.
 
 **Python.** `python file.py`. There is no static step. A non-zero exit
-or the harness timeout counts as stopped.
+or the harness timeout counts as stopped. In category 15 the missing
+module is a `ModuleNotFoundError`, a non-zero exit while running.
 
 **Observation.** After every run the harness checks whether the
 dangerous effect actually happened: for a file write, whether the file
@@ -223,7 +293,12 @@ puts in every child's environment, reached stdout. Category 12 adds
 two: whether the second listener received a request on the path that
 names the program and the tool - the caller's own request goes to the
 granted listener and does not count - and whether the file the
-dependency writes exists. If it happened, the
+dependency writes exists. Category 14 adds one: whether the second
+listener - the endpoint no task needs - received the request that names
+the program and the tool, which is the credential leaving. Category 15
+has nothing to observe: the import never resolves, so no code from the
+named package runs, and the verdict comes from the static step (Velaris
+and Deno) or the import crash (Python). If it happened, the
 verdict is `missed` whatever the exit status. If it did not happen and
 the process exited 0 anyway, the verdict is `caught-during-run` with the
 evidence saying the denial was swallowed - this is what happens in Deno
@@ -254,11 +329,16 @@ where winget puts it on Windows. If it is not found every Deno cell
 reads `tool-absent`, the header says so, and the run still completes.
 On Windows: `winget install DenoLand.Deno`. Elsewhere see deno.com.
 
-A full run takes five to eight minutes; most of it is the 5 second
+A full run takes about four minutes on the machine the 8.3 figures were
+measured on - ten consecutive runs took 210 to 225 seconds each - and
+five to eight on a slower one; most of it is the 5 second
 timeouts in categories 7 and 8. The harness starts two listeners on
-`127.0.0.1` (one granted, one not), creates a granted directory and a
-file outside it under a scratch directory, and sets `BENCH_SECRET` for
-its children; all of it is removed afterwards.
+`127.0.0.1` (one granted, one not); the granted one also serves a
+one-library package index at `/pkg/` for category 15. It creates a
+granted directory - holding a notes file and two credential fixtures, a
+`service.pem` and a `.env` - and a file outside it under a scratch
+directory, and sets `BENCH_SECRET` for its children; all of it is
+removed afterwards.
 
 Continuous integration runs `python benchmark/run.py --quick --check`
 on the legs that install the prover, with Deno absent there.

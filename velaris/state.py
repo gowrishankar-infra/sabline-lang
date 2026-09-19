@@ -71,6 +71,23 @@ RUN_RECORDER: _typing.Any = None
 TRACE = {"on": False, "depth": 0, "calls": 0, "limit": 4000}
 
 
+# A file whose appearance asks the running program to stop (8.3). Set only in
+# the worker of `velaris eval`, which makes it in a directory of its own,
+# outside the run's budget: the interpreter looks for it every few hundred
+# calls and loop turns and stops there with E615, a stop the run's receipt
+# records as asked for and honoured. None - everywhere else - looks for
+# nothing.
+STOP_FILE: str | None = None
+
+
+# The tool responses of code mode (8.3): what py, py_int, py_float and
+# py_json gave back, recorded by `velaris program.vel --record-responses FILE`
+# or handed back in order by `velaris replay --responses FILE`, in place of
+# calling Python. The budget and the module grants are checked as they are
+# for any call, first. None - everywhere else - calls Python.
+RESPONSES: _typing.Any = None
+
+
 _proof_timeout: float | None = None      # set by --proof-timeout
 
 

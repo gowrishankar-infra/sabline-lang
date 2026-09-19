@@ -105,7 +105,7 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 </style></head><body>
 <nav><div class="in"><a class="brand" href="../../index.html">
 <span class="dot"></span>Velaris</a><a href="../../index.html" class="">Home</a><a href="../../tutorial.html" class="">Tutorial</a><a href="../../spec.html" class="">Reference</a><a href="../../library.html" class="">Library</a><a href="../../errors.html" class="">Errors</a><a href="../../floats.html" class="">Floats</a><a href="../../playground.html" class="">Playground</a>
-<span class="ver">v8.2.1</span></div></nav>
+<span class="ver">v8.3.0</span></div></nav>
 <main class="">
 <div class="eyebrow">An in-toto predicate type</div>
 <h1>receipt/v1</h1>
@@ -116,8 +116,10 @@ source files a <a href="../../capability/v1/">capability/v1</a> attestation
 names. The attestation is what the program may do; the receipt is what one
 run of it did.</p>
 
-<p><b>Predicate type:</b> <code>https://gowrishankar-infra.github.io/velaris-lang/receipt/v1</code> - this
-page.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
+<p><b>Predicate type:</b> <code>https://velaris-lang.dev/receipt/v1</code> - this
+page.<br><b>Also read as this type:</b> <code>https://gowrishankar-infra.github.io/velaris-lang/receipt/v1</code>,
+the name receipts written by velaris-lang 8.1 to 8.2.1 carry; that address
+redirects here.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
 draft 2020-12, for the predicate.<br><b>Definition:</b>
 <a href="https://github.com/gowrishankar-infra/velaris-spec/blob/main/SPEC.md#87-velarisreceipt1-a-record-of-one-run">velaris-spec
 SPEC.md section 8.7</a>, dedicated to the public domain under CC0.</p>
@@ -128,12 +130,12 @@ SPEC.md section 8.7</a>, dedicated to the public domain under CC0.</p>
     {&quot;name&quot;: &quot;examples/effects.vel&quot;,
      &quot;digest&quot;: {&quot;sha256&quot;: &quot;37a7df8f595907f9e00f3e9be71ce1f00b584dbe70074dc37e8fad85e3cba5f7&quot;}}
   ],
-  &quot;predicateType&quot;: &quot;https://gowrishankar-infra.github.io/velaris-lang/receipt/v1&quot;,
+  &quot;predicateType&quot;: &quot;https://velaris-lang.dev/receipt/v1&quot;,
   &quot;predicate&quot;: {
     &quot;schema&quot;: &quot;velaris.receipt/1&quot;,
-    &quot;producer&quot;: {&quot;name&quot;: &quot;velaris-lang&quot;, &quot;version&quot;: &quot;8.2.1&quot;,
+    &quot;producer&quot;: {&quot;name&quot;: &quot;velaris-lang&quot;, &quot;version&quot;: &quot;8.3.0&quot;,
                  &quot;uri&quot;: &quot;https://github.com/gowrishankar-infra/velaris-lang&quot;},
-    &quot;specification&quot;: &quot;velaris-spec 0.10.0&quot;,
+    &quot;specification&quot;: &quot;velaris-spec 0.11.0&quot;,
     &quot;startedAt&quot;: &quot;2026-09-14T00:00:00.000Z&quot;,
     &quot;wall_time_ms&quot;: 41.7,
     &quot;budget&quot;: &quot;clock,fs:read:/work/report.txt,fs:write:/work/report.txt,io,rand&quot;,
@@ -197,7 +199,7 @@ POST /run  {"source": "...", "allow": ["io"], "receipt": true}</code></pre>
 <p>It signs none; they are signed as an attestation is -
 <code>cosign attest-blob --statement</code>, or sigstore-python's
 <code>sign_dsse</code> - and <code>cosign verify-blob-attestation --type
-https://gowrishankar-infra.github.io/velaris-lang/receipt/v1</code> checks one against the program's own bytes.
+https://velaris-lang.dev/receipt/v1</code> checks one against the program's own bytes.
 Every release of velaris-lang carries one for an example program, signed by
 its release workflow and verified there.</p>
 </main>

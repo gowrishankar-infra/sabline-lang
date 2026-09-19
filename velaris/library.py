@@ -928,12 +928,24 @@ class _WindowsMemoryJob:
     fall back to recording the cap without enforcing it.
     """
 
+    LIMIT_ACTIVE_PROCESS = 0x00000008
     LIMIT_PROCESS_MEMORY = 0x00000100
     LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
     EXTENDED_LIMIT_INFORMATION = 9
+    BASIC_PROCESS_ID_LIST = 3
     CREATE_SUSPENDED = 0x00000004
 
-    def __init__(self, max_memory_mb: int) -> None:
+    def __init__(self, max_memory_mb: int, one_process: bool = False) -> None:
+        """`one_process` (8.3, velaris eval): the job is to hold the worker
+        and let it start nothing beyond what it needed to start itself.
+
+        The limit is not set here. A virtual environment's `python.exe` is
+        a launcher that starts the real interpreter as a second process, so
+        a job that allowed one would stop the worker before it began -
+        "Unable to create process", or "Not enough quota is available to
+        process this command". `hold_current` sets the limit once the
+        worker has said it is ready, to however many processes that took.
+        """
         import ctypes
         from ctypes import wintypes as w
 
@@ -962,6 +974,13 @@ class _WindowsMemoryJob:
                         ("PeakProcessMemoryUsed", ctypes.c_size_t),
                         ("PeakJobMemoryUsed", ctypes.c_size_t)]
 
+        class PROCESS_IDS(ctypes.Structure):
+            """JOBOBJECT_BASIC_PROCESS_ID_LIST, with room for 64 - more
+            than a worker and the launcher that started it ever need."""
+            _fields_ = [("NumberOfAssignedProcesses", w.DWORD),
+                        ("NumberOfProcessIdsInList", w.DWORD),
+                        ("ProcessIdList", ctypes.c_size_t * 64)]
+
         k = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]  # Windows only; mypy checks as Linux
         # the default restype is a 32-bit int, which truncates a handle
         k.CreateJobObjectW.restype = w.HANDLE
@@ -969,6 +988,10 @@ class _WindowsMemoryJob:
         k.SetInformationJobObject.restype = w.BOOL
         k.SetInformationJobObject.argtypes = [w.HANDLE, ctypes.c_int,
                                               ctypes.c_void_p, w.DWORD]
+        k.QueryInformationJobObject.restype = w.BOOL
+        k.QueryInformationJobObject.argtypes = [w.HANDLE, ctypes.c_int,
+                                                ctypes.c_void_p, w.DWORD,
+                                                ctypes.c_void_p]
         k.AssignProcessToJobObject.restype = w.BOOL
         k.AssignProcessToJobObject.argtypes = [w.HANDLE, w.HANDLE]
         k.CloseHandle.restype = w.BOOL
@@ -977,19 +1000,54 @@ class _WindowsMemoryJob:
         nt.NtResumeProcess.argtypes = [w.HANDLE]
 
         self._ctypes, self._k, self._nt = ctypes, k, nt
+        self._extended, self._process_ids = EXTENDED_LIMITS, PROCESS_IDS
+        self.one_process = one_process
+        self._flags = self.LIMIT_PROCESS_MEMORY | self.LIMIT_KILL_ON_JOB_CLOSE
+        self._memory = int(max_memory_mb) * 1024 * 1024
         self.handle = k.CreateJobObjectW(None, None)
         if not self.handle:
             raise OSError(ctypes.get_last_error(), "CreateJobObject failed")  # type: ignore[attr-defined]  # Windows only; mypy checks as Linux
         info = EXTENDED_LIMITS()
-        info.BasicLimitInformation.LimitFlags = (
-            self.LIMIT_PROCESS_MEMORY | self.LIMIT_KILL_ON_JOB_CLOSE)
-        info.ProcessMemoryLimit = int(max_memory_mb) * 1024 * 1024
+        info.BasicLimitInformation.LimitFlags = self._flags
+        info.ProcessMemoryLimit = self._memory
         if not k.SetInformationJobObject(
                 self.handle, self.EXTENDED_LIMIT_INFORMATION,
                 ctypes.byref(info), ctypes.sizeof(info)):
             err = ctypes.get_last_error()  # type: ignore[attr-defined]  # Windows only; mypy checks as Linux
             self.close()
             raise OSError(err, "SetInformationJobObject failed")
+
+    def hold_current(self) -> int | None:
+        """Let the job hold the processes it has now, and no more (8.3).
+
+        Called once the worker has said it is ready, so the count is the
+        interpreter's own process and, where `python.exe` is a launcher,
+        the launcher's. From here the job refuses another, which is what
+        velaris eval's profile promises. Gives the count it held, or None
+        when the job could not be asked or could not be told - the caller
+        then reports no confinement rather than claiming one.
+        """
+        ctypes, k = self._ctypes, self._k
+        MORE_DATA = 234
+        listing = self._process_ids()
+        asked = k.QueryInformationJobObject(
+            self.handle, self.BASIC_PROCESS_ID_LIST, ctypes.byref(listing),
+            ctypes.sizeof(listing), None)
+        if not asked and ctypes.get_last_error() != MORE_DATA:
+            return None
+        held = int(listing.NumberOfAssignedProcesses)
+        if held < 1:
+            return None
+        info = self._extended()
+        info.BasicLimitInformation.LimitFlags = (self._flags
+                                                 | self.LIMIT_ACTIVE_PROCESS)
+        info.BasicLimitInformation.ActiveProcessLimit = held
+        info.ProcessMemoryLimit = self._memory
+        if not k.SetInformationJobObject(
+                self.handle, self.EXTENDED_LIMIT_INFORMATION,
+                ctypes.byref(info), ctypes.sizeof(info)):
+            return None
+        return held
 
     def adopt(self, proc: Any) -> None:
         """Put a suspended child in the job, then let it run."""
@@ -1008,10 +1066,12 @@ class _WindowsMemoryJob:
                 pass
 
 
-def _spawn_capped(cmd: list[Any], max_memory_mb: Any, **popen_kw: Any) -> tuple[Any, ...]:
+def _spawn_capped(cmd: list[Any], max_memory_mb: Any, one_process: bool = False,
+                  **popen_kw: Any) -> tuple[Any, ...]:
     """Start cmd under a memory cap. Returns (proc, job, how) - `job`
     must be closed once the child is finished with, and `how` is one of
-    'RLIMIT_AS', 'job object' or 'not enforced'."""
+    'RLIMIT_AS', 'job object' or 'not enforced'. `one_process` asks the
+    Windows job to hold the child alone (velaris eval, 8.3)."""
     import subprocess
     if max_memory_mb is None:
         return subprocess.Popen(cmd, **popen_kw), None, "no cap asked for"
@@ -1020,7 +1080,7 @@ def _spawn_capped(cmd: list[Any], max_memory_mb: Any, **popen_kw: Any) -> tuple[
         # VELARIS_CHECK_MEMORY_MB for the child of a command-line check
         return subprocess.Popen(cmd, **popen_kw), None, "RLIMIT_AS"
     try:
-        job = _WindowsMemoryJob(max_memory_mb)
+        job = _WindowsMemoryJob(max_memory_mb, one_process=one_process)
     except Exception:
         return subprocess.Popen(cmd, **popen_kw), None, "not enforced"
     suspended = dict(popen_kw)

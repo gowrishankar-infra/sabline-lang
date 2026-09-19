@@ -197,3 +197,28 @@ def to_text(v: Any) -> str:
     if isinstance(v, list):
         return "[" + ", ".join(to_text(x) for x in v) + "]"
     return str(v)
+
+
+# What one line of a log may not hold (8.3): a character that ends the line
+# it is on or starts another in whatever reads the error channel - every C0
+# control but tab, DEL, the C1 controls, and the two Unicode separators some
+# viewers break lines at.
+_LOG_CONTROL = re.compile(r"[\x00-\x08\x0a-\x1f\x7f-\x9f\u2028\u2029]")
+
+
+def log_line(text: str) -> str:
+    r"""`text` as one line of a log: each character _LOG_CONTROL matches is
+    written as an escape - \n, \r, or \xNN and \uNNNN - so no value can end
+    the line it is on, begin a line of its own, or move a terminal's cursor
+    back over one already written. A backslash is left as it is, so an
+    escape and the same characters typed in a value read alike: what is
+    promised is one line per call, not an encoding that can be reversed."""
+    def one(m: "re.Match[str]") -> str:
+        c = m.group(0)
+        if c == "\n":
+            return "\\n"
+        if c == "\r":
+            return "\\r"
+        return ("\\x%02x" % ord(c) if ord(c) < 0x100
+                else "\\u%04x" % ord(c))
+    return _LOG_CONTROL.sub(one, text)

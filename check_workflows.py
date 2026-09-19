@@ -174,6 +174,10 @@ class FakeGh:
                 for t, n in self.open_titles.items()])
         elif args[:2] == ["label", "list"]:
             out = json.dumps([{"name": n} for n in self.labels])
+        elif args[:2] == ["issue", "create"]:
+            # gh prints the new issue's URL
+            number = 100 + len(self.made("issue", "create"))
+            out = f"https://github.com/owner/repo/issues/{number}\n"
         elif args[:1] == ["api"] and "/annotations" in args[1]:
             out = json.dumps(self.annotations)
         elif args[:1] == ["api"]:
@@ -336,6 +340,29 @@ def issues() -> None:
         titles = [c[c.index("--title") + 1] for c in fake.made("issue", "create")]
         ok("files: one issue per Markdown file, titled by its first line",
            titles == ["first survivor", "second, no hash"], str(titles))
+
+    # 8.3: two reports with one title in one call. The monthly run
+    # 34978389207 opened the first, then ran `gh issue comment -1` for the
+    # second and stopped, leaving 65 surviving mutants unreported
+    with tempfile.TemporaryDirectory() as d:
+        for i in range(3):
+            Path(d, f"{i}.md").write_text(f"# the same title\n\nbody {i}\n",
+                                          encoding="utf-8")
+        fake = FakeGh({}, [], [])
+        open_issues.RUNNER = fake
+        opener = open_issues.Opener("mutation", False, 40)
+        open_issues.files(SimpleNamespace(directory=d), opener)  # type: ignore[arg-type]  # stands in for the parsed arguments
+        commented = [c[2] for c in fake.made("issue", "comment")]
+        ok("files: a title reported twice in one call is opened once and "
+           "commented on by the number gh gave it, never a made-up one",
+           len(fake.made("issue", "create")) == 1 and commented == ["101", "101"],
+           str(fake.calls))
+        fake = FakeGh({}, [], [])
+        open_issues.RUNNER = fake
+        opener = open_issues.Opener("mutation", True, 40)
+        open_issues.files(SimpleNamespace(directory=d), opener)  # type: ignore[arg-type]  # stands in for the parsed arguments
+        ok("...and a dry run comments on nothing",
+           not fake.made("issue", "comment") and not fake.made("issue", "create"))
 
 
 def models() -> None:

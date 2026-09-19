@@ -1,0 +1,8 @@
+// Slugifies a title through a "fastslug" helper the model suggested - a
+// package name no index serves, so `velaris add` never vendored it into
+// lib/, and the import cannot resolve.
+import "lib/fastslug.vel" as fastslug  // DANGER: package name that does not exist
+
+fn main() uses io {
+    print(fastslug.slugify("Hello World"))
+}

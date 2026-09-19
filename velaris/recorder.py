@@ -5,6 +5,7 @@ import os
 import re
 
 from . import state as _state
+from .predicates import RECEIPT_PREDICATE_TYPE as RECEIPT_PREDICATE_TYPE
 from .tables import ALL_EFFECTS
 from typing import Any
 
@@ -32,9 +33,8 @@ from typing import Any
 
 
 RECEIPT_SCHEMA = "velaris.receipt/1"
-RECEIPT_PREDICATE_TYPE = ("https://gowrishankar-infra.github.io/"
-                          "velaris-lang/receipt/v1")
-RECEIPT_SPEC = "velaris-spec 0.10.0"
+# the type is velaris/predicates.py's, at velaris-lang.dev from 8.3
+RECEIPT_SPEC = "velaris-spec 0.11.0"
 # the refusals a receipt lists and the doors log: the budget's, and the
 # read ceiling's
 REFUSAL_CODES = ("E310", "E311", "E313", "E314", "E315", "E316", "E317",
