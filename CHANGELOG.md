@@ -1,5 +1,60 @@
 # Velaris changelog
 
+## 8.3.1 - The documentation, as a site
+
+A patch release that adds no code. 8.3 moved the documentation to
+velaris-lang.dev; this builds it into a site rather than a handful of pages.
+`build_docs.py` writes every document - README, SPEC, TUTORIAL, EMBEDDING,
+STABILITY, SECURITY, THREAT_MODEL, the CHANGELOG, the error pages, the two
+predicate types, `docs/eval.md`, `docs/crosswalk.md`,
+`docs/structurally-impossible.md` and `llms.txt` - through one generator,
+with one stylesheet and one script, into three trees: the top of the site,
+`latest/`, and `8.3/`. A version directory the build does not write is left
+alone, so an address published under an earlier one keeps working. Every
+copy's canonical link names the page at the top.
+
+Nothing in the package changed but its version: no error code, flag, default,
+output or verdict moves, and a program that compiled under 8.3.0 compiles the
+same way.
+
+- **The renderer** is `docs_markdown.py`, beside the generator: headings with
+  anchors, tables, callouts (`> [!NOTE]`, `> [!REFUSES]`, `> [!KNOWN-OPEN]`,
+  and the `**Note.**` lead-ins the documents already used), and Velaris code
+  highlighted from `velaris.lexer`'s own `MASTER_RE` and `KEYWORDS`, so the
+  site cannot colour a keyword the compiler does not have.
+- **A search index** of every heading of every page, fetched only when the
+  search box is given focus. A theme toggle follows the system until a reader
+  chooses, and the choice survives a reload.
+- **`check_site.py`** builds the whole site into a scratch directory and
+  holds it there: version directories kept and `latest/` rebuilt, no raw
+  Markdown in page text, a strict HTML parse, every relative link and anchor
+  resolving, one stylesheet and one script per page under a
+  Content-Security-Policy, no request to another host, pages within their
+  byte budget, the search index complete, `llms.txt` byte for byte in every
+  tree, and the contrast ratios recomputed from the stylesheet's own tokens.
+  With Chrome it also drives the pages: every one fits 360px, no console
+  error, the copy buttons, the menu, the search (E700 reaches
+  `errors.html#E700`), and the theme toggle. `--no-chrome` prints those as
+  skipped, which is how `test.yml` runs it; `site.yml` runs it with
+  `--require-chrome` and then Lighthouse, asserting 95 in performance,
+  accessibility and best practices, and a transfer budget per page.
+- **`TUTORIAL.md`'s code blocks now run** under `check_docs.py`, as every
+  other document's already did.
+- `check_docs.py` also admits the generated pages that hold the changelog's
+  own history, and the search index built from them, as the only files
+  besides those it already lists that may name the site's earlier address.
+
+### Known open
+
+- **The playground is over the page budget** (about 1 MB: it carries the
+  compiler) and loads Pyodide from a CDN, so it keeps its own layout, lives
+  only at the top of the site, and `check_site.py` lists it as an exception
+  rather than holding it to the rules.
+- **The build does not remove a stale generated file** at the top of the
+  site: it rebuilds `latest/` and its own version directory, and a page
+  renamed in a later release would leave its old file behind until it is
+  deleted by hand.
+
 ## 8.3 - What a run can show
 
 A minor version. A receipt has said, since 8.1, what one run did; 8.3 adds

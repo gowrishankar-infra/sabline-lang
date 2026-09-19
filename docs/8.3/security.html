@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Security policy - Velaris 8.3.1</title>
+<meta name="description" content="Velaris takes &quot;you can trust code you didn&#x27;t write&quot; seriously - that includes trusting the compiler itself. THREAT_MODEL.md says what is and is not defended ...">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/security.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html" aria-current="page">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="security-policy">Security policy</h1>
+<p>Velaris takes "you can trust code you didn't write" seriously - that
+includes trusting the compiler itself. <a href="threat-model.html">THREAT_MODEL.md</a>
+says what is and is not defended against; this file says how to
+report, what is promised in return, and how to check that what you
+downloaded is what was released.</p>
+<h2 id="reporting-a-vulnerability">Reporting a vulnerability <a class="anchor" href="#reporting-a-vulnerability" aria-label="Link to this section">#</a></h2>
+<p>Please do NOT open a public issue for security problems. Instead, write
+to <strong>security@velaris-lang.dev</strong>, or use GitHub's private reporting:
+<strong>Security tab -&gt; Report a vulnerability</strong> on this repository. <strong>You will get a response within 48 hours</strong> - an
+acknowledgement that the report arrived and is being looked at, not
+necessarily a fix. This is a single-maintainer project (SUPPORT.md); the
+48-hour promise is for the first reply, and a fix to a soundness or
+sandbox report is promised within a week (below).</p>
+<p>In scope: anything that makes Velaris's guarantees lie - an effect the
+checker misses, a "proven" promise that can actually break at runtime,
+a way past <code>--allow</code>, a sandbox escape through the playground, or
+unsafe behavior in <code>fetch</code> / <code>read_file</code> / <code>write_file</code>. From 3.4 also:
+a way into the HTTP door without its token, a way past either door's
+<code>--max-allow</code>, the token appearing in a log, an error message, a
+process argument or a program's environment, and a changed MCP tool
+description that <code>velaris mcp-verify</code> passes. From 4.0 also: a run
+through either door that gets more time or memory than its operator's
+<code>--max-timeout</code> or <code>--max-memory-mb</code>, and a change to a repository's
+code that needs more than its <code>velaris.capabilities</code> declares while
+<code>velaris capabilities check</code> passes it.</p>
+<h2 id="the-three-guarantees-and-which-findings-get-a-cve">The three guarantees, and which findings get a CVE <a class="anchor" href="#the-three-guarantees-and-which-findings-get-a-cve" aria-label="Link to this section">#</a></h2>
+<p>Velaris makes three promises a person relies on to run code they have
+not read. A report that breaks one is a security report.</p>
+<ul>
+<li><strong>Goal A - Soundness.</strong> A promise Velaris reports "proven" never
+breaks at run time. If <code>check</code>, <code>proofs</code>, <code>explain</code>, <code>audit</code> or the
+library marks a <code>requires</code>/<code>ensures</code>/<code>invariant</code> proven and a run then
+violates it, Goal A is broken.</li>
+<li><strong>Goal B - Honesty.</strong> A program's declared effects, and the audit
+built from them, name everything it can do to the outside world - the
+transitive effect rule (SPEC.md 7). If a program performs an effect no
+signature on its call graph declares, Goal B is broken.</li>
+<li><strong>Goal C - Confinement.</strong> No effect outside the operator's budget
+happens, whatever the source claims. If a program reads a file,
+reaches a host, reads the environment, calls Python or otherwise acts
+outside <code>--allow</code> and carries on, Goal C is broken.</li>
+</ul>
+<p><strong>A finding against Goal A or Goal C gets a CVE requested.</strong> Those are
+the two guarantees a person leans on when they run unread code: that a
+proof is not a lie, and that the budget holds. A report that establishes
+one is treated as a security issue, fixed within a week, credited by
+name, and a repository security advisory with a CVE is drafted for it
+(RELEASING.md says how the release workflow prepares the request).</p>
+<p>Goal B findings are fixed too, but the audit is documented as reading a
+program's <em>text</em>, not running it (THREAT_MODEL.md): it describes what a
+program declares, and the budget - Goal C - is the boundary that holds
+regardless. A Goal B finding that also lets a program escape its budget
+is a Goal C finding, and gets the CVE.</p>
+<p>What is <strong>not</strong> a Goal A/B/C finding is anything the "Known open" table
+in THREAT_MODEL.md lists as a stated limit - a granted <code>ffi</code> module's
+behaviour, native code inside one, a timing channel, a secret arriving
+outside the two builtins, the absence of OS confinement. Those are
+documented as not defended; a report of one is welcome as a
+documentation or hardening issue, not a broken guarantee.</p>
+<h2 id="soundness-reports-are-security-reports">Soundness reports are security reports <a class="anchor" href="#soundness-reports-are-security-reports" aria-label="Link to this section">#</a></h2>
+<p>If the prover claims something is proven and you can make it false at
+runtime, that is a vulnerability in this language's core promise (Goal
+A above). These reports get top priority.</p>
+<h2 id="standing-challenge">Standing challenge <a class="anchor" href="#standing-challenge" aria-label="Link to this section">#</a></h2>
+<p>Anyone who does either of these is credited by name in
+<a href="changelog.html">CHANGELOG.md</a> and in <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/HALL_OF_FAME.md">HALL_OF_FAME.md</a>,
+and the report is treated as a security issue and fixed within a week:</p>
+<ol>
+<li><p><strong>Make Velaris report "proven"</strong> (in <code>velaris check</code>, <code>velaris proofs</code>, <code>velaris explain</code>, <code>velaris audit</code> or the library) <strong>for a
+promise that is false at runtime.</strong> A <code>requires</code>, <code>ensures</code> or
+<code>invariant</code> that the compiler marks proven and that a run under
+<code>--no-native</code> or with native code then violates, or a division or
+list read the compiler passed that then fails with E403 or E602
+without a runtime-check warning having been issued.</p></li>
+<li><p><strong>Escape <code>io</code>.</strong> A program run with <code>velaris program.vel</code> (which
+grants <code>io</code> and nothing else from 5.0), with <code>--allow io</code>, or with
+<code>velaris.run(source, allow={"io"})</code> or <code>allow=None</code>, that reads or
+writes a file, reaches the network, reads the environment, or calls
+a Python module - including one outside a named <code>ffi:</code> list - and
+carries on. <code>args()</code> and <code>read_line()</code> do not count: <code>io</code> is the
+console, and THREAT_MODEL.md says so. Since 3.0 <code>env</code> is its own
+effect, so <code>env()</code> under <code>io</code> alone is a refusal like the rest.</p></li>
+</ol>
+<p>There is no money. There is credit, in the file every reader sees, and
+a fix within the week, recorded in the changelog with what was found
+and what was wrong. Report through the private channel above so the
+fix ships before the details do; the credit is public either way.</p>
+<h2 id="resolved-advisories">Resolved advisories <a class="anchor" href="#resolved-advisories" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong><code>==</code> on two maps, lists or records was a constant to the prover</strong>
+(challenge #1, Goal A), affecting 2.6 through 8.2.1, fixed in 8.3.0: a
+comparison of two values the prover holds as its own objects - two maps,
+lists of lists, lists of Bool or Text, a map and <code>put</code> of it, records with
+a list or Float field - was Python's comparison of those objects, so a
+branch on it looked unreachable and a promise past it was reported proven,
+and broke when it ran. The interpreter checks every promise and no such
+function is native code, so each break stopped with E601; the report and an
+attestation's proven count were false. Those comparisons are now left to
+runtime. Found writing a test for a surviving mutant. See
+<a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-prover-compare.md">advisory-prover-compare.md</a>.</li>
+<li><strong>Negating the smallest whole number was not range-checked</strong> (challenge
+#1, Goal A), affecting 2.14 through 8.1.1, fixed in 8.2.0: <code>-n</code> of
+-9223372036854775808 left the 64-bit range without E407, and a function
+whose <code>ensures</code> about <code>-n</code> was proven ran as native code and returned a
+value that broke it. Unary minus, and the smallest number divided by -1,
+now stop with E407 in both engines. Found by the 8.2 corpus of false
+promises. See <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-int-negation.md">advisory-int-negation.md</a>.</li>
+<li><strong>Words after <code>--</code> were read as Velaris's own flags</strong> (Goal C), affecting
+5.0.0 through 8.1.1, fixed in 8.2.0: <code>velaris program.vel -- --allow all</code>
+granted every effect to a run whose operator named no budget, and
+<code>-- --receipt x</code> wrote a file. On a run, <code>--</code> now ends Velaris's flags and
+everything after it is the program's <code>args()</code>. Found by the 8.2
+self-budget suite. See <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-cli-double-dash.md">advisory-cli-double-dash.md</a>.</li>
+<li><strong>A program given to the library as text imported from the temp
+directory</strong> (Goal C), affecting 2.52 through 8.1.1, fixed in 8.2.0: its
+imports resolved in the system temp directory first, so a <code>std.vel</code>
+another local user planted in <code>/tmp</code> ran in place of the standard
+library's, and the audit reported it. The text is now written into a
+directory of its own. Found by the 8.2 self-budget suite. See
+<a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-source-temp-import.md">advisory-source-temp-import.md</a>.</li>
+<li><strong>A per-user proof cache entry was believed</strong> (challenge #1, Goal A),
+affecting 7.1.2 through 8.1.0, fixed in 8.1.1: a process running as the
+same user, or an <code>XDG_CACHE_HOME</code> or <code>LOCALAPPDATA</code> pointed at a directory
+it chose, could write a cache entry with the real proof key that made a
+false <code>ensures</code> report "proven" and, compiled to native code, run
+unchecked. Nothing in the cache is believed now: a promise is proven only
+when the process reporting on it or running it proved it. Reported by two
+independent external assessments. See
+<a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-proof-cache-2.md">advisory-proof-cache-2.md</a>.</li>
+<li><strong>Prover names a program could write</strong> (challenge #1, Goal A), affecting
+0.9 through 8.0.0, fixed in 8.1.0: a parameter named like a name the
+prover made up for itself - <code>__g_result_1</code> for the result of a call to
+<code>g</code> - was the same Z3 value, and a false <code>ensures</code> was reported proven and,
+compiled to native code, went unenforced. The prover's names now use
+characters no identifier can. See
+<a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-prover-names.md">advisory-prover-names.md</a>.</li>
+<li><strong>An import that read a file and quoted it</strong> (Goal C), affecting 0.16
+through 8.0.0, fixed in 8.1.0: a program sent to the HTTP door, the MCP
+server or a platform's <code>velaris.audit</code> could import any readable file, and
+the error named its first token. Such an error now shows nothing of the
+file, and the doors refuse an import outside the directory they serve
+(E515). See <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-import-read.md">advisory-import-read.md</a>.</li>
+<li><strong>Proof cache poisoning</strong> (challenge #1), affecting 2.29 through 7.1.1,
+fixed in 7.1.2: a <code>./.velaris/proofs.json</code> shipped with an untrusted
+program could make a false <code>ensures</code> report "proven" and go unenforced
+at run time. The proof cache now lives only in a per-user directory and
+a project-local <code>./.velaris/</code> is ignored. See
+<a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-proof-cache.md">advisory-proof-cache.md</a> and THREAT_MODEL.md.</li>
+</ul>
+<p>What is not in scope of the challenge, because it is documented as not
+defended: anything a granted <code>ffi</code> module does, resource use below a
+limit, the meaning of printed text, the memory cap on macOS (where
+RLIMIT_AS is best-effort; it is enforced on Linux and, since 3.1, on
+Windows through a job object), and programs not written in Velaris.</p>
+<h2 id="verifying-a-download">Verifying a download <a class="anchor" href="#verifying-a-download" aria-label="Link to this section">#</a></h2>
+<p>Every artifact of a release from v2.63 onward is signed keylessly
+through sigstore by the release workflow itself, so the signature
+proves the file was built by <code>.github/workflows/release.yml</code> in this
+repository. Which run of it the certificate names changed at 7.2.0:</p>
+<ul>
+<li><p><strong>Up to 7.1.2</strong> pushing a tag started a release, and the identity is
+the tag's. For a release <code>vX.Y</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/vX.Y</code></pre></div></li>
+<li><p><strong>From 7.2.0</strong> no tag starts a release. The workflow runs on main
+once the tests pass there, tags the commit itself and signs in that
+same run (<a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/RELEASING.md">RELEASING.md</a>), so the identity names main:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main</code></pre></div>
+<p>That identity says "the release workflow, on main", not which
+release. The certificate also records the commit the run was on and
+the event that started it; checking both ties a file to the tagged
+commit and to a real release (a release is started only by
+<code>workflow_run</code>; a dry run by hand is <code>workflow_dispatch</code>):</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>sigstore verify github \
+  --bundle velaris_lang-7.2.0-py3-none-any.whl.sigstore.json \
+  --cert-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main \
+  --trigger workflow_run \
+  --sha "$(git rev-parse 'v7.2.0^{commit}')" \
+  velaris_lang-7.2.0-py3-none-any.whl</code></pre></div>
+<p>With cosign, add <code>--certificate-github-workflow-trigger workflow_run</code>
+and <code>--certificate-github-workflow-sha &lt;that commit&gt;</code>.</p></li>
+</ul>
+<p>The OIDC issuer is <code>https://token.actions.githubusercontent.com</code> either
+way. The commands below name older releases; for 7.2.0 and later give
+the main identity instead, with the trigger and the commit.</p>
+<p><strong>The wheel and the sdist</strong> carry a sigstore bundle
+(<code>&lt;file&gt;.sigstore.json</code>, holding the signature and the certificate
+together). With <code>pip install sigstore</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>sigstore verify identity \
+  --bundle velaris_lang-2.63.0-py3-none-any.whl.sigstore.json \
+  --cert-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/v2.63 \
+  --cert-oidc-issuer https://token.actions.githubusercontent.com \
+  velaris_lang-2.63.0-py3-none-any.whl</code></pre></div>
+<p><strong>The three executables and <code>velaris.mcpb</code></strong> carry a detached
+signature (<code>.sig</code>), the certificate (<code>.pem</code>) and the same bundle
+(<code>.sigstore.json</code>). With <a href="https://github.com/sigstore/cosign">cosign</a>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>cosign verify-blob velaris-linux \
+  --bundle velaris-linux.sigstore.json \
+  --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/v2.63 \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com</code></pre></div>
+<p>or, with the detached files:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>cosign verify-blob velaris-linux \
+  --signature velaris-linux.sig \
+  --certificate velaris-linux.pem \
+  --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/v2.63 \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com</code></pre></div>
+<p><strong>The MCP tool manifest</strong> (from 3.4). <code>velaris-mcp-tools-X.Y.Z.json</code>
+lists every tool the MCP server in the wheel offers, with the sha256 of
+its description and of its input schema, and is signed like the wheel
+(<code>velaris-mcp-tools-X.Y.Z.json.sigstore.json</code>). <code>velaris mcp-verify</code>
+checks that signature against the identity above and then the server
+your MCP client runs against the manifest, and names every tool whose
+description or schema differs:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>pip install sigstore
+velaris mcp-verify velaris-mcp-tools-3.4.0.json -- python -m velaris_mcp</code></pre></div>
+<p>EMBEDDING.md says what it does and does not tell you. The signature can
+also be checked on its own with the <code>sigstore verify identity</code> command
+above, naming the manifest and its bundle.</p>
+<p><strong>An attestation of one example program</strong> (from 4.2).
+<code>velaris-attestation-X.Y.Z.intoto.json</code> is the in-toto Statement
+<code>velaris attest examples/effects.vel</code> writes at the tagged commit, and
+the release workflow signs it twice as a DSSE envelope, keylessly: with
+cosign (<code>velaris-attestation-X.Y.Z.cosign.sigstore.json</code>) and with
+sigstore-python (<code>velaris-attestation-X.Y.Z.sigstore-python.sigstore.json</code>),
+verifying both before it attaches them. With <code>examples/effects.vel</code>
+from the tagged source:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>cosign verify-blob-attestation \
+  --bundle velaris-attestation-8.3.0.cosign.sigstore.json \
+  --type https://velaris-lang.dev/capability/v1 \
+  --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  examples/effects.vel</code></pre></div>
+<p>It fails when the file is not the one the Statement names, by digest.
+What the Statement says, and what it does not, is in EMBEDDING.md.</p>
+<p><strong>A receipt of one run of it</strong> (from 8.1). <code>velaris-receipt-X.Y.Z.intoto.json</code>
+is the <code>velaris.receipt/1</code> Statement <code>velaris examples/effects.vel --receipt</code>
+writes in the release workflow, for a run under the budget the example's
+audit names, with the same subjects as the attestation. It is signed the same
+two ways and verified before it is attached. With the same
+<code>examples/effects.vel</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>cosign verify-blob-attestation \
+  --bundle velaris-receipt-8.3.0.cosign.sigstore.json \
+  --type https://velaris-lang.dev/receipt/v1 \
+  --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  examples/effects.vel</code></pre></div>
+<p><strong>Which predicate type a Statement names</strong> (8.3). From 8.3.0 the attestation
+and the receipt name their types on velaris-lang.dev, a domain this project
+holds: <code>https://velaris-lang.dev/capability/v1</code> and
+<code>https://velaris-lang.dev/receipt/v1</code>. Those made by 4.2.0 to 8.2.1 name the
+same types at the project's earlier documentation address, which now
+redirects to velaris-lang.dev, and <code>velaris verify</code> reads both spellings as
+the same type. For an earlier Statement, give cosign's <code>--type</code> the type the
+Statement names, which <code>velaris verify</code> prints. <code>velaris.dev</code> was never this
+project's domain: it is registered to someone else, no Velaris ever wrote a
+type under it, and <code>velaris verify</code> refuses a Statement that names one, as
+it refuses every type Velaris does not define.</p>
+<p><strong>Checksums.</strong> <code>SHA256SUMS</code> (for the wheel, sdist, SBOM and tool manifest) and
+<code>&lt;asset&gt;.sha256</code> (for each binary and the bundle) are attached too;
+<code>sha256sum -c</code> checks them. A checksum proves the file is intact, not
+who built it - the signature does that.</p>
+<p><strong>The SBOM.</strong> <code>velaris-lang-X.Y.Z.cdx.json</code> is a CycloneDX bill of
+materials of an environment holding the wheel and its optional
+dependencies (<code>z3-solver</code>, <code>llvmlite</code>), signed like the wheel. Velaris
+itself has no required dependencies.</p>
+<p><strong>Reproducibility.</strong> The release workflow builds the wheel twice with
+the same <code>SOURCE_DATE_EPOCH</code> and fails if the two differ. To check on
+your own machine at the tagged commit:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) python -m build --wheel
+sha256sum dist/*.whl          # compare with SHA256SUMS on the release</code></pre></div>
+<p><strong>What verification does not tell you:</strong> that the code is correct, or
+that the version you verified is the one your agent framework will
+import. Pin the version, and run the suites named in THREAT_MODEL.md on
+the machine that will run untrusted code.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/SECURITY.md">SECURITY.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#reporting-a-vulnerability">Reporting a vulnerability</a></li><li><a href="#the-three-guarantees-and-which-findings-get-a-cve">The three guarantees, and which findings get a CVE</a></li><li><a href="#soundness-reports-are-security-reports">Soundness reports are security reports</a></li><li><a href="#standing-challenge">Standing challenge</a></li><li><a href="#resolved-advisories">Resolved advisories</a></li><li><a href="#verifying-a-download">Verifying a download</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

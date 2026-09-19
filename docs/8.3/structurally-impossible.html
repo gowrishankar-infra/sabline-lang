@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>What cannot occur in a Velaris program - Velaris 8.3.1</title>
+<meta name="description" content="Some weaknesses cannot be written in Velaris at all: the language has no way to express them. Each class below is one of those, with the condition under ...">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/structurally-impossible.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html" aria-current="page">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="what-cannot-occur-in-a-velaris-program">What cannot occur in a Velaris program</h1>
+<p>Some weaknesses cannot be written in Velaris at all: the language has no
+way to express them. Each class below is one of those, with the condition
+under which that holds. <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/check_impossible.py"><code>check_impossible.py</code></a> holds
+a program that tries each, and fails if one gets through; a class without a
+test there is not on this page, and it checks that too.</p>
+<p>"Cannot occur" is about the program's text and what the runtime does with
+it. It is not about the host: a granted <code>ffi</code> module can do whatever that
+module can do (THREAT_MODEL.md), which is why most rows end with the grant
+that would undo them.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Class</th><th>Why it cannot occur</th><th>Unless</th></tr></thead>
+<tbody>
+<tr><td>CWE-78, OS command injection</td><td>No builtin starts a process or takes a command line. A call to <code>system</code>, <code>shell</code>, <code>exec</code>, <code>spawn</code> or <code>popen</code> does not compile; reaching <code>subprocess</code> or <code>os.system</code> through <code>py</code> is refused at run time without an <code>ffi</code> grant naming that module (E310, E311).</td><td>the budget grants <code>ffi</code> for a module that starts processes - <code>ffi:subprocess</code>, <code>ffi:os</code>, or plain <code>ffi</code>. The audit names the module and warns.</td></tr>
+<tr><td>CWE-95, eval injection, and CWE-94, code injection</td><td>No builtin runs text as code. <code>import</code> takes a string written in the source, read when compiling; an import of a variable or of an expression does not parse. A text that holds a program is only ever text.</td><td>the budget grants <code>ffi</code> for a module that evaluates code, such as <code>builtins</code> or <code>runpy</code>.</td></tr>
+<tr><td>CWE-502, deserialization of untrusted data</td><td>The JSON builtins give back Text, Int, Float or Bool; a document that names a class gives back that name as text, and nothing is constructed. Reaching <code>pickle</code> or a YAML loader through <code>py_json</code> is refused without an <code>ffi</code> grant naming it.</td><td>the budget grants <code>ffi</code> for a module that deserializes objects.</td></tr>
+<tr><td>CWE-200, by one route: a secret in a path or a file</td><td>A value from <code>env()</code> or <code>read_file_secret()</code> is a <code>Secret</code>, and <code>read_file</code>, <code>write_file</code> and <code>file_exists</code> refuse one as a path or as content (E560) - including a path joined with one. So a secret cannot become a file name, which error messages and refusals quote, or a file's content.</td><td>the program declassifies it: <code>declassify</code> is an effect the operator grants, and the audit lists each one with its reason. A secret that arrives another way is ordinary text (THREAT_MODEL.md).</td></tr>
+<tr><td>CWE-117, log injection</td><td>From 8.3 the <code>log</code> builtin, which every function of <code>stdlib/log.vel</code> calls, writes each call as one line: a line feed, a carriage return, an escape, a NUL and every other control character but tab are written as escapes, so no value can end a line of the log, start one, or move a terminal's cursor over one.</td><td>the text goes to standard output with <code>print</code>, which is the program's output and is not escaped; or a reader treats the escape sequences themselves as meaningful.</td></tr>
+</tbody></table></div>
+<h2 id="not-structurally-impossible">Not structurally impossible <a class="anchor" href="#not-structurally-impossible" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Class</th><th>Why not</th></tr></thead>
+<tbody>
+<tr><td>CWE-89, SQL injection</td><td><code>stdlib/db.vel</code>'s <code>run(conn, sql)</code> takes a query as one text with no parameters, and its <code>count(conn, table)</code> writes a table name into the query with <code>format</code>. The language cannot tell SQL from any other text, so a program that builds a query from input can be injected. Parameterized queries in <code>db.vel</code> change <code>run</code>'s signature, which is a break (STABILITY.md), and are left for 9.0. Until then, do not pass input into a query, and do not grant <code>ffi:sqlite3</code> to code you have not read.</td></tr>
+</tbody></table></div>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/docs/structurally-impossible.md">docs/structurally-impossible.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

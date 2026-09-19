@@ -1274,6 +1274,14 @@ OLD_HOST_ALLOWED = {
     "docs/playground.html": "it holds the velaris package, predicates.py "
                             "among it",
 }
+# 8.3.1: the site is generated, and a page rendered from CHANGELOG.md holds
+# the history above - as does the search index built from those pages. Every
+# tree the build writes (the top, latest/ and <major.minor>/) has them.
+OLD_HOST_ALLOWED_PATH = re.compile(
+    r"docs/(?:latest/|\d+\.\d+/)?"
+    r"(?:changelog-\d+(?:-\d+)?\.html|search-index\.json)")
+OLD_HOST_ALLOWED_PATH_REASON = ("the rendered CHANGELOG, and the search "
+                                "index built from it, name it in its history")
 SITE_URL = re.compile(r"https?://velaris-lang\.dev(?:/[^\s<>\"'`)\]}|\\&]*)?")
 
 
@@ -1300,7 +1308,8 @@ def domain_check() -> Result:
             text = (HERE / rel).read_bytes().decode("utf-8")
         except (OSError, UnicodeDecodeError):
             continue
-        if OLD_HOST in text and rel not in OLD_HOST_ALLOWED:
+        if (OLD_HOST in text and rel not in OLD_HOST_ALLOWED
+                and not OLD_HOST_ALLOWED_PATH.fullmatch(rel)):
             named.append(f"{rel}:{text[:text.index(OLD_HOST)].count(chr(10)) + 1}")
         for m in SITE_URL.finditer(text):
             urls.setdefault(m.group(0).rstrip(".,;:!?*_"), rel)
@@ -1309,7 +1318,8 @@ def domain_check() -> Result:
                   f"named in {', '.join(named)}; the site is velaris-lang.dev")
     else:
         res.ok(f"no tracked file names {OLD_HOST} but the "
-               f"{len(OLD_HOST_ALLOWED)} listed with their reasons")
+               f"{len(OLD_HOST_ALLOWED)} listed with their reasons, and the "
+               f"generated pages that hold the changelog's history")
     missing = []
     for url, rel in sorted(urls.items()):
         path = urllib.parse.unquote(urllib.parse.urlsplit(url).path)

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 6.x - Velaris 8.3.1</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog-6.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html" aria-current="page">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 6.x</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="60---secrets-that-cannot-be-printed">6.0 - Secrets that cannot be printed <a class="anchor" href="#60---secrets-that-cannot-be-printed" aria-label="Link to this section">#</a></h2>
+<p>A major version, and a breaking one. Effects tell you a program
+printed something. They do not tell you whether what it printed was
+the secret. <code>Secret of T</code> is the data half of that: a value the type
+system tracks so that it cannot reach a sink.</p>
+<p>E530 has enforced the harder half since 2.x - a function value passed
+to a library must be pure, so a closure handed to a library cannot
+perform effects. This is the other half, and it is the one capability
+the peer-reviewed design this project sits beside
+(<a href="https://github.com/lampepfl/tacit">TACIT</a>, ACM CAIS '26) had and
+Velaris did not. velaris-spec's PRIOR_ART.md said so in writing; it
+now says what is true instead, and what TACIT still has that this does
+not.</p>
+<h3 id="the-type">The type <a class="anchor" href="#the-type" aria-label="Link to this section">#</a></h3>
+<p><code>Secret of T</code> wraps any T. Two builtins make one, and nothing else
+does:</p>
+<ul>
+<li><code>env(name, fallback)</code> returns <code>Secret of Text</code>. <strong>This is the
+breaking change.</strong></li>
+<li><code>read_file_secret(path)</code> is new: <code>read_file</code>'s companion, the same
+<code>fs</code> effect and the same failure, returning <code>Secret of Text</code>.</li>
+</ul>
+<p>A program cannot make a Secret out of a value it already holds, and
+nothing else is secret by default. A secret that arrives another way -
+<code>read_line</code>, <code>args()</code>, a granted <code>ffi</code> module - is an ordinary <code>Text</code>,
+and THREAT_MODEL.md says so plainly rather than leaving it implied.</p>
+<p><strong>Where one cannot go.</strong> Every builtin that declares an effect emits
+what it is given, so none of them takes an argument that carries a
+Secret. That is one rule covering <code>print</code>, <code>log</code>, <code>ask</code>, <code>exit_with</code>,
+<code>read_file</code>, <code>read_file_secret</code>, <code>write_file</code>, <code>file_exists</code>, <code>fetch</code>,
+<code>post</code>, <code>fetch_status</code>, <code>request</code>, <code>env</code> itself, <code>now</code>, <code>random</code> and
+the whole <code>py_*</code> family - and the reason given to <code>fail</code>, which is
+shown to whoever runs the program. The refusal is <strong>E560</strong>, and it
+names the value, what would have emitted it, and where the secret came
+from, following the trail through the program's own functions:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>error[E560] argument 1 of 'print' is Secret of Text, and 'print' performs io -
+a Secret cannot be printed, written, sent or passed to Python. It came from
+env(), line 28, through 'key', which returns Secret of Text (line 63)</code></pre></div>
+<p>A program's own effectful function needs no rule: it declares the
+types it takes, and a Secret is not one of them unless it says so. One
+case does need a rule. A generic body is checked once with its type
+variables standing for nothing in particular, so <code>print(x)</code> inside
+<code>fn show(x: T) uses io</code> is allowed there; binding <code>T</code> to a secret at a
+call site would print it. So a generic function that declares any
+effect takes no argument carrying a Secret (E560). A pure generic
+function may take one: it can reach no sink.</p>
+<p><strong>A structure is not a way around it.</strong> <code>List of Secret of Text</code>, a
+map whose values are secrets, a record with a secret field, a record
+holding such a record - each carries the secret, and the <em>whole
+structure</em> is refused at a sink, not only the field. A map's keys are
+<code>Text</code> or <code>Int</code>, so a secret is never a key. This is not the coarse
+approximation it might have been: which record types carry a secret is
+a fixpoint over the record definitions, computed once per program.</p>
+<p><strong>What keeps one.</strong> Pure computation over a secret gives a secret:
+<code>length(k)</code> is a <code>Secret of Int</code>, <code>"Bearer " + k</code> a <code>Secret of Text</code>,
+and <code>to_text</code>, <code>format</code>, <code>json_of</code>, <code>upper</code> and the rest all keep it.
+One line states it: a pure operation on a value that carries a secret
+gives a Secret of its result type, unless that result is <code>Bool</code>. There
+is no <code>Secret of Secret of T</code> (E562).</p>
+<h3 id="the-bool-stated-as-a-choice">The Bool, stated as a choice <a class="anchor" href="#the-bool-stated-as-a-choice" aria-label="Link to this section">#</a></h3>
+<p>A comparison is the exception. <code>k == ""</code>, <code>length(k) &lt; 10</code> and
+<code>k &gt; other</code> give an ordinary <code>Bool</code> that may be printed, and a
+comparison is the one place a secret and a plain value of the same
+type may stand together.</p>
+<p>That is a one-bit channel per comparison, and enough comparisons
+recover the secret: a loop comparing <code>length(k)</code> against 0, 1, 2, ...
+tells you the length exactly, and the program may print what it
+learned. It is allowed anyway, and the reason is worth writing down.
+An <code>if</code> condition must be a <code>Bool</code>, so a comparison that gave a
+<code>Secret of Bool</code> could never be branched on, and a program could not
+check whether its own API key was empty. And a rule that refused
+<code>print(k == "")</code> while allowing <code>if k == "" { print("empty") }</code> would
+stop nothing and cost everything.</p>
+<p><strong>Velaris bounds explicit flow, not implicit flow.</strong> What it
+guarantees is that the secret's value never reaches a sink. What a
+program can work out about a secret through its own control flow, and
+then say, is not bounded. SPEC.md 3.1 states this, THREAT_MODEL.md
+states it again among what is not defended, and neither calls it
+non-interference, because it is not.</p>
+<p>A <code>Secret of Bool</code> a program <em>declares</em> is different: it is kept, <code>and</code>
+and <code>or</code> over it keep it, and it is not a condition (E504). Only a
+comparison makes a plain one.</p>
+<h3 id="declassify-and-the-eighth-effect">declassify, and the eighth effect <a class="anchor" href="#declassify-and-the-eighth-effect" aria-label="Link to this section">#</a></h3>
+<p><code>declassify(value, reason)</code> takes a <code>Secret of T</code> and gives back the
+<code>T</code>. It is the only way out, and it says so three times:</p>
+<ul>
+<li>the function doing it needs <code>uses declassify</code>, checked across the
+whole call graph like any other effect (E300);</li>
+<li><code>reason</code> must be written as text in the call, not built while
+running, so <code>velaris audit</code> can report it without running the program
+(E561 - and E561 for an empty reason, or for something that is not a
+Secret);</li>
+<li>the operator's budget must grant <code>declassify</code>, or the call is refused
+where it happens (E310), like any other effect.</li>
+</ul>
+<p>So <code>declassify</code> is the eighth effect, and it behaves as the seven do
+everywhere: in a signature, in <code>velaris.audit/1</code>'s <code>effects</code>, in
+<code>safe_command</code>, in <code>velaris.capabilities</code>, in a SARIF note, in
+<code>--deny</code>. <code>--allow all</code> grants it. <code>all</code> means all - an operator who
+writes it has waived every gate, and it already writes a line to
+standard error saying so.</p>
+<p>Unlike the seven it reaches nothing outside the program. It is an
+effect because it is the one operation that removes the type system's
+mark, and an operator has the same reason to refuse it as to refuse
+<code>net</code>.</p>
+<h3 id="what-the-audit-says">What the audit says <a class="anchor" href="#what-the-audit-says" aria-label="Link to this section">#</a></h3>
+<p><code>velaris.audit/1</code> gains a <code>secrets</code> object - an added field within
+version 1, so a consumer that does not know it ignores it:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>"secrets": {
+  "sources": ["env"],
+  "declassifies": false,
+  "declassifications": []
+}</code></pre></div>
+<p><code>sources</code> names the builtins the program reaches that hand it a
+Secret. <code>declassifies</code> answers, without running the program, the
+question a consumer actually has: <em>does this ever let a secret out.</em>
+<code>declassifications</code> names each one - the reason written in the call,
+the function it is in, and the line. The field is <code>null</code> only when the
+program could not be loaded; a program refused <em>for</em> leaking a secret
+still reports the source that made it, which is what a reader wants at
+that moment. <code>velaris audit</code> prints the same under WHAT IT KEEPS
+SECRET.</p>
+<p>What it does not claim is written beside it: the reasons are unchecked
+text, the rule bounds explicit flow only, and it covers only values
+those two builtins produced.</p>
+<h3 id="two-places-that-print-values-behind-a-programs-back">Two places that print values behind a program's back <a class="anchor" href="#two-places-that-print-values-behind-a-programs-back" aria-label="Link to this section">#</a></h3>
+<p>A Secret has no runtime representation - it is a compile-time
+distinction, so it costs nothing and <code>declassify</code> evaluates to the
+value itself. Two things print values the program did not ask them to,
+and both now write <code>&lt;secret&gt;</code> instead: <code>velaris trace</code>, and the message
+of a broken <code>requires</code> or <code>ensures</code> (E600, E601), which prints the
+values of every name the promise mentions. <code>requires length(key) &gt; 0</code>
+is exactly the kind of promise to make about a secret, and until now it
+would have printed the key when it broke.</p>
+<h3 id="what-a-5x-user-has-to-change">What a 5.x user has to change <a class="anchor" href="#what-a-5x-user-has-to-change" aria-label="Link to this section">#</a></h3>
+<p><strong>Anything that treats what <code>env()</code> returns as a <code>Text</code>.</strong> Three
+shapes, and the compiler points at each:</p>
+<ol>
+<li><code>print(env("API_KEY", ""))</code> and every other emission - E560.
+Compare instead (<code>if key == ""</code>), or <code>declassify</code> it with a reason
+if it genuinely is not a secret.</li>
+<li><code>fn config(n: Text) -&gt; Text uses env { return env(n, "") }</code> - E503.
+Write <code>-&gt; Secret of Text</code>, and let the type travel with the value.</li>
+<li><code>let plain: Text = env("K", "")</code>, or passing it to a <code>Text</code>
+parameter - E501.</li>
+</ol>
+<p>A program that only <em>compares</em> what it read - <code>if length(env("PATH", "")) &gt; 0</code> - is unaffected: comparisons give ordinary Bools.
+<code>examples/stress.vel</code> needed no change for exactly that reason.</p>
+<p><strong><code>stdlib/env_tools.vel</code> changed with it.</strong> <code>setting</code> now returns
+<code>Secret of Text</code>. <code>number_setting</code> keeps returning <code>Int</code> and now
+declares <code>uses env, declassify</code>, declassifying with the reason "a
+numeric setting is a number, not a secret" - which is the honest thing
+for it to say, and which now appears in the audit of every program
+that uses it. <code>public_setting(name, fallback) -&gt; Text</code> is new, for a
+setting a program says is not a secret at all.</p>
+<p><strong>A repository with a committed <code>velaris.capabilities</code></strong> will see
+<code>declassify</code> reported as a widening the first time a program needs it,
+and someone has to edit the baseline. That is the ratchet working.</p>
+<h3 id="the-demonstration">The demonstration <a class="anchor" href="#the-demonstration" aria-label="Link to this section">#</a></h3>
+<p><a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/examples/secret.vel"><code>examples/secret.vel</code></a> reads an API key from the
+environment, builds the request that would carry it, and prints a
+summary of that request. <code>velaris audit examples/secret.vel --json</code>
+says <code>"declassifies": false</code>, which is the whole claim: the key reaches
+nothing that emits it.</p>
+<p><a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/examples/secret_bad.vel"><code>examples/secret_bad.vel</code></a> is the same file
+with one more line in <code>main</code>. It does not compile, and the refusal
+names where the secret came from. Nothing ran, nothing was logged, and
+no reviewer had to notice the line. The two of them next to
+<code>discount.vel</code> and <code>discount_bad.vel</code> are the clearest statement of
+what this language does.</p>
+<h3 id="codes-tests-and-the-record">Codes, tests and the record <a class="anchor" href="#codes-tests-and-the-record" aria-label="Link to this section">#</a></h3>
+<p>Three new codes: <strong>E560</strong> (a Secret given to something that emits it),
+<strong>E561</strong> (a <code>declassify</code> without a reason written in the call, or given
+something that is not a Secret), <strong>E562</strong> (a Secret of a Secret). None
+is reused; STABILITY.md rule 3 holds.</p>
+<p><code>check_secret.py</code> is new: 58 checks over every emitting builtin, every
+shape of structure, every laundering route, both halves of the Bool
+decision, all three ways <code>declassify</code> is refused, the audit's <code>secrets</code>
+section for each shape, the tracer and the broken promise, and honest
+programs that must still run. <code>check_refusals.py</code> gains E560, E561 and
+E562. <code>check_sandbox.py</code> gains the <code>declassify</code> grant refused and
+allowed. <code>check_fallible.py</code> gains <code>read_file_secret</code>. velaris-spec's
+corpus grows from 444 cases to 455: eight L1 cases for the new audit
+field and the refusals around it, three L2 cases for the grant, and one
+L2 case reworded because the program it held no longer compiles. (7.0
+takes it to 456.)</p>
+<p>velaris-spec goes to 0.7.0: <code>declassify</code> joins section 3.1, and section
+8.6 defines <code>secrets</code>. PRIOR_ART.md's TACIT entry, which said Velaris
+had no information-flow control, now says what it has and what TACIT
+still has that this does not; CaMeL's entry is corrected the same way.</p>
+<p>The benchmark was rerun in full. <strong>No verdict moved</strong>: 42 caught before
+running, 12 during, 2 missed, 0 false positives, unchanged. One row's
+evidence changed - <code>11c c_secret_from_env</code>, whose "config" helper reads
+a secret from the environment and prints it, was already
+caught-before-run because the audit showed an effect beyond the
+program's stated needs; it is now refused by the compiler instead
+(E503 on the helper's signature), so nothing is attempted at all.</p>
+<p>The GitHub Action's branding icon is <code>shield</code> where it was
+<code>check-circle</code>. A check-circle reads as "a check passed", which is the
+framing 5.0 moved away from.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

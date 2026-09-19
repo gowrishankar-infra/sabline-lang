@@ -1,304 +1,207 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Velaris - the language where you can
-trust code you didn't write. Effects, failure, and Z3-proven contracts,
-all in the signature.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a7d5a'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
-<title>Floats - Velaris</title>
-<style>
-:root { --paper:#ffffff; --alt:#f6f7f8; --line:#e6e8eb; --ink:#0b1215;
-        --mut:#57606a; --brand:#0a7d5a; --brand2:#075e44;
-        --term:#101418; --term-ink:#e6edf3; --term-mut:#8b949e;
-        --err:#e5484d; --mint:#7ee2c0; }
-* { box-sizing:border-box; margin:0; }
-html { scroll-behavior:smooth; }
-body { background:var(--paper); color:var(--ink); font:clamp(15px,0.5vw + 11px,18px)/1.65
-  -apple-system,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
-  -webkit-font-smoothing:antialiased; }
-nav { position:sticky; top:0; background:rgba(255,255,255,.86);
-  backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
-  z-index:10; }
-nav .in { max-width:clamp(900px,86vw,1480px); margin:0 auto;
-  padding:12px clamp(14px,3vw,24px); display:flex;
-  gap:clamp(13px,2.4vw,26px); align-items:center; flex-wrap:wrap; }
-.brand { font-weight:700; font-size:17px; letter-spacing:-.02em;
-  color:var(--ink); text-decoration:none; display:flex; gap:8px;
-  align-items:center; }
-.dot { width:9px; height:9px; border-radius:50%;
-  background:var(--brand); display:inline-block; }
-nav a { color:var(--mut); text-decoration:none; font-size:14.5px;
-  font-weight:500; }
-nav a:hover, nav a.here { color:var(--ink); }
-nav .ver { margin-left:auto; font-size:12.5px; color:var(--mut);
-  border:1px solid var(--line); border-radius:99px; padding:3px 11px; }
-main { max-width:clamp(760px,74vw,1240px); margin:0 auto;
-  padding:clamp(28px,5vw,56px) clamp(16px,4vw,32px) 110px;
-  overflow-wrap:break-word; }
-main.wide { max-width:clamp(900px,86vw,1480px); }
-h1 { font-size:clamp(32px,2.6vw + 14px,58px); letter-spacing:-.03em;
-  line-height:1.12; font-weight:750; }
-h2 { font-size:clamp(20px,1.2vw + 12px,30px); letter-spacing:-.02em;
-  margin:2.2em 0 .7em; font-weight:700; }
-h3 { font-size:18px; margin:1.6em 0 .5em; font-weight:650; }
-p, li { color:#2a3138; }
-p { margin:.85em 0; }
-.lead { font-size:clamp(16.5px,0.8vw + 10px,22px); color:var(--mut);
-  max-width:52ch; }
-a { color:var(--brand); text-decoration:none; }
-a:hover { text-decoration:underline; }
-code { background:var(--alt); border:1px solid var(--line);
-  padding:1.5px 6px; border-radius:6px;
-  font:13px ui-monospace,"SF Mono",Consolas,monospace; }
-pre { background:var(--term); color:var(--term-ink); border-radius:12px;
-  padding:clamp(13px,2.5vw,18px) clamp(14px,3vw,20px); overflow-x:auto;
-  margin:1.2em 0; -webkit-overflow-scrolling:touch;
-  font:clamp(12px,0.5vw + 8px,15px)/1.6 ui-monospace,"SF Mono",Consolas,
-  monospace; }
-pre code { background:none; border:none; padding:0; color:inherit;
-  font:inherit; }
-.k { color:var(--mint); } .e { color:#ff8f8f; } .m { color:var(--term-mut); }
-.btns { display:flex; gap:12px; margin:26px 0 8px; flex-wrap:wrap; }
-.btn { background:var(--ink); color:#fff; padding:11px 22px;
-  border-radius:9px; font-weight:600; font-size:15px; }
-.btn:hover { background:#22292f; text-decoration:none; }
-.btn.ghost { background:transparent; color:var(--ink);
-  border:1px solid var(--line); }
-.btn.ghost:hover { border-color:#c7ccd1; }
-.hero { padding:clamp(36px,8vw,74px) 0 20px; }
-@media (max-width:560px) {
-  .btns { flex-direction:column; }
-  .btn { text-align:center; }
-  nav .ver { display:none; }
-  .fnrow .sig { font-size:12.5px; }
-}
-.eyebrow { color:var(--brand); font-weight:650; font-size:13.5px;
-  letter-spacing:.06em; text-transform:uppercase; margin-bottom:14px; }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,
-  minmax(clamp(230px,22vw,300px),1fr)); gap:16px; margin:34px 0; }
-.card { border:1px solid var(--line); border-radius:14px;
-  padding:20px 22px; background:var(--paper); }
-.card b { font-size:clamp(15px,0.4vw + 10px,17.5px); letter-spacing:-.01em; }
-.card p { font-size:clamp(13.5px,0.4vw + 9px,16px); color:var(--mut); margin:.5em 0 0; }
-.sig { color:var(--ink); font:clamp(13px,0.45vw + 9px,15.5px) ui-monospace,"SF Mono",Consolas,
-  monospace; font-weight:600; }
-.contract { color:var(--brand); font:clamp(12px,0.4vw + 8px,14.5px) ui-monospace,"SF Mono",
-  Consolas,monospace; margin:5px 0 0 20px; }
-.fnrow { border:1px solid var(--line); border-radius:12px;
-  padding:15px 18px; margin:11px 0; }
-table { border-collapse:collapse; width:100%; margin:1.2em 0;
-  font-size:clamp(13px,0.5vw + 9px,16px); display:block; overflow-x:auto;
-  -webkit-overflow-scrolling:touch; white-space:nowrap; }
-table tr td:last-child { white-space:normal; min-width:220px; }
-td, th { border-bottom:1px solid var(--line); padding:9px 12px;
-  text-align:left; vertical-align:top; }
-th { color:var(--mut); font-weight:600; font-size:13px;
-  text-transform:uppercase; letter-spacing:.05em; }
-.ecode { color:var(--err); font-weight:650;
-  font-family:ui-monospace,Consolas,monospace; font-size:13px; }
-.strip { background:var(--alt); border-top:1px solid var(--line);
-  border-bottom:1px solid var(--line);
-  margin:44px calc(-1 * clamp(16px,4vw,24px));
-  padding:30px clamp(16px,4vw,24px); }
-footer { border-top:1px solid var(--line); color:var(--mut);
-  font-size:13.5px; padding:26px 24px; text-align:center; }
-</style></head><body>
-<nav><div class="in"><a class="brand" href="index.html">
-<span class="dot"></span>Velaris</a><a href="index.html" class="">Home</a><a href="tutorial.html" class="">Tutorial</a><a href="spec.html" class="">Reference</a><a href="library.html" class="">Library</a><a href="errors.html" class="">Errors</a><a href="floats.html" class="here">Floats</a><a href="playground.html" class="">Playground</a>
-<span class="ver">v8.3.0</span></div></nav>
-<main class=""><h1>Your verifier is probably lying to you about floats</h1>
-<br>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Your verifier is probably lying to you about floats - Velaris 8.3.1</title>
+<meta name="description" content="Here is a promise that looks obviously true:">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/floats.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html" aria-current="page">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="your-verifier-is-probably-lying-to-you-about-floats">Your verifier is probably lying to you about floats</h1>
 <p>Here is a promise that looks obviously true:</p>
-<br>
-<pre><code>
-fn add_twice(x: Float) -&gt; Float
-    ensures result == x + 0.2
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> add_twice(x: Float) -&gt; Float
+    <span class="k">ensures</span> result == x + <span class="n">0.2</span>
 {
-    return x + 0.1 + 0.1
-}
-</code></pre>
-<br>
-<p>Adding a tenth twice is the same as adding two tenths. Every algebra</p>
-<p>teacher you have ever had agrees. Most program verifiers agree too.</p>
-<br>
+    <span class="k">return</span> x + <span class="n">0.1</span> + <span class="n">0.1</span>
+}</code></pre></div>
+<p>Adding a tenth twice is the same as adding two tenths. Every algebra
+teacher you have ever had agrees. Most program verifiers agree too.</p>
 <p>They are wrong, and so is the promise.</p>
-<br>
 <p>Velaris refuses to prove it, and hands back the number that breaks it:</p>
-<br>
-<pre><code>
-error[E700] promise cannot be kept: &#x27;add_twice&#x27; ensures result == x + 0.2
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>error[E700] promise cannot be kept: 'add_twice' ensures result == x + 0.2
   proven without running the program:
     x = -1.207290298954004637010939404717646539211273193359375
-    gives result = -1.007290298954004459375255464692600071430206298828125
-</code></pre>
-<br>
-<p>That is not a rounding display artifact. Those are two different</p>
-<p>doubles, and the program really does produce the second one.</p>
-<br>
-<h2>Why the lie is tempting</h2>
-<br>
-<p>To prove things about numbers, a verifier translates your code into</p>
-<p>formulas for a solver. The question is which *theory* to translate</p>
-<p>into.</p>
-<br>
-<p>The comfortable choice is the theory of real numbers. Reals are</p>
-<p>associative, commutative, infinitely precise, and solvers are fast at</p>
-<p>them. Translate <code>Float</code> to <code>Real</code> and everything works beautifully:</p>
-<p>proofs come back in milliseconds, and <code>x + 0.1 + 0.1 == x + 0.2</code> is</p>
-<p>trivially true.</p>
-<br>
+    gives result = -1.007290298954004459375255464692600071430206298828125</code></pre></div>
+<p>That is not a rounding display artifact. Those are two different
+doubles, and the program really does produce the second one.</p>
+<h2 id="why-the-lie-is-tempting">Why the lie is tempting <a class="anchor" href="#why-the-lie-is-tempting" aria-label="Link to this section">#</a></h2>
+<p>To prove things about numbers, a verifier translates your code into
+formulas for a solver. The question is which <em>theory</em> to translate
+into.</p>
+<p>The comfortable choice is the theory of real numbers. Reals are
+associative, commutative, infinitely precise, and solvers are fast at
+them. Translate <code>Float</code> to <code>Real</code> and everything works beautifully:
+proofs come back in milliseconds, and <code>x + 0.1 + 0.1 == x + 0.2</code> is
+trivially true.</p>
 <p>It is also a statement about a machine that does not exist.</p>
-<br>
-<p>Your processor implements IEEE-754 binary64. In that world <code>0.1</code> is not</p>
-<p>one tenth — it is the nearest double to one tenth, which is</p>
-<p><code>0.1000000000000000055511151231257827021181583404541015625</code>. Every</p>
-<p>operation rounds to the nearest representable value. Addition is not</p>
-<p>associative. Adding a tenth twice takes two rounding steps; adding two</p>
-<p>tenths takes one. For many values of <code>x</code> those disagree in the last</p>
-<p>bit, and one bit is all it takes for <code>==</code> to be false.</p>
-<br>
-<p>So a verifier that models floats as reals will happily certify code</p>
-<p>that fails on the machine it is compiled for. The proof is valid. The</p>
-<p>theorem is about the wrong object.</p>
-<br>
-<h2>What honesty costs</h2>
-<br>
-<p>Z3 has a floating-point theory that implements IEEE-754 exactly:</p>
-<p>rounding modes, subnormals, infinities, NaN, signed zero. Velaris</p>
-<p>translates <code>Float</code> into that theory rather than into <code>Real</code>.</p>
-<br>
+<p>Your processor implements IEEE-754 binary64. In that world <code>0.1</code> is not
+one tenth — it is the nearest double to one tenth, which is
+<code>0.1000000000000000055511151231257827021181583404541015625</code>. Every
+operation rounds to the nearest representable value. Addition is not
+associative. Adding a tenth twice takes two rounding steps; adding two
+tenths takes one. For many values of <code>x</code> those disagree in the last
+bit, and one bit is all it takes for <code>==</code> to be false.</p>
+<p>So a verifier that models floats as reals will happily certify code
+that fails on the machine it is compiled for. The proof is valid. The
+theorem is about the wrong object.</p>
+<h2 id="what-honesty-costs">What honesty costs <a class="anchor" href="#what-honesty-costs" aria-label="Link to this section">#</a></h2>
+<p>Z3 has a floating-point theory that implements IEEE-754 exactly:
+rounding modes, subnormals, infinities, NaN, signed zero. Velaris
+translates <code>Float</code> into that theory rather than into <code>Real</code>.</p>
 <p>The bill arrives immediately.</p>
-<br>
-<p><b>It is slow.</b> The FP theory is decided by bit-blasting — expanding</p>
-<p>64-bit values into circuits of individual bits and handing the result</p>
-<p>to a SAT solver. The refutation above takes about fifteen seconds on an</p>
-<p>idle machine and several times that on a busy one. Integer proofs in</p>
-<p>the same compiler finish in milliseconds. Velaris gives float queries a</p>
-<p><b>120 second</b> budget and everything else three seconds, and only pays</p>
-<p>the larger cost for functions that actually mention floats. Either</p>
-<p>budget can be replaced for one run:</p>
-<br>
-<pre><code>
-velaris check f.vel --proof-timeout 300
-VELARIS_PROOF_TIMEOUT=300 velaris check f.vel
-</code></pre>
-<br>
-<p><b>A budget that runs out says so.</b> If the solver spends its whole</p>
-<p>budget without an answer, the proof is *abandoned* — nothing proven,</p>
-<p>nothing refuted — and every report says that in those words:</p>
-<br>
-<pre><code>
-note: the proof of &#x27;add_twice&#x27; ran out of time after 120s and was
+<p><strong>It is slow.</strong> The FP theory is decided by bit-blasting — expanding
+64-bit values into circuits of individual bits and handing the result
+to a SAT solver. The refutation above takes about fifteen seconds on an
+idle machine and several times that on a busy one. Integer proofs in
+the same compiler finish in milliseconds. Velaris gives float queries a
+<strong>120 second</strong> budget and everything else three seconds, and only pays
+the larger cost for functions that actually mention floats. Either
+budget can be replaced for one run:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code>velaris <span class="k">check</span> f.vel --proof-timeout <span class="n">300</span>
+VELARIS_PROOF_TIMEOUT=<span class="n">300</span> velaris <span class="k">check</span> f.vel</code></pre></div>
+<p><strong>A budget that runs out says so.</strong> If the solver spends its whole
+budget without an answer, the proof is <em>abandoned</em> — nothing proven,
+nothing refuted — and every report says that in those words:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>note: the proof of 'add_twice' ran out of time after 120s and was
 abandoned - nothing was proven and nothing was refuted, so its promises
-are checked while running instead. This is not &#x27;the prover found
-nothing wrong&#x27;.
-</code></pre>
-<br>
-<p><code>velaris check</code> marks the file `1 proof(s) abandoned: out of time,</p>
-<p>nothing settled<code>, </code>velaris proofs --detail` marks the function</p>
-<p><code>[timeout]</code> rather than <code>[runtime]</code>, and <code>--strict</code> fails and says the</p>
-<p>proof was abandoned rather than unprovable. The next run spends the</p>
-<p>budget again: no proof is kept between runs. A slow machine must never be able to make a lost refutation look like a</p>
-<p>clean bill of health — that is the same commitment as the one below,</p>
-<p>read from the other side.</p>
-<br>
-<p><b>Fewer things are provable.</b> Plenty of true-in-the-reals facts are</p>
-<p>simply false in IEEE-754, and plenty of true-in-IEEE facts are too</p>
-<p>expensive to establish. A verifier that pretends floats are reals has a</p>
-<p>much better success rate on paper. It is winning a game nobody should</p>
-<p>want to play.</p>
-<br>
-<p><b>Equality gets strange, correctly.</b> Velaris compares floats with</p>
-<p><code>fpEQ</code>, not structural equality, which means NaN is not equal to itself</p>
-<p>and positive zero equals negative zero. Both are IEEE behaviour, and</p>
-<p>both surprise people. Using structural equality would have been faster</p>
-<p>and easier to explain, and would have quietly produced false results at</p>
-<p>the edges.</p>
-<br>
-<p>There is a bonus that only shows up once you are honest: comparison</p>
-<p>constraints start doing real work. A precondition like `requires</p>
-<p>x &gt;= 0.0` silently rules out NaN, because NaN fails every comparison.</p>
-<p>The prover knows that, so a promise you could not otherwise establish</p>
-<p>sometimes becomes provable for free.</p>
-<br>
-<h2>The rule underneath</h2>
-<br>
-<p>Velaris has one commitment it will not trade away: **it never claims</p>
-<p>something is proven unless the claim is literally true.**</p>
-<br>
-<p>That single rule decided the float design by itself. If you model</p>
-<p>floats as reals, &quot;proven&quot; starts meaning &quot;proven about an idealised</p>
-<p>machine that does not exist,&quot; and the word has quietly been devalued.</p>
-<p>Everything after that is negotiation.</p>
-<br>
-<p>The same rule shows up elsewhere in the compiler. Division and modulo</p>
-<p>are not native-compiled, because a native <code>fdiv</code> by zero yields</p>
-<p>infinity while the language promises a clean error, and two execution</p>
-<p>modes that disagree are worse than one slow mode. A premise the solver</p>
-<p>cannot translate aborts the whole proof rather than being silently</p>
-<p>dropped, because proving with dropped premises manufactures false</p>
-<p>counterexamples. Anything unprovable degrades to a runtime check rather</p>
-<p>than being waved through.</p>
-<br>
-<p>None of these make the demo look better. All of them are the reason the</p>
-<p>demo can be believed.</p>
-<br>
-<h2>Money is not a float, and Velaris will not let you pretend</h2>
-<br>
-<p>Everything above is about being honest when a program genuinely needs</p>
-<p>IEEE-754. Currency is the case where it does not.</p>
-<br>
-<p><code>0.10</code> is not a double any more than <code>0.1</code> is. A hundred-rupee balance</p>
-<p>built out of ten-rupee floats is not a hundred rupees, and the error</p>
-<p>compounds quietly: it never trips an exception, it just ends the quarter</p>
-<p>a few paise off, in a direction nobody chose. The proof story makes it</p>
-<p>worse, not better. <code>ensures total &gt;= 0.0</code> about floats is provable and</p>
-<p>almost worthless, because the number it is proving things about is</p>
-<p>already not the amount you meant.</p>
-<br>
-<p>So an amount in Velaris is not a <code>Float</code> at all. <code>Money of INR</code> (SPEC.md</p>
-<p>§4.3) is a whole number of minor units - paise, cents, fils - with the</p>
-<p>currency in its type:</p>
-<br>
-<pre><code>
-let claim = money(125075, &quot;INR&quot;)           // 1250.75, exactly
-let fee = percent_of(claim, 25, 1000, &quot;half_up&quot;)   // 2.5%, rounded
-                                                   // the way you said
-let parts = money.split(claim, 3)          // and they add up to claim
-</code></pre>
-<br>
-<p>It is an <code>Int</code> underneath, so it proves the way whole numbers prove -</p>
-<p>the same solver, the same milliseconds, none of the bit-blasting the</p>
-<p>first half of this page is about. <code>money.split</code> promises that its parts</p>
-<p>add up to exactly what it was given, and that promise is <b>proven</b>,</p>
-<p>before your program runs, by the prover you already have.</p>
-<br>
-<p>Three things are compile errors rather than surprises: a <code>Float</code></p>
-<p>anywhere near an amount, two currencies in one sum, and <code>/</code> on an</p>
-<p>amount - because dividing 100 paise three ways has to round, and Velaris</p>
-<p>will not pick the rounding for you. You write <code>&quot;half_up&quot;</code>,</p>
-<p><code>&quot;half_even&quot;</code> or <code>&quot;down&quot;</code> in the call, or you use <code>money.split</code>, which</p>
-<p>does not round at all.</p>
-<br>
-<p>If you are holding money in a <code>Float</code> today, that is the one case on</p>
-<p>this page where the answer is not &quot;be careful with floats&quot; but &quot;do not</p>
-<p>use them&quot;.</p>
-<br>
-<h2>Try it</h2>
-<br>
-<p>The compiler runs in your browser, no install:</p>
-<p>&lt;https://velaris-lang.dev/playground.html&gt;</p>
-<br>
-<p>Paste the function at the top of this page and watch it refuse. Then</p>
-<p>change <code>ensures result == x + 0.2</code> to something IEEE actually</p>
-<p>guarantees — say <code>ensures result &gt;= x</code> — and watch it go through.</p>
-<br>
-<p>If you can make Velaris say &quot;proven&quot; about something that is false at</p>
-<p>runtime, that is a soundness bug, and this project treats those as</p>
-<p>security reports.</p>
-<br>
-<p>&lt;https://github.com/gowrishankar-infra/velaris-lang&gt;</p></main>
-<footer>Velaris is MIT-licensed open source &middot;
-<a href="https://github.com/gowrishankar-infra/velaris-lang">GitHub</a>
-&middot; <a href="https://github.com/gowrishankar-infra/velaris-lang/issues">Issues</a></footer>
-</body></html>
+are checked while running instead. This is not 'the prover found
+nothing wrong'.</code></pre></div>
+<p><code>velaris check</code> marks the file <code>1 proof(s) abandoned: out of time, nothing settled</code>, <code>velaris proofs --detail</code> marks the function
+<code>[timeout]</code> rather than <code>[runtime]</code>, and <code>--strict</code> fails and says the
+proof was abandoned rather than unprovable. The next run spends the
+budget again: no proof is kept between runs. A slow machine must never be able to make a lost refutation look like a
+clean bill of health — that is the same commitment as the one below,
+read from the other side.</p>
+<p><strong>Fewer things are provable.</strong> Plenty of true-in-the-reals facts are
+simply false in IEEE-754, and plenty of true-in-IEEE facts are too
+expensive to establish. A verifier that pretends floats are reals has a
+much better success rate on paper. It is winning a game nobody should
+want to play.</p>
+<p><strong>Equality gets strange, correctly.</strong> Velaris compares floats with
+<code>fpEQ</code>, not structural equality, which means NaN is not equal to itself
+and positive zero equals negative zero. Both are IEEE behaviour, and
+both surprise people. Using structural equality would have been faster
+and easier to explain, and would have quietly produced false results at
+the edges.</p>
+<p>There is a bonus that only shows up once you are honest: comparison
+constraints start doing real work. A precondition like <code>requires x &gt;= 0.0</code> silently rules out NaN, because NaN fails every comparison.
+The prover knows that, so a promise you could not otherwise establish
+sometimes becomes provable for free.</p>
+<h2 id="the-rule-underneath">The rule underneath <a class="anchor" href="#the-rule-underneath" aria-label="Link to this section">#</a></h2>
+<p>Velaris has one commitment it will not trade away: <strong>it never claims
+something is proven unless the claim is literally true.</strong></p>
+<p>That single rule decided the float design by itself. If you model
+floats as reals, "proven" starts meaning "proven about an idealised
+machine that does not exist," and the word has quietly been devalued.
+Everything after that is negotiation.</p>
+<p>The same rule shows up elsewhere in the compiler. Division and modulo
+are not native-compiled, because a native <code>fdiv</code> by zero yields
+infinity while the language promises a clean error, and two execution
+modes that disagree are worse than one slow mode. A premise the solver
+cannot translate aborts the whole proof rather than being silently
+dropped, because proving with dropped premises manufactures false
+counterexamples. Anything unprovable degrades to a runtime check rather
+than being waved through.</p>
+<p>None of these make the demo look better. All of them are the reason the
+demo can be believed.</p>
+<h2 id="money-is-not-a-float-and-velaris-will-not-let-you-pretend">Money is not a float, and Velaris will not let you pretend <a class="anchor" href="#money-is-not-a-float-and-velaris-will-not-let-you-pretend" aria-label="Link to this section">#</a></h2>
+<p>Everything above is about being honest when a program genuinely needs
+IEEE-754. Currency is the case where it does not.</p>
+<p><code>0.10</code> is not a double any more than <code>0.1</code> is. A hundred-rupee balance
+built out of ten-rupee floats is not a hundred rupees, and the error
+compounds quietly: it never trips an exception, it just ends the quarter
+a few paise off, in a direction nobody chose. The proof story makes it
+worse, not better. <code>ensures total &gt;= 0.0</code> about floats is provable and
+almost worthless, because the number it is proving things about is
+already not the amount you meant.</p>
+<p>So an amount in Velaris is not a <code>Float</code> at all. <code>Money of INR</code> (SPEC.md
+§4.3) is a whole number of minor units - paise, cents, fils - with the
+currency in its type:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">let</span> claim = money(<span class="n">125075</span>, <span class="s">"INR"</span>)           <span class="c">// 1250.75, exactly</span>
+<span class="k">let</span> fee = percent_of(claim, <span class="n">25</span>, <span class="n">1000</span>, <span class="s">"half_up"</span>)   <span class="c">// 2.5%, rounded</span>
+                                                   <span class="c">// the way you said</span>
+<span class="k">let</span> parts = money.split(claim, <span class="n">3</span>)          <span class="c">// and they add up to claim</span></code></pre></div>
+<p>It is an <code>Int</code> underneath, so it proves the way whole numbers prove -
+the same solver, the same milliseconds, none of the bit-blasting the
+first half of this page is about. <code>money.split</code> promises that its parts
+add up to exactly what it was given, and that promise is <strong>proven</strong>,
+before your program runs, by the prover you already have.</p>
+<p>Three things are compile errors rather than surprises: a <code>Float</code>
+anywhere near an amount, two currencies in one sum, and <code>/</code> on an
+amount - because dividing 100 paise three ways has to round, and Velaris
+will not pick the rounding for you. You write <code>"half_up"</code>,
+<code>"half_even"</code> or <code>"down"</code> in the call, or you use <code>money.split</code>, which
+does not round at all.</p>
+<p>If you are holding money in a <code>Float</code> today, that is the one case on
+this page where the answer is not "be careful with floats" but "do not
+use them".</p>
+<h2 id="try-it">Try it <a class="anchor" href="#try-it" aria-label="Link to this section">#</a></h2>
+<p>The compiler runs in your browser, no install:
+<a href="playground.html">https://velaris-lang.dev/playground.html</a></p>
+<p>Paste the function at the top of this page and watch it refuse. Then
+change <code>ensures result == x + 0.2</code> to something IEEE actually
+guarantees — say <code>ensures result &gt;= x</code> — and watch it go through.</p>
+<p>If you can make Velaris say "proven" about something that is false at
+runtime, that is a soundness bug, and this project treats those as
+security reports.</p>
+<p><a href="https://github.com/gowrishankar-infra/velaris-lang">https://github.com/gowrishankar-infra/velaris-lang</a></p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/docs/floats.md">docs/floats.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#why-the-lie-is-tempting">Why the lie is tempting</a></li><li><a href="#what-honesty-costs">What honesty costs</a></li><li><a href="#the-rule-underneath">The rule underneath</a></li><li><a href="#money-is-not-a-float-and-velaris-will-not-let-you-pretend">Money is not a float, and Velaris will not let you pretend</a></li><li><a href="#try-it">Try it</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

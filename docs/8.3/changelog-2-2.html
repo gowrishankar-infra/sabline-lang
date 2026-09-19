@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 2.x: 2.40 to 2.0 - Velaris 8.3.1</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog-2-2.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html" aria-current="page">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 2.x: 2.40 to 2.0</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="240---running-a-program-you-have-not-read">2.40 - Running a program you have not read <a class="anchor" href="#240---running-a-program-you-have-not-read" aria-label="Link to this section">#</a></h2>
+<p>The compiler has always checked that a function declares what it does.
+This is the other half:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>velaris program.vel --allow io          refuse every other effect
+velaris program.vel --deny net,ffi      allow everything but these</code></pre></div>
+<p>The runtime refuses any effect outside the budget granted on the
+command line, <strong>whatever the source says about itself</strong>. A refusal is
+not a failure the program can catch with <code>check</code> - it stops there, so
+a program cannot swallow the refusal and carry on.</p>
+<p><code>check_sandbox.py</code> proves it holds: eleven escape attempts - reading,
+writing, the network, calling Python, opening a database through a
+handle, the clock, randomness, hiding the effect behind two layers of
+helper, catching the refusal to continue anyway, and both <code>--deny</code>
+forms - all refused with E310, with a file-existence check confirming
+nothing was actually written. Four honest programs still run untouched,
+including one with no permissions at all. Needs no prover, so it
+behaves identically in every CI configuration.</p>
+<p><code>examples/sandbox.vel</code> shows the same thing by hand.</p>
+<p><strong>What this is not</strong>: a security boundary. A program granted <code>ffi</code> can
+do anything Python can, and nothing here limits memory, time, or what a
+program prints. It is a strong guard against accident and casual
+misbehaviour - which is the situation you are in when an AI hands you a
+script - not a defence against a hostile author you have already
+granted permission.</p>
+<h2 id="2391---the-refusal-harness-knows-what-needs-the-prover">2.39.1 - The refusal harness knows what needs the prover <a class="anchor" href="#2391---the-refusal-harness-knows-what-needs-the-prover" aria-label="Link to this section">#</a></h2>
+<p>Nine of the twenty refusals in <code>check_refusals.py</code> are proof results -
+a false promise, a possible divide by zero, an out-of-range read, a
+broken invariant. Without z3 installed those programs simply run, so
+every no-solver leg in CI failed the moment the harness joined it.
+The harness now skips those cases when the prover is absent and says
+so, exactly as the example suite already did.</p>
+<p>Verified both ways: 20 refused correctly with the prover, 11 refused
+and 9 skipped without it.</p>
+<h2 id="239---the-editor-asks-for-what-the-compiler-already-knew">2.39 - The editor asks for what the compiler already knew <a class="anchor" href="#239---the-editor-asks-for-what-the-compiler-already-knew" aria-label="Link to this section">#</a></h2>
+<p>The language server has answered hover, completion, go-to-definition,
+rename, an outline and proof-status lenses since 2.32 - but the
+extension's hand-rolled client only ever listened for errors, so none
+of it reached the editor. The client now asks:</p>
+<ul>
+<li>completion for functions in scope with their contracts, and every
+builtin with its effects and whether it can fail</li>
+<li>hover showing a signature with its <code>requires</code> and <code>ensures</code></li>
+<li>go to definition, across imported files</li>
+<li>rename across the file</li>
+<li>an outline of the file's functions</li>
+<li><strong>proof status above every function</strong>, from the real prover</li>
+</ul>
+<p>Requests time out after eight seconds and fall back to nothing rather
+than hanging the editor.</p>
+<p>Plus 17 snippets for the shapes this language actually uses: <code>fnp</code> for
+a function with promises, <code>fnfail</code> for one that can fail, <code>check</code> for
+handling both outcomes, <code>whileinv</code> for a loop with an invariant,
+<code>record</code>, <code>test</code>, <code>json</code>, <code>py</code>, <code>importas</code> and more.</p>
+<h2 id="238---testing-the-places-languages-break">2.38 - Testing the places languages break <a class="anchor" href="#238---testing-the-places-languages-break" aria-label="Link to this section">#</a></h2>
+<p>Two new suites, because a test that only checks correct code passing
+is half a test.</p>
+<p><code>examples/edges.vel</code> covers boundaries, properties and round trips:
+empty and single-element lists, empty text, empty maps, negatives,
+zero, division rounding toward minus infinity, the 64-bit limits, and
+empty ranges - then <strong>195 generated cases</strong> asserting properties rather
+than examples (sort always returns a sorted list of the same length
+containing the same elements; reversing twice is the original; the
+maximum is always a member; filtering never keeps what it should not),
+and round trips that must come back unchanged (28 dates parsed and
+printed, JSON built and read, a CSV row written and read, join then
+split, upper then lower). 20 checks, all passing.</p>
+<p><code>check_refusals.py</code> is stricter than the example suite: it asserts that
+each of <strong>20 wrong programs is refused with the specific error the
+language promises</strong>, not merely refused. A false promise must be E700,
+an undeclared effect E300, an ignored failure E520, a possible divide
+by zero E706, an out-of-range read E705, a broken loop invariant E703,
+and so on - so a guarantee cannot quietly degrade into a different
+guarantee. Both run in CI on every push.</p>
+<h2 id="237---a-stress-test-written-in-velaris">2.37 - A stress test written in Velaris <a class="anchor" href="#237---a-stress-test-written-in-velaris" aria-label="Link to this section">#</a></h2>
+<p><code>examples/stress.vel</code> exercises the whole language and standard library
+in one command that asks nothing and exits non-zero if anything fails:
+contracts and proofs, inferred loop invariants, division proofs,
+records with list fields, map proofs, nested lists, generics, function
+values inline and by name, text case and containment, native list and
+text scanning, failure through <code>try</code> and <code>check</code>, JSON reading and
+building, dates, CSV, the host language including a real SQLite handle,
+the environment, the clock, and a network request that reports itself
+as skipped when offline.</p>
+<p>33 checks. Two failed on the first run and both were the test's
+arithmetic being wrong rather than the language - which is the right
+way round, and is why the corrected expectations are in the file.</p>
+<h2 id="2364---the-action-has-its-own-name">2.36.4 - The Action has its own name <a class="anchor" href="#2364---the-action-has-its-own-name" aria-label="Link to this section">#</a></h2>
+<p>GitHub's Marketplace requires an Action's name to be globally unique,
+and "Velaris" was taken. The Action is now "Velaris Language Check",
+which describes what it does anyway. Nothing else changed - the way
+you use it is identical.</p>
+<h2 id="2363---a-picture-of-the-point">2.36.3 - A picture of the point <a class="anchor" href="#2363---a-picture-of-the-point" aria-label="Link to this section">#</a></h2>
+<p>The README now opens with an image of the compiler refuting a promise
+and handing back the input that breaks it. People decide in a few
+seconds whether to keep reading, and the most convincing thing about
+this language was previously three scrolls down.</p>
+<h2 id="2362---somewhere-to-start">2.36.2 - Somewhere to start <a class="anchor" href="#2362---somewhere-to-start" aria-label="Link to this section">#</a></h2>
+<p>The README points at the open <code>good first issue</code> list and spells out
+the four commands a change has to pass before it ships. The tasks
+themselves are now issues rather than a paragraph in a file nobody
+opens.</p>
+<h2 id="2361---two-part-tags-publish-the-extension-again">2.36.1 - Two-part tags publish the extension again <a class="anchor" href="#2361---two-part-tags-publish-the-extension-again" aria-label="Link to this section">#</a></h2>
+<p>Tags here are two-part (<code>v2.36</code>) but npm requires three
+(<code>2.36.0</code>), so the extension publish failed with
+<code>Invalid version: 2.36</code>. The workflow now pads a short tag before
+using it. Nothing about the language changed.</p>
+<h2 id="236---a-tool-worth-running-and-errors-that-read-like-a-language">2.36 - A tool worth running, and errors that read like a language <a class="anchor" href="#236---a-tool-worth-running-and-errors-that-read-like-a-language" aria-label="Link to this section">#</a></h2>
+<p><code>examples/linkcheck.vel</code> is a real utility rather than a demonstration:
+give it URLs on the command line or pipe a list in, and it reports each
+one's status, counts the broken ones, and exits non-zero so a scheduler
+can act. Progress goes to the error channel and the report to the
+output channel, so <code>linkcheck ... 2&gt;/dev/null</code> is a clean report. It
+uses the http, log and standard modules together - the first program
+here written the way a user would write one.</p>
+<p>Writing it found a papercut worth fixing: a failed request handed
+Python's own words to the user
+(<code>&lt;urlopen error [Errno -2] Name or service not known&gt;</code>). Network
+failures now say what happened - the address did not resolve, it did
+not answer in time, the connection was refused, the certificate was not
+accepted - because an error message is part of a language's surface,
+not a place to leak the implementation.</p>
+<h2 id="235---dates-as-values-http-with-headers-and-a-way-in-for-others">2.35 - Dates as values, HTTP with headers, and a way in for others <a class="anchor" href="#235---dates-as-values-http-with-headers-and-a-way-in-for-others" aria-label="Link to this section">#</a></h2>
+<p><code>request(method, url, body, headers)</code> is one honest HTTP builtin: any
+method, headers as JSON, and the whole answer back as JSON - status,
+body and response headers together. <code>http.vel</code> wraps it as <code>call</code>,
+<code>get_with</code>, <code>post_json</code>, <code>code_of</code>, <code>body_of</code>, <code>header_of</code>. Still
+<code>uses net</code>, still fallible.</p>
+<p><code>dates.vel</code> makes a date a <strong>record</strong>, not text: <code>make</code> and <code>parse</code>
+refuse impossible dates, <code>days_in</code> is proven to return between 28 and
+31, and <code>before</code>, <code>same</code>, <code>next_day</code> and <code>text_of</code> work on values.
+Writing it, the prover caught a real bug in it: <code>next_day</code> called
+<code>days_in</code> without knowing the month was valid, because a record cannot
+promise anything about its own fields. The fix was to say what the
+function needs, which is the language working as intended on its own
+standard library.</p>
+<p><code>velaris proofs --detail</code> lists each promise-carrying function and,
+for the ones not proven, the contracts involved - so "60% proven"
+becomes a list you can act on.</p>
+<p>And the part that is not code: <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> is a
+map of the compiler with a table of where things live and the five
+rules this project holds; <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/MAINTAINERS.md">MAINTAINERS.md</a> says how
+someone becomes a maintainer, what a maintainer may not do (weaken a
+guarantee quietly), and lists six real, small, self-contained places
+to start. A second maintainer is the single thing that would most
+change what this project can promise, and now there is a door.</p>
+<h2 id="234---unattended-work-and-building-for-machines-you-do-not-have">2.34 - Unattended work, and building for machines you do not have <a class="anchor" href="#234---unattended-work-and-building-for-machines-you-do-not-have" aria-label="Link to this section">#</a></h2>
+<p><code>log(text)</code> writes to the error channel, and <code>log.vel</code> gives it levels
+(<code>info</code>, <code>warn</code>, <code>error</code>, <code>event</code>, <code>fail_with</code>). Messages and results
+finally travel separately: a pipeline captures <code>print</code> output while a
+person watching sees the log, and <code>fail_with</code> exits non-zero.</p>
+<p><code>csv.vel</code> handles the shape most data arrives in - <code>fields</code>, <code>column</code>,
+<code>column_int</code>, <code>rows_of</code>, <code>line_of</code> - and <code>time.vel</code> gains <code>year_of</code>,
+<code>month_of</code> and <code>day_number</code>. <code>examples/pipeline.vel</code> is what an
+unattended job looks like end to end.</p>
+<p><code>velaris build --for-everyone</code> writes a workflow that builds your
+program on Windows, Linux and macOS and attaches all three to a
+release. One machine genuinely cannot build for other machines; three
+machines can, and this hands you the three.</p>
+<p>The language server also renames: every use of a function this file
+owns, comments left alone, and only names the file actually defines.</p>
+<h2 id="233---a-number-a-team-can-watch-and-an-image-to-run-it-in">2.33 - A number a team can watch, and an image to run it in <a class="anchor" href="#233---a-number-a-team-can-watch-and-an-image-to-run-it-in" aria-label="Link to this section">#</a></h2>
+<p><code>velaris proofs [path]</code> reports, for a file or a whole project, how
+many promise-carrying functions are <strong>proven before running</strong> versus
+<strong>checked while running</strong> - with <code>--json</code> for tooling and <code>--min 80</code>
+to fail a build when the share slips. If a language's claim is proven
+promises, that number should be visible and defended, not assumed.
+The GitHub Action takes <code>min-proven</code>, and this project's own CI now
+prints its share on every push.</p>
+<p>The language server also completes: functions in scope with their
+signatures and contracts, every builtin with its effects and whether
+it can fail, and the keywords.</p>
+<p>A <code>Dockerfile</code> builds an image with the prover and native backend
+already installed, so <code>docker run --rm -v "$PWD:/work" velaris check /work/main.vel</code> needs nothing on the machine but Docker.</p>
+<h2 id="232---the-editor-knows-what-is-proven-and-ci-is-one-line">2.32 - The editor knows what is proven, and CI is one line <a class="anchor" href="#232---the-editor-knows-what-is-proven-and-ci-is-one-line" aria-label="Link to this section">#</a></h2>
+<p>The language server answers hover (signature, effects and contracts),
+go-to-definition across imported files, an outline of the file, and -
+the one that matters for this language - <strong>code lenses above every
+function saying whether its promises are proven before running or
+checked while running</strong>. That status comes from the real prover, using
+the proof cache, so it is the truth rather than a guess.</p>
+<p><code>action.yml</code> makes Velaris a GitHub Action:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>- uses: gowrishankar-infra/velaris-lang@v2.32
+  with:
+    files: "src/*.vel"
+    format: "true"</code></pre></div>
+<p>It installs Velaris with the prover and fails the build if anything
+does not compile or a promise cannot be kept.</p>
+<p><code>ROADMAP.md</code> says what is planned, what is deliberately not (and why),
+and how to change it. <code>SUPPORT.md</code> states plainly what one maintainer
+can promise - and that an organisation depending on this today is
+taking a real, non-technical risk. Both exist because a company reads
+those before it reads code, and silence is worse than an honest limit.</p>
+<h2 id="231---a-standard-library-that-reaches-outside">2.31 - A standard library that reaches outside <a class="anchor" href="#231---a-standard-library-that-reaches-outside" aria-label="Link to this section">#</a></h2>
+<p>Four modules so nobody writes FFI plumbing by hand:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"http.vel"</span> as http        get, status, ok, send, get_json
+<span class="k">import</span> <span class="s">"db.vel"</span> as db            open, run, rows_json, count, close
+<span class="k">import</span> <span class="s">"time.vel"</span> as time        today, clock_text, seconds
+<span class="k">import</span> <span class="s">"env_tools.vel"</span> as sys    setting, number_setting, give_up</code></pre></div>
+<p>They are written in Velaris, so they carry their effects: a program
+using <code>http</code> shows <code>net</code> in <code>velaris explain</code>, one using <code>db</code> shows
+<code>ffi</code>, and a pure function still cannot call either.</p>
+<p>Three builtins the modules needed, and every real script needs anyway:
+<code>env(name, fallback)</code> reads the environment, <code>exit_with(code)</code> sets the
+exit status (0-255, checked), and <code>read_line()</code> reads a line from
+standard input.</p>
+<h2 id="230---the-language-reference-and-a-position-on-concurrency">2.30 - The language reference, and a position on concurrency <a class="anchor" href="#230---the-language-reference-and-a-position-on-concurrency" aria-label="Link to this section">#</a></h2>
+<p><code>SPEC.md</code> is the specification: what Velaris means, precisely. Lexical
+structure, types, integer and float semantics, evaluation order,
+effect propagation as a property of the whole call graph, failure,
+what "proven" actually means and what is proven today, modular proof
+and the rule that a dropped premise abandons the proof, modules,
+native-versus-interpreted equivalence, the host language boundary,
+errors, and versioning.</p>
+<p>Two sections are there because a specification that lists only
+strengths is advertising. <strong>Concurrency</strong>: Velaris is single-threaded
+by design and has no concurrency model - stated as a position, with
+the reason (a signature of the current design cannot describe data
+races, so adding threads would break the language's central claim) and
+what would have to change first. <strong>What this language does not have</strong>:
+no exceptions, no closures, no inheritance, no macros, no package
+registry, no mutable data structures, and a compiler written in Python
+that is clear to read and slower than a production one.</p>
+<p>The reference is published with the documentation.</p>
+<h2 id="229---remembered-proofs">2.29 - Remembered proofs <a class="anchor" href="#229---remembered-proofs" aria-label="Link to this section">#</a></h2>
+<p>A proof that has already been done is not done again. Results are kept
+in <code>.velaris/proofs.json</code>, keyed by what the proof actually depends on:
+the function's own text <strong>and the contracts of everything it calls</strong> -
+because a modular proof assumes those, and a cache that ignored them
+would keep telling you something that is no longer true. Weakening a
+callee's promise re-proves its callers, as it must.</p>
+<p>The float refutation in <code>examples/fp_proof_bad.vel</code> takes 16.6 seconds
+the first time and 0.10 seconds after, with the same message. Use
+<code>--no-cache</code> to prove everything again, or <code>velaris clean</code> to forget.</p>
+<h2 id="228---velaris-build-hand-someone-your-program">2.28 - velaris build: hand someone your program <a class="anchor" href="#228---velaris-build-hand-someone-your-program" aria-label="Link to this section">#</a></h2>
+<p><code>velaris build program.vel</code> produces a single executable containing
+your program, everything it imports, the standard library, and the
+compiler itself. The person you give it to needs nothing installed -
+not Python, not Velaris - which is the difference between a language
+you write scripts in and one you deliver software with.</p>
+<p>The program is compiled and proof-checked before it is built, so a
+program that does not compile is never shipped. Command line arguments
+reach <code>args()</code> as usual. Building needs PyInstaller
+(<code>pip install pyinstaller</code>), and the compiler says so plainly when it
+is missing.</p>
+<h2 id="227---handles-real-libraries-not-just-functions">2.27 - Handles: real libraries, not just functions <a class="anchor" href="#227---handles-real-libraries-not-just-functions" aria-label="Link to this section">#</a></h2>
+<p>A <code>Handle</code> is a ticket for something living on the Python side - a
+database connection, an HTTP session, a file. That is the difference
+between calling functions and using libraries:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code>py_new(module, function, args)   -&gt; Handle    make one
+py_do(handle, method, args)      -&gt; Text      call a method on it
+py_field(handle, name)           -&gt; Text      read an attribute
+py_close(handle)                              <span class="k">let</span> it go</code></pre></div>
+<p><code>examples/database.vel</code> opens a real SQLite database, creates a table,
+inserts a row, counts the rows and closes the connection - all from
+Velaris, and all behind <code>uses ffi</code>, so a program that talks to a
+database says so in its signatures.</p>
+<p>Arguments travel as JSON and a trailing JSON object becomes keyword
+arguments, which many Python APIs require. Handles pass through calls
+as arguments too, and anything Python hands back that is not JSON
+comes back as a handle rather than being flattened into a string.</p>
+<h2 id="226---json-and-calling-python-with-real-data">2.26 - JSON, and calling Python with real data <a class="anchor" href="#226---json-and-calling-python-with-real-data" aria-label="Link to this section">#</a></h2>
+<p>The FFI shipped in 2.25 could only pass text and receive a scalar,
+which is not "call any Python library" - it is "call the ones that
+happen to take strings". <code>py_json(module, function, args_json)</code> sends
+arguments and receives the answer as JSON, so numbers, lists and
+nested data survive the trip: <code>py_json("math", "sqrt", "[16]")</code> now
+gives back 4.0 rather than failing on a string.</p>
+<p>JSON is first class and <strong>pure</strong> - reading a document is not an effect:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>json_get(doc, "user.name")     json_int(doc, "user.age")
+json_float(doc, "price")       json_len(doc, "tags")
+json_has(doc, "user.email")    json_of(anything)</code></pre></div>
+<p>Paths walk objects and lists (<code>tags[1]</code>, <code>items[0].price</code>), records
+serialise straight to JSON, and every read can fail - a missing field
+is a real possibility, not a crash, and the message says exactly which
+step of the path was missing.</p>
+<h2 id="225---reaching-the-outside-world-visibly">2.25 - Reaching the outside world, visibly <a class="anchor" href="#225---reaching-the-outside-world-visibly" aria-label="Link to this section">#</a></h2>
+<p>Velaris can call Python now, which means it can reach every library
+Python has - JSON, dates, hashing, databases, anything - through three
+builtins:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>py(module, function, args)        -&gt; Text
+py_int(module, function, args)    -&gt; Int
+py_float(module, function, args)  -&gt; Float</code></pre></div>
+<p>They need <code>uses ffi</code>, so a function that reaches outside says so in its
+signature, and a pure function still cannot do it - nor can anything it
+calls. All three can fail (module missing, function absent, bad
+argument), so callers handle it like any other failure. <code>velaris explain</code> lists <code>ffi</code> next to the functions that use it, which is the
+whole point: the power is available and it is never hidden.</p>
+<p>Two conveniences, both deterministic: a dotted module path like
+<code>datetime.date</code> is resolved by importing what imports and reaching the
+rest by name, and a function that wants bytes rather than text gets the
+text as UTF-8 after the first refusal.</p>
+<h2 id="2241---the-extension-follows-the-languages-version">2.24.1 - The extension follows the language's version <a class="anchor" href="#2241---the-extension-follows-the-languages-version" aria-label="Link to this section">#</a></h2>
+<p>The 2.23 release tried to publish the extension as 2.22.1 - a version
+already on the Marketplace - and reported that as a failure. The
+extension's version now comes from the tag itself, an
+already-published version is treated as nothing to do rather than an
+error, and the test suite fails if the extension's version ever drifts
+from the compiler's.</p>
+<h2 id="224---lists-of-text-and-split">2.24 - Lists of text, and split <a class="anchor" href="#224---lists-of-text-and-split" aria-label="Link to this section">#</a></h2>
+<p><code>List of Text</code> is modelled symbolically now, so promises about lists of
+words are proven rather than checked while running -
+<code>ensures length(result) == length(words) + 1</code> for a push, for instance.
+List literals pick their element sort from their values, and pushing a
+value of the wrong sort simply falls back to a runtime check instead of
+being forced into a formula that would not mean the same thing.</p>
+<p><code>split</code> is modelled as an unknown list with a known minimum: the pieces
+themselves are opaque to the prover, but it knows there is always at
+least one, which is what contracts about splitting usually rest on.</p>
+<h2 id="223---libraries-you-can-actually-share">2.23 - Libraries you can actually share <a class="anchor" href="#223---libraries-you-can-actually-share" aria-label="Link to this section">#</a></h2>
+<p>Until now, using someone's Velaris library meant copying a file and
+hoping. Three commands fix that:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>velaris add &lt;url or path&gt; [as name]   vendor it into lib/
+velaris deps                          what this project depends on
+velaris verify                        are they exactly as recorded?</code></pre></div>
+<p><code>add</code> fetches the file (local path or https), <strong>compiles it before
+accepting it</strong> - a library that does not compile is not added - and
+records its exact sha256 in <code>velaris.toml</code>. It then tells you what you
+just took on: how many functions, how many with proven promises, and
+what effects the library performs. <code>verify</code> re-checks every hash, so a
+library that changed underneath you is something you find out about
+rather than run.</p>
+<p>Deliberately not a registry: the file lives in your repository where
+you can read it, there is no resolver inventing versions for you, and
+nothing is fetched at build time.</p>
+<h2 id="2221---first-extension-publish">2.22.1 - First extension publish <a class="anchor" href="#2221---first-extension-publish" aria-label="Link to this section">#</a></h2>
+<p>A version bump so the tagged release has something newer than the
+Marketplace has, now that the publisher and token exist. Nothing about
+the language changed.</p>
+<h2 id="222---the-editor-extension-ready-to-publish">2.22 - The editor extension, ready to publish <a class="anchor" href="#222---the-editor-extension-ready-to-publish" aria-label="Link to this section">#</a></h2>
+<p>The VS Code extension is packaged properly: real publisher and
+repository metadata, an icon, a license, a written README, settings
+for where Velaris lives and whether to check on save, and categories
+so it can be found by search. A release workflow publishes it to the
+Marketplace when a <code>VSCE_TOKEN</code> secret exists, and quietly skips when
+it does not - so nothing breaks while that waits on a one-time setup.</p>
+<h2 id="221---watching-a-program-run-and-case-changing-proofs">2.21 - Watching a program run, and case-changing proofs <a class="anchor" href="#221---watching-a-program-run-and-case-changing-proofs" aria-label="Link to this section">#</a></h2>
+<p><code>velaris trace program.vel</code> prints every call as it happens - indented
+by depth, arguments going in, answer coming back, and <code>FAILED</code> with the
+reason when a call fails. Native calls are shown too, marked as such,
+so a trace never hides half the program. It is the tool a beginner
+reaches for when reading is not enough.</p>
+<p>The prover models <code>upper</code> and <code>lower</code> as functions that keep a text's
+length, so <code>ensures length(result) == length(word)</code> is proven rather
+than checked at runtime. Honest limit: a <em>false</em> promise about them is
+still caught at runtime rather than at compile time, because the
+solver cannot pin down the letters themselves - proven claims stay
+true, they are just fewer.</p>
+<h2 id="220---whole-numbers-have-a-size-and-outgrowing-it-is-an-error">2.20 - Whole numbers have a size, and outgrowing it is an error <a class="anchor" href="#220---whole-numbers-have-a-size-and-outgrowing-it-is-an-error" aria-label="Link to this section">#</a></h2>
+<p>The fuzzer added in 2.16 found a real disagreement: native code holds
+whole numbers in 64 bits and wraps around, while the interpreter used
+Python's unlimited integers and kept counting. Same program, two
+answers, silently.</p>
+<p>Neither behaviour is acceptable, so both are gone. A whole number in
+Velaris is 64-bit, and arithmetic that outgrows it is an error (E407)
+in both engines - the interpreter checks the range, native code uses
+the processor's overflow flag through LLVM's checked intrinsics. The
+two seeds that found the bug now agree, and so do 250 fresh random
+programs.</p>
+<p>This is the first bug the fuzzer caught on its own, which is the
+entire reason it exists.</p>
+<h2 id="219---pip-install-velaris-lang">2.19 - pip install velaris-lang <a class="anchor" href="#219---pip-install-velaris-lang" aria-label="Link to this section">#</a></h2>
+<p>Velaris is on PyPI. Installing is now one line with no repository URL
+to remember, and every release publishes automatically from its tag
+through trusted publishing. The README, tutorial and docs site lead
+with it.</p>
+<h2 id="2182---minimal-mode-expectations-for-the-newest-proofs">2.18.2 - Minimal-mode expectations for the newest proofs <a class="anchor" href="#2182---minimal-mode-expectations-for-the-newest-proofs" aria-label="Link to this section">#</a></h2>
+<p><code>div_bad.vel</code> and <code>grid_bad.vel</code> demonstrate bugs only the prover can
+see: divide-by-zero on a path that happens not to be taken, and a row
+read that is in range for the example data. Without z3 installed both
+programs simply run, so the test suite expected the wrong verdict and
+every no-dependency leg failed on all three platforms. They are now
+listed with the other proof-only examples, and the suite passes with
+and without the solver.</p>
+<h2 id="2181---releases-stay-green">2.18.1 - Releases stay green <a class="anchor" href="#2181---releases-stay-green" aria-label="Link to this section">#</a></h2>
+<p>The PyPI job added in 2.18 cannot succeed until a pending publisher
+exists on pypi.org, and a release should not be reported as broken for
+a step that is waiting on a one-time setup. It no longer blocks the
+release; the executables build and attach as before.</p>
+<h2 id="218---records-holding-lists-and-publishing">2.18 - Records holding lists, and publishing <a class="anchor" href="#218---records-holding-lists-and-publishing" aria-label="Link to this section">#</a></h2>
+<p>A record's fields may now be lists, floats or text and still take part
+in proofs, so <code>ensures length(result.items) == length(b.items) + 1</code> is
+proven rather than checked at runtime.</p>
+<p>Turning that on immediately found a real bug in the ledger app: with
+records fully modelled, the prover could see that <code>describe</code> calls
+<code>money(e.amount)</code> on an amount nothing had constrained to be positive.
+<code>money</code> is now total - a negative amount formats as a refund - and the
+app compiles honestly instead of relying on an assumption nobody
+checked.</p>
+<p>Releases now publish to PyPI on every tag (trusted publishing, no
+stored token), so installing becomes <code>pip install velaris-lang</code>.</p>
+<p>Also: the version in pyproject.toml had drifted to 1.9.0 while the
+compiler said 2.17. The test suite now fails if the two ever disagree.</p>
+<h2 id="217---for-loops-tests-in-velaris-and-text-containment-proofs">2.17 - for loops, tests in Velaris, and text containment proofs <a class="anchor" href="#217---for-loops-tests-in-velaris-and-text-containment-proofs" aria-label="Link to this section">#</a></h2>
+<p><code>for i in 0 to n</code> and <code>for item in xs</code> are here. They are turned into
+the while loops the rest of the compiler already understands, so
+invariant inference and proofs work through them unchanged - the
+shorter form costs nothing.</p>
+<p><code>velaris test program.vel</code> runs every function named <code>test_*</code> that
+takes no arguments and reports which returned true.
+<code>examples/std_test.vel</code> is the first suite: seven tests for the
+standard library, written in Velaris, and CI runs them on every push.
+The language can now test itself.</p>
+<p>The prover models <code>contains</code> on text through Z3's string theory, so
+<code>ensures contains(result, word)</code> is proven rather than checked at
+runtime.</p>
+<h2 id="216---catching-the-next-one-a-third-app-and-a-current-tutorial">2.16 - Catching the next one, a third app, and a current tutorial <a class="anchor" href="#216---catching-the-next-one-a-third-app-and-a-current-tutorial" aria-label="Link to this section">#</a></h2>
+<p><code>fuzz_native.py</code> generates random Velaris programs - integer maths,
+loops, list scans, text scans, floats, branches - runs each one
+interpreted and natively, and fails if the two ever disagree. CI runs
+it on every push, now across Linux, Windows <strong>and macOS</strong>: the exact
+combination that would have caught the 2.15 problem before it reached
+anyone.</p>
+<p><code>examples/fetcher.vel</code> is a third real program, and the first to use
+the network: it reads a URL from the command line, checks the status
+before downloading a body, and summarises what it got. Every network
+call is behind <code>uses net</code> and can fail, so all three failure paths
+(bad status, unreachable host, no arguments) are visible in the code
+rather than assumed away.</p>
+<p>TUTORIAL.md is rewritten for the language as it actually is. The old
+one predated lambdas, namespaces, format, args, map proofs, invariant
+inference and the whole toolset - someone arriving today was reading a
+description of a language from fifteen releases ago.</p>
+<h2 id="2151---native-text-building-made-portable">2.15.1 - Native text building, made portable <a class="anchor" href="#2151---native-text-building-made-portable" aria-label="Link to this section">#</a></h2>
+<p>Two examples failed on Windows in 2.15: a function that RETURNS text
+handed a small struct back across the machine-code boundary, and how
+that is done depends on the platform's calling convention. Rather than
+guess at an ABI this project cannot test everywhere, text results now
+stay interpreted. Text built <em>inside</em> a native function still uses the
+arena and is still fast (183.5 ms interpreted, 4.1 ms native here).</p>
+<p>Native compilation is also fail-safe now: if anything about a machine's
+backend disagrees with the compiler, the program runs interpreted and
+behaves identically, instead of failing. A speed optimisation should
+never be able to stop a correct program from running.</p>
+<h2 id="215---native-text-building-the-arena">2.15 - Native text building (the arena) <a class="anchor" href="#215---native-text-building-the-arena" aria-label="Link to this section">#</a></h2>
+<p>Concatenation compiles to machine code. Text is built in a scratch
+buffer the runtime owns, reset at every call, so native code never has
+to decide who frees what. If a call needs more room than the buffer
+holds, <strong>nothing is copied</strong>: the buffer grows and the call runs again,
+so the answer is always the one the interpreter would have given. A
+million characters built through a 64 KB starting buffer comes back
+byte-correct, unicode and emoji included, checked against 200 random
+strings.</p>
+<p>Measured: 172.8 ms interpreted, 0.9 ms native.</p>
+<p>Getting there needed one more fix: <code>length</code> and <code>code_at</code> now work on
+any text-valued expression, not just a variable. Before that,
+<code>length(banner(word))</code> kept a whole loop interpreted, and crossing the
+native boundary once per iteration was <em>slower</em> than staying
+interpreted - the benchmark said so before the fix, which is why the
+benchmark is in the example.</p>
+<h2 id="214---native-text-reads-and-proven-functions-run-fast">2.14 - Native text reads, and proven functions run fast <a class="anchor" href="#214---native-text-reads-and-proven-functions-run-fast" aria-label="Link to this section">#</a></h2>
+<p>Text scanning compiles to machine code. Text crosses into native code
+as Unicode code points plus a length, so <code>length</code> still counts
+characters and non-English text behaves identically - verified against
+300 random strings including accents and emoji. Reads are
+bounds-guarded like list reads. Measured: 696.8 ms interpreted, 22.3 ms
+native.</p>
+<p>New builtin <code>code_at(text, i)</code> gives the code point at a position with
+no allocation - the operation native scanning needs, and useful
+interpreted too.</p>
+<p>Two rules changed for the better. A function whose promises are
+<strong>proven</strong> may now compile natively: an unproven promise still needs
+its runtime check, but a proven one is already true, so there is
+nothing to check. And the prover learned <code>length</code> on text and a sound
+uninterpreted model of <code>code_at</code>, so text-scanning loops can be proven
+at all.</p>
+<p>Building text (concatenation) stays interpreted - that allocates, and
+allocation gets its own release.</p>
+<h2 id="213---native-lists">2.13 - Native lists <a class="anchor" href="#213---native-lists" aria-label="Link to this section">#</a></h2>
+<p>Pure functions that read <code>List of Int</code> now compile to machine code.
+The list crosses into native code as a pointer plus a length, and every
+read is bounds-guarded: an out-of-range position records the mistake
+and returns without touching memory, so you get the same E602 you would
+have got interpreted rather than a segfault. Measured on a
+500-element list summed 200 times: 782.6 ms interpreted, 2.7 ms native,
+identical results. Differential-tested as always.</p>
+<p>Writing to lists (push) stays interpreted - that needs allocation, and
+allocation needs an ownership story this language has not designed yet.</p>
+<h2 id="212---lists-of-lists-proven">2.12 - Lists of lists, proven <a class="anchor" href="#212---lists-of-lists-proven" aria-label="Link to this section">#</a></h2>
+<p>A grid is now modelled symbolically - its rows, each row's length, and
+how many rows - so <code>length</code>, <code>get</code> and <code>push</code> on nested lists take part
+in proofs, and an out-of-range row is caught before the program runs
+exactly as it is for a flat list. Nested list <em>types</em> also parse now:
+<code>List of List of Int</code> was previously a syntax error.</p>
+<p>That closes the last container with no proof story. Ints, Bools,
+Floats (in IEEE-754), Texts, records, lists, nested lists and maps are
+all proof territory; only Text contents remain runtime-checked.</p>
+<h2 id="211---invariant-inference-the-boring-ones-for-free">2.11 - Invariant inference (the boring ones, for free) <a class="anchor" href="#211---invariant-inference-the-boring-ones-for-free" aria-label="Link to this section">#</a></h2>
+<p>Loops without a written <code>invariant</code> can now be crossed by the prover.
+Candidate invariants are proposed for every counter a loop moves - it
+never goes below, or never above, the value it started at - assumed
+together, and whatever one loop step can break is dropped, repeating
+until the set is stable. (Houdini, kept small.) <code>examples/inferred.vel</code>
+proves three promises with no invariant lines at all.</p>
+<p>Honest about the limits: this infers simple bounds on counters, not
+membership or sortedness, so the standard library's loops still need
+their hand-written invariants.</p>
+<p>Also fixed something that had been quietly lying since 2.6: <code>explain</code>
+and the inspector reported a function as "proven" whenever the file had
+no errors, even when the prover had actually given up and left the
+promise to a runtime check. The status now comes from the prover
+itself, so "proven" means proven.</p>
+<h2 id="210---contracts-on-function-values">2.10 - Contracts on function values <a class="anchor" href="#210---contracts-on-function-values" aria-label="Link to this section">#</a></h2>
+<p>An inline function can carry <code>requires</code> and <code>ensures</code> of its own, and
+they are proven like any other function's - so a function value is a
+first class citizen rather than a convenience. Because lambdas are
+lifted to real functions, this needed no new machinery in the prover.
+Errors about them now say "this function value" instead of leaking the
+generated name.</p>
+<h2 id="29---map-proofs">2.9 - Map proofs <a class="anchor" href="#29---map-proofs" aria-label="Link to this section">#</a></h2>
+<p>Maps are now modelled symbolically - the values, plus which keys are
+actually present - so <code>put</code>, <code>get_or</code> and <code>has</code> take part in proofs.
+Promises like "this key now holds one more than before" are proven
+before the program runs, and wrong ones are refuted with the offending
+key. Text values became symbolic strings to make map keys work, which
+also lets Text cross call summaries.</p>
+<p>Lists remain arrays of Ints: anything else (Text lists, lists of
+lists) is explicitly guarded now and falls back to runtime checks
+rather than being forced into a sort it does not fit.</p>
+<h2 id="28---a-second-real-app-and-text-ordering">2.8 - A second real app, and Text ordering <a class="anchor" href="#28---a-second-real-app-and-text-ordering" aria-label="Link to this section">#</a></h2>
+<p><code>examples/wordcount.vel</code> reads a file, counts word frequencies and
+prints a ranked histogram - a different shape of program from the
+ledger, exercising maps, records, lambdas, namespaced imports, format,
+args, and three separate failure paths (missing file, unreadable count
+argument, no words found).</p>
+<p>Writing it found a real hole: Text had no ordering, so <code>c &gt;= "a"</code> did
+not compile and words could not be sorted alphabetically. <code>&lt;</code>, <code>&gt;</code>,
+<code>&lt;=</code> and <code>&gt;=</code> now work on Text, comparing alphabetically. Promises
+about Text comparisons are checked at runtime rather than proven, and
+the prover does not pretend otherwise.</p>
+<p>Also: the error de-duplication from 2.5.1 now lives in the shared
+analysis, so <code>check</code>, <code>explain</code> and the browser inspector report one
+message per problem too.</p>
+<h2 id="27---reading-a-codebase">2.7 - Reading a codebase <a class="anchor" href="#27---reading-a-codebase" aria-label="Link to this section">#</a></h2>
+<p><code>velaris check program.vel</code> compiles without running - for CI, editors,
+and pre-commit hooks - and takes several files at once. <code>velaris explain</code> now puts <em>your</em> functions first and summarises imported
+libraries in one line (<code>--all</code> expands them), because the first real
+run of explain buried a ten-function app under eighteen library
+functions. <code>velaris explain &lt;folder&gt;</code> maps every .vel file under a
+directory: functions, proven promises, effects, and any errors.</p>
+<h2 id="26---division-proofs-and-seeing-what-your-code-promises">2.6 - Division proofs, and seeing what your code promises <a class="anchor" href="#26---division-proofs-and-seeing-what-your-code-promises" aria-label="Link to this section">#</a></h2>
+<p><code>velaris explain program.vel</code> walks through a file function by
+function: what it may do, what it needs, what it promises, and whether
+those promises are proven or left to runtime. The browser playground
+gains an <strong>Inspect</strong> button showing the same thing as cards, with
+errors and their fixes in place. <code>--json</code> gives the whole report as
+data for tools.</p>
+<p>Contract printing is now precedence-aware, so <code>(result + 1) * count</code>
+no longer prints as <code>result + 1 * count</code> (it did, on the docs site).</p>
+<h2 id="26---division-proofs">2.6 - Division proofs <a class="anchor" href="#26---division-proofs" aria-label="Link to this section">#</a></h2>
+<p><code>/</code> and <code>%</code> on whole numbers are now proof territory: the compiler
+proves the divisor is never zero (E706, with the value that breaks it)
+and can prove what the result means. Translated only when the divisor
+is provably positive, because Velaris floors like Python while Z3's
+integer division is Euclidean - the two disagree on negative divisors,
+so that case falls back to a runtime check rather than a formula that
+would quietly lie.</p>
+<h2 id="251---one-problem-one-message">2.5.1 - One problem, one message <a class="anchor" href="#251---one-problem-one-message" aria-label="Link to this section">#</a></h2>
+<p>The effect checker and type checker could both report the same unknown
+function, so a single mistake printed twice. Identical errors are now
+reported once.</p>
+<h2 id="25---namespaced-imports">2.5 - Namespaced imports <a class="anchor" href="#25---namespaced-imports" aria-label="Link to this section">#</a></h2>
+<p><code>import "lib/geo.vel" as geo</code> then <code>geo.distance(a, b)</code>. A named import
+prefixes that library's functions, rewriting its internal references so
+the library is unchanged from the inside. Two libraries exporting the
+same name can now be used in one file, which was impossible before.
+Unknown namespaces and unknown functions inside a namespace get their
+own messages (E200 lists what the namespace does offer), and a local
+variable may not shadow an import name (E514). Plus a written piece on
+why float proofs use IEEE-754 rather than reals: docs/floats.md.</p>
+<h2 id="24---the-everyday-things">2.4 - The everyday things <a class="anchor" href="#24---the-everyday-things" aria-label="Link to this section">#</a></h2>
+<p>Function values inline: <code>keep_if(xs, fn(n: Int) -&gt; Bool { return n &gt; 4 })</code>.
+They are lifted to real top-level functions, so types, effects, proofs
+and native codegen treat them like any other function - and they cannot
+capture surrounding variables, which keeps them pure and gives a clear
+error when you try. Also: <code>format("hi {}", name)</code> with placeholder
+count checked at compile time, <code>args()</code> for command line arguments,
+<code>post(url, body)</code> and <code>fetch_status(url)</code> alongside <code>fetch</code>. The ledger
+app now uses a lambda for its report sorting.</p>
+<h2 id="23---public-launch-polish">2.3 - Public launch polish <a class="anchor" href="#23---public-launch-polish" aria-label="Link to this section">#</a></h2>
+<p>New visual identity across the docs site, playground, and README:
+light professional design, verified-green brand, refined typography.
+Landing page rebuilt. Fixed minimal-mode CI: fail_proof_bad's bug is
+only findable by proof, so without z3 it is expected to run.</p>
+<h2 id="22---out-of-the-box-readiness">2.2 - Out-of-the-box readiness <a class="anchor" href="#22---out-of-the-box-readiness" aria-label="Link to this section">#</a></h2>
+<p>velaris doctor (self-diagnosing setup with exact fixes), velaris new
+(scaffold a project that runs), standalone executables for
+Windows/Linux/macOS built and attached to every release (no Python
+required), SECURITY.md with soundness-is-security policy, issue
+templates, and a semver stability promise in the README.</p>
+<h2 id="21---documentation-site">2.1 - Documentation site <a class="anchor" href="#21---documentation-site" aria-label="Link to this section">#</a></h2>
+<p>build_docs.py generates docs/: landing page, tutorial, a library
+reference parsed from stdlib/std.vel by the real compiler (contracts
+shown), an error index scraped from velaris.py (cannot go stale), and
+the playground. Built in CI; one click from GitHub Pages.</p>
+<h2 id="20---the-builtins-keep-the-languages-promise-breaking">2.0 - The builtins keep the language's promise (BREAKING) <a class="anchor" href="#20---the-builtins-keep-the-languages-promise-breaking" aria-label="Link to this section">#</a></h2>
+<p>to_int, get-on-a-map, read_file, and fetch are now fallible: they must
+be called through check or try, and their failures can finally be
+handled instead of killing the program. Migration is compiler-guided -
+error E520 points at every call needing a wrap. get on a LIST is
+unchanged (bounds are the prover's domain, proven at compile time).
+New: get_or(m, key, default), a total map lookup. All examples
+migrated; guess.vel now survives typos, net.vel survives outages, and
+the ledger's loader shrank.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#240---running-a-program-you-have-not-read">2.40 - Running a program you have not read</a></li><li><a href="#2391---the-refusal-harness-knows-what-needs-the-prover">2.39.1 - The refusal harness knows what needs the prover</a></li><li><a href="#239---the-editor-asks-for-what-the-compiler-already-knew">2.39 - The editor asks for what the compiler already knew</a></li><li><a href="#238---testing-the-places-languages-break">2.38 - Testing the places languages break</a></li><li><a href="#237---a-stress-test-written-in-velaris">2.37 - A stress test written in Velaris</a></li><li><a href="#2364---the-action-has-its-own-name">2.36.4 - The Action has its own name</a></li><li><a href="#2363---a-picture-of-the-point">2.36.3 - A picture of the point</a></li><li><a href="#2362---somewhere-to-start">2.36.2 - Somewhere to start</a></li><li><a href="#2361---two-part-tags-publish-the-extension-again">2.36.1 - Two-part tags publish the extension again</a></li><li><a href="#236---a-tool-worth-running-and-errors-that-read-like-a-language">2.36 - A tool worth running, and errors that read like a language</a></li><li><a href="#235---dates-as-values-http-with-headers-and-a-way-in-for-others">2.35 - Dates as values, HTTP with headers, and a way in for others</a></li><li><a href="#234---unattended-work-and-building-for-machines-you-do-not-have">2.34 - Unattended work, and building for machines you do not have</a></li><li><a href="#233---a-number-a-team-can-watch-and-an-image-to-run-it-in">2.33 - A number a team can watch, and an image to run it in</a></li><li><a href="#232---the-editor-knows-what-is-proven-and-ci-is-one-line">2.32 - The editor knows what is proven, and CI is one line</a></li><li><a href="#231---a-standard-library-that-reaches-outside">2.31 - A standard library that reaches outside</a></li><li><a href="#230---the-language-reference-and-a-position-on-concurrency">2.30 - The language reference, and a position on concurrency</a></li><li><a href="#229---remembered-proofs">2.29 - Remembered proofs</a></li><li><a href="#228---velaris-build-hand-someone-your-program">2.28 - velaris build: hand someone your program</a></li><li><a href="#227---handles-real-libraries-not-just-functions">2.27 - Handles: real libraries, not just functions</a></li><li><a href="#226---json-and-calling-python-with-real-data">2.26 - JSON, and calling Python with real data</a></li><li><a href="#225---reaching-the-outside-world-visibly">2.25 - Reaching the outside world, visibly</a></li><li><a href="#2241---the-extension-follows-the-languages-version">2.24.1 - The extension follows the language&#x27;s version</a></li><li><a href="#224---lists-of-text-and-split">2.24 - Lists of text, and split</a></li><li><a href="#223---libraries-you-can-actually-share">2.23 - Libraries you can actually share</a></li><li><a href="#2221---first-extension-publish">2.22.1 - First extension publish</a></li><li><a href="#222---the-editor-extension-ready-to-publish">2.22 - The editor extension, ready to publish</a></li><li><a href="#221---watching-a-program-run-and-case-changing-proofs">2.21 - Watching a program run, and case-changing proofs</a></li><li><a href="#220---whole-numbers-have-a-size-and-outgrowing-it-is-an-error">2.20 - Whole numbers have a size, and outgrowing it is an error</a></li><li><a href="#219---pip-install-velaris-lang">2.19 - pip install velaris-lang</a></li><li><a href="#2182---minimal-mode-expectations-for-the-newest-proofs">2.18.2 - Minimal-mode expectations for the newest proofs</a></li><li><a href="#2181---releases-stay-green">2.18.1 - Releases stay green</a></li><li><a href="#218---records-holding-lists-and-publishing">2.18 - Records holding lists, and publishing</a></li><li><a href="#217---for-loops-tests-in-velaris-and-text-containment-proofs">2.17 - for loops, tests in Velaris, and text containment proofs</a></li><li><a href="#216---catching-the-next-one-a-third-app-and-a-current-tutorial">2.16 - Catching the next one, a third app, and a current tutorial</a></li><li><a href="#2151---native-text-building-made-portable">2.15.1 - Native text building, made portable</a></li><li><a href="#215---native-text-building-the-arena">2.15 - Native text building (the arena)</a></li><li><a href="#214---native-text-reads-and-proven-functions-run-fast">2.14 - Native text reads, and proven functions run fast</a></li><li><a href="#213---native-lists">2.13 - Native lists</a></li><li><a href="#212---lists-of-lists-proven">2.12 - Lists of lists, proven</a></li><li><a href="#211---invariant-inference-the-boring-ones-for-free">2.11 - Invariant inference (the boring ones, for free)</a></li><li><a href="#210---contracts-on-function-values">2.10 - Contracts on function values</a></li><li><a href="#29---map-proofs">2.9 - Map proofs</a></li><li><a href="#28---a-second-real-app-and-text-ordering">2.8 - A second real app, and Text ordering</a></li><li><a href="#27---reading-a-codebase">2.7 - Reading a codebase</a></li><li><a href="#26---division-proofs-and-seeing-what-your-code-promises">2.6 - Division proofs, and seeing what your code promises</a></li><li><a href="#26---division-proofs">2.6 - Division proofs</a></li><li><a href="#251---one-problem-one-message">2.5.1 - One problem, one message</a></li><li><a href="#25---namespaced-imports">2.5 - Namespaced imports</a></li><li><a href="#24---the-everyday-things">2.4 - The everyday things</a></li><li><a href="#23---public-launch-polish">2.3 - Public launch polish</a></li><li><a href="#22---out-of-the-box-readiness">2.2 - Out-of-the-box readiness</a></li><li><a href="#21---documentation-site">2.1 - Documentation site</a></li><li><a href="#20---the-builtins-keep-the-languages-promise-breaking">2.0 - The builtins keep the language&#x27;s promise (BREAKING)</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

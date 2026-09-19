@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 1.x - Velaris 8.3.1</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog-1.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html" aria-current="page">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 1.x</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="120---sort_by--ledger-reports">1.20 - sort_by + ledger reports <a class="anchor" href="#120---sort_by--ledger-reports" aria-label="Link to this section">#</a></h2>
+<p>std.vel gains generic sort_by(xs, key) - sort anything by an Int key
+function. The ledger uses it for a new report command: sorted-by-amount
+listing with biggest, smallest, and totals. The CI session exercises it.</p>
+<h2 id="119---standard-library-sprint">1.19 - Standard library sprint <a class="anchor" href="#119---standard-library-sprint" aria-label="Link to this section">#</a></h2>
+<p>std.vel grows to sixteen functions, all in Velaris: sort (ensures
+is_sorted(result)), min/max (ensures membership), sum, keep_if,
+count_where, join, range_list, is_sorted, insert_sorted; apply_to_each
+and reverse rewritten with typed lets, dropping their nonempty
+requirements. Library requires are enforced at importer call sites.</p>
+<h2 id="118---float-proofs-real-ieee-754">1.18 - Float proofs (real IEEE-754) <a class="anchor" href="#118---float-proofs-real-ieee-754" aria-label="Link to this section">#</a></h2>
+<p>Float promises proven in Z3's floating-point theory - bit-for-bit the
+machine's arithmetic. The prover refutes real-number identities that
+rounding breaks, with the exact double as counterexample. FP queries
+get a bigger solver budget; integer proofs stay instant.</p>
+<h2 id="117---failure-aware-proofs">1.17 - Failure-aware proofs <a class="anchor" href="#117---failure-aware-proofs" aria-label="Link to this section">#</a></h2>
+<p>The prover understands fail / check / try: promises on 'or fail'
+functions are proven for every returning path, fail-guards become
+facts on those paths, and fallible callees' promises flow through try
+and check. CI actions bumped past the Node 20 deprecation.</p>
+<h2 id="116---quantified-list-proofs">1.16 - Quantified list proofs <a class="anchor" href="#116---quantified-list-proofs" aria-label="Link to this section">#</a></h2>
+<p><code>all_of</code> / <code>any_of</code> with a predicate function; in contracts they become
+Z3 foralls/exists with the predicate's body symbolically inlined.
+Fixed a latent soundness-of-reporting hole: an untranslatable
+<code>requires</code> now aborts the proof instead of being silently dropped
+(dropped premises manufacture false counterexamples).</p>
+<h2 id="115---native-float-and-bool">1.15 - Native Float and Bool <a class="anchor" href="#115---native-float-and-bool" aria-label="Link to this section">#</a></h2>
+<p>Typed LLVM codegen (f64, typed allocas/boundaries); division stays
+interpreted so divide-by-zero is always a clean error;
+differential-tested against the interpreter.</p>
+<h2 id="114---record-proofs">1.14 - Record proofs <a class="anchor" href="#114---record-proofs" aria-label="Link to this section">#</a></h2>
+<p>Symbolic records (one Z3 value per field): field promises proven,
+record-aware summaries, records printed in counterexamples.</p>
+<h2 id="113---the-first-real-app">1.13 - The first real app <a class="anchor" href="#113---the-first-real-app" aria-label="Link to this section">#</a></h2>
+<p>examples/ledger.vel expense tracker; chars/file_exists builtins; typed
+let enabling empty [] and {}; order-flexible signature clauses;
+scripted-stdin testing so interactive apps run in CI.</p>
+<h2 id="112---continuous-integration">1.12 - Continuous integration <a class="anchor" href="#112---continuous-integration" aria-label="Link to this section">#</a></h2>
+<p>GitHub Actions matrix (Linux/Windows x 3.10/3.12 x full/minimal deps),
+dependency-aware suite, CHANGELOG, CONTRIBUTING.</p>
+<h2 id="111---language-server">1.11 - Language server <a class="anchor" href="#111---language-server" aria-label="Link to this section">#</a></h2>
+<p><code>velaris lsp</code>: standard LSP over stdio. Effect/type errors on every
+keystroke, full pipeline with Z3 proofs on save; per-file diagnostics
+(bugs in imported files squiggle in those files). Dependency-free VS
+Code client bundled in <code>editor/vscode</code>.</p>
+<h2 id="110---formatter">1.10 - Formatter <a class="anchor" href="#110---formatter" aria-label="Link to this section">#</a></h2>
+<p><code>velaris fmt</code> (in-place, <code>--stdout</code>, <code>--check</code>). Comment-preserving,
+idempotent, proven meaning-safe by re-running the whole suite on
+formatted code. All repo examples reformatted.</p>
+<h2 id="19---repl">1.9 - REPL <a class="anchor" href="#19---repl" aria-label="Link to this section">#</a></h2>
+<p><code>velaris repl</code>: loose lines run immediately; fn/record/import
+definitions pass effects, types, and proofs before joining the session.
+CLI subcommands (run / repl / version). Unknown functions became a
+friendly E200 everywhere.</p>
+<h2 id="18---real-installation">1.8 - Real installation <a class="anchor" href="#18---real-installation" aria-label="Link to this section">#</a></h2>
+<p><code>pip install ".[full]"</code> and a <code>velaris</code> command. Standard-library
+search path: <code>import "std.vel"</code> works from any folder.</p>
+<h2 id="17---generics--first-stdlib">1.7 - Generics + first stdlib <a class="anchor" href="#17---generics--first-stdlib" aria-label="Link to this section">#</a></h2>
+<p><code>for any T</code> with call-site inference and clear conflict errors
+(bindings shown). <code>stdlib/std.vel</code>: first/last/reverse/index_of/
+contains_item/apply_to_each - written in Velaris.</p>
+<h2 id="16---first-class-functions">1.6 - First-class functions <a class="anchor" href="#16---first-class-functions" aria-label="Link to this section">#</a></h2>
+<p><code>fn(Int) -&gt; Int</code> as a type; pass by name; call through parameters.
+Only pure functions travel as values, so nothing is smuggled.</p>
+<h2 id="15---unignorable-failure">1.5 - Unignorable failure <a class="anchor" href="#15---unignorable-failure" aria-label="Link to this section">#</a></h2>
+<p><code>-&gt; Int or fail</code>, <code>fail "reason"</code>, mandatory <code>check { ok / fail }</code>
+handling, <code>try</code> propagation. Ignoring failure is a compile error.</p>
+<h2 id="14---maps">1.4 - Maps <a class="anchor" href="#14---maps" aria-label="Link to this section">#</a></h2>
+<p><code>{"a": 1}</code> typed <code>Map of K to V</code>; get/has/put/keys/length; typed keys
+and values; clean E610 for missing keys.</p>
+<h2 id="13---float">1.3 - Float <a class="anchor" href="#13---float" aria-label="Link to this section">#</a></h2>
+<p>Decimal numbers with NO silent Int/Float mixing - conversion is
+explicit (<code>to_float</code>, <code>round</code>). Proper negation node.</p>
+<h2 id="12---browser-playground">1.2 - Browser playground <a class="anchor" href="#12---browser-playground" aria-label="Link to this section">#</a></h2>
+<p>The real compiler running in-browser via Pyodide. Zero install.</p>
+<h2 id="11---escapes--editor">1.1 - Escapes + editor <a class="anchor" href="#11---escapes--editor" aria-label="Link to this section">#</a></h2>
+<p>String escapes (\n \t " \) with friendly E002; VS Code syntax
+highlighting.</p>
+<h2 id="10---testers-release">1.0 - Testers' release <a class="anchor" href="#10---testers-release" aria-label="Link to this section">#</a></h2>
+<p>Multi-error reporting (all broken functions in one run, JSON array for
+agents), <code>to_text</code>, <code>--version</code>, tutorial.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#120---sort_by--ledger-reports">1.20 - sort_by + ledger reports</a></li><li><a href="#119---standard-library-sprint">1.19 - Standard library sprint</a></li><li><a href="#118---float-proofs-real-ieee-754">1.18 - Float proofs (real IEEE-754)</a></li><li><a href="#117---failure-aware-proofs">1.17 - Failure-aware proofs</a></li><li><a href="#116---quantified-list-proofs">1.16 - Quantified list proofs</a></li><li><a href="#115---native-float-and-bool">1.15 - Native Float and Bool</a></li><li><a href="#114---record-proofs">1.14 - Record proofs</a></li><li><a href="#113---the-first-real-app">1.13 - The first real app</a></li><li><a href="#112---continuous-integration">1.12 - Continuous integration</a></li><li><a href="#111---language-server">1.11 - Language server</a></li><li><a href="#110---formatter">1.10 - Formatter</a></li><li><a href="#19---repl">1.9 - REPL</a></li><li><a href="#18---real-installation">1.8 - Real installation</a></li><li><a href="#17---generics--first-stdlib">1.7 - Generics + first stdlib</a></li><li><a href="#16---first-class-functions">1.6 - First-class functions</a></li><li><a href="#15---unignorable-failure">1.5 - Unignorable failure</a></li><li><a href="#14---maps">1.4 - Maps</a></li><li><a href="#13---float">1.3 - Float</a></li><li><a href="#12---browser-playground">1.2 - Browser playground</a></li><li><a href="#11---escapes--editor">1.1 - Escapes + editor</a></li><li><a href="#10---testers-release">1.0 - Testers&#x27; release</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

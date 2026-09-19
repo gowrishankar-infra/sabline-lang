@@ -61,9 +61,8 @@ SPEC_REPO = "https://github.com/gowrishankar-infra/velaris-spec"
 PAGE_BUDGET = 100_000             # bytes of HTML a page may have (check_site)
 CHANGELOG_BODY = 78_000           # bytes of changelog text on one page
 
-# The site's origin. velaris.SITE names it from 8.3.0; a checkout from before
-# 8.3.0 has no such name, and is built for the same site.
-SITE: str = str(getattr(velaris, "SITE", "https://velaris-lang.dev")).rstrip("/")
+# The site's origin, as the package names it (velaris.SITE, from 8.3.0).
+SITE: str = velaris.SITE.rstrip("/")
 VERSION: str = velaris.VERSION
 VERSION_DIR = ".".join(VERSION.split(".")[:2])
 VERSION_NAME = re.compile(r"^\d+\.\d+$")

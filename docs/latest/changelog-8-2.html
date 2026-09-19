@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 8.x: 8.2 to 8.0 - Velaris 8.3.1</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog-8-2.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html" aria-current="page">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 8.x: 8.2 to 8.0</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="82---held-to-it">8.2 - Held to it <a class="anchor" href="#82---held-to-it" aria-label="Link to this section">#</a></h2>
+<p>A minor version with no language features. It is about what holds Velaris
+to what it says: tests, gates, and the work of keeping them running. Along
+the way the new suites found holes, and they are fixed here: three with an
+advisory, and several more named below.</p>
+<p>compatibility: the proof cache is removed. Velaris keeps no proofs between runs, and every promise is proven in the process that reports on it or runs it, as 8.1.1 already required. <code>--no-cache</code> is accepted everywhere it was and does nothing, with one notice on stderr, and <code>velaris clean</code> does nothing and exits 0. Both are removed in 9.0 (STABILITY.md, "Deprecations in force"). No program, budget or report changes.
+compatibility: on a run, <code>--</code> ends Velaris's own flags, and every word after it is the program's <code>args()</code>. A flag written after <code>--</code> used to apply to the run: <code>-- --allow all</code> granted every effect (advisory-cli-double-dash.md). <code>args()</code> no longer holds the <code>--</code> itself. A flag written before <code>--</code>, or with no <code>--</code> at all, is read as before.
+compatibility: a local or parameter named like a builtin, or like one of the program's functions, no longer hides a call to that name from the effect check (E300) or the Secret check (E560). The runtime always called the builtin or the function, so each such program already did what the checks now say.
+compatibility: unary minus of the smallest whole number, and that number divided by -1, stop with E407, as every other arithmetic past 64 bits did (advisory-int-negation.md). <code>to_int</code>, <code>json_int</code> and <code>py_int</code> fail on a number outside the range, <code>round</code> of a value with no whole number in range stops with E407, and native code refuses an argument outside the range with E407.
+compatibility: blocks nested more than 4,000 deep, <code>else if</code> chains included, are refused with E102. Past some thousands they ended in a Python traceback; 3,000 deep runs on every leg.
+compatibility: <code>velaris check</code> and the library give a <code>main</code> marked <code>or fail</code> E524, as a run always did; they gave E523. E523 is now only <code>fail</code> in a function that does not declare <code>or fail</code>. The descriptions of E102, E542 and E609 in the error table say what the compiler gives them for.
+compatibility: <code>read_file</code> of a path holding a NUL character fails with a reason the program can handle, <code>write_file</code> of one stops with E608, and <code>file_exists</code> of one is false. Each was a Python traceback.
+api: tests/api/golden.json is new in 8.2 and records the library, the command line, both doors, the MCP tools and the Action, with signatures written without their annotations; against 8.1.1 the surface moved in two places, both text: <code>velaris check --help</code> lists <code>--json</code>, and the <code>velaris_card</code> tool's description says about 4,600 words.</p>
+<h3 id="what-was-wrong-1">What was wrong <a class="anchor" href="#what-was-wrong-1" aria-label="Link to this section">#</a></h3>
+<p><strong>Unary minus was not range-checked (Goal A; <code>advisory-int-negation.md</code>;
+2.14 through 8.1.1).</strong> <code>-n</code> of the smallest whole number was 2^63 in the
+interpreter and wrapped back to itself in native code, and the smallest
+number divided by -1 was unchecked in the interpreter. A function proven to
+return <code>result &gt; 0</code> from <code>-n</code> for <code>n &lt; 0</code> ran as native code and returned a
+negative number, exit 0. Found by the corpus of false promises
+(<code>check_prover_lies.py</code>), which this release extends.</p>
+<p><strong>Words after <code>--</code> were Velaris's flags (Goal C;
+<code>advisory-cli-double-dash.md</code>; 5.0.0 through 8.1.1).</strong> Every flag read in
+the command line scanned the whole command line, and the first occurrence
+won. A wrapper that passed someone else's words after <code>--</code>, with no
+<code>--allow</code> of its own, handed them the budget. Found by
+<code>check_self_budget.py</code>.</p>
+<p><strong>A program given to the library as text imported from the temp directory
+(Goal C; <code>advisory-source-temp-import.md</code>; 2.52 through 8.1.1).</strong> The text
+was written to a file directly in the system temp directory, and its
+imports resolved beside that file first. A <code>std.vel</code> another local user
+planted in <code>/tmp</code> ran instead of the standard library's, under the
+caller's budget, and the audit reported it. Found by <code>check_self_budget.py</code>.</p>
+<p><strong>A local named like a builtin hid a call from the checks (Goal B).</strong> The
+effect check skipped every call to a local's name (1.6 through 8.1.1), so
+<code>let print = 0</code> let a pure function print, and <code>let shout = 0</code> let it call
+a function with effects. From 7.0.0 the Secret check did too: a <code>Secret</code>
+reached <code>print</code>, and <code>velaris audit</code> said no secret left the program. The
+budget still held - the run had been granted <code>io</code>. Found by the stage unit
+tests.</p>
+<p><strong>The standalone executables could not check (8.0.0 through 8.1.1).</strong> The
+check ceiling runs a check in a child process, and the executable started
+<code>velaris.py</code> for it, which it does not hold: every <code>velaris check</code> and
+<code>velaris audit</code> failed with E001. The release workflow's smoke test ran
+<code>--version</code>, <code>doctor</code> and a program, and not a check. Found by the new
+canary on its first run. 8.2 starts the executable itself, and the smoke
+test and the nightly install test run <code>check</code>.</p>
+<p><strong>Tracebacks, and a hang.</strong> <code>check_hostile.py</code> found five:</p>
+<ul>
+<li>a value nested some thousands deep, printed, compared, encoded or
+formatted, ended in a Python <code>RecursionError</code> (now E609);</li>
+<li>blocks nested past some thousands deep did the same in every command
+(now E102, above);</li>
+<li>a NUL in a path reached <code>open</code> (above);</li>
+<li>printing a character a cp1252 console cannot show ended the run with a
+<code>UnicodeEncodeError</code>; standard output now writes an escape for it, as
+standard error always did;</li>
+<li>native compilation emitted the left side of every <code>+</code> twice, so a sum of
+n terms emitted 2^n trees and a 20-term sum never finished compiling.</li>
+</ul>
+<p><strong><code>proofs</code> and <code>audit --sarif</code> left out any path holding ".velaris" (Goal
+B; 2.33 through 8.1.1).</strong> The test was a substring, meant for the old
+project-local cache folder, so <code>cfg.velaris.d/</code> was skipped too. Both now
+read a directory as <code>capabilities check</code> does: every directory but <code>.git</code>.</p>
+<p><strong>The standing adversarial pass, run against the split and the gate,
+found six more, all fixed before release.</strong></p>
+<ul>
+<li>The new gate counted a <code>compatibility:</code> line in a code block, in an HTML
+comment, with nothing after the colon, or saying TODO. A line now counts
+only as prose that says something.</li>
+<li>It saw only a code written in the literal <code>ERROR_TABLE</code>; a code added by a
+subscript, by <code>update()</code> or in a sub-package went past it. Any text in the
+source that is one code now counts.</li>
+<li>It compared defaults as text, so a default read from another constant,
+a variable of the run state such as <code>EFFECT_BUDGET</code>, and a parameter that
+lost its default went past it. Each is now seen; a default computed in a
+function body still is not.</li>
+<li>A <code>VERSION</code> holding line breaks could write step outputs of its own (in
+the gate since 7.2). A VERSION that is not <code>X.Y.Z</code> now writes none, and
+no output may hold a line break.</li>
+<li>A module that is not UTF-8 or does not parse made the gate stop with a
+traceback; it fails closed as before, now in one line.</li>
+<li><strong>The split made a write to a run-state name silent (Goal C, 8.2 before
+release).</strong> <code>velaris.IMPORT_ROOT = root</code> set the global the runtime read
+while Velaris was one file; in the package it set an attribute nothing
+read, and imports stopped being confined. A write to such a name now
+reaches <code>velaris.state</code> (<code>check_adversarial.py</code> SPLIT-1 and SPLIT-2). No
+release had this.</li>
+</ul>
+<p><strong>Smaller.</strong> <code>velaris check</code> and a run gave <code>main ... or fail</code> two codes
+(above). The loader left each file it read open until the garbage collector
+closed it. On Linux, <code>check_adversarial.py</code> stopped with a TypeError when a
+child it timed out had printed something. <code>examples/bench.vel</code> said both its
+functions run as machine code; <code>fib</code> is recursive, which native code
+refuses, so only <code>burn</code> does, and the comment now says so. The documents said things the
+code did not; <code>check_docs.py</code> found them, and each is corrected: README's
+benchmark and proven-share figures and its card length, SPEC.md's escapes,
+import cycles, what the prover models of Money, and its lists of fallible
+builtins, LLM.md's rules 2 and 7 and its E523, E524 and E542 rows, and the
+paper's benchmark and conformance figures, which are now generated from
+<code>benchmark/results.json</code> and velaris-spec's index.</p>
+<h3 id="the-proof-cache-is-gone">The proof cache is gone <a class="anchor" href="#the-proof-cache-is-gone" aria-label="Link to this section">#</a></h3>
+<p>8.1.1 stopped believing the cache; 8.2 removes it. There is no cache
+directory, no <code>VELARIS_CACHE_DIR</code>, no loader and no saver. <code>CACHE-1</code> to
+<code>CACHE-10</code> in <code>check_adversarial.py</code> now plant what used to work - 8.1.1's
+file, under the key 8.1.1 computed, where 8.1.1 looked - and hold that
+nothing reads it. THREAT_MODEL.md's cache rows say "removed in 8.2".</p>
+<h3 id="the-release-gate">The release gate <a class="anchor" href="#the-release-gate" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>A minor or patch release says what it changes that STABILITY.md
+covers.</strong> The gate compares the previous tag with this commit: an error
+code added anywhere in the compiler's source, a flag the command line or
+the MCP server no longer knows, a default that is not what it was - a
+named default, a variable of the run state, or a parameter default of
+the library, read through any constant it names. Any one of them in a
+minor or patch release needs a <code>compatibility:</code> line in the entry, and the
+refusal names what it found. A moved <code>tests/api/golden.json</code> needs an
+<code>api:</code> line in any release. RELEASING.md step 7 and STABILITY.md rule 5.</li>
+<li><strong><code>RELEASE_PAUSED</code></strong>, a variable of the <code>release</code> environment, stops the
+tag and every publish while the tests and builds still run.</li>
+<li><strong>Held to the previous release.</strong> Before tagging, <code>perf</code> fails the release
+if pure-numeric time, native or interpreted, is more than 25% slower than
+the previous tag's (<code>perf_gates.py</code>), and <code>differential</code> fails it if the
+examples, the conformance corpus or the quick benchmark print anything
+the entry does not name (<code>check_differential.py</code>).</li>
+<li><code>check_release.py</code> runs release.yml job by job against a stand-in for
+PyPI, npm, the Marketplace, GitHub and the MCP registry: a publish that
+fails midway, the re-run that finishes it with every publish made exactly
+once, a second run that publishes nothing, and a paused run that tags and
+publishes nothing. It holds 80 cases, the adversarial pass's among them.</li>
+</ul>
+<h3 id="one-file-became-a-package">One file became a package <a class="anchor" href="#one-file-became-a-package" aria-label="Link to this section">#</a></h3>
+<p><code>velaris.py</code> is now <code>velaris/</code>, one module per stage in pipeline order, with
+run state in <code>velaris/state.py</code> (decisions/0001-split-the-file.md says why
+the single file aged out; ARCHITECTURE.md maps it). <code>velaris.py</code> remains as a
+launcher. <code>import velaris</code> and the command line are what they were:
+<code>check_api.py</code> records every public name and signature, every command's
+usage, both doors' request and response shapes, the MCP tools and the
+Action, and holds them to a golden. <code>tests/unit/test_pipeline_order.py</code>
+fails if a module imports one after it. The package and every script are
+typed: <code>mypy --strict</code> and <code>ruff check</code> report nothing over 182 files.</p>
+<h3 id="the-test-ladder">The test ladder <a class="anchor" href="#the-test-ladder" aria-label="Link to this section">#</a></h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Suite</th><th>What it holds</th><th>8.2</th></tr></thead>
+<tbody>
+<tr><td><code>run_unit_tests.py</code></td><td>each stage alone - lexer, parser, loader, effects, checker, prover - on its own fixtures, and the modules' order</td><td>293 tests</td></tr>
+<tr><td><code>check_properties.py</code></td><td>Hypothesis over generated programs: <code>parse(fmt(p)) == parse(p)</code>, <code>fmt</code> idempotent, <code>check</code> deterministic, the audit's effects are the ones a run attempts, one effect edit moves the audit by exactly it</td><td>5 properties, 25 examples each in CI</td></tr>
+<tr><td><code>check_docs.py</code>, <code>build_readme.py</code></td><td>every code block in README, SPEC, EMBEDDING and LLM.md runs or says why not; every inline <code>velaris</code> command's words are real; every count in README is generated; every E-code cited matches the table</td><td>83 code blocks, 56 run or checked and 27 marked with a reason; 39 inline commands</td></tr>
+<tr><td><code>check_api.py</code></td><td>the library, the command line, the doors, the MCP tools and the Action, against a golden</td><td></td></tr>
+<tr><td><code>check_cli.py</code></td><td><code>--help</code> on every command; <code>stats --ffi</code>; z3 and llvmlite imported only when used</td><td>82</td></tr>
+<tr><td><code>check_error_messages.py</code></td><td>every error code's exact message, from a program that produces it</td><td>86 cases, 78 of 78 codes</td></tr>
+<tr><td><code>check_prover_lies.py</code></td><td>137 false promises across floats, overflow, Money, quantifiers and recursion, and the 64-bit edges, under five Z3 seeds: none proven</td><td>568 assertions held, on Python 3.13 and 3.10</td></tr>
+<tr><td><code>check_hostile.py</code></td><td>recursion in every path, file descriptors, a disk filling, a 3 GB read, long Windows paths, a cp1252 console, a 10,000-line program, 500 parameters: a coded error, never a traceback</td><td>64, and 2 that run on POSIX only</td></tr>
+<tr><td><code>check_self_budget.py</code></td><td>the working directory, <code>args()</code>, the environment, <code>velaris.toml</code>, <code>velaris.lock</code>, <code>add --force</code>, hidden directories: none changes what a program may do or what its audit says</td><td>110</td></tr>
+<tr><td><code>fuzz_parsers.py</code></td><td>the parser, JSON, CSV, <code>py_json</code> and the contract translator, coverage-guided</td><td>30 iterations a target on every leg; 20 minutes monthly</td></tr>
+<tr><td><code>check_identical.py</code></td><td>the audit and SARIF, byte for byte, on Linux, Windows and macOS</td><td></td></tr>
+<tr><td><code>check_install.py</code></td><td>every artefact, installed as a user installs it, runs <code>examples/discount.vel</code> and refuses the network</td><td>nightly</td></tr>
+<tr><td><code>check_differential.py</code>, <code>perf_gates.py</code></td><td>above</td><td></td></tr>
+<tr><td><code>check_mutants.py</code></td><td>would a suite notice a change to a line a guarantee rests on</td><td>monthly; below</td></tr>
+<tr><td><code>check_pool_soak.py</code></td><td>a pool over thousands of runs: flat memory, kills, sixteen threads, nothing left behind</td><td>monthly, 5,000 runs</td></tr>
+<tr><td><code>check_urls.py</code></td><td>every URL the documents name, and llms.txt serving LLM.md</td><td>monthly</td></tr>
+<tr><td><code>check_workflows.py</code></td><td>the scheduled workflows report and change nothing</td><td>73</td></tr>
+<tr><td><code>check_lint.py</code></td><td>mypy --strict and ruff over the package and every script, and the complexity report</td><td>0 findings over 182 files</td></tr>
+</tbody></table></div>
+<p><code>check_adversarial.py</code> gains N1 to N4, SHADOW-1 to SHADOW-5 and SPLIT-1 and
+SPLIT-2, 131 cases in all.</p>
+<h3 id="what-runs-and-where">What runs, and where <a class="anchor" href="#what-runs-and-where" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>test.yml</strong> is 18 legs: Linux, Windows and macOS x64 on Python 3.10 and
+3.12, with and without z3 and llvmlite; Linux and macOS arm64 on 3.12;
+and Python 3.14 on Linux, run and reported and allowed to fail. Plus the
+suites twice at once, the cross-system comparison, and lint. CI installs
+z3-solver and llvmlite at the versions in <code>requirements/ci.txt</code>: llvmlite
+0.49.0, and 0.45.1 on macOS x86_64, where llvmlite publishes no wheel of
+anything newer.</li>
+<li><strong>nightly.yml</strong> installs every artefact built from main - wheel, sdist,
+MCP bundle, npm wrapper, standalone executables, Docker image, pre-commit
+hooks, the Action, the VS Code extension's language server.</li>
+<li><strong>monthly.yml</strong> fuzzes for 20 minutes, mutates for 90, soaks the pool for
+5,000 runs, asks every URL, compares against the previous release over
+the full benchmark, and runs native code and the parsers under
+AddressSanitizer and UndefinedBehaviorSanitizer.</li>
+<li><strong>adversarial-models.yml</strong>, weekly, sends the standing adversarial prompt
+and one area of the compiler to Claude, Gemini and Grok, and skips any
+whose key is not set.</li>
+<li><strong>Dependabot</strong> watches z3-solver, llvmlite and every action.</li>
+<li><strong><a href="https://github.com/gowrishankar-infra/velaris-canary">velaris-canary</a></strong>,
+a public repository, checks the newest release every day from outside, as
+a user installs it, with the Action holding a committed
+<code>velaris.capabilities</code>.</li>
+</ul>
+<p>Every scheduled job reports failures as issues - one per failed job, per
+surviving mutant, per adversarial finding - and nothing scheduled commits;
+MAINTENANCE.md is the long form, including the kill switch and the
+reference-runtime variable reserved for 9.0.</p>
+<h3 id="measured-1">Measured <a class="anchor" href="#measured-1" aria-label="Link to this section">#</a></h3>
+<p>Measured by <code>perf_gates.py --against v8.1.1</code> on Windows 11 (AMD64, 16
+CPUs, 4% busy when it began), Python 3.13.13, z3-solver 5.1.0.0 and
+llvmlite 0.49.0: medians of 5 runs after one warm-up. Wall-clock figures;
+another machine will differ.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Measure</th><th>8.2.0</th></tr></thead>
+<tbody>
+<tr><td>Cold start, <code>velaris --version</code></td><td>145 ms</td></tr>
+<tr><td>Cold start, <code>velaris check</code> of a one-line file</td><td>337 ms</td></tr>
+<tr><td>Check, per 1,000 lines (a 1,013- and a 10,013-line program)</td><td>0.87 s; 0.05 s without proofs</td></tr>
+<tr><td>Proof time per example with contracts, p50 / p95</td><td>18 ms / 415 ms, over 56 files</td></tr>
+<tr><td>Native code on <code>examples/bench.vel</code>: compile, and llvmlite's import</td><td>62 ms, and 63 ms; <code>burn</code> compiled</td></tr>
+<tr><td><code>examples/bench.vel</code>, native / <code>--no-native</code></td><td>4.32 s / 10.27 s, 2.38 times faster, 5.95 s saved</td></tr>
+<tr><td><code>--lite</code> build</td><td>there is none</td></tr>
+<tr><td>Pool worker's memory, after 1 run and after 1,000 more</td><td>23.4 MB, 24.3 MB</td></tr>
+<tr><td>z3 or llvmlite imported by <code>velaris --version</code>, or by <code>check</code> of a program with no promise</td><td>neither</td></tr>
+<tr><td>Importing z3 when a command needs it</td><td>+119 ms at cold start</td></tr>
+<tr><td>Importing llvmlite when a command needs it</td><td>+138 ms at cold start</td></tr>
+<tr><td>Pure numeric against v8.1.1, native (<code>bench.vel</code> and an integer loop)</td><td>4.32 s against 4.40 s, -1.9% (the gate allows +25%)</td></tr>
+<tr><td>Pure numeric against v8.1.1, interpreted</td><td>12.82 s against 12.55 s, +2.2%</td></tr>
+</tbody></table></div>
+<p><code>check_differential.py</code> against v8.1.1: the 97 examples, velaris-spec's 456
+conformance cases and the 13 programs of the quick benchmark give the same
+output under 8.2.0 as under 8.1.1, so no difference needed naming.</p>
+<p><code>velaris stats --ffi examples</code>: 106 programs, 70 of which compile. 8 call
+Python, and all 8 name every module they call (a grant like <code>ffi:math</code>);
+none names a module while running. The modules named: <code>builtins</code> in 4
+(native), <code>datetime</code> in 3, <code>math</code> in 3 (native), <code>sqlite3</code> in 3, <code>base64</code>
+in 1.</p>
+<p>Proven share over examples/ and stdlib/: 70 of 99 promise-carrying
+functions (70.7%), generated into README and held by <code>check_docs.py</code>.</p>
+<p><code>agent_loop.py --metric --offline</code>, the ten tasks with recorded replies:
+10 of 10 compile, each in its second round after the compiler named the
+first round's mistake, with the effects each task needs; 1 of 1 promise
+proven. No live model was run for this release.</p>
+<p>Mutation, locally for 25 minutes on <code>wrappers</code>: 9 of 17 mutants killed
+(52.9%). The 8 survivors are in <code>strip_secret</code>, <code>currency_clash</code> and
+<code>carries_secret</code>.</p>
+<h3 id="known-open-2">Known open <a class="anchor" href="#known-open-2" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>A declared effect can move a promise from proven to checked at run
+time.</strong> A call the prover does not model (<code>env</code>, <code>read_file</code>, <code>fetch</code>,
+<code>now</code>, <code>py</code>, <code>declassify</code>, ...), and a <code>let</code>-bound call to a function
+that declares an effect, abandon the proof of the function they are in
+(SPEC.md 9.4). A limit of precision, not of soundness; found by
+<code>check_properties.py</code>, whose fifth property allows exactly that.</li>
+<li><strong>The prover spends its whole budget on a loop invariant beside
+<code>upper</code> or <code>lower</code></strong> in a function with nothing else to prove: 3 seconds
+a query where 0.02 would do.</li>
+<li><strong>Deeply nested map and list literals are slow to type-check</strong>: 14
+levels take about 27 seconds. A check or an audit stops at its ceiling
+with E613; a run has no such ceiling unless given <code>--timeout</code>.</li>
+<li><strong><code>velaris capabilities check</code> and <code>velaris review</code> have no check
+ceiling.</strong> They compile every program under the directory in this
+process, so a program built to exhaust the type checker - a map literal
+nested twenty deep - stalls them, and the Action's ratchet step, until
+the job's own timeout. A check and an audit have stopped at their ceiling
+since 8.0. Until the ratchet does too, give a job that runs it on other
+people's pull requests a <code>timeout-minutes</code>. This repository keeps the two
+programs that test the check's ceilings as text in
+<code>tests/error_messages/golden.json</code>, not as <code>.vel</code> files, so its own
+ratchet does not compile them.</li>
+<li><strong>The standalone executables of 8.0.0 to 8.1.1 cannot check</strong> (above);
+there is no patch release for them. Use the wheel, or 8.2.</li>
+</ul>
+<p>velaris-spec is unchanged: its <code>tools/check_sync.py</code> finds SPEC.md
+sections 6, 7 and 7.1 and both predicate schemas as it quotes them, and no
+document format changed.</p>
+<h2 id="811---the-proof-cache-can-no-longer-lie">8.1.1 - The proof cache can no longer lie <a class="anchor" href="#811---the-proof-cache-can-no-longer-lie" aria-label="Link to this section">#</a></h2>
+<p>A patch release with one fix. Compatibility: a patch under STABILITY.md
+rule 1, because it refuses no program that legitimately worked. A false
+promise that a planted cache entry let through now fails - before the run
+with the prover (E700), while running without it (E601) - where it used to
+pass without a word. A user with no planted entry sees one difference, in
+time: a second <code>velaris check</code> of an unchanged program takes about as long
+as the first.</p>
+<p><strong>What was wrong (Goal A; <code>advisory-proof-cache-2.md</code>; 7.1.2 through
+8.1.0).</strong> 7.1.2 moved the proof cache out of the program's directory into a
+per-user one, and bound each file to the source's path, its bytes and the
+compiler version. What an entry said was still believed. A remembered
+"proven" was reported as proven by <code>check</code>, <code>proofs</code>, <code>audit</code> and <code>explain</code>
+without running Z3, and it made the function eligible for native code,
+which has no runtime promise check. Everything a cache file's name and an
+entry's key are made from is public, so a process running as the same
+user, or anything that set <code>XDG_CACHE_HOME</code> or <code>LOCALAPPDATA</code> for the
+process running <code>velaris</code>, could write an entry under the real <code>proof_key</code>. A false
+<code>ensures</code> was then reported proven, and a run compiled the function to
+native code and returned the wrong result with exit code 0. Run with
+<code>--no-native</code>, the interpreter's own check still stopped it (E601). Two
+independent external assessments of 8.0.0 reported it. The cause was the
+design, not the file's location: a cached "proven" was allowed to switch off
+a runtime check.</p>
+<p><strong>What changes.</strong></p>
+<ol>
+<li><p><strong>Nothing in the cache is believed.</strong> Every function is proved in the
+process that reports on it or runs it. Only a proof made in that process
+marks a promise "proven" in <code>check</code>, <code>proofs</code>, <code>audit</code>, <code>explain</code>,
+<code>attest</code> and the library, and only such a function is compiled to native
+code. A contract not proven in that process keeps its runtime <code>requires</code>
+and <code>ensures</code> checks, interpreted or native.</p></li>
+<li><p><strong>A remembered promise is proved again, under a short budget.</strong> Of the
+two ways to keep the cache honest - prove a remembered promise again, or
+report it as "cached, unverified" - this release proves it again. The
+short budget is one second plus three times what the proof took when it
+was remembered. A proof that has not settled by then is proved under the
+usual budget, so a check finds what <code>--no-cache</code> finds, and an entry can
+change how long a check takes but not what it reports. The cost is time:
+Z3 keeps nothing that makes a second proof cheaper than the first.
+Measured on the machine this was built on (Windows 11, Python 3.13,
+z3-solver 5.1.0), each second run against 8.1.0's:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Second run of</th><th>8.1.0</th><th>8.1.1</th><th>8.1.1, <code>--no-cache</code></th></tr></thead>
+<tbody>
+<tr><td><code>velaris check examples/fp_proof_bad.vel</code> (a float refutation)</td><td>1.0 s</td><td>21.5 s</td><td>21.9 s</td></tr>
+<tr><td><code>velaris proofs examples</code></td><td>7.5 s</td><td>11 to 14 s</td><td>12 s</td></tr>
+<tr><td><code>velaris check examples/discount.vel</code></td><td>1.1 s</td><td>1.7 s</td><td></td></tr>
+</tbody></table></div>
+<p>That cost was accepted because the other way adds a third status to
+<code>check</code>, <code>proofs</code>, <code>audit</code>, <code>explain</code>, SARIF and <code>velaris.audit/1</code>, and
+every second check of a program would have reported less than its
+first.</p></li>
+<li><p><strong>No cache where nobody vouches for the directory.</strong> The Action runs
+<code>check</code>, <code>proofs</code> and <code>review</code> with <code>--no-cache</code>, since a runner's cache
+directory can be restored from another workflow's run, and <code>velaris review</code> now accepts the flag. The HTTP door, the MCP server and the
+library have never read the cache; from this release the language
+server's code lenses do not read it either. <code>agent_loop.py</code> passes
+<code>--no-cache</code> too.</p></li>
+<li><p><strong>A cache file is written whole, and an odd one is ignored.</strong> A save
+writes a temporary file, flushes it to disk and renames it into place.
+On POSIX the rename is flushed as well, and the <code>velaris</code> and <code>proofs</code>
+directories are made 0700; one an earlier Velaris made wider is narrowed.
+A file is ignored whole if any of these holds:</p>
+<ul>
+<li>it is not whole JSON;</li>
+<li>it names another schema, path, content or version;</li>
+<li>it holds a malformed entry;</li>
+<li>it is a link or not a regular file;</li>
+<li>on POSIX, another user owns it or can write to it.</li>
+</ul>
+<p>A relative <code>XDG_CACHE_HOME</code> or <code>LOCALAPPDATA</code> is now ignored, as the XDG
+specification says, so the cache is no longer placed under the directory
+<code>velaris</code> runs in.</p></li>
+<li><p><strong>THREAT_MODEL.md's known-open table</strong> gains a row: the user running
+velaris is trusted; anything running as that user is that user - the
+cache, the receipts, everything. SECURITY.md lists the advisory as
+resolved, and HALL_OF_FAME.md credits the two assessments.</p></li>
+</ol>
+<p><code>check_adversarial.py</code> (<code>CACHE-3</code> to <code>CACHE-10</code>) now covers the outside
+reproduction and the cases around it:</p>
+<ul>
+<li><strong>The reproduction:</strong> the real <code>proof_key</code>, with the cache moved through
+<code>XDG_CACHE_HOME</code> and <code>LOCALAPPDATA</code>, in a file this release's loader
+accepts. With the prover, E700 under <code>check</code>, <code>proofs</code>, <code>audit</code>,
+<code>explain</code>, a run and a run with <code>--no-native</code>. Without it, E601 on both
+runs and nothing reported proven.</li>
+<li><strong>A lie no prover refutes:</strong> a planted entry for a loop whose false
+promise the prover cannot settle stops at E601 on both run paths.</li>
+<li><strong>Files and settings:</strong> torn and foreign files, the directories' modes,
+links, and a relative redirect.</li>
+<li><strong>Doors:</strong> the library, the language server and the Action.</li>
+</ul>
+<p>The cache's format and location stay outside what STABILITY.md covers. The
+file format is unchanged apart from a <code>seconds</code> field in each entry.
+velaris-spec is unchanged.</p>
+<h2 id="81---receipts-and-what-a-policy-can-ask">8.1 - Receipts, and what a policy can ask <a class="anchor" href="#81---receipts-and-what-a-policy-can-ask" aria-label="Link to this section">#</a></h2>
+<p>A minor version. A program, a budget or a command line written for 8.0
+means the same under 8.1, except for what "What 8.1 refuses that 8.0 did
+not" names below: on the two doors, an import from outside the directory
+they serve, and in the library, a check or audit past the ceiling the
+command line has had since 8.0. The adversarial pass run against this
+release found two holes, and both are fixed here, each with an advisory
+draft.</p>
+<p><strong>Check and audit have a ceiling in the library and the doors.</strong> 8.0 put
+<code>velaris check</code> and <code>velaris audit</code> under a time and memory ceiling on the
+command line. <code>velaris.check()</code>, <code>velaris.audit()</code> and <code>velaris.attest()</code>
+now run under the same one: 60 seconds and 2048 MB, raised with <code>timeout=</code>
+and <code>max_memory_mb=</code>, and <code>None</code> for both checks in the calling process as
+before. Source written to stall the prover or to bloat the checker comes
+back as a problem - <strong>E613</strong> past the clock, <strong>E614</strong> past the memory cap -
+and an audit that is stopped says <code>ok: false</code> with nothing determined.
+<code>velaris.Pool</code> gains <code>check()</code> and <code>audit()</code>, which keep their worker
+between calls. The HTTP door and the MCP server check and audit on their own
+workers under <code>--check-timeout</code> and <code>--check-memory-mb</code>, and the command
+line gains <code>--check-memory-mb</code> beside <code>--check-timeout</code>. The command line's
+memory cap did not hold in 8.0 except on Windows: on Linux and macOS the
+child it checked in was started without it, so an audit that 8.0 said was
+held to 2048 MB used what it liked until the clock stopped it. It is set
+now - on Linux, and on macOS as far as the system honours a cap, as for a
+run - and <code>check_library.py</code>'s Linux legs are what found it. Setting it
+showed a second thing: under a cap, CPython on Linux reports running out
+about half the time as <code>SystemError: error return without exception set</code>
+rather than <code>MemoryError</code>, which the command line and <code>velaris.Pool</code> read
+as a crash (E000). Both now read it as running out: E614 for a check or
+an audit, E611 for a run. <code>run(timeout=...)</code>
+now compiles inside its child, under the deadline: until 8.1 it compiled
+first in the caller's process with no limit, so a program crafted to stall
+the prover held <code>run(source, timeout=5)</code> for as long as it liked. A bounded
+run is now a pool of one worker, and reports <code>effects_used</code> where it
+reported <code>None</code>. A library <code>check()</code> or <code>audit()</code> costs a child process's
+start - a third of a second on the machine this was built on - where it cost
+nothing; <code>timeout=None, max_memory_mb=None</code> avoids that for source you wrote
+yourself.</p>
+<p><strong>Receipts.</strong> <code>velaris.receipt/1</code> records one run: the program and its
+imports by sha256 - the subjects <code>velaris attest</code> writes for the same bytes,
+so an attestation and a receipt of one program are its before and its
+after - the budget, every refusal (code, effect, line), every
+declassification with its reason, the run's parameters (seed, frozen clock,
+timeout, memory cap, and <code>confinement: "none"</code>), the exit status and
+outcome, and the wall time. It is an in-toto Statement of a new predicate
+type, <code>https://gowrishankar-infra.github.io/velaris-lang/receipt/v1</code>, signed
+as an attestation is signed. <code>velaris program.vel --receipt FILE</code> writes
+one, <code>run()</code> and <code>Pool.run()</code> return one as <code>RunResult.receipt</code>, and the
+doors return one when a request says <code>"receipt": true</code>. A run stopped by its
+time or memory limit still has one, marked <code>complete: false</code>, holding what
+the worker reported before it was killed. A receipt holds no value the
+program handled: a refusal is recorded without the path or host it named, a
+declassification without its value, and no output, input, argument or
+message is kept. The release workflow signs the receipt of one run of
+<code>examples/effects.vel</code> with cosign and with sigstore-python and verifies
+both, so a release holds 27 files. velaris-spec 0.10.0 section 8.7 defines
+the format.</p>
+<p><strong>What a policy can ask.</strong> <code>policies/opa/capability.rego</code> refuses an in-toto
+capability attestation - what <code>velaris attest</code> writes - whose effects are
+outside an allowed set or whose net hosts are outside an allow-list, and one
+whose program did not compile or whose host is built while it runs, since
+neither can be held to a list. <code>capability_test.rego</code> holds a pass, a fail
+and the edges. <code>policies/kyverno/require-capability-attestation.yaml</code>
+refuses a Pod whose image lacks a capability attestation, using Kyverno's
+image verification with a keyless attestor. <code>check_policies.py</code> runs <code>opa test</code>, and <code>opa eval</code> against Statements <code>velaris attest</code> writes, and skips
+them with a notice where OPA is not installed; CI installs OPA 1.20.2.
+EMBEDDING.md has the example.</p>
+<p><strong><code>velaris eject</code>.</strong> <code>velaris eject program.vel</code> writes a directory that
+runs, and builds into one executable with PyInstaller, with nothing from
+this project installed: the program and what it imports, a copy of the
+runtime and of the standard library files it uses, <code>main.py</code> with the budget
+fixed at eject time, a <code>requirements.txt</code> pinning the prover and the native
+compiler to the versions installed, <code>proofs.json</code> recording what was proven,
+<code>SHA256SUMS</code>, and a README saying what holds once ejected and what does not.
+The copied runtime enforces the budget whatever the program says. <code>main.py</code>
+refuses <code>--allow</code>; refuses a program that differs from eject time unless
+given <code>--changed-ok</code>, and a runtime that differs whatever it is given; and
+refuses a budget that would let the program write into its own directory or
+where Python imports from (<code>sys.path</code>, <code>PYTHONPATH</code>, the site directories),
+and a <code>--receipt</code> inside its directory. The last two came from the
+adversarial pass: a program granted a write to a <code>PYTHONPATH</code> directory
+left a <code>sitecustomize.py</code> that the next Python started there ran, and
+<code>--changed-ok</code> ran a runtime that had been edited. The proofs are a record
+that nothing trusts when the
+program runs; <code>main.py --prove</code> runs them again. <code>check_eject.py</code> ejects
+<code>examples/discount.vel</code>, runs it from a fresh virtual environment with no
+packages, then changes it to reach the network and sees E310.</p>
+<p><strong>The doors.</strong></p>
+<ul>
+<li><code>velaris serve --rate-limit N</code> answers at most N requests a minute - 600
+unless told otherwise - per token, and per address for requests without
+it, so a caller guessing tokens is limited and cannot spend the holder's
+allowance. Past it the answer is 429 with <code>Retry-After</code>, logged
+<code>rate_limited</code>.</li>
+<li><code>--bind</code> names the address (<code>--host</code> still does). A door bound anywhere
+but loopback says so on stderr before it listens.</li>
+<li>The token comparison was confirmed rather than assumed:
+<code>secrets.compare_digest</code> over two sha256 digests, whatever length was
+sent. It is one function now, which a test watches.</li>
+<li>EMBEDDING.md says what can connect to the MCP server and the language
+server, and that neither runs a program to answer a hover, a format, a
+check or an audit; a test sends both a program that writes a file, and no
+file is written.</li>
+</ul>
+<p><strong>What 8.1 refuses that 8.0 did not.</strong></p>
+<ol>
+<li><strong>On the HTTP door and the MCP server, an import from outside the
+directory they serve</strong> - <code>--root</code>, the directory they were started in
+unless it names another - or of a file there that is not <code>.vel</code>, is
+refused with <strong>E515</strong> before the file is opened. A program sent as text
+is compiled as a file in that directory, so its relative imports resolve
+there. Until 8.1 such a program could import any file the door's user
+could read, and the compiler's error quoted what it found
+(<code>advisory-import-read.md</code>). A door serving programs that import files
+elsewhere needs <code>--root</code> naming their directory. The library is
+unchanged unless <code>import_root=</code> is given. By the reading STABILITY.md
+applied to 3.4, a door that refuses what it accepted is a break; this
+one is made in a minor version, and STABILITY.md records it as such and
+says why.</li>
+<li><strong>In the library, a <code>check()</code> or <code>audit()</code> past 60 seconds or 2048 MB</strong>
+is stopped (E613, E614) where 8.0 waited for it. The command line has
+stopped it at the clock since 8.0, and on Linux now stops it at the
+memory cap too, which 8.0 named and did not set there.</li>
+</ol>
+<p><strong>Two holes, fixed.</strong></p>
+<ul>
+<li><strong>A false promise could come back proven</strong> (Goal A;
+<code>advisory-prover-names.md</code>; 0.9 through 8.0.0). The prover gave the values
+it made up Z3 names a program could also write: <code>__g_result_1</code> for the
+result of a call to <code>g</code>, <code>xs__n</code> for the length of a list <code>xs</code>. A
+parameter with such a name was the same Z3 value, so a parameter named
+<code>__g_result_1</code> turned <code>g</code>'s promise about its result into an assumption
+about the parameter, and a false <code>ensures</code> was reported proven - and,
+compiled to native code, never checked when it ran. The prover's own names
+now begin with <code>!</code> or contain <code>#</code>, which no identifier can. It was found
+checking this release's item 6: the prover builds every query from the
+syntax tree and parses none from text, so an identifier spelled like
+SMT-LIB is an identifier - but a name the prover spelled for itself could
+be written by a program.</li>
+<li><strong>An import could read a file and quote it</strong> (Goal C;
+<code>advisory-import-read.md</code>; 0.16 through 8.0.0). An imported file that is
+not Velaris source gave an error naming its first token - <code>import "/home/me/.env"</code> answered <code>found 'API_KEY'</code> - through the library and both
+doors. That error now names the file and nothing in it, everywhere, and
+the doors hold imports to their root. THREAT_MODEL.md said an import
+"reads Velaris source, not data"; that was wrong, and it now says what an
+import reads.</li>
+</ul>
+<p><strong>Smaller things.</strong></p>
+<ul>
+<li><code>VELARIS_CACHE_DIR</code> names the directory the proof cache goes under
+(<code>&lt;dir&gt;/velaris/proofs</code>); <code>velaris clean</code> still deletes only that
+<code>velaris</code> directory. A cache file is written beside itself and renamed
+over the old one, so two checks of one file at once each read a whole
+entry. <code>audit()</code> no longer writes the cache, which README.md already said
+the library never did.</li>
+<li><code>refused_effect</code> and the doors' log name the refusals 7.1.2 and 8.0 added
+(E316, E317, E318), which a door logged as <code>failed</code>.</li>
+<li>Every suite writes to a temporary directory of its own and keeps its own
+proof cache (<code>suite_dirs.py</code>), so two runs from one checkout do not
+collide: until 8.1 <code>run_tests.py</code> wrote <code>report.txt</code> and <code>ledger.txt</code> into
+the checkout, <code>check_library.py</code> shared one door log, and seven suites
+wrote a scratch program beside the source. CI runs <code>run_tests</code>,
+<code>check_library</code>, <code>check_adversarial</code> and <code>fuzz_native</code> twice at once, in
+one job, to show it. <code>build_docs.py</code> and <code>build_playground.py</code> write each
+page beside itself and rename it.</li>
+<li>README.md and EMBEDDING.md pin the Action by commit, with its tag in a
+comment, and <code>run_tests.py</code> checks that the commit is the one the newest
+tag names. Pinned to a commit, the Action installs the version that
+commit's velaris.py names, as it installs a tag's.</li>
+<li><code>packaging/placeholders/</code> records the names beside <code>velaris-lang</code>.
+<code>velaris</code> is free on PyPI and on npm, and the packages that would hold it
+are ready, not published: publishing takes a registry account this
+repository keeps no credential for. <code>velarislang</code> and <code>velaris_lang</code>
+cannot be registered by anyone on either registry.</li>
+<li><code>examples/platform</code> audits a submission under its own limit, 20 seconds
+and 1024 MB, and answers 422 when the audit does not finish.</li>
+</ul>
+<p>New codes: E515, E613, E614. velaris-spec goes to 0.10.0.</p>
+<h2 id="80---what-the-socket-reaches-and-other-things-the-audit-now-says">8.0 - What the socket reaches, and other things the audit now says <a class="anchor" href="#80---what-the-socket-reaches-and-other-things-the-audit-now-says" aria-label="Link to this section">#</a></h2>
+<p>A major version. Two of its changes refuse programs that ran under 7.x, so
+by STABILITY.md rule 1 they ship in a major - and a major is where a user
+learns to read the CHANGELOG before upgrading. Four things break; the rest
+add.</p>
+<p><strong>The socket peer, not the URL string (the proxy hole; E317).</strong> Through
+7.x a <code>net:</code> grant checked the URL's host, but an ambient <code>HTTP_PROXY</code> /
+<code>HTTPS_PROXY</code> in the environment then routed the request - its payload
+included - to a proxy that need not be a granted host. The grant bounded a
+string, not the peer. This was the open hole THREAT_MODEL.md carried and
+the adversarial pass against 7.1.1 found (advisory left for a major).
+<code>guarded_opener</code> now disables ambient proxies unless the proxy's own
+host:port is itself inside the net budget, in which case that one proxy is
+honoured; a proxy the budget does not cover is refused with <strong>E317</strong>,
+naming the proxy and the grant that would allow it, and the refusal cannot
+be caught. <code>velaris add</code> no longer defers to an ambient proxy either. With
+no proxy set, behaviour is identical to 7.2.0.</p>
+<p><strong>A function named like a built-in is refused (E204).</strong> Through 7.x a
+program that defined <code>fn print</code>, <code>fn env</code>, <code>fn read_file</code> and the like was
+silently shadowed - the built-in won and the function was never reached, a
+call that read as one thing and did another. It is now <strong>E204</strong>. The rule
+of SPEC.md 10.1 is unchanged: a built-in added in 4.3 or later (the Money
+and Secret builtins) still gives way to a program's own function of that
+name, so <code>fn money</code> and <code>fn split</code> in a namespaced library keep working;
+only the older built-ins, which a program could never actually shadow, are
+the error. The shipped standard library is exempt, since it is always
+imported under a name.</p>
+<p><strong>A credential file wants read_file_secret (E318).</strong> <code>read_file</code> on a
+documented credential location - <code>~/.aws/*</code>, <code>~/.ssh/*</code>, <code>.env</code>,
+<code>~/.config/gcloud/*</code>, <code>~/.docker/config.json</code>, <code>~/.kube/config</code>,
+<code>~/.netrc</code>, <code>*.pem</code>, <code>*.key</code> - is refused with <strong>E318</strong> and pointed at
+<code>read_file_secret</code>, which returns a <code>Secret</code> the compiler will not let
+escape. And a credential location is never covered by a broad <code>fs:read:</code>
+grant that merely sits above it: an operator names it, or a path within it,
+explicitly. <code>read_file_secret</code> on an explicitly granted credential path is
+the sanctioned way and works.</p>
+<p><strong><code>velaris add</code> refuses two redirects.</strong> It refuses a redirect from <code>https</code>
+to <code>http</code> (which would drop the encrypted connection) and a redirect to a
+host outside the URL's origin - the two ways a vendoring fetch could be
+steered to bytes other than the ones the URL named.</p>
+<p><strong>What a user of 7.x has to change</strong> (STABILITY.md rule 4):</p>
+<ol>
+<li><strong>Proxies.</strong> A program that reaches the network with an ambient
+<code>HTTP_PROXY</code> / <code>HTTPS_PROXY</code> set and a <em>scoped</em> <code>net:</code> grant that does
+not cover the proxy is refused (E317). Grant the proxy's host too
+(<code>net:PROXYHOST:PORT</code>), or run with no proxy set. <code>velaris add</code> ignores
+ambient proxies entirely now.</li>
+<li><strong>Built-in names.</strong> A function named like a built-in from before 4.3
+(<code>print</code>, <code>env</code>, <code>read_file</code>, <code>fetch</code>, <code>get</code>, <code>length</code>, <code>split</code>, ...) is
+refused (E204). Rename it, or move it into a file imported under a name
+so it is reached as <code>prefix.name</code>.</li>
+<li><strong>Credential reads.</strong> <code>read_file</code> (or <code>file_exists</code>) on one of the
+documented credential locations above is refused (E318). Read a secret
+with <code>read_file_secret</code> and grant its exact path; a broad <code>fs:read:</code>
+grant no longer includes a credential file.</li>
+<li><strong><code>velaris add</code> redirects.</strong> A source URL that redirects <code>https</code>→<code>http</code>,
+or to a host outside its origin, is refused. Vendor from a URL that does
+neither, or fetch and add the file from disk.</li>
+</ol>
+<p><strong>The rest, none of it breaking:</strong></p>
+<ul>
+<li><strong>The audit says whether a granted module is native.</strong> <code>velaris.audit/1</code>
+gains <code>ffi_native</code>: per named Python module, <code>"native"</code> when a compiled
+extension (<code>.so</code>/<code>.pyd</code>/<code>.dylib</code>, or a built-in) is found on disk, and
+<code>"unknown"</code> otherwise - never <code>"false"</code>, because a pure-Python module can
+import a native one without that being visible. It is found from files on
+disk <strong>without importing</strong> the module, so a module whose import would act
+does nothing. A new SARIF note <code>ffi-native</code>; a THREAT_MODEL.md paragraph.</li>
+<li><strong>Secrets in code scanning.</strong> <code>audit --sarif</code> emits <code>secret-source</code> (note)
+for <code>env</code> / <code>read_file_secret</code>, and <code>secret-declassified</code> (warning) for
+each <code>declassify</code> - an error under <code>--strict</code> unless its reason is listed
+in <code>--allow-declassify-reasons &lt;file&gt;</code>. No rule-id clashes with
+<code>deps-diff</code>'s.</li>
+<li><strong>Errors that teach.</strong> Every compiler error and every runtime refusal now
+ends with one line, <code>reference: &lt;URL&gt;</code>, pointing at the card
+(<code>llms.txt</code>), served at the documentation site; <code>--json</code> and SARIF carry
+it as a field. <code>velaris check</code> reports every error in a file, recovering
+at statement boundaries; SPEC.md 14 says the first is authoritative, and
+it is the one a single-error run gives.</li>
+<li><strong><code>--seed &lt;n&gt;</code> and <code>--freeze-time &lt;iso8601&gt;</code></strong> make a run's randomness and
+clock reproducible, recorded as the run's parameters (the doors log
+<code>run_params</code>). Neither is a grant: <code>random()</code> still needs <code>rand</code> and
+<code>now()</code> still needs <code>clock</code>, and the budget still refuses them.</li>
+<li><strong><code>check</code> and <code>audit</code> run under a time and memory ceiling</strong> (60 s, 2048 MB
+by default; <code>--check-timeout</code> raises the clock), so a crafted contract or
+expression cannot stall a platform that audits before running.</li>
+<li><strong>The Action installs its own version.</strong> With no <code>version:</code> input, the
+Action installs the release matching the tag it was used at (<code>@v8.0.0</code>
+installs 8.0.0), and the newest on PyPI only from a branch or a commit.</li>
+<li><strong>New suites.</strong> <code>check_metamorphic.py</code> (an audit is unchanged by renaming,
+reordering, dead code, or splitting a program across files, and one added
+effect changes it in exactly one way) and <code>check_prover_lies.py</code> (a corpus
+of false promises that must never come back proven).</li>
+<li><strong>A TrapDoor benchmark case</strong> (category 13): a program whose stated
+purpose is a security scan and whose behaviour is read-credentials-then-
+post, caught before running.</li>
+</ul>
+<p><code>velaris-spec</code> goes to 0.9.0 for the two added <code>velaris.audit/1</code> fields.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#82---held-to-it">8.2 - Held to it</a></li><li><a href="#811---the-proof-cache-can-no-longer-lie">8.1.1 - The proof cache can no longer lie</a></li><li><a href="#81---receipts-and-what-a-policy-can-ask">8.1 - Receipts, and what a policy can ask</a></li><li><a href="#80---what-the-socket-reaches-and-other-things-the-audit-now-says">8.0 - What the socket reaches, and other things the audit now says</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

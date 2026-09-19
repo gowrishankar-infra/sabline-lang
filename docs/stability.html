@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Stability - Velaris 8.3.1</title>
+<meta name="description" content="What this project will not change without a major version, what it does not promise to keep, the rules for changing either, and the record of the times it ...">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/stability.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html" aria-current="page">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="stability">Stability</h1>
+<p>What this project will not change without a major version, what it
+does not promise to keep, the rules for changing either, and the
+record of the times it broke its own rule.</p>
+<h2 id="what-semantic-versioning-covers">What semantic versioning covers <a class="anchor" href="#what-semantic-versioning-covers" aria-label="Link to this section">#</a></h2>
+<p>A change to any of these is a breaking change, and ships only in a
+major version.</p>
+<ul>
+<li><strong>The language</strong>: its syntax and semantics as <a href="spec.html">SPEC.md</a>
+states them. A program that compiles and runs under 7.x compiles,
+runs and means the same under every later 7.x, with the one
+exception under <em>The prover's reach</em> below. What a run is <em>allowed</em>
+to do is the operator's budget, not the language, and the budget a
+run gets when nobody writes one changed in 5.0 - see <em>Breaks we have
+made</em>.</li>
+<li><strong>The error codes</strong> in <code>velaris.ERROR_TABLE</code>, and what each means.
+The <a href="errors.html">errors page</a>
+is built from that table.</li>
+<li><strong><code>velaris.audit/1</code></strong>: the fields and their meanings, as
+<a href="embedding.html">EMBEDDING.md</a> and
+<a href="https://github.com/gowrishankar-infra/velaris-spec">velaris-spec</a>
+section 8 state them. Within version 1 fields may be added; none
+changes meaning or disappears without the <code>schema</code> value changing.
+The other versioned documents Velaris writes follow the same rule
+within their version: <code>velaris.capabilities/1</code>,
+<code>velaris.capabilities-check/1</code>, <code>velaris.review/1</code>,
+<code>velaris.invocation/1</code>, <code>velaris.mcp-tools/1</code>, from 4.1
+<code>velaris.conformance/1</code>, and from 8.1 <code>velaris.receipt/1</code> and the receipt
+Statement that carries it (velaris-spec section 8.7).</li>
+<li><strong>The library API</strong>: <code>velaris.check</code>, <code>velaris.audit</code>, <code>velaris.run</code>,
+<code>velaris.Pool</code> (with <code>Pool.check</code> and <code>Pool.audit</code> from 8.1),
+<code>velaris.card</code> and, from 4.2, <code>velaris.attest</code> - their
+names, their parameters, and the fields of what they return
+(<code>CheckResult</code>, <code>AuditResult</code>, <code>RunResult</code>, <code>Problem</code>, and the in-toto
+Statements <code>attest</code> returns, whose predicate velaris-spec section 8.5
+defines). A new optional parameter or a new field is an addition, not
+a break.</li>
+<li><strong>The budget grammar</strong>: SPEC.md section 7.1, stated in full in
+velaris-spec sections 4 and 5. A budget that parses keeps parsing,
+and grants the same thing.</li>
+<li><strong>The command line</strong>: the command names, the flags documented for
+them (<code>velaris</code> with no arguments prints them, and README and
+EMBEDDING.md describe them), and the exit codes those documents give.
+The budget a command line with no <code>--allow</code> installs is part of this,
+and 5.0 changed it.</li>
+</ul>
+<h2 id="what-it-does-not-cover">What it does not cover <a class="anchor" href="#what-it-does-not-cover" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>Anything else in the <code>velaris</code> package</strong> (<code>velaris.py</code> until 8.2):
+every function, class and
+module-level name not listed above, including those the doors and
+suites use (<code>Budget</code>, <code>InvocationLog</code>, <code>inspect_source</code>,
+<code>load_program</code>, ...). They may change in any release.</li>
+<li><strong>The wording of messages.</strong> Codes are stable; prose is not. That
+covers error messages, their suggested fixes, an audit's <code>warnings</code>,
+and every command's text output - read <code>--json</code>, not the text.</li>
+<li><strong>Which promises happen to prove.</strong> A new version may prove a promise
+an older one left to runtime, or leave to runtime one an older one
+proved.</li>
+<li><strong>The canonical style <code>velaris fmt</code> writes.</strong> A change to it is named
+in the CHANGELOG, because <code>fmt --check</code> in CI will see it.</li>
+<li><strong>Anything marked provisional</strong>, in SPEC.md or in velaris-spec. From
+7.1 that includes <code>velaris.deps-diff/1</code> and
+<code>velaris.deps-diff-lockfiles/1</code>, the JSON <code>velaris deps-diff</code> writes:
+their fields may change in a minor release, named in the CHANGELOG,
+until a release says they are covered. The command, its flags and its
+exit codes are covered like any other command's. From 8.3 the same holds
+for <code>velaris.eval/1</code>, <code>velaris.receipt-stream/1</code>,
+<code>velaris.receipts-diff/1</code>, <code>velaris.replay/1</code>, <code>velaris.responses/1</code>,
+<code>velaris.from-contracts/1</code>, <code>velaris.verify/1</code> and
+<code>velaris.permissions-ratchet/1</code>. <code>velaris.receipt/1</code> gains <code>stop</code> and
+<code>run_parameters.profile</code> within version 1 (velaris-spec section 8.7).</li>
+</ul>
+<h2 id="the-rules">The rules <a class="anchor" href="#the-rules" aria-label="Link to this section">#</a></h2>
+<ol>
+<li><strong>A breaking change ships only in a major version.</strong> That includes a
+security fix that refuses something that used to work: if it breaks
+something covered above, it is a major version. Version numbers cost
+nothing, and a major version is how a user learns to read the
+CHANGELOG before upgrading.</li>
+<li><strong>A deprecation is announced in a minor version</strong>, warns when the
+deprecated thing is used for at least one minor version after that,
+and is removed no sooner than the next major version.</li>
+<li><strong>An error code is never reused for a different meaning.</strong> A code
+that is no longer given stays listed as removed (<code>REMOVED_ERRORS</code> in
+<code>velaris/errors.py</code>, and the errors page), with what it meant and the
+version that removed it.</li>
+<li><strong>Every major version's CHANGELOG entry says what a user of the
+previous major has to change</strong>, item by item.</li>
+<li><strong>A minor or patch release that adds an error code, removes a flag or
+changes a default says why that is not a break</strong> (8.2), in its
+CHANGELOG entry, on a line beginning <code>compatibility:</code>. A new code can
+be an addition - given only where a Python error used to escape - or a
+refusal of something that used to run, which is a break; the line is
+where the difference is argued, in writing, before the release. The
+release gate reads the compiler's source against the previous tag and
+refuses a minor or patch release that changes one of the three without
+the line - a line of prose that says something, not one in a code
+block or a comment, and not a placeholder (RELEASING.md). It cannot
+tell whether the argument is right; it makes sure one is made.</li>
+</ol>
+<h3 id="deprecations-in-force">Deprecations in force <a class="anchor" href="#deprecations-in-force" aria-label="Link to this section">#</a></h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Deprecated</th><th>Since</th><th>What it does now</th><th>Removed in</th></tr></thead>
+<tbody>
+<tr><td><code>--no-cache</code></td><td>8.2</td><td>nothing: Velaris keeps no proofs between runs. It is accepted wherever it was, and says once on stderr that it does nothing</td><td>9.0</td></tr>
+<tr><td><code>velaris clean</code></td><td>8.2</td><td>nothing, exit 0, with the same notice</td><td>9.0</td></tr>
+</tbody></table></div>
+<p><strong>The prover's reach.</strong> A prover that settles more is not a breaking
+change, even when it refuses a program that compiled before: a promise
+it now shows false (E700), a call it shows can break a <code>requires</code>
+(E701), a list read it shows can pass the end (E705), a divisor it
+shows can be zero (E706). Each such program could already fail while
+running, with the matching runtime error, for the input the prover
+names. This is the one way a program that compiled under 4.x can be
+refused by a later 5.x, and the CHANGELOG names each release that does
+it. 4.3 widened it once: a division whose divisor mentions a loop's
+values is translated when the loop's condition and invariants show the
+divisor positive. 4.3.1 widened it again, not by translating more but
+by allowing more time: a float proof gets 120 seconds where it had
+30, so a refutation a slower machine used to abandon now lands.</p>
+<p><strong>A new builtin gives way to your own function.</strong> A builtin added in
+4.3 or later is not reached in a program that defines a function of the
+same name (SPEC.md 10.1). Without that rule, adding a builtin would
+break every program that had already used the name - <code>examples/ledger.vel</code>
+has had a function called <code>money</code> since 1.13 - and adding one would be a
+major version. The builtins that existed before 4.3 are unchanged: a
+function named like one of those is still never reached.</p>
+<h2 id="breaks-we-have-made">Breaks we have made <a class="anchor" href="#breaks-we-have-made" aria-label="Link to this section">#</a></h2>
+<p>The README has promised semantic versioning since 2.2. 2.0, 3.0, 4.0,
+5.0, 6.0, 7.0 and 8.0 broke things in major versions, as promised; the
+rest below did not. None of them is being undone - the versions are published - and
+this section exists so the record is whole and so the rules above are
+applied from 4.0 on.</p>
+<p><strong>2.0 (major).</strong> <code>to_int</code>, <code>get</code> on a map, <code>read_file</code> and <code>fetch</code>
+became fallible: a call to one of them not handled with <code>check</code> or
+<code>try</code> was refused with E520, and the compiler pointed at each.</p>
+<p><strong>3.0 (major).</strong> <code>env</code> became its own effect. A program that called
+<code>env()</code> under <code>uses io</code> alone was refused at compile time, and an
+<code>io</code>-only budget no longer let a program read the environment.</p>
+<p><strong>3.4 (minor) shipped three breaking changes it named, and three it
+did not.</strong> Named in its CHANGELOG, which said they shipped in a minor
+version because each closed an open door: a client of <code>velaris serve</code>
+had to send a bearer token; the MCP server granted <code>io</code> only unless
+started with <code>--max-allow</code>; and the GitHub Action, with <code>sarif</code> on by
+default, needed <code>permissions: security-events: write</code>. Not named:
+<code>velaris serve</code> refused an argument it did not know, where it had
+ignored it; the MCP server did the same; and <code>GET /health</code> stopped
+naming the ceiling to a caller without the token. <strong>3.4 should have
+been 4.0</strong>: closing an open door is a reason to release soon, not a
+reason to call a break something else. It was not retagged, because
+3.4.0 was already published to PyPI and GitHub, and moving a published
+version breaks everyone who pinned it. This policy exists so that it
+does not happen again.</p>
+<p><strong>3.3 (minor) shipped five breaking changes as fixes, and named none as
+breaking.</strong> A <code>uses</code> clause naming anything but the seven effects was
+refused (E300). The budget parser became strict: a count in non-ASCII
+digits, <code>ffi:M@N</code>, <code>ffi:</code> with no module and an unbracketed IPv6
+address were refused where they had parsed. <code>ffi,ffi:math</code> came to
+grant every module, where it had granted <code>math</code> alone - the same budget
+text granting more. A call through a granted module into a module that
+was not granted was refused (E311) where it had run. <code>%</code> followed by
+<code>2C</code>, <code>40</code>, <code>5B</code>, <code>5D</code> or <code>25</code> in a path or host began to be decoded.
+And <code>velaris audit --json</code> changed shape to <code>velaris.audit/1</code>. Each was
+a correct fix; together they were a major version.</p>
+<p><strong>Earlier minor releases</strong> that broke something covered above:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Release</th><th>What broke</th></tr></thead>
+<tbody>
+<tr><td>2.20</td><td>Whole numbers became 64-bit: arithmetic past that range stopped with E407, where the interpreter had kept counting</td></tr>
+<tr><td>2.42</td><td><code>velaris fmt</code> changed where it puts <code>requires</code>, <code>ensures</code> and <code>invariant</code>, so <code>fmt --check</code> failed on files the previous version had formatted</td></tr>
+<tr><td>2.44</td><td><code>pop</code>, <code>slice</code> and <code>set_at</code> had to be handled with <code>check</code> or <code>try</code> (E520); a missing <code>main</code>, a <code>main</code> with parameters and a <code>main</code> marked <code>or fail</code> became compile-time errors (E400, E401, E523); Python calls began to receive arguments that read as numbers as numbers</td></tr>
+<tr><td>2.47</td><td><code>http.vel</code>'s <code>call</code> returned an <code>Answer</code> record instead of text</td></tr>
+<tr><td>2.56</td><td><code>audit().problems</code> held <code>Problem</code> objects instead of dictionaries</td></tr>
+<tr><td>2.59</td><td>The MCP server and the HTTP door stopped a run at 30 seconds and 512 MB, where it had had no limit</td></tr>
+<tr><td>2.62</td><td><code>args()</code> stopped including <code>--allow</code>, <code>--deny</code>, <code>--timeout</code> and their values; <code>check --strict</code> began refusing a loop not shown to end (E612)</td></tr>
+<tr><td>3.1</td><td>The memory cap began to hold on Windows, so a run past it stopped with E611 where it had continued; <code>velaris add</code> refused to replace a vendored library with different bytes without <code>--force</code></td></tr>
+<tr><td>8.2</td><td>Each named on a <code>compatibility:</code> line of its entry, where rule 5 now requires it. On a run, <code>--</code> ends Velaris's flags, so <code>args()</code> no longer holds <code>--</code> and a flag written after it no longer applies (a Goal C fix); a local or parameter named like a builtin, or like one of the program's functions, no longer hides a call from the effect check (E300) or the Secret check (E560); unary minus of the smallest whole number, and that number divided by -1, stop with E407; blocks nested more than 4,000 deep are E102, where more than some thousands were a Python traceback; <code>velaris check</code> gives a <code>main</code> marked <code>or fail</code> E524, as a run always did, where it gave E523; <code>--no-cache</code> and <code>velaris clean</code> do nothing</td></tr>
+</tbody></table></div>
+<p><strong>Refusals from a stronger prover</strong>, which the rule above does not
+count as breaks, in 2.6, 2.9, 2.12, 2.18, 2.41.2, 2.43, 2.44 and 2.45:
+each refused before running a program that had compiled, for a
+division, a map promise, a nested-list read, a record promise, a call
+against a <code>requires</code> the prover had been dropping, or a list read the
+prover could now show wrong.</p>
+<p><strong>A reused error code.</strong> E610 meant a missing map key from 1.4; 2.0
+made that lookup a failure instead, and 2.59 gave E610 to the run's
+time limit. Rule 3 forbids that from 4.0 on. No code has been removed
+since.</p>
+<p><strong>4.0 (major).</strong> Listed item by item in the CHANGELOG under "What a 3.4
+user has to change": <code>velaris serve</code> without <code>--max-allow</code> grants <code>io</code>
+only; on both doors a request's <code>timeout</code> and <code>max_memory_mb</code> may not
+exceed the operator's <code>--max-timeout</code> and <code>--max-memory-mb</code>, 30 seconds
+and 512 MB by default, and must be numbers; and <code>velaris serve --max-memory-mb</code>, which on Linux and macOS capped the door's own
+process, is now the most each run may have.</p>
+<p><strong>5.0 (major), 2026-09-12.</strong> A run given no budget gets <code>io</code> - the
+console, and nothing else - where it got all seven effects.
+<code>velaris file.vel</code>, <code>velaris.run(source)</code> with no <code>allow</code>, and
+<code>velaris.Pool(...)</code> with no <code>allow</code> are all affected; the two doors
+were already <code>io</code> (the MCP server in 3.4, the HTTP door in 4.0), and
+this is the release that makes every place a budget comes from answer
+the same way. <code>--deny</code> now narrows what <code>--allow</code> gave rather than
+starting from all seven, so <code>--deny net</code> alone leaves <code>io</code> where it
+left six effects. <strong>The reason</strong>: the one question a capability
+language has to get right is what an operator gets when they say
+nothing, and until 5.0 the answer was "everything". Every claim this
+project makes about running code you have not read depended on the
+operator having written a budget, and THREAT_MODEL.md, the README's
+related-work paragraph and the paper all conceded the point against
+WASI, whose modules reach nothing unless handed something. Prior art
+made it plain: Boruna's default policy grants nothing.</p>
+<p>A 4.x user has to change: every command, script, CI step, notebook
+cell and library call that runs a program needing more than <code>io</code> and
+did not say so. <code>velaris migrate --to 5.0 [path]</code> reads a program or a
+tree, works out the narrowest budget each program needs from its own
+audit, and prints the command to run it under 5.0; <code>--write</code> updates
+the shell scripts and CI files it can parse and names the lines it
+left alone. <code>--allow all</code> is the explicit way to ask for what a run
+used to get, and writes one line to standard error when it is used.
+The refusal a program now meets names the effect, what the run does
+allow, and the flag that would grant it.</p>
+<p><strong>6.0 (major), 2026-09-12.</strong> <code>env()</code> returns <code>Secret of Text</code> where it
+returned <code>Text</code>, and a <code>Secret</code> cannot be printed, written, sent or
+passed to Python (E560). Three shapes of program stop compiling:
+one that emits what <code>env()</code> returned; one whose signature says it
+returns a <code>Text</code> and returns what <code>env()</code> gave it (E503); and one that
+puts it in a <code>Text</code> variable, field or parameter (E501). <code>declassify</code>
+is an eighth effect, so <code>--allow all</code> now grants eight, a <code>uses</code> clause
+may name it, and <code>velaris.audit/1</code>'s <code>effects</code> may hold it - a change
+to a list STABILITY.md's <em>budget grammar</em> clause covers.
+<code>stdlib/env_tools.vel</code> changed with the language: <code>setting</code> returns
+<code>Secret of Text</code>, <code>number_setting</code> declares <code>uses env, declassify</code>, and
+<code>public_setting</code> is new. <strong>The reason</strong>: an effect says a program
+printed something; it does not say whether what it printed was the
+secret, and a language whose whole claim is about running code you
+have not read had nothing at all to say about that. It was the one
+capability the peer-reviewed design beside this one had and this did
+not, and prior art said so in writing.</p>
+<p>This one was written as 5.1 first. It is 6.0 because rule 1 says a
+break ships in a major version - including a security fix that refuses
+something that used to work - and because this file already records two
+releases that got that wrong. A version number costs nothing.</p>
+<p>A 5.x user has to change: every use of <code>env()</code>'s result as a <code>Text</code>,
+which the compiler points at one by one; and a repository with a
+committed <code>velaris.capabilities</code> has to record <code>declassify</code> the first
+time one of its programs needs it, in review, which is the ratchet
+working rather than a break.</p>
+<p><strong>7.0 (major), 2026-09-12. 6.0.0 stood for one day.</strong> 6.0 let a
+comparison over a secret give an ordinary <code>Bool</code>, and said in writing
+why: a comparison is one bit, <code>if key == ""</code> has to be writable, and
+refusing the Bool while allowing the branch would stop nothing. That
+is true of one comparison and false of a loop - with <code>length</code> and
+<code>code_at</code>, <code>key == c</code> reads the key out a character at a time, and the
+program prints what it read. A second route was found the same way: a
+failure's reason is text the program can print and the runtime builds
+it from the values it was given, so <code>to_int(key)</code> printed the key when
+it failed. 7.0 makes a comparison over a secret a <code>Secret of Bool</code>,
+refuses any <code>if</code> or <code>while</code> on a value that carries a secret (E563),
+and refuses a secret to every fallible builtin (E560). Programs that
+compiled under 6.0 are refused, so it is a major version by rule 1.</p>
+<p>6.0.0 is yanked on PyPI, not deleted. It was published, tagged and
+signed, and deleting or moving a published version breaks whoever
+pinned it - the same reason 3.4 was not retagged. A yank does neither:
+an install pinned to <code>==6.0.0</code> still resolves and gets the same file,
+and an install that asks for anything looser no longer reaches it. That
+is the distinction that lets a bad release stay honest without breaking
+anyone who committed to it - it is still there, and listed here as what
+it was: a release whose central feature had a hole, closed the same day
+it was found. What the rule bought is that the fix arrived as 7.0
+rather than as 6.0.1, so nobody upgrades into a refusal without reading
+why.</p>
+<p><strong>8.0 (major).</strong> Four changes refuse programs that ran under 7.x, each
+a security fix, each therefore a major by rule 1. Listed item by item in
+the CHANGELOG under "What a user of 7.x has to change":</p>
+<ul>
+<li><strong>A proxy the net budget does not cover is refused (E317).</strong> Through
+7.x a <code>net:</code> grant checked the URL's host, but an ambient <code>HTTP_PROXY</code>
+/ <code>HTTPS_PROXY</code> routed the request to a proxy that need not be a
+granted host - the grant bounded a string, not the socket's peer. This
+was the open gap THREAT_MODEL.md recorded. 8.0 disables ambient
+proxies unless the proxy's own host:port is inside the net budget;
+<code>velaris add</code> no longer defers to a proxy either. With no proxy set,
+behaviour is unchanged.</li>
+<li><strong>A function named like a built-in is refused (E204).</strong> <code>fn print</code>,
+<code>fn env</code>, <code>fn read_file</code> and the like were silently shadowed by the
+built-in through 7.x; now they are an error. The 4.3-and-later
+give-way rule (SPEC.md 10.1, the Money and Secret builtins) is
+unchanged, and the shipped standard library is exempt.</li>
+<li><strong><code>read_file</code> on a documented credential location is refused (E318),</strong>
+pointed at <code>read_file_secret</code>; and such a location is not covered by a
+broad <code>fs:read:</code> grant unless a path within it is named explicitly.</li>
+<li><strong><code>velaris add</code> refuses a redirect from <code>https</code> to <code>http</code>, and a
+redirect to a host outside the URL's origin.</strong></li>
+</ul>
+<p>Three new error codes, E204, E317 and E318; none reuses a meaning
+(rule 3). <code>velaris.audit/1</code> gains <code>ffi_native</code> within version 1 (an
+addition, not a break), and the invocation log gains an optional
+<code>run_params</code>. Nothing published before 8.0 is moved.</p>
+<p><strong>8.1 (minor), and two refusals it adds.</strong> Both are listed in its CHANGELOG
+under "What 8.1 refuses that 8.0 did not", and are recorded here so the
+record stays whole.</p>
+<ul>
+<li><strong>The HTTP door and the MCP server refuse an import from outside the
+directory they serve</strong> (E515), where 8.0 compiled one. The list above
+names the command line's commands, flags and exit codes, and the library;
+what a door does with a request is not on it. But this file counted 3.4's
+door that began refusing requests it had accepted as a break made in a
+minor version, and by that reading this is one too, and is recorded as
+one. It shipped in 8.1 because it closes a read of the door host's files
+by any caller - a token holder, or whatever an MCP client let a model
+send, under the <code>io</code> ceiling (advisory-import-read.md) - and because a
+door whose programs import from elsewhere has one flag to set, <code>--root</code>.
+The library, which the list does cover, refuses nothing new:
+<code>import_root=</code> is an added parameter.</li>
+<li><strong><code>velaris.check()</code>, <code>velaris.audit()</code> and <code>velaris.attest()</code> stop at 60
+seconds and 2048 MB</strong> unless raised, where 8.0 waited. The command line has
+had the same ceiling since 8.0, whose CHANGELOG counted it as an addition
+(its memory cap took hold only on Windows until 8.1, and now holds on
+Linux as documented);
+this applies that reading to the library. A check that needs longer passes
+<code>timeout=</code>, and <code>None</code> restores 8.0's call exactly.</li>
+</ul>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/STABILITY.md">STABILITY.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#what-semantic-versioning-covers">What semantic versioning covers</a></li><li><a href="#what-it-does-not-cover">What it does not cover</a></li><li><a href="#the-rules">The rules</a><ul><li><a href="#deprecations-in-force">Deprecations in force</a></li></ul></li><li><a href="#breaks-we-have-made">Breaks we have made</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

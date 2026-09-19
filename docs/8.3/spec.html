@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>The Velaris language reference - Velaris 8.3.1</title>
+<meta name="description" content="This is the specification: what Velaris means, precisely. It is not a tutorial (TUTORIAL.md is), and it does not teach programming. It exists so that anyone ...">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/spec.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html" aria-current="page">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="the-velaris-language-reference">The Velaris language reference</h1>
+<p>This is the specification: what Velaris means, precisely. It is not a
+tutorial (<a href="tutorial.html">TUTORIAL.md</a> is), and it does not teach
+programming. It exists so that anyone deciding whether to depend on
+this language can find out exactly what it promises — and what it
+does not.</p>
+<p>Version 8.3.1. Where this document and the implementation disagree,
+that is a bug in one of them; please report it.</p>
+<h2 id="1-programs">1. Programs <a class="anchor" href="#1-programs" aria-label="Link to this section">#</a></h2>
+<p>A program is one or more files of UTF-8 text with the extension
+<code>.vel</code>. Execution begins at <code>main</code>, which takes no parameters and
+cannot fail. A program without <code>main</code> is rejected (E400).</p>
+<p>Files are combined by <code>import</code> (§10). There is no separate linking
+step and no build configuration: the entry file plus what it imports
+is the program.</p>
+<h2 id="2-lexical-structure">2. Lexical structure <a class="anchor" href="#2-lexical-structure" aria-label="Link to this section">#</a></h2>
+<p>Comments run from <code>//</code> to end of line. Whitespace is insignificant
+except as a separator; there is no layout rule and no significant
+indentation.</p>
+<p>Identifiers begin with a letter or underscore and continue with
+letters, digits or underscores. They are case-sensitive.</p>
+<p>Keywords: <code>fn let return if else uses true false while for requires ensures and or not invariant record import fail check try</code>.</p>
+<p>Literals:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Kind</th><th>Examples</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Int</td><td><code>0</code>, <code>42</code>, <code>-7</code></td><td>64-bit, signed (§4.1)</td></tr>
+<tr><td>Float</td><td><code>1.5</code>, <code>0.0</code>, <code>-2.25</code></td><td>IEEE-754 binary64 (§4.2)</td></tr>
+<tr><td>Bool</td><td><code>true</code>, <code>false</code></td><td></td></tr>
+<tr><td>Text</td><td><code>"hello"</code>, <code>"a\nb"</code></td><td>escapes: <code>\n \t \\ \"</code>; any other is E002</td></tr>
+<tr><td>List</td><td><code>[1, 2, 3]</code></td><td>all elements one type</td></tr>
+<tr><td>Map</td><td><code>{"a": 1}</code></td><td>keys <code>Text</code> or <code>Int</code></td></tr>
+</tbody></table></div>
+<p>An empty <code>[]</code> or <code>{}</code> has no inferable element type; give it one with
+a typed <code>let</code> (E506).</p>
+<h2 id="3-types">3. Types <a class="anchor" href="#3-types" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>Int  Float  Bool  Text  Handle
+Money of CUR             (an amount in a currency, §4.3)
+Secret of T              (a value that must not escape, §3.1)
+List of T
+Map of K to V            (K is Text or Int)
+fn(T, ...) -&gt; R          (a function value; pure only)
+&lt;record name&gt;</code></pre></div>
+<p>There is no null, no undefined, no implicit conversion, and no
+subtyping. A value has exactly one type, known at compile time.</p>
+<p><code>Handle</code> is an opaque reference to a value living in the host language
+(§12). It can be passed and stored; it has no operations of its own.</p>
+<p>Generic functions are written <code>for any T</code> and are instantiated at each
+call site by unification with the argument types. There are no
+constraints or bounds.</p>
+<h3 id="31-secret-of-t">3.1 Secret of T <a class="anchor" href="#31-secret-of-t" aria-label="Link to this section">#</a></h3>
+<p>Effects say that a program printed something. They do not say whether
+what it printed was the secret. <code>Secret of T</code> is the other half: a
+value the compiler tracks so that it cannot reach anything that emits
+it.</p>
+<p><strong>Where one comes from.</strong> Two builtins, and nothing else:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Builtin</th><th>Returns</th></tr></thead>
+<tbody>
+<tr><td><code>env(name, fallback)</code></td><td><code>Secret of Text</code></td></tr>
+<tr><td><code>read_file_secret(path)</code></td><td><code>Secret of Text</code>, and can fail</td></tr>
+</tbody></table></div>
+<p>A program cannot make a Secret out of a value it already holds. Nothing
+else is secret by default, and a secret that arrives some other way -
+through <code>read_line</code>, through <code>args</code>, through <code>ffi</code> - is an ordinary
+<code>Text</code> and is outside this entirely.</p>
+<p><strong>Where one cannot go.</strong> Two kinds of builtin put a value in front of
+somebody, and neither takes an argument that carries a Secret. A
+program that gives one is refused with <strong>E560</strong>, which names the value,
+what would have emitted it, and where the secret came from.</p>
+<ul>
+<li><strong>A builtin that declares an effect</strong> emits what it is given: to the
+console, a file, a host, Python or the operating system. That covers
+<code>print</code>, <code>log</code>, <code>ask</code>, <code>exit_with</code>, <code>read_file</code>, <code>read_file_secret</code>,
+<code>write_file</code>, <code>file_exists</code>, <code>fetch</code>, <code>post</code>, <code>fetch_status</code>,
+<code>request</code>, <code>env</code> itself, <code>now</code>, <code>random</code> and the whole <code>py_*</code> family.</li>
+<li><strong>A builtin that can fail</strong> gives a reason, and a reason is <code>Text</code>
+the program may print. The runtime writes it out of the values it was
+given — <code>to_int</code> quotes the text it could not read, <code>parse_money</code> the
+amount it could not parse — and nothing at run time knows which of
+those the type system called secret. So <code>to_int</code>, <code>parse_money</code>,
+<code>json_get</code>, the <code>_or_fail</code> family, <code>pop</code>, <code>slice</code> and <code>set_at</code> take
+no secret either. <code>get</code> on a map is the exception that proves the
+rule: its reason names the key, and a key is <code>Text</code> or <code>Int</code>, never a
+Secret.</li>
+</ul>
+<p>The reason given to <code>fail</code> is emitted too, and is refused the same way.
+A program's own effectful function needs no rule of its own: it
+declares the types it takes, and a Secret is not one of them unless the
+signature says so.</p>
+<p>One rule is about generic functions. A generic body is checked once,
+with its type variables standing for nothing in particular. Inside it a
+value of type <code>T</code> can be compared - <code>got == item</code> gives a plain <code>Bool</code>
+there, because there is no secret in sight - handed to <code>to_text</code>, or
+printed. Bind <code>T</code> to a secret at a call site and each of those becomes
+an oracle that gives the caller an ordinary <code>Bool</code>, <code>Int</code> or <code>Text</code>:
+<code>contains_item([guess], key)</code> is exactly that. So <strong>no type variable is
+ever bound to a type that carries a secret</strong> (E560), whether the
+generic function declares an effect or not.</p>
+<p>That is blunt, and it is the sound rule. The way to write a generic
+function over secrets is to say so in its signature -
+<code>fn pass(s: Secret of T) -&gt; Secret of T for any T</code> binds <code>T</code> to <code>Text</code>,
+which carries nothing - and then the body is checked knowing what it
+holds.</p>
+<p><strong>What carries one.</strong> A value carries a secret when it is one, or holds
+one anywhere inside: <code>List of Secret of Text</code>, <code>Map of Text to Secret of Text</code>, a record with a secret field, a record with a field of such a
+record. The whole structure is refused at a sink, not only the field -
+so a structure is not a way around the rule. A map's keys are <code>Text</code> or
+<code>Int</code>, so a secret is never a key. A function value is a name, not what
+it would return, and carries nothing.</p>
+<p><strong>What keeps one.</strong> Every pure operation over a secret gives a secret,
+with no exceptions: <code>length(k)</code> is a <code>Secret of Int</code>, <code>"Bearer " + k</code> a
+<code>Secret of Text</code>, <code>upper(k)</code>, <code>to_text(k)</code>, <code>format("{}", k)</code> and
+<code>json_of(k)</code> all <code>Secret of Text</code> — <strong>and <code>k == ""</code>, <code>length(k) &lt; 10</code>
+and <code>contains(k, "a")</code> are all <code>Secret of Bool</code>.</strong> The rule is one
+line: <strong>a pure operation on a value that carries a secret gives a
+Secret of its result type.</strong> There is no <code>Secret of Secret of T</code>
+(E562). A comparison may put a secret beside a plain value of the same
+type, and that is the only place the two mix.</p>
+<p>One thing is not derived from a secret and is not one: what a
+<em>container</em> is, rather than what it holds. <code>length</code> of a <code>List of Secret of Text</code> is an ordinary <code>Int</code>, <code>keys</code> of a map of them an
+ordinary <code>List of Text</code>, and <code>has(m, key)</code> an ordinary <code>Bool</code> - because
+how many items a list holds, and which keys a map has, were decided by
+the pushes and puts the program made, and no program can have made
+those depend on a secret without branching on one, which is E563. So a
+program can walk a list of secrets. <code>length</code> of a <code>Secret of Text</code> is
+still a <code>Secret of Int</code>: that one <em>is</em> the secret's own shape.</p>
+<p><strong>Nothing branches on one.</strong> An <code>if</code> or a <code>while</code> whose condition
+carries a secret is refused with <strong>E563</strong>, which names where the secret
+came from. Nor is a <code>Secret of Bool</code> printable: it is a Secret like any
+other, so E560 covers it.</p>
+<p>That pair of rules is the point, and the reason is worth stating,
+because the obvious alternative is wrong. It is tempting to let a
+comparison give an ordinary <code>Bool</code> — a comparison is one bit, and <code>if key == ""</code> is a natural thing to write. But a comparison is not one bit
+once it is in a loop. With <code>length</code> and <code>code_at</code>, <code>key == c</code> is a
+character-by-character oracle:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">let</span> at = <span class="n">0</span>
+<span class="k">while</span> at &lt; <span class="n">3</span> {
+    <span class="k">for</span> c in alphabet {
+        <span class="k">if</span> code_at(key, at) == code_at(c, <span class="n">0</span>) {   <span class="c">// E563</span>
+            found = found + c
+        }
+    }
+    at = at + <span class="n">1</span>
+}
+print(<span class="s">"recovered: "</span> + found)                     <span class="c">// the whole key</span></code></pre></div>
+<p>A rule that stopped <code>print(key)</code> and allowed that would not be an
+information-flow type; it would be a decoration. So the line is drawn
+at the branch. A comparison over a secret gives a <code>Secret of Bool</code>
+precisely so that acting on it is refused.</p>
+<p><strong>What it costs, and what to write instead.</strong> A program cannot check
+whether its own API key is empty without saying so. Saying so is
+<code>declassify</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">let</span> empty = declassify(key == <span class="s">""</span>,
+                       <span class="s">"whether a key is set at all is not the key"</span>)
+<span class="k">if</span> empty { ... }</code></pre></div>
+<p>which needs the effect, the grant and a written reason, and is named in
+the audit. That is the trade: not silence, a statement. A program that
+means to look at a secret says so in its type, in its audit and to its
+operator, and the operator can refuse.</p>
+<p><strong>A promise is not a branch.</strong> A <code>requires</code>, <code>ensures</code> or <code>invariant</code>
+may be a <code>Secret of Bool</code> — <code>requires length(key) &gt; 0</code> is exactly the
+kind of thing to promise. A broken promise stops the run, cannot be
+caught, and cannot accumulate, so it tells a reader at most one bit per
+run rather than reading a secret out in a loop, and the message it
+prints redacts the values whose type is secret. THREAT_MODEL.md lists
+the bit per run that remains.</p>
+<p><strong>What is still not bounded.</strong> This bounds what a program can <em>do</em> with
+a secret it cannot see. It does not make Velaris non-interfering, and
+this document does not claim that it does: a program still chooses how
+long to run and whether to stop, and an operator who runs the same
+program repeatedly is outside anything stated here. THREAT_MODEL.md
+says what is left.</p>
+<p><strong>The way out.</strong> <code>declassify(value, reason)</code> takes a <code>Secret of T</code> and
+gives back the <code>T</code>. It is the only way, and it says so three times:</p>
+<ul>
+<li>the function doing it needs <code>uses declassify</code>, checked across the
+whole call graph like any other effect (§7, E300);</li>
+<li><code>reason</code> must be written as text in the call, not built while
+running, so that <code>velaris audit</code> can report it without running the
+program (E561 - and E561 again for an empty reason, or for something
+that is not a Secret);</li>
+<li>the operator's budget must grant <code>declassify</code>, or the call is refused
+at the moment it happens (E310, §7.1), like any other effect.</li>
+</ul>
+<p>So a program that can let a secret out says so in its type; the audit
+names every place it does and the reason given (velaris-spec §8.6, the
+<code>secrets</code> field); and an operator can run the program without letting
+it.</p>
+<p><strong>What a Secret is while running.</strong> Nothing. It is a compile-time
+distinction with no runtime representation, so it costs nothing, and
+<code>declassify</code> evaluates to the value itself. Two places print values a
+program did not ask them to print, and both write <code>&lt;secret&gt;</code> instead:
+<code>velaris trace</code>, and the message of a broken <code>requires</code> or <code>ensures</code>
+(E600, E601).</p>
+<h2 id="4-numbers">4. Numbers <a class="anchor" href="#4-numbers" aria-label="Link to this section">#</a></h2>
+<h3 id="41-whole-numbers">4.1 Whole numbers <a class="anchor" href="#41-whole-numbers" aria-label="Link to this section">#</a></h3>
+<p><code>Int</code> is a signed 64-bit integer: −9223372036854775808 to
+9223372036854775807. Arithmetic that leaves that range is an <strong>error</strong>
+(E407), not a wraparound and not a promotion to a larger type. This
+holds identically in interpreted and natively compiled code; the two
+are checked against each other by a fuzzer on every release.</p>
+<p><code>/</code> on two <code>Int</code>s is division that rounds toward negative infinity
+(<code>-7 / 2</code> is <code>-4</code>). <code>%</code> returns the remainder with the sign of the
+divisor, so <code>x == (x / y) * y + (x % y)</code> holds for all <code>y != 0</code>.
+Division or remainder by zero is an error (E403), never an infinity.</p>
+<h3 id="42-decimals">4.2 Decimals <a class="anchor" href="#42-decimals" aria-label="Link to this section">#</a></h3>
+<p><code>Float</code> is IEEE-754 binary64 with round-to-nearest-even, including
+signed zeros, infinities and NaN, which arithmetic can reach: a
+product past the largest float is an infinity. Division or remainder
+by zero is an error (E403) for <code>Float</code> as for <code>Int</code>, never an
+infinity or a NaN: <code>/</code> and <code>%</code> stay interpreted, where the divisor is
+checked (§11).</p>
+<p><code>Int</code> and <code>Float</code> never mix implicitly. <code>to_float(x)</code> widens;
+<code>round(x)</code> narrows.</p>
+<h3 id="43-money">4.3 Money <a class="anchor" href="#43-money" aria-label="Link to this section">#</a></h3>
+<p><code>Money of CUR</code> is an exact amount: a whole number of <strong>minor units</strong> —
+paise, cents, fils — in the currency <code>CUR</code>, which is part of the type.
+The units are an <code>Int</code>, with the same 64-bit range and the same error
+past it (E407). No <code>Float</code> is part of any of it, and there is no
+conversion between currencies: a rate and a rounding policy are a
+program's decisions, not a language's.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>money(1250, "INR")        12.50 rupees, as 1250 paise
+units_of(m)               its minor units, as an Int
+with_units(m, n)          n minor units, in m's currency</code></pre></div>
+<p><code>money</code> and <code>parse_money</code> take the currency as text <strong>written in the
+call</strong>, and it must be one the implementation knows
+(<code>velaris.CURRENCIES</code>, §4.4); anything else is E551. A function may be generic in
+a currency: <code>fn f(m: Money of C) -&gt; Money of C for any C</code>.</p>
+<p><strong>Arithmetic.</strong> Two amounts in the same currency add, subtract and
+compare. An amount multiplies by an <code>Int</code>. Everything else is refused
+before the program runs: two currencies mixed (E550), an amount times an
+amount, an amount and a number, an amount and a <code>Float</code> (E501), and <code>/</code>
+or <code>%</code> on an amount (E553), because both would round without saying how.</p>
+<p><strong>Rounding is named or it does not happen.</strong> Where a result may not come
+out even, the mode is a required argument, written in the call as
+<code>"half_up"</code> (a half goes away from zero), <code>"half_even"</code> (to the even
+neighbour) or <code>"down"</code> (toward zero). Anything else is E552.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>percent_of(amount, numerator, denominator, "half_up")
+divide_or_fail(amount, by, "half_even")          // can fail</code></pre></div>
+<p><code>percent_of</code> multiplies before it divides and is exact in between,
+however large that product; only its result must fit in 64 bits. A
+denominator of zero is an error while running (E403), and one the prover
+shows can be zero is E706. <code>divide_or_fail</code> fails, catchably, on zero
+and on a result too large to hold.</p>
+<p><code>units_of</code> also takes a <strong>list</strong> of amounts and gives what they add up
+to, as an <code>Int</code>, and 0 for an empty list. There is no <code>Money</code>-valued
+total of a list, because an empty list has no currency to give one.</p>
+<p><code>text_of(m)</code> writes the code, then the amount with exactly as many
+digits after the point as the currency has minor units: <code>INR 12.50</code>,
+<code>JPY 1250</code>, <code>KWD 1.250</code>, <code>INR -0.05</code>. <code>to_text</code>, <code>print</code> and <code>format</code>
+write an amount the same way; <code>json_of</code> writes it as its currency and
+its units, never as a number with a point. <code>parse_money(text, "INR")</code>
+reads back what <code>text_of</code> wrote, and the same without the code or with
+fewer digits after the point; it fails on anything else, including a
+text with more digits than the currency has.</p>
+<p>Dividing an amount into parts that still add up to it is
+<code>money.split(amount, n)</code> from <code>stdlib/money.vel</code>, which is written in
+Velaris so that its promises are proven with the program that imports
+it (§9.2): <code>length(result) == n</code>, <code>units_of(result) == units_of(amount)</code>,
+and no part with a sign the amount does not have.</p>
+<h3 id="44-which-currencies">4.4 Which currencies <a class="anchor" href="#44-which-currencies" aria-label="Link to this section">#</a></h3>
+<p>An implementation carries a table of currency codes and how many digits
+each has after the point: <code>velaris.CURRENCIES</code>, which today
+holds 21 of them — 2 digits for INR, USD, EUR and most others, 0 for JPY
+and KRW, 3 for KWD, BHD, JOD and OMR. <strong>It is not exhaustive.</strong> A
+currency outside it is refused (E551) rather than assumed to have two
+digits, because an assumed minor unit prints and parses amounts wrongly.
+Adding one is a line in that table with the count ISO 4217 gives it, and
+a case in <code>check_money.py</code>. A program cannot add its own: two programs
+that disagreed about a currency would write the same amount two ways.</p>
+<h3 id="45-text">4.5 Text <a class="anchor" href="#45-text" aria-label="Link to this section">#</a></h3>
+<p><code>Text</code> is a sequence of Unicode code points. <code>length</code> counts code
+points, not bytes, and <code>code_at(t, i)</code> returns the code point at a
+position. Comparison (<code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>) is lexicographic by code
+point. Text is immutable; <code>+</code> produces a new value.</p>
+<h2 id="5-values-and-mutation">5. Values and mutation <a class="anchor" href="#5-values-and-mutation" aria-label="Link to this section">#</a></h2>
+<p>Records, lists and maps are immutable. <code>push</code>, <code>put</code> and record
+construction produce new values; nothing observes a change made
+elsewhere. <code>let</code> introduces a binding; assignment (<code>x = e</code>) rebinds a
+local name and never mutates a value another name refers to.</p>
+<p>Equality (<code>==</code>) is structural for records, lists and maps, <code>fpEQ</code> for
+<code>Float</code> (so NaN is not equal to itself, and <code>0.0 == -0.0</code>), and
+ordinary equality elsewhere.</p>
+<h2 id="6-evaluation">6. Evaluation <a class="anchor" href="#6-evaluation" aria-label="Link to this section">#</a></h2>
+<p>Evaluation is strict, left to right, depth first. Arguments are fully
+evaluated before a call. <code>and</code> and <code>or</code> short-circuit: the right side
+is not evaluated when the left decides the result. <code>if</code>/<code>while</code>
+conditions must be <code>Bool</code>; there is no truthiness.</p>
+<p>There is no undefined behaviour. Every operation either produces a
+value, raises a language error with a code, or fails in the sense of
+§8.</p>
+<h2 id="7-effects">7. Effects <a class="anchor" href="#7-effects" aria-label="Link to this section">#</a></h2>
+<p>A function declares what it may do:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> save(path: Text, body: Text) <span class="k">uses</span> fs { ... }</code></pre></div>
+<p>The effects are <code>io</code> (the console: <code>print</code>, <code>read_line</code>, <code>args</code>),
+<code>env</code> (environment variables, through <code>env()</code>), <code>fs</code> (files), <code>net</code>
+(network), <code>clock</code> (the time), <code>rand</code> (randomness), <code>ffi</code> (calling the
+host language, §12) and <code>declassify</code> (turning a <code>Secret</code> into an
+ordinary value, §3.1). <code>env</code> became its own effect in 3.0; before that
+it was part of <code>io</code>, which meant an io-only budget could read every
+secret in the environment. <code>declassify</code> became the eighth in 6.0: it
+reaches nothing outside the program, but it is the one way a value the
+type system protects stops being protected, and an operator has the
+same reason to refuse it as to refuse <code>net</code>.</p>
+<p>The rule is transitive and checked at compile time: a function may
+only perform effects it declares, and calling a function requires
+declaring everything that function declares. A function with no <code>uses</code>
+clause is <strong>pure</strong> — it cannot perform any effect, and neither can
+anything it calls, however deep. Violations are E300.</p>
+<p>This is a property of the whole call graph, not a convention. Reading
+a signature tells you the complete set of things a call can do to the
+outside world.</p>
+<h3 id="71-the-budget">7.1 The budget <a class="anchor" href="#71-the-budget" aria-label="Link to this section">#</a></h3>
+<p>Declaring an effect is the program's claim; the <strong>budget</strong> is the
+operator's decision, given as <code>--allow</code> / <code>--deny</code> on the command line
+or <code>allow=</code> in the library, and enforced by the runtime at the moment
+an effect is attempted, whatever the source declares. A refusal stops
+the program and cannot be caught.</p>
+<p>An operator who writes no budget gets <code>io</code> - the console, and nothing
+else. That is the default in 5.0 for <code>velaris file.vel</code>,
+<code>velaris.run(source)</code> with no <code>allow</code>, <code>velaris.Pool(...)</code> with no
+<code>allow</code>, and the ceilings of both doors. Before 5.0 the first three
+granted all seven effects. <code>--deny</code> narrows whatever <code>--allow</code> gave,
+so a denial alone narrows <code>io</code>; <code>--allow all</code> is a command-line
+shorthand for every effect - the seven, and <code>declassify</code> from 6.0 -
+written by the operator and never read from a caller's budget, and it
+writes one line to standard error when it is used. <code>all</code> means all: an
+operator who writes it has waived every gate, which is why writing it
+is recorded.</p>
+<p>A grant names an effect, and may narrow it:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Grant</th><th>Permits</th></tr></thead>
+<tbody>
+<tr><td><code>io</code>, <code>env</code>, <code>clock</code>, <code>rand</code>, <code>declassify</code></td><td>that effect</td></tr>
+<tr><td><code>fs</code></td><td>any path, read and write</td></tr>
+<tr><td><code>fs:read</code>, <code>fs:write</code></td><td>one direction, any path</td></tr>
+<tr><td><code>fs:read:P</code>, <code>fs:write:P</code></td><td>one direction, for paths that resolve under <code>P</code></td></tr>
+<tr><td><code>net</code></td><td>any host</td></tr>
+<tr><td><code>net:H</code>, <code>net:H:PORT</code></td><td>that host, at any port or at that port</td></tr>
+<tr><td><code>net:*.D</code></td><td>hosts with exactly one label in place of the star</td></tr>
+<tr><td><code>ffi</code></td><td>any Python module</td></tr>
+<tr><td><code>ffi:a,b</code></td><td>those top-level modules</td></tr>
+<tr><td><code>...@N</code></td><td>and at most N operations of that effect in the run</td></tr>
+</tbody></table></div>
+<p>Grants are additive. Paths are resolved with <code>realpath</code> when the budget
+is parsed and again at every <code>read_file</code>, <code>write_file</code> and
+<code>file_exists</code>, then compared as prefixes, so <code>..</code> and symlinks cannot
+reach past a grant. A host is the URL's host name, lower-cased; a port
+is the URL's port or the scheme's default; only <code>http</code> and <code>https</code> are
+reachable. A wildcard matches one label and never the domain itself;
+no wildcard may stand over an IP literal. A count is the smallest given
+for that effect and counts every operation of that effect across the
+whole run; a budget with no count is a budget on what, not on how much.</p>
+<p>The refusals: E310 (the effect), E311 (a module outside <code>ffi:</code>), E313
+(a path outside <code>fs:</code>, named), E314 (a host or port outside <code>net:</code>,
+named), E315 (the count reached). One case is a catchable failure
+rather than a refusal: a redirect whose target is outside the <code>net:</code>
+grants fails the request, naming the target, because the program did
+not choose where it was sent.</p>
+<p>Outside the rule, and stated as such: a hard link inside a granted
+directory is that directory's content; a file system changed by another
+process between the check and the open is outside the model; where a
+granted host name resolves is DNS's business.</p>
+<h2 id="8-failure">8. Failure <a class="anchor" href="#8-failure" aria-label="Link to this section">#</a></h2>
+<p>A function that can fail says so:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> parse(t: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> { ... }</code></pre></div>
+<p>Inside it, <code>fail "reason"</code> stops that call. A caller must handle the
+possibility, in one of two ways:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">check</span> parse(t) { ok n { ... } <span class="k">fail</span> why { ... } }   <span class="c">// handle here</span>
+<span class="k">let</span> n = <span class="k">try</span> parse(t)                               <span class="c">// pass it up</span></code></pre></div>
+<p><code>try</code> is only allowed inside a function that itself says <code>or fail</code>.
+Ignoring a fallible call is a compile error (E520). <code>main</code> cannot
+fail.</p>
+<p>Fallible builtins: <code>to_int</code>, <code>read_file</code>, <code>read_file_secret</code>, <code>fetch</code>,
+<code>post</code>, <code>request</code>, <code>fetch_status</code>, <code>get</code> on a <strong>map</strong>, <code>pop</code>, <code>slice</code>,
+<code>set_at</code>, <code>add_or_fail</code>, <code>sub_or_fail</code>, <code>mul_or_fail</code>, <code>div_or_fail</code>,
+<code>mod_or_fail</code>, <code>divide_or_fail</code>, <code>parse_money</code>, <code>py</code>, <code>py_int</code>,
+<code>py_float</code>, <code>py_json</code>, <code>py_new</code>, <code>py_do</code>, <code>py_field</code>, <code>json_get</code>,
+<code>json_int</code>, <code>json_float</code> and <code>json_len</code> - every <code>py_*</code> builtin but
+<code>py_close</code>. <code>get</code> on a <strong>list</strong> is not fallible: list bounds are the
+prover's domain (§9.4), and <code>get_or(m, k, default)</code> gives a total map
+lookup.</p>
+<h2 id="9-contracts-and-proof">9. Contracts and proof <a class="anchor" href="#9-contracts-and-proof" aria-label="Link to this section">#</a></h2>
+<h3 id="91-what-you-write">9.1 What you write <a class="anchor" href="#91-what-you-write" aria-label="Link to this section">#</a></h3>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> f(x: Int) -&gt; Int
+    <span class="k">requires</span> x &gt;= <span class="n">0</span>            <span class="c">// what the caller must ensure</span>
+    <span class="k">ensures</span> result &gt;= x        <span class="c">// what f guarantees in return</span>
+{ ... }
+
+<span class="k">while</span> i &lt; n
+<span class="k">invariant</span> total &gt;= <span class="n">0</span>           <span class="c">// true before and after each turn</span>
+{ ... }</code></pre></div>
+<p>Contract expressions must be pure and may call pure functions.
+<code>result</code> names the return value in <code>ensures</code>.</p>
+<h3 id="92-what-proven-means">9.2 What "proven" means <a class="anchor" href="#92-what-proven-means" aria-label="Link to this section">#</a></h3>
+<p>When Velaris says a promise is <strong>proven</strong>, it means: for every input
+permitted by the <code>requires</code>, the <code>ensures</code> holds — established by the
+Z3 theorem prover before the program runs, using the semantics in this
+document, with no execution and no sampling.</p>
+<p>When it says a promise <strong>cannot be kept</strong> (E700), it means a
+counterexample exists and is shown. This is only reported when the
+counterexample involves no summarized calls, so a reported violation is
+always literally realisable.</p>
+<p>When neither can be established, the promise is <strong>checked at runtime</strong>
+instead, and violating it is an error when it happens (E600, E601).
+<code>velaris explain</code> reports which of the three applies to each function.
+The compiler never reports a promise as proven when it was in fact
+left to a runtime check.</p>
+<h3 id="93-what-is-proven-and-what-is-not">9.3 What is proven, and what is not <a class="anchor" href="#93-what-is-proven-and-what-is-not" aria-label="Link to this section">#</a></h3>
+<p>Proven today: whole-number and boolean arithmetic; comparisons; loops
+(with written invariants, and with inferred bounds on counters);
+records, including fields that are lists, floats or text; flat lists
+and lists of lists via the theory of arrays; maps, modelled as values
+plus which keys are present; quantified list properties through
+<code>all_of</code> / <code>any_of</code>; failure paths, so <code>ensures</code> applies to every path
+that returns; division and remainder, including that the divisor is
+never zero; <code>Float</code> in genuine IEEE-754 rather than as real numbers;
+<code>length</code> and <code>contains</code> on text, <code>upper</code>/<code>lower</code> as length-preserving,
+and <code>split</code> as producing at least one piece.</p>
+<p>Amounts (§4.3) prove as the whole numbers they are: an amount is its
+minor units to the prover, so <code>ensures result &gt;= money(0, "INR")</code> is
+settled the way <code>result &gt;= 0</code> is, and <code>percent_of</code> is the exact rounding
+the interpreter performs, translated for a denominator shown positive.
+What a list of amounts adds up to is an unknown the prover is told three
+true things about — that nothing adds up to zero, and that items all
+<code>&gt;= 0</code> (all <code>&lt;= 0</code>) add up to something <code>&gt;= 0</code> (<code>&lt;= 0</code>) — so a promise
+that needs more about a sum than those, such as one that needs induction
+over the list, is left to runtime rather than claimed. <code>parse_money</code>
+and <code>divide_or_fail</code> are modelled on the path where they did not fail:
+an amount <code>parse_money</code> read is an unknown amount, so a promise about
+it is proven only where the function checks what it read (<code>if m &lt; money(0, "INR") { fail "negative" }</code>), and a division that did not
+fail is the exact rounding the interpreter performs, for a divisor
+shown positive. <code>text_of</code> is not modelled: a function that uses it
+keeps its promises as runtime checks.</p>
+<p>Not proven, and checked at runtime instead: the contents of text
+beyond the above; anything involving values that come back from the
+host language; and any obligation the solver cannot settle within its
+budget. Loop invariants are inferred only for simple counter bounds;
+anything richer must be written.</p>
+<p>A proof gets <strong>120 seconds</strong> when the function mentions <code>Float</code> and
+<strong>3 seconds</strong> otherwise, and either can be replaced for one run with
+<code>--proof-timeout SECONDS</code> or <code>VELARIS_PROOF_TIMEOUT</code>. A proof that
+spends its budget without an answer is <strong>abandoned</strong>, and an
+implementation must say so: reporting it the same way it reports a
+promise the prover looked at and found nothing wrong is a soundness
+bug, because a reader would take "nothing was found" from a run in
+which nothing was looked for. A run does not remember an abandoned
+proof, so the next one tries again.</p>
+<h3 id="94-calls-and-the-soundness-rule">9.4 Calls, and the soundness rule <a class="anchor" href="#94-calls-and-the-soundness-rule" aria-label="Link to this section">#</a></h3>
+<p>Calls are proven <strong>modularly</strong>: at a call site the callee's <code>ensures</code>
+is assumed and its <code>requires</code> becomes an obligation on the caller
+(E701). A callee's body is never inlined into a caller's proof.</p>
+<p>If any premise cannot be translated into the solver's logic, the whole
+proof for that function is abandoned and its promises fall back to
+runtime checks. Proving with a dropped premise could manufacture a
+counterexample that is not real, so it is never done.</p>
+<h3 id="95-which-loops-are-shown-to-end">9.5 Which loops are shown to end <a class="anchor" href="#95-which-loops-are-shown-to-end" aria-label="Link to this section">#</a></h3>
+<p>Every loop is given one of two verdicts, by a syntactic rule that
+needs no solver and so answers the same with and without the prover:</p>
+<p><strong>terminates</strong> - the condition is, or contains as an <code>and</code> conjunct,
+<code>v &lt; E</code>, <code>v &lt;= E</code>, <code>v &gt; E</code> or <code>v &gt;= E</code> (the counter <code>v</code> may stand on
+either side), where</p>
+<ul>
+<li><code>E</code> mentions no name the body assigns or binds, and calls only
+functions that read their arguments and touch nothing (<code>length</code> and
+the like, or a user function with no effects that cannot fail); and</li>
+<li>every path through the body that reaches its end moves <code>v</code> by exactly
+one step toward <code>E</code> - <code>v = v + 1</code> for <code>&lt;</code> and <code>&lt;=</code>, <code>v = v - 1</code> for
+<code>&gt;</code> and <code>&gt;=</code> - and <code>v</code> is assigned nowhere else in the body, nested
+loops included. A path that leaves through <code>return</code> or <code>fail</code> leaves
+the loop and needs no step.</li>
+</ul>
+<p><strong>unshown</strong> - every other shape. A step of two, a step on one arm of an
+<code>if</code> only, a counter reset on some path, a limit the body changes, a
+condition with only a flag, an <code>or</code> in the condition, a counter moved
+inside a nested loop: all unshown, whether or not the loop happens to
+end when run.</p>
+<p>A <code>for</code> loop is a <code>while</code> loop by the time the rule runs (the parser
+rewrites it; ARCHITECTURE.md) and goes through it unchanged: <code>for i in a to b</code> is shown to end unless the body
+assigns <code>i</code> or changes <code>b</code>, and <code>for x in xs</code> unless the body assigns
+<code>xs</code>.</p>
+<p>The verdict is reported by <code>velaris explain</code> ("loops: 2 terminate, 1 not
+shown") and by <code>velaris audit</code> (<code>loops_unshown</code> per function, and a
+warning naming the functions). It is an error only under
+<code>velaris check --strict</code>, as E612; without the flag a loop whose end is
+not shown is not a problem, and the time limit in <code>velaris.run</code> remains
+the guard against a loop that never ends. The compiler never reports
+<code>terminates</code> for a shape outside the rule above.</p>
+<h2 id="10-modules">10. Modules <a class="anchor" href="#10-modules" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"std.vel"</span>                 <span class="c">// names merge into this file</span>
+<span class="k">import</span> <span class="s">"lib/geo.vel"</span> as geo      <span class="c">// names live behind geo.</span></code></pre></div>
+<p>A plain import merges the imported file's functions and records, with
+duplicate names rejected. A named import prefixes that file's
+functions; the library's internal references are rewritten with it, so
+a library behaves identically from the inside. A local name may not
+shadow an import name (E514).</p>
+<p>Imports are resolved relative to the importing file, with the bundled
+standard library searched last. A file already in the program is not
+read again, so two files that import each other, or a file that
+imports itself, load without an error and with each file in the
+program once.</p>
+<p>A program compiled under an import root - the HTTP door and the MCP
+server always compile under one, the directory they serve, and the
+library takes <code>import_root=</code> - may import only <code>.vel</code> files at or under
+that directory, resolved with realpath, and files of the standard library;
+any other import is refused with E515 before the file is read (8.1). An
+error inside an imported file that is not a <code>.vel</code> file names the file and
+shows nothing of its content, with or without an import root.</p>
+<h3 id="101-your-names-and-the-builtins">10.1 Your names and the builtins <a class="anchor" href="#101-your-names-and-the-builtins" aria-label="Link to this section">#</a></h3>
+<p>A builtin added in <strong>4.3 or later</strong> gives way to a function of the same
+name that the program defines: <code>money</code>, <code>units_of</code>, <code>with_units</code>,
+<code>percent_of</code>, <code>divide_or_fail</code>, <code>text_of</code> and <code>parse_money</code> are the
+program's own wherever it declares one. A program written before a
+builtin existed therefore keeps meaning exactly what it meant, which is
+what lets a minor version add one at all. Inside a library imported
+<strong>with a name</strong>, such a call always reaches the builtin: the library's
+own functions carry its prefix, and it was not written against the
+program importing it.</p>
+<p>The builtins that existed before 4.3 keep the precedence they have
+always had: a function named like one of those is never reached.</p>
+<h2 id="11-compilation-and-execution">11. Compilation and execution <a class="anchor" href="#11-compilation-and-execution" aria-label="Link to this section">#</a></h2>
+<p>A program is lexed, parsed, effect-checked, type-checked,
+proof-checked, then run. Pure functions over <code>Int</code>, <code>Float</code>, <code>Bool</code>,
+list reads and text — and, since 2.14, functions whose contracts are
+<strong>proven</strong> — may be compiled to machine code through LLVM. Everything
+else is interpreted.</p>
+<p>Native and interpreted execution are required to produce identical
+results. Where they cannot be made identical, the operation is not
+compiled: <code>/</code> and <code>%</code> stay interpreted so that division by zero is a
+clean error in both, and results of type <code>Text</code> are not returned from
+native code because that boundary is platform-specific. A fuzzer
+generates random programs and compares both engines on every release.</p>
+<p>If the native backend is unavailable or fails for any reason, the
+program runs interpreted with the same behaviour.</p>
+<h2 id="12-the-host-language">12. The host language <a class="anchor" href="#12-the-host-language" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>py(module, function, args)       -&gt; Text
+py_int / py_float                -&gt; Int / Float
+py_json(module, function, args)  -&gt; Text     (JSON in, JSON out)
+py_new(module, function, args)   -&gt; Handle
+py_do(handle, method, args)      -&gt; Text
+py_field(handle, name)           -&gt; Text
+py_close(handle)</code></pre></div>
+<p>All of these require <code>uses ffi</code> and all except <code>py_close</code> can fail.
+Arguments travel as a JSON list; a trailing JSON object becomes
+keyword arguments. A value the host returns that is not JSON comes
+back as a <code>Handle</code>.</p>
+<p>Nothing about values crossing this boundary is verified: the prover
+treats them as unknown. What the language still guarantees is that
+crossing it is <strong>visible</strong> — a function that reaches the host says
+<code>uses ffi</code>, and a pure function cannot.</p>
+<h2 id="13-concurrency">13. Concurrency <a class="anchor" href="#13-concurrency" aria-label="Link to this section">#</a></h2>
+<p><strong>Velaris is single-threaded, deliberately, and has no concurrency
+model.</strong> There are no threads, no async functions, no channels, and no
+parallel execution. A program is one sequence of steps.</p>
+<p>This is a position, not an oversight. The language's central claim is
+that a signature tells you what a function can do; concurrency
+introduces effects — data races, interleaving, deadlock — that a
+signature of the current design cannot express. Adding threads without
+extending the effect system to describe them would break the one
+promise the language exists to make.</p>
+<p>If concurrency is added, it will be as an effect with rules stated
+here first. Until then, a Velaris program that needs parallelism should
+get it outside the program: run several, or reach the host language
+through <code>uses ffi</code> and accept that what happens there is unverified.</p>
+<h2 id="12a-function-values-and-capture">12a. Function values and capture <a class="anchor" href="#12a-function-values-and-capture" aria-label="Link to this section">#</a></h2>
+<p>An inline function may read locals from the code around it. Those
+values are <strong>copied when the function value is made</strong>: the function
+carries the numbers, text or records that were there at that moment,
+and later assignment to those locals cannot change what it sees. There
+are no reference cells, so a function value can never observe a change
+it did not receive as an argument.</p>
+<p>Effects are unaffected. A function value is still pure - it may not
+perform effects, and one that tries is rejected before running - so
+capture cannot smuggle behaviour past a signature.</p>
+<p>The prover treats captured values as unknown: promises on a capturing
+function value fall back to runtime checks rather than being proven.
+That is the conservative direction, and a false promise on such a
+function is still caught while running.</p>
+<h2 id="13a-early-loop-exit-considered-and-answered">13a. Early loop exit: considered, and answered <a class="anchor" href="#13a-early-loop-exit-considered-and-answered" aria-label="Link to this section">#</a></h2>
+<p>Velaris has no <code>break</code> or <code>continue</code>. An adversarial review argued the
+absence <em>hurts</em> the invariant story it presumably protects: exiting via
+a flag (<code>while going and i &lt; n</code>) makes invariants harder to state, not
+easier. That criticism is fair, and this section is the considered
+answer rather than a shrug.</p>
+<p>The reason is the prover's exit knowledge. After <code>while i &lt; n</code> with no
+early exit, exactly two facts hold: the invariants, and <code>not (i &lt; n)</code>.
+That negated condition is what lets the prover pin the counter at the
+boundary - it is how promises about what a loop built are proven, and
+how the final-turn bounds check works. A <code>break</code> makes the exit
+condition a disjunction of every break site's path condition, and those
+paths mention loop-local state the outside cannot see. Every current
+loop proof would weaken from "the condition is false" to "the condition
+is false OR any break fired", which in practice abandons most of them.</p>
+<p>The invariant-friendly alternative is to put the exit in the loop test,
+where the prover can see it:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">while</span> i &lt; n <span class="k">and</span> <span class="k">not</span> found {
+    ...
+}
+<span class="c">// afterward: not (i &lt; n and not found)</span>
+<span class="c">//   == i &gt;= n or found        - still a usable fact</span></code></pre></div>
+<p>This costs a Bool and reads slightly worse than <code>break</code>. What it buys
+is that every promise proven about loops keeps proving. If a future
+design finds a way to give <code>break</code> the same exit precision - for
+example, requiring each break site to state what holds when it fires -
+this decision will be revisited in those terms. Until then the answer
+is: no, and the flag is the supported idiom.</p>
+<h2 id="14-errors">14. Errors <a class="anchor" href="#14-errors" aria-label="Link to this section">#</a></h2>
+<p>Every error has a stable code (<code>E###</code>), a message in plain English, a
+file and line, and numbered suggested fixes, and — from 8.0 — a line
+naming where to read more (<code>reference:</code>), which <code>--json</code> and SARIF carry
+as a field. <code>--json</code> emits them as structured data. The complete list is
+generated from the compiler source itself and published with the
+documentation.</p>
+<p><code>velaris check</code> reports every error it can find in one pass, recovering
+at statement boundaries rather than stopping at the first. <strong>The first
+error reported is authoritative</strong>: it is the one a run of a program with
+only that error would give, and the errors after it may be its
+consequences. A tool that acts on one error acts on the first.</p>
+<p>Codes are grouped: E0xx lexing, E1xx parsing, E2xx names — E204 among
+them, for a function named like a built-in (§10.1) — E3xx effects —
+E317 a proxy the net budget does not cover, E318 a credential location a
+plain read may not touch — E4xx arity and runtime arithmetic, E5xx
+types — E56x among them, for a Secret that must not escape (§3.1) — E6xx
+runtime contract violations, E7xx proof results.</p>
+<h2 id="15-versioning-and-stability">15. Versioning and stability <a class="anchor" href="#15-versioning-and-stability" aria-label="Link to this section">#</a></h2>
+<p>Velaris follows semantic versioning. Breaking changes happen only at
+major versions; 2.0 made four builtins fallible and the compiler
+pointed at every call site that needed updating. Minor versions add;
+patch versions fix. <a href="stability.html">STABILITY.md</a> states what that
+covers, the rules for deprecation and for error codes, and the record
+of the minor releases that broke the rule anyway, 3.3 and 3.4 among
+them. One kind of change is not counted as breaking: a prover that
+settles more may refuse a program whose promise, division or list read
+it can now show wrong, for the input it names.</p>
+<p>The test suite runs on Linux, Windows and macOS, on two Python
+versions, with and without the optional solver and native backend, on
+every push.</p>
+<h2 id="16-what-this-language-does-not-have">16. What this language does not have <a class="anchor" href="#16-what-this-language-does-not-have" aria-label="Link to this section">#</a></h2>
+<p>Stated plainly, because a specification that only lists strengths is
+advertising: no threads or async (§13); no exceptions — failure is in
+the signature (§8); no traits, interfaces, classes or inheritance; no
+reference capture — a function value takes a copy of the values
+around it when it is made (§12a), never a reference to them; no
+mutable data structures; no reflection; no macros; no operator
+overloading; no package registry (libraries are vendored, §10); no
+incremental compilation, and from 8.2 no proof cache; and a compiler written
+in Python, which is clear to read and slower than a production
+compiler.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/SPEC.md">SPEC.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#1-programs">1. Programs</a></li><li><a href="#2-lexical-structure">2. Lexical structure</a></li><li><a href="#3-types">3. Types</a><ul><li><a href="#31-secret-of-t">3.1 Secret of T</a></li></ul></li><li><a href="#4-numbers">4. Numbers</a><ul><li><a href="#41-whole-numbers">4.1 Whole numbers</a></li><li><a href="#42-decimals">4.2 Decimals</a></li><li><a href="#43-money">4.3 Money</a></li><li><a href="#44-which-currencies">4.4 Which currencies</a></li><li><a href="#45-text">4.5 Text</a></li></ul></li><li><a href="#5-values-and-mutation">5. Values and mutation</a></li><li><a href="#6-evaluation">6. Evaluation</a></li><li><a href="#7-effects">7. Effects</a><ul><li><a href="#71-the-budget">7.1 The budget</a></li></ul></li><li><a href="#8-failure">8. Failure</a></li><li><a href="#9-contracts-and-proof">9. Contracts and proof</a><ul><li><a href="#91-what-you-write">9.1 What you write</a></li><li><a href="#92-what-proven-means">9.2 What &quot;proven&quot; means</a></li><li><a href="#93-what-is-proven-and-what-is-not">9.3 What is proven, and what is not</a></li><li><a href="#94-calls-and-the-soundness-rule">9.4 Calls, and the soundness rule</a></li><li><a href="#95-which-loops-are-shown-to-end">9.5 Which loops are shown to end</a></li></ul></li><li><a href="#10-modules">10. Modules</a><ul><li><a href="#101-your-names-and-the-builtins">10.1 Your names and the builtins</a></li></ul></li><li><a href="#11-compilation-and-execution">11. Compilation and execution</a></li><li><a href="#12-the-host-language">12. The host language</a></li><li><a href="#13-concurrency">13. Concurrency</a></li><li><a href="#12a-function-values-and-capture">12a. Function values and capture</a></li><li><a href="#13a-early-loop-exit-considered-and-answered">13a. Early loop exit: considered, and answered</a></li><li><a href="#14-errors">14. Errors</a></li><li><a href="#15-versioning-and-stability">15. Versioning and stability</a></li><li><a href="#16-what-this-language-does-not-have">16. What this language does not have</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

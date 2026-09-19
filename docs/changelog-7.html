@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 7.x - Velaris 8.3.1</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog-7.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html" aria-current="page">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 7.x</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="72---releases-that-tag-themselves">7.2 - Releases that tag themselves <a class="anchor" href="#72---releases-that-tag-themselves" aria-label="Link to this section">#</a></h2>
+<p>No change to the language, the library, the error codes or the command
+line, except one <code>mcp-verify</code> default that follows from how releases are
+now signed.</p>
+<p><strong>A release is made by the workflow, not by a tag.</strong> <code>release.yml</code> no
+longer runs when a tag is pushed. It runs when the tests complete on a
+push to main with every leg passed, and a gate - <code>release_checks.py gate</code> - decides whether that commit is a release: <code>VERSION</code> must be newer
+than every tag, CHANGELOG.md must have an entry heading for exactly that
+version, and the six version files must agree. Otherwise the run says
+why in one line and ends green without doing anything, so an ordinary
+push to main stays ordinary. A release must also be the very commit the
+tests passed on; if main moved while they ran, the gate refuses.
+Everything is built, signed and verified before the commit is tagged,
+and then published in order, each step skipping what is already there:
+PyPI and npm by OIDC trusted publishing, with no token stored for
+either; the VS Code Marketplace, as before; the GitHub release; the MCP
+registry, logged in by GitHub OIDC, with <code>server.json</code> listing both
+packages; and the attestation. Last, PyPI, npm, the registry and the
+GitHub release must all report the version, or the run fails and names
+the one that does not. <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/RELEASING.md">RELEASING.md</a> is the procedure,
+what a person still does - publishing an advisory, yanking - and the rule
+that nobody tags by hand. <code>check_release.py</code> holds the gate to fixtures
+(a docs-only commit, a version bump without a CHANGELOG entry, a correct
+bump, and what else it refuses), and the release runs it before gating.
+test.yml is unchanged.</p>
+<p><strong>The tag is annotated, not signed.</strong> This repository has no
+tag-signing setup - no earlier tag is signed - the workflow holds no
+signing key and should not, and a keyless gitsign signature is one
+GitHub does not show as verified. The release notes say so. What is
+signed is every artefact, as before.</p>
+<p><strong>Signed as main.</strong> A <code>workflow_run</code> runs on main, so from 7.2.0 the
+sigstore certificates name <code>release.yml@refs/heads/main</code> instead of
+<code>release.yml@refs/tags/vX.Y.Z</code>; they also record the commit and the
+<code>workflow_run</code> trigger, and SECURITY.md shows how to check both.
+<code>velaris mcp-verify</code> now expects the main identity for a manifest of
+7.2.0 or later and the tag's for an earlier one; a Velaris older than
+7.2.0 checking a 7.2.0 manifest needs <code>--identity</code>.</p>
+<p><strong>An advisory file becomes a draft request, never an advisory.</strong> When a
+release adds an <code>advisory-*.md</code>, the workflow writes the request for a
+draft repository security advisory and prints the two <code>gh</code> commands
+that create it and request its CVE. It cannot run them - GITHUB_TOKEN
+cannot be given the repository-security-advisories permission - and it
+never publishes an advisory.</p>
+<p><strong>README said the proof cache lived in <code>./.velaris/</code>.</strong> That stopped
+being true in 7.1.2, and it described the very behaviour the proof-cache
+advisory is about. "Remembered proofs" now says where the cache is, how
+it is keyed, that a <code>./.velaris/</code> is ignored, and what <code>--no-cache</code> and
+<code>velaris clean</code> do; STABILITY.md's mention is corrected as well.</p>
+<h2 id="712---the-proof-cache-could-be-lied-to">7.1.2 - The proof cache could be lied to <a class="anchor" href="#712---the-proof-cache-could-be-lied-to" aria-label="Link to this section">#</a></h2>
+<p>An adversarial pass against 7.1.1 found four things. One is a soundness
+hole and the reason for this release; three are hardening.</p>
+<p><strong>The proof cache could be lied to (soundness; SECURITY.md challenge #1;
+2.29 through 7.1.1).</strong> A second <code>velaris check</code> need not re-run the prover
+because proof results are cached on disk. Until now that cache was
+<code>./.velaris/proofs.json</code>, read from the directory the compiler ran in -
+the directory that holds the program. A <code>"proven": true</code> entry was trusted
+without re-proving, and the cache key is a SHA-256 of public, deterministic
+inputs (the version, the function's text and contract, its callees'
+contracts, the records). So a <code>./.velaris/</code> shipped alongside an untrusted
+program - inside a project directory or a tarball - could forge an entry
+that made a false <code>ensures</code> be reported "proven" by <code>check</code>, <code>proofs</code>,
+<code>audit</code>, <code>explain</code> and the library; and because a "proven" pure-integer
+function is compiled to native code, which carries no runtime promise
+check, the false promise was also unenforced when the program ran - it
+finished with the wrong result and exit code 0. SPEC.md §9.2 says "proven
+means established by Z3 before the program runs"; a poisoned cache made
+that a lie.</p>
+<p>The fix: the program's directory is never trusted for the cache. It moves
+to a per-user directory (<code>%LOCALAPPDATA%\velaris</code> on Windows,
+<code>$XDG_CACHE_HOME/velaris</code> or <code>~/.cache/velaris</code> elsewhere), and each entry
+is bound to, and re-verified against, the source's absolute path, a hash of
+its exact bytes, and the compiler version - so a transplanted or hand-edited
+entry is re-proved, not trusted. A <code>./.velaris/</code> present in a project is
+ignored; <code>velaris audit</code> prints <code>ignored: ./.velaris/</code>. If no per-user cache
+can be written, the run proceeds without one. A poisoned <code>./.velaris/</code> is
+therefore never read: the first run on a malicious program refutes the false
+promise (E700 with the prover, or the runtime check E601 without it). See
+<a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-proof-cache.md">advisory-proof-cache.md</a> and THREAT_MODEL.md.</p>
+<p><strong>Native recursion is bounded like interpreted recursion (hardening).</strong> A
+runaway recursive function compiled to native code looped unbounded, because
+the interpreter's E609 "recursion that never stops" guard had no equivalent
+in native code; the same function run <code>--no-native</code> reported E609 promptly.
+A directly or mutually recursive function is now left interpreted so the
+guard applies, and the interpreter runs a program on a thread with a large
+stack so the guard fires cleanly - as E609, within a few seconds - rather
+than overflowing the C stack, which on CPython 3.10 for Windows could
+crash the process before the guard was reached.</p>
+<p><strong>A giant expression is a clean error (hardening).</strong> A single expression
+chaining thousands of operators, or nesting thousands of brackets, built a
+tree deep enough to overflow a later pass with a Python traceback. The
+parser now stops such an expression with E102, and the compile pipeline
+lifts Python's recursion limit so ordinary deep trees still walk.</p>
+<p><strong><code>read_file</code> has a size ceiling (hardening).</strong> <code>read_file</code> and
+<code>read_file_secret</code> read a whole file into memory at once. They now refuse a
+file larger than 64 MiB with E316, raised for a run with <code>--max-read &lt;MB&gt;</code>.
+<code>fetch</code> and <code>post</code> already capped their reads; this brings the disk to
+parity.</p>
+<p>The adversarial pass also confirmed, and this release keeps as regression
+cases (<code>check_adversarial.py</code>), that secrets reach no sink, the sandbox
+paths hold on Windows, the ffi reach check refuses foreign modules,
+shadowed builtins never win, bidi and zero-width characters outside a
+string are refused, <code>velaris trace</code> redacts, and the pool leaks nothing
+between runs. One finding is left open on purpose: a <code>net:</code> grant does not
+bound the socket peer when an ambient <code>HTTP_PROXY</code> is set, because closing
+it refuses traffic that reaches a proxy today and STABILITY.md rule 1 makes
+that a major - it is fixed in 8.0.0 and listed in THREAT_MODEL.md until then.</p>
+<h2 id="711---710-did-not-import-on-python-310-or-311">7.1.1 - 7.1.0 did not import on Python 3.10 or 3.11 <a class="anchor" href="#711---710-did-not-import-on-python-310-or-311" aria-label="Link to this section">#</a></h2>
+<p>7.1.0, published earlier today, declares <code>requires-python &gt;= 3.10</code> and
+does not import on Python 3.10 or 3.11. <code>velaris.py</code> held an f-string
+with a backslash inside a replacement field - <code>re.split(r'[\s=]', ...)</code>,
+in the lockfile reader added for <code>deps-diff</code> - which is a syntax error
+before Python 3.12, so every command, every library call and the MCP
+server fail at import there. CI caught it on all six Python 3.10 legs.
+The release had been verified locally before tagging, but only under
+Python 3.13, and a scan written to look for exactly this construct had
+a quoting mistake and checked nothing. The expression is now computed
+before the f-string, and every Python file in the repository compiles
+under Python 3.10.</p>
+<p>The second defect was in <code>deps-diff</code>'s pull-request comment. To keep an
+<code>@name</code> taken from a lockfile from mentioning anyone, 7.1.0 put a
+zero-width space after the <code>@</code> - the character itself. A console that is
+not UTF-8, such as the cp1252 of a Windows runner, cannot encode it, so
+<code>velaris deps-diff --markdown</code> failed at the first <code>@</code> in a report, and
+<code>check_deps.py</code> failed on both Windows Python 3.12 legs. The comment now
+carries the same character as an HTML entity, <code>&amp;#8203;</code>, so the text is
+ASCII and GitHub still renders no mention. A comment posted with
+<code>--comment</code> was not affected: its body goes to the API as JSON, with
+anything outside ASCII escaped.</p>
+<p>Nothing else changed. A 7.1.0 user on Python 3.12 or later has nothing
+to change; on 3.10 or 3.11, 7.1.0 cannot have run, and 7.1.1 is the
+version to install.</p>
+<p><strong>Verified</strong> before pushing. Every Python file in the repository
+compiles under Python 3.10.20, and under that interpreter, with
+<code>.[test]</code> installed and no prover, the whole list the 7.1 entry names
+passes with none wrong: <code>run_tests.py</code> 97/97, <code>check_sandbox.py</code> 57,
+<code>check_secret.py</code> 78, <code>check_pool.py</code> 39, <code>check_ratchet.py</code> 114,
+<code>check_deps.py</code> 54, <code>check_fallible.py</code> 29, <code>check_refusals.py</code> 15 with
+10 skipped for needing the prover, <code>check_library.py</code>,
+<code>check_money.py</code>, <code>check_platform.py</code>, <code>check_termination.py</code>,
+<code>fuzz_native.py 30</code>, conformance at L1, L2 and L3, the 456-case drift
+test, <code>benchmark/run.py --quick --check</code>, <code>velaris capabilities check .</code>,
+the formatter, and the docs and playground builds. Under Python 3.13
+with the console forced to cp1252 (<code>PYTHONIOENCODING=cp1252</code>),
+<code>check_deps.py</code> passes 54/54, and 7.1.0's escaping raises
+<code>UnicodeEncodeError</code> where 7.1.1's prints. Neither fix is on a path
+the benchmark takes; a full run at 7.1.1 wrote every verdict and every
+line of evidence 7.1.0's had, and <code>benchmark/RESULTS.md</code> and
+<code>results.json</code> differ only in the version they record. The paper's
+benchmark figures and its reproducibility section now name 7.1.1, the
+release to check them out at, rather than 7.1.0.</p>
+<h2 id="71---what-an-upgrade-gained">7.1 - What an upgrade gained <a class="anchor" href="#71---what-an-upgrade-gained" aria-label="Link to this section">#</a></h2>
+<p>A dependency can change what it can do between two versions while its
+name, its publisher and its declared dependencies stay the same. Koi
+Security's report on the npm package postmark-mcp describes versions
+1.0.0 to 1.0.15 working as an email tool, and 1.0.16 adding a blind
+copy of every outgoing message to an outside address and nothing else.
+A signature from the same publisher verifies 1.0.16 as readily as
+1.0.15, and an SBOM lists the same dependencies for both. What changed
+was what the package could do. This release compares that where it can
+be compared, and says plainly where it cannot - which, for a package
+that is not Velaris, is nearly everywhere.</p>
+<p><strong><code>velaris deps-diff &lt;package&gt; &lt;old&gt; &lt;new&gt;</code></strong> reads two versions of one
+dependency - <code>pypi:NAME</code>, <code>npm:NAME</code>, <code>git:URL</code> or a path to a git
+repository (versions are tags, branches or commits), or <code>dir:PATH</code> (one
+subdirectory per version) - and reports what the newer one gained.</p>
+<ul>
+<li><strong>A Velaris library.</strong> Each version's capability surface is derived
+from its <code>.vel</code> files as <code>capabilities init</code> derives a tree's, and the
+newer is held to the older by <code>capabilities check</code>'s rules, W1 to W5,
+with the older standing as the baseline. What it reports gained is
+what the check reports widened: a new effect; a host, path or Python
+module inside an effect the older version already had; more <code>fs</code> or
+<code>net</code> operations in a run; a function that declares an effect it did
+not. Each finding names the file, line, function and call that
+introduced it and the chain of calls that reaches it, in the check's
+own shape less the edit to <code>velaris.capabilities</code>, since there is no
+such file to edit. A version that narrows, or that only moves text
+around - functions reordered, locals renamed, a literal moved into a
+variable - reports nothing gained.</li>
+<li><strong>Any other package.</strong> What the registry and the package's archive
+declare is read, and nothing more: the install-time scripts npm runs
+(<code>preinstall</code>, <code>install</code>, <code>postinstall</code>, and <code>node-gyp rebuild</code> for a
+package with a <code>binding.gyp</code> and neither of the first two), what pip
+runs when it builds a source distribution (<code>setup.py</code>, the build
+backend and what that requires), a <code>.pth</code> file with an <code>import</code> line,
+which Python runs at every start; and the declared dependencies -
+npm's dependencies, optional and peer dependencies, PyPI's
+<code>Requires-Dist</code>. A script added or changed is reported, including a
+changed file behind an unchanged command. When a registry's manifest
+and the <code>package.json</code> in the tarball disagree, the scripts of both
+are reported, each marked with where it was read, because which one
+npm runs has differed between npm versions and depends on whether it
+installs from a lockfile; a disagreement about dependencies is named,
+and the manifest's, from which npm resolves a fresh install, are the
+ones compared. What a script does is not derived. Nor is
+what the package's code can do: no effect, host or path is read off
+Python or JavaScript, and the report says the capability surface is
+<strong>unknown</strong>. A package holding both Velaris and other code gets the
+<code>.vel</code> surface and a statement that the rest is not in it.</li>
+<li><strong>Exit codes.</strong> 0 when both surfaces were derived and nothing was
+gained; 1 when something was gained - a widening, or an install
+script added or changed; 3 when nothing visible was gained and the
+surface was not derived, so that "this could not be seen" is never a
+0; 2 when a version cannot be read - one that does not exist (the
+message lists what does), an unpublished npm package, a download
+whose digest is not the one the registry lists, an archive past
+64 MB. <code>--json</code> is <code>velaris.deps-diff/1</code>; <code>--sarif</code> reports each
+finding under six new rules on the errors page:
+<code>dependency-capability-widened</code>, <code>dependency-effect-gained</code> and
+<code>dependency-install-script</code> as errors, and
+<code>dependency-surface-unknown</code>, <code>dependency-added</code> and
+<code>dependency-narrowed</code> as notes. A bare package name is refused, so an
+npm package is never read from PyPI, or the reverse, by accident.</li>
+</ul>
+<p><strong>Lockfiles, and the Action.</strong> <code>velaris deps-diff --against REF [path]</code>
+finds the lockfiles changed since REF - <code>package-lock.json</code>,
+<code>npm-shrinkwrap.json</code>, <code>requirements*.txt</code> pins, <code>Pipfile.lock</code>,
+<code>poetry.lock</code>, <code>uv.lock</code>, <code>pdm.lock</code> and <code>velaris.lock</code> - and compares
+every upgraded dependency, up to 30 (<code>--max</code>), placing each finding on
+the line of the lockfile that pins the new version. A library
+<code>velaris.lock</code> vendors is compared file against file: the file at REF
+against the file in the tree. A lockfile it recognises and does not
+read (<code>yarn.lock</code>, <code>pnpm-lock.yaml</code>, <code>Cargo.lock</code> and others) is listed
+as changed and not read. An entry resolved from git, a path, a link, or
+a registry or index other than the one <code>deps-diff</code> reads is listed and
+not read, because the public package of the same name is a different
+package; so is every pin of a <code>requirements*.txt</code> that sets
+<code>--index-url</code> or <code>--extra-index-url</code>. A dependency new in the lockfile
+is listed as added, with nothing to compare it with. <code>--comment --pr N</code> puts the
+report in one pull-request comment, found again by its own marker and
+edited in place on later runs, and edits it to say so once no lockfile
+changes any more; <code>--from FILE</code> renders a saved <code>--json</code> result, so the
+registries are read once. The GitHub Action's new <code>deps-diff</code> input,
+off by default, does all of that on a pull request and uploads the
+SARIF when <code>sarif</code> is on. It never fails the job: for most packages the
+answer is "unknown", and a gate on that would stop nothing it could
+name. A package name, version or script from a pull request's lockfile
+reaches the comment inside a code span, or with HTML and mentions
+escaped, and a <code>velaris.lock</code> entry naming a file outside the
+repository is not read.</p>
+<p>The npm wrapper's table of subcommands names <code>deps-diff</code> as new in
+7.1.0, so <code>npx velaris-lang deps-diff</code> against an older compiler says
+which version it needs instead of the old compiler taking <code>deps-diff</code>
+for a file name; <code>check_library.py</code>, which holds that table to the
+compiler's own dispatch, found it missing before this release.</p>
+<p><strong>What it does not see</strong>, as THREAT_MODEL.md now says: declared
+surface, not behaviour. For a Velaris library the ratchet's own limits
+apply. For anything else it sees almost nothing, and postmark-mcp is
+the example: by Koi Security's account 1.0.16 changed only the code
+that sent the copy, which adds no install script and no dependency, so
+<code>deps-diff</code> would have reported nothing gained and the surface unknown</p>
+<ul>
+<li>exit 3, not a finding. It would not have caught that case and does
+not claim to. npm has since unpublished every version of the package,
+and asked about it today <code>deps-diff</code> reports that the versions cannot
+be read.</li>
+</ul>
+<p><strong>The benchmark: category 12, indirect authority.</strong> Three programs
+whose calling code is the same file before and after an upgrade, and
+whose dependency's declared budget widened between the two versions -
+<code>12a</code>, a formatting library that declared nothing and starts posting
+each line to a second host; <code>12b</code>, a mail library that already reached
+the mail service and starts sending a copy to a second host; <code>12c</code>, a
+settings library that read a file and starts writing one - and a
+control, <code>12d</code>, whose dependency narrows. Each caller already declares
+the effect its dependency comes to use, so it compiles against both
+versions and the compiler has nothing to refuse; the Velaris static
+step is <code>velaris deps-diff</code> on the two versions, and it flags the three
+before running and not the control. Deno stops all three while
+running, each time with the dependency swallowing the denial and the
+program exiting 0; Python misses all three. The harness gained what
+that needed and nothing tuned per program: a program may import one
+dependency at two versions; the <code>DANGER</code> marker is in the new version,
+and the caller and the old version must carry none; placeholders are
+filled in all three source files, with <code>/</code> in paths; and two
+observations were added - a request that reached the second listener,
+told apart from the caller's own request to the granted one, and a file
+the dependency wrote. The table is now 67 programs, 59 dangerous and 8
+controls: Velaris 45 caught before running, 12 while running, 2
+missed; Deno 5, 30, 24; Python 0, 28, 31; no false positives anywhere.
+<strong>No existing verdict moved</strong>: the 63 earlier rows have the verdict and
+the evidence they had in 7.0.0's <code>results.json</code>, and the verdict they
+had at 4.1.0. The benchmark README's table, the README's, and the
+paper's section 4.1, Table 1, abstract and conclusion carry the new
+figures; the rest of the paper stays pinned to 4.2.1, and its
+reproducibility section says which figures come from 7.1.0.</p>
+<p>Also fixed in the harness: <code>benchmark/run.py --check</code> on a full run
+compared verdicts with <code>results.json</code> after the run had rewritten that
+file, so it could not fail. It now compares before writing. The quick
+run CI makes was never affected, since it writes nothing.</p>
+<p><strong>The README's CI section pinned <code>gowrishankar-infra/velaris-lang@v5.0.1</code>
+and <code>version: "5.0.1"</code></strong>, two majors late, and EMBEDDING.md pinned the
+same Action. All three now say 7.1.0, and <code>run_tests.py</code>'s version
+check fails when an Action pin or a <code>version:</code> in either file is not
+the compiler's <code>VERSION</code>, so the pin moves with each release or the
+suite stops.</p>
+<p><strong><code>check_deps.py</code></strong>, 54 checks, runs on every CI leg and reaches no
+network: it serves PyPI, npm and the GitHub API on 127.0.0.1. A library
+gaining net, a host inside net, a count, a Python module (read from git
+tags) and a function's effect; one narrowing and one rewritten without
+changing its surface, neither flagged; a version, a tag and a release
+that do not exist, an unpublished package, a digest that does not
+match, a package named without its registry; a JavaScript package
+whose new source reaches the network, reported as unknown with no host
+read off it; install scripts added and changed, a changed file behind
+the same command, a registry manifest that hides the tarball's script,
+a Python package gaining <code>setup.py</code> and an importing <code>.pth</code>; a package
+holding Velaris and JavaScript; a tarball whose paths climb out, are
+absolute or name a drive; the lockfile mode, with an unread lockfile
+listed, a vendored library compared, a <code>velaris.lock</code> entry naming a
+file outside the repository refused, and its plain-text report; the
+lockfile formats read directly - a v1 <code>package-lock.json</code> whose entries
+from git and from a private registry are left out, a <code>Pipfile.lock</code>
+with an entry from another index and two packages pinning one version,
+<code>poetry.lock</code> and <code>uv.lock</code> entries not from PyPI, <code>requirements*.txt</code>
+with extras, markers, hashes and <code>===</code>, and one that sets another index</p>
+<ul>
+<li>and how an upgrade is paired with the version it replaced; a hostile package name and
+error text rendered with no HTML, mention or broken code span; the
+SARIF of both modes, validated; the pull-request comment
+posted once and edited on the second run, edited again when no lockfile
+changes, and never posted for a pull request that changed none; and the
+four programs of category 12, each asserted directly with its unchanged
+caller compiling against both versions.</li>
+</ul>
+<p><code>velaris.capabilities</code> is recorded again at 7.1.0: 190 programs, the
+new ones being category 12's callers (which do not compile outside the
+harness, since their dependency is placed beside them only there) and
+its eight dependency versions. The surface is unchanged. velaris-spec
+needs no change: SPEC.md sections 6, 7 and 7.1, the budget grammar and
+the formats it specifies are untouched, and the comparison <code>deps-diff</code>
+makes is its section 9.5. The two JSON documents <code>deps-diff</code> writes are
+marked provisional in STABILITY.md.</p>
+<p><strong>Verified</strong>, on Windows 11 with Python 3.13, in two fresh virtual
+environments holding this tree - one with <code>.[full,test]</code> (z3 5.1.0,
+llvmlite 0.49.0), one with <code>.[test]</code> and neither - rather than in this
+machine's global Python, which holds an older Velaris. With the prover:
+<code>run_tests.py</code> 97/97, <code>check_library.py</code> 240 correct,
+<code>check_fallible.py</code> 29, <code>check_money.py</code> 81, <code>check_sandbox.py</code> 57,
+<code>check_secret.py</code> 78, <code>check_pool.py</code> 39, <code>check_platform.py</code> 15,
+<code>check_termination.py</code> 44, <code>check_ratchet.py</code> 114, <code>check_deps.py</code> 54,
+<code>check_refusals.py</code> 25, none wrong; <code>fuzz_native.py 30</code> agrees;
+<code>velaris conformance</code> passes at L1 (307 cases), L2 (39, and one not run
+because this system would not make a symbolic link) and L3 (109);
+<code>build_conformance.py --check</code> matches velaris-spec's 456 cases;
+<code>benchmark/run.py --quick --check</code> matches <code>results.json</code>; <code>velaris test examples/std_test.vel</code> 7/7; <code>examples/edges.vel</code> 20 passed;
+<code>velaris fmt --check</code> is clean; <code>velaris capabilities check .</code> passes;
+the playground and the docs build. Without the prover the same list
+passes, with <code>check_library.py</code> 229 correct, <code>check_platform.py</code> 14 and
+<code>check_refusals.py</code> 15 with 10 skipped for needing the prover, the
+other counts as above, and the quick benchmark naming 03a and 04a as
+caught while running, as it does whenever the prover is absent. Eleven
+consecutive full benchmark runs with Deno 2.9.6 - the last after the
+final change to <code>velaris.py</code> - wrote byte-identical <code>RESULTS.md</code> and
+<code>results.json</code>. velaris-spec's <code>tools/check_sync.py</code> passes against this
+tree, and its <code>tools/validate.py --capabilities</code> accepts the
+re-recorded <code>velaris.capabilities</code>. The arXiv package was regenerated
+with pandoc 3.11 and builds to 12 pages. Verifying found three defects
+in this release's own work, each fixed before tagging: inserting
+section 20 had deleted the line <code>def card()</code>, which <code>check_library.py</code>
+caught; two new module-level tables were not registered with
+<code>check_pool.py</code>'s reset scan; and the npm wrapper's table lacked
+<code>deps-diff</code>.</p>
+<p><strong>Sources, named</strong> (CONTRIBUTING.md rule). The test category 12 is
+built on was proposed by Ali Khater (dev.to <code>alikhatersaibreakroom</code>) in
+a comment of 12 September 2026 on the dev.to post about this benchmark,
+<a href="https://dev.to/alikhatersaibreakroom/comment/3elgc">https://dev.to/alikhatersaibreakroom/comment/3elgc</a>: "A next test I would
+love to see is indirect authority: a safe-looking function calling a
+dependency whose declared effect budget changes between versions." The
+postmark-mcp case is from Koi Security, "First Malicious MCP in the
+Wild: The Postmark Backdoor That's Stealing Your Emails" (Idan
+Dardikman, 25 September 2025), read through the Internet Archive's copy
+of that date because the original address now redirects elsewhere; its
+indicators name 1.0.16 and later as malicious. npm's registry record
+lists thirteen version numbers before 1.0.16 (1.0.4 to 1.0.6 were never
+published) and every version unpublished on 25 September 2025. That a
+registry's manifest and a tarball's <code>package.json</code> are published
+separately and never checked against each other is from Darcy Clarke,
+"The massive bug at the heart of the npm ecosystem" (vlt blog, 27 June
+2023). npm maintainers have described which copy npm reads in two
+contradicting comments on npm/cli issue 5234, and Arborist's source
+shows the answer changed between npm releases; that is why <code>deps-diff</code>
+reports both copies rather than choosing one. npm's default
+<code>node-gyp rebuild</code> install script for a package with a <code>binding.gyp</code>
+is from npm's scripts documentation. The design of the command - the ratchet's comparison with the older version
+as the baseline, exit 3 for a surface not derived, the comment - was
+specified by the maintainer.</p>
+<h2 id="70---a-secret-you-cannot-look-at">7.0 - A secret you cannot look at <a class="anchor" href="#70---a-secret-you-cannot-look-at" aria-label="Link to this section">#</a></h2>
+<p>6.0, published this morning, shipped <code>Secret of T</code> with a hole in it,
+and this release closes it. The hole was in a decision 6.0 made
+deliberately and argued for in writing, which is the kind worth
+describing rather than quietly fixing.</p>
+<p><strong>What 6.0 got wrong.</strong> It let a comparison over a secret give an
+ordinary <code>Bool</code>. The argument was that a comparison is one bit, that
+<code>if key == ""</code> has to be writable, and that refusing <code>print(k == "")</code>
+while allowing <code>if k == "" { print("empty") }</code> would stop nothing.
+Every step of that is true of <em>one</em> comparison. It is false of a loop:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">let</span> at = <span class="n">0</span>
+<span class="k">while</span> at &lt; <span class="n">3</span> {
+    <span class="k">for</span> c in alphabet {
+        <span class="k">if</span> code_at(key, at) == code_at(c, <span class="n">0</span>) {
+            found = found + c
+        }
+    }
+    at = at + <span class="n">1</span>
+}
+print(<span class="s">"recovered: "</span> + found)</code></pre></div>
+<p>That program compiled under 6.0 and printed the key. A comparison is
+not a one-bit channel; with <code>length</code> and <code>code_at</code> it is a
+character-by-character oracle. A type that stopped <code>print(key)</code> and
+allowed the loop above is not information-flow control, it is a
+decoration — and shipping a decoration under that name is worse than
+shipping nothing, because somebody relies on it.</p>
+<p><strong>What 7.0 does.</strong> The rule loses its exception and gains a second
+half:</p>
+<ul>
+<li><strong>Every pure operation over a secret gives a secret, a comparison
+included.</strong> <code>key == ""</code> is a <code>Secret of Bool</code>. So are
+<code>length(key) &lt; 10</code> and <code>contains(key, "a")</code>. Nothing prints one — it
+is a Secret, so E560 already covers it. What a <em>container</em> is, as
+against what it holds, is not: <code>length</code> of a list of secrets is an
+ordinary <code>Int</code> and <code>has(m, key)</code> an ordinary <code>Bool</code>, because a
+program cannot have made a list's length depend on a secret without
+branching on one. So a program can still walk a list of secrets.</li>
+<li><strong>Nothing branches on one.</strong> An <code>if</code> or <code>while</code> whose condition
+carries a secret is <strong>E563</strong>, naming where the secret came from. The
+loop above is refused at the branch, before the print.</li>
+<li><strong>A promise is not a branch.</strong> <code>requires length(key) &gt; 0</code> is still
+allowed: a broken promise stops the run, cannot be caught and cannot
+accumulate, so it tells a reader one bit per run rather than reading
+a secret out in a loop, and its message already redacts the values
+whose type is secret.</li>
+</ul>
+<p>To look at a secret, a program says so:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">let</span> empty = declassify(key == <span class="s">""</span>,
+<span class="s">"whether a key is set at all is not the key"</span>)
+<span class="k">if</span> empty { ... }</code></pre></div>
+<p>which needs <code>uses declassify</code>, the operator's grant, and a reason the
+audit records. That is the trade the language now offers: not silence,
+a statement.</p>
+<p><strong>A third rule, and the second hole.</strong> Looking for the first hole
+turned up two more routes, both the same shape - a value derived from a
+secret coming back as an ordinary one.</p>
+<p>A generic body is checked once, with its type variables standing for
+nothing in particular, so inside <code>fn contains_item(xs: List of T, item: T) -&gt; Bool</code> the comparison <code>get(xs, i) == item</code> is a plain <code>Bool</code>;
+there is no secret in sight. Bind <code>T</code> to one at the call site and
+<code>contains_item([guess], key)</code> hands the caller an ordinary <code>Bool</code> about
+the key. 6.0 refused only <em>effectful</em> generics, on the reasoning that a
+pure one can reach no sink - which was wrong, because it does not have
+to reach a sink, it only has to hand the value back. <strong>No type variable
+is now bound to a type that carries a secret</strong> (E560), pure or not. The
+way to write a generic over secrets is to say so:
+<code>fn pass(s: Secret of T) -&gt; Secret of T for any T</code>.</p>
+<p><strong>And the second hole.</strong> A failure's reason is <code>Text</code> the
+program can print, and the runtime writes it out of the values it was
+given — <code>to_int</code> quotes the text it could not read. So
+<code>check to_int(key) { fail w { print(w) } }</code> printed the key under 6.0.
+No builtin that can fail now takes an argument carrying a Secret
+(E560): <code>to_int</code>, <code>parse_money</code>, <code>json_get</code>, <code>pop</code>, <code>slice</code>, <code>set_at</code>
+and the <code>_or_fail</code> family. <code>get</code> on a map is the exception that proves
+the rule — its reason names the key, and a key is <code>Text</code> or <code>Int</code>.
+The whole sink check now lives in one place in the type checker, so a
+builtin added later cannot acquire a route quietly.</p>
+<h3 id="what-a-60-user-has-to-change">What a 6.0 user has to change <a class="anchor" href="#what-a-60-user-has-to-change" aria-label="Link to this section">#</a></h3>
+<p>6.0 was published for one day. If you wrote anything against it:</p>
+<ol>
+<li><code>if key == ""</code> and any other branch on a value derived from a
+secret — E563. Declassify the answer with a reason, or decide
+without looking.</li>
+<li><code>to_int(key)</code>, <code>parse_money(key, ...)</code>, <code>json_get(key, ...)</code> and any
+other fallible builtin given a secret — E560. Declassify first.</li>
+<li><code>stdlib/env_tools.vel</code>'s <code>number_setting</code> now declassifies before it
+looks, rather than after; its signature is unchanged.</li>
+</ol>
+<p>This is a major version because it refuses programs that compiled
+under 6.0, and STABILITY.md rule 1 says that ships in a major version
+even when — especially when — it is a security fix. STABILITY.md
+records 6.0.0 as a release that stood for one day.</p>
+<h3 id="the-record">The record <a class="anchor" href="#the-record" aria-label="Link to this section">#</a></h3>
+<p>One new code, <strong>E563</strong>. <code>check_secret.py</code> grows from 58 checks to 76:
+every fallible builtin refused, the comparison rules in both
+directions, the branch refused in <code>if</code> and in <code>while</code>, the extraction
+loop refused at the branch and the same program accepted with
+<code>declassify</code> and recorded in the audit, <code>contains_item</code>, <code>index_of</code> and
+<code>first</code> each refused a secret, and the <code>Secret of T</code> signature that is
+the way to write a generic over one. <code>check_refusals.py</code> gains E563.
+velaris-spec goes to 0.8.0: no rule of the format changes, and section
+8.6 narrows what it claimed. The corpus is 456 cases.</p>
+<p>The benchmark is unchanged: 42 caught before running, 12 during, 2
+missed, 0 false positives.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#72---releases-that-tag-themselves">7.2 - Releases that tag themselves</a></li><li><a href="#712---the-proof-cache-could-be-lied-to">7.1.2 - The proof cache could be lied to</a></li><li><a href="#711---710-did-not-import-on-python-310-or-311">7.1.1 - 7.1.0 did not import on Python 3.10 or 3.11</a></li><li><a href="#71---what-an-upgrade-gained">7.1 - What an upgrade gained</a></li><li><a href="#70---a-secret-you-cannot-look-at">7.0 - A secret you cannot look at</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

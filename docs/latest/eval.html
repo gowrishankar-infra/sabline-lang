@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>velaris eval - Velaris 8.3.1</title>
+<meta name="description" content="velaris eval runs one Velaris program the way an evaluation sandbox runs code it was handed: under a profile that its own command line cannot relax, with a ...">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/eval.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html" aria-current="page">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="velaris-eval">velaris eval</h1>
+<p><code>velaris eval</code> runs one Velaris program the way an evaluation sandbox runs
+code it was handed: under a profile that its own command line cannot relax,
+with a receipt of the run every time. It is new in 8.3.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris eval task.vel --receipt task.receipt.json
+velaris eval task.vel --allow io,fs:read:data,fs:write:out \
+    --timeout 60 --max-memory-mb 1024 --receipt ../receipts/task.json
+velaris eval task.vel --receipt-url https://collector.example.org/receipts
+velaris eval --confinement-probe</code></pre></div>
+<h2 id="what-it-guarantees">What it guarantees <a class="anchor" href="#what-it-guarantees" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><p><strong>No network, no Python, no environment.</strong> <code>net</code>, <code>ffi</code> and <code>env</code> are
+refused in every spelling, <code>--allow all</code> is refused, and so is an <code>fs</code>
+grant that names no path. What is left is <code>io</code>, <code>fs:read:PATH</code>,
+<code>fs:write:PATH</code>, <code>clock</code>, <code>rand</code> and <code>declassify</code>, each enforced by the
+budget as in any run.</p></li>
+<li><p><strong>A time limit and a memory limit, always.</strong> 30 seconds and 512 MB unless
+given; at most 600 seconds and 4096 MB. The program is checked and proved
+inside the same worker, under the same two limits. Past the time limit the
+run ends with E610, past the memory cap with E611 where the cap holds
+(Linux and Windows; on macOS it is best-effort, as everywhere).</p></li>
+<li><p><strong>A receipt, always.</strong> <code>--receipt FILE</code>, <code>--receipt-url URL</code>, or both, are
+required. The file must not be inside any <code>fs</code> grant, read or write, and
+must not be the program; it is written after the run ends, by eval, not
+by the worker. The URL receives one JSON object per POST
+(<code>velaris.receipt-stream/1</code>): <code>started</code>, then each refusal and
+declassification as the worker reports it, then the receipt; no proxy is
+used and a redirect counts as a failure. If the file cannot be written or
+the receipt is not accepted at the URL, eval exits 3. The receipt is
+<code>velaris.receipt/1</code> with <code>run_parameters.profile</code> set to <code>"eval"</code> and
+<code>run_parameters.confinement</code> set to the level the worker got.</p></li>
+<li><p><strong>A stop from outside is honoured and recorded.</strong> SIGINT, SIGTERM
+(SIGBREAK on Windows), or the appearance of the file named by
+<code>--stop-file</code>, asks the run to stop. The program runs interpreted, and
+every call and every loop turn can see the request, so a program that is
+running Velaris code stops at the next of them with E615, which it cannot
+catch; its receipt is complete. A worker that has not stopped after
+<code>--grace</code> seconds (5 unless given, at most 60) - one still checking the
+program, say - is killed; its receipt says so and is marked incomplete.
+Either way the receipt's <code>stop</code> records what asked, when, and how the stop
+was honoured. A signal is taken only where eval runs on the main thread,
+which is CPython 3.11 and later; before that no handler is installed,
+<code>--json</code> says <code>signals: false</code>, and on Windows a console break ends the
+process outright. <code>--stop-file</code> works everywhere.</p></li>
+<li><p><strong>Confinement where the operating system offers it, and the level named.</strong>
+The worker is also held by what the OS offers without privileges:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Level</th><th>Where</th><th>What it refuses</th></tr></thead>
+<tbody>
+<tr><td><code>landlock-net</code></td><td>Linux, Landlock ABI 4 or later</td><td>writing, removing or making a file outside the <code>fs:write</code> directories and the run's own temporary directory; starting a program; a TCP connection or listening socket</td></tr>
+<tr><td><code>landlock</code></td><td>Linux, Landlock ABI 1 to 3</td><td>the same, except TCP</td></tr>
+<tr><td><code>job-one-process</code></td><td>Windows, where the job object can be made</td><td>starting any process beyond the ones the worker took to start: its own, and a launcher's where <code>python.exe</code> is one (a virtual environment's)</td></tr>
+<tr><td><code>sandbox-exec</code></td><td>macOS, when a trial of the profile starts Python</td><td>the network; forking; writing outside the <code>fs:write</code> directories and the run's temporary directory</td></tr>
+<tr><td><code>none</code></td><td>anywhere else</td><td>nothing: the budget is the only boundary</td></tr>
+</tbody></table></div>
+<p><code>velaris eval --confinement-probe</code> starts a worker confined as a run is,
+has it try a TCP connection, a write outside the granted directories and
+a process start, prints what was refused, and exits 1 if a refusal the
+level claims did not hold.</p></li>
+<li><p><strong>Nothing it runs reads the proof cache.</strong> Velaris has kept no proofs
+between runs since 8.2, so there is no cache for <code>--no-cache</code> to turn off.</p></li>
+</ul>
+<p>Anything else that would widen the profile is refused before the program is
+read, with exit 2 and no receipt: <code>--no-check-ceiling</code>, <code>--check-timeout</code>,
+<code>--check-memory-mb</code> and <code>--max-read</code> (the 64 MiB read ceiling stays), a flag
+eval does not have, and a flag given twice. Words after <code>--</code> are the
+program's <code>args()</code> and never eval's flags.</p>
+<h2 id="what-it-does-not-guarantee">What it does not guarantee <a class="anchor" href="#what-it-does-not-guarantee" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>That the OS confinement is there.</strong> The level is what was applied, not
+what was asked for: a kernel without Landlock, a job object that could not
+be made, or a sandbox profile that failed its trial is <code>none</code>, and the run
+goes ahead under the budget alone. Read <code>confinement</code> in the receipt, and
+refuse <code>none</code> in whatever consumes it if that matters to you.</li>
+<li><strong>Reads.</strong> No level confines reading. The budget holds a program's reads;
+the worker itself reads Python's own files as it runs.</li>
+<li><strong>More than it lists.</strong> <code>job-one-process</code> does not hold files or the
+network, and it counts the processes the worker was already using when it
+became ready rather than insisting on exactly one; <code>landlock</code> does not hold TCP, and no Landlock level holds UDP or
+a Unix socket. A write grant's directory is confined as the nearest
+directory that exists, so a grant naming a file not made yet lets the OS
+layer allow its siblings; the budget still refuses them.</li>
+<li><strong>A stop the worker cannot see, in less than the grace period.</strong> A stop
+lands at a call or a loop turn. A worker compiling the program, or inside
+one long builtin, sees no stop point until it finishes that, and is killed
+when the grace period ends.</li>
+<li><strong>A receipt when eval itself is killed.</strong> If the <code>velaris eval</code> process is
+killed outright, the file is not written. A URL has received <code>started</code> and
+the events streamed until then, and no <code>receipt</code>: its absence is the
+record.</li>
+<li><strong>More than a receipt says.</strong> Everything
+<a href="threat-model.html">THREAT_MODEL.md</a> says about receipts holds: no value
+the program handled is in one, and what the program controls that is not a
+value - its exit status, where it stopped, its counts, its time - is. A
+signed receipt is as strong as the machine that made it.</li>
+<li><strong>Isolation from the operator's machine.</strong> The worker runs as the user who
+started eval, with that user's files readable to it. Put eval inside a
+container or a separate account when the stakes warrant it.</li>
+</ul>
+<h2 id="exit-status">Exit status <a class="anchor" href="#exit-status" aria-label="Link to this section">#</a></h2>
+<p>The program's own exit status when it ran and its receipt was delivered;
+124 when the time limit stopped it; 2 when eval refused the command line; 3
+when the program ran and the receipt could not be written or sent.
+<code>--json</code> prints <code>velaris.eval/1</code> (provisional): the outcome, the code, the
+confinement, whether signals could be taken, the stop, whether the receipt
+was delivered, and the program's output and logs.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/docs/eval.md">docs/eval.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#what-it-guarantees">What it guarantees</a></li><li><a href="#what-it-does-not-guarantee">What it does not guarantee</a></li><li><a href="#exit-status">Exit status</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

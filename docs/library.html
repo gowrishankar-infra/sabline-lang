@@ -1,355 +1,149 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Velaris - the language where you can
-trust code you didn't write. Effects, failure, and Z3-proven contracts,
-all in the signature.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a7d5a'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
-<title>Library - Velaris</title>
-<style>
-:root { --paper:#ffffff; --alt:#f6f7f8; --line:#e6e8eb; --ink:#0b1215;
-        --mut:#57606a; --brand:#0a7d5a; --brand2:#075e44;
-        --term:#101418; --term-ink:#e6edf3; --term-mut:#8b949e;
-        --err:#e5484d; --mint:#7ee2c0; }
-* { box-sizing:border-box; margin:0; }
-html { scroll-behavior:smooth; }
-body { background:var(--paper); color:var(--ink); font:clamp(15px,0.5vw + 11px,18px)/1.65
-  -apple-system,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
-  -webkit-font-smoothing:antialiased; }
-nav { position:sticky; top:0; background:rgba(255,255,255,.86);
-  backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
-  z-index:10; }
-nav .in { max-width:clamp(900px,86vw,1480px); margin:0 auto;
-  padding:12px clamp(14px,3vw,24px); display:flex;
-  gap:clamp(13px,2.4vw,26px); align-items:center; flex-wrap:wrap; }
-.brand { font-weight:700; font-size:17px; letter-spacing:-.02em;
-  color:var(--ink); text-decoration:none; display:flex; gap:8px;
-  align-items:center; }
-.dot { width:9px; height:9px; border-radius:50%;
-  background:var(--brand); display:inline-block; }
-nav a { color:var(--mut); text-decoration:none; font-size:14.5px;
-  font-weight:500; }
-nav a:hover, nav a.here { color:var(--ink); }
-nav .ver { margin-left:auto; font-size:12.5px; color:var(--mut);
-  border:1px solid var(--line); border-radius:99px; padding:3px 11px; }
-main { max-width:clamp(760px,74vw,1240px); margin:0 auto;
-  padding:clamp(28px,5vw,56px) clamp(16px,4vw,32px) 110px;
-  overflow-wrap:break-word; }
-main.wide { max-width:clamp(900px,86vw,1480px); }
-h1 { font-size:clamp(32px,2.6vw + 14px,58px); letter-spacing:-.03em;
-  line-height:1.12; font-weight:750; }
-h2 { font-size:clamp(20px,1.2vw + 12px,30px); letter-spacing:-.02em;
-  margin:2.2em 0 .7em; font-weight:700; }
-h3 { font-size:18px; margin:1.6em 0 .5em; font-weight:650; }
-p, li { color:#2a3138; }
-p { margin:.85em 0; }
-.lead { font-size:clamp(16.5px,0.8vw + 10px,22px); color:var(--mut);
-  max-width:52ch; }
-a { color:var(--brand); text-decoration:none; }
-a:hover { text-decoration:underline; }
-code { background:var(--alt); border:1px solid var(--line);
-  padding:1.5px 6px; border-radius:6px;
-  font:13px ui-monospace,"SF Mono",Consolas,monospace; }
-pre { background:var(--term); color:var(--term-ink); border-radius:12px;
-  padding:clamp(13px,2.5vw,18px) clamp(14px,3vw,20px); overflow-x:auto;
-  margin:1.2em 0; -webkit-overflow-scrolling:touch;
-  font:clamp(12px,0.5vw + 8px,15px)/1.6 ui-monospace,"SF Mono",Consolas,
-  monospace; }
-pre code { background:none; border:none; padding:0; color:inherit;
-  font:inherit; }
-.k { color:var(--mint); } .e { color:#ff8f8f; } .m { color:var(--term-mut); }
-.btns { display:flex; gap:12px; margin:26px 0 8px; flex-wrap:wrap; }
-.btn { background:var(--ink); color:#fff; padding:11px 22px;
-  border-radius:9px; font-weight:600; font-size:15px; }
-.btn:hover { background:#22292f; text-decoration:none; }
-.btn.ghost { background:transparent; color:var(--ink);
-  border:1px solid var(--line); }
-.btn.ghost:hover { border-color:#c7ccd1; }
-.hero { padding:clamp(36px,8vw,74px) 0 20px; }
-@media (max-width:560px) {
-  .btns { flex-direction:column; }
-  .btn { text-align:center; }
-  nav .ver { display:none; }
-  .fnrow .sig { font-size:12.5px; }
-}
-.eyebrow { color:var(--brand); font-weight:650; font-size:13.5px;
-  letter-spacing:.06em; text-transform:uppercase; margin-bottom:14px; }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,
-  minmax(clamp(230px,22vw,300px),1fr)); gap:16px; margin:34px 0; }
-.card { border:1px solid var(--line); border-radius:14px;
-  padding:20px 22px; background:var(--paper); }
-.card b { font-size:clamp(15px,0.4vw + 10px,17.5px); letter-spacing:-.01em; }
-.card p { font-size:clamp(13.5px,0.4vw + 9px,16px); color:var(--mut); margin:.5em 0 0; }
-.sig { color:var(--ink); font:clamp(13px,0.45vw + 9px,15.5px) ui-monospace,"SF Mono",Consolas,
-  monospace; font-weight:600; }
-.contract { color:var(--brand); font:clamp(12px,0.4vw + 8px,14.5px) ui-monospace,"SF Mono",
-  Consolas,monospace; margin:5px 0 0 20px; }
-.fnrow { border:1px solid var(--line); border-radius:12px;
-  padding:15px 18px; margin:11px 0; }
-table { border-collapse:collapse; width:100%; margin:1.2em 0;
-  font-size:clamp(13px,0.5vw + 9px,16px); display:block; overflow-x:auto;
-  -webkit-overflow-scrolling:touch; white-space:nowrap; }
-table tr td:last-child { white-space:normal; min-width:220px; }
-td, th { border-bottom:1px solid var(--line); padding:9px 12px;
-  text-align:left; vertical-align:top; }
-th { color:var(--mut); font-weight:600; font-size:13px;
-  text-transform:uppercase; letter-spacing:.05em; }
-.ecode { color:var(--err); font-weight:650;
-  font-family:ui-monospace,Consolas,monospace; font-size:13px; }
-.strip { background:var(--alt); border-top:1px solid var(--line);
-  border-bottom:1px solid var(--line);
-  margin:44px calc(-1 * clamp(16px,4vw,24px));
-  padding:30px clamp(16px,4vw,24px); }
-footer { border-top:1px solid var(--line); color:var(--mut);
-  font-size:13.5px; padding:26px 24px; text-align:center; }
-</style></head><body>
-<nav><div class="in"><a class="brand" href="index.html">
-<span class="dot"></span>Velaris</a><a href="index.html" class="">Home</a><a href="tutorial.html" class="">Tutorial</a><a href="spec.html" class="">Reference</a><a href="library.html" class="here">Library</a><a href="errors.html" class="">Errors</a><a href="floats.html" class="">Floats</a><a href="playground.html" class="">Playground</a>
-<span class="ver">v8.3.0</span></div></nav>
-<main class=""><h1>Standard library</h1>
-<p class="lead">Every function below is written in Velaris and parsed onto this page by the real compiler &mdash; contracts included. A violated <code>requires</code> is a compile error at your call site.</p>
-<div class="fnrow">
-<div class="sig">fn csv.fields(line: Text) -&gt; List of Text</div>
-<div class="contract">ensures length(result) &gt;= 1</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn csv.quoted_field(value: Text) -&gt; Text</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn csv.line_of(values: List of Text) -&gt; Text</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn csv.column(line: Text, at: Int) -&gt; Text or fail</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn csv.column_int(line: Text, at: Int) -&gt; Int or fail</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn csv.rows_of(text: Text) -&gt; List of Text</div>
-<div class="contract">ensures length(result) &gt;= 1</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn dates.days_in(year: Int, month: Int) -&gt; Int</div>
-<div class="contract">requires month &gt;= 1</div>
-<div class="contract">requires month &lt;= 12</div>
-<div class="contract">ensures result &gt;= 28</div>
-<div class="contract">ensures result &lt;= 31</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn dates.make(year: Int, month: Int, day: Int) -&gt; Date or fail</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn dates.parse(text: Text) -&gt; Date or fail</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn dates.text_of(d: Date) -&gt; Text</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn dates.before(a: Date, b: Date) -&gt; Bool</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn dates.same(a: Date, b: Date) -&gt; Bool</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn dates.next_day(d: Date) -&gt; Date or fail</div>
-<div class="contract">requires d.month &gt;= 1</div>
-<div class="contract">requires d.month &lt;= 12</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn dates.today() -&gt; Date or fail uses ffi</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn db.open(path: Text) -&gt; Handle or fail uses ffi</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn db.run(conn: Handle, sql: Text) -&gt; Text or fail uses ffi</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn db.commit(conn: Handle) or fail uses ffi</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn db.rows_json(conn: Handle, sql: Text) -&gt; Text or fail uses ffi</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn db.count(conn: Handle, table: Text) -&gt; Int or fail uses ffi</div>
-<div class="contract">ensures result &gt;= 0</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn db.close(conn: Handle) uses ffi</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn env_tools.setting(name: Text, fallback: Text) -&gt; Secret of Text uses env</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn env_tools.public_setting(name: Text, fallback: Text) -&gt; Text uses declassify, env</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn env_tools.number_setting(name: Text, fallback: Int) -&gt; Int uses declassify, env</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn env_tools.succeed() uses io</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn env_tools.give_up(why: Text) uses io</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.get(url: Text) -&gt; Text or fail uses net</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.status(url: Text) -&gt; Int or fail uses net</div>
-<div class="contract">ensures result &gt;= 0</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.ok(url: Text) -&gt; Bool or fail uses net</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.send(url: Text, body: Text) -&gt; Text or fail uses net</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.get_json(url: Text, path: Text) -&gt; Text or fail uses net</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.call(method: Text, url: Text, body: Text, headers: Text) -&gt; Answer or fail uses net</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.body_of(answer: Answer) -&gt; Text</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.code_of(answer: Answer) -&gt; Int</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.header_of(answer: Answer, name: Text) -&gt; Text or fail</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.get_with(url: Text, headers: Text) -&gt; Text or fail uses net</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn http.post_json(url: Text, body: Text) -&gt; Text or fail uses net</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn log.info(message: Text) uses io</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn log.warn(message: Text) uses io</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn log.error(message: Text) uses io</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn log.field(name: Text, value: Text) -&gt; Text</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn log.event(name: Text, details: Text) uses io</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn log.die(message: Text) uses io</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn log.fail_with(message: Text) uses io</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn money.not_negative(m: Money of C) -&gt; Bool for any C</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn money.not_positive(m: Money of C) -&gt; Bool for any C</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn money.split(amount: Money of C, ways: Int) -&gt; List of Money of C for any C</div>
-<div class="contract">requires ways &gt; 0</div>
-<div class="contract">ensures length(result) == ways</div>
-<div class="contract">ensures units_of(result) == units_of(amount)</div>
-<div class="contract">ensures units_of(amount) &lt; 0 or all_of(result, not_negative)</div>
-<div class="contract">ensures units_of(amount) &gt; 0 or all_of(result, not_positive)</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn first(xs: List of T) -&gt; T for any T</div>
-<div class="contract">requires length(xs) &gt; 0</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn last(xs: List of T) -&gt; T for any T</div>
-<div class="contract">requires length(xs) &gt; 0</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn reverse(xs: List of T) -&gt; List of T for any T</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn index_of(xs: List of T, item: T) -&gt; Int for any T</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn contains_item(xs: List of T, item: T) -&gt; Bool for any T</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn apply_to_each(xs: List of T, f: fn(T) -&gt; T) -&gt; List of T for any T</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn keep_if(xs: List of T, keep: fn(T) -&gt; Bool) -&gt; List of T for any T</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn count_where(xs: List of T, keep: fn(T) -&gt; Bool) -&gt; Int for any T</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn sum_of(xs: List of Int) -&gt; Int</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn max_of(xs: List of Int) -&gt; Int</div>
-<div class="contract">requires length(xs) &gt; 0</div>
-<div class="contract">ensures contains_item(xs, result)</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn min_of(xs: List of Int) -&gt; Int</div>
-<div class="contract">requires length(xs) &gt; 0</div>
-<div class="contract">ensures contains_item(xs, result)</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn is_sorted(xs: List of Int) -&gt; Bool</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn insert_sorted(xs: List of Int, v: Int) -&gt; List of Int</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn sort(xs: List of Int) -&gt; List of Int</div>
-<div class="contract">ensures length(result) == length(xs)</div>
-<div class="contract">ensures is_sorted(result)</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn insert_by(xs: List of T, v: T, key: fn(T) -&gt; Int) -&gt; List of T for any T</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn sort_by(xs: List of T, key: fn(T) -&gt; Int) -&gt; List of T for any T</div>
-<div class="contract">ensures length(result) == length(xs)</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn join(xs: List of Text, sep: Text) -&gt; Text</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn range_list(a: Int, b: Int) -&gt; List of Int</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn map_to(xs: List of T, f: fn(T) -&gt; R) -&gt; List of R for any T, R</div>
-<div class="contract">ensures length(result) == length(xs)</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn time.today() -&gt; Text or fail uses ffi</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn time.clock_text() -&gt; Text or fail uses ffi</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn time.seconds() -&gt; Int uses clock</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn time.day_of(when: Text) -&gt; Text or fail</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn time.year_of(date: Text) -&gt; Int or fail</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn time.month_of(date: Text) -&gt; Int or fail</div>
-</div>
-<div class="fnrow">
-<div class="sig">fn time.day_number(date: Text) -&gt; Int or fail</div>
-</div>
-<h2>Built-in functions</h2><table><tr><th>Name</th><th>Effects</th><th>Takes</th><th>Gives</th></tr>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Standard library - Velaris 8.3.1</title>
+<meta name="description" content="Every function below is written in Velaris, in stdlib/, and read onto this page by the compiler itself, contracts included. A violated requires is a compile ...">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/library.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html" aria-current="page">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc wide" tabindex="-1">
+<h1 id="standard-library">Standard library</h1>
+<p class="lead">Every function below is written in Velaris, in stdlib/, and read onto this page by the compiler itself, contracts included. A violated <code>requires</code> is a compile error at your call site.</p>
+<h2 id="csvvel">csv.vel <a class="anchor" href="#csvvel" aria-label="Link to this section">#</a></h2>
+<div class="fn"><p class="sig"><span class="k">fn</span> csv.fields(line: Text) -&gt; List of Text</p><p class="contract"><span class="k">ensures</span> length(result) &gt;= <span class="n">1</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> csv.quoted_field(value: Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> csv.line_of(values: List of Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> csv.column(line: Text, at: Int) -&gt; Text <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> csv.column_int(line: Text, at: Int) -&gt; Int <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> csv.rows_of(text: Text) -&gt; List of Text</p><p class="contract"><span class="k">ensures</span> length(result) &gt;= <span class="n">1</span></p></div>
+<h2 id="datesvel">dates.vel <a class="anchor" href="#datesvel" aria-label="Link to this section">#</a></h2>
+<div class="fn"><p class="sig"><span class="k">fn</span> dates.days_in(year: Int, month: Int) -&gt; Int</p><p class="contract"><span class="k">requires</span> month &gt;= <span class="n">1</span></p><p class="contract"><span class="k">requires</span> month &lt;= <span class="n">12</span></p><p class="contract"><span class="k">ensures</span> result &gt;= <span class="n">28</span></p><p class="contract"><span class="k">ensures</span> result &lt;= <span class="n">31</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> dates.make(year: Int, month: Int, day: Int) -&gt; Date <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> dates.parse(text: Text) -&gt; Date <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> dates.text_of(d: Date) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> dates.before(a: Date, b: Date) -&gt; Bool</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> dates.same(a: Date, b: Date) -&gt; Bool</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> dates.next_day(d: Date) -&gt; Date <span class="k">or</span> <span class="k">fail</span></p><p class="contract"><span class="k">requires</span> d.month &gt;= <span class="n">1</span></p><p class="contract"><span class="k">requires</span> d.month &lt;= <span class="n">12</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> dates.today() -&gt; Date <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> ffi</p></div>
+<h2 id="dbvel">db.vel <a class="anchor" href="#dbvel" aria-label="Link to this section">#</a></h2>
+<div class="fn"><p class="sig"><span class="k">fn</span> db.open(path: Text) -&gt; Handle <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> ffi</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> db.run(conn: Handle, sql: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> ffi</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> db.commit(conn: Handle) <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> ffi</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> db.rows_json(conn: Handle, sql: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> ffi</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> db.count(conn: Handle, table: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> ffi</p><p class="contract"><span class="k">ensures</span> result &gt;= <span class="n">0</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> db.close(conn: Handle) <span class="k">uses</span> ffi</p></div>
+<h2 id="env_toolsvel">env_tools.vel <a class="anchor" href="#env_toolsvel" aria-label="Link to this section">#</a></h2>
+<div class="fn"><p class="sig"><span class="k">fn</span> env_tools.setting(name: Text, fallback: Text) -&gt; Secret of Text <span class="k">uses</span> env</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> env_tools.public_setting(name: Text, fallback: Text) -&gt; Text <span class="k">uses</span> declassify, env</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> env_tools.number_setting(name: Text, fallback: Int) -&gt; Int <span class="k">uses</span> declassify, env</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> env_tools.succeed() <span class="k">uses</span> io</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> env_tools.give_up(why: Text) <span class="k">uses</span> io</p></div>
+<h2 id="httpvel">http.vel <a class="anchor" href="#httpvel" aria-label="Link to this section">#</a></h2>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.get(url: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.status(url: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p><p class="contract"><span class="k">ensures</span> result &gt;= <span class="n">0</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.ok(url: Text) -&gt; Bool <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.send(url: Text, body: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.get_json(url: Text, path: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.call(method: Text, url: Text, body: Text, headers: Text) -&gt; Answer <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.body_of(answer: Answer) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.code_of(answer: Answer) -&gt; Int</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.header_of(answer: Answer, name: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.get_with(url: Text, headers: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> http.post_json(url: Text, body: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<h2 id="logvel">log.vel <a class="anchor" href="#logvel" aria-label="Link to this section">#</a></h2>
+<div class="fn"><p class="sig"><span class="k">fn</span> log.info(message: Text) <span class="k">uses</span> io</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> log.warn(message: Text) <span class="k">uses</span> io</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> log.error(message: Text) <span class="k">uses</span> io</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> log.field(name: Text, value: Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> log.event(name: Text, details: Text) <span class="k">uses</span> io</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> log.die(message: Text) <span class="k">uses</span> io</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> log.fail_with(message: Text) <span class="k">uses</span> io</p></div>
+<h2 id="moneyvel">money.vel <a class="anchor" href="#moneyvel" aria-label="Link to this section">#</a></h2>
+<div class="fn"><p class="sig"><span class="k">fn</span> money.not_negative(m: Money of C) -&gt; Bool <span class="k">for</span> any C</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> money.not_positive(m: Money of C) -&gt; Bool <span class="k">for</span> any C</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> money.split(amount: Money of C, ways: Int) -&gt; List of Money of C <span class="k">for</span> any C</p><p class="contract"><span class="k">requires</span> ways &gt; <span class="n">0</span></p><p class="contract"><span class="k">ensures</span> length(result) == ways</p><p class="contract"><span class="k">ensures</span> units_of(result) == units_of(amount)</p><p class="contract"><span class="k">ensures</span> units_of(amount) &lt; <span class="n">0</span> <span class="k">or</span> all_of(result, not_negative)</p><p class="contract"><span class="k">ensures</span> units_of(amount) &gt; <span class="n">0</span> <span class="k">or</span> all_of(result, not_positive)</p></div>
+<h2 id="stdvel">std.vel <a class="anchor" href="#stdvel" aria-label="Link to this section">#</a></h2>
+<div class="fn"><p class="sig"><span class="k">fn</span> first(xs: List of T) -&gt; T <span class="k">for</span> any T</p><p class="contract"><span class="k">requires</span> length(xs) &gt; <span class="n">0</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> last(xs: List of T) -&gt; T <span class="k">for</span> any T</p><p class="contract"><span class="k">requires</span> length(xs) &gt; <span class="n">0</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> reverse(xs: List of T) -&gt; List of T <span class="k">for</span> any T</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> index_of(xs: List of T, item: T) -&gt; Int <span class="k">for</span> any T</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> contains_item(xs: List of T, item: T) -&gt; Bool <span class="k">for</span> any T</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> apply_to_each(xs: List of T, f: <span class="k">fn</span>(T) -&gt; T) -&gt; List of T <span class="k">for</span> any T</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> keep_if(xs: List of T, keep: <span class="k">fn</span>(T) -&gt; Bool) -&gt; List of T <span class="k">for</span> any T</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> count_where(xs: List of T, keep: <span class="k">fn</span>(T) -&gt; Bool) -&gt; Int <span class="k">for</span> any T</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> sum_of(xs: List of Int) -&gt; Int</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> max_of(xs: List of Int) -&gt; Int</p><p class="contract"><span class="k">requires</span> length(xs) &gt; <span class="n">0</span></p><p class="contract"><span class="k">ensures</span> contains_item(xs, result)</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> min_of(xs: List of Int) -&gt; Int</p><p class="contract"><span class="k">requires</span> length(xs) &gt; <span class="n">0</span></p><p class="contract"><span class="k">ensures</span> contains_item(xs, result)</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> is_sorted(xs: List of Int) -&gt; Bool</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> insert_sorted(xs: List of Int, v: Int) -&gt; List of Int</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> sort(xs: List of Int) -&gt; List of Int</p><p class="contract"><span class="k">ensures</span> length(result) == length(xs)</p><p class="contract"><span class="k">ensures</span> is_sorted(result)</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> insert_by(xs: List of T, v: T, key: <span class="k">fn</span>(T) -&gt; Int) -&gt; List of T <span class="k">for</span> any T</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> sort_by(xs: List of T, key: <span class="k">fn</span>(T) -&gt; Int) -&gt; List of T <span class="k">for</span> any T</p><p class="contract"><span class="k">ensures</span> length(result) == length(xs)</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> join(xs: List of Text, sep: Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> range_list(a: Int, b: Int) -&gt; List of Int</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> map_to(xs: List of T, f: <span class="k">fn</span>(T) -&gt; R) -&gt; List of R <span class="k">for</span> any T, R</p><p class="contract"><span class="k">ensures</span> length(result) == length(xs)</p></div>
+<h2 id="timevel">time.vel <a class="anchor" href="#timevel" aria-label="Link to this section">#</a></h2>
+<div class="fn"><p class="sig"><span class="k">fn</span> time.today() -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> ffi</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> time.clock_text() -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> ffi</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> time.seconds() -&gt; Int <span class="k">uses</span> clock</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> time.day_of(when: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> time.year_of(date: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> time.month_of(date: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> time.day_number(date: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span></p></div>
+<h2 id="built-in-functions">Built-in functions <a class="anchor" href="#built-in-functions" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Name</th><th>Effects</th><th>Takes</th><th>Gives</th></tr></thead>
+<tbody>
 <tr><td><code>add_or_fail</code> <span class="ecode">or fail</span></td><td>pure</td><td>Int, Int</td><td>Int</td></tr>
 <tr><td><code>all_of</code></td><td>pure</td><td>Any, Any</td><td>Bool</td></tr>
 <tr><td><code>any_of</code></td><td>pure</td><td>Any, Any</td><td>Bool</td></tr>
@@ -417,8 +211,15 @@ footer { border-top:1px solid var(--line); color:var(--mut);
 <tr><td><code>upper</code></td><td>pure</td><td>Text</td><td>Text</td></tr>
 <tr><td><code>with_units</code></td><td>pure</td><td>Money of C, Int</td><td>Money of C</td></tr>
 <tr><td><code>write_file</code></td><td>fs</td><td>Text, Any</td><td>Unit</td></tr>
-</table><p style='font-size:13.5px;color:var(--mut)'>get on a map can also fail (missing key); get_or never fails.</p></main>
-<footer>Velaris is MIT-licensed open source &middot;
-<a href="https://github.com/gowrishankar-infra/velaris-lang">GitHub</a>
-&middot; <a href="https://github.com/gowrishankar-infra/velaris-lang/issues">Issues</a></footer>
-</body></html>
+</tbody></table></div>
+<p>get on a map can also fail (missing key); get_or never fails.</p>
+</main>
+<footer class="foot wide">
+<p>Generated from stdlib/ by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#csvvel">csv.vel</a></li><li><a href="#datesvel">dates.vel</a></li><li><a href="#dbvel">db.vel</a></li><li><a href="#env_toolsvel">env_tools.vel</a></li><li><a href="#httpvel">http.vel</a></li><li><a href="#logvel">log.vel</a></li><li><a href="#moneyvel">money.vel</a></li><li><a href="#stdvel">std.vel</a></li><li><a href="#timevel">time.vel</a></li><li><a href="#built-in-functions">Built-in functions</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

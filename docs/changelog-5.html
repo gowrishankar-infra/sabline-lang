@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 5.x - Velaris 8.3.1</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog-5.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html" aria-current="page">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 5.x</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="501---check_librarypy-runs-on-linux-and-macos-again">5.0.1 - check_library.py runs on Linux and macOS again <a class="anchor" href="#501---check_librarypy-runs-on-linux-and-macos-again" aria-label="Link to this section">#</a></h2>
+<p>A test-suite fix. Nothing a user runs changes: the compiler, the
+library, the doors and every document are as 5.0.0 published them.</p>
+<p><code>check_library.py</code>'s npm-wrapper section builds throwaway virtual
+environments in which one Velaris is reachable under one spelling of
+<code>python</code>, so that the wrapper's choice can be asserted. On POSIX a
+venv's <code>bin/python</code>, <code>bin/python3</code> and <code>bin/pythonX.Y</code> are a chain of
+symbolic links ending at the base interpreter, and the section got two
+things wrong about that: copying one of those names onto another is
+<code>SameFileError</code>, and removing the others would have left whichever name
+remained dangling. The first of the two is what failed, and it failed
+every Linux and macOS leg of CI from 4.3.4, where the section was
+added, through 4.3.4, 4.4.0 and 5.0.0 - eight of the twelve legs, on a
+file no release ships. Windows, where a venv's interpreters are real
+copies, was unaffected and green throughout. The name is now remade as
+a link straight to the end of the chain, so both spellings survive the
+removals; <code>pyvenv.cfg</code>, not the name of the link, is what makes it a
+venv.</p>
+<h2 id="50---the-default-is-io-not-everything">5.0 - The default is io, not everything <a class="anchor" href="#50---the-default-is-io-not-everything" aria-label="Link to this section">#</a></h2>
+<p>A major version, and a breaking one. Until now, <code>velaris program.vel</code>
+with no <code>--allow</code> granted all seven effects: the program could read
+and write any file the OS user could reach, open any socket, read
+every environment variable and call any Python module. A capability
+language whose answer to "what may this program do if you say nothing"
+is "everything" has the one thing it exists for backwards, and this
+repository said so in writing - THREAT_MODEL.md conceded it, the
+README's related-work paragraph conceded it against WASI, whose
+modules reach nothing unless the host hands them something, and
+velaris-spec's PRIOR_ART.md recorded that Boruna's default policy
+grants nothing where Velaris's granted seven effects.</p>
+<p>From 5.0 a run that asks for nothing gets <code>io</code>.</p>
+<p><strong>Why <code>io</code> and not nothing.</strong> Granting nothing is the stricter answer,
+and it is the one Boruna and WASI give. It was considered and not
+taken, for two reasons. A program refused under a budget that grants
+nothing cannot say why it stopped, and cannot print the diagnosis of
+its own refusal - the refusal itself reaches the operator through the
+runtime's standard error, but nothing the program wanted to tell you
+first does. And <code>io</code> is the effect no example, tutorial, README
+snippet or notebook cell in this repository can do without: a default
+of nothing would have made every one of them fail on upgrade with a
+refusal about <code>print</code>, which teaches the wrong lesson about what a
+budget is for. <code>io</code> is the console - <code>print</code>, <code>read_line</code>, <code>args</code> -
+and it touches no file, no socket, no environment variable and no
+Python module. The gap between this and granting nothing is one
+effect, and THREAT_MODEL.md has always listed what <code>io</code> still
+includes. It is written down here so the choice is on the record
+rather than assumed.</p>
+<h3 id="what-a-4x-user-has-to-change">What a 4.x user has to change <a class="anchor" href="#what-a-4x-user-has-to-change" aria-label="Link to this section">#</a></h3>
+<p><strong>Every command, script, CI step, notebook cell and library call that
+runs a program needing more than <code>io</code>, and did not say so.</strong> It will
+now stop with E310 at the first operation outside <code>io</code>, naming the
+effect, what the run does allow, and the flag that would grant it:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>error[E310] 'read_file' needs the 'fs' effect, which this run does not
+allow (it allows: io)
+  how to fix (pick one):
+    1. allow it: velaris &lt;file&gt; --allow io,fs
+    2. a run with no --allow gets io (5.0); --allow all grants every effect
+    3. or use a program that does not need it</code></pre></div>
+<p>Item by item:</p>
+<ul>
+<li><strong><code>velaris program.vel</code></strong> grants <code>io</code>. It granted all seven.</li>
+<li><strong><code>velaris.run(source)</code> with no <code>allow</code></strong> grants <code>io</code>. It granted
+all seven. So does <strong><code>velaris.run(source, timeout=...)</code></strong>, whose
+child process is started with the same budget.</li>
+<li><strong><code>velaris.Pool(...)</code> with no <code>allow</code></strong> grants <code>io</code>. It granted all
+seven. <code>pool.allow</code> reads <code>"io"</code>.</li>
+<li><strong><code>velaris test program.vel</code></strong> runs its test functions under a
+budget, <code>io</code> unless <code>--allow</code> says more. It ran them under all seven.</li>
+<li><strong>An executable from <code>velaris build</code></strong> grants <code>io</code>, and takes
+<code>--allow</code> the way the compiler does: <code>./myprogram --allow io,fs:read</code>.
+An executable built by 4.x is not affected - it carries the compiler
+it was built with - but one rebuilt on 5.0 is.</li>
+<li><strong><code>velaris trace program.vel</code></strong> is the run it traces, so it takes the
+same budget and the same default.</li>
+<li><strong><code>--deny</code> narrows what <code>--allow</code> gave.</strong> <code>velaris program.vel --deny net</code> leaves <code>io</code>, where it left the six effects other than
+<code>net</code>. Writing <code>--allow all --deny net,ffi</code> is how to get the old
+meaning, and it says what it is doing.</li>
+<li><strong>The two doors are unchanged.</strong> The MCP server's ceiling has been
+<code>io</code> since 3.4 and the HTTP door's since 4.0. 5.0 is the release
+where every other place a budget comes from agrees with them.</li>
+</ul>
+<p><strong><code>--allow all</code> is the explicit way to ask for everything.</strong> It grants
+the seven effects and writes one line to standard error:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>velaris: --allow all grants every effect (io, env, fs, net, clock,
+rand, ffi); nothing this run does will be refused by the budget</code></pre></div>
+<p>It is an operator's word on a command line - <code>velaris</code>, <code>velaris serve --max-allow</code>, <code>velaris mcp --max-allow</code>, and <code>allow="all"</code> in
+the library - and deliberately not part of the budget grammar: a
+budget a caller sends to the HTTP door or the MCP server cannot
+contain it, and <code>Budget.parse("all")</code> is refused as it always was.</p>
+<p><strong><code>velaris migrate --to 5.0 [path] [--write] [--json]</code></strong> does the
+work. It reads a program or a tree, derives the narrowest budget each
+program needs from that program's own audit - the same grants
+<code>velaris audit</code> puts in <code>safe_command</code> - and prints the command to run
+it under 5.0:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code>examples/wordcount.vel
+    <span class="k">uses</span>:  fs, io
+    run:   velaris examples/wordcount.vel --allow fs:read,io</code></pre></div>
+<p>It changes nothing unless <code>--write</code> is given, and then only lines in
+shell scripts and CI files it can parse without guessing: one command
+on the line, a <code>.vel</code> path that resolves to a program it audited, no
+budget flag already there, and nothing - a pipe, a chain, a
+substitution, a redirection - that would make the end of the command
+the wrong place for a flag. Everything else is listed as left alone,
+with the budget to add by hand. A program that does not compile is
+reported as such rather than guessed at.</p>
+<h3 id="what-is-not-changed">What is not changed <a class="anchor" href="#what-is-not-changed" aria-label="Link to this section">#</a></h3>
+<p>The budget grammar, every refusal code, the audit and capability
+formats, the doors' ceilings and every schema. A budget that parsed
+under 4.x parses under 5.0 and grants the same thing. A program's
+source is untouched: nothing about <code>uses</code>, contracts, proofs or
+failure moves. This is a change to what an operator gets when they
+say nothing, and to nothing else.</p>
+<h3 id="the-record-1">The record <a class="anchor" href="#the-record-1" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>STABILITY.md</strong> lists 5.0 under "Breaks we have made", with the
+reason and what a 4.x user has to change.</li>
+<li><strong>THREAT_MODEL.md</strong> no longer carries the permissive default among
+the things it does not defend against. The concession is dated
+rather than deleted: it says what was true until 5.0, and that the
+README's and the paper's versions of it were true until 5.0 too.</li>
+<li><strong>velaris-spec 0.6.0</strong> restates section 4.6 (what the reference
+grants when no budget is given) and section 4.4 (a denial narrows
+the runtime's default budget, which the format does not fix). One
+conformance case changes with it:
+<code>L1-budget-deny-from-all-seven</code> becomes
+<code>L1-budget-deny-from-grants-given</code>, which writes the grants its
+denial applies to; <code>L2-deny-one</code> and <code>L2-deny-several</code> gain theirs
+too. The corpus is still 444 cases, and every one of them now names
+its own budget rather than leaving an implementation's default to do
+the work.</li>
+<li><strong>velaris-spec's PRIOR_ART.md</strong> corrects the Boruna and WASI
+entries: Boruna is still the stricter of the two, by one effect
+rather than seven. The paper's related-work paragraph says the same.</li>
+<li><strong>SPEC.md 7.1</strong> states the default, which it did not.</li>
+</ul>
+<h3 id="tests">Tests <a class="anchor" href="#tests" aria-label="Link to this section">#</a></h3>
+<p><code>check_sandbox.py</code> gains five cases: a program that writes a file and
+one that reaches the network, each refused with no <code>--allow</code> at all;
+the refusal's own text, which must name the effect, what the run
+allows and the flag; <code>--allow all</code>, which must run the same program
+and print its warning; and <code>--deny</code> with no <code>--allow</code>, which must
+narrow the default rather than widen it. <code>check_library.py</code> gains
+fourteen: <code>run()</code> with no <code>allow</code> refused and its message checked,
+<code>run(allow="all")</code> and the seven names spelled out, a bounded run's
+child, a pool made with no <code>allow</code>, and one that compares the budget
+the command line, the library, the pool and both doors start from and
+fails unless all five are <code>io</code>.</p>
+<p>Every suite and both fresh-venv legs pass: <code>run_tests.py</code>,
+<code>check_library.py</code>, <code>check_sandbox.py</code>, <code>check_money.py</code>,
+<code>check_termination.py</code>, <code>check_pool.py</code>, <code>check_ratchet.py</code>,
+<code>check_platform.py</code>, <code>check_refusals.py</code>, <code>check_fallible.py</code>,
+<code>velaris conformance</code> at L1, L2 and L3, <code>fuzz_native.py 30</code>,
+<code>benchmark --quick --check</code>, <code>velaris test examples/std_test.vel</code>,
+<code>velaris fmt --check</code> and <code>velaris capabilities check</code>.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#501---check_librarypy-runs-on-linux-and-macos-again">5.0.1 - check_library.py runs on Linux and macOS again</a></li><li><a href="#50---the-default-is-io-not-everything">5.0 - The default is io, not everything</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

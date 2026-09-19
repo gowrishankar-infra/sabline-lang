@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 4.x: 4.2 to 4.0 - Velaris 8.3.1</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog-4-2.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html" aria-current="page">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 4.x: 4.2 to 4.0</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="42---a-producer-for-the-capability-predicate">4.2 - A producer for the capability predicate <a class="anchor" href="#42---a-producer-for-the-capability-predicate" aria-label="Link to this section">#</a></h2>
+<p>A minor version. 4.1 published an in-toto predicate type for the audit
+and wrote no Statements of it; <code>velaris attest</code> writes them, and the
+release workflow signs one. The author's name is corrected everywhere
+it appears.</p>
+<p><strong><code>velaris attest &lt;path&gt; [--output FILE] [--json]</code></strong> writes an in-toto
+Statement v1 of the predicate type
+<code>https://gowrishankar-infra.github.io/velaris-lang/capability/v1</code>
+(velaris-spec 0.5, section 8.5). Its subjects are the audited file and
+every file it imports, each by the sha256 of its bytes - a standard
+library file named <code>&lt;stdlib&gt;/NAME</code>, since where it sits on disk is the
+machine's business. Its predicate is the published shape: <code>producer</code>
+(<code>velaris-lang</code> and this repository), <code>specification</code> (<code>velaris-spec 0.5</code>), <code>auditedAt</code> - from <code>SOURCE_DATE_EPOCH</code> when it is set, so one
+commit gives the same bytes twice - and <code>audit</code>, which is <code>audit()</code>'s
+own <code>velaris.audit/1</code> document for those bytes, not a copy recomputed
+beside it: effects, <code>fs_paths</code>, <code>net_hosts</code>, <code>ffi_modules</code>, <code>ffi_any</code>,
+<code>counts</code>, <code>proven_share</code>, <code>prover</code> and <code>velaris_version</code> are the
+audit's. It sets no <code>conformance</code> claim, since it runs no corpus. A
+directory gives one Statement per <code>.vel</code> file, found as <code>velaris capabilities</code> finds them, one to a line (JSON Lines), because the
+predicate type holds one audit per Statement. A file that is not UTF-8,
+or that changes while it is being attested, is an error (exit 2), not a
+Statement. Without <code>--output</code> or <code>--json</code> it prints a summary: each
+file's digest, whether it compiles, its effects, and <code>ffi_any</code> when
+set. <code>velaris.attest(path)</code> in the library returns the Statements as a
+list; STABILITY.md adds it to the stable API.</p>
+<p><strong>When the audit cannot tell, the Statement says so.</strong> Two fields are
+added to <code>velaris.audit/1</code>, optional within version 1 (velaris-spec
+8.2), so that an attestation can state what was not determined instead
+of leaving it out:</p>
+<ul>
+<li><code>counts</code>: for <code>fs</code> and <code>net</code>, the most operations one call to a
+function the file defines can perform, by velaris-spec 9.4's rules -
+the same code (<code>_operation_bounds</code>) the capability baseline uses. <code>0</code>
+for an effect none of them declares; <code>null</code> where the text fixes no
+bound, such as a loop over <code>args()</code>; and <code>null</code> as a whole when the
+file does not compile.</li>
+<li><code>prover</code>: whether a prover decided the promises' status. It is false
+without one, where no status is <code>proven</code> and a <code>proven_share</code> of 0
+says nothing about what could be proven; and false when the file does
+not compile.</li>
+</ul>
+<p>With the fields already there - <code>ok</code> false and its problems, <code>ffi_any</code>
+for a module named while running rather than a shorter module list,
+<code>read_any</code>, <code>write_any</code> and <code>any</code> for a path or URL built while
+running - the Statement carries whatever the audit could not determine
+as the audit states it. EMBEDDING.md's table of audit fields has both.
+<code>load_program</code> takes an optional list it appends each file it reads
+to, which is how <code>attest</code> names the imports it digests.</p>
+<p><strong>Signing is left to Sigstore's tools.</strong> Nothing here signs.
+EMBEDDING.md gives working commands for cosign 3 (<code>cosign attest-blob --statement</code>, keyless and with a key pair, and <code>cosign verify-blob-attestation</code>, which fails when the file is not the
+Statement's subject by digest) and for sigstore-python 4, whose command
+line attests only SLSA provenance, so the library's <code>sign_dsse</code> and
+<code>verify_dsse</code> are used. The cosign key-pair commands were run here
+against a Statement from this build with cosign v3.0.6, offline - a
+signing config naming no transparency log, and <code>--insecure-ignore-tlog</code>
+to verify: it signed, verified, and refused an edited <code>effects.vel</code>
+("provided artifact digest does not match any digest in statement").
+The sigstore-python snippet was run as far as the browser sign-in,
+which needs a person.</p>
+<p><strong>The release signs one.</strong> <code>release.yml</code> has a new job, <code>attestation</code>:
+it installs this commit with the prover, writes <code>velaris attest examples/effects.vel</code> with <code>SOURCE_DATE_EPOCH</code> at the commit's time,
+signs the Statement keylessly as a DSSE envelope with cosign and with
+sigstore-python, verifies both bundles against the workflow's own
+identity - cosign against the example's bytes, sigstore-python by
+comparing the signed Statement and the first subject's digest - and
+attaches <code>velaris-attestation-X.Y.Z.intoto.json</code> and the two
+<code>.sigstore.json</code> bundles to the release. The workflow can also be run
+by hand (<code>workflow_dispatch</code>); then only this job runs, signing and
+verifying under the branch's identity and publishing nothing, and the
+jobs that build and publish packages run only for a tag. SECURITY.md
+gives the command to verify the attestation.</p>
+<p><strong>Tests.</strong> <code>check_library.py</code> gains 12 checks on five programs in a
+scratch directory and a two-file program: a directory gives one
+Statement per <code>.vel</code> file; every digest is the sha256 of the file's
+bytes; each predicate's audit equals <code>audit()</code> of the same program,
+field for field; every Statement validates against in-toto's Statement
+v1 schema, the capability/v1 predicate schema this repository
+publishes, and velaris-spec's <code>velaris.audit/1</code> schema; a module named
+while running is <code>ffi_any</code>, with an empty module list; a count the text
+fixes is its number and one it does not is <code>null</code>; a program that does
+not compile is <code>ok</code> false with its problem, <code>counts</code> null and <code>prover</code>
+false; <code>prover</code> matches whether a prover is installed; an imported file
+is the next subject, with its own digest; and the command line's
+<code>--json</code> is the library's Statement, its time fixed by
+<code>SOURCE_DATE_EPOCH</code>. in-toto publishes its Statement schema as prose and
+protobuf, not JSON Schema, so <code>tests/in-toto-statement-v1.schema.json</code>
+is written from its <code>statement.md</code>, <code>resource_descriptor.md</code> and
+<code>digest_set.md</code> at commit <code>2dcd055e</code>, which the file names. CI checks
+out velaris-spec before the suites run, so <code>check_library.py</code> holds the
+audit to the spec's schema on every leg.</p>
+<p><strong>velaris-spec 0.5</strong> records the producer in section 8.5 and the two
+fields in 8.2 and its audit schema; its <code>examples/capability-statement.json</code>
+is now what <code>velaris attest examples/effects.vel</code> writes at this tag,
+and REGISTRY_SUBMISSION.md names the producer, the command that fetches
+the signed Statement, and embeds that Statement. Still not submitted.</p>
+<p><strong>The author's name.</strong> The author is Palakurthi Gowri shankar: family
+name Palakurthi, given name Gowri shankar. <code>CITATION.cff</code> in both
+repositories now says <code>family-names: Palakurthi</code> and <code>given-names: Gowri shankar</code>, and both validate against the CFF 1.2.0 schema (with
+<code>jsonschema</code> and with <code>cffconvert --validate</code>). The full name replaces
+the earlier forms in LICENSE, the VS Code extension's LICENSE,
+README.md, SUPPORT.md, MAINTAINERS.md, PROVENANCE.md, pyproject.toml,
+the npm, MCP bundle and winget manifests, the LangChain integration's
+metadata, <code>paper/velaris.md</code> and <code>paper/references.bib</code> (as
+<code>{Palakurthi, Gowri shankar}</code>, the comma form: without the comma BibTeX
+would read <code>shankar</code> as a particle like "van"), and in velaris-spec's
+NOTICE, README.md and REGISTRY_SUBMISSION.md. In a reference list the
+family name leads - "Palakurthi, Gowri shankar" in full; abbreviated,
+BibTeX writes "Palakurthi, G. s." and <code>cffconvert</code>'s APA-like form
+"Palakurthi G.s." - and a citation in the text is "(Palakurthi, 2026)".
+A CSL processor (citeproc-js) abbreviates only a capitalised given
+name, so its APA style writes "Palakurthi, G. shankar".</p>
+<p><strong>Provenance.</strong> Both PROVENANCE.md files record the second pair of
+Software Heritage saves, 2471049 and 2471050, taken after the 4.1.0 and
+0.4 push, with their snapshots, beside the first pair.</p>
+<p><strong>Sources, named</strong> (CONTRIBUTING.md rule): the parts of this release
+were specified by the maintainer. The Statement follows in-toto's
+Statement v1 and ResourceDescriptor specifications, and its directory
+form the JSON Lines layout of in-toto's Bundle specification, at commit
+<code>2dcd055e</code>; the signing commands follow cosign's and sigstore-python's
+own documentation and were checked against cosign v3.0.6 and
+sigstore-python 4.5.0.</p>
+<p><strong>Verified</strong>, on Windows 11 with Python 3.13, with the proof cache
+cleared first. With the prover (z3 5.1.0, llvmlite 0.49.0):
+<code>run_tests.py</code> 92/92, <code>check_library.py</code> 196 correct (one skipped: its
+symbolic-link case is POSIX only), <code>check_sandbox.py</code> 49 (its
+symbolic-link case skipped: this machine will not make a link),
+<code>check_fallible.py</code> 26, <code>check_refusals.py</code> 21, <code>check_termination.py</code>
+44, <code>check_pool.py</code> 39, <code>check_ratchet.py</code> 114, none wrong;
+<code>fuzz_native.py 30</code> agrees; <code>benchmark/run.py --quick --check</code> matches
+<code>results.json</code>; <code>velaris test examples/std_test.vel</code> 7/7, <code>velaris examples/edges.vel</code> 20/20, <code>velaris fmt --check</code> clean, <code>velaris capabilities check .</code> passes; <code>velaris conformance</code> reports L1, L2 and
+L3 conformant, 443 of the 444 cases run and the symbolic-link case
+skipped, and <code>--level 1</code>, <code>--level 2</code> and <code>--level 3</code> each report their
+level conformant; <code>build_conformance.py --check</code> matches velaris-spec's
+corpus. Without the prover, in a fresh virtual environment holding this
+tree and jsonschema and no z3 or llvmlite, all of the same pass, with
+<code>check_library.py</code> 193 correct (two skipped for needing the prover, one
+POSIX only) and <code>check_refusals.py</code> 11 with 10 skipped for needing the
+prover. With the prover and without it, <code>velaris attest examples/effects.vel</code> at a fixed <code>SOURCE_DATE_EPOCH</code> writes the same
+Statement except <code>prover</code>. The audits of the 107 <code>.vel</code> files directly
+in <code>examples/</code> and <code>stdlib/</code> (73 compile, with <code>counts</code> set and <code>prover</code>
+true; 34 do not, with <code>counts</code> null and <code>prover</code> false) validate against velaris-spec 0.5's audit schema through its
+<code>tools/validate.py --audits</code>, as does this repository's
+<code>velaris.capabilities</code>; its <code>tools/validate.py</code> (schemas, examples, the
+example Statement, the 444 cases) and <code>tools/check_sync.py</code> pass. Both
+<code>CITATION.cff</code> files validate against the CFF 1.2.0 schema. The
+release workflow's <code>attestation</code> job has not run before this commit's
+push, so whether it signs and verifies in GitHub's runners is for that
+run to say.</p>
+<h2 id="41---conformance-you-can-run-provenance-you-can-check">4.1 - Conformance you can run, provenance you can check <a class="anchor" href="#41---conformance-you-can-run-provenance-you-can-check" aria-label="Link to this section">#</a></h2>
+<p>A minor version. Conformance to the capability format stops being a
+sentence naming this repository's suites and becomes a corpus any
+implementation can run; <code>velaris conformance</code> runs it here, on every CI
+leg. The project gets citation files, an entry in an independent
+archive, and a predicate type whose URL resolves; and a preprint is
+drafted, for the maintainer to read. One defect, found by writing the
+corpus, is fixed.</p>
+<p>4.0.1 was committed and pushed but never tagged, so it was never
+published; its fix to <code>velaris review</code> ships in 4.1.0.</p>
+<p><strong>The conformance corpus.</strong> velaris-spec 0.4 holds <code>tests/</code>: 444 JSON
+cases, each with an id, its level, a description, the input - budget
+text, Velaris source, a tree of files and a change to it - and the
+outcome an implementation must produce: the grants a budget parses to
+or its refusal, an audit's effect surface, a refusal and its code, a
+baseline, or a verdict with every widening and the rules it fails. 298
+cases at L1, declaration (280 budgets, 18 audits); 37 at L2,
+enforcement (programs run under a budget, with a fixture of files and
+two local HTTP servers); 109 at L3, the ratchet (14 baselines to write,
+51 changes to check, two sequences, the writer's guard, and 32
+covering, 3 reduction and 6 operation-bound cases). velaris-spec's
+CONFORMANCE.md defines the levels and the behaviours each requires, and
+says plainly that no level requires a prover; <code>tests/README.md</code> is the
+runner contract. Five L3 cases are the ratchet's known limits from the
+4.0 entry below, recorded with the outcome the check gives today - two
+widenings that pass, three non-widenings that fail - so that another
+implementation matches it rather than guessing.</p>
+<p>The corpus is not written by hand. <code>build_conformance.py</code> transcribes
+it from tables in three suites, where the same entries are asserted
+against this implementation, and computes nothing itself; <code>--check</code>
+regenerates it and fails when it differs from what velaris-spec
+commits. For that, the suites became tables, and asserting them made
+them stricter:</p>
+<ul>
+<li><code>check_sandbox.py</code> holds each case as data, with placeholders for its
+paths and ports, and asserts the refusal code each must carry. Until
+4.1 it accepted any of the five codes, so a runtime refusing a path
+outside its prefix with E310 rather than E313 would have passed. It
+runs its fixture in a temporary directory rather than in the
+repository, and its symbolic-link case wherever the system will make
+a link, not only on POSIX. Four cases are new, the four rules
+velaris-spec 0.3 listed as untested (its Q9): <code>@0</code>, a count spent by
+an operation that then fails, a URL with no scheme taken as HTTPS, and
+an existence check under a write-only grant. 34 escape attempts and
+16 honest programs.</li>
+<li><code>check_library.py</code> gains <code>BUDGETS</code>, 55 budgets each held to what
+velaris-spec sections 4 and 5 say it means - the grants for 51, a
+refusal for 4 - including the spec's own examples and denials (until
+4.1 the awkward ones were checked to round-trip, not for what they
+parse to); and <code>AUDITS</code>, 18 programs each held to the effect surface
+its audit must report, and to the schema. The malformed-budget list
+moved out of <code>main()</code> so the corpus can be written from it.</li>
+<li><code>check_ratchet.py</code>'s scenarios became <code>DERIVE</code>, <code>CHECKS</code>, <code>SEQUENCES</code>,
+<code>WRITE_GUARD</code>, <code>COVERING</code>, <code>REDUCE</code> and <code>BOUNDS</code>. Each check now
+asserts the complete list of widenings, with the rules each fails,
+where most cases asserted one finding; each derivation asserts the
+whole baseline. New: 14 baselines written for trees; the writer
+refusing, unasked, to write a baseline for a tree that needs more; a
+new effect; a new program outside the surface (W1 alone); <code>fs</code>
+declared with no file named, which needs plain <code>fs</code>; another spelling
+of a path; a port under a portless grant; 9 covering and 2 reduction
+cases; and the five known limits. What only this implementation
+says, such as the call chain, <code>velaris review</code>, SARIF and warning
+text, is asserted after, on the same scenarios.</li>
+</ul>
+<p>Thirteen scenarios are left out of the corpus, and <code>tests/index.json</code>
+says why each: six attempts to reach an ungranted Python module through
+a granted one, which depend on Python's object model; four honest
+programs that need a Python host; a run given no budget, which the
+format leaves to the implementation; and two about this command line's
+flags.</p>
+<p><strong><code>velaris conformance [--level 1|2|3] [--json] [--corpus DIR]</code></strong> runs
+the corpus against this implementation, through the doors another
+implementation would use: the budget parser, the audit, the command
+line under a budget, the baseline writer and the check. It finds the
+corpus beside the working directory or the installation, prints a line
+per level and a one-line verdict, and exits 1 if any case of a level
+asked for fails. <code>--json</code> is <code>velaris.conformance/1</code>, one result per
+case, the report shape <code>tests/README.md</code> gives any runner. <code>--level N</code>
+runs the cases a claim at level N needs: L1 and N. A case that needs a
+symbolic link is skipped where none can be made, and the verdict says
+so; without <code>jsonschema</code> the cases that validate a document against
+velaris-spec's schemas are skipped too, and the level is reported as
+not shown. It passes at all three levels. Run against a copy of the
+corpus with twelve expectations broken, covering all ten kinds of case,
+and one case given a kind no runner knows, it fails exactly those 13
+cases and exits 1.</p>
+<p><strong>CI.</strong> Every one of the twelve legs checks out velaris-spec, runs the
+drift test and <code>velaris conformance</code> against its corpus. velaris-spec's
+own CI runs the drift test and this implementation's conformance
+against its corpus, beside its schema and sync checks.</p>
+<p><strong>Found by the corpus, and fixed.</strong> The audit of a program refused for
+naming something that is not an effect in a <code>uses</code> clause (<code>uses io, teleport</code>, E300) still listed that name in <code>effects</code> and in the
+function's <code>effects</code>, and wrote a <code>safe_command</code> that does not parse.
+velaris-spec had said since 0.2 that <code>effects</code> holds only the seven
+names and that <code>safe_command</code> always parses; 3.3 had fixed the compile
+check and not the document that reports it. From 4.1 <code>audit</code> leaves any
+name that is not an effect out of all three; the E300 still names it.
+This is not a breaking change under STABILITY.md: the fields' documented
+meaning is unchanged, and it is the implementation that now matches it;
+what changes is the content of a document whose <code>ok</code> is false, which
+velaris-spec says bounds nothing. HALL_OF_FAME.md credits the corpus.
+velaris-spec 0.4 corrects the sentences that had inferred from 3.3's
+rejection more than the implementation did.</p>
+<p><strong>Provenance.</strong> <code>CITATION.cff</code> in both repositories (CFF 1.2.0, checked
+against the format's schema), with the author, the repository, the
+version and its date, and a note that a preprint is forthcoming; both
+READMEs say "Cite this repository". Both repositories were submitted to
+Software Heritage through its save-code-now API, and <code>PROVENANCE.md</code> in
+each records the save requests' ids and dates beside the first commit
+of the effect system, the date velaris-spec 0.1 was tagged, and that
+velaris-lang is the reference implementation.</p>
+<p><strong>A resolvable predicate type.</strong> velaris-spec 0.4 section 8.5 defines
+an in-toto predicate type for <code>velaris.audit/1</code> bound to the digests of
+the files audited, and its URL is on this repository's documentation
+site: <code>https://gowrishankar-infra.github.io/velaris-lang/capability/v1</code>,
+which <code>build_docs.py</code> now writes, with <code>schema.json</code> beside it,
+identical to velaris-spec's <code>schemas/capability-predicate.v1.schema.json</code>
+(velaris-spec's <code>tools/check_sync.py</code> fails if they differ).
+<code>velaris.dev</code> was not used: on 2026-09-11 it answered every path with a
+Vercel <code>DEPLOYMENT_NOT_FOUND</code>, and nothing here says who controls it.
+This implementation publishes the type and does not yet write
+Statements of it; velaris-spec's example was assembled from <code>velaris audit --json</code> and a file's digest. A pull request listing the type in
+in-toto's predicate registry is prepared in velaris-spec's
+REGISTRY_SUBMISSION.md, and not sent.</p>
+<p><strong>A preprint, drafted.</strong> <code>paper/velaris.md</code> and <code>paper/references.bib</code>:
+the problem, the design, the implementation, the evaluation, related
+work, limitations and a reproducibility section, with a table naming
+the file each number comes from. Not submitted anywhere.</p>
+<p><strong>Also corrected.</strong> The documentation site's benchmark table said
+"Velaris 3.1" and the README's did too, where <code>benchmark/RESULTS.md</code>
+said the table was produced by 3.0.0. The table was regenerated with
+4.1.0: every verdict and every line of evidence is what 3.0.0 produced,
+and only the version line of <code>RESULTS.md</code> and <code>results.json</code> changed;
+the pages now say 4.1. EMBEDDING.md's table of audit fields lacked
+<code>ffi_any</code>, added in 4.0. velaris-spec's PRIOR_ART.md said this
+implementation emits no SARIF, untrue since 3.4.</p>
+<p><strong>Sources, named</strong> (CONTRIBUTING.md rule): the parts of this release
+were specified by the maintainer. The runner contract follows no
+published harness. in-toto's <code>docs/new_predicate_guidelines.md</code> and
+predicate template, read on 2026-09-11, shaped REGISTRY_SUBMISSION.md.
+Hills, Caspary and Cooper Stickland, "Distributed Attacks in
+Persistent-State AI Control" (arXiv:2607.02514), is cited by the paper
+and by velaris-spec's PRIOR_ART.md as the gradual-attack result the
+ratchet addresses; the record does not say it influenced the ratchet's
+design in 4.0, and this entry does not claim it did.</p>
+<p><strong>Verified</strong>, on Windows 11 with Python 3.13, with the proof cache
+cleared first. With the prover: <code>run_tests.py</code> 92/92,
+<code>check_library.py</code> 184 correct (one skipped: its symbolic-link case is
+POSIX only), <code>check_sandbox.py</code> 49 (its symbolic-link case skipped: this
+machine will not make a link), <code>check_fallible.py</code> 26,
+<code>check_refusals.py</code> 21, <code>check_termination.py</code> 44, <code>check_pool.py</code> 39,
+<code>check_ratchet.py</code> 114, none wrong; <code>fuzz_native.py 30</code> agrees;
+<code>benchmark/run.py --check</code> over the whole table and <code>--quick --check</code>
+match <code>results.json</code>; <code>velaris test examples/std_test.vel</code> 7/7,
+<code>velaris examples/edges.vel</code> 20/20, <code>velaris fmt --check</code> clean,
+<code>velaris capabilities check .</code> passes; <code>velaris conformance</code> reports
+L1, L2 and L3 conformant, 443 of the 444 cases run and the
+symbolic-link case skipped; <code>build_conformance.py --check</code> matches
+velaris-spec's corpus. Without the prover, in a fresh virtual
+environment with jsonschema and no z3 or llvmlite, the same pass - the
+benchmark with <code>--quick --check</code> only - with <code>check_library.py</code> 181
+correct (two skipped for needing the prover, one POSIX only),
+<code>check_refusals.py</code> 11 with 10 skipped for needing the prover, and
+<code>velaris conformance</code> again conformant at L1, L2 and L3. velaris-spec
+0.4's <code>tools/validate.py</code> (schemas, examples, the example Statement,
+all 444 cases against the case schema) and <code>tools/check_sync.py</code> (the
+quoted sections, and the predicate schema against
+<code>docs/capability/v1/schema.json</code>) pass against this tree. The symbolic-link cases run where a link can be made - the
+Linux and macOS runners, and the Windows runners if they allow it -
+and whether they pass there is for this commit's CI to say.</p>
+<h2 id="401---the-review-read-the-old-files-from-the-wrong-place">4.0.1 - The review read the old files from the wrong place <a class="anchor" href="#401---the-review-read-the-old-files-from-the-wrong-place" aria-label="Link to this section">#</a></h2>
+<p>4.0.0's CI failed on its four Windows legs, in <code>check_ratchet.py</code>: the
+five checks that go through <code>velaris review</code> failed. The capability
+check - the gate - passed every one of its cases on all twelve legs.</p>
+<p>The cause was in <code>review</code>. To find where the checked directory sits in
+the repository, it compared the working directory's path with the path
+<code>git rev-parse --show-toplevel</code> prints, as text. On the Windows runners
+the temporary directory is a short name (<code>C:\Users\RUNNER~1\...</code>) and
+git prints the long one, so the two did not match, and the files at the
+ref were materialised and read from a directory that was not the ref's
+place in the tree. The review then reported the surface as widened, or
+as unchanged, whatever the change was. <code>review</code> now asks git where it
+is (<code>git rev-parse --show-prefix</code>) and compares no paths. The same
+mismatch happens wherever the path to a checkout goes through a link or
+junction, on any system.</p>
+<p>The 4.0.0 entry's "Verified" paragraph was true of the machine it
+names, from a path git spells the same way, and was not true of the
+Windows runners. <code>check_ratchet.py</code> gains a case that runs <code>review</code>
+from a junction (Windows) or a symbolic link (elsewhere) to a
+repository whose working tree needs more than its last commit, and
+requires the review to see it: the case fails against 4.0.0 and passes
+now. 63 checks.</p>
+<p>Affected: <code>velaris review</code>, and the review section of the Action's
+pull-request comment, on a machine where the two paths differ.
+<code>velaris capabilities init</code> and <code>check</code> were not affected, and neither
+was anything else in 4.0.0. This repository's <code>velaris.capabilities</code> is
+recorded again under 4.0.1; only its <code>velaris_version</code> changed.</p>
+<p><strong>Verified</strong>, on Windows 11 with Python 3.13, with the proof cache
+cleared first; the new case fails against 4.0.0's <code>velaris.py</code> and
+passes against this one. With the prover: <code>run_tests.py</code> 92/92,
+<code>check_library.py</code> 165 correct (one skipped, POSIX only),
+<code>check_sandbox.py</code> 45, <code>check_fallible.py</code> 26, <code>check_refusals.py</code> 21,
+<code>check_termination.py</code> 44, <code>check_pool.py</code> 39, <code>check_ratchet.py</code> 63,
+none wrong; <code>fuzz_native.py 30</code> agrees, <code>benchmark --quick --check</code>
+matches, <code>velaris test examples/std_test.vel</code> 7/7, <code>velaris fmt --check</code> clean, <code>velaris capabilities check .</code> passes. Without the
+prover, in a fresh virtual environment with no z3 or llvmlite: the same
+thirteen pass, <code>check_library.py</code> 162 correct (two skipped for the
+prover, one POSIX only) and <code>check_refusals.py</code> 11 with 10 skipped.
+Whether the Windows runners agree is for this commit's CI to say.</p>
+<h2 id="40---the-operator-sets-the-limits-and-the-capability-surface-cannot-widen-quietly">4.0 - The operator sets the limits, and the capability surface cannot widen quietly <a class="anchor" href="#40---the-operator-sets-the-limits-and-the-capability-surface-cannot-widen-quietly" aria-label="Link to this section">#</a></h2>
+<p>This is a major version. Two gaps 3.4 left open on the doors are
+closed, which changes what a door started without flags will grant;
+the project's stability policy is written down for the first time,
+with the record of the times it was broken; and a repository can now
+declare the capability surface its programs may have and have CI fail
+any change that widens it.</p>
+<p><strong>The operator sets the limits, not the caller.</strong> On the HTTP door and
+the MCP server a request's <code>timeout</code> and <code>max_memory_mb</code> were whatever
+the caller sent; the 30 seconds and 512 MB the doors have had since
+2.59 were only the values used when a caller sent none. <strong>Before 4.0 a
+caller could exceed them, by asking.</strong> Both doors now take
+<code>--max-timeout</code> and <code>--max-memory-mb</code>, 30 seconds and 512 MB when the
+flags are absent. A request that names neither gets the ceiling; one
+that asks for less gets less; one that asks for more is refused the way
+an over-wide budget is - 403 from the HTTP door, <code>isError</code> from the MCP
+server - with the ceilings named in the body (<code>max_timeout</code>,
+<code>max_memory_mb</code>, beside <code>max_allow</code>), and logged with outcome
+<code>ceiling</code>. A value that is not a number above zero - text, <code>true</code>,
+zero, a negative, a fraction of a MB - is a bad request. A flag value
+that is not a limit stops the door at start. <code>GET /health</code> with the
+token reports all three ceilings. The rule lives in one place,
+<code>velaris.run_limits</code>, used by both doors.</p>
+<p><strong>The HTTP door's default ceiling is <code>io</code>.</strong> Without <code>--max-allow</code>,
+<code>velaris serve</code> granted every effect, <code>ffi</code> included, to anyone holding
+the token; the MCP server has defaulted to <code>io</code> since 3.4. The door now
+does too, and starting it wider takes naming the grants:
+<code>--max-allow io,env,fs,net,clock,rand,ffi</code> is what 3.4 granted by
+default. Its start-up lines say which ceiling is the default.</p>
+<p>One more change came with the flag: <code>velaris serve --max-memory-mb</code>
+was accepted before, and - through the command line's process-wide
+<code>--max-memory-mb</code> - set an address-space cap on the door's own process
+on Linux and macOS, never documented. It is now the most each run may
+have, and the door's process is not capped.</p>
+<p><strong>STABILITY.md.</strong> What semantic versioning covers here - the language
+as SPEC.md states it, the error codes, <code>velaris.audit/1</code>, the library
+API, the budget grammar, the command line's commands and documented
+flags - and what it does not: internals, the proof cache, the wording
+of messages, which promises happen to prove, the formatter's style,
+anything marked provisional. The rules: breaking changes only in a
+major version, security fixes included; a deprecation announced in a
+minor version, warning for at least one more, removed no sooner than
+the next major; an error code never reused for another meaning, and a
+removed one kept listed as removed (<code>REMOVED_ERRORS</code>, and a section on
+the errors page - empty today). A stronger prover refusing a program
+its proof shows wrong is stated as the one exception, and why.</p>
+<p>Its "Breaks we have made" section is longer than expected when it was
+begun. 2.0 and 3.0 broke in major versions, as promised. <strong>3.4 shipped
+three breaking changes in a minor version and named them as such, and
+it should have been 4.0</strong>; it was not retagged because 3.4.0 was
+already published, and this policy exists so that it does not happen
+again. Reading every entry for STABILITY.md found more: 3.4 broke three
+further things it did not list (<code>serve</code> and the MCP server refusing an
+unknown argument, <code>GET /health</code> without the token no longer naming the
+ceiling); 3.3 shipped five breaking changes as fixes and named none;
+and eight earlier minor releases, 2.20 to 3.1, each broke something -
+64-bit integers, the formatter's style, three builtins made fallible,
+the http module's <code>call</code>, <code>audit().problems</code>, the doors' 2.59 limits,
+<code>args()</code>, Windows memory caps. E610 was reused, in 2.59, for a meaning
+other than the one 1.4 gave it. All of it is listed there, and 2.0 is
+recorded as its entry and commit describe it: four builtins made
+fallible. README and CONTRIBUTING link it; SPEC.md section 15 points
+to it.</p>
+<p>Also corrected: the 3.3 entry of this file lost its heading in the 3.4
+release, so its text read as part of 3.4. The heading is restored.</p>
+<p><strong>The capability ratchet.</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>velaris capabilities init [path]          # write velaris.capabilities
+velaris capabilities check [path]         # exit 1 if the surface widened
+velaris review --against &lt;ref&gt; [path]     # a pull request's delta, as facts</code></pre></div>
+<p>A change can add capability to a repository a little at a time - a
+helper that builds a URL, a function that reads a file, a call three
+levels down that sends one to the other - and no single diff looks
+alarming, which is how such a change passes a reviewer and a
+diff-based monitor. Capability is binary and cumulative, so the steps
+add up to exactly what one large step would have done; but only a
+comparison with a declared baseline sees the sum. This release makes
+that comparison, and makes it the only one the gate uses.</p>
+<ul>
+<li><strong><code>velaris capabilities init</code></strong> reads every <code>.vel</code> file under the
+path, except in <code>.git</code> and what git ignores, and writes
+<code>velaris.capabilities</code> (<code>velaris.capabilities/1</code>, velaris-spec 0.3
+section 9): the repository's surface - every grant its programs need,
+in the budget grammar, and for <code>fs</code> and <code>net</code> the most operations one
+run can perform, or <code>null</code> where the text sets no bound - and for each
+program its own grants and counts and the effects each of its
+functions declares, or that it does not compile; with the Velaris
+version and the date. One grant per line and one function per line,
+so accepting a widening is a one-line diff. It refuses to replace an
+existing file without <code>--force</code>.</li>
+<li><strong><code>velaris capabilities check</code></strong> derives the same from the working
+tree and compares it with the file - never with the previous commit -
+and exits 1 when anything widened: a grant the surface does not cover
+(a new effect, a new module, a path outside every recorded one, so
+<code>./data</code> widened to <code>./</code> fails; a host, so <code>api.example.com</code> made
+<code>*.example.com</code> fails; a scoped grant made unscoped); more <code>fs</code> or
+<code>net</code> operations in a run than recorded (10 raised to 1000 fails); a
+program the file records needing something its own entry does not
+give, even when another program already had it; and a function the
+file records gaining an effect, even when its program's grants and
+counts stay the same. Narrowing never fails and is reported. A new
+program is held to the surface alone. Each widening names what
+widened, the file, function, line and call that introduced it, the
+chain of calls from <code>main</code> that reaches it, and the edit to the file
+that would accept it. A baseline from another Velaris version is
+compared with a warning, not a failure. A baseline that is missing,
+is not <code>/1</code>, or does not read exits 2 and never passes. <code>--json</code> is
+<code>velaris.capabilities-check/1</code>; <code>--sarif</code> reports each widening as an
+error at its line, through the 3.4 SARIF code, with two new error
+rules, <code>capability-widened</code> and <code>capability-effect-gained</code>, and a
+note, <code>capability-narrowed</code>, on the errors page.</li>
+<li><strong>What a program needs</strong> is read from its text: the effect and type
+checks run and the prover does not, so the result is the same with
+and without z3. A path, URL or module is taken as named when it is a
+literal or a variable bound once to one; one built while running is
+recorded as the unscoped grant, which a scoped baseline does not
+cover. The operation bound comes from loops whose counter and limit
+the text fixes - <code>for i in 0 to 10</code>, a counter started by <code>let</code>, a
+list literal - multiplied through nesting and calls; a loop the text
+does not bound, and recursion, have none.</li>
+<li><strong><code>velaris review --against &lt;ref&gt;</code></strong> runs the derivation and the
+audit on the files at a git ref - read with <code>git show &lt;ref&gt;:&lt;path&gt;</code>,
+nothing checked out - and on the working tree, and reports whether
+the capability surface changed, the proven share before and after,
+functions that became fallible, hosts, paths and modules newly named,
+whether <code>velaris.capabilities</code> itself changed, and one word of risk
+computed from those facts alone: <code>high</code> when the surface widened, or
+the declared surface widened or was removed; <code>medium</code> when it did not
+but a program or function the ref had came to need more, or the
+proven share fell; <code>low</code> when nothing widened and the proven share
+did not fall. No count of changed lines enters it. It informs a
+reviewer; the gate is <code>check</code>, since a review against the commit
+before loses a widening the moment it is merged.</li>
+<li><strong>The GitHub Action</strong> has a <code>capabilities</code> input, <code>check</code> by default
+when <code>velaris.capabilities</code> exists and <code>off</code> otherwise - except that a
+pull request deleting the file fails, since that would turn the
+ratchet off; <code>capabilities: off</code> in the workflow is the visible way to
+do that. Its findings are uploaded to code scanning beside the check's
+when <code>sarif</code> is on. The pull-request comment from 2.63 now holds the
+ratchet's result, each widening with the edit to the baseline that
+would accept it, and the review delta against the pull request's
+base.</li>
+<li><strong>This repository commits its own <code>velaris.capabilities</code></strong>, written by
+<code>velaris capabilities init .</code>: 172 programs, 22 of them examples and
+benchmark rows built to be refused, recorded as not compiling. CI runs
+<code>velaris capabilities check .</code> on every leg.</li>
+<li><strong><code>velaris.audit/1</code> gains <code>ffi_any</code></strong>, added within version 1: true
+when some Python call names its module with a value built while
+running, which <code>ffi_modules</code> cannot list. The ratchet needs it - a
+computed module name must not slip past a baseline naming <code>ffi:math</code>
+<ul>
+<li>and it closes velaris-spec's open question Q4. The audit also warns
+when it is true.</li>
+</ul></li>
+</ul>
+<p><strong><code>check_ratchet.py</code></strong>, 62 checks, proves the rules rather than
+asserting them, through the command line in scratch trees and real git
+histories. The gradual case: six commits, the first five adding pure
+helpers, a text constant holding a URL and a call to print, each
+passing against the baseline, and the sixth sending a summary to that
+URL through a helper three calls below <code>main</code> - which fails, naming
+<code>net:collector.example.net</code> as a new effect, <code>lib/deliver.vel</code> line 2
+in <code>send</code>, and the chain <code>main -&gt; summary -&gt; deliver -&gt; send</code>, while a
+review of each commit against the one before calls the first five
+<code>low</code>. Why the gate must be the baseline: a count widened and merged
+anyway keeps failing the check at every later commit, while a review
+against the previous commit reports nothing one commit later; and seven
+steps from 10 to 1000 are reported as 1000 against the declared 10,
+where the previous commit shows 640 to 1000. Widenings through an
+import (the surface unchanged, the program's entry not), through the
+standard library, through a path prefix, a count, a wildcard host, a
+URL, path and module built while running, a new module, a new
+direction, a hidden directory, and a program whose <code>main</code> is imported
+from outside the tree. An effect added to a function whose program's
+grants and counts stay exactly as they were, reported. And the changes
+that must pass: narrowing; reordering functions, imports, <code>uses</code>
+clauses and statements, renaming locals, reformatting and <code>velaris fmt</code>; a file with no effects; a new program inside the surface; a
+literal moved into a variable; a function renamed or moved to another
+file; a program that stops compiling. Declared prefixes, wildcards and
+ports; a baseline from an older and from a newer version (a warning
+that never hides a widening); <code>init</code> without <code>--force</code>; four baselines
+that cannot be read (exit 2); the JSON and the SARIF, which validates;
+23 covering cases and 6 operation-bound cases. CI runs it on every leg.</p>
+<p><strong>What the ratchet cannot do, and the cases where one of the two rules
+was not achieved.</strong> A widening never passes and a non-widening change
+never fails, among the changes <code>check_ratchet.py</code> holds; beyond them,
+these are the known limits, each stated in THREAT_MODEL.md:</p>
+<ul>
+<li><em>A widening that passes:</em> a function renamed in the same change that
+gives it an effect is a new function, held to its program's entry and
+the surface but not to what its old name declared - so a pure helper
+renamed while it gains an effect its program already had is not
+reported as a function that gained one. What a granted <code>ffi</code> module
+does is outside the text. A symbolic link under a recorded directory
+is that directory's content.</li>
+<li><em>A change that does not widen, reported as one:</em> the bound on
+operations comes from fixed rules, so a loop bound moved behind a
+function call (<code>for i in 0 to limit()</code>) loses its bound and is
+reported as unbounded; a path or URL passed to a helper as a
+parameter is taken as unscoped, as it always is, even when every
+caller passes a literal; and a path written with <code>\</code> is covered only
+by the same text.</li>
+</ul>
+<p><strong>What a 3.4 user has to change.</strong></p>
+<ol>
+<li>A client of <code>velaris serve</code> that relied on the door granting more
+than <code>io</code> without <code>--max-allow</code> must start the door with
+<code>--max-allow</code> naming what it needs.</li>
+<li>A client of either door that sends a <code>timeout</code> over 30 seconds or a
+<code>max_memory_mb</code> over 512 must have the operator raise
+<code>--max-timeout</code> or <code>--max-memory-mb</code>, or ask for less.</li>
+<li>A client that sends <code>timeout</code> or <code>max_memory_mb</code> as text (<code>"30"</code>),
+or <code>0</code> to mean the default, must send a number, or leave the field
+out.</li>
+<li>An operator who passed <code>--max-memory-mb</code> to <code>velaris serve</code> to cap
+the door's own process gets a per-run ceiling instead; cap the door
+with the operating system (<code>ulimit -v</code>, a container limit) if that
+was the intent.</li>
+</ol>
+<p>Additions, which break nothing: <code>velaris capabilities</code>, <code>velaris review</code>, the Action's <code>capabilities</code> input (off unless the file
+exists), <code>ffi_any</code>, and the new SARIF rules.</p>
+<p><strong>velaris-spec 0.3.</strong> Section 9 stops being provisional:
+<code>velaris.capabilities/1</code> replaces the provisional <code>/0</code>, which no
+version of this compiler wrote. The spec states the document, the
+derivation from a program's text, the operation bound, the covering
+rule (a path holding <code>\</code> now compared whole), and the comparison as
+five rules, W1 to W5, with a table of what widens for each kind of
+scope - effect, path, host, module, count, function - and the rule that
+a check compares with the baseline and with nothing else. Q4 is
+resolved by <code>ffi_any</code>. Its conformance section adds <code>check_ratchet.py</code>.
+It still quotes this repository's SPEC.md sections 6, 7 and 7.1 word
+for word - none of them changed - so its drift check passes; its CI now
+also validates this repository's <code>velaris.capabilities</code> against the
+<code>/1</code> schema.</p>
+<p><strong>Sources, named</strong> (CONTRIBUTING.md rule): the four parts of this
+release were specified by the maintainer. No published work is on
+record as the source of the ratchet's design, so none is named. The
+CHANGELOG scan behind STABILITY.md's record was made in this release,
+and its findings were checked against the entries and against git
+history (E610's two meanings are in commits <code>616579f</code>, <code>79808fc</code> and
+<code>b5a4582</code>).</p>
+<p><strong>The MCP manifest changes, by design.</strong> <code>velaris_run</code>'s description
+and the descriptions of its <code>timeout</code> and <code>max_memory_mb</code> inputs now
+name the ceilings, so the signed <code>velaris-mcp-tools-4.0.0.json</code> differs
+from 3.4.0's: <code>velaris mcp-verify</code> against a 3.4.0 manifest reports
+<code>velaris_run</code> as CHANGED, which is what it is for.</p>
+<p><strong>Verified</strong>, on Windows 11 with Python 3.13, before tagging, with the
+proof cache cleared first. With the prover: <code>run_tests.py</code> 92/92,
+<code>check_library.py</code> 165 correct (one skipped: the symlink case is POSIX
+only), <code>check_sandbox.py</code> 45, <code>check_fallible.py</code> 26,
+<code>check_refusals.py</code> 21, <code>check_termination.py</code> 44, <code>check_pool.py</code> 39,
+<code>check_ratchet.py</code> 62, none wrong; <code>fuzz_native.py 30</code> agrees,
+<code>benchmark/run.py --quick --check</code> matches <code>results.json</code>, <code>velaris test examples/std_test.vel</code> 7/7, <code>velaris fmt --check</code> clean, and
+<code>velaris capabilities check .</code> passes on the clean tree. Without the
+prover, in a fresh virtual environment holding this tree, jsonschema
+and no z3 or llvmlite: the same thirteen pass, with <code>check_library.py</code>
+162 correct (two skipped for needing the prover, one POSIX only) and
+<code>check_refusals.py</code> 11 with 10 skipped for needing the prover. Every
+workflow file and <code>action.yml</code> parse as YAML. The Action's new steps
+were run outside GitHub as far as they go: the ratchet step under Git
+Bash in four cases (no baseline, off; a baseline and nothing widened,
+pass; <code>clock</code> added, fail naming it; a pull request deleting the
+baseline, fail), and the comment's Python against real <code>capabilities check --json</code> and <code>review --json</code> output. <code>velaris review --against HEAD</code> over this repository took 45 s with the prover. velaris-spec
+0.3's <code>tools/check_sync.py</code> passes against this tree, its
+<code>tools/validate.py</code> passes with <code>--capabilities</code> on this repository's
+<code>velaris.capabilities</code>, and the <code>velaris.audit/1</code> documents 4.0.0
+produces for all 109 files in <code>examples/</code> and <code>stdlib/</code> validate
+against its audit schema, <code>ffi_any</code> included.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#42---a-producer-for-the-capability-predicate">4.2 - A producer for the capability predicate</a></li><li><a href="#41---conformance-you-can-run-provenance-you-can-check">4.1 - Conformance you can run, provenance you can check</a></li><li><a href="#401---the-review-read-the-old-files-from-the-wrong-place">4.0.1 - The review read the old files from the wrong place</a></li><li><a href="#40---the-operator-sets-the-limits-and-the-capability-surface-cannot-widen-quietly">4.0 - The operator sets the limits, and the capability surface cannot widen quietly</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

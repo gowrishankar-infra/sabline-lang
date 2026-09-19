@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog - Velaris 8.3.1</title>
+<meta name="description" content="Every release of Velaris, newest first, one page for each major version. The text is CHANGELOG.md&#x27;s.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html" aria-current="page">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog</h1>
+<p class="lead">Every release of Velaris, newest first, one page for each major version. The text is CHANGELOG.md's.</p>
+
+<h2 id="8x-831-to-821">8.x: 8.3.1 to 8.2.1 <a class="anchor" href="#8x-831-to-821" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-8-1.html#831---the-documentation-as-a-site">8.3.1 - The documentation, as a site</a></li>
+<li><a href="changelog-8-1.html#83---what-a-run-can-show">8.3 - What a run can show</a></li>
+<li><a href="changelog-8-1.html#821---two-things-that-should-have-been-red">8.2.1 - Two things that should have been red</a></li></ul>
+<h2 id="8x-82-to-80">8.x: 8.2 to 8.0 <a class="anchor" href="#8x-82-to-80" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-8-2.html#82---held-to-it">8.2 - Held to it</a></li>
+<li><a href="changelog-8-2.html#811---the-proof-cache-can-no-longer-lie">8.1.1 - The proof cache can no longer lie</a></li>
+<li><a href="changelog-8-2.html#81---receipts-and-what-a-policy-can-ask">8.1 - Receipts, and what a policy can ask</a></li>
+<li><a href="changelog-8-2.html#80---what-the-socket-reaches-and-other-things-the-audit-now-says">8.0 - What the socket reaches, and other things the audit now says</a></li></ul>
+<h2 id="7x">7.x <a class="anchor" href="#7x" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-7.html#72---releases-that-tag-themselves">7.2 - Releases that tag themselves</a></li>
+<li><a href="changelog-7.html#712---the-proof-cache-could-be-lied-to">7.1.2 - The proof cache could be lied to</a></li>
+<li><a href="changelog-7.html#711---710-did-not-import-on-python-310-or-311">7.1.1 - 7.1.0 did not import on Python 3.10 or 3.11</a></li>
+<li><a href="changelog-7.html#71---what-an-upgrade-gained">7.1 - What an upgrade gained</a></li>
+<li><a href="changelog-7.html#70---a-secret-you-cannot-look-at">7.0 - A secret you cannot look at</a></li></ul>
+<h2 id="6x">6.x <a class="anchor" href="#6x" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-6.html#60---secrets-that-cannot-be-printed">6.0 - Secrets that cannot be printed</a></li></ul>
+<h2 id="5x">5.x <a class="anchor" href="#5x" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-5.html#501---check_librarypy-runs-on-linux-and-macos-again">5.0.1 - check_library.py runs on Linux and macOS again</a></li>
+<li><a href="changelog-5.html#50---the-default-is-io-not-everything">5.0 - The default is io, not everything</a></li></ul>
+<h2 id="4x-44-to-421">4.x: 4.4 to 4.2.1 <a class="anchor" href="#4x-44-to-421" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-4-1.html#44---a-platform-that-lets-its-customers-write-code-it-can-audit">4.4 - A platform that lets its customers write code it can audit</a></li>
+<li><a href="changelog-4-1.html#434---the-npm-wrapper-picks-the-right-python-and-says-when-it-cannot">4.3.4 - The npm wrapper picks the right Python, and says when it cannot</a></li>
+<li><a href="changelog-4-1.html#433---velaris-mcp-so-the-npm-package-can-start-the-server-too">4.3.3 - velaris mcp, so the npm package can start the server too</a></li>
+<li><a href="changelog-4-1.html#432---the-cards-true-size-and-a-registry-manifest-on-the-current-schema">4.3.2 - The card&#x27;s true size, and a registry manifest on the current schema</a></li>
+<li><a href="changelog-4-1.html#431---a-discount-that-cannot-go-negative-and-a-timeout-that-says-it-timed-out">4.3.1 - A discount that cannot go negative, and a timeout that says it timed out</a></li>
+<li><a href="changelog-4-1.html#43---money-which-is-not-a-float">4.3 - Money, which is not a float</a></li>
+<li><a href="changelog-4-1.html#421---the-author-name-capitalised-correctly">4.2.1 - The author name, capitalised correctly</a></li></ul>
+<h2 id="4x-42-to-40">4.x: 4.2 to 4.0 <a class="anchor" href="#4x-42-to-40" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-4-2.html#42---a-producer-for-the-capability-predicate">4.2 - A producer for the capability predicate</a></li>
+<li><a href="changelog-4-2.html#41---conformance-you-can-run-provenance-you-can-check">4.1 - Conformance you can run, provenance you can check</a></li>
+<li><a href="changelog-4-2.html#401---the-review-read-the-old-files-from-the-wrong-place">4.0.1 - The review read the old files from the wrong place</a></li>
+<li><a href="changelog-4-2.html#40---the-operator-sets-the-limits-and-the-capability-surface-cannot-widen-quietly">4.0 - The operator sets the limits, and the capability surface cannot widen quietly</a></li></ul>
+<h2 id="3x">3.x <a class="anchor" href="#3x" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-3.html#34---the-doors-are-locked-and-the-findings-go-where-findings-go">3.4 - The doors are locked, and the findings go where findings go</a></li>
+<li><a href="changelog-3.html#33---the-capability-check-now-means-what-the-spec-says">3.3 - The capability check now means what the spec says</a></li>
+<li><a href="changelog-3.html#32---the-capability-format-published-as-a-spec">3.2 - The capability format, published as a spec</a></li>
+<li><a href="changelog-3.html#311---a-pool-test-that-passed-for-the-wrong-reason">3.1.1 - A pool test that passed for the wrong reason</a></li>
+<li><a href="changelog-3.html#31---a-pool-that-keeps-its-budget-memory-caps-on-windows-and-a-lockfile">3.1 - A pool that keeps its budget, memory caps on Windows, and a lockfile</a></li>
+<li><a href="changelog-3.html#30---budgets-that-name-paths-hosts-counts-and-secrets">3.0 - Budgets that name paths, hosts, counts, and secrets</a></li></ul>
+<h2 id="2x-2631-to-2401">2.x: 2.63.1 to 2.40.1 <a class="anchor" href="#2x-2631-to-2401" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-2-1.html#2631---the-memory-cap-claim-narrowed-to-where-it-holds">2.63.1 - The memory cap claim, narrowed to where it holds</a></li>
+<li><a href="changelog-2-1.html#263---what-a-security-reviewer-looks-for">2.63 - What a security reviewer looks for</a></li>
+<li><a href="changelog-2-1.html#262---loops-that-provably-end-and-a-corpus-built-to-fool-it">2.62 - Loops that provably end, and a corpus built to fool it</a></li>
+<li><a href="changelog-2-1.html#261---a-table-anyone-can-rerun">2.61 - A table anyone can rerun</a></li>
+<li><a href="changelog-2-1.html#260---the-ffi-cliff-becomes-a-permission">2.60 - The ffi cliff becomes a permission</a></li>
+<li><a href="changelog-2-1.html#259---time-and-memory-limits-prompted-by-a-review-bot">2.59 - Time and memory limits, prompted by a review bot</a></li>
+<li><a href="changelog-2-1.html#258---ready-to-submit-to-the-frameworks">2.58 - Ready to submit to the frameworks</a></li>
+<li><a href="changelog-2-1.html#257-----strict-from-a-question-on-rcompilers">2.57 - --strict, from a question on r/Compilers</a></li>
+<li><a href="changelog-2-1.html#256---seamless-means-tested-not-claimed">2.56 - Seamless means tested, not claimed</a></li>
+<li><a href="changelog-2-1.html#255---four-more-doors">2.55 - Four more doors</a></li>
+<li><a href="changelog-2-1.html#254---a-door-for-languages-that-are-not-python">2.54 - A door for languages that are not Python</a></li>
+<li><a href="changelog-2-1.html#2531---the-library-suite-knows-what-needs-the-prover">2.53.1 - The library suite knows what needs the prover</a></li>
+<li><a href="changelog-2-1.html#253---setting-it-up-should-not-be-a-chore">2.53 - Setting it up should not be a chore</a></li>
+<li><a href="changelog-2-1.html#252---velaris-from-inside-other-programs">2.52 - Velaris from inside other programs</a></li>
+<li><a href="changelog-2-1.html#251---smaller-per-call-costs-and-an-honest-note-about-the-ceiling">2.51 - Smaller per-call costs, and an honest note about the ceiling</a></li>
+<li><a href="changelog-2-1.html#250---function-values-carry-their-surroundings">2.50 - Function values carry their surroundings</a></li>
+<li><a href="changelog-2-1.html#249---the-cards-gaps-were-hiding-three-real-bugs">2.49 - The card&#x27;s gaps were hiding three real bugs</a></li>
+<li><a href="changelog-2-1.html#248---speed-without-touching-a-single-guarantee">2.48 - Speed, without touching a single guarantee</a></li>
+<li><a href="changelog-2-1.html#247---the-periphery-round">2.47 - The periphery round</a></li>
+<li><a href="changelog-2-1.html#246---contents-not-just-lengths">2.46 - Contents, not just lengths</a></li>
+<li><a href="changelog-2-1.html#245---the-road-from-84">2.45 - The road from 84</a></li>
+<li><a href="changelog-2-1.html#244---everything-the-adversarial-report-found">2.44 - Everything the adversarial report found</a></li>
+<li><a href="changelog-2-1.html#243---the-prover-crosses-the-loop-boundary">2.43 - The prover crosses the loop boundary</a></li>
+<li><a href="changelog-2-1.html#242---findings-from-a-model-that-installed-it-and-tried-to-break-it">2.42 - Findings from a model that installed it and tried to break it</a></li>
+<li><a href="changelog-2-1.html#2412---a-loop-no-longer-hides-a-divide-by-zero">2.41.2 - A loop no longer hides a divide by zero</a></li>
+<li><a href="changelog-2-1.html#2411---the-card-worked-and-the-first-program-it-produced-found-a-bug">2.41.1 - The card worked, and the first program it produced found a bug</a></li>
+<li><a href="changelog-2-1.html#241---written-by-a-model-audited-by-you-run-in-a-box">2.41 - Written by a model, audited by you, run in a box</a></li>
+<li><a href="changelog-2-1.html#2401---leading-with-the-sandbox">2.40.1 - Leading with the sandbox</a></li></ul>
+<h2 id="2x-240-to-20">2.x: 2.40 to 2.0 <a class="anchor" href="#2x-240-to-20" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-2-2.html#240---running-a-program-you-have-not-read">2.40 - Running a program you have not read</a></li>
+<li><a href="changelog-2-2.html#2391---the-refusal-harness-knows-what-needs-the-prover">2.39.1 - The refusal harness knows what needs the prover</a></li>
+<li><a href="changelog-2-2.html#239---the-editor-asks-for-what-the-compiler-already-knew">2.39 - The editor asks for what the compiler already knew</a></li>
+<li><a href="changelog-2-2.html#238---testing-the-places-languages-break">2.38 - Testing the places languages break</a></li>
+<li><a href="changelog-2-2.html#237---a-stress-test-written-in-velaris">2.37 - A stress test written in Velaris</a></li>
+<li><a href="changelog-2-2.html#2364---the-action-has-its-own-name">2.36.4 - The Action has its own name</a></li>
+<li><a href="changelog-2-2.html#2363---a-picture-of-the-point">2.36.3 - A picture of the point</a></li>
+<li><a href="changelog-2-2.html#2362---somewhere-to-start">2.36.2 - Somewhere to start</a></li>
+<li><a href="changelog-2-2.html#2361---two-part-tags-publish-the-extension-again">2.36.1 - Two-part tags publish the extension again</a></li>
+<li><a href="changelog-2-2.html#236---a-tool-worth-running-and-errors-that-read-like-a-language">2.36 - A tool worth running, and errors that read like a language</a></li>
+<li><a href="changelog-2-2.html#235---dates-as-values-http-with-headers-and-a-way-in-for-others">2.35 - Dates as values, HTTP with headers, and a way in for others</a></li>
+<li><a href="changelog-2-2.html#234---unattended-work-and-building-for-machines-you-do-not-have">2.34 - Unattended work, and building for machines you do not have</a></li>
+<li><a href="changelog-2-2.html#233---a-number-a-team-can-watch-and-an-image-to-run-it-in">2.33 - A number a team can watch, and an image to run it in</a></li>
+<li><a href="changelog-2-2.html#232---the-editor-knows-what-is-proven-and-ci-is-one-line">2.32 - The editor knows what is proven, and CI is one line</a></li>
+<li><a href="changelog-2-2.html#231---a-standard-library-that-reaches-outside">2.31 - A standard library that reaches outside</a></li>
+<li><a href="changelog-2-2.html#230---the-language-reference-and-a-position-on-concurrency">2.30 - The language reference, and a position on concurrency</a></li>
+<li><a href="changelog-2-2.html#229---remembered-proofs">2.29 - Remembered proofs</a></li>
+<li><a href="changelog-2-2.html#228---velaris-build-hand-someone-your-program">2.28 - velaris build: hand someone your program</a></li>
+<li><a href="changelog-2-2.html#227---handles-real-libraries-not-just-functions">2.27 - Handles: real libraries, not just functions</a></li>
+<li><a href="changelog-2-2.html#226---json-and-calling-python-with-real-data">2.26 - JSON, and calling Python with real data</a></li>
+<li><a href="changelog-2-2.html#225---reaching-the-outside-world-visibly">2.25 - Reaching the outside world, visibly</a></li>
+<li><a href="changelog-2-2.html#2241---the-extension-follows-the-languages-version">2.24.1 - The extension follows the language&#x27;s version</a></li>
+<li><a href="changelog-2-2.html#224---lists-of-text-and-split">2.24 - Lists of text, and split</a></li>
+<li><a href="changelog-2-2.html#223---libraries-you-can-actually-share">2.23 - Libraries you can actually share</a></li>
+<li><a href="changelog-2-2.html#2221---first-extension-publish">2.22.1 - First extension publish</a></li>
+<li><a href="changelog-2-2.html#222---the-editor-extension-ready-to-publish">2.22 - The editor extension, ready to publish</a></li>
+<li><a href="changelog-2-2.html#221---watching-a-program-run-and-case-changing-proofs">2.21 - Watching a program run, and case-changing proofs</a></li>
+<li><a href="changelog-2-2.html#220---whole-numbers-have-a-size-and-outgrowing-it-is-an-error">2.20 - Whole numbers have a size, and outgrowing it is an error</a></li>
+<li><a href="changelog-2-2.html#219---pip-install-velaris-lang">2.19 - pip install velaris-lang</a></li>
+<li><a href="changelog-2-2.html#2182---minimal-mode-expectations-for-the-newest-proofs">2.18.2 - Minimal-mode expectations for the newest proofs</a></li>
+<li><a href="changelog-2-2.html#2181---releases-stay-green">2.18.1 - Releases stay green</a></li>
+<li><a href="changelog-2-2.html#218---records-holding-lists-and-publishing">2.18 - Records holding lists, and publishing</a></li>
+<li><a href="changelog-2-2.html#217---for-loops-tests-in-velaris-and-text-containment-proofs">2.17 - for loops, tests in Velaris, and text containment proofs</a></li>
+<li><a href="changelog-2-2.html#216---catching-the-next-one-a-third-app-and-a-current-tutorial">2.16 - Catching the next one, a third app, and a current tutorial</a></li>
+<li><a href="changelog-2-2.html#2151---native-text-building-made-portable">2.15.1 - Native text building, made portable</a></li>
+<li><a href="changelog-2-2.html#215---native-text-building-the-arena">2.15 - Native text building (the arena)</a></li>
+<li><a href="changelog-2-2.html#214---native-text-reads-and-proven-functions-run-fast">2.14 - Native text reads, and proven functions run fast</a></li>
+<li><a href="changelog-2-2.html#213---native-lists">2.13 - Native lists</a></li>
+<li><a href="changelog-2-2.html#212---lists-of-lists-proven">2.12 - Lists of lists, proven</a></li>
+<li><a href="changelog-2-2.html#211---invariant-inference-the-boring-ones-for-free">2.11 - Invariant inference (the boring ones, for free)</a></li>
+<li><a href="changelog-2-2.html#210---contracts-on-function-values">2.10 - Contracts on function values</a></li>
+<li><a href="changelog-2-2.html#29---map-proofs">2.9 - Map proofs</a></li>
+<li><a href="changelog-2-2.html#28---a-second-real-app-and-text-ordering">2.8 - A second real app, and Text ordering</a></li>
+<li><a href="changelog-2-2.html#27---reading-a-codebase">2.7 - Reading a codebase</a></li>
+<li><a href="changelog-2-2.html#26---division-proofs-and-seeing-what-your-code-promises">2.6 - Division proofs, and seeing what your code promises</a></li>
+<li><a href="changelog-2-2.html#26---division-proofs">2.6 - Division proofs</a></li>
+<li><a href="changelog-2-2.html#251---one-problem-one-message">2.5.1 - One problem, one message</a></li>
+<li><a href="changelog-2-2.html#25---namespaced-imports">2.5 - Namespaced imports</a></li>
+<li><a href="changelog-2-2.html#24---the-everyday-things">2.4 - The everyday things</a></li>
+<li><a href="changelog-2-2.html#23---public-launch-polish">2.3 - Public launch polish</a></li>
+<li><a href="changelog-2-2.html#22---out-of-the-box-readiness">2.2 - Out-of-the-box readiness</a></li>
+<li><a href="changelog-2-2.html#21---documentation-site">2.1 - Documentation site</a></li>
+<li><a href="changelog-2-2.html#20---the-builtins-keep-the-languages-promise-breaking">2.0 - The builtins keep the language&#x27;s promise (BREAKING)</a></li></ul>
+<h2 id="1x">1.x <a class="anchor" href="#1x" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-1.html#120---sort_by--ledger-reports">1.20 - sort_by + ledger reports</a></li>
+<li><a href="changelog-1.html#119---standard-library-sprint">1.19 - Standard library sprint</a></li>
+<li><a href="changelog-1.html#118---float-proofs-real-ieee-754">1.18 - Float proofs (real IEEE-754)</a></li>
+<li><a href="changelog-1.html#117---failure-aware-proofs">1.17 - Failure-aware proofs</a></li>
+<li><a href="changelog-1.html#116---quantified-list-proofs">1.16 - Quantified list proofs</a></li>
+<li><a href="changelog-1.html#115---native-float-and-bool">1.15 - Native Float and Bool</a></li>
+<li><a href="changelog-1.html#114---record-proofs">1.14 - Record proofs</a></li>
+<li><a href="changelog-1.html#113---the-first-real-app">1.13 - The first real app</a></li>
+<li><a href="changelog-1.html#112---continuous-integration">1.12 - Continuous integration</a></li>
+<li><a href="changelog-1.html#111---language-server">1.11 - Language server</a></li>
+<li><a href="changelog-1.html#110---formatter">1.10 - Formatter</a></li>
+<li><a href="changelog-1.html#19---repl">1.9 - REPL</a></li>
+<li><a href="changelog-1.html#18---real-installation">1.8 - Real installation</a></li>
+<li><a href="changelog-1.html#17---generics--first-stdlib">1.7 - Generics + first stdlib</a></li>
+<li><a href="changelog-1.html#16---first-class-functions">1.6 - First-class functions</a></li>
+<li><a href="changelog-1.html#15---unignorable-failure">1.5 - Unignorable failure</a></li>
+<li><a href="changelog-1.html#14---maps">1.4 - Maps</a></li>
+<li><a href="changelog-1.html#13---float">1.3 - Float</a></li>
+<li><a href="changelog-1.html#12---browser-playground">1.2 - Browser playground</a></li>
+<li><a href="changelog-1.html#11---escapes--editor">1.1 - Escapes + editor</a></li>
+<li><a href="changelog-1.html#10---testers-release">1.0 - Testers&#x27; release</a></li></ul>
+<h2 id="0x">0.x <a class="anchor" href="#0x" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-0.html#0x---the-climb">0.x - The climb</a></li></ul>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#8x-831-to-821">8.x: 8.3.1 to 8.2.1</a></li><li><a href="#8x-82-to-80">8.x: 8.2 to 8.0</a></li><li><a href="#7x">7.x</a></li><li><a href="#6x">6.x</a></li><li><a href="#5x">5.x</a></li><li><a href="#4x-44-to-421">4.x: 4.4 to 4.2.1</a></li><li><a href="#4x-42-to-40">4.x: 4.2 to 4.0</a></li><li><a href="#3x">3.x</a></li><li><a href="#2x-2631-to-2401">2.x: 2.63.1 to 2.40.1</a></li><li><a href="#2x-240-to-20">2.x: 2.40 to 2.0</a></li><li><a href="#1x">1.x</a></li><li><a href="#0x">0.x</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

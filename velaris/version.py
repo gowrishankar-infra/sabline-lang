@@ -23,7 +23,7 @@ def _launch_command() -> list[Any]:
     return [sys.executable, os.path.join(_PACKAGE_DIR, "__main__.py")]
 
 
-VERSION = "8.3.0"
+VERSION = "8.3.1"
 
 
 # The documentation site, on a domain this project holds (8.3). Until 8.3

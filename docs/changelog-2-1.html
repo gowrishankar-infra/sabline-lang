@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 2.x: 2.63.1 to 2.40.1 - Velaris 8.3.1</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog-2-1.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html" aria-current="page">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 2.x: 2.63.1 to 2.40.1</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="2631---the-memory-cap-claim-narrowed-to-where-it-holds">2.63.1 - The memory cap claim, narrowed to where it holds <a class="anchor" href="#2631---the-memory-cap-claim-narrowed-to-where-it-holds" aria-label="Link to this section">#</a></h2>
+<p>The tests workflow had failed on every macos-latest leg since 2.62, in
+<code>check_library.py</code>: "a memory cap STOPS a program that eats memory".
+The cap is <code>RLIMIT_AS</code>, and macOS treats that limit as best-effort -
+the doubling program ran to the 60 second timeout (E610) instead of
+being stopped at 150 MB (E611). Linux honours the limit; Windows has
+no equivalent and was already skipped. The CrewAI tool's test had been
+narrowed to Linux for the same reason.</p>
+<p>The assertion now runs on Linux only, unchanged there; macOS prints a
+skip line saying why, Windows keeps its skip. Every place that stated
+the platform truth says the same thing now - EMBEDDING.md,
+THREAT_MODEL.md, COMPLIANCE.md, SECURITY.md, the MCP tool description,
+the <code>run()</code> docstring (a comment-only change, the only edit to the
+compiler), the benchmark README and the header the harness writes:
+enforced on Linux, best-effort on macOS, not applied on Windows; the
+timeout is enforced everywhere. Neither <code>check_termination.py</code> nor the
+benchmark harness asserts a memory-cap outcome, so nothing else
+needed narrowing.</p>
+<h2 id="263---what-a-security-reviewer-looks-for">2.63 - What a security reviewer looks for <a class="anchor" href="#263---what-a-security-reviewer-looks-for" aria-label="Link to this section">#</a></h2>
+<p>Nothing in the compiler changed. Six pieces for the person who has to
+decide whether agent-written Velaris may run on a machine they answer
+for.</p>
+<p><strong>THREAT_MODEL.md.</strong> The trust boundary (the operator sets the budget,
+the program is untrusted, the compiler and the granted <code>ffi</code> modules
+are trusted in full), what is defended against with the mechanism and
+the suite that tests each, and what is explicitly not: anything a
+granted module does, side channels, use below the limits, request
+volume within <code>net</code>, logic errors with no contract, the meaning of
+text, code not written in Velaris, the memory cap on Windows, a
+tampered compiler. Two items that were not in any list before: <code>io</code>
+includes <code>env()</code>, so an <code>io</code>-only program can read and print the
+environment; and <code>fs</code> has no path list. Each residual risk has a
+recommendation. The benchmark numbers are cited; the misses are named.</p>
+<p><strong>COMPLIANCE.md.</strong> One row per guarantee against the OWASP Top 10 for
+LLM Applications (2025) and NIST AI RMF functions - mechanism,
+framework item, suite, what it does not cover. Nearly every cell says
+"partially addresses", because that is the truth; the items Velaris
+does nothing for are listed by name.</p>
+<p><strong>Signed releases with an SBOM.</strong> <code>release.yml</code> now signs the wheel and
+sdist through sigstore, the three executables and <code>velaris.mcpb</code>
+through cosign, attaches the bundles, signatures and certificates, adds
+a CycloneDX SBOM and SHA256 checksums, builds the wheel twice under
+the same <code>SOURCE_DATE_EPOCH</code> and fails if they differ, and publishes to
+PyPI the same files it signed. Every third-party action is pinned to a
+commit with the tag beside it. SECURITY.md says how to verify a
+download, with the exact identity string. None of this could be
+exercised locally; the v2.63 tag is its first run, and the recap of
+this release names what to watch.</p>
+<p><strong>A standing challenge.</strong> SECURITY.md: make Velaris report "proven"
+for a promise that is false at runtime, or escape <code>--allow io</code>, and
+you are credited by name in the changelog and in HALL_OF_FAME.md, with
+the report treated as a security issue and fixed within a week. There
+is no money. HALL_OF_FAME.md opens with the three model-family reviews
+of August 2026 and the review bot of September; the changelog never
+recorded which family produced which review, and the file says so
+rather than guessing.</p>
+<p><strong>A card eval.</strong> <code>evals/card_eval.py</code> gives a model LLM.md and five
+fixed tasks - a CSV total, a grade filter with a proven contract, a
+sandboxed file read, a JSON path read, a stack calculator using <code>pop</code>
+and <code>div_or_fail</code> - and checks, audits and runs each answer under
+<code>--allow io</code> with a 10 s timeout, writing compiled-first-try, ran
+correctly and proven promises to <code>evals/RESULTS.md</code>. It skips with one
+line when no key is set, and was not run against any API for this
+release; the results file holds only the three August reviews, marked
+as reported rather than reproduced.</p>
+<p><strong>PR audit comments.</strong> The GitHub Action gains <code>pr-comment</code>: on a pull
+request it posts one comment with the audit of every changed <code>.vel</code>
+file - effects, modules, proven share, safe command, warnings - and
+edits that comment on later runs, found by a hidden marker. Plain
+<code>curl</code> against the REST API with the job's token; no third-party
+action. The comment builder was exercised locally against real files,
+including one that does not compile; the posting itself was not.</p>
+<h2 id="262---loops-that-provably-end-and-a-corpus-built-to-fool-it">2.62 - Loops that provably end, and a corpus built to fool it <a class="anchor" href="#262---loops-that-provably-end-and-a-corpus-built-to-fool-it" aria-label="Link to this section">#</a></h2>
+<p>The 2.61 benchmark named three programs Velaris could not catch. Two
+stay misses, by construction: an off-by-one that stops early instead of
+reading past the end (no contract, so nothing to refuse), and a program
+that prints <code>rm -rf build</code> for its caller (the only effect is io, and a
+harmless warning prints the same words). The third - a loop that ends,
+slowly - is now shown to end before the program runs.</p>
+<p><strong>Termination.</strong> Every loop gets one of two verdicts, by a syntactic
+rule that needs no solver and so answers the same with and without the
+prover. <code>terminates</code> is claimed for exactly one shape: the condition
+is, or has as an <code>and</code> conjunct, <code>v &lt; E</code>, <code>v &lt;= E</code>, <code>v &gt; E</code> or <code>v &gt;= E</code>,
+where E mentions nothing the body assigns and calls only pure
+functions, and every path through the body moves v by exactly one step
+toward E, with v assigned nowhere else. Everything else - a step of two,
+a step on one arm only, a counter reset on some path, a limit the body
+grows, a flag-only condition, an <code>or</code> - is <code>unshown</code>, whether or not it
+happens to end. A <code>for</code> loop goes through the same rule rather than
+being exempted: <code>for i in 0 to length(xs)</code> with a push inside does not
+end, and the rule says so. SPEC.md section 9.5 states it.</p>
+<p>It surfaces in three places. <code>velaris explain</code> prints "loops: 2
+terminate, 1 not shown" per function. <code>velaris audit</code> and
+<code>velaris.audit()</code> gain <code>loops_unshown</code> per function and a warning
+naming the functions, in schema velaris.audit/1 (added fields, not a
+change); they also gain <code>contract_coverage</code>, the functions that take or
+return a List, a Map or a record and promise nothing about it - a
+coverage note, not a defect. <code>velaris check --strict</code> refuses a loop
+whose end is not shown with E612; without <code>--strict</code> it is not an
+error, and the time limit in <code>velaris.run</code> remains the guard.</p>
+<p><strong>Stressed before trusted.</strong> <code>check_termination.py</code> holds 44
+adversarial loops with their required verdicts: the wrong direction, a
+step of two, a step spelled <code>1 + i</code>, a reset on one path, a limit the
+body changes, a limit changed only inside a nested if, <code>length(xs)</code>
+with a push inside, nested loops where only the inner qualifies, a flag
+alone, a flag with <code>or</code>, a float counter, the step inside a <code>check</code> on
+both arms and on one, a return with and without a step, recursion
+instead of a loop. The analysis was wrong twice on the first attempt,
+both times in the same direction - refusing a loop that ends: it
+counted the standard library's loops when a program imported it (a
+scoping error in the report, fixed by carrying the file), and it did
+not accept a text literal or a pure builtin such as <code>split</code> inside a
+limit, so <code>for part in split(line, " ")</code> was <code>unshown</code> and a control
+program in the benchmark was a false positive. Both are fixed in the
+analysis, not the tests. No existing example changed proof status
+(<code>velaris proofs examples --json</code> before and after, diffed).
+<code>examples/termination.vel</code> and <code>examples/termination_bad.vel</code> join the
+suite; the latter runs and is refused only by <code>--strict</code>.</p>
+<p><strong>The benchmark, doubled.</strong> Sixty programs now, thirty of them written
+against the tools: effects three helpers deep or inside a record, a
+division guarded on one path and not the other, an off-by-one only on
+empty input, an overflow inside a record field and inside a map, a
+failure ignored inside an inline function, a loop that ends only when
+input says so, growth by repeated text concatenation, subprocess
+reached through the JSON-shaped call and through a handle, and control
+programs that look suspicious - printing "rm -rf", reading their own
+arguments, importing math in a loop - and are harmless. Same three
+languages, same rules. On the machine that produced RESULTS.md
+(Windows, prover present, Deno 2.9.6): of 53 dangerous programs
+Velaris caught 51 - 41 before running, 10 while running - and missed
+the two above; Deno caught 29 (5 before, by its lint on a <code>while (true)</code>) and Python 28; no tool flagged any of the 7 control programs,
+the slow loop among them. Ten consecutive runs produce identical
+output. What the doubling found: the prover does not flag a division on
+an unguarded path when another path guards it, a remainder inside a
+loop, or a <code>get(xs, i + 1)</code> - all three are caught while running, not
+before, and the table says so.</p>
+<p><strong>args().</strong> Under <code>--allow io</code> the program's <code>args()</code> used to contain
+<code>--allow</code> and <code>io</code>. It no longer contains <code>--allow</code>, <code>--deny</code>,
+<code>--timeout</code> or their values, from the command line or from
+<code>velaris.run</code>; <code>check_sandbox.py</code> has the case.</p>
+<h2 id="261---a-table-anyone-can-rerun">2.61 - A table anyone can rerun <a class="anchor" href="#261---a-table-anyone-can-rerun" aria-label="Link to this section">#</a></h2>
+<p>Every claim this project makes about catching what a model writes has
+been a claim. <code>benchmark/</code> turns it into a table that one command
+regenerates: <code>python benchmark/run.py</code>. Thirty programs in ten
+categories - a file write hidden in a helper, a network call hidden in
+a helper, division by input, an off-by-one read, integer overflow, an
+ignored failure, an infinite loop, runaway memory, reaching subprocess
+or os.system, and three correct programs that must not be flagged -
+each written three times with the same behaviour, in Velaris, in
+JavaScript for Deno and in plain Python. The harness runs every program
+through <code>check</code> + <code>audit</code> + <code>run</code> under the budget the task needs (io,
+plus <code>ffi:math</code> for one control program, with timeout 5 and
+max_memory_mb 256), through <code>deno run --no-prompt</code> with no flags, and
+through a Python subprocess with the same timeout, and records
+caught-before-run, caught-during-run, missed, not-applicable,
+false-positive or tool-absent, with the evidence in the cell.</p>
+<p>On the machine that produced the committed RESULTS.md (Windows, prover
+present, Deno 2.9.6): of 27 dangerous programs Velaris caught 24 - 15
+before running and 9 while running - and missed 3; Deno caught 13 and
+Python 13; no tool flagged a control program. The three misses are in
+the corpus on purpose and are named in the results: an off-by-one that
+stops early instead of reading past the end (no contract, so nothing
+to refuse), a slow but finite loop (ends before the deadline), and a
+program that prints <code>rm -rf build</code> for its caller (the only effect is
+io). Deno's <code>no-unreachable</code> lint flags the three memory-growth
+programs before running, where Velaris only stops them while running;
+and on Windows it stops them with the timeout, not the memory cap,
+because the cap is not enforced there and the interpreter allocates
+slowly. Both are in the table.</p>
+<p>Two things learned while building it. Under <code>--allow</code>, <code>args()</code> hands
+the budget words to the program as well (<code>['--allow', 'io', ...]</code>), so
+the corpus reads its input from stdin; that is a compiler bug to fix in
+its own release, not here. And a Deno permission denial is an ordinary
+exception, so a <code>fetch</code> inside <code>try/catch</code> exits 0 - the harness had to
+watch the socket rather than trust the exit status. A Velaris refusal
+cannot be caught by the program, which is the difference the benchmark
+exists to show.</p>
+<p><code>benchmark/README.md</code> has the rules and the exact commands so a
+stranger can rerun it and dispute a row. CI runs <code>run.py --quick --check</code> on the legs with the prover, with Deno absent there; a verdict
+that changes between compiler versions fails the build and names the
+row.</p>
+<h2 id="260---the-ffi-cliff-becomes-a-permission">2.60 - The ffi cliff becomes a permission <a class="anchor" href="#260---the-ffi-cliff-becomes-a-permission" aria-label="Link to this section">#</a></h2>
+<p>Every review of this project, from three model families and one
+automated reviewer, raised the same caveat: <code>allow ffi</code> grants
+everything Python can do. That was true, and it was the sentence a
+security reviewer would stop reading at.</p>
+<p>The budget can now name modules. <code>--allow io,ffi:math,json</code> grants the
+ffi effect for those top-level packages only; anything else is refused
+with E311, and the message names the exact flag that would permit it.
+Plain <code>ffi</code> still grants every module, for programs whose author you
+trust. The library takes the same form: <code>run(source, allow={"io", "ffi:math"})</code>, and <code>refused_effect</code> reports <code>"ffi:os"</code> when that is
+what was reached for.</p>
+<p>The audit reads the modules a program names in its py* calls and
+reports them as <code>ffi_modules</code>; its <code>safe_command</code> grants exactly those.
+A reviewer no longer has to choose between "no Python" and "all of
+Python".</p>
+<p>Four ways around it were tried and refused, in <code>check_sandbox.py</code>: a
+module outside the list, a submodule path (<code>os.path</code>), the same module
+through <code>py_json</code>, and through a handle via <code>py_new</code>. All three FFI
+import sites go through one gate, and the bounded child process
+receives the same list. An allowed module still works.</p>
+<h2 id="259---time-and-memory-limits-prompted-by-a-review-bot">2.59 - Time and memory limits, prompted by a review bot <a class="anchor" href="#259---time-and-memory-limits-prompted-by-a-review-bot" aria-label="Link to this section">#</a></h2>
+<p>The CrewAI pull request's automated reviewer flagged what three human
+reviews had also noted and this project kept deferring: the effect
+budget bounds what a program may touch, but nothing bounded how long
+it could run or how much memory it could take. For an agent framework
+calling <code>run</code> in a loop, that is the first thing that goes wrong.</p>
+<p><code>velaris.run(source, allow={"io"}, timeout=30, max_memory_mb=512)</code>.
+With either limit set the program runs in a separate, killable
+process. A program that never ends is stopped at the deadline (E610,
+<code>timed_out=True</code>); one that eats memory is stopped at the cap (E611,
+<code>out_of_memory=True</code>, caught in 0.4 seconds in the test). The effect
+budget still holds inside that child - verified - and an honest program
+is unaffected.</p>
+<p>Memory caps use the OS address-space limit, so they apply on Linux and
+macOS; on Windows the timeout applies and the cap is recorded but not
+enforced, which the docs say plainly rather than implying otherwise.</p>
+<p>The MCP server and the HTTP door now default to 30 seconds and 512 MB.
+The CrewAI tool does too, reports STOPPED with the limit it hit, and
+gained the assertion the reviewer asked for: a refused effect must not
+reach the program's own fail branch either.</p>
+<p>Attribution, added in 3.2 from the public record: the reviewer was
+CodeRabbit (<code>coderabbitai[bot]</code>), on
+<a href="https://github.com/crewAIInc/crewAI/pull/7279">crewAIInc/crewAI#7279</a>
+at 2026-09-05 06:56 UTC, under the heading "Denial of Service (CWE-400):
+Uncontrolled Resource Consumption"; the fail-branch assertion answers a
+second finding in the same review.</p>
+<h2 id="258---ready-to-submit-to-the-frameworks">2.58 - Ready to submit to the frameworks <a class="anchor" href="#258---ready-to-submit-to-the-frameworks" aria-label="Link to this section">#</a></h2>
+<p>Three integrations in <code>integrations/</code>, each written to the target's
+own conventions and each with tests that assert the effect budget
+holds through the framework's tool interface - because a budget that
+leaks one layer up would be the worst kind of promise.</p>
+<p><strong>CrewAI</strong> (<code>crewai/</code>): <code>VelarisAuditTool</code> and <code>VelarisRunTool(allow= ["io"])</code>, five tests, a README, and the pull-request text ready to
+paste. <code>crewai-tools</code> accepts community tools; this goes first.</p>
+<p><strong>LangChain</strong> (<code>langchain_velaris/</code>): a partner package,
+<code>langchain-velaris</code>, since LangChain lists packages rather than
+merging tools. Verified through <code>.invoke()</code> that a program granted
+only <code>io</code> is refused <code>fs</code>.</p>
+<p><strong>MCP registry</strong> (<code>mcp_registry/</code>): the <code>server.json</code> for
+registry.modelcontextprotocol.io, which every MCP client reads. A form
+rather than a PR, and the highest reach of the three.</p>
+<p><code>integrations/README.md</code> says what to submit, where, in what order,
+and what makes a maintainer say yes: a test that runs in their CI, a
+description of the problem rather than the product, no marketing
+words, and fast replies to review.</p>
+<h2 id="257-----strict-from-a-question-on-rcompilers">2.57 - --strict, from a question on r/Compilers <a class="anchor" href="#257-----strict-from-a-question-on-rcompilers" aria-label="Link to this section">#</a></h2>
+<p>Someone asked whether users could choose between strict and flexible
+proof modes rather than having leniency imposed on them. They were
+right, and half the answer already existed - <code>velaris proofs --min 80</code>
+holds a line across a project - but the compiler itself always
+accepted a promise that fell back to a runtime check.</p>
+<p><code>velaris check program.vel --strict</code> refuses when any promise could not
+be proven, and names them:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code>examples/wordcount.vel: <span class="n">2</span> promise(s) could <span class="k">not</span> be proven, <span class="k">and</span>
+--strict does <span class="k">not</span> accept runtime checks:
+  bar
+      needs    biggest &gt; <span class="n">0</span>
+  report
+      needs    top &gt; <span class="n">0</span></code></pre></div>
+<p>With no prover installed it refuses rather than pretending - a strict
+check that silently proves nothing would be the worst of both.</p>
+<p>The default stays lenient because the solver is optional and
+strict-by-default would mean the language does not run for anyone who
+has not installed z3. That is an argument about the default, not a
+reason the flag should not exist.</p>
+<h2 id="256---seamless-means-tested-not-claimed">2.56 - Seamless means tested, not claimed <a class="anchor" href="#256---seamless-means-tested-not-claimed" aria-label="Link to this section">#</a></h2>
+<p>Three gaps between "the door exists" and "the door works".</p>
+<p><strong>The Jupyter magic was never installed.</strong> <code>velaris_magic.py</code> was not
+in the wheel, so <code>%load_ext velaris_magic</code> worked in the repository and
+failed for everyone who installed from PyPI. Found by checking from
+outside the repo rather than inside it - the difference between a door
+that opens and a door that appears to.</p>
+<p><strong>One shape for problems.</strong> <code>audit()</code> returned dicts while <code>check()</code>
+and <code>run()</code> returned objects, so callers - including this project's own
+Jupyter magic - had to handle both. Now everything returns <code>Problem</code>
+objects and <code>as_dict()</code> flattens them for JSON. The magic got simpler
+by six lines, which is what an API fix should look like.</p>
+<p><strong>The version guard covers every version.</strong> It watched velaris.py,
+pyproject.toml and the VS Code extension, but not the npm package or
+the .mcpb manifest - either could have shipped claiming a version the
+compiler never had. Both are guarded now.</p>
+<p><code>check_library.py</code> grew a section that asserts every door works after
+a real install: all four modules importable, both APIs reporting the
+same shape, the npm version following the compiler, the hooks present.
+39 checks with the prover, 38 without, and rule 6 was followed - the
+no-prover run happened before this was written down.</p>
+<h2 id="255---four-more-doors">2.55 - Four more doors <a class="anchor" href="#255---four-more-doors" aria-label="Link to this section">#</a></h2>
+<p>Velaris was reachable from a terminal, Python, MCP, CI, Docker and
+HTTP. Four populations were still locked out.</p>
+<p><strong>npm.</strong> <code>npx velaris-lang script.vel --allow io</code>, plus a real library
+with TypeScript types: <code>audit(source)</code> and <code>run(source, {allow: ["io"]})</code> from Node. Verified through Node that a program granted only
+<code>io</code> is still refused <code>fs</code> - the same guarantee, one process further
+away. The compiler stays a Python package; the wrapper says so plainly
+when it is missing instead of failing with a spawn error.</p>
+<p><strong>Jupyter.</strong> <code>%%velaris --audit --allow io</code> runs a cell in a box and
+prints what it can touch and how much is proven first. When an effect
+is refused it names the flag that would permit it. The natural home for
+the finance and measurement work where proven contracts earn their
+keep.</p>
+<p><strong>pre-commit.</strong> Three hooks - <code>velaris-check</code>, <code>velaris-fmt</code>,
+<code>velaris-proofs</code> - so a repository can require that its Velaris
+compiles, is formatted, and keeps its proven share above a threshold.</p>
+<p><strong>Homebrew and winget</strong> manifests in <code>packaging/</code>, both with tests
+that assert the effect budget still holds in a packaged build. They
+need a tap and a pull request respectively, which is paperwork rather
+than code, and the files say exactly what to do.</p>
+<p>Building the Jupyter magic surfaced a wart in the library: <code>audit()</code>
+returns problems as dicts while <code>run()</code> returns them as objects. The
+magic handles both; the API should not need it, and that is worth
+straightening when the format version next moves.</p>
+<h2 id="254---a-door-for-languages-that-are-not-python">2.54 - A door for languages that are not Python <a class="anchor" href="#254---a-door-for-languages-that-are-not-python" aria-label="Link to this section">#</a></h2>
+<p>Velaris was reachable from a terminal, from Python, from an MCP client
+and from CI. Everything else - a Node service, a Go tool, a Rust
+agent, a shell script - was locked out.</p>
+<p><code>velaris serve</code> opens a local HTTP door with the same three calls:
+<code>POST /check</code>, <code>POST /audit</code>, <code>POST /run</code>, plus <code>GET /card</code> and
+<code>GET /health</code>. Same library underneath, so the same guarantees.</p>
+<p><strong>Two ceilings, both enforced.</strong> The <code>allow</code> in a request is the
+program's budget. <code>--max-allow</code> is the server's own limit - a caller
+asking for <code>ffi</code> on a server started with <code>--max-allow io,fs</code> gets 403
+and is told what it does grant. Verified both ways in
+<code>check_library.py</code>, which now drives a real server on a real port.</p>
+<p>It binds to localhost unless told otherwise, warns when it is not, and
+warns when <code>ffi</code> is grantable - because this endpoint runs programs and
+that should be said out loud rather than buried.</p>
+<p><code>ARCHITECTURE.md</code> gained a table of what each suite is for, and a
+sixth rule: run every new suite without the prover BEFORE wiring it
+into CI. That mistake has now been made three times; this release is
+the first where the rule was followed rather than learned again.</p>
+<h2 id="2531---the-library-suite-knows-what-needs-the-prover">2.53.1 - The library suite knows what needs the prover <a class="anchor" href="#2531---the-library-suite-knows-what-needs-the-prover" aria-label="Link to this section">#</a></h2>
+<p>Three of the 25 checks in <code>check_library.py</code> are about proofs - what
+was proven, a refuted promise, a 100% proven share - and the no-solver
+CI legs have no prover, so every minimal leg failed the moment the
+suite joined CI. The same mistake as 2.39.1, in a new suite.</p>
+<p>They are now conditional, and without the prover the suite asserts the
+<strong>fallback</strong> instead: that a false promise breaks while running (E600
+or E601) and that the audit reports nothing proven. That is a stronger
+test than skipping, because it checks the degraded path rather than
+ignoring it.</p>
+<p>25 with the prover, 24 with the fallback. Both green.</p>
+<h2 id="253---setting-it-up-should-not-be-a-chore">2.53 - Setting it up should not be a chore <a class="anchor" href="#253---setting-it-up-should-not-be-a-chore" aria-label="Link to this section">#</a></h2>
+<p>The MCP server worked; getting it into an assistant meant finding a
+Python path and editing JSON. Two ways to skip that.</p>
+<p><strong><code>velaris mcp-install</code></strong> finds every MCP client on the machine -
+Claude Code, Cline, Cursor, Windsurf, Continue, Zed - and adds a
+<code>velaris</code> server to each, using the Python that is running it. It
+never disturbs what is already there: tested against a config holding
+another server with its own env block and an unrelated top-level key,
+both of which survived, and every file is backed up before writing.
+<code>--list</code> shows what it found without touching anything, <code>--remove</code>
+undoes it.</p>
+<p><strong><code>velaris.mcpb</code></strong> is the double-click bundle, 94 KB, with the
+compiler and standard library inside it - newer Claude Desktop builds
+only accept remote connectors in the add-connector dialog, so a local
+server has to arrive as a bundle. Verified by extracting it somewhere
+with no Velaris installed, driving it as a client would, and watching
+the sandbox still refuse <code>fs</code> to a program granted only <code>io</code>. It is
+built and attached to every release automatically.</p>
+<p>The bundled server now finds the compiler whether it was pip-installed,
+vendored beside it, or sitting in the repo next door - a user's own
+install still wins.</p>
+<h2 id="252---velaris-from-inside-other-programs">2.52 - Velaris from inside other programs <a class="anchor" href="#252---velaris-from-inside-other-programs" aria-label="Link to this section">#</a></h2>
+<p>The effect budget is the idea most easily copied out of this project.
+The way to make copying pointless is to make importing cheaper - so
+Velaris is now a library, a documented format, and an MCP server, as
+well as a command.</p>
+<p><strong>The library.</strong> <code>velaris.check(source)</code>, <code>velaris.audit(source)</code>,
+<code>velaris.run(source, allow={"io"})</code> and <code>velaris.card()</code>. <code>run</code>
+captures stdout and stderr, accepts stdin and args, reports which
+effect was refused, and restores the previous budget afterwards so a
+process can audit and run many programs. The guarantee is identical to
+the command line: a refused effect stops the program and cannot be
+caught by it.</p>
+<p><strong>A versioned format.</strong> <code>audit().as_dict()</code> is <code>velaris.audit/1</code>:
+effects, per-function contracts with proven-or-runtime status, the
+proven share, the safe command, and warnings - including that ffi
+cannot be contained by a budget. Documented field by field in
+EMBEDDING.md, with a stated compatibility rule. Formats outlive the
+tools that produce them.</p>
+<p><strong>An MCP server.</strong> <code>velaris_mcp.py</code> offers <code>velaris_card</code>,
+<code>velaris_check</code>, <code>velaris_audit</code> and <code>velaris_run</code> over the Model
+Context Protocol, so an assistant can write Velaris, check it, see
+what it touches and run it in a box without leaving the conversation.
+<code>velaris_run</code> defaults to <code>allow: ["io"]</code> - the least that is useful.</p>
+<p><strong><code>check_library.py</code></strong> proves the library and the server keep the same
+promises as the command: 25 checks, including that a program refused
+<code>fs</code> does not carry on, that budgets are restored between runs, and
+that a refusal through MCP is reported as such. In CI on every push.</p>
+<h2 id="251---smaller-per-call-costs-and-an-honest-note-about-the-ceiling">2.51 - Smaller per-call costs, and an honest note about the ceiling <a class="anchor" href="#251---smaller-per-call-costs-and-an-honest-note-about-the-ceiling" aria-label="Link to this section">#</a></h2>
+<p>Two more measured savings on the interpreted path, both verified
+against every suite and the fuzzer.</p>
+<p>The evaluator and statement runner compared node types with
+<code>isinstance</code>, which walks a class hierarchy; the AST dataclasses have
+no subclasses, so 22 of those became pointer comparisons. And a
+function with no <code>requires</code> or <code>ensures</code> was copying its entire scope
+on every call to snapshot values for promises it does not have.</p>
+<p>Interpreted record work is now 1073ms where it was 1314ms at the start
+of this run - about 18% - on top of startup halving in 2.48.</p>
+<p><strong>The honest ceiling</strong>: the remaining cost is the sheer number of
+evaluator calls, roughly 580,000 for that benchmark. Removing it needs
+the AST compiled to closures or bytecode, which is a rewrite of the
+execution core rather than an optimisation of it. Native compilation
+for records has the same character - it is the LLVM struct ABI work
+that already caused a Windows-only bug once. Both are worth doing and
+neither is worth starting at the end of a long session; they need a
+plan, a branch, and the fuzzer running between every step.</p>
+<h2 id="250---function-values-carry-their-surroundings">2.50 - Function values carry their surroundings <a class="anchor" href="#250---function-values-carry-their-surroundings" aria-label="Link to this section">#</a></h2>
+<p>Two reviewing models named the no-capture rule as a real expressiveness
+cost, and they were right: writing <code>fn(n: Int) -&gt; Bool { return n &gt; limit }</code> meant hand-writing a loop instead. Inline functions now
+capture <strong>by value</strong>.</p>
+<p>The values are copied when the function value is made, so later
+assignment to those locals cannot change what the function sees -
+<code>examples/lambda_capture.vel</code> demonstrates a captured <code>cutoff</code> staying
+2 after the local is set to 99. There are no reference cells, so a
+function value can never observe a change it was not handed.</p>
+<p>What did not change, verified: a capturing inline function that tries
+to print is still rejected (E300 - effects cannot be smuggled past a
+signature); a false promise on one is still caught while running
+(E601); a name that exists nowhere is still E402. The prover treats
+captured values as unknown, which is the conservative direction.</p>
+<p><code>examples/lambda_bad.vel</code> was the test asserting capture is an error.
+It is now <code>examples/lambda_capture.vel</code> and asserts the opposite - the
+right way for a language to record a change of mind.</p>
+<h2 id="249---the-cards-gaps-were-hiding-three-real-bugs">2.49 - The card's gaps were hiding three real bugs <a class="anchor" href="#249---the-cards-gaps-were-hiding-three-real-bugs" aria-label="Link to this section">#</a></h2>
+<p>A model reviewed <code>LLM.md</code> without a compiler and reported five things
+the card never explained. Writing them down meant testing them first,
+and three turned out to be defects rather than omissions.</p>
+<p><strong>Deep recursion crashed.</strong> Past about 300 frames a program died with a
+Python <code>RecursionError</code> traceback. Velaris now stops at 2000 frames
+with E609 and says the recursion looks like it never ends - and
+Python's own ceiling is lifted so that ours is the one that fires.</p>
+<p><strong><code>write_file</code> crashed on any OS failure.</strong> An unwritable path threw a
+raw traceback. It is now E608 with the reason from the operating
+system. It stays non-catchable by design - a program that cannot write
+where it was told to should stop - but it stops as a Velaris error.</p>
+<p><strong>A dead <code>write_file</code> branch</strong> sat unreachable in the interpreter,
+left from an earlier edit.</p>
+<p><strong>Two card claims were simply wrong.</strong> Recursion works, carries
+contracts, and is checked at call sites - the card never mentioned it,
+so a reviewing model refused to use it. And <code>invariant</code> works on <code>for</code>
+loops as well as <code>while</code>; the card documented only <code>while</code>.
+<code>examples/recursion.vel</code> proves three contracts across both.</p>
+<p><strong>Handle lifecycle, tested and written down</strong>: double close is a
+no-op, use after close fails catchably, handles copy by reference.</p>
+<p><strong>Full module signatures</strong> for http, db, dates, csv, log and
+env_tools - every parameter type, every return type, which functions
+can fail, which carry proven contracts. Guessing these was the
+commonest source of wasted attempts for a model with no compiler.</p>
+<h2 id="248---speed-without-touching-a-single-guarantee">2.48 - Speed, without touching a single guarantee <a class="anchor" href="#248---speed-without-touching-a-single-guarantee" aria-label="Link to this section">#</a></h2>
+<p>Three measured wins, none of which changes what the language promises.</p>
+<p><strong>Startup halved: 133ms to 67ms.</strong> Every run - including every hello
+world - was importing z3 (about 350ms of the cold cost) whether or not
+anything needed proving. The prover is now located rather than
+imported at startup, and <code>check_proofs</code> returns immediately when no
+function carries a contract, no division or list read creates an
+obligation, and no callee has a promise to satisfy. Programs that do
+need proofs pay exactly what they paid before; the counterexamples in
+avg_bad, offbyone_bad and conj_bad still appear.</p>
+<p><strong>Interpreted work is faster.</strong> <code>sorted()</code> was running on every single
+builtin call to check the effect budget - now precomputed once.
+<code>length</code>, <code>get</code> and <code>push</code> sat behind thirty string comparisons and two
+module imports - now first, with the bounds guard intact. The
+evaluator and statement runner dispatch the hottest node classes
+directly instead of walking an isinstance chain: 5.8 million isinstance
+calls became 3.8 million on a record-heavy benchmark, and that
+benchmark went from 1314ms to 1139ms.</p>
+<p><strong>Measured, not claimed:</strong> a 3-million-iteration loop on the native
+path runs in about 80ms against Python's 445ms for the same loop. The
+fuzzer confirms both engines still agree exactly on 30 random
+programs, and all 89 examples, 25 fallible builtins, 15 sandbox cases
+and both stress suites pass unchanged.</p>
+<h2 id="247---the-periphery-round">2.47 - The periphery round <a class="anchor" href="#247---the-periphery-round" aria-label="Link to this section">#</a></h2>
+<p>A third adversarial pass executed everything the card mentions - every
+builtin, all seven modules against live systems, every error code -
+and held the score at 88 while finding the roughness had moved from
+the core to the edges. All five findings, fixed:</p>
+<p><strong>Division joins the catchable family.</strong> A zero divisor from user
+input was the one remaining way to kill a checked program: E403 stops
+the process and no <code>check</code> sees it. <code>div_or_fail</code> and <code>mod_or_fail</code>
+fail the normal way, for exactly the input-driven case; plain <code>/</code> and
+<code>%</code> stay strict for divisors the code controls. The card says which to
+use when.</p>
+<p><strong>The http envelope is a record.</strong> <code>call</code> returned Text and <code>get</code>
+returned Text, so feeding a raw body to <code>code_of</code> compiled and died at
+runtime with a misleading JSON error. <code>call</code> now returns an <code>Answer</code>
+record (status, body, raw); <code>code_of</code> and <code>body_of</code> read fields and
+cannot fail; the wrong pairing is a type error. <code>linkcheck</code> got
+simpler for it. Writing this found a genuine language subtlety: a
+local named <code>status</code> shadowed the module's <code>status</code> <em>function</em> and
+produced a confusing E530 - renamed, and worth remembering.</p>
+<p><strong><code>log.die</code> says what it does.</strong> <code>fail_with</code> logged and killed the
+process - correct behaviour, wrong name in a language where "fail"
+means catchable. <code>die</code> is the new name; <code>fail_with</code> remains as an
+alias so nothing breaks.</p>
+<p><strong><code>velaris check</code> treats a library as a library.</strong> Requiring <code>main</code> at
+check time (v2.44) was too broad: <code>velaris check stdlib/http.vel</code> is a
+legitimate thing to do. A missing main is now only an error for the
+file being run - which the runtime already enforced.</p>
+<p><strong>The card grew the last empirical truths</strong>: E525 (binding a
+void-returning fallible call), sort_by keys are Int, the _or_fail
+guidance, the Answer record, and log.die's semantics.</p>
+<p>Attribution, added in 3.2 from the maintainer's account: the third pass
+was by the Claude model whose review is 2.44.</p>
+<h2 id="246---contents-not-just-lengths">2.46 - Contents, not just lengths <a class="anchor" href="#246---contents-not-just-lengths" aria-label="Link to this section">#</a></h2>
+<p>Two additions, both from the adversarial rubric's remaining points.</p>
+<p><strong><code>map_to(xs, f)</code></strong> - projection that changes type, <code>fn(T) -&gt; R</code>, so a
+record becomes one of its fields in one call instead of a hand-written
+loop. The generics system supported two type variables all along;
+nobody had written the function. Its <code>ensures length(result) == length(xs)</code> proves.</p>
+<p><strong>Quantified contents prove through loops.</strong> <code>ensures all_of(result, is_positive)</code> on a filtering loop was runtime-only; now the inference
+harvests each all_of predicate from the function's own ensures and
+tries "everything pushed so far satisfies it" as an invariant. Entry
+is vacuous, each push must satisfy it on its path, and the promise
+follows. The unguarded version correctly does NOT prove - the
+candidate is dropped when a step can break it - and the runtime check
+catches it with the actual offending list. Sound in both directions,
+and the suite's wall time did not move.</p>
+<p>Attribution, added in 3.2 from the maintainer's account: the rubric is
+that of the Claude model's review in 2.44.</p>
+<h2 id="245---the-road-from-84">2.45 - The road from 84 <a class="anchor" href="#245---the-road-from-84" aria-label="Link to this section">#</a></h2>
+<p>Three of the four items that separate this language from the low 90s,
+by its own adversarial grading.</p>
+<p><strong>The v2.42 mistake cannot recur.</strong> <code>check_fallible.py</code> reads
+FALLIBLE_BUILTINS from the compiler itself, generates an
+ignore-the-failure program for every member, and asserts each is
+refused with E520 - then a caught-failure program for each, asserting
+the failure formats and never escapes as a traceback. 23 builtins, all
+enforced, in CI on every push. A fallible builtin added without
+enforcement now fails the build by construction.</p>
+<p><strong>The prover reads record fields through lists.</strong> A <code>List of Row</code> is
+modelled as one Int array per provable field, so
+<code>get(rows, i).amount</code> is a real array read: the off-by-one over a
+record list - the adversarial report's exact deferral - is refused
+before running (E705), and <code>ensures result &gt;= 0</code> on a total over
+record amounts is <strong>proven</strong>, which was flatly impossible before.
+Building this introduced a truthiness bug on a Z3 array (<code>or</code> on an
+array is not a None-check) that silently un-refuted a v2.38 regression
+test; the refusal harness caught it within the same session, which is
+the layered suites doing exactly their job.</p>
+<p><strong>The break question has an answer in writing.</strong> SPEC.md §13a: no
+<code>break</code>, because the prover's exit knowledge - "the condition is
+false" - is what pins counters at boundaries and proves loop promises;
+a break turns that into a disjunction over hidden paths and abandons
+most loop proofs. The supported idiom is the exit in the loop test
+(<code>while i &lt; n and not found</code>), which the prover can see, and the card
+now teaches it with the reasoning. The decision names the condition
+under which it would be revisited.</p>
+<p>The fourth item is not code: another adversarial round, finding less.</p>
+<p>Attribution, added in 3.2 from the maintainer's account: the grading is
+the second pass of the Claude model's review in 2.44.</p>
+<h2 id="244---everything-the-adversarial-report-found">2.44 - Everything the adversarial report found <a class="anchor" href="#244---everything-the-adversarial-report-found" aria-label="Link to this section">#</a></h2>
+<p>A model ran 86 adversarial artifacts against 2.43 - one production
+program, 34 broken fragments, 52 single-point mutations - and scored
+the language 76/100 with a list of defects. All of them are fixed.</p>
+<p><strong>The soundness hole (critical).</strong> <code>pop</code>, <code>slice</code> and <code>set_at</code> were
+documented fallible but the checker never demanded handling, so a
+clean <code>velaris check</code> could be followed by a raw Python traceback at
+runtime. The list-operations type check returned before the
+fallibility check ran. They now require <code>check</code> or <code>try</code> like every
+other fallible call (E520).</p>
+<p><strong>The checker cannot crash.</strong> An unknown parameter type escaped as a
+Python traceback instead of E500, breaking <code>--json</code> consumers and any
+automated fix loop. Every checker pass now reports instead of raising.</p>
+<p><strong><code>main</code> is validated at check time.</strong> No <code>main</code> at all (E400), a
+<code>main</code> with parameters (E401), and a <code>main</code> marked <code>or fail</code> (E523,
+new) are all compile-time findings now, not runtime surprises.</p>
+<p><strong>The typed FFI carries numbers.</strong> <code>py_float("math", "sqrt", ["16"])</code>
+sent Python the string "16" and failed. Arguments that read as numbers
+are now passed as numbers, with an all-strings retry so functions
+genuinely wanting text still get it.</p>
+<p><strong>Conjunctions stop masking.</strong> <code>requires divisor &gt; 0 and length(items) &gt; 0</code> over a record list dropped the WHOLE clause when
+one conjunct could not translate - the checkable <code>divisor &gt; 0</code>
+included. Conjunctions are now split and each part checked on its own,
+and record lists carry a modelled length even where their contents
+cannot be seen. The report's exact shape is rejected at the call site
+with a counterexample.</p>
+<p><strong>The card grew fifteen truths</strong> the reviewer had to discover by
+experiment: <code>%</code> exists, <code>random(n)</code> is 0..n-1, <code>random(0)</code> is E405,
+record fields go one per line, oversized literals are accepted but
+arithmetic is checked, unused effects are viral, <code>time</code> needs ffi and
+can fail, <code>apply_to_each</code> maps T to T only, the <code>--allow</code>/<code>--deny</code>
+budget flags, <code>velaris proofs --detail</code>, and codes E400 E405 E509 E513
+E521 E523 E542 E602 E704 - plus the E506/E507 correction (E507 is
+about duplicate records, not empty maps).</p>
+<p>Attribution, added in 3.2 from the maintainer's account: the reviewing
+model was a Claude model, and the same review's later passes are behind
+2.45, 2.46 and 2.47.</p>
+<h2 id="243---the-prover-crosses-the-loop-boundary">2.43 - The prover crosses the loop boundary <a class="anchor" href="#243---the-prover-crosses-the-loop-boundary" aria-label="Link to this section">#</a></h2>
+<p>The sharpest finding in the last review was that the prover went blind
+the moment a loop touched a list: a promise like
+<code>ensures length(result) == length(xs) - 1</code> would not prove even with a
+hand-written invariant, and the textbook off-by-one
+<code>while i &lt;= length(xs) { get(xs, i) }</code> was caught only at runtime. Both
+are fixed.</p>
+<p><strong>Two invariants were missing.</strong> A counter walking toward a limit stops
+<em>at</em> the limit - without that, the state after a loop only says
+<code>i &gt;= limit</code>, so "the loop ran exactly that many times" could never
+follow. And a list built one item per turn has exactly as many items as
+the counter has turns. Both are inferred automatically now; the
+promises in <code>examples/loop_lists.vel</code> prove with no invariant written
+at all. The proven share across the examples went from 60% to 64%.</p>
+<p><strong>The off-by-one is refused before running.</strong> Reporting a bug about a
+loop's index used to be unsound, because the index inside a loop stands
+for <em>any</em> state the invariants allow. The sound route is the loop's
+<strong>last real turn</strong>: a counter that starts inside the limit and steps by
+exactly one takes every value up to the largest the condition allows,
+so that turn genuinely happens and a read on it is a genuine read.
+<code>examples/offbyone_bad.vel</code> is rejected with the position and the
+length. Correct loops - <code>i &lt; length(xs)</code>, guarded reads, and counting
+backwards - are unaffected, which was checked before anything shipped.</p>
+<h2 id="242---findings-from-a-model-that-installed-it-and-tried-to-break-it">2.42 - Findings from a model that installed it and tried to break it <a class="anchor" href="#242---findings-from-a-model-that-installed-it-and-tried-to-break-it" aria-label="Link to this section">#</a></h2>
+<p>A third model read <code>velaris card</code>, installed the language, wrote a
+30-function calculator that compiled and ran correctly first try, then
+spent its time attacking it. Nearly everything it reported was true.</p>
+<p><strong>Lists can shrink.</strong> <code>pop</code>, <code>slice</code> and <code>set_at</code>, all fallible, all
+returning new lists. A stack machine - the natural shape for a
+calculator - previously required rebuilding the whole list one element
+shorter for every pop. <code>examples/stack.vel</code> is that program.</p>
+<p><strong>Overflow can be caught.</strong> <code>a * b</code> that outgrows 64 bits is still
+E407, which stops the program and no <code>check</code> can catch - correct for a
+bug, wrong when the numbers come from a user. <code>add_or_fail</code>,
+<code>sub_or_fail</code> and <code>mul_or_fail</code> fail in the normal way instead.</p>
+<p><strong><code>break</code> says something true.</strong> It used to report "unknown variable
+'break'" and suggest declaring one. It now says the language has no
+<code>break</code>, and suggests keeping a flag.</p>
+<p><strong>The formatter matches the documentation.</strong> <code>requires</code>, <code>ensures</code> and
+<code>invariant</code> were being flattened to the margin, contradicting the style
+in Velaris's own docs. Every shipped file is reformatted.</p>
+<p><strong>The card states the ceiling.</strong> The sharpest finding was that the
+prover goes blind when a loop mutates a list: <code>ensures length(result) == length(xs) - 1</code> will not prove even with an invariant, and
+<code>while i &lt;= length(xs) { get(xs, i) }</code> is caught at runtime rather than
+before. That limit is real and unfixed; <code>LLM.md</code> now says so, along
+with the overflow rule and the absence of <code>break</code>.</p>
+<p>Left as-is, deliberately: the ffi escape hatch is total, and
+<code>velaris audit</code> already says so unprompted - which the model noted
+approvingly.</p>
+<p>Attribution, added in 3.2 from the maintainer's account: the model was
+a Claude model.</p>
+<h2 id="2412---a-loop-no-longer-hides-a-divide-by-zero">2.41.2 - A loop no longer hides a divide by zero <a class="anchor" href="#2412---a-loop-no-longer-hides-a-divide-by-zero" aria-label="Link to this section">#</a></h2>
+<p>A second model read <code>velaris card</code>, wrote an expense report, then
+deliberately removed a <code>requires length(items) &gt; 0</code> guard and predicted
+the compiler would catch the division. It did not.</p>
+<p>The cause: the divide-by-zero proof skipped itself whenever <em>any</em>
+condition on the path mentioned a value a loop had made unknown. Since
+almost every average sums in a loop before dividing, the check was
+hiding exactly where it was needed. The divisor itself was perfectly
+knowable the whole time.</p>
+<p>Now the divisor is judged on its own terms and loop conditions stay in
+the solver rather than cancelling the proof - dropping them would have
+invented counterexamples, keeping them costs nothing.
+<code>examples/avg_bad.vel</code> is the shape, rejected before running.</p>
+<p>Still runtime-checked: dividing by the length of a list of <strong>records</strong>,
+because the prover cannot model those at all. That limit is real and
+documented; this release fixes the case where the limit was being
+claimed falsely.</p>
+<p>Two models, two programs, two real defects found in one evening. The
+card is doing what it was built for.</p>
+<p>Attribution, added in 3.2 from the maintainer's account: the model was
+a ChatGPT model (the one in 2.41.1 was a Gemini model).</p>
+<h2 id="2411---the-card-worked-and-the-first-program-it-produced-found-a-bug">2.41.1 - The card worked, and the first program it produced found a bug <a class="anchor" href="#2411---the-card-worked-and-the-first-program-it-produced-found-a-bug" aria-label="Link to this section">#</a></h2>
+<p>Pasting <code>velaris card</code> into a model that had never heard of Velaris
+produced a correct program on the first attempt - and that program
+crashed the prover. Pushing a <strong>record</strong> onto a list inside a <code>check</code>
+inside a loop reached a comparison that assumed every value has a Z3
+sort. Records do not. The rule was already right (a list of records
+cannot be modelled, so abandon the proof and let the runtime check);
+the translator simply asked the question in a way that crashed instead
+of answering it.</p>
+<p><code>examples/rec_push.vel</code> is that program, kept as a regression test.</p>
+<p>Worth recording plainly: the card's first user found a real defect
+within minutes, which is exactly why it was worth building.</p>
+<p>Attribution, added in 3.2 from the maintainer's account: the model was
+a Gemini model.</p>
+<h2 id="241---written-by-a-model-audited-by-you-run-in-a-box">2.41 - Written by a model, audited by you, run in a box <a class="anchor" href="#241---written-by-a-model-audited-by-you-run-in-a-box" aria-label="Link to this section">#</a></h2>
+<p>Three pieces that make one story.</p>
+<p><strong><code>velaris card</code></strong> prints <code>LLM.md</code> - about 1,500 words containing the
+whole language, the ten rules models actually get wrong, every builtin
+with its effects and whether it can fail, the error table, and a
+complete program to imitate. Paste it into any model and it can write
+Velaris that compiles. Until now the language's biggest problem with
+generated code was that no model had heard of it.</p>
+<p><strong><code>velaris audit program.vel</code></strong> answers the reviewer's question rather
+than the author's: what this program can touch and which functions
+reach outside, what it promises and how much of that is <strong>proven</strong>
+before running versus checked while running, what can fail, and the
+exact command to run it under a budget. When a program calls Python it
+says plainly that an effect budget cannot contain that. <code>--json</code> for
+tooling.</p>
+<p><strong><code>agent_loop.py</code></strong> writes a program with a model and iterates against
+the compiler: <code>velaris check --json</code> hands back codes, lines and
+numbered fixes, which go straight back to the model, up to six rounds,
+then the result is audited. Most agent loops iterate against tests;
+this one iterates against a proof, which is a stronger signal - the
+compiler does not say "a test failed", it says which input breaks which
+promise.</p>
+<h2 id="2401---leading-with-the-sandbox">2.40.1 - Leading with the sandbox <a class="anchor" href="#2401---leading-with-the-sandbox" aria-label="Link to this section">#</a></h2>
+<p>The README now opens with the thing that matters most in 2026: an AI
+wrote you a script, and you can run it anyway because the runtime
+refuses whatever you did not allow. The proof story - promises checked
+before the program runs - follows immediately after, where it reads as
+the reason to believe the first claim rather than competing with it.
+New hero image to match, and the limits stated in the same breath as
+the feature.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#2631---the-memory-cap-claim-narrowed-to-where-it-holds">2.63.1 - The memory cap claim, narrowed to where it holds</a></li><li><a href="#263---what-a-security-reviewer-looks-for">2.63 - What a security reviewer looks for</a></li><li><a href="#262---loops-that-provably-end-and-a-corpus-built-to-fool-it">2.62 - Loops that provably end, and a corpus built to fool it</a></li><li><a href="#261---a-table-anyone-can-rerun">2.61 - A table anyone can rerun</a></li><li><a href="#260---the-ffi-cliff-becomes-a-permission">2.60 - The ffi cliff becomes a permission</a></li><li><a href="#259---time-and-memory-limits-prompted-by-a-review-bot">2.59 - Time and memory limits, prompted by a review bot</a></li><li><a href="#258---ready-to-submit-to-the-frameworks">2.58 - Ready to submit to the frameworks</a></li><li><a href="#257-----strict-from-a-question-on-rcompilers">2.57 - --strict, from a question on r/Compilers</a></li><li><a href="#256---seamless-means-tested-not-claimed">2.56 - Seamless means tested, not claimed</a></li><li><a href="#255---four-more-doors">2.55 - Four more doors</a></li><li><a href="#254---a-door-for-languages-that-are-not-python">2.54 - A door for languages that are not Python</a></li><li><a href="#2531---the-library-suite-knows-what-needs-the-prover">2.53.1 - The library suite knows what needs the prover</a></li><li><a href="#253---setting-it-up-should-not-be-a-chore">2.53 - Setting it up should not be a chore</a></li><li><a href="#252---velaris-from-inside-other-programs">2.52 - Velaris from inside other programs</a></li><li><a href="#251---smaller-per-call-costs-and-an-honest-note-about-the-ceiling">2.51 - Smaller per-call costs, and an honest note about the ceiling</a></li><li><a href="#250---function-values-carry-their-surroundings">2.50 - Function values carry their surroundings</a></li><li><a href="#249---the-cards-gaps-were-hiding-three-real-bugs">2.49 - The card&#x27;s gaps were hiding three real bugs</a></li><li><a href="#248---speed-without-touching-a-single-guarantee">2.48 - Speed, without touching a single guarantee</a></li><li><a href="#247---the-periphery-round">2.47 - The periphery round</a></li><li><a href="#246---contents-not-just-lengths">2.46 - Contents, not just lengths</a></li><li><a href="#245---the-road-from-84">2.45 - The road from 84</a></li><li><a href="#244---everything-the-adversarial-report-found">2.44 - Everything the adversarial report found</a></li><li><a href="#243---the-prover-crosses-the-loop-boundary">2.43 - The prover crosses the loop boundary</a></li><li><a href="#242---findings-from-a-model-that-installed-it-and-tried-to-break-it">2.42 - Findings from a model that installed it and tried to break it</a></li><li><a href="#2412---a-loop-no-longer-hides-a-divide-by-zero">2.41.2 - A loop no longer hides a divide by zero</a></li><li><a href="#2411---the-card-worked-and-the-first-program-it-produced-found-a-bug">2.41.1 - The card worked, and the first program it produced found a bug</a></li><li><a href="#241---written-by-a-model-audited-by-you-run-in-a-box">2.41 - Written by a model, audited by you, run in a box</a></li><li><a href="#2401---leading-with-the-sandbox">2.40.1 - Leading with the sandbox</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

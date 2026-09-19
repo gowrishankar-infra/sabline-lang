@@ -1,385 +1,263 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Velaris - the language where you can
-trust code you didn't write. Effects, failure, and Z3-proven contracts,
-all in the signature.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a7d5a'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
-<title>Tutorial - Velaris</title>
-<style>
-:root { --paper:#ffffff; --alt:#f6f7f8; --line:#e6e8eb; --ink:#0b1215;
-        --mut:#57606a; --brand:#0a7d5a; --brand2:#075e44;
-        --term:#101418; --term-ink:#e6edf3; --term-mut:#8b949e;
-        --err:#e5484d; --mint:#7ee2c0; }
-* { box-sizing:border-box; margin:0; }
-html { scroll-behavior:smooth; }
-body { background:var(--paper); color:var(--ink); font:clamp(15px,0.5vw + 11px,18px)/1.65
-  -apple-system,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
-  -webkit-font-smoothing:antialiased; }
-nav { position:sticky; top:0; background:rgba(255,255,255,.86);
-  backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
-  z-index:10; }
-nav .in { max-width:clamp(900px,86vw,1480px); margin:0 auto;
-  padding:12px clamp(14px,3vw,24px); display:flex;
-  gap:clamp(13px,2.4vw,26px); align-items:center; flex-wrap:wrap; }
-.brand { font-weight:700; font-size:17px; letter-spacing:-.02em;
-  color:var(--ink); text-decoration:none; display:flex; gap:8px;
-  align-items:center; }
-.dot { width:9px; height:9px; border-radius:50%;
-  background:var(--brand); display:inline-block; }
-nav a { color:var(--mut); text-decoration:none; font-size:14.5px;
-  font-weight:500; }
-nav a:hover, nav a.here { color:var(--ink); }
-nav .ver { margin-left:auto; font-size:12.5px; color:var(--mut);
-  border:1px solid var(--line); border-radius:99px; padding:3px 11px; }
-main { max-width:clamp(760px,74vw,1240px); margin:0 auto;
-  padding:clamp(28px,5vw,56px) clamp(16px,4vw,32px) 110px;
-  overflow-wrap:break-word; }
-main.wide { max-width:clamp(900px,86vw,1480px); }
-h1 { font-size:clamp(32px,2.6vw + 14px,58px); letter-spacing:-.03em;
-  line-height:1.12; font-weight:750; }
-h2 { font-size:clamp(20px,1.2vw + 12px,30px); letter-spacing:-.02em;
-  margin:2.2em 0 .7em; font-weight:700; }
-h3 { font-size:18px; margin:1.6em 0 .5em; font-weight:650; }
-p, li { color:#2a3138; }
-p { margin:.85em 0; }
-.lead { font-size:clamp(16.5px,0.8vw + 10px,22px); color:var(--mut);
-  max-width:52ch; }
-a { color:var(--brand); text-decoration:none; }
-a:hover { text-decoration:underline; }
-code { background:var(--alt); border:1px solid var(--line);
-  padding:1.5px 6px; border-radius:6px;
-  font:13px ui-monospace,"SF Mono",Consolas,monospace; }
-pre { background:var(--term); color:var(--term-ink); border-radius:12px;
-  padding:clamp(13px,2.5vw,18px) clamp(14px,3vw,20px); overflow-x:auto;
-  margin:1.2em 0; -webkit-overflow-scrolling:touch;
-  font:clamp(12px,0.5vw + 8px,15px)/1.6 ui-monospace,"SF Mono",Consolas,
-  monospace; }
-pre code { background:none; border:none; padding:0; color:inherit;
-  font:inherit; }
-.k { color:var(--mint); } .e { color:#ff8f8f; } .m { color:var(--term-mut); }
-.btns { display:flex; gap:12px; margin:26px 0 8px; flex-wrap:wrap; }
-.btn { background:var(--ink); color:#fff; padding:11px 22px;
-  border-radius:9px; font-weight:600; font-size:15px; }
-.btn:hover { background:#22292f; text-decoration:none; }
-.btn.ghost { background:transparent; color:var(--ink);
-  border:1px solid var(--line); }
-.btn.ghost:hover { border-color:#c7ccd1; }
-.hero { padding:clamp(36px,8vw,74px) 0 20px; }
-@media (max-width:560px) {
-  .btns { flex-direction:column; }
-  .btn { text-align:center; }
-  nav .ver { display:none; }
-  .fnrow .sig { font-size:12.5px; }
-}
-.eyebrow { color:var(--brand); font-weight:650; font-size:13.5px;
-  letter-spacing:.06em; text-transform:uppercase; margin-bottom:14px; }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,
-  minmax(clamp(230px,22vw,300px),1fr)); gap:16px; margin:34px 0; }
-.card { border:1px solid var(--line); border-radius:14px;
-  padding:20px 22px; background:var(--paper); }
-.card b { font-size:clamp(15px,0.4vw + 10px,17.5px); letter-spacing:-.01em; }
-.card p { font-size:clamp(13.5px,0.4vw + 9px,16px); color:var(--mut); margin:.5em 0 0; }
-.sig { color:var(--ink); font:clamp(13px,0.45vw + 9px,15.5px) ui-monospace,"SF Mono",Consolas,
-  monospace; font-weight:600; }
-.contract { color:var(--brand); font:clamp(12px,0.4vw + 8px,14.5px) ui-monospace,"SF Mono",
-  Consolas,monospace; margin:5px 0 0 20px; }
-.fnrow { border:1px solid var(--line); border-radius:12px;
-  padding:15px 18px; margin:11px 0; }
-table { border-collapse:collapse; width:100%; margin:1.2em 0;
-  font-size:clamp(13px,0.5vw + 9px,16px); display:block; overflow-x:auto;
-  -webkit-overflow-scrolling:touch; white-space:nowrap; }
-table tr td:last-child { white-space:normal; min-width:220px; }
-td, th { border-bottom:1px solid var(--line); padding:9px 12px;
-  text-align:left; vertical-align:top; }
-th { color:var(--mut); font-weight:600; font-size:13px;
-  text-transform:uppercase; letter-spacing:.05em; }
-.ecode { color:var(--err); font-weight:650;
-  font-family:ui-monospace,Consolas,monospace; font-size:13px; }
-.strip { background:var(--alt); border-top:1px solid var(--line);
-  border-bottom:1px solid var(--line);
-  margin:44px calc(-1 * clamp(16px,4vw,24px));
-  padding:30px clamp(16px,4vw,24px); }
-footer { border-top:1px solid var(--line); color:var(--mut);
-  font-size:13.5px; padding:26px 24px; text-align:center; }
-</style></head><body>
-<nav><div class="in"><a class="brand" href="index.html">
-<span class="dot"></span>Velaris</a><a href="index.html" class="">Home</a><a href="tutorial.html" class="here">Tutorial</a><a href="spec.html" class="">Reference</a><a href="library.html" class="">Library</a><a href="errors.html" class="">Errors</a><a href="floats.html" class="">Floats</a><a href="playground.html" class="">Playground</a>
-<span class="ver">v8.3.0</span></div></nav>
-<main class=""><h1>Velaris in an hour</h1>
-<br>
-<p>Velaris is a language where a function&#x27;s first line tells you</p>
-<p>everything: what it takes, what it gives back, what it is allowed to</p>
-<p>touch, whether it can fail, and what it promises about its answer.</p>
-<p>Those promises are checked by a theorem prover before your program</p>
-<p>runs.</p>
-<br>
-<p>You can follow along in the browser — the</p>
-<p>[playground](https://velaris-lang.dev/playground.html)</p>
-<p>runs the real compiler — or install it:</p>
-<br>
-<pre><code>
-pip install velaris-lang
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Velaris in an hour - Velaris 8.3.1</title>
+<meta name="description" content="Velaris is a language where a function&#x27;s first line tells you everything: what it takes, what it gives back, what it is allowed to touch, whether it can ...">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/tutorial.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html" aria-current="page">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="velaris-in-an-hour">Velaris in an hour</h1>
+<p>Velaris is a language where a function's first line tells you
+everything: what it takes, what it gives back, what it is allowed to
+touch, whether it can fail, and what it promises about its answer.
+Those promises are checked by a theorem prover before your program
+runs.</p>
+<p>You can follow along in the browser — the
+<a href="playground.html">playground</a>
+runs the real compiler — or install it:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>pip install velaris-lang
 velaris doctor
-velaris new hello &amp;&amp; cd hello &amp;&amp; velaris main.vel
-</code></pre>
-<br>
-<h2>1. Hello</h2>
-<br>
-<pre><code>
-fn main() uses io {
-    print(&quot;hello!&quot;)
-}
-</code></pre>
-<br>
-<p><code>main</code> is where a program starts. <code>uses io</code> is a declaration: this</p>
-<p>function is allowed to talk to the outside world. Remove it and the</p>
-<p>program will not compile, because <code>print</code> needs it.</p>
-<br>
-<p>That is the whole idea of Velaris in one line — **abilities are</p>
-<p>declared, not assumed**.</p>
-<br>
-<h2>2. Values and types</h2>
-<br>
-<pre><code>
-fn main() uses io {
-    let name = &quot;Gowri&quot;           // Text
-    let age = 30                 // Int
-    let ratio = 1.5              // Float
-    let happy = true             // Bool
-    let scores = [10, 8, 9]      // List of Int
-    let ages = {&quot;a&quot;: 1, &quot;b&quot;: 2}  // Map of Text to Int
-    let fee = money(1250, &quot;INR&quot;) // Money of INR - 12.50, as 1250 paise
-    print(format(&quot;{} is {}&quot;, name, age))
-}
-</code></pre>
-<br>
-<p>Types are inferred for locals and written down for parameters. Numbers</p>
-<p>do not mix silently: <code>1 + 1.5</code> is an error, because rounding surprises</p>
-<p>are how money goes missing. Convert on purpose with <code>to_float(x)</code> or</p>
-<p><code>round(x)</code>.</p>
-<br>
-<p>Actual money never becomes a <code>Float</code> at all: an amount is whole minor</p>
-<p>units with its currency in the type, two currencies never mix, and a</p>
-<p>division that could round says how (SPEC.md §4.3).</p>
-<br>
-<p><code>format</code> fills each <code>{}</code> with a value, and the compiler counts the</p>
-<p>holes for you — the wrong number of values is a compile error, not a</p>
-<p>mess at runtime.</p>
-<br>
-<h2>3. Functions and effects</h2>
-<br>
-<pre><code>
-fn double(n: Int) -&gt; Int {
-    return n * 2
+velaris new hello &amp;&amp; cd hello &amp;&amp; velaris main.vel</code></pre></div>
+<h2 id="1-hello">1. Hello <a class="anchor" href="#1-hello" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> main() <span class="k">uses</span> io {
+    print(<span class="s">"hello!"</span>)
+}</code></pre></div>
+<p><code>main</code> is where a program starts. <code>uses io</code> is a declaration: this
+function is allowed to talk to the outside world. Remove it and the
+program will not compile, because <code>print</code> needs it.</p>
+<p>That is the whole idea of Velaris in one line — <strong>abilities are
+declared, not assumed</strong>.</p>
+<h2 id="2-values-and-types">2. Values and types <a class="anchor" href="#2-values-and-types" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> main() <span class="k">uses</span> io {
+    <span class="k">let</span> name = <span class="s">"Gowri"</span>           <span class="c">// Text</span>
+    <span class="k">let</span> age = <span class="n">30</span>                 <span class="c">// Int</span>
+    <span class="k">let</span> ratio = <span class="n">1.5</span>              <span class="c">// Float</span>
+    <span class="k">let</span> happy = <span class="k">true</span>             <span class="c">// Bool</span>
+    <span class="k">let</span> scores = [<span class="n">10</span>, <span class="n">8</span>, <span class="n">9</span>]      <span class="c">// List of Int</span>
+    <span class="k">let</span> ages = {<span class="s">"a"</span>: <span class="n">1</span>, <span class="s">"b"</span>: <span class="n">2</span>}  <span class="c">// Map of Text to Int</span>
+    <span class="k">let</span> fee = money(<span class="n">1250</span>, <span class="s">"INR"</span>) <span class="c">// Money of INR - 12.50, as 1250 paise</span>
+    print(format(<span class="s">"{} is {}"</span>, name, age))
+}</code></pre></div>
+<p>Types are inferred for locals and written down for parameters. Numbers
+do not mix silently: <code>1 + 1.5</code> is an error, because rounding surprises
+are how money goes missing. Convert on purpose with <code>to_float(x)</code> or
+<code>round(x)</code>.</p>
+<p>Actual money never becomes a <code>Float</code> at all: an amount is whole minor
+units with its currency in the type, two currencies never mix, and a
+division that could round says how (SPEC.md §4.3).</p>
+<p><code>format</code> fills each <code>{}</code> with a value, and the compiler counts the
+holes for you — the wrong number of values is a compile error, not a
+mess at runtime.</p>
+<h2 id="3-functions-and-effects">3. Functions and effects <a class="anchor" href="#3-functions-and-effects" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> double(n: Int) -&gt; Int {
+    <span class="k">return</span> n * <span class="n">2</span>
 }
 
-fn greet(name: Text) uses io {
-    print(&quot;hello, &quot; + name)
-}
-</code></pre>
-<br>
-<p><code>double</code> is <b>pure</b>: no <code>uses</code>, so it cannot print, read files, or</p>
-<p>reach the network — and neither can anything it calls. The checker</p>
-<p>follows the whole call chain, so a pure function cannot sneak an effect</p>
-<p>in through a helper.</p>
-<br>
-<p>The effects are <code>io</code>, <code>fs</code> (files), <code>net</code> (network), <code>clock</code> (the</p>
-<p>time), and <code>rand</code> (randomness).</p>
-<br>
-<h2>4. Promises, proven</h2>
-<br>
-<pre><code>
-fn discount(price: Int) -&gt; Int
-    requires price &gt;= 0
-    ensures result &gt;= 0
+<span class="k">fn</span> greet(name: Text) <span class="k">uses</span> io {
+    print(<span class="s">"hello, "</span> + name)
+}</code></pre></div>
+<p><code>double</code> is <strong>pure</strong>: no <code>uses</code>, so it cannot print, read files, or
+reach the network — and neither can anything it calls. The checker
+follows the whole call chain, so a pure function cannot sneak an effect
+in through a helper.</p>
+<p>The effects are <code>io</code>, <code>fs</code> (files), <code>net</code> (network), <code>clock</code> (the
+time), and <code>rand</code> (randomness).</p>
+<h2 id="4-promises-proven">4. Promises, proven <a class="anchor" href="#4-promises-proven" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> discount(price: Int) -&gt; Int
+    <span class="k">requires</span> price &gt;= <span class="n">0</span>
+    <span class="k">ensures</span> result &gt;= <span class="n">0</span>
 {
-    return price - 10
-}
-</code></pre>
-<br>
-<p><code>requires</code> is what the function needs from you. <code>ensures</code> is what it</p>
-<p>promises in return. Run this and the compiler answers:</p>
-<br>
-<pre><code>
-error[E700] promise cannot be kept: &#x27;discount&#x27; ensures result &gt;= 0
-  proven without running the program: price = 5 gives result = -5
-</code></pre>
-<br>
-<p>It did not test the function. It proved the promise false and handed</p>
-<p>back the input that breaks it. Fix the code, or fix the promise:</p>
-<br>
-<pre><code>
-fn discount(price: Int) -&gt; Int
-    requires price &gt;= 0
-    ensures result &gt;= 0
+    <span class="k">return</span> price - <span class="n">10</span>
+}</code></pre></div>
+<p><code>requires</code> is what the function needs from you. <code>ensures</code> is what it
+promises in return. Run this and the compiler answers:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>error[E700] promise cannot be kept: 'discount' ensures result &gt;= 0
+  proven without running the program: price = 5 gives result = -5</code></pre></div>
+<p>It did not test the function. It proved the promise false and handed
+back the input that breaks it. Fix the code, or fix the promise:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> discount(price: Int) -&gt; Int
+    <span class="k">requires</span> price &gt;= <span class="n">0</span>
+    <span class="k">ensures</span> result &gt;= <span class="n">0</span>
 {
-    if price &lt; 10 {
-        return 0
+    <span class="k">if</span> price &lt; <span class="n">10</span> {
+        <span class="k">return</span> <span class="n">0</span>
     }
-    return price - 10
-}
-</code></pre>
-<br>
+    <span class="k">return</span> price - <span class="n">10</span>
+}</code></pre></div>
 <p>Now it compiles, and <code>velaris explain</code> will say <code>[proven]</code>.</p>
-<br>
 <p>Promises can talk about lists, maps, records and floats too:</p>
-<br>
-<pre><code>
-fn bump(counts: Map of Text to Int, word: Text) -&gt; Map of Text to Int
-    ensures get_or(result, word, 0) == get_or(counts, word, 0) + 1
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> bump(counts: Map of Text to Int, word: Text) -&gt; Map of Text to Int
+    <span class="k">ensures</span> get_or(result, word, <span class="n">0</span>) == get_or(counts, word, <span class="n">0</span>) + <span class="n">1</span>
 {
-    return put(counts, word, get_or(counts, word, 0) + 1)
-}
-</code></pre>
-<br>
-<p>Floats are proven in real IEEE-754, which means Velaris will *refuse*</p>
-<p>to prove <code>x + 0.1 + 0.1 == x + 0.2</code> — because on a real machine it is</p>
-<p>false. See [docs/floats.md](docs/floats.md) for why that matters.</p>
-<br>
-<h2>5. Loops</h2>
-<br>
-<pre><code>
-fn count_up(n: Int) -&gt; Int
-    requires n &gt;= 0
-    ensures result &gt;= 0
+    <span class="k">return</span> put(counts, word, get_or(counts, word, <span class="n">0</span>) + <span class="n">1</span>)
+}</code></pre></div>
+<p>Floats are proven in real IEEE-754, which means Velaris will <em>refuse</em>
+to prove <code>x + 0.1 + 0.1 == x + 0.2</code> — because on a real machine it is
+false. See <a href="floats.html">docs/floats.md</a> for why that matters.</p>
+<h2 id="5-loops">5. Loops <a class="anchor" href="#5-loops" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> count_up(n: Int) -&gt; Int
+    <span class="k">requires</span> n &gt;= <span class="n">0</span>
+    <span class="k">ensures</span> result &gt;= <span class="n">0</span>
 {
-    let total = 0
-    let i = 0
-    while i &lt; n {
-        total = total + 1
-        i = i + 1
+    <span class="k">let</span> total = <span class="n">0</span>
+    <span class="k">let</span> i = <span class="n">0</span>
+    <span class="k">while</span> i &lt; n {
+        total = total + <span class="n">1</span>
+        i = i + <span class="n">1</span>
     }
-    return total
-}
-</code></pre>
-<br>
-<p>No <code>invariant</code> line needed: the compiler works out the boring ones</p>
-<p>itself (each counter never goes below where it started). When you need</p>
-<p>something richer — &quot;this total stays positive&quot; — write it:</p>
-<br>
-<pre><code>
-    while i &lt; length(xs)
-    invariant total &gt;= 0
+    <span class="k">return</span> total
+}</code></pre></div>
+<p>No <code>invariant</code> line needed: the compiler works out the boring ones
+itself (each counter never goes below where it started). When you need
+something richer — "this total stays positive" — write it:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code>    <span class="k">while</span> i &lt; length(xs)
+    <span class="k">invariant</span> total &gt;= <span class="n">0</span>
     {
         ...
-    }
-</code></pre>
-<br>
-<h2>6. Failure</h2>
-<br>
-<p>Some things genuinely fail. In Velaris that is part of the signature,</p>
-<p>and ignoring it does not compile:</p>
-<br>
-<pre><code>
-fn parse_age(t: Text) -&gt; Int or fail {
-    return try to_int(t)
+    }</code></pre></div>
+<h2 id="6-failure">6. Failure <a class="anchor" href="#6-failure" aria-label="Link to this section">#</a></h2>
+<p>Some things genuinely fail. In Velaris that is part of the signature,
+and ignoring it does not compile:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> parse_age(t: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> {
+    <span class="k">return</span> <span class="k">try</span> to_int(t)
 }
 
-fn main() uses io {
-    check parse_age(ask(&quot;your age?&quot;)) {
+<span class="k">fn</span> main() <span class="k">uses</span> io {
+    <span class="k">check</span> parse_age(ask(<span class="s">"your age?"</span>)) {
         ok n {
-            print(format(&quot;you are {}&quot;, n))
+            print(format(<span class="s">"you are {}"</span>, n))
         }
-        fail why {
-            print(format(&quot;that was not a number: {}&quot;, why))
+        <span class="k">fail</span> why {
+            print(format(<span class="s">"that was not a number: {}"</span>, why))
         }
     }
-}
-</code></pre>
-<br>
-<p><code>check</code> handles it here. <code>try</code> passes it up to your caller (only inside</p>
-<p>a function that says <code>or fail</code>). The built-ins that fail in ordinary</p>
-<p>life — <code>to_int</code>, <code>read_file</code>, <code>fetch</code>, and <code>get</code> on a map — all say so,</p>
-<p>and <code>get_or(m, key, default)</code> is there when you would rather have a</p>
-<p>fallback than a failure.</p>
-<br>
-<h2>7. Records and lists</h2>
-<br>
-<pre><code>
-record Expense {
+}</code></pre></div>
+<p><code>check</code> handles it here. <code>try</code> passes it up to your caller (only inside
+a function that says <code>or fail</code>). The built-ins that fail in ordinary
+life — <code>to_int</code>, <code>read_file</code>, <code>fetch</code>, and <code>get</code> on a map — all say so,
+and <code>get_or(m, key, default)</code> is there when you would rather have a
+fallback than a failure.</p>
+<h2 id="7-records-and-lists">7. Records and lists <a class="anchor" href="#7-records-and-lists" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">record</span> Expense {
     what: Text
     amount: Int
 }
 
-fn describe(e: Expense) -&gt; Text {
-    return format(&quot;{}: {}&quot;, e.what, e.amount)
-}
-</code></pre>
-<br>
-<p>Records are immutable: <code>Expense(what: &quot;chai&quot;, amount: 25)</code> makes one,</p>
-<p><code>e.what</code> reads a field, and nothing can change it underneath someone.</p>
-<p>Lists work the same way — <code>push</code> gives you a new list.</p>
-<br>
-<p>Reading past the end of a list is caught before the program runs when</p>
-<p>the compiler can prove it, and reported cleanly when it cannot.</p>
-<br>
-<h2>8. Function values</h2>
-<br>
-<pre><code>
-import &quot;std.vel&quot;
+<span class="k">fn</span> describe(e: Expense) -&gt; Text {
+    <span class="k">return</span> format(<span class="s">"{}: {}"</span>, e.what, e.amount)
+}</code></pre></div>
+<p>Records are immutable: <code>Expense(what: "chai", amount: 25)</code> makes one,
+<code>e.what</code> reads a field, and nothing can change it underneath someone.
+Lists work the same way — <code>push</code> gives you a new list.</p>
+<p>Reading past the end of a list is caught before the program runs when
+the compiler can prove it, and reported cleanly when it cannot.</p>
+<h2 id="8-function-values">8. Function values <a class="anchor" href="#8-function-values" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"std.vel"</span>
 
-fn main() uses io {
-    let xs = [5, 3, 8, 1]
-    print(keep_if(xs, fn(n: Int) -&gt; Bool { return n &gt; 4 }))
-    print(sort_by(xs, fn(n: Int) -&gt; Int { return -n }))
-}
-</code></pre>
-<br>
-<p>Inline functions are pure and cannot use variables from around them —</p>
-<p>pass what they need as parameters. They can carry their own promises,</p>
-<p>proven like any other function&#x27;s.</p>
-<br>
-<h2>9. Using libraries</h2>
-<br>
-<pre><code>
-import &quot;std.vel&quot;                    // sort(xs), first(xs), join(...)
-import &quot;lib/geo.vel&quot; as geo         // geo.distance(a, b)
-</code></pre>
-<br>
-<p>A named import keeps a library&#x27;s functions behind its own name, so two</p>
-<p>libraries that both define <code>distance</code> can be used in one file. The</p>
-<p>standard library is written in Velaris and keeps its own promises:</p>
-<p><code>sort</code> carries <code>ensures is_sorted(result)</code>.</p>
-<br>
-<h2>10. The tools</h2>
-<br>
-<pre><code>
-velaris program.vel          run it, with io and nothing else
-velaris program.vel --allow io,fs:read:./data   grant exactly that
-velaris program.vel --allow all                every effect (it says so)
-velaris migrate --to 5.0 .   the budget each program here needs
-velaris check program.vel    compile it without running
-velaris explain program.vel  what each function does, needs and promises
-velaris explain .            the same for a whole project
-velaris trace program.vel    watch every call as it happens
-velaris repl                 try things, proofs and all
-velaris fmt program.vel      canonical formatting
-velaris doctor               check your setup
-velaris new myproject        start something
-velaris build program.vel    one executable you can give to anyone
-velaris add &lt;url or path&gt;    vendor a library into lib/
-velaris verify               check your libraries are unchanged
-</code></pre>
-<br>
-<p><code>velaris explain</code> is the one to reach for when you meet unfamiliar</p>
-<p>code: it lists every function with its effects, its promises, and</p>
-<p>whether those promises were <b>proven</b> or are being checked while</p>
-<p>running.</p>
-<br>
-<h2>Where to go next</h2>
-<br>
-<li>[The language reference](SPEC.md) — what all of this means, precisely.</li>
-<br>
-<li><code>examples/ledger.vel</code> — an expense tracker: records, files, reports.</li>
-<li><code>examples/wordcount.vel</code> — text analysis: maps, lambdas, failure.</li>
-<li><code>examples/fetcher.vel</code> — an HTTP tool: the network, honestly declared.</li>
-<li>[The error index](https://velaris-lang.dev/errors.html)</li>
-<p>  — every message Velaris can give, scraped from the compiler itself.</p>
-<br>
-<p>If you can make the prover claim something is proven when it is false,</p>
-<p>that is a security bug and the project wants to hear about it.</p></main>
-<footer>Velaris is MIT-licensed open source &middot;
-<a href="https://github.com/gowrishankar-infra/velaris-lang">GitHub</a>
-&middot; <a href="https://github.com/gowrishankar-infra/velaris-lang/issues">Issues</a></footer>
-</body></html>
+<span class="k">fn</span> main() <span class="k">uses</span> io {
+    <span class="k">let</span> xs = [<span class="n">5</span>, <span class="n">3</span>, <span class="n">8</span>, <span class="n">1</span>]
+    print(keep_if(xs, <span class="k">fn</span>(n: Int) -&gt; Bool { <span class="k">return</span> n &gt; <span class="n">4</span> }))
+    print(sort_by(xs, <span class="k">fn</span>(n: Int) -&gt; Int { <span class="k">return</span> -n }))
+}</code></pre></div>
+<p>Inline functions are pure and cannot use variables from around them —
+pass what they need as parameters. They can carry their own promises,
+proven like any other function's.</p>
+<h2 id="9-using-libraries">9. Using libraries <a class="anchor" href="#9-using-libraries" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"std.vel"</span>                    <span class="c">// sort(xs), first(xs), join(...)</span>
+<span class="k">import</span> <span class="s">"lib/geo.vel"</span> as geo         <span class="c">// geo.distance(a, b)</span></code></pre></div>
+<p>A named import keeps a library's functions behind its own name, so two
+libraries that both define <code>distance</code> can be used in one file. The
+standard library is written in Velaris and keeps its own promises:
+<code>sort</code> carries <code>ensures is_sorted(result)</code>.</p>
+<h2 id="10-the-tools">10. The tools <a class="anchor" href="#10-the-tools" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris program.vel                              # run it, with io and nothing else
+velaris program.vel --allow io,fs:read:./data    # grant exactly that
+velaris program.vel --allow all                  # every effect (it says so)
+velaris migrate --to 5.0 .                       # the budget each program here needs
+velaris check program.vel                        # compile it without running
+velaris explain program.vel                      # what each function does, needs and promises
+velaris explain .                                # the same for a whole project
+velaris trace program.vel                        # watch every call as it happens
+velaris repl                                     # try things, proofs and all
+velaris fmt program.vel                          # canonical formatting
+velaris doctor                                   # check your setup
+velaris new myproject                            # start something
+velaris build program.vel                        # one executable you can give to anyone
+velaris add &lt;url or path&gt;                        # vendor a library into lib/
+velaris verify                                   # check your libraries are unchanged</code></pre></div>
+<p><code>velaris explain</code> is the one to reach for when you meet unfamiliar
+code: it lists every function with its effects, its promises, and
+whether those promises were <strong>proven</strong> or are being checked while
+running.</p>
+<h2 id="where-to-go-next">Where to go next <a class="anchor" href="#where-to-go-next" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><p><a href="spec.html">The language reference</a> — what all of this means, precisely.</p></li>
+<li><p><code>examples/ledger.vel</code> — an expense tracker: records, files, reports.</p></li>
+<li><p><code>examples/wordcount.vel</code> — text analysis: maps, lambdas, failure.</p></li>
+<li><p><code>examples/fetcher.vel</code> — an HTTP tool: the network, honestly declared.</p></li>
+<li><p><a href="errors.html">The error index</a>
+— every message Velaris can give, scraped from the compiler itself.</p></li>
+</ul>
+<p>If you can make the prover claim something is proven when it is false,
+that is a security bug and the project wants to hear about it.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/TUTORIAL.md">TUTORIAL.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#1-hello">1. Hello</a></li><li><a href="#2-values-and-types">2. Values and types</a></li><li><a href="#3-functions-and-effects">3. Functions and effects</a></li><li><a href="#4-promises-proven">4. Promises, proven</a></li><li><a href="#5-loops">5. Loops</a></li><li><a href="#6-failure">6. Failure</a></li><li><a href="#7-records-and-lists">7. Records and lists</a></li><li><a href="#8-function-values">8. Function values</a></li><li><a href="#9-using-libraries">9. Using libraries</a></li><li><a href="#10-the-tools">10. The tools</a></li><li><a href="#where-to-go-next">Where to go next</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

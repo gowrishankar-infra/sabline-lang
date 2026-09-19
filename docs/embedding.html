@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Velaris from inside your program - Velaris 8.3.1</title>
+<meta name="description" content="Velaris is a library as well as a command. An agent framework, an MCP server, a CI dashboard or an internal tool can check, audit and run Velaris without ...">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/embedding.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html" aria-current="page">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="velaris-from-inside-your-program">Velaris from inside your program</h1>
+<p>Velaris is a library as well as a command. An agent framework, an MCP
+server, a CI dashboard or an internal tool can check, audit and run
+Velaris without shelling out - and the effect budget is enforced the
+same way it is on the command line, whatever a program's source claims
+about itself.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>pip install velaris-lang</code></pre></div>
+<h2 id="three-calls">Three calls <a class="anchor" href="#three-calls" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>import velaris
+
+source = open("agent_output.vel").read()
+
+result = velaris.check(source)
+if not result.ok:
+    for p in result.problems:
+        print(p.code, p.line, p.message, p.fixes)
+
+report = velaris.audit(source)
+print(report.effects)        # ['fs', 'net'] - what it can touch
+print(report.proven_share)   # 66.7 - how much is proven, not just checked
+print(report.warnings)       # ffi cannot be contained by a budget
+
+run = velaris.run(source, allow={"io"})
+print(run.ok, run.output, run.refused_effect)</code></pre></div>
+<p><code>velaris.card()</code> returns the language in about 4,600 words - paste it
+into a model before asking for Velaris.</p>
+<h2 id="limits-time-and-memory">Limits: time and memory <a class="anchor" href="#limits-time-and-memory" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>run = velaris.run(source, allow={"io"}, timeout=30, max_memory_mb=512)
+run.timed_out        # True if it ran past the limit and was stopped
+run.out_of_memory    # True if it grew past the cap and was stopped</code></pre></div>
+<p>The effect budget bounds what a program may <em>touch</em>. These bound the
+other two things a program can do to the machine running it: spin
+forever, or eat memory. With either set, the program runs in a
+separate process that is killed on breach, and the result says which
+limit it hit (E610 for time, E611 for memory). The budget still holds
+inside that process.</p>
+<p>Memory caps use whatever the operating system has:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Platform</th><th>Mechanism</th><th>Enforced?</th></tr></thead>
+<tbody>
+<tr><td>Linux</td><td><code>RLIMIT_AS</code>, set by the child on itself</td><td>yes</td></tr>
+<tr><td>Windows</td><td>a job object with <code>JOB_OBJECT_LIMIT_PROCESS_MEMORY</code>; the child is created suspended, put in the job, and only then resumed</td><td>yes, since 3.1</td></tr>
+<tr><td>macOS</td><td><code>RLIMIT_AS</code></td><td>best-effort - the limit is set and not reliably honoured, and the timeout is what stops a runaway</td></tr>
+</tbody></table></div>
+<p>If the Windows job object cannot be made, the cap is recorded and not
+enforced rather than the run failing - the behaviour before 3.1.
+<code>velaris.memory_cap_is_enforced()</code> answers for the machine you are on,
+so a suite can assert the cap where the mechanism holds and skip it
+where it does not. The timeout is enforced on every platform.</p>
+<p>An agent framework calling <code>run</code> in a loop should set both. On the MCP
+server and the HTTP door the operator sets both, as ceilings a caller
+may lower and cannot raise: 30 seconds and 512 MB unless the operator
+names others (4.0). Before 4.0 those were only the values used when a
+caller sent none, and a caller who sent more got more.</p>
+<h3 id="checking-and-auditing-source-someone-else-wrote-81">Checking and auditing source someone else wrote (8.1) <a class="anchor" href="#checking-and-auditing-source-someone-else-wrote-81" aria-label="Link to this section">#</a></h3>
+<p><code>check</code> and <code>audit</code> read a program before anything runs, and a program
+can be written to make reading it slow: a promise the prover spends its
+whole budget on, or an expression the checker takes many seconds to take
+apart. From 8.1 both run in a child process under the ceiling <code>velaris check</code> has had since 8.0 - 60 seconds and 2048 MB unless raised; until
+8.1 its memory cap took hold only on Windows - and come back with a
+problem instead of holding the caller:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>report = velaris.audit(source, timeout=10, max_memory_mb=512)
+if any(p.code in ("E613", "E614") for p in report.problems):
+    ...        # it did not finish: report.ok is False, nothing determined</code></pre></div>
+<p>E613 is the clock and E614 the memory cap. <code>velaris.attest</code> takes the
+same two parameters. <code>timeout=None, max_memory_mb=None</code> checks in your
+own process with no ceiling, as every call did before 8.1 - fine for
+source you wrote, not for source you were sent. A child costs an
+interpreter's start; <code>Pool(...).check(source)</code> and
+<code>Pool(...).audit(source)</code> keep one alive, under the pool's timeout and
+memory cap. <code>run(source, timeout=...)</code> compiles inside its child, under
+its deadline, from 8.1.</p>
+<p><code>import_root=</code> on <code>check</code>, <code>audit</code>, <code>run</code> and <code>Pool</code> holds a program's
+imports to one directory: an import that resolves outside it, or to a
+file there that is not <code>.vel</code>, is refused (E515) without being read.
+Pass it whenever the source is someone else's. The doors always hold
+imports to a directory (below). And wherever an imported file is not
+Velaris source, the error names the file and shows nothing of what it
+holds; until 8.1 it quoted the first word it found there.</p>
+<h2 id="many-runs-a-pool">Many runs: a pool <a class="anchor" href="#many-runs-a-pool" aria-label="Link to this section">#</a></h2>
+<p>Every bounded run starts a Python interpreter - about a tenth of a
+second before a line of Velaris is read. Calling <code>run</code> thousands of
+times an hour pays that every time. A pool keeps workers alive:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>pool = velaris.Pool(size=4, allow={"io"}, timeout=30, max_memory_mb=512)
+result = pool.run(source)        # the same RunResult run() returns
+pool.close()                     # also a context manager</code></pre></div>
+<p><code>pool.run</code> also takes <code>stdin=</code>, <code>args=</code> and <code>path=</code>, and from 8.1
+<code>pool.check(source)</code> and <code>pool.audit(source)</code> check and audit on a
+worker under the pool's limits, keeping it when it answers. On one machine,
+200 sequential bounded runs of a small program took 46.6 s one process
+at a time and 0.5 s on a pool.</p>
+<p><strong>The isolation rules matter more than the speed, and
+<code>check_pool.py</code> asserts every one of them.</strong></p>
+<ul>
+<li><p><strong>The budget is the pool's, not the program's.</strong> It is parsed once,
+when the pool is made, and installed by each worker at startup.
+<code>pool.run</code> takes no <code>allow</code> argument - there is nowhere for a caller
+or a program to ask for more. If you need a different budget, make a
+different pool. The budget is re-asserted from the pool before every
+program, so a <code>@N</code> count is spent per program rather than shared
+across a worker's whole life, and a program that reaches into the
+compiler through a granted <code>ffi</code> module and widens its own budget
+cannot leave it widened for the next program.</p></li>
+<li><p><strong>A worker is used once unless the run was clean.</strong> Anything other
+than <code>ok</code> - a refused effect, a failure that escaped, a program that
+did not compile, the timeout, the memory cap - kills the worker and
+starts a fresh one. Only a run that finished cleanly hands its worker
+back. That costs a restart on every rejected program; it is the rule
+that makes the rest checkable.</p></li>
+<li><p><strong>A reused worker starts empty.</strong> Before every program the child puts
+back every piece of module-level mutable state it has: the arguments
+<code>args()</code> answers, Python handles from <code>py_new</code> whether the program
+closed them or not, the native compiler's engines and the text arena
+they own, the tracer, the budget and its operation counts - and the
+working directory, the environment and the recursion limit, which a
+program granted <code>ffi</code> can change.</p></li>
+<li><p><strong>The parent owns the deadline.</strong> A worker that has not answered
+within <code>timeout</code> is killed by the parent process, not asked to stop.
+The call returns E610 and a replacement worker is started.</p></li>
+<li><p><strong>A program cannot reach the pipe.</strong> The worker keeps private copies
+of its own standard input and output for the protocol and points the
+program's at the null device, so a program writing straight at file
+descriptor 1 - which a granted <code>ffi</code> module can do - cannot corrupt
+the answer the parent is parsing.</p></li>
+<li><p><strong>Closing kills every worker</strong>, including one still running a
+program. A pool collected without <code>close()</code> is closed by its
+finalizer, one that outlives the interpreter is closed at exit, and a
+worker whose pipe closes ends by itself - so a parent that dies
+without doing either still leaves nothing behind.</p></li>
+</ul>
+<p>A pool changes none of the guarantees in
+<a href="threat-model.html">THREAT_MODEL.md</a>. A granted <code>ffi</code> module can still do
+whatever that module can do, inside a worker as anywhere else; what a
+pool promises is that it cannot do it to the <em>next</em> program.</p>
+<p><code>velaris.PoolRegistry()</code> keeps one pool per distinct budget and makes
+each one the first time that budget is asked for - what a server needs,
+since it learns the budget from the request. The MCP server and the
+HTTP door each keep one. The CrewAI and LangChain tools stay on plain
+<code>run</code>: a crew's tool is not called often enough to need a pool, and one
+process per call is easier to reason about.</p>
+<h2 id="a-platform-whose-customers-write-velaris">A platform whose customers write Velaris <a class="anchor" href="#a-platform-whose-customers-write-velaris" aria-label="Link to this section">#</a></h2>
+<p><a href="https://github.com/gowrishankar-infra/velaris-lang/tree/main/examples/platform"><code>examples/platform/</code></a> puts <code>audit</code> and <code>Pool</code>
+together in the shape a SaaS team would copy - a FastAPI service in one
+file, under 200 lines:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>POST /scripts           audit the source, store it with its capability
+                        surface, answer with what it declares. No run.
+GET  /scripts/{id}      that declaration, as a customer is shown it
+POST /scripts/{id}/run  on a pool whose budget is the platform's</code></pre></div>
+<p>Two guards, and they are not the same guard. The audit is a read of the
+text, and submission is refused when what a script declares is wider
+than the platform permits - <code>Budget.covers</code> names the first thing that
+does not fit, and the response lists the grants an operator would have
+to add. The pool is the enforcement, and does not depend on the gate
+having been right: <code>check_platform.py</code> puts a script straight into the
+store, past the gate entirely, and asserts the run is still refused.</p>
+<p>Submitting <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/examples/discount.vel"><code>examples/discount.vel</code></a> answers with
+<code>"proven_share": 100.0</code> and <code>"status": "proven"</code> on each of its
+promises. That is what the pattern is for: a platform can tell a
+customer, before enabling a rule it did not write, that the rule can
+never return a negative total. fastapi is a dependency of the example,
+never of Velaris.</p>
+<h2 id="what-run-guarantees">What <code>run</code> guarantees <a class="anchor" href="#what-run-guarantees" aria-label="Link to this section">#</a></h2>
+<p><code>allow={"io"}</code> means the program cannot read a file, reach the
+network, read the environment, call Python, ask the clock or use
+randomness. Not "should not" - the runtime refuses, and a refusal
+<strong>cannot be caught</strong> by the program, so it cannot swallow the refusal
+and carry on.</p>
+<p><strong><code>allow=None</code> is the same <code>io</code>, from 5.0.</strong> It used to be all seven
+effects, so a caller who forgot the argument got the widest budget
+there is; now forgetting it gets the narrowest useful one. The ways to
+ask for everything, both of which say so where you can see them:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>velaris.run(source, allow="all")                  # one line to stderr
+velaris.run(source, allow=set(velaris.ALL_EFFECTS))</code></pre></div>
+<p><code>velaris.Pool(...)</code> and <code>velaris.run(..., timeout=...)</code> take the same
+default, and so does <code>velaris &lt;file&gt;</code> on the command line: one answer
+in every place a budget comes from.</p>
+<p>A grant can be narrower than an effect, in the same grammar the
+command line takes (SPEC.md 7.1):</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>velaris.run(source, allow={"io", "env",
+                           "fs:read:./data", "fs:write:./out@50",
+                           "net:api.example.com:443@100",
+                           "ffi:math,json"})</code></pre></div>
+<p><code>fs:read:./data</code> permits reads under that directory only, resolved
+with realpath so <code>..</code> and symlinks cannot leave it; <code>net:host:port</code>
+permits that host and port, <code>net:*.example.com</code> one label under the
+domain; <code>@N</code> caps the operations of that effect for the whole run. A
+path, host or count outside the grants is refused (E313, E314, E315)
+and cannot be caught; the one catchable case is a redirect to a host
+outside the grants, which fails the request naming the target.
+<code>refused_effect</code> reports <code>fs:&lt;path&gt;</code>, <code>net:&lt;host&gt;</code> or <code>fs@count</code> /
+<code>net@count</code> for those.</p>
+<p>It is not a security boundary. <code>allow={"ffi"}</code> and <code>allow="all"</code> grant
+everything Python can do, and nothing here limits memory, time, or what
+a program prints. It is a real guard against accident and casual misbehaviour -
+the situation you are in when a model hands you a script.</p>
+<p><code>run</code> captures stdout as <code>output</code> and stderr as <code>logs</code>, accepts
+<code>stdin=</code> and <code>args=</code>, and restores the previous budget afterwards, so
+several audits and runs can share a process.</p>
+<h2 id="the-audit-format">The audit format <a class="anchor" href="#the-audit-format" aria-label="Link to this section">#</a></h2>
+<p><code>audit().as_dict()</code> is a stable, versioned shape. Tools can depend on
+it; the <code>schema</code> field names the version.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{
+  "schema": "velaris.audit/1",
+  "velaris_version": "2.52.0",
+  "ok": true,
+  "problems": [],
+  "effects": ["fs", "io"],
+  "functions": [
+    {"name": "parse_row", "effects": [], "can_fail": true,
+     "requires": [], "ensures": ["length(result) &gt;= 1"],
+     "status": "proven"}
+  ],
+  "proven_share": 66.7,
+  "safe_command": "velaris &lt;file&gt; --allow fs,io",
+  "warnings": []
+}</code></pre></div>
+<p>Field meanings, all stable within <code>velaris.audit/1</code>:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>schema</code></td><td>the format's name and version</td></tr>
+<tr><td><code>velaris_version</code></td><td>the compiler that produced this</td></tr>
+<tr><td><code>ok</code></td><td>did it compile</td></tr>
+<tr><td><code>problems</code></td><td>code, message, line, file, fixes</td></tr>
+<tr><td><code>effects</code></td><td>everything the program may perform, transitively</td></tr>
+<tr><td><code>functions</code></td><td>per function: effects, can_fail, contracts, and whether each contract is <code>proven</code> before running or <code>checked at runtime</code></td></tr>
+<tr><td><code>proven_share</code></td><td>percent of promise-carrying functions proven, or null when there are no promises</td></tr>
+<tr><td><code>safe_command</code></td><td>the narrowest budget the audit can write: <code>fs:read:&lt;path&gt;</code> and <code>net:&lt;host&gt;</code> for the literals it read, the bare direction or effect where a value was built at runtime</td></tr>
+<tr><td><code>warnings</code></td><td>human-readable cautions, including which modules to grant</td></tr>
+<tr><td><code>ffi_modules</code></td><td>top-level Python packages named in py* calls, for <code>ffi:</code> grants (added in 2.60 within schema 1)</td></tr>
+<tr><td><code>loops_unshown</code></td><td>loops the termination rule cannot show to end (added in 2.62)</td></tr>
+<tr><td><code>contract_coverage</code></td><td>functions that take or return data and promise nothing (added in 2.62)</td></tr>
+<tr><td><code>fs_paths</code></td><td><code>{"read": [...], "write": [...], "read_any": bool, "write_any": bool}</code> - the path literals a program reads and writes; a flag says a path was built at runtime (added in 3.0)</td></tr>
+<tr><td><code>net_hosts</code></td><td><code>{"hosts": [...], "any": bool}</code> - the hosts (with ports when given) named in URL literals (added in 3.0)</td></tr>
+<tr><td><code>ffi_any</code></td><td>true when a py* call names its module with a value built while running, which <code>ffi_modules</code> cannot list (added in 4.0)</td></tr>
+<tr><td><code>counts</code></td><td><code>{"fs": n, "net": n}</code>: the most file and network operations one call to any of the file's functions can perform, by velaris-spec 9.4's fixed rules - <code>0</code> for an effect none of them declares, <code>null</code> where the text fixes no bound; the whole field <code>null</code> when the file does not compile (added in 4.2)</td></tr>
+<tr><td><code>prover</code></td><td>true when a prover checked the promises; false without one, when no status is <code>proven</code> and a <code>proven_share</code> of 0 says nothing about what could be proven - and false when the file does not compile (added in 4.2)</td></tr>
+<tr><td><code>secrets</code></td><td><code>{"sources": [...], "declassifies": bool, "declassifications": [{"reason", "function", "line"}]}</code> - which builtins handed the program a <code>Secret</code> (<code>env</code>, <code>read_file_secret</code>), whether it ever declassifies one, and with what reason. <code>declassifies: false</code> with <code>ok: true</code> is the answer to "does this program ever let a secret out"; <code>null</code> when the file could not be loaded, and not null merely because <code>ok</code> is false (added in 6.0)</td></tr>
+</tbody></table></div>
+<p>A new field may be added within version 1; a field will not change
+meaning or disappear without the schema name changing. <code>effects</code> and
+each function's <code>effects</code> hold only real effect names - the seven, and
+<code>declassify</code> from 6.0 - even in the audit of a program that does not
+compile because it names another in a <code>uses</code> clause (from 4.1; until
+then that name was listed, and made <code>safe_command</code> a budget that does
+not parse).</p>
+<h2 id="setting-it-up-in-your-assistant">Setting it up in your assistant <a class="anchor" href="#setting-it-up-in-your-assistant" aria-label="Link to this section">#</a></h2>
+<p><strong>One command, every client on the machine:</strong></p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris mcp-install          # adds it wherever it finds a client
+velaris mcp-install --list   # show what it found, change nothing
+velaris mcp-install --remove # take it back out</code></pre></div>
+<p>It knows where Claude Code, Cline, Cursor, Windsurf, Continue and Zed
+keep their configuration, adds a <code>velaris</code> server without disturbing
+anything else already there, and backs up each file first. Restart the
+assistant afterwards - closing the window is usually not enough.</p>
+<p><strong>Claude Desktop:</strong> newer builds only accept remote connectors in the
+Add-connector dialog, so use the bundle instead. Download
+<code>velaris.mcpb</code> from any release and open it, or drag it into
+Settings -&gt; Extensions. The compiler travels inside the bundle, so
+nothing needs installing first. (The prover does not travel with it -
+without <code>pip install z3-solver</code> promises are checked while running
+rather than proven, and the tools say so rather than hiding it.)</p>
+<h2 id="as-an-mcp-server">As an MCP server <a class="anchor" href="#as-an-mcp-server" aria-label="Link to this section">#</a></h2>
+<p><code>velaris_mcp.py</code> speaks the Model Context Protocol over stdin/stdout,
+so an assistant can write Velaris, check it, audit it and run it in a
+box without leaving the conversation.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"mcpServers": {"velaris": {"command": "python",
+                            "args": ["-m", "velaris_mcp"]}}}</code></pre></div>
+<p>Three spellings start the same server, and it is the same process
+whichever you use: <code>python -m velaris_mcp</code>, <code>velaris mcp</code> through the
+console script, and <code>npx velaris-lang mcp</code> through the npm wrapper -
+which calls the Python package, so it still needs
+<code>pip install velaris-lang</code>. Every flag below is the server's own and is
+taken by all three.</p>
+<p>Four tools: <code>velaris_card</code>, <code>velaris_check</code>, <code>velaris_audit</code> and
+<code>velaris_run</code> (which takes <code>allow</code>, defaulting to <code>["io"]</code>).</p>
+<p><strong>The server has a ceiling, and it is <code>io</code> unless you raise it.</strong>
+<code>allow</code> is what the caller asks for; <code>--max-allow</code> is the most the
+server will grant, in the same grammar the HTTP door and the command
+line take - effects, <code>fs:read:</code>/<code>fs:write:</code> paths, <code>net:</code> hosts and
+ports, <code>ffi:</code> modules, <code>@N</code> counts:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"mcpServers": {"velaris": {"command": "python",
+  "args": ["-m", "velaris_mcp", "--max-allow", "io,fs:read:./data"]}}}</code></pre></div>
+<p>A <code>velaris_run</code> that asks for more than the ceiling at any level - an
+effect, a module, a wider path, another host, a larger count, or plain
+<code>fs</code> against a scoped ceiling - does not run. The result is marked
+<code>isError</code> and holds the same body the HTTP door sends with its 403:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"error": "this server does not grant ffi", "max_allow": ["io"],
+ "max_timeout": 30, "max_memory_mb": 512}</code></pre></div>
+<p><strong>The operator also sets the time and memory (4.0).</strong> <code>--max-timeout</code>
+and <code>--max-memory-mb</code> are the most one run may have, 30 seconds and
+512 MB when the flags are absent. A <code>velaris_run</code> that names no
+<code>timeout</code> or <code>max_memory_mb</code> gets the ceiling; one that asks for less
+gets less; one that asks for more is refused the same way, naming the
+ceiling (<code>"this server allows at most 30 second(s) per run; the request asked for 60"</code>). A value that is not a number above zero is refused as
+a bad request. Before 4.0 a caller could ask for any timeout and any
+memory cap and have it.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"mcpServers": {"velaris": {"command": "python",
+  "args": ["-m", "velaris_mcp", "--max-timeout", "10",
+           "--max-memory-mb", "256"]}}}</code></pre></div>
+<p>Without the flag the server grants <code>io</code> alone: a program can print,
+read its arguments and its stdin, and nothing else. The <code>.mcpb</code> bundle
+and <code>velaris mcp-install</code> start the server without the flag; add it to
+the <code>args</code> above to widen it. A <code>--max-allow</code> that does not parse
+stops the server before it answers anything.</p>
+<p><strong>From 8.1</strong> the server checks and audits under <code>--check-timeout</code> and
+<code>--check-memory-mb</code> (60 seconds and 2048 MB unless raised), on a worker of
+its own, and holds a program's imports to <code>--root</code> - the directory it was
+started in unless named - as the HTTP door does. <code>velaris_run</code> takes
+<code>"receipt": true</code> for the run's receipt.</p>
+<h3 id="what-can-connect-and-what-runs">What can connect, and what runs <a class="anchor" href="#what-can-connect-and-what-runs" aria-label="Link to this section">#</a></h3>
+<p><strong>The MCP server</strong> reads requests from its standard input and answers on
+its standard output. It opens no port, so the only thing that can talk to
+it is the process that started it - the MCP client - and the client decides
+what the model may send. <strong>The language server</strong> (<code>velaris lsp</code>) is the
+same: its editor, over stdin and stdout, and nothing else.</p>
+<p>Neither runs a program to answer anything but <code>velaris_run</code>. The MCP
+server's <code>velaris_check</code> and <code>velaris_audit</code>, and the language server's
+diagnostics, hovers, code lenses, completions, outline and rename, parse,
+type-check and (where the prover is installed) prove - they never call
+<code>main</code>. The language server offers no formatting request, and <code>velaris fmt</code>
+reads tokens and writes text. <code>check_library.py</code> sends both servers, and
+<code>fmt</code>, a program whose <code>main</code> writes a file, and asserts no file is
+written. What they do run is the compiler over text the client sent, and
+the language server's proofs have no ceiling: an editor opening a file
+written to stall the prover waits for it.</p>
+<h3 id="checking-the-tools-against-the-signed-manifest">Checking the tools against the signed manifest <a class="anchor" href="#checking-the-tools-against-the-signed-manifest" aria-label="Link to this section">#</a></h3>
+<p>An MCP client shows the model each tool's description, and a model
+follows what a description says - which is why a changed description is
+an attack (tool poisoning, OWASP MCP Top 10 MCP03). Every release from
+3.4 carries <code>velaris-mcp-tools-X.Y.Z.json</code>: the name of every tool the
+server offers, the sha256 of its description and the sha256 of its
+input schema, generated by the release workflow from the server inside
+the wheel it publishes and signed with sigstore
+(<code>velaris-mcp-tools-X.Y.Z.json.sigstore.json</code>), like the wheel.</p>
+<p>To check the server you run against it:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>gh release download v4.0.0 --repo gowrishankar-infra/velaris-lang \
+  --pattern 'velaris-mcp-tools-4.0.0.json*'
+pip install sigstore
+velaris mcp-verify velaris-mcp-tools-4.0.0.json \
+  -- python -m velaris_mcp --max-allow io</code></pre></div>
+<p>Everything after <code>--</code> is the command your client's configuration runs;
+<code>mcp-verify</code> starts it the way the client does, asks it for its tools,
+and compares:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>manifest:  velaris-mcp-tools-4.0.0.json (4 tool(s), velaris 4.0.0)
+signature: verified, signed by https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/v4.0.0
+server:    python -m velaris_mcp --max-allow io (velaris 4.0.0)
+  ok       velaris_audit
+  ok       velaris_card
+  CHANGED  velaris_check: input schema
+  CHANGED  velaris_run: description
+  NEW      velaris_shell: offered by the server, not in the manifest
+2 of 5 tool(s) match the manifest; 3 differ</code></pre></div>
+<p>It exits 0 when every tool matches, 1 when any description or schema
+differs or a tool was added or removed, and 2 when it could not check:
+no signature bundle beside the manifest, a signature that does not
+verify, <code>sigstore</code> not installed, or a server that did not answer. The
+signature must come from this repository's release workflow: at the tag
+the manifest names, for 7.1.2 and earlier, and on main from 7.2.0, when
+releases stopped being started by tags (RELEASING.md). The main identity
+names no version, so the version is the one inside the signed manifest,
+which <code>mcp-verify</code> prints on its first line beside what the server
+reports. <code>--identity</code> changes the identity for a fork, or for checking a
+7.2.0 or later manifest with a Velaris older than 7.2.0; <code>--bundle</code>
+names the bundle, and <code>--skip-signature</code> compares against a manifest
+you have verified some other way.</p>
+<p>Run it after installing or upgrading, and in the CI that builds the
+environment your client runs in. What it does and does not tell you:</p>
+<ul>
+<li>A description or schema that differs from what the release workflow
+built is reported, whichever way it got there - an edited
+<code>velaris_mcp.py</code>, a different package answering to the same name, a
+local patch.</li>
+<li>The description hash is of the exact text the server sends; the
+schema hash is of the schema with its keys sorted and no whitespace
+(RFC 8785's form for the objects, arrays, strings and integers a
+schema holds), so a reformatted but equal schema matches.</li>
+<li>It checks what the server says, not what it does. A server that
+presents the signed descriptions and behaves differently is not
+caught here; the wheel's own signature (SECURITY.md) is what covers
+the code.</li>
+<li>It checks one moment. A server that changes its tools after you ran
+it is caught the next time you run it, not before.</li>
+<li>The checker is in the <code>velaris</code> package, not in <code>velaris_mcp.py</code>, so a changed
+server file does not change the code that checks it. An installation
+in which both were changed is caught by verifying the wheel, or by
+running <code>mcp-verify</code> from a separately verified Velaris (a signed
+standalone executable, say) with the server command after <code>--</code>.</li>
+</ul>
+<p><code>velaris mcp-manifest -o tools.json -- &lt;server command&gt;</code> writes the same
+manifest for any server, which is how the release workflow makes it.</p>
+<h2 id="vendored-libraries-and-velarislock">Vendored libraries, and velaris.lock <a class="anchor" href="#vendored-libraries-and-velarislock" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris add https://example.com/geo.vel as geo   # vendored into lib/
+velaris add https://example.com/geo.vel --force  # replace different bytes
+velaris deps                                     # what you depend on
+velaris deps --verify                            # do they match the lock?</code></pre></div>
+<p><code>velaris add</code> writes two files. <code>velaris.toml</code> says what the project
+depends on. <strong><code>velaris.lock</code></strong> says exactly which bytes were vendored:
+every library with its source, its sha256 and the version of Velaris
+that added it. The digest is of the fetched bytes exactly as they
+arrived, so it is the digest the source published and the same on every
+platform.</p>
+<p><code>velaris deps --verify</code> (<code>velaris verify</code> is the older spelling of the
+same check) fails if a vendored file's hash differs from the lock, or
+if a lock entry has no file on disk. Run it in CI: a library that
+changed under you is worth looking at before trusting it.</p>
+<p><code>velaris add</code> refuses to overwrite a library that is already vendored
+when the incoming bytes are different, and prints both digests;
+<code>--force</code> replaces it. A project made before 3.1 has no lock, and
+<code>deps --verify</code> says so and falls back to checking <code>velaris.toml</code>.</p>
+<h2 id="the-embedding-limit">The embedding limit <a class="anchor" href="#the-embedding-limit" aria-label="Link to this section">#</a></h2>
+<p>Velaris embeds natively in one language and one only: Python. <code>import velaris</code> runs the compiler and the program in your process, and the
+three calls above return in microseconds to milliseconds - no process,
+no serialization. From any other language the boundary is a process:
+<code>velaris serve</code> (below) puts the same three calls behind a local HTTP
+door, and the CrewAI and LangChain tools, being Python, stay on the
+native library. The cost of the process boundary is real - a request to
+the door pays HTTP framing and a JSON round trip, on the order of a
+millisecond on loopback plus whatever the run itself takes, where the
+in-process call pays neither - which is why an agent framework written
+in Python should call the library, and why the door and the MCP server
+keep a worker pool (above) so they do not also pay an interpreter
+startup on every call. There is no in-process embedding for Node, Go or
+Rust, and there will not be one until the compiler is something other
+than a Python package; the process boundary is the supported way, and it is
+the boundary the OS enforces, which is stronger than the language's.</p>
+<h2 id="from-a-language-that-is-not-python">From a language that is not Python <a class="anchor" href="#from-a-language-that-is-not-python" aria-label="Link to this section">#</a></h2>
+<p><code>velaris serve</code> opens a local HTTP door, so a Node service, a Go tool,
+a Rust agent or a shell script can use the same three calls.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris serve --token-file ~/.velaris-token \
+              --max-allow io,fs:read:./data,net:api.example.com@100 \
+              --max-timeout 10 --max-memory-mb 256
+                                       # localhost:8787, grants at most this</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>GET  /health         version, whether the prover is installed; with the
+                     token, the ceilings too. The one endpoint without a token.
+GET  /card           the language, for pasting into a model
+POST /check          {"source": "..."}                  -&gt; problems, proven
+POST /audit          {"source": "..."}                  -&gt; velaris.audit/1
+POST /run            {"source": "...", "allow": ["io"], "stdin": "", "args": [],
+                      "timeout": 10, "max_memory_mb": 256, "receipt": false}</code></pre></div>
+<p>A program sent to the door is compiled as a file in the directory it
+serves - <code>--root</code>, or the directory it was started in - so its relative
+imports resolve there, and an import that leaves that directory or names a
+file there that is not <code>.vel</code> is refused (E515) before the file is read
+(8.1). Until 8.1 a program sent to the door could import any file the
+door's user could read, and the error quoted what it found. <code>"receipt": true</code> on <code>/run</code> returns the run's receipt with the result.</p>
+<p><strong>Every endpoint but <code>GET /health</code> needs the token</strong>, as
+<code>Authorization: Bearer &lt;token&gt;</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JavaScript</span></div><pre tabindex="0"><code>const answer = await fetch("http://127.0.0.1:8787/run", {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${process.env.VELARIS_TOKEN}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ source, allow: ["io"] }),
+}).then(r =&gt; r.json());
+
+console.log(answer.ok, answer.output, answer.refused_effect,
+            answer.effects_used);</code></pre></div>
+<p>The token comes from one of three places, in this order:</p>
+<ol>
+<li><code>--token-file &lt;path&gt;</code> - a file holding the token and nothing else
+(surrounding whitespace is ignored). On Linux and macOS the door
+warns if other users can read it.</li>
+<li><code>VELARIS_TOKEN</code> in the door's environment. The door removes it from
+its environment as it starts, so the worker processes that run
+programs do not inherit it and a program granted <code>env</code> cannot read
+it.</li>
+<li>Neither: the door makes one with <code>secrets.token_urlsafe(32)</code> and
+prints it once, on stdout, when it starts. It is not shown again.
+If something captures the door's stdout into a file, use one of the
+other two.</li>
+</ol>
+<p>A token must be at least 16 printable ASCII characters. The door
+refuses to start with <code>--token</code> on its command line, in either spelling,
+because every process on the machine can read another's arguments; the
+refusal does not repeat what was typed. The token is compared in
+constant time (<code>secrets.compare_digest</code>, over sha256 digests so its
+length does not show either). A request with no token, a wrong one,
+another scheme, or the token anywhere but the header gets the same
+answer, to any path, <code>/card</code> and unknown paths included:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>401   WWW-Authenticate: Bearer realm="velaris"
+      {"error": "unauthorized"}</code></pre></div>
+<p>It does not say which was wrong, or whether the path exists. The door
+never writes the token to its log, to an error message or to a process
+argument.</p>
+<p><strong><code>--no-auth</code></strong> turns the token off, for local development. It is
+refused unless <code>--host</code> is <code>127.0.0.1</code> or <code>localhost</code>, and prints a
+warning on every start. Without a token, what stands in for one is
+narrow: a request must be addressed to <code>127.0.0.1</code> or <code>localhost</code>
+(the <code>Host</code> header), carry no other <code>Origin</code>, and send a <code>POST</code> as
+<code>Content-Type: application/json</code> - which keeps a web page in a browser
+on the same machine from using the door (a cross-site <code>fetch</code> of JSON
+needs a preflight, which the door never approves, and a DNS-rebinding
+page arrives under its own host name). Nothing stops another program on the
+machine, run by any user.</p>
+<p>The door speaks plain HTTP. On <code>127.0.0.1</code> the token never leaves the
+machine; on any other address it crosses the network readable by
+anyone on the path, so put a TLS-terminating proxy in front, and the
+door says so when it starts.</p>
+<p><strong>The operator sets the limits, not the caller (4.0).</strong> A request's
+<code>allow</code>, <code>timeout</code> and <code>max_memory_mb</code> are what the caller asks for;
+the door grants them only up to its ceilings, and a caller asking for
+more at any of the three gets 403 with the ceilings named:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>403   {"error": "this server allows at most 30 second(s) per run; the
+       request asked for 60", "max_allow": ["io"], "max_timeout": 30,
+       "max_memory_mb": 512}</code></pre></div>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Ceiling</th><th>Flag</th><th>When the flag is absent</th></tr></thead>
+<tbody>
+<tr><td>the budget</td><td><code>--max-allow</code></td><td><code>io</code></td></tr>
+<tr><td>seconds per run</td><td><code>--max-timeout</code></td><td>30</td></tr>
+<tr><td>MB per run</td><td><code>--max-memory-mb</code></td><td>512</td></tr>
+<tr><td>seconds per check or audit (8.1)</td><td><code>--check-timeout</code></td><td>60</td></tr>
+<tr><td>MB per check or audit (8.1)</td><td><code>--check-memory-mb</code></td><td>2048</td></tr>
+<tr><td>requests a minute (8.1)</td><td><code>--rate-limit</code></td><td>600</td></tr>
+<tr><td>where imports may come from (8.1)</td><td><code>--root</code></td><td>the directory it was started in</td></tr>
+</tbody></table></div>
+<p><code>POST /check</code> and <code>POST /audit</code> run on the door's own workers under the
+check ceiling: a program written to stall the checker is answered with
+E613 or E614, and logged <code>timeout</code> or <code>out_of_memory</code>, instead of holding a
+request. <strong>Requests are rate-limited</strong>: at most <code>--rate-limit</code> a minute for
+the token, and the same again for each address sending requests without
+it, so a caller guessing tokens is limited and cannot spend the holder's
+allowance. Past it the answer is <code>429</code> with <code>Retry-After</code>, logged
+<code>rate_limited</code>. With the token, <code>GET /health</code> names the check ceiling and
+the rate.</p>
+<p><code>--max-allow</code> takes the full grammar: a caller asking for more at any
+level - an effect, a module, a wider path prefix, a host the server
+does not name, a port, a larger count, or an unscoped <code>fs</code>/<code>net</code>
+against a scoped ceiling - is refused. A request that names no
+<code>timeout</code> or <code>max_memory_mb</code> gets the ceiling; one that names less gets
+less; a value that is not a number above zero is a 400. <strong>Before 4.0
+none of this held</strong>: a door started without <code>--max-allow</code> granted every
+effect, <code>ffi</code> included, to anyone holding the token, and a caller could
+send any timeout and any memory cap and have it. Starting a door with a
+wider ceiling now takes naming it: <code>--max-allow io,env,fs,net,clock,rand,ffi</code> is what 3.4 granted by default, and from
+5.0 <code>--max-allow all</code> is the same thing written shorter - the door
+writes one line to stderr when it is started that way.
+<code>--max-memory-mb</code> on <code>velaris serve</code> used to set a cap on the door's
+own process (on Linux and macOS); it is now the most each run may have,
+and the door's process is not capped.</p>
+<p>It binds to <code>127.0.0.1</code> unless told otherwise, because <strong>this endpoint
+runs programs</strong>. <code>--bind ADDR</code> names another address (<code>--host</code> is the
+older name for the same flag), and a door bound anywhere but loopback
+writes a line to stderr saying so before it listens. Do not expose it to a network you do not control, and
+prefer <code>--max-allow io,fs</code> over granting <code>ffi</code> on a shared machine -
+the server warns about both. Keep the token file outside every path the
+ceiling grants: a program allowed to read it can send it somewhere.</p>
+<p>The door refuses an argument it does not know rather than ignoring
+it, so a mistyped <code>--max-alow io</code> stops it instead of leaving the
+ceiling at everything.</p>
+<h2 id="the-invocation-log">The invocation log <a class="anchor" href="#the-invocation-log" aria-label="Link to this section">#</a></h2>
+<p>The HTTP door and the MCP server each write <strong>one JSON line per call</strong> -
+every request the door answers, and every <code>tools/call</code> the server gets
+(not the protocol's own <code>initialize</code> and <code>tools/list</code>) - to stderr, or
+appended to a file with <code>--log-file &lt;path&gt;</code>. There is no way to turn it
+off; <code>--log minimal</code> writes fewer fields. A full line from the door:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"schema": "velaris.invocation/1", "ts": "2026-09-11T05:50:30.776Z",
+ "door": "http", "endpoint": "POST /run", "outcome": "ok",
+ "duration_ms": 284.7, "client": "127.0.0.1", "budget": "env,io",
+ "effects": {"env": 1, "io": 1}, "refusals": [],
+ "source_sha256": "768e84b1..."}</code></pre></div>
+<p>and from the MCP server, a call the ceiling refused:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"schema": "velaris.invocation/1", "ts": "2026-09-11T05:51:02.114Z",
+ "door": "mcp", "tool": "velaris_run", "outcome": "ceiling",
+ "duration_ms": 0.3, "budget": null, "effects": null,
+ "refusals": [{"by": "ceiling", "what": "this server does not grant ffi"}],
+ "source_sha256": "9809d3a9..."}</code></pre></div>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Field</th><th>What it holds</th></tr></thead>
+<tbody>
+<tr><td><code>schema</code></td><td><code>velaris.invocation/1</code></td></tr>
+<tr><td><code>ts</code></td><td>when the call arrived, UTC, to the millisecond</td></tr>
+<tr><td><code>door</code></td><td><code>http</code> or <code>mcp</code></td></tr>
+<tr><td><code>endpoint</code> / <code>tool</code></td><td><code>POST /run</code>, <code>GET /card</code>...; an unknown path is written <code>POST (no such endpoint)</code>, never as sent. The MCP tool's name, or <code>(no such tool)</code></td></tr>
+<tr><td><code>outcome</code></td><td><code>ok</code>; <code>problems</code> (check or audit found some); <code>failed</code>, <code>refused</code> (the budget stopped the program), <code>timeout</code>, <code>out_of_memory</code> for a run - and from 8.1 for a check or an audit stopped at its ceiling; <code>ceiling</code> (the door's <code>--max-allow</code>, <code>--max-timeout</code> or <code>--max-memory-mb</code> refused the request); <code>unauthorized</code>; <code>rate_limited</code> (8.1); <code>not_local</code> (<code>--no-auth</code> refused a request a browser page could have sent); <code>bad_request</code>, <code>too_large</code>, <code>not_found</code>, <code>unknown_tool</code>, <code>caller_gone</code>, <code>error</code></td></tr>
+<tr><td><code>duration_ms</code></td><td>from arrival to the answer</td></tr>
+<tr><td><code>client</code></td><td>the caller's IP address (HTTP only)</td></tr>
+<tr><td><code>budget</code></td><td>the budget the program ran under, as the budget grammar writes it (paths absolute); <code>null</code> when nothing ran</td></tr>
+<tr><td><code>effects</code></td><td><code>RunResult.effects_used</code>: each effect and how many builtin calls the budget let through; <code>null</code> when nothing ran, or when the worker was killed before it could say</td></tr>
+<tr><td><code>refusals</code></td><td><code>{"by": "ceiling", "what": ...}</code> for the door's refusal; <code>{"by": "budget", "code": "E313", "what": "fs:/etc/passwd"}</code> when the budget stopped the program</td></tr>
+<tr><td><code>source_sha256</code></td><td>the sha256 of the program's source text (UTF-8); <code>null</code> when there was none</td></tr>
+</tbody></table></div>
+<p><code>--log minimal</code> keeps <code>schema</code>, <code>ts</code>, <code>door</code>, <code>endpoint</code>/<code>tool</code>,
+<code>outcome</code> and <code>duration_ms</code>.</p>
+<p><strong>Never recorded:</strong> the source itself, the program's output, its stdin
+and arguments, request headers, the request path as sent (a query
+string included), and the door's token. The token is also struck out
+of any line it could appear in, as <code>[redacted]</code>. <strong>Recorded that may
+matter to you:</strong> a refusal names the path or host refused, which comes
+from what the program tried to do, and <code>budget</code> names the paths and
+hosts granted. <strong>Not seen:</strong> what a granted <code>ffi</code> module does inside
+Python - it shows as <code>ffi</code> calls, nothing more.</p>
+<p>If the log file cannot be opened the door and the server do not start;
+if a write to it fails later, the line goes to stderr instead.</p>
+<h2 id="from-javascript">From JavaScript <a class="anchor" href="#from-javascript" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>npm install velaris-lang        # or: npx velaris-lang script.vel --allow io</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">JavaScript</span></div><pre tabindex="0"><code>import { audit, run } from "velaris-lang";
+
+const report = await audit(source);
+const result = await run(source, { allow: ["io"] });
+console.log(result.ok, result.output, result.refusedEffect);</code></pre></div>
+<p>Leaving <code>allow</code> out is <code>io</code>, the same default the command line and the
+Python library have from 5.0.</p>
+<p>The compiler is a Python package, so <code>pip install velaris-lang</code> once;
+the npm package says so plainly if it is missing. Types ship with it.</p>
+<h2 id="in-a-notebook">In a notebook <a class="anchor" href="#in-a-notebook" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>%pip install velaris-lang
+%load_ext velaris_magic</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>%%velaris --audit --allow io
+fn main() uses io {
+    print("proven before it ran")
+}</code></pre></div>
+<p><code>--audit</code> prints what the cell can touch and how much of its promises
+are proven before running - useful when the code in the cell came from
+a model. Effects outside <code>--allow</code> are refused, and the cell says which
+flag would permit them. A cell with no <code>--allow</code> gets <code>io</code>, which the
+magic has always done and which 5.0 made true everywhere else too.</p>
+<h2 id="as-a-github-action">As a GitHub Action <a class="anchor" href="#as-a-github-action" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">YAML</span></div><pre tabindex="0"><code>permissions:
+  contents: read
+  security-events: write        # for sarif, on by default
+  pull-requests: write          # only for pr-comment
+
+steps:
+  - uses: actions/checkout@v5
+  - uses: gowrishankar-infra/velaris-lang@11090587321c3ca9e0fcc06ee9faffb15c721ccd  # v8.2.1
+    with:
+      min-proven: "80"
+      pr-comment: "true"
+      capabilities: "check"   # the default when velaris.capabilities exists
+      deps-diff: "true"       # off by default</code></pre></div>
+<p>The action installs Velaris with the prover, checks every <code>.vel</code> file
+(or the <code>files</code> glob), and fails the job if anything does not compile
+or a promise cannot be kept. With <code>sarif</code> on (the default), the check's
+findings are also written as SARIF 2.1.0 and uploaded to code scanning
+by <code>github/codeql-action/upload-sarif</code>, pinned to a commit; the README's
+CI section says what each result holds and at what level. With <code>pr-comment: "true"</code>, on a
+<code>pull_request</code> event it also posts one comment holding the audit of
+each changed <code>.vel</code> file - the same <code>velaris.audit()</code> this document
+describes: effects, Python modules named, proven share, the safe
+command, and the warnings (<code>loops_unshown</code>, <code>contract_coverage</code>) - and
+on later runs edits its own comment, found by a hidden HTML marker,
+rather than adding another. It talks to the REST API with the job's
+<code>GITHUB_TOKEN</code> through <code>curl</code>; no third-party action is involved.</p>
+<p>From 4.0 the comment also holds the capability ratchet's result, with
+each widening, where it came from and the edit to
+<code>velaris.capabilities</code> that would accept it; and a review of the pull
+request against its base (<code>velaris review</code>, below): whether the
+capability surface changed, the proven share before and after, new
+fallible functions, new hosts, paths and modules, whether
+<code>velaris.capabilities</code> itself changed, and a risk word.</p>
+<p>With <code>capabilities</code> left at its default the action runs the ratchet
+whenever <code>velaris.capabilities</code> exists at the repository root, and
+fails the job if the code needs more than it declares. A pull request
+that deletes the file fails too, since that would turn the ratchet off;
+<code>capabilities: "off"</code> in the workflow is the way to turn it off, where
+the change is visible. The ratchet's findings go to code scanning
+beside the check's when <code>sarif</code> is on.</p>
+<p>With <code>deps-diff: "true"</code> (7.1), on a pull request the action runs
+<code>velaris deps-diff --against</code> the base branch's commit: every dependency
+the pull request upgrades in a lockfile it reads is compared version
+against version, and one comment - its own marker, edited in place like
+the audit's - says what each gained. For a Velaris library that is its
+declared capability surface; for any other package it is the
+install-time scripts and declared dependencies, with the surface said
+to be unknown. The step informs and never fails the job. The README's
+CI section lists the lockfiles it reads and what it cannot see.</p>
+<h2 id="holding-a-repository-to-its-capability-surface">Holding a repository to its capability surface <a class="anchor" href="#holding-a-repository-to-its-capability-surface" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris capabilities init              # record the surface in velaris.capabilities
+velaris capabilities check             # exit 1 if the code needs more than that
+velaris capabilities check --json      # the same, for tools
+velaris capabilities check --sarif     # the same, for code scanning
+velaris review --against origin/main   # what a branch changed, as facts</code></pre></div>
+<p>A model, a contributor or a dependency update can add capability to a
+repository one small commit at a time: a helper that builds a URL, then
+a function that reads a file, then a call three levels down that sends
+it somewhere. A reviewer who reads each diff sees nothing alarming in
+any of them. Capability does not work that way - it is binary and
+cumulative, and forty small steps reach exactly as far as one large
+one - but only a comparison with a declared baseline sees that. A
+comparison with the previous commit sees forty small steps.</p>
+<p><code>velaris capabilities init</code> reads every <code>.vel</code> file under the path
+(not <code>.git</code>, and not what git ignores) and writes <code>velaris.capabilities</code>
+(<code>velaris.capabilities/1</code>, specified in velaris-spec section 9):</p>
+<ul>
+<li>the <strong>surface</strong>: every grant the repository's programs need, in the
+budget grammar - effects, <code>fs:read:</code>/<code>fs:write:</code> paths, <code>net:</code> hosts,
+<code>ffi:</code> modules - and for <code>fs</code> and <code>net</code> the most operations one run
+can perform, or <code>null</code> where the text sets no bound;</li>
+<li>for each <strong>program</strong>, its own grants and counts, and the effects each
+of its functions declares - or <code>"compiles": false</code>;</li>
+<li>the Velaris version that wrote it, and the date.</li>
+</ul>
+<p>It refuses to replace an existing file without <code>--force</code>: the file is
+what the repository declared, and replacing it is a decision.</p>
+<p><code>velaris capabilities check</code> derives the same from the working tree and
+compares it with the file - never with a previous commit. It fails
+(exit 1) when:</p>
+<ol>
+<li>the code needs a grant the surface does not cover - a new effect, a
+module, a path outside every recorded one (so <code>./data</code> widened to
+<code>./</code> fails), a host (so <code>api.example.com</code> made <code>*.example.com</code>
+fails), a scoped grant made unscoped - or more <code>fs</code> or <code>net</code>
+operations in a run than the surface's count;</li>
+<li>a program the file records needs something its own entry does not
+give, even if another program already had it; or</li>
+<li>a function the file records declares an effect it did not declare
+there, even when the program's grants stay the same.</li>
+</ol>
+<p>A program or function the file does not record is held to rule 1
+alone: a new program that stays inside the surface is not a widening.
+Narrowing never fails; it is reported, so the file can be tightened. A
+file that does not compile cannot run, so it adds nothing, and it is
+reported rather than compared. A file written by another Velaris
+version is compared with a warning, never a failure on that account.
+Exit 2 means the check could not be made: no file, a file that is not
+<code>velaris.capabilities/1</code>, or one that does not read.</p>
+<p>Each widening names what widened, the file and function that introduced
+it - the call, its line, and the chain of calls from <code>main</code> that reaches
+it - and the edit to <code>velaris.capabilities</code> that would accept it:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>WIDENED  net:collector.example.net - a new effect, net
+    needed by app.vel (its entry does not grant it)
+      lib/deliver.vel:2  send calls post("https://collector.example.net/v1")
+      reached from main -&gt; summary -&gt; deliver -&gt; send
+    if intended: add "net:collector.example.net" to surface.grants; add
+    "net:collector.example.net" to the grants of app.vel</code></pre></div>
+<p>Accepting a widening is an edit to <code>velaris.capabilities</code>, or <code>velaris capabilities init --force</code> and a commit, so the change is in the diff
+a reviewer reads. <code>--json</code> is <code>velaris.capabilities-check/1</code>; <code>--sarif</code>
+reports each widening as an error at the line that introduced it
+(<code>capability-widened</code>, <code>capability-effect-gained</code>) and each narrowing
+as a note.</p>
+<p><strong>How the counts are found.</strong> One run's operations are bounded from the
+text: a loop counts when a counter moves one step toward a limit on
+every turn (SPEC.md 9.5) and both its start and the limit are numbers
+the text fixes - <code>for i in 0 to 10</code>, a counter started by <code>let</code>, a
+loop over a list literal or a variable holding one; nested loops
+multiply; a branch counts its larger arm; a function counts its bound
+at every call; recursion, and a loop whose turns the text does not fix,
+have no bound. A path, URL or module is fixed when it is a literal or
+a variable bound once to one; one built while running is recorded as
+the unscoped grant (<code>fs:read</code>, <code>net</code>, <code>ffi</code>), which a scoped surface
+does not cover.</p>
+<p><strong><code>velaris review --against REF</code></strong> runs the same derivation, and the
+audit, on the files at a git ref - read with <code>git show REF:PATH</code>, with
+nothing checked out - and on the working tree, and reports the delta:
+whether the capability surface widened, narrowed or is unchanged, the
+proven share before and after, functions that became fallible, hosts,
+paths and modules newly named, whether <code>velaris.capabilities</code> itself
+changed, and one word of risk computed from those facts alone -
+<code>high</code> when the surface widened, or the declared surface widened or was
+removed; <code>medium</code> when it did not, but a program or function the ref
+had came to need more, or the proven share fell; <code>low</code> otherwise. No
+count of changed lines enters it. It is a report for a reviewer; the
+gate is <code>capabilities check</code>, because a review against the previous
+commit cannot see a widening that was merged a commit ago.</p>
+<p>What the ratchet does not see is in <a href="threat-model.html">THREAT_MODEL.md</a>:
+it reads text, so what a granted <code>ffi</code> module does is beyond it, paths
+are compared as written, and a function renamed as it gains an effect
+is a new function.</p>
+<h2 id="moving-a-4x-project-to-50">Moving a 4.x project to 5.0 <a class="anchor" href="#moving-a-4x-project-to-50" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris migrate --to 5.0                # every program under .
+velaris migrate --to 5.0 src/report.vel # one of them
+velaris migrate --to 5.0 --json         # velaris.migrate/1
+velaris migrate --to 5.0 --write        # and change what it can parse</code></pre></div>
+<p>In 5.0 a run given no budget gets <code>io</code> rather than all seven effects,
+so a command, script or CI step that runs a program needing more has
+to say what it needs. <code>migrate</code> works that out: for each program it
+reads, it derives the narrowest budget the program's own audit can
+write - the grants <code>safe_command</code> carries - and prints the command to
+run it under 5.0.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>examples/wordcount.vel
+    uses:  fs, io
+    run:   velaris examples/wordcount.vel --allow fs:read,io</code></pre></div>
+<p>A program that uses <code>io</code> or no effect at all is counted and not
+listed: 5.0 grants it already. A file that does not compile is named
+with the problem, never guessed at.</p>
+<p>It changes nothing without <code>--write</code>, and with it changes only lines
+it can parse with no guessing: one command on the line, a <code>.vel</code> path
+that resolves to a program it audited, no <code>--allow</code> or <code>--deny</code>
+already there, and no pipe, chain, substitution or redirection that
+would make the end of the command the wrong place for a flag. It
+writes <code>.sh</code>, <code>.bash</code>, <code>.yml</code> and <code>.yaml</code> files, puts the flag after
+the file name and before the program's own arguments, and lists every
+line it left alone with the budget to add by hand.</p>
+<h2 id="running-velaris-specs-conformance-corpus">Running velaris-spec's conformance corpus <a class="anchor" href="#running-velaris-specs-conformance-corpus" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris conformance                    # L1, L2 and L3; exit 1 if any case fails
+velaris conformance --level 3          # the cases a claim at L3 needs: L1 and L3
+velaris conformance --json             # velaris.conformance/1, one result per case
+velaris conformance --corpus DIR       # DIR is velaris-spec's tests/</code></pre></div>
+<p><a href="https://github.com/gowrishankar-infra/velaris-spec">velaris-spec</a>'s
+<code>tests/</code> is a conformance corpus for the capability format: JSON cases
+an implementation in any language runs its own way, at the three levels
+of its CONFORMANCE.md - L1 Declaration (the budget grammar, the effect
+surface, <code>velaris.audit/1</code>), L2 Enforcement (refusals at run time) and
+L3 Ratchet (<code>velaris.capabilities/1</code>). <code>velaris conformance</code> finds it
+beside the working directory or this installation (<code>velaris-spec/tests</code>
+or <code>../velaris-spec/tests</code>), or where <code>--corpus</code> or
+<code>VELARIS_CONFORMANCE_CORPUS</code> says, and runs every case through the
+budget parser, the audit, the command line under a budget, and the
+baseline writer and check. It prints one line per level and a verdict;
+a failure names the case and what differed. Validating documents
+against velaris-spec's schemas needs <code>jsonschema</code>; without it those
+cases are skipped and the level is reported as not shown. A case that
+needs a symbolic link is skipped where the system will not make one,
+and the verdict says so.</p>
+<h2 id="an-in-toto-statement-of-what-a-program-may-do">An in-toto Statement of what a program may do <a class="anchor" href="#an-in-toto-statement-of-what-a-program-may-do" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris attest examples/effects.vel --output effects.intoto.json
+velaris attest examples/effects.vel --json          # the Statement on stdout
+velaris attest src --output src.jsonl               # one Statement per file</code></pre></div>
+<p><code>velaris attest</code> writes an in-toto Statement v1 whose predicate type is
+<code>https://velaris-lang.dev/capability/v1</code>
+(velaris-spec section 8.5; the URL is the type's description and
+schema). Until 8.3 the same type was named at the project's earlier
+documentation address, which now redirects there; a Statement written by
+4.2 to 8.2.1 carries that name, and <code>velaris verify</code> (below) reads either
+as this type and refuses every other. Its subjects are the audited file and every file it imports,
+each by the sha256 of its bytes - a file of the standard library named
+<code>&lt;stdlib&gt;/NAME</code> - and its predicate is</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"producer": {"name": "velaris-lang", "uri": "https://github.com/gowrishankar-infra/velaris-lang"},
+ "specification": "velaris-spec 0.5",
+ "auditedAt": "2026-09-11T00:00:00Z",
+ "audit": { "...": "the velaris.audit/1 document of that file" }}</code></pre></div>
+<p>The audit is <code>audit()</code>'s output for those bytes, as it stands - effects,
+<code>fs_paths</code>, <code>net_hosts</code>, <code>ffi_modules</code>, <code>ffi_any</code>, <code>counts</code>,
+<code>proven_share</code>, <code>prover</code>, the Velaris version - so the Statement cannot
+say more than the audit, or differ from it. What the audit cannot
+determine it says in its own fields, and the Statement carries them: a
+module named while running is <code>ffi_any: true</code>, not a shorter list of
+modules; a path or URL built while running is <code>read_any</code>, <code>write_any</code>
+or <code>any</code>; a count the text does not fix is <code>null</code>; a program that does
+not compile is <code>ok: false</code> with its problems, <code>counts: null</code> and
+<code>prover: false</code>; and without a prover <code>prover</code> is <code>false</code>, so a
+<code>proven_share</code> of 0 is not read as proofs that failed. A file that
+changes while it is being attested is an error, not a Statement.</p>
+<p>A directory gives one Statement per <code>.vel</code> file, found as <code>velaris capabilities</code> finds them, one Statement to a line (JSON Lines), since
+the predicate type has one audit per Statement. An in-toto Bundle
+(<code>.intoto.jsonl</code>) is JSON Lines too, of signed envelopes: sign each line
+and write the envelopes one to a line to make one. <code>SOURCE_DATE_EPOCH</code>, when
+set, fixes <code>auditedAt</code>, so one commit gives the same bytes twice.
+<code>velaris.attest(path)</code> in the library returns the same Statements as a
+list.</p>
+<p><strong>Signing.</strong> Velaris writes the Statement and signs nothing. Signing it
+turns it into an attestation: a DSSE envelope over the Statement, in a
+Sigstore bundle.</p>
+<p>With cosign (v3), keyless - a browser sign-in on a workstation, the
+job's identity in CI:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>cosign attest-blob --yes --statement effects.intoto.json \
+    --bundle effects.intoto.sigstore.json
+cosign verify-blob-attestation --bundle effects.intoto.sigstore.json \
+    --type https://velaris-lang.dev/capability/v1 \
+    --certificate-identity you@example.com \
+    --certificate-oidc-issuer https://github.com/login/oauth \
+    examples/effects.vel</code></pre></div>
+<p>or with a key pair (<code>cosign generate-key-pair</code>):</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>cosign attest-blob --yes --key cosign.key --statement effects.intoto.json \
+    --bundle effects.intoto.sigstore.json
+cosign verify-blob-attestation --key cosign.pub --bundle effects.intoto.sigstore.json \
+    --type https://velaris-lang.dev/capability/v1 \
+    examples/effects.vel</code></pre></div>
+<p><code>verify-blob-attestation</code> checks that the file given is the Statement's
+subject by digest and that the predicate type is this one, and fails
+otherwise. Both forms record the signature in Sigstore's public
+transparency log unless a signing config says not to.</p>
+<p>With sigstore-python (4.x): its command line's <code>sigstore attest</code> takes
+only SLSA provenance predicates, so use its library - the same calls the
+release workflow makes:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>from sigstore.dsse import Statement
+from sigstore.models import ClientTrustConfig
+from sigstore.oidc import IdentityToken, Issuer, detect_credential
+from sigstore.sign import SigningContext
+
+statement = Statement(open("effects.intoto.json", "rb").read())
+trust = ClientTrustConfig.production()
+token = detect_credential()                 # the job's identity in CI,
+identity = (IdentityToken(token) if token   # else a browser sign-in
+            else Issuer(trust.signing_config.get_oidc_url()).identity_token())
+context = SigningContext.from_trust_config(trust)
+with context.signer(identity) as signer:
+    bundle = signer.sign_dsse(statement)
+open("effects.intoto.sigstore.json", "w").write(bundle.to_json())</code></pre></div>
+<p>and to verify, <code>Verifier.production().verify_dsse(bundle, Identity(identity=..., issuer=...))</code> returns the signed Statement, whose
+first subject's digest must then be the sha256 of the file.
+<code>sigstore sign effects.intoto.json</code> also works, and signs the Statement
+file as bytes rather than as a DSSE envelope, the way the release signs
+its other files.</p>
+<p>Every release carries one: <code>velaris-attestation-X.Y.Z.intoto.json</code> for
+<code>examples/effects.vel</code>, signed both ways by the release workflow's
+identity and verified in that workflow before it is attached
+(<a href="security.html">SECURITY.md</a>).</p>
+<p><strong>Verifying a Statement</strong> (8.3). <code>velaris verify</code> reads an attestation or a
+receipt - a Statement as <code>attest</code> or <code>--receipt</code> wrote it, the JSON Lines a
+directory gives, a DSSE envelope, or a Sigstore bundle holding one - and
+says whether its predicate type is one Velaris defines, whether its
+predicate has that type's shape, and whether each subject is the bytes on
+this disk:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris verify effects.intoto.json                   # beside examples/, as attested
+velaris verify effects.intoto.json --root checkout   # subjects read under checkout/
+velaris verify effects.intoto.sigstore.json \
+    --identity you@example.com --issuer https://github.com/login/oauth
+velaris verify effects.intoto.json --json            # velaris.verify/1</code></pre></div>
+<p>It exits 0 when the type is capability/v1 or receipt/v1, at velaris-lang.dev
+or where 8.2.1 and earlier named it, and every subject matches; 1 when the
+type is any other - <code>https://velaris.dev/capability/v1</code> among them - or the
+predicate has the wrong shape, or a subject's bytes differ; and 2 when it
+could not check: a file it cannot read as a Statement, a key written twice
+in one object (so two readers cannot see two different types), a subject
+that is missing, or whose name is absolute or leads outside <code>--root</code> (such a
+name is not read at all), or a signature it was not told how to check. A
+Sigstore bundle's signature is checked against <code>--identity</code> and <code>--issuer</code>
+with sigstore-python, if it is installed; a bare DSSE envelope's signature
+needs the key that made it, so check it with cosign and pass
+<code>--skip-signature</code>. An unsigned Statement verifies only as what it is: a
+claim anyone could write. <code>velaris verify</code> with no file is still the older
+spelling of <code>velaris deps --verify</code>. <code>velaris.verify/1</code> is provisional.</p>
+<h2 id="a-receipt-of-what-one-run-did-81">A receipt of what one run did (8.1) <a class="anchor" href="#a-receipt-of-what-one-run-did-81" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris examples/effects.vel \
+    --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand \
+    --receipt effects.receipt.json</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>result = velaris.run(source, allow={"io"})
+result.receipt               # the same Statement, as a dict</code></pre></div>
+<p>An attestation says what a program may do. A receipt says what one run of
+it did. It is an in-toto Statement of the predicate type
+<code>https://velaris-lang.dev/receipt/v1</code>
+(velaris-spec section 8.7), whose predicate is <code>velaris.receipt/1</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"_type": "https://in-toto.io/Statement/v1",
+ "subject": [{"name": "examples/effects.vel", "digest": {"sha256": "e483..."}}],
+ "predicateType": "https://velaris-lang.dev/receipt/v1",
+ "predicate": {
+   "schema": "velaris.receipt/1",
+   "producer": {"name": "velaris-lang", "version": "8.1.0", "uri": "..."},
+   "startedAt": "2026-09-14T09:12:03.418Z", "wall_time_ms": 41.7,
+   "budget": "clock,fs:read:/work/report.txt,fs:write:/work/report.txt,io,rand",
+   "run_parameters": {"seed": null, "freeze_time": null, "timeout": null,
+                      "max_memory_mb": null, "max_read_bytes": 67108864,
+                      "confinement": "none"},
+   "effects_used": {"clock": 1, "fs": 2, "io": 4, "rand": 1},
+   "refusals": [],
+   "declassifications": [],
+   "exit": {"status": 0, "outcome": "ok", "code": null},
+   "complete": true}}</code></pre></div>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Field</th><th>What it holds</th></tr></thead>
+<tbody>
+<tr><td><code>subject</code></td><td>the program by the sha256 of the text that ran - named as given, or <code>&lt;source&gt;</code> - then each file it imported: the subjects <code>velaris attest</code> writes for the same bytes, so an attestation and a receipt of one program match by digest</td></tr>
+<tr><td><code>budget</code></td><td>the budget the run had, in the budget grammar, paths absolute</td></tr>
+<tr><td><code>run_parameters</code></td><td><code>seed</code> and <code>freeze_time</code>; <code>timeout</code> and <code>max_memory_mb</code>, null when there were none; <code>max_read_bytes</code>; <code>confinement</code>, <code>"none"</code> when the budget was the only boundary</td></tr>
+<tr><td><code>effects_used</code></td><td>each effect and how many operations the budget let through; null when the run was killed before it could say</td></tr>
+<tr><td><code>refusals</code></td><td><code>{"code", "effect", "line", "stopped", "times"}</code> for each place the budget refused - <code>stopped</code> is false for a refused redirect, which the program is told about and may carry on from</td></tr>
+<tr><td><code>declassifications</code></td><td><code>{"reason", "line", "times"}</code> for each place the program declassified</td></tr>
+<tr><td><code>exit</code></td><td><code>status</code>, <code>outcome</code> - <code>ok</code>, <code>refused</code>, <code>failed</code>, <code>did_not_compile</code>, <code>timeout</code> or <code>out_of_memory</code> - and the <code>code</code> that ended the run</td></tr>
+<tr><td><code>complete</code></td><td>false when the run was stopped from outside: what is listed happened, and each <code>times</code> is at least that</td></tr>
+</tbody></table></div>
+<p><code>run()</code> and <code>Pool.run()</code> always return one. The HTTP door and the MCP
+server return one when a request says <code>"receipt": true</code>. A run the clock or
+the memory cap stopped has one too, marked <code>complete: false</code>, holding what
+its worker reported before it was killed.</p>
+<p><strong>What is never in a receipt</strong> is a value the program handled: not its
+output, input, arguments or environment; not an error message, which can
+quote one; not the path, host or module a refused operation named, which
+the program may have built from something it declassified; not a
+declassified value. A refusal is its code, its effect and its line, and a
+declassification is the reason written in the program. <strong>What is in it</strong>,
+and is the program's to choose, is everything that is not a value: its exit
+status, where it stopped, how often it did something, how long it took. A
+program that has declassified a value can choose those from it; do not
+grant <code>declassify</code> to code whose receipts you will share.</p>
+<p><strong>Signing and verifying</strong> is the attestation's recipe with the receipt's
+type:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>cosign attest-blob --yes --statement effects.receipt.json \
+    --bundle effects.receipt.sigstore.json
+cosign verify-blob-attestation --bundle effects.receipt.sigstore.json \
+    --type https://velaris-lang.dev/receipt/v1 \
+    --certificate-identity you@example.com \
+    --certificate-oidc-issuer https://github.com/login/oauth \
+    examples/effects.vel</code></pre></div>
+<p>or sigstore-python's <code>sign_dsse</code> and <code>Verifier.verify_dsse</code>, as shown for
+the attestation; <code>verify-blob-attestation</code> fails unless the file named is
+the receipt's first subject, by digest. Every release carries
+<code>velaris-receipt-X.Y.Z.intoto.json</code> for one run of <code>examples/effects.vel</code>,
+signed both ways and verified in the release workflow before it is attached
+(<a href="security.html">SECURITY.md</a>).</p>
+<p>A signed receipt says its signer ran this Velaris on these bytes, under
+this budget, and saw this run. It is no stronger than the machine it ran
+on, and it says nothing about any other run.</p>
+<h2 id="a-run-as-an-evaluation-harness-runs-it-83">A run as an evaluation harness runs it (8.3) <a class="anchor" href="#a-run-as-an-evaluation-harness-runs-it-83" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris eval task.vel --allow io,fs:read:data --receipt ../receipts/task.json
+velaris eval --confinement-probe</code></pre></div>
+<p><code>velaris eval</code> runs one program under a profile its command line cannot
+relax: no net, ffi or env; time and memory limits always; a stop from
+outside honoured and recorded; the worker confined where the operating
+system offers it, and the level in the receipt; and a receipt always,
+outside every grant or sent to a URL. <a href="eval.html">docs/eval.md</a> says
+exactly what it guarantees and what it does not.</p>
+<h2 id="a-receipt-compared-and-a-run-made-again-83">A receipt compared, and a run made again (8.3) <a class="anchor" href="#a-receipt-compared-and-a-run-made-again-83" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris receipts diff run.json --audit task.vel          # against the program's audit
+velaris receipts diff run.json --against receipts/       # against earlier runs of the same bytes
+velaris replay run.json --max-allow io,fs:read --expect-output run.out</code></pre></div>
+<p><code>velaris receipts diff</code> names what a run did that its program's audit
+does not say - an effect it used or was refused, a host, path or module its
+budget granted that the audit does not name, a declassification the audit
+does not record, a count past the audit's bound, bytes other than the
+audited ones - and, against earlier receipts of the same bytes, what is new:
+a host, a path, a module, a count above the earlier maximum, a first
+declassification. A receipt names no path or host a run reached, only what
+its budget granted, so that is what is compared. It exits 0 when nothing
+differs, 1 when something does, and 2 when it could not compare;
+<code>velaris.receipts-diff/1</code> is provisional.</p>
+<p><code>velaris replay</code> makes the run again from its receipt: each subject is read
+from disk under <code>--root</code>, held to its digest - a subject that is missing,
+different, or named by an absolute path or one that leaves the directory is
+refused before anything runs - and copied into a directory of its own, to
+which imports are held. The run gets the receipt's budget, no wider than
+<code>--max-allow</code> (<code>io</code> unless raised, since a receipt is text from somewhere
+else), its seed, frozen clock, time and memory limits, and eval's profile
+when the receipt says it ran under it. The new receipt is compared with the
+recorded one and every difference is named. A receipt holds no output or
+input: give the input again (<code>--stdin FILE</code>, and words after <code>--</code>), and the
+output with <code>--expect-output FILE</code> to have it compared.</p>
+<p>A program that calls tools reaches them through Python. <code>velaris program.vel --record-responses FILE</code> records what each <code>py</code>, <code>py_int</code>,
+<code>py_float</code> and <code>py_json</code> call gave back, in order, and <code>velaris replay --responses FILE</code> gives those back in place of calling Python - after the
+budget and the module grants are checked, as for any call. A call that is not
+the one recorded in its place stops the run with E616. Handles are not
+recorded, and a recording holds values the program handled, so keep it as
+you would its output.</p>
+<h2 id="promises-exercised-on-the-inputs-they-allow-83">Promises exercised on the inputs they allow (8.3) <a class="anchor" href="#promises-exercised-on-the-inputs-they-allow-83" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris test pricing.vel --from-contracts --count 20</code></pre></div>
+<p>For each function with a <code>requires</code>, the prover is asked for up to
+<code>--count</code> argument lists it allows - the least and greatest value of each
+whole number, text length and list length first - and the function is run
+on each, interpreted, so its <code>ensures</code> is checked every time it returns. A
+promise the prover proved holds already; this is for the ones it left to
+runtime. A function that declares an effect is not run, and what is run has
+no effect granted. A call that does not return within <code>--witness-seconds</code>
+is stopped and counted as a failure. It exits 1 when a witness breaks a
+promise, stops a call or does not finish, and 2 when nothing could be run;
+without the prover there are no witnesses.</p>
+<h2 id="what-a-policy-asks-of-it-81">What a policy asks of it (8.1) <a class="anchor" href="#what-a-policy-asks-of-it-81" aria-label="Link to this section">#</a></h2>
+<p>An attestation is worth what reads it. <a href="https://github.com/gowrishankar-infra/velaris-lang/tree/main/policies"><code>policies/</code></a> holds one
+policy, written for two engines.</p>
+<p><a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/policies/opa/capability.rego"><code>policies/opa/capability.rego</code></a> takes a
+capability Statement as its input and a platform's allow-lists as data,
+and answers with the reasons to refuse:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris attest agent.vel --output agent.intoto.json
+opa eval -d policies/opa/capability.rego -d platform.json \
+    -i agent.intoto.json 'data.velaris.capability.deny'</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"platform": {"effects": ["io", "net"],
+              "hosts": ["api.example.com", "*.cdn.example.net:443"]}}</code></pre></div>
+<p>An empty set admits the program. It refuses an effect outside <code>effects</code>
+and a host outside <code>hosts</code> - an entry without a port admits any port, and
+<code>*.example.com</code> admits one label in place of the star - and two things it
+cannot check: an audit whose program did not compile, and a host built
+while the program runs. <code>opa test policies/opa</code> runs its tests, which hold
+a pass and a fail; <code>conftest test agent.intoto.json -p policies/opa --namespace velaris.capability -d platform.json</code> asks the same in conftest.</p>
+<p><a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/policies/kyverno/require-capability-attestation.yaml"><code>policies/kyverno/require-capability-attestation.yaml</code></a>
+is its twin at admission: a Kyverno <code>ClusterPolicy</code> that refuses a Pod
+whose image lacks a capability attestation, verified by Kyverno's image
+verification against a keyless signer you name, with an audit that
+compiled. The attestation is attached to the image with cosign:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris attest agent.vel --json | jq .predicate &gt; capability.json
+cosign attest --yes \
+    --type https://velaris-lang.dev/capability/v1 \
+    --predicate capability.json registry.example.com/agents/agent@sha256:...</code></pre></div>
+<p>That Statement's subject is the image and its predicate is the program's
+audit. Kyverno asks that the image has one, signed by whom it should be;
+the OPA policy is where a platform asks what it says. The policy is a
+<code>kyverno.io/v1</code> <code>ClusterPolicy</code> with <code>verifyImages</code>, Kyverno's established
+image verification; Kyverno 1.19 loads it and warns that the kind is
+deprecated in favour of <code>ImageValidatingPolicy</code>.</p>
+<h2 id="ejecting-a-program-81">Ejecting a program (8.1) <a class="anchor" href="#ejecting-a-program-81" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris eject agent.vel -o agent-ejected
+python -I agent-ejected/main.py</code></pre></div>
+<p><code>velaris eject</code> writes a directory that runs, and builds into one
+executable, with nothing from this project installed: the program and its
+imports, a copy of the <code>velaris</code> package and of the standard library files it uses,
+<code>main.py</code> with the budget written into it (the audit's narrowest, or
+<code>--allow</code>), <code>requirements.txt</code> pinning the prover and the native compiler
+to the versions installed, <code>proofs.json</code>, <code>build.py</code> with the PyInstaller
+command, <code>SHA256SUMS</code> and a README. That README says what holds once
+ejected and what does not. In short:</p>
+<ul>
+<li><strong>The budget is enforced</strong> by the copied runtime, whatever the program
+says; <code>main.py</code> refuses <code>--allow</code> and <code>--deny</code>.</li>
+<li><strong>Changes are noticed.</strong> <code>main.py</code> holds the sha256 of the runtime and
+the program from eject time. A changed program runs only with
+<code>--changed-ok</code>; a changed runtime never runs.</li>
+<li><strong>A run cannot rewrite the next.</strong> <code>main.py</code> refuses a budget whose
+writes reach its own directory, or a directory Python imports from.</li>
+<li><strong>The proofs are a record</strong> of what this Velaris proved at eject time.
+Nothing trusts them when the program runs - with z3-solver installed each
+run proves again - and <code>main.py --prove</code> checks them again.</li>
+<li><strong>No fix arrives.</strong> The directory is the Velaris you ejected with; eject
+again to take a later one.</li>
+</ul>
+<h2 id="as-a-commit-hook">As a commit hook <a class="anchor" href="#as-a-commit-hook" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">YAML</span></div><pre tabindex="0"><code>repos:
+  - repo: https://github.com/gowrishankar-infra/velaris-lang
+    rev: v8.2.1
+    hooks:
+      - id: velaris-check      # it compiles, and the promises hold
+      - id: velaris-fmt        # canonically formatted
+      - id: velaris-proofs     # at least 80% proven, not just checked</code></pre></div>
+<h2 id="trying-it-with-nothing-installed">Trying it with nothing installed <a class="anchor" href="#trying-it-with-nothing-installed" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>pipx run --spec velaris-lang velaris hello.vel --allow io</code></pre></div>
+<p>Or open the <a href="playground.html">playground</a> -
+the real compiler, in a browser, nothing to install.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/EMBEDDING.md">EMBEDDING.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#three-calls">Three calls</a></li><li><a href="#limits-time-and-memory">Limits: time and memory</a><ul><li><a href="#checking-and-auditing-source-someone-else-wrote-81">Checking and auditing source someone else wrote (8.1)</a></li></ul></li><li><a href="#many-runs-a-pool">Many runs: a pool</a></li><li><a href="#a-platform-whose-customers-write-velaris">A platform whose customers write Velaris</a></li><li><a href="#what-run-guarantees">What run guarantees</a></li><li><a href="#the-audit-format">The audit format</a></li><li><a href="#setting-it-up-in-your-assistant">Setting it up in your assistant</a></li><li><a href="#as-an-mcp-server">As an MCP server</a><ul><li><a href="#what-can-connect-and-what-runs">What can connect, and what runs</a></li><li><a href="#checking-the-tools-against-the-signed-manifest">Checking the tools against the signed manifest</a></li></ul></li><li><a href="#vendored-libraries-and-velarislock">Vendored libraries, and velaris.lock</a></li><li><a href="#the-embedding-limit">The embedding limit</a></li><li><a href="#from-a-language-that-is-not-python">From a language that is not Python</a></li><li><a href="#the-invocation-log">The invocation log</a></li><li><a href="#from-javascript">From JavaScript</a></li><li><a href="#in-a-notebook">In a notebook</a></li><li><a href="#as-a-github-action">As a GitHub Action</a></li><li><a href="#holding-a-repository-to-its-capability-surface">Holding a repository to its capability surface</a></li><li><a href="#moving-a-4x-project-to-50">Moving a 4.x project to 5.0</a></li><li><a href="#running-velaris-specs-conformance-corpus">Running velaris-spec&#x27;s conformance corpus</a></li><li><a href="#an-in-toto-statement-of-what-a-program-may-do">An in-toto Statement of what a program may do</a></li><li><a href="#a-receipt-of-what-one-run-did-81">A receipt of what one run did (8.1)</a></li><li><a href="#a-run-as-an-evaluation-harness-runs-it-83">A run as an evaluation harness runs it (8.3)</a></li><li><a href="#a-receipt-compared-and-a-run-made-again-83">A receipt compared, and a run made again (8.3)</a></li><li><a href="#promises-exercised-on-the-inputs-they-allow-83">Promises exercised on the inputs they allow (8.3)</a></li><li><a href="#what-a-policy-asks-of-it-81">What a policy asks of it (8.1)</a></li><li><a href="#ejecting-a-program-81">Ejecting a program (8.1)</a></li><li><a href="#as-a-commit-hook">As a commit hook</a></li><li><a href="#trying-it-with-nothing-installed">Trying it with nothing installed</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

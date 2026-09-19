@@ -1,204 +1,115 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Velaris - the language where you can
-trust code you didn't write. Effects, failure, and Z3-proven contracts,
-all in the signature.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a7d5a'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
-<title>capability/v1 predicate type - Velaris</title>
-<style>
-:root { --paper:#ffffff; --alt:#f6f7f8; --line:#e6e8eb; --ink:#0b1215;
-        --mut:#57606a; --brand:#0a7d5a; --brand2:#075e44;
-        --term:#101418; --term-ink:#e6edf3; --term-mut:#8b949e;
-        --err:#e5484d; --mint:#7ee2c0; }
-* { box-sizing:border-box; margin:0; }
-html { scroll-behavior:smooth; }
-body { background:var(--paper); color:var(--ink); font:clamp(15px,0.5vw + 11px,18px)/1.65
-  -apple-system,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
-  -webkit-font-smoothing:antialiased; }
-nav { position:sticky; top:0; background:rgba(255,255,255,.86);
-  backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
-  z-index:10; }
-nav .in { max-width:clamp(900px,86vw,1480px); margin:0 auto;
-  padding:12px clamp(14px,3vw,24px); display:flex;
-  gap:clamp(13px,2.4vw,26px); align-items:center; flex-wrap:wrap; }
-.brand { font-weight:700; font-size:17px; letter-spacing:-.02em;
-  color:var(--ink); text-decoration:none; display:flex; gap:8px;
-  align-items:center; }
-.dot { width:9px; height:9px; border-radius:50%;
-  background:var(--brand); display:inline-block; }
-nav a { color:var(--mut); text-decoration:none; font-size:14.5px;
-  font-weight:500; }
-nav a:hover, nav a.here { color:var(--ink); }
-nav .ver { margin-left:auto; font-size:12.5px; color:var(--mut);
-  border:1px solid var(--line); border-radius:99px; padding:3px 11px; }
-main { max-width:clamp(760px,74vw,1240px); margin:0 auto;
-  padding:clamp(28px,5vw,56px) clamp(16px,4vw,32px) 110px;
-  overflow-wrap:break-word; }
-main.wide { max-width:clamp(900px,86vw,1480px); }
-h1 { font-size:clamp(32px,2.6vw + 14px,58px); letter-spacing:-.03em;
-  line-height:1.12; font-weight:750; }
-h2 { font-size:clamp(20px,1.2vw + 12px,30px); letter-spacing:-.02em;
-  margin:2.2em 0 .7em; font-weight:700; }
-h3 { font-size:18px; margin:1.6em 0 .5em; font-weight:650; }
-p, li { color:#2a3138; }
-p { margin:.85em 0; }
-.lead { font-size:clamp(16.5px,0.8vw + 10px,22px); color:var(--mut);
-  max-width:52ch; }
-a { color:var(--brand); text-decoration:none; }
-a:hover { text-decoration:underline; }
-code { background:var(--alt); border:1px solid var(--line);
-  padding:1.5px 6px; border-radius:6px;
-  font:13px ui-monospace,"SF Mono",Consolas,monospace; }
-pre { background:var(--term); color:var(--term-ink); border-radius:12px;
-  padding:clamp(13px,2.5vw,18px) clamp(14px,3vw,20px); overflow-x:auto;
-  margin:1.2em 0; -webkit-overflow-scrolling:touch;
-  font:clamp(12px,0.5vw + 8px,15px)/1.6 ui-monospace,"SF Mono",Consolas,
-  monospace; }
-pre code { background:none; border:none; padding:0; color:inherit;
-  font:inherit; }
-.k { color:var(--mint); } .e { color:#ff8f8f; } .m { color:var(--term-mut); }
-.btns { display:flex; gap:12px; margin:26px 0 8px; flex-wrap:wrap; }
-.btn { background:var(--ink); color:#fff; padding:11px 22px;
-  border-radius:9px; font-weight:600; font-size:15px; }
-.btn:hover { background:#22292f; text-decoration:none; }
-.btn.ghost { background:transparent; color:var(--ink);
-  border:1px solid var(--line); }
-.btn.ghost:hover { border-color:#c7ccd1; }
-.hero { padding:clamp(36px,8vw,74px) 0 20px; }
-@media (max-width:560px) {
-  .btns { flex-direction:column; }
-  .btn { text-align:center; }
-  nav .ver { display:none; }
-  .fnrow .sig { font-size:12.5px; }
-}
-.eyebrow { color:var(--brand); font-weight:650; font-size:13.5px;
-  letter-spacing:.06em; text-transform:uppercase; margin-bottom:14px; }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,
-  minmax(clamp(230px,22vw,300px),1fr)); gap:16px; margin:34px 0; }
-.card { border:1px solid var(--line); border-radius:14px;
-  padding:20px 22px; background:var(--paper); }
-.card b { font-size:clamp(15px,0.4vw + 10px,17.5px); letter-spacing:-.01em; }
-.card p { font-size:clamp(13.5px,0.4vw + 9px,16px); color:var(--mut); margin:.5em 0 0; }
-.sig { color:var(--ink); font:clamp(13px,0.45vw + 9px,15.5px) ui-monospace,"SF Mono",Consolas,
-  monospace; font-weight:600; }
-.contract { color:var(--brand); font:clamp(12px,0.4vw + 8px,14.5px) ui-monospace,"SF Mono",
-  Consolas,monospace; margin:5px 0 0 20px; }
-.fnrow { border:1px solid var(--line); border-radius:12px;
-  padding:15px 18px; margin:11px 0; }
-table { border-collapse:collapse; width:100%; margin:1.2em 0;
-  font-size:clamp(13px,0.5vw + 9px,16px); display:block; overflow-x:auto;
-  -webkit-overflow-scrolling:touch; white-space:nowrap; }
-table tr td:last-child { white-space:normal; min-width:220px; }
-td, th { border-bottom:1px solid var(--line); padding:9px 12px;
-  text-align:left; vertical-align:top; }
-th { color:var(--mut); font-weight:600; font-size:13px;
-  text-transform:uppercase; letter-spacing:.05em; }
-.ecode { color:var(--err); font-weight:650;
-  font-family:ui-monospace,Consolas,monospace; font-size:13px; }
-.strip { background:var(--alt); border-top:1px solid var(--line);
-  border-bottom:1px solid var(--line);
-  margin:44px calc(-1 * clamp(16px,4vw,24px));
-  padding:30px clamp(16px,4vw,24px); }
-footer { border-top:1px solid var(--line); color:var(--mut);
-  font-size:13.5px; padding:26px 24px; text-align:center; }
-</style></head><body>
-<nav><div class="in"><a class="brand" href="../../index.html">
-<span class="dot"></span>Velaris</a><a href="../../index.html" class="">Home</a><a href="../../tutorial.html" class="">Tutorial</a><a href="../../spec.html" class="">Reference</a><a href="../../library.html" class="">Library</a><a href="../../errors.html" class="">Errors</a><a href="../../floats.html" class="">Floats</a><a href="../../playground.html" class="">Playground</a>
-<span class="ver">v8.3.0</span></div></nav>
-<main class="">
-<div class="eyebrow">An in-toto predicate type</div>
-<h1>capability/v1</h1>
-<p class="lead">A signed statement that a named tool read these Velaris
-source files, byte for byte, and reports this capability surface: the
-effects the program declares, the paths, hosts and modules it names,
-and the narrowest budget to run it under.</p>
-
-<p><b>Predicate type:</b> <code>https://velaris-lang.dev/capability/v1</code> - this
-page.<br><b>Also read as this type:</b> <code>https://gowrishankar-infra.github.io/velaris-lang/capability/v1</code>,
-the name Statements written by velaris-lang 4.2 to 8.2.1 carry; that address
-redirects here.<br><b>Schema:</b> <a href="schema.json">schema.json</a>, JSON Schema
-draft 2020-12, for the predicate.<br><b>Definition:</b>
-<a href="https://github.com/gowrishankar-infra/velaris-spec/blob/main/SPEC.md#85-the-audit-as-an-in-toto-predicate">velaris-spec
-SPEC.md section 8.5</a>, dedicated to the public domain under CC0.</p>
-
-<h2>What it is</h2>
-<p>A <code>velaris.audit/1</code> document (velaris-spec section 8) names
-no file and carries no signature. This predicate type puts one inside an
-<a href="https://github.com/in-toto/attestation">in-toto Statement v1</a>,
-whose subjects are the files audited, identified by digest, so that a
-signed Statement says which source the audit describes, and who says
-so.</p>
-
-<pre><code>{
-  &quot;_type&quot;: &quot;https://in-toto.io/Statement/v1&quot;,
-  &quot;subject&quot;: [
-    {&quot;name&quot;: &quot;examples/effects.vel&quot;,
-     &quot;digest&quot;: {&quot;sha256&quot;: &quot;e483365ce74a20770a1ef503f185f4de2c16b0524797408784a235e78b6baafb&quot;}}
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>capability/v1 predicate type - Velaris 8.3.1</title>
+<meta name="description" content="An in-toto predicate type.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/capability/v1/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="../../index.html">Velaris</a>
+<a class="badge" href="../../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="../../index.html">Start here</a>
+</li>
+<li><a href="../../tutorial.html">Tutorial</a>
+<ul><li><a href="../../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="../../spec.html">Language reference</a>
+<ul><li><a href="../../llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="../../library.html">Standard library</a>
+</li>
+<li><a href="../../errors.html">Errors</a>
+</li>
+<li><a href="../../floats.html">Floats</a>
+</li>
+<li><a href="../../threat-model.html">Threat model</a>
+<ul><li><a href="../../eval.html">velaris eval</a></li><li><a href="../../structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="../../crosswalk.html">Crosswalk</a></li><li><a href="../../security.html">Security policy</a></li></ul>
+</li>
+<li><a href="../../embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="../../stability.html">Stability</a></li><li><a href="index.html" aria-current="page">capability/v1</a></li><li><a href="../../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="../../changelog.html">Changelog</a>
+<ul><li><a href="../../changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="../../changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="../../changelog-7.html">7.x</a></li><li><a href="../../changelog-6.html">6.x</a></li><li><a href="../../changelog-5.html">5.x</a></li><li><a href="../../changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="../../changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="../../changelog-3.html">3.x</a></li><li><a href="../../changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="../../changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="../../changelog-1.html">1.x</a></li><li><a href="../../changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<p class="lead">An in-toto predicate type.</p>
+<h1 id="capabilityv1">capability/v1</h1>
+<p>A signed statement that a named tool read these Velaris source files, byte for byte, and reports this capability surface: the effects the program declares, the paths, hosts and modules it names, and the narrowest budget to run it under.</p>
+<p><strong>Predicate type:</strong> <code>https://velaris-lang.dev/capability/v1</code> - this page.</p>
+<p><strong>Also read as this type:</strong> <code>https://gowrishankar-infra.github.io/velaris-lang/capability/v1</code>, the name Statements written by velaris-lang 4.2 to 8.2.1 carry; that address redirects here.</p>
+<p><strong>Schema:</strong> <a href="schema.json">schema.json</a>, JSON Schema draft 2020-12, for the predicate. <strong>Definition:</strong> <a href="https://github.com/gowrishankar-infra/velaris-spec/blob/main/SPEC.md#85-the-audit-as-an-in-toto-predicate">velaris-spec SPEC.md section 8.5</a>, dedicated to the public domain under CC0.</p>
+<h2 id="what-it-is">What it is <a class="anchor" href="#what-it-is" aria-label="Link to this section">#</a></h2>
+<p>A <code>velaris.audit/1</code> document (velaris-spec section 8) names no file and carries no signature. This predicate type puts one inside an <a href="https://github.com/in-toto/attestation">in-toto Statement v1</a>, whose subjects are the files audited, identified by digest, so that a signed Statement says which source the audit describes, and who says so.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {"name": "examples/effects.vel",
+     "digest": {"sha256": "e483365ce74a20770a1ef503f185f4de2c16b0524797408784a235e78b6baafb"}}
   ],
-  &quot;predicateType&quot;: &quot;https://velaris-lang.dev/capability/v1&quot;,
-  &quot;predicate&quot;: {
-    &quot;producer&quot;: {&quot;name&quot;: &quot;velaris-lang&quot;,
-                 &quot;uri&quot;: &quot;https://github.com/gowrishankar-infra/velaris-lang&quot;},
-    &quot;specification&quot;: &quot;velaris-spec 0.11.0&quot;,
-    &quot;auditedAt&quot;: &quot;2026-09-11T00:00:00Z&quot;,
-    &quot;audit&quot;: {&quot;schema&quot;: &quot;velaris.audit/1&quot;, &quot;velaris_version&quot;: &quot;8.3.0&quot;,
-              &quot;ok&quot;: true, &quot;effects&quot;: [&quot;clock&quot;, &quot;fs&quot;, &quot;io&quot;, &quot;rand&quot;],
-              &quot;safe_command&quot;: &quot;velaris &lt;file&gt; --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand&quot;,
-              &quot;counts&quot;: {&quot;fs&quot;: 2, &quot;net&quot;: 0}, &quot;prover&quot;: true,
-              &quot;...&quot;: &quot;the rest of the audit&quot;}
+  "predicateType": "https://velaris-lang.dev/capability/v1",
+  "predicate": {
+    "producer": {"name": "velaris-lang",
+                 "uri": "https://github.com/gowrishankar-infra/velaris-lang"},
+    "specification": "velaris-spec 0.11.0",
+    "auditedAt": "2026-09-11T00:00:00Z",
+    "audit": {"schema": "velaris.audit/1", "velaris_version": "8.3.1",
+              "ok": true, "effects": ["clock", "fs", "io", "rand"],
+              "safe_command": "velaris &lt;file&gt; --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand",
+              "counts": {"fs": 2, "net": 0}, "prover": true,
+              "...": "the rest of the audit"}
   }
-}</code></pre>
-
-<h2>Fields</h2>
-<table>
-<tr><th>Field</th><th>Required</th><th>Meaning</th></tr>
-<tr><td><code>subject[0]</code></td><td>yes</td><td>the file audited:
-<code>name</code>, its path as the producer was given it,
-<code>/</code>-separated; <code>digest.sha256</code> of its bytes. The files
-it imports should follow, one subject each.</td></tr>
-<tr><td><code>predicate.audit</code></td><td>yes</td><td>a
-<code>velaris.audit/1</code> document produced from exactly the bytes the
-subjects name</td></tr>
-<tr><td><code>predicate.producer</code></td><td>yes</td><td><code>name</code>
-of the implementation that wrote the audit, and optionally
-<code>uri</code>; its version is the audit's
-<code>velaris_version</code></td></tr>
-<tr><td><code>predicate.specification</code></td><td>no</td><td>the
-velaris-spec version followed, as <code>velaris-spec 0.11.0</code></td></tr>
-<tr><td><code>predicate.auditedAt</code></td><td>no</td><td>when the audit
-was made, RFC 3339 in UTC, by the producer's clock</td></tr>
-<tr><td><code>predicate.conformance</code></td><td>no</td><td>the
-conformance levels the producer claims (velaris-spec CONFORMANCE.md) and
-the corpus it ran - a claim, not evidence</td></tr>
-</table>
-
-<h2>Parsing rules</h2>
-<p>In-toto's standard parsing rules apply. Ignore any field you do not
-know, in the predicate and in the audit. Fields may be added within v1; a
-change of meaning is a new type, <code>.../capability/v2</code>. Check
-that the first subject's digest is the digest of the file you mean to
-trust.</p>
-
-<h2>What it does not say</h2>
-<p>That the audit is right, that the program is safe to run, or that any
-runtime will enforce the budget in <code>safe_command</code>. When
-<code>audit.ok</code> is false, it says nothing about what the program may
-do. It says that the signer ran the producer on these bytes and got this
-audit.</p>
-
-<h2>A producer</h2>
+}</code></pre></div>
+<h2 id="fields">Fields <a class="anchor" href="#fields" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Field</th><th>Required</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>subject[0]</code></td><td>yes</td><td>the file audited: <code>name</code>, its path as the producer was given it, <code>/</code>-separated; <code>digest.sha256</code> of its bytes. The files it imports should follow, one subject each.</td></tr>
+<tr><td><code>predicate.audit</code></td><td>yes</td><td>a <code>velaris.audit/1</code> document produced from exactly the bytes the subjects name</td></tr>
+<tr><td><code>predicate.producer</code></td><td>yes</td><td><code>name</code> of the implementation that wrote the audit, and optionally <code>uri</code>; its version is the audit's <code>velaris_version</code></td></tr>
+<tr><td><code>predicate.specification</code></td><td>no</td><td>the velaris-spec version followed, as <code>velaris-spec 0.11.0</code></td></tr>
+<tr><td><code>predicate.auditedAt</code></td><td>no</td><td>when the audit was made, RFC 3339 in UTC, by the producer's clock</td></tr>
+<tr><td><code>predicate.conformance</code></td><td>no</td><td>the conformance levels the producer claims (velaris-spec CONFORMANCE.md) and the corpus it ran - a claim, not evidence</td></tr>
+</tbody></table></div>
+<h2 id="parsing-rules">Parsing rules <a class="anchor" href="#parsing-rules" aria-label="Link to this section">#</a></h2>
+<p>In-toto's standard parsing rules apply. Ignore any field you do not know, in the predicate and in the audit. Fields may be added within v1; a change of meaning is a new type, <code>.../capability/v2</code>. Check that the first subject's digest is the digest of the file you mean to trust.</p>
+<h2 id="what-it-does-not-say">What it does not say <a class="anchor" href="#what-it-does-not-say" aria-label="Link to this section">#</a></h2>
+<p>That the audit is right, that the program is safe to run, or that any runtime will enforce the budget in <code>safe_command</code>. When <code>audit.ok</code> is false, it says nothing about what the program may do. It says that the signer ran the producer on these bytes and got this audit.</p>
+<h2 id="a-producer">A producer <a class="anchor" href="#a-producer" aria-label="Link to this section">#</a></h2>
 <p>velaris-lang writes Statements of this type, from 4.2:</p>
-<pre><code>velaris attest program.vel --output program.intoto.json</code></pre>
-<p>It signs none; cosign (<code>cosign attest-blob --statement</code>)
-and sigstore-python sign them, as
-<a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/EMBEDDING.md">EMBEDDING.md</a>
-shows. Every release of velaris-lang carries one for an example program,
-signed by its release workflow and verified there;
-<a href="https://github.com/gowrishankar-infra/velaris-spec/blob/main/examples/capability-statement.json">velaris-spec's
-example</a> was written by <code>velaris attest</code>.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris attest program.vel --output program.intoto.json</code></pre></div>
+<p>It signs none; cosign (<code>cosign attest-blob --statement</code>) and sigstore-python sign them, as <a href="../../embedding.html">EMBEDDING.md</a> shows. Every release of velaris-lang carries one for an example program, signed by its release workflow and verified there; <a href="https://github.com/gowrishankar-infra/velaris-spec/blob/main/examples/capability-statement.json">velaris-spec's example</a> was written by <code>velaris attest</code>.</p>
 </main>
-<footer>Velaris is MIT-licensed open source &middot;
-<a href="https://github.com/gowrishankar-infra/velaris-lang">GitHub</a>
-&middot; <a href="https://github.com/gowrishankar-infra/velaris-lang/issues">Issues</a></footer>
-</body></html>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/build_docs.py">build_docs.py</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#what-it-is">What it is</a></li><li><a href="#fields">Fields</a></li><li><a href="#parsing-rules">Parsing rules</a></li><li><a href="#what-it-does-not-say">What it does not say</a></li><li><a href="#a-producer">A producer</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 4.x: 4.4 to 4.2.1 - Velaris 8.3.1</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog-4-1.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html" aria-current="page">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 4.x: 4.4 to 4.2.1</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="44---a-platform-that-lets-its-customers-write-code-it-can-audit">4.4 - A platform that lets its customers write code it can audit <a class="anchor" href="#44---a-platform-that-lets-its-customers-write-code-it-can-audit" aria-label="Link to this section">#</a></h2>
+<p>A minor version. Every program that compiled under 4.3.4 compiles, runs
+and means the same; nothing is added to the language, the capability
+surface or any document format. What is added is an example: the pattern
+a SaaS team would copy to let its own customers write Velaris.</p>
+<p><strong><code>examples/platform/</code> is that pattern in one file.</strong> A small FastAPI
+service, under 200 lines, with three endpoints. <code>POST /scripts</code> takes a
+customer's source, audits it, stores it with its capability surface and
+answers with what it declares - the effects it may perform transitively,
+the hosts and paths it names, the Python modules it reaches, the most
+file and network operations one run can make, its proven share, its
+contracts function by function, and the narrowest budget that would run
+it. It does not run it. <code>GET /scripts/{id}</code> is that declaration again,
+as a customer would be shown it before enabling anything. <code>POST /scripts/{id}/run</code> runs it on a <code>velaris.Pool</code> whose budget is the
+platform's, and answers with the output, or what the budget refused, or
+which limit stopped it.</p>
+<p><strong>A surface wider than the platform permits is refused at submission.</strong>
+The service holds what the audit derived against one budget constant
+with <code>Budget.covers</code>, which names the first thing that does not fit, and
+the refusal carries the grants an operator would have to add. A script
+that reads a file is refused with <code>would_need_granting: ["fs:read"]</code>. A
+script that builds its host while running is refused too, because the
+audit cannot read a value the text does not fix and says plain <code>net</code>
+rather than guessing - where the same program with the host written out
+is accepted as <code>net:api.example.com</code>. The gate compares what a script
+may touch and not how much of it: an audit bounds operations only where
+the text fixes them, and the count is the pool's to hold either way.</p>
+<p><strong>The pool does not depend on the gate having been right.</strong> They are
+separate guards, and the example is written so that is visible: the
+budget is parsed once when the pool is made, <code>pool.run</code> takes no <code>allow</code>
+argument, each worker installs the budget before the program is read,
+and a refusal cannot be caught. <code>check_platform.py</code> puts a script
+straight into the store, past submission entirely, and asserts the run
+is still refused with E310. A bug in a platform's gate is not a bug in
+its containment, and that is the property worth copying.</p>
+<p><strong>The worked example is the proven discount.</strong> Submitting
+<code>examples/discount.vel</code> answers <code>"proven_share": 100.0</code> with <code>"status": "proven"</code> on every promise, including the two a platform taking the
+payment cares about: the discount is never a surcharge, and what is left
+after it is never negative, for every basket and every rule the types
+allow. <code>examples/discount_bad.vel</code> - the same rule with one guard
+deleted - never reaches storage: submission answers E700 with the basket
+and rule that break it. No sandbox can produce either answer, and it is
+the answer a platform needs before it offers to enable a rule it did not
+write.</p>
+<p><strong>fastapi is a dependency of the example, never of Velaris.</strong> It is not
+in <code>[project.dependencies]</code> and the wheel does not ship <code>examples/</code>. It
+joins <code>jsonschema</code> in the <code>[test]</code> extra, which exists so the suites can
+run, and <code>check_platform.py</code> skips cleanly when it is absent.</p>
+<p><strong><code>velaris</code> with no arguments reports the version it is.</strong> It prints the
+module docstring, whose first line named a version - and that line had
+said <code>Velaris v2.36</code> since the docstring was written, so every reader
+since has been told they were running a compiler two major versions old.
+The docstring now carries no version of its own and the running version
+is filled in when it is printed, which cannot go stale. <code>run_tests.py</code>
+checks that line against <code>VERSION</code> like every other place a version
+lives, and now checks the MCP registry manifest as well - it carries the
+version three times, its own and one per package, and all three are
+published, and until now nothing held them to the compiler.</p>
+<h2 id="434---the-npm-wrapper-picks-the-right-python-and-says-when-it-cannot">4.3.4 - The npm wrapper picks the right Python, and says when it cannot <a class="anchor" href="#434---the-npm-wrapper-picks-the-right-python-and-says-when-it-cannot" aria-label="Link to this section">#</a></h2>
+<p>A patch version. Every program that compiled under 4.3.3 compiles, runs
+and means the same; nothing is added to the language, the capability
+surface or any document format. What changes is how the npm package
+decides which Python holds the compiler, and what it tells you when the
+one it found is not the one you meant.</p>
+<p><strong>The wrapper takes the newest Velaris it finds, not the first.</strong> It
+tries <code>py</code>, <code>python</code> and <code>python3</code> in that order on Windows, <code>python3</code>
+then <code>python</code> elsewhere, and until now it took the first of them that
+could import <code>velaris</code> at all - whatever version that one held. So an
+old install earlier in the order silently shadowed a newer one further
+down, and every run went to the old compiler. That is how <code>npx velaris-lang mcp</code> failed on the maintainer's machine the day 4.3.3 went
+out. Each candidate is now asked for <code>velaris.VERSION</code> rather than merely
+whether the import works, and the newest answer wins. <code>velaris.VERSION</code>
+has been there since 1.0, so every real compiler answers; something
+importable as <code>velaris</code> that is not one is still used if it is the only
+candidate, but ranks below every version that can be read, so it cannot
+shadow a real install by being earlier in the order.</p>
+<p><strong>A compiler older than the package is never used silently.</strong> If the
+newest Velaris found is still older than the npm package that invoked
+it, the wrapper runs it - refusing would help nobody - but first prints
+one line to stderr naming both versions and the interpreter the compiler
+came from. The interpreter is the part worth printing: when two Pythons
+each have a Velaris, knowing which file was imported is the difference
+between a five-minute fix and a mystery. Nothing else about the run
+changes, and stdout is untouched, so a script reading the wrapper's
+output still reads only the compiler's.</p>
+<p><strong>A subcommand the compiler is too old to have is named as missing.</strong>
+<code>velaris mcp</code> arrived in 4.3.3. Handed to a compiler older than that, it
+is not a subcommand at all, so the compiler took it for a file name and
+said <code>cannot find file 'mcp'</code> - true, and no help to anyone. The wrapper
+now carries the version each subcommand first shipped in, and when the
+compiler it found is older than that, it says so instead of handing the
+command over: which command, which version it arrived in, which
+interpreter holds which older version. It stops before running, so there
+is one message rather than two. A global flag before the subcommand,
+such as <code>--proof-timeout 300</code>, does not hide it; an argument that is not
+a subcommand, such as a file name, is left alone. <code>check_library.py</code>
+holds the table to the compiler's own dispatch in both directions, so a
+subcommand cannot be added to the language without an entry, and the
+table cannot claim one the compiler lacks.</p>
+<p><strong>The Node library chooses the same way.</strong> <code>findPython</code> in
+<code>npm/index.js</code> had the same flaw, and it mattered more there: one stale
+choice is cached for the life of the process, so every <code>check</code>, <code>audit</code>
+and <code>run</code> through the module answered with a version the caller did not
+ask for. It now shares the probing with the command line - both import
+<code>npm/python.js</code> - and prints the same line, once per process rather than
+once per call. When no candidate has Velaris at all, both say what they
+said before: <code>pip install velaris-lang</code>.</p>
+<p><strong>The arXiv package is level with the paper again.</strong> <code>paper/velaris.md</code>
+gained a paragraph in the reproducibility section saying which two tags
+the paper describes; <code>paper/arxiv/velaris.tex</code> is pandoc output and is
+regenerated rather than edited, so it was left one paragraph behind
+until pandoc was available. It has been regenerated with the command in
+<code>paper/arxiv/README-for-me.txt</code> and rebuilt the way arXiv builds it. The
+paper still describes Velaris 4.2.1 and velaris-spec 0.5.1; that pin is
+unchanged.</p>
+<h2 id="433---velaris-mcp-so-the-npm-package-can-start-the-server-too">4.3.3 - velaris mcp, so the npm package can start the server too <a class="anchor" href="#433---velaris-mcp-so-the-npm-package-can-start-the-server-too" aria-label="Link to this section">#</a></h2>
+<p>A patch version. Every program that compiled under 4.3.2 compiles, runs
+and means the same; nothing is added to the language, the capability
+surface or any document format. One subcommand is added, and it is an
+alias.</p>
+<p><strong><code>velaris mcp</code> starts the MCP server.</strong> Until now the only way in was
+<code>python -m velaris_mcp</code>, which an MCP client can only use if it knows
+where the module sits. <code>velaris mcp</code> reaches the same server through
+the console script, and because the npm wrapper passes its arguments
+straight to <code>python -m velaris</code>, <code>npx velaris-lang mcp</code> reaches it too.</p>
+<p>It is a thin alias and deliberately nothing more: it hands
+<code>velaris_mcp.main</code> the arguments after <code>mcp</code> and returns what it
+returns. The flags, the four tools, the <code>--max-allow</code> ceiling, the
+timeout and memory ceilings and the invocation log are the server's,
+parsed by the server; there is no second copy of any of them here, and
+an unknown flag produces the server's own usage message. The one place
+the alias is not transparent is <code>--max-memory-mb</code>, which for <code>mcp</code> -
+as for <code>serve</code> - is the most each run may have and not a cap on the
+server process, so it is excluded from the early self-cap the way
+<code>serve</code> already was. <code>check_library.py</code> pins both halves: that
+<code>velaris mcp</code> answers <code>initialize</code> byte for byte as <code>python -m velaris_mcp</code> does, and that a bad flag stops it with the server's
+message.</p>
+<p><strong>The MCP registry entry now declares the npm package.</strong> With
+<code>velaris mcp</code> in place, <code>npx velaris-lang mcp</code> genuinely starts an MCP
+server, so <code>integrations/mcp_registry/server.json</code> declares the npm
+package beside the PyPI one, and <code>npm/package.json</code> carries the
+<code>mcpName</code> the registry checks for npm ownership. It was left out of
+4.3.2 on purpose, because until this version the npm package could not
+start a server and declaring it would have handed clients a launch
+command that started the language CLI instead.</p>
+<p>Worth knowing before you rely on it: the npm package is a wrapper, not
+a copy. It finds a Python that can import <code>velaris</code> and calls it, so
+<code>npx velaris-lang mcp</code> still needs <code>pip install velaris-lang</code>, and if
+the Python it finds holds an older Velaris than the wrapper, the
+subcommand will not be there. That is how the wrapper has always
+chosen a Python and this version does not change it.</p>
+<h2 id="432---the-cards-true-size-and-a-registry-manifest-on-the-current-schema">4.3.2 - The card's true size, and a registry manifest on the current schema <a class="anchor" href="#432---the-cards-true-size-and-a-registry-manifest-on-the-current-schema" aria-label="Link to this section">#</a></h2>
+<p>A patch version. Every program that compiled under 4.3.1 compiles, runs
+and means the same; nothing is added to the language, the capability
+surface or any document format. Three documents were wrong about a
+number, and one integration file was written against a schema that has
+since been replaced.</p>
+<p><strong>The language card is 3,682 words, and now says so.</strong> Eight places
+described its size and none of them were right: <code>README.md</code> said 3,300
+words in two places, and <code>EMBEDDING.md</code>, <code>velaris_mcp.py</code> (twice),
+<code>mcpb/manifest.json</code> and the CrewAI and LangChain tool descriptions all
+said about 2,300. The card is generated from <code>LLM.md</code>, which has grown
+with the language - <code>Money of CUR</code> arrived in 4.3 - and the figures were
+last touched when it was smaller. Measured from <code>velaris card</code> output:
+3,682 words in all, 2,537 outside the code blocks. Every one of those
+places now says about 3,700. This matters more than a documentation
+nit, because two of them are tool descriptions a model reads when
+deciding whether to fetch the card at all.</p>
+<p><strong>The MCP registry manifest is on the registry's current schema.</strong>
+<code>integrations/mcp_registry/server.json</code> was written against
+<code>2025-07-09</code>, which the registry has replaced with <code>2025-12-11</code>. Five
+fields were renamed under it - <code>version_detail.version</code> to <code>version</code>,
+<code>registry_name</code> to <code>registryType</code>, a package's <code>name</code> to <code>identifier</code>,
+<code>runtime_hint</code> to <code>runtimeHint</code> and <code>package_arguments</code> to
+<code>runtimeArguments</code> - a <code>transport</code> object became required, and
+<code>description</code> is now capped at 100 characters, which the old one
+exceeded at 167. The file is now validated against the published schema
+rather than by eye.</p>
+<p><strong>A <code>mcp-name:</code> marker in <code>README.md</code>.</strong> The registry proves that a
+PyPI package and the server entry claiming it have the same owner by
+looking for <code>mcp-name: &lt;server name&gt;</code> in the package's description -
+which is this README, as published to PyPI. Without it the registry
+refuses the entry. It is an HTML comment at the top of the file, so
+nothing renders, and there is a note beside it saying what removing it
+would break.</p>
+<p><strong>The npm package says what the compiler is.</strong> <code>npx velaris-lang</code>
+without <code>pip install velaris-lang</code> fell back to a fully interpreted run
+with no prover and said so in one line that was easy to miss, so anyone
+arriving through npm got the slow path and no proofs without knowing
+there was another. <code>npm/README.md</code> now has a section on it: the
+compiler is a Python package, <code>pip install "velaris-lang[full]"</code> adds
+z3 and llvmlite, and what each of those buys.</p>
+<h2 id="431---a-discount-that-cannot-go-negative-and-a-timeout-that-says-it-timed-out">4.3.1 - A discount that cannot go negative, and a timeout that says it timed out <a class="anchor" href="#431---a-discount-that-cannot-go-negative-and-a-timeout-that-says-it-timed-out" aria-label="Link to this section">#</a></h2>
+<p>A patch version. Every program that compiled under 4.3.0 compiles, runs
+and means the same; nothing is added to the language, the capability
+surface or any document format.</p>
+<p><strong>A proof that runs out of time now says it ran out of time.</strong> This is
+the part that mattered. Z3 answers <code>unknown</code> for two unrelated reasons:
+the question is outside what it decides, or the clock ran out. Until now
+Velaris treated both the same way - it abandoned the proof and fell back
+to the runtime check, silently. For <code>examples/fp_proof_bad.vel</code>, whose
+refutation takes about fifteen seconds against what was a thirty-second
+budget, a busy machine could therefore produce this:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>$ velaris check examples/fp_proof_bad.vel
+examples/fp_proof_bad.vel: ok - 2 function(s), 0 with proven promises
+$ echo $?
+0</code></pre></div>
+<p>which is exactly what a clean file looks like. It caused one false alarm
+here, and it is the worst failure this compiler can have: a lost
+refutation reading as a clean bill of health. The distinction did not
+exist, and now it does. A proof that spends its whole budget without an
+answer is <strong>abandoned</strong>, and every report says so in those words:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>note: the proof of 'add_twice' ran out of time after 120s and was
+abandoned - nothing was proven and nothing was refuted, so its
+promises are checked while running instead. This is not 'the prover
+found nothing wrong'. Give it longer with --proof-timeout 240 (or
+VELARIS_PROOF_TIMEOUT=240).</code></pre></div>
+<p>The note goes to stderr from the prover itself, so it appears for
+<code>velaris check</code>, a plain run, <code>explain</code>, <code>proofs</code> and the library alike.
+Beside it: <code>velaris check</code> marks the file <code>(1 proof(s) abandoned: out of time, nothing settled)</code> rather than leaving <code>ok - ...</code> to speak for
+itself; <code>velaris proofs --detail</code> marks the function <code>[timeout]</code> rather
+than <code>[runtime]</code>; <code>check --strict</code> fails as before but says the proof was
+abandoned, not that the promise could not be proven; the <code>unproven- promise</code> SARIF result says the same; and <code>velaris explain --json</code> carries
+<code>proof_timeouts</code> and a <code>proof_timeout</code> flag on each function. An
+abandoned proof is <strong>not</strong> written to the proof cache, so the next run
+spends the budget again instead of remembering a non-answer.</p>
+<p><strong>The budget for float proofs is 120 seconds, and either budget can be
+replaced for one run.</strong> A query about <code>Float</code> is decided by bit-blasting
+and is slow; everything else finishes in milliseconds. The two defaults
+are now 120 seconds with <code>Float</code> and 3 seconds without - the second is
+unchanged - and <code>--proof-timeout SECONDS</code> (accepted by every command; the
+flag is taken out of the command line before any command reads it) or
+<code>VELARIS_PROOF_TIMEOUT</code> replaces both. <code>velaris.set_proof_timeout()</code> does
+the same from the library. SPEC.md 9.3 states the defaults and requires
+an implementation to distinguish an abandoned proof from a settled one;
+docs/floats.md shows what it looks like.</p>
+<p>The larger budget is a widening of the prover's reach as STABILITY.md
+defines it: a float promise that a slower machine abandoned at 30
+seconds can now be refuted, so a program that compiled on such a
+machine may be refused with E700. Every such program could already
+break its promise while running, for the input the refutation names.</p>
+<p>check_library.py adds seven cases for it, made deterministic with
+<code>--proof-timeout 0.2</code>: that the words appear, that they say explicitly
+this is not a clean result, that the flag is named, that <code>check</code>,
+<code>proofs --detail</code>, <code>--strict</code> and the JSON report each mark it, and that
+a second run says it again rather than reading a cached non-answer.</p>
+<p><strong><code>examples/discount.vel</code>: a rule the customer wrote, proven before it
+runs.</strong> A commerce platform lets each customer write their own discount
+rule - a percentage off above a threshold, a flat amount off as well, and
+a cap on the two together. The platform cannot read every rule, and no
+sandbox can tell it that a rule's arithmetic works: a sandbox stops the
+rule reading a file and will happily return a total of minus four hundred
+rupees.</p>
+<p>Five of five functions prove:</p>
+<ul>
+<li><code>line_total</code> - a line's quantity times its unit price is not negative</li>
+<li><code>basket_total</code> - <code>units_of</code> over a list of amounts is what they add
+up to, so <code>ensures units_of(result) == units_of(lines)</code> is the whole
+of "the total is the sum of its parts"</li>
+<li><code>discount_for</code> - the discount is never negative, and
+<code>ensures total - result &gt;= money(0, "INR")</code>: what is left after it is
+never negative either</li>
+<li><code>total_after</code> - the payable amount is not negative and not more than
+the basket, from <code>discount_for</code>'s promises through a call summary</li>
+<li><code>charged_per_line</code> - <code>money.split</code> again, so the per-line charges add
+up to the payable amount exactly and none of them is negative</li>
+</ul>
+<p>The percentage is <code>percent_of(total, rule.percent, 100, "half_up")</code>, with
+the mode written, because a discount that rounds is a decision. Every
+amount is <code>Money of INR</code>; the program is pure apart from printing and
+runs under <code>--allow io</code>.</p>
+<p><strong><code>examples/discount_bad.vel</code></strong> is the same rule with the last guard
+deleted - the one that holds a discount to what the basket is worth. The
+cap still holds it to a fixed ceiling, which is not the same thing, and
+the program does not run:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>$ velaris check examples/discount_bad.vel
+examples/discount_bad.vel:54: [E700] promise cannot be kept:
+'discount_for' ensures total - result &gt;= money(0, "INR") - proven
+without running the program: rule = Rule(percent: 0, above: 0,
+flat: 2, cap: 1), total = 0 gives result = 1</code></pre></div>
+<p>In paise: a basket worth nothing, a flat discount of two paise held down
+to a cap of one, and one paisa handed back anyway. Both files are in
+run_tests.py, as RUNS and REJECTED, and both are in <code>velaris.capabilities</code></p>
+<ul>
+<li><code>io</code> only, nothing else. README.md shows the pair.</li>
+</ul>
+<p><strong>The VS Code publish retries, and the job says whether it published.</strong>
+The Marketplace answered <code>Request timeout: /_apis/gallery</code> on 3.3.0,
+3.4.0 and 4.3.0. The step now makes three attempts, waiting 30 and then
+120 seconds, treats a publish that landed anyway as a success, and stops
+retrying at once if the failure is not an outage (a bad token, a manifest
+the Marketplace refuses) - that one still fails the step, because it is
+this repository's to fix. A second step, <code>if: always()</code>, writes one line
+to the job summary saying PUBLISHED or NOT PUBLISHED and why, so the job
+is read rather than remembered and ignored. It stays
+<code>continue-on-error</code>, so a Marketplace outage still cannot fail a release.</p>
+<h2 id="43---money-which-is-not-a-float">4.3 - Money, which is not a float <a class="anchor" href="#43---money-which-is-not-a-float" aria-label="Link to this section">#</a></h2>
+<p>A minor version, and an additive one: every program that compiled under
+4.2 compiles, runs and means the same.</p>
+<p>A currency amount is not a real number. A <code>Float</code> cannot hold 0.10, so a
+premium, a claim or a settlement computed in floats is wrong in a way
+that compounds quietly and is never signalled. Velaris already proves
+things about whole numbers honestly; an amount is now a whole number
+with a currency, and it proves the same way.</p>
+<p><strong>The type.</strong> <code>Money of INR</code> is an exact amount in <strong>minor units</strong> -
+paise, cents, fils - held as a 64-bit <code>Int</code>, with the currency part of
+the type (SPEC.md 4.3). One way to write one:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>money(1250, "INR")           // 12.50 rupees, as 1250 paise</code></pre></div>
+<p>There is deliberately no <code>from_major(12, 50, "INR")</code> or <code>rupees(12, 50)</code>
+beside it: a major/minor pair is ambiguous for a currency with three
+digits after the point and meaningless for one with none, and
+<code>parse_money("12.50", "INR")</code> already reads the human form. <code>units_of(m)</code>
+gives the minor units back, and <code>with_units(m, n)</code> makes an amount of
+<code>n</code> units in the currency of <code>m</code>, which is how code generic in a
+currency builds one.</p>
+<p><strong>Currency is part of the value, and of the type.</strong> Adding INR to USD is
+a compile error (E550), not a surprise while running, and so is
+comparing them, putting both in one list, or passing one where the other
+is declared. There is no conversion builtin: converting needs a rate and
+a rounding policy, and both are a program's decisions. A function can be
+generic in a currency - <code>fn fee(m: Money of C) -&gt; Money of C for any C</code> -
+and the currency is then whatever the call site's amount has.</p>
+<p><strong>Arithmetic.</strong> Amounts in one currency add and subtract; an amount
+multiplies by an <code>Int</code>. An amount times an amount is a type error
+(E501), an amount and a <code>Float</code> never meet (E501), and an amount past
+64 bits stops the program with E407, exactly as an <code>Int</code> does.</p>
+<p><strong>Rounding is never implicit.</strong> <code>/</code> and <code>%</code> on an amount are refused
+(E553, a new code), because both would round without saying how. Where
+a result can fail to come out even, the mode is a required argument,
+written in the call:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>percent_of(amount, numerator, denominator, "half_up")
+divide_or_fail(amount, by, "half_even")        // can fail</code></pre></div>
+<p><code>"half_up"</code> takes a half away from zero, <code>"half_even"</code> to the even
+neighbour, <code>"down"</code> toward zero; anything else, or a mode held in a
+variable, is E552. There is no default. <code>percent_of</code> multiplies before
+it divides and is exact in between however large that product; only its
+answer must fit in 64 bits. A denominator of zero is E403 while running,
+or E706 where the prover can show it. <code>divide_or_fail</code> fails catchably
+on zero and on an answer too large to hold, and joins the fallible
+builtins, with <code>parse_money</code>.</p>
+<p><strong>Splitting, with the sum proven.</strong> <code>money.split(amount, ways)</code>, in the
+new <code>stdlib/money.vel</code>, gives <code>ways</code> parts that add up to the amount
+exactly, the remainder distributed one minor unit at a time, largest
+part first:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"money.vel"</span> as money
+<span class="k">let</span> parts = money.split(money(<span class="n">1000</span>, <span class="s">"INR"</span>), <span class="n">3</span>)   <span class="c">// 334, 333, 333</span></code></pre></div>
+<p>It is written in Velaris, not in the compiler, so that the code that
+runs is the code the prover proves - with your program, every time you
+compile it. Its promises, all <strong>proven</strong>: as many parts as asked; the
+parts add up to the amount exactly; and no part is negative when the
+amount is not (nor positive when the amount is not). A negative amount
+gives the negated parts of the positive one, so a charge and its refund
+cancel party by party rather than leaving one party a unit up. It is
+<code>money.split</code> and not <code>split</code> because <code>split</code> is already the text
+builtin; the file is imported with a name, as <code>dates.vel</code> and <code>csv.vel</code>
+are.</p>
+<p><strong>Text.</strong> <code>text_of(m)</code> writes the code and then the amount with exactly
+as many digits after the point as the currency has minor units: <code>INR 12.50</code>, <code>JPY 1250</code>, <code>KWD 1.250</code>, <code>INR -0.05</code>. <code>to_text</code>, <code>print</code> and
+<code>format</code> agree with it, and <code>json_of</code> writes an amount as its currency
+and its units, never as a JSON number with a point. <code>parse_money(text, "INR")</code> reads back what <code>text_of</code> wrote, with or without the code and
+with fewer digits after the point, and fails on everything else -
+including a text with more digits than the currency has, which would
+have to round.</p>
+<p><strong>The currency table is small, and says so.</strong> <code>CURRENCIES</code> in
+<code>velaris.py</code> holds 21 codes with their minor-unit counts (2 for INR and
+USD, 0 for JPY and KRW, 3 for KWD, BHD, JOD and OMR). It is <strong>not
+exhaustive</strong>. A currency outside it is refused (E551) rather than
+assumed to have two digits, because a wrong minor unit prints and parses
+every amount in that currency wrongly. Adding one is a line in that
+table with the count ISO 4217 gives it and a case in <code>check_money.py</code>;
+a program cannot add its own, because two programs disagreeing about a
+currency would write the same amount two ways.</p>
+<p><strong>What the prover makes of it.</strong> An amount is its minor units to the
+prover - an <code>Int</code> - so <code>ensures result &gt;= money(0, "INR")</code> is settled
+the way <code>result &gt;= 0</code> is, at the same speed, with none of the
+bit-blasting <code>Float</code> needs. <code>percent_of</code> is translated as the exact
+rounding the interpreter performs, for a denominator shown positive.
+What a list of amounts adds up to is a value the prover is told three
+true things about - nothing adds up to zero; items all <code>&gt;= 0</code> (all
+<code>&lt;= 0</code>) add up to something <code>&gt;= 0</code> (<code>&lt;= 0</code>) - and nothing more, so it is
+never claimed as a counterexample. <code>text_of</code>, <code>parse_money</code> and
+<code>divide_or_fail</code> are not modelled: a function that uses one keeps its
+promises as runtime checks, as with the other fallible builtins.</p>
+<p>Four promises were asked for by name. All four <strong>prove</strong>, and
+<code>check_money.py</code> asserts each:</p>
+<ul>
+<li>a total over a list of amounts is non-negative when every item is -
+both as a loop that adds them and, through the facts above, as
+<code>units_of(xs)</code>;</li>
+<li><code>money.split</code>'s parts add up to its amount - in <code>money.vel</code> where it
+is written, and at a caller through its promise;</li>
+<li><code>percent_of</code> never exceeds its amount for a numerator at most the
+denominator - with the rate written in the call and with the rate
+symbolic;</li>
+<li>a subtraction guarded by a <code>requires</code> cannot go negative.</li>
+</ul>
+<p>What does <strong>not</strong> prove, stated rather than weakened: a promise that
+needs more about a sum than the three facts - anything needing induction
+over a list, such as "the total of a list each of whose items is at
+least 10 is at least 10 times its length". Such a promise is checked
+while running, and <code>velaris proofs</code> says so.</p>
+<p><strong>Money is pure.</strong> No new effect, nothing new in the capability surface,
+no change to <code>velaris.audit/1</code>, <code>velaris.capabilities/1</code> or the ratchet.
+A program full of amounts and nothing else declares nothing and runs
+under any budget; <code>examples/settlement.vel</code> runs under <code>--allow io</code>.</p>
+<p><strong>A builtin added from 4.3 on gives way to your own function of that
+name</strong> (SPEC.md 10.1). <code>examples/ledger.vel</code> has had a function called
+<code>money</code> since 1.13, and a program that defines <code>money</code>, <code>units_of</code>,
+<code>text_of</code> or any of the others keeps meaning what it meant; the builtin
+is simply not reached there. Inside a library imported with a name the
+builtin is always reached, since the library's own functions carry its
+prefix. This is what lets a minor version add a builtin at all; the
+builtins that existed before 4.3 keep the precedence they had.</p>
+<p><strong>The prover settles one more thing than it did</strong>, which STABILITY.md's
+"prover's reach" covers and which is named here: a division whose
+divisor mentions a loop's values is now translated when the loop's own
+condition and invariants show it positive, where before any such divisor
+was left alone. <code>money.split</code> needs it - it divides by "the parts still
+to make" - and an average computed after a loop gets it too. No verdict
+in this repository moved: every function of all 172 <code>.vel</code> files here
+was compared, before the change and after, and nothing differed -
+neither a proof status nor an error code.</p>
+<p><strong><code>examples/settlement.vel</code></strong> is the demonstration: rows of claims read
+and parsed, totalled, a 2.5% fee taken with <code>"half_up"</code> named in the
+call, the rest split three ways, and the result printed. Five of its
+five functions are proven, among them that the parts add up to the
+payout and that no party is paid a negative amount. It runs under
+<code>--allow io</code> and is in <code>run_tests.py</code>.</p>
+<p><strong><code>check_money.py</code></strong> is the new suite: 81 cases covering mixed-currency
+arithmetic refused at compile time, an amount times an amount refused,
+the 64-bit edges, <code>split</code> for 1, 3, 7 and 100 ways and for amounts that
+do not divide and for negative amounts and for zero ways, every rounding
+mode on a half case in both signs against Python's <code>decimal</code> module as
+an independent oracle, JPY with no minor unit and KWD with three, text
+and parsing round-trips for all 21 currencies, a property test over 200
+random amounts and divisors, the four promises above, and the prover's
+rounding formulas checked against the interpreter's on 450 cases.</p>
+<p>SPEC.md gains sections 4.3, 4.4 and 10.1; LLM.md gains the type, the
+builtins, the module and rule 16, which states the three rules a model
+gets wrong - no floats, no two currencies, rounding always named;
+<code>docs/floats.md</code> gains the section that says currency is the case where
+the answer is not "be careful with floats" but "do not use them".</p>
+<h2 id="421---the-author-name-capitalised-correctly">4.2.1 - The author name, capitalised correctly <a class="anchor" href="#421---the-author-name-capitalised-correctly" aria-label="Link to this section">#</a></h2>
+<p>A patch version, and a text change only. The compiler, the runtime and
+every document format are as in 4.2.0; in <code>velaris.py</code> only <code>VERSION</code>
+changes. Beside the six version files, the README's Action reference,
+<code>velaris.capabilities</code> and the documentation pages carry the new
+version.</p>
+<p>The author is Palakurthi Gowri Shankar: family name Palakurthi, given
+name Gowri Shankar, with a capital S. 4.2.0 wrote the given name as
+"Gowri shankar". Corrected in <code>CITATION.cff</code> (<code>given-names: Gowri Shankar</code>), LICENSE, <code>editor/vscode/LICENSE</code>, README.md (twice),
+SUPPORT.md, MAINTAINERS.md, PROVENANCE.md, <code>pyproject.toml</code>,
+<code>integrations/langchain_velaris/pyproject.toml</code>, <code>npm/package.json</code>,
+<code>mcpb/manifest.json</code>, <code>packaging/winget.yaml</code> (<code>Publisher</code>; the
+<code>PackageIdentifier</code> is an identifier and is unchanged),
+<code>paper/velaris.md</code>, and <code>paper/references.bib</code>, still in the comma form
+<code>{Palakurthi, Gowri Shankar}</code> so that BibTeX reads Shankar as a given
+name and not as a particle. velaris-spec 0.5.1 makes the same
+correction. The 4.2 entry below keeps the form 4.2.0 used.</p>
+<p><strong>How it renders, checked.</strong> Both <code>CITATION.cff</code> files validate against
+the CFF 1.2.0 schema, with jsonschema and with <code>cffconvert --validate</code>.
+<code>cffconvert</code> 2.0.0 writes the BibTeX author as <code>{Palakurthi, Gowri Shankar}</code> and its APA-like line as "Palakurthi G.S. (2026)" - "G.S."
+where 4.2.0's file gave "G.s."; that writer puts no comma after the
+family name and no space between initials, for any name. BibTeX's
+<code>apalike.bst</code>, run over <code>references.bib</code>, writes "Palakurthi, G. S."
+and <code>IEEEtran.bst</code> writes "G. S. Palakurthi" (the styles from CTAN, run
+by pybtex's implementation of BibTeX). A CSL processor, citeproc-js,
+writes "Palakurthi, G. S." in APA and "G. S. Palakurthi" in IEEE from
+<code>CITATION.cff</code>'s names; a citation in the text is "(Palakurthi, 2026)".</p>
+<p><strong>Verified</strong>, on Windows 11 with Python 3.13 and the prover (z3 5.1.0),
+with the proof cache cleared first: <code>run_tests.py</code> 92/92,
+<code>check_library.py</code> 196 correct (one skipped: its symbolic-link case is
+POSIX only), and <code>velaris conformance</code> conformant at L1, L2 and L3, 443
+of the 444 cases run and the symbolic-link case skipped because this
+machine will not make a link. <code>velaris capabilities check .</code> passes
+against the regenerated baseline, and velaris-spec 0.5.1's
+<code>tools/validate.py</code> and <code>tools/check_sync.py</code> pass.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#44---a-platform-that-lets-its-customers-write-code-it-can-audit">4.4 - A platform that lets its customers write code it can audit</a></li><li><a href="#434---the-npm-wrapper-picks-the-right-python-and-says-when-it-cannot">4.3.4 - The npm wrapper picks the right Python, and says when it cannot</a></li><li><a href="#433---velaris-mcp-so-the-npm-package-can-start-the-server-too">4.3.3 - velaris mcp, so the npm package can start the server too</a></li><li><a href="#432---the-cards-true-size-and-a-registry-manifest-on-the-current-schema">4.3.2 - The card&#x27;s true size, and a registry manifest on the current schema</a></li><li><a href="#431---a-discount-that-cannot-go-negative-and-a-timeout-that-says-it-timed-out">4.3.1 - A discount that cannot go negative, and a timeout that says it timed out</a></li><li><a href="#43---money-which-is-not-a-float">4.3 - Money, which is not a float</a></li><li><a href="#421---the-author-name-capitalised-correctly">4.2.1 - The author name, capitalised correctly</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

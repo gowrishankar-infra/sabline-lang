@@ -6,7 +6,7 @@ programming. It exists so that anyone deciding whether to depend on
 this language can find out exactly what it promises — and what it
 does not.
 
-Version 8.3.0. Where this document and the implementation disagree,
+Version 8.3.1. Where this document and the implementation disagree,
 that is a bug in one of them; please report it.
 
 ## 1. Programs

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 3.x - Velaris 8.3.1</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/changelog-3.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html" aria-current="page">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 3.x</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="34---the-doors-are-locked-and-the-findings-go-where-findings-go">3.4 - The doors are locked, and the findings go where findings go <a class="anchor" href="#34---the-doors-are-locked-and-the-findings-go-where-findings-go" aria-label="Link to this section">#</a></h2>
+<p><code>velaris serve</code> ran any program sent to it by anyone who could reach
+its port; binding to localhost and printing a warning was the whole of
+the control. The MCP server granted whatever budget its caller asked
+for, <code>ffi</code> included. Neither door recorded what it was asked to do, and
+nothing let a client operator tell whether the MCP server's tool
+descriptions were the ones that were released. This release adds the
+four controls, and SARIF output so findings reach code scanning.</p>
+<ul>
+<li><strong>Bearer authentication on the HTTP door.</strong> Every endpoint but
+<code>GET /health</code> needs <code>Authorization: Bearer &lt;token&gt;</code>. The token comes
+from <code>--token-file &lt;path&gt;</code>, else <code>VELARIS_TOKEN</code>, else the door makes
+one with <code>secrets.token_urlsafe(32)</code> and prints it once. It is never
+read from the command line: <code>--token</code>, in either spelling, is refused
+at start, and the refusal does not repeat the value. Tokens are
+compared with <code>secrets.compare_digest</code> over sha256 digests; a missing
+token, a wrong one, another scheme, a bare <code>Bearer</code> or the token in a
+query string all get the same 401 body and a bare
+<code>WWW-Authenticate: Bearer</code> challenge, on every path including unknown
+ones, so nothing is learned about the door without the token. The
+door removes <code>VELARIS_TOKEN</code> from its environment before any worker
+starts, so a program granted <code>env</code> cannot read it. <code>GET /health</code> no
+longer names the ceiling to a caller without the token.</li>
+<li><strong><code>--no-auth</code></strong>, for local development, is refused unless <code>--host</code> is
+<code>127.0.0.1</code> or <code>localhost</code>, and prints a warning on every start. In
+its place a request must name a loopback <code>Host</code>, carry no other
+<code>Origin</code>, and post as <code>Content-Type: application/json</code>, which keeps a
+web page in a browser on the same machine (a cross-site <code>fetch</code>, or a
+DNS-rebinding page) from sending the door programs. It does not stop
+another local program, and the warning says so. These three checks
+were not in the request for this release; without them <code>--no-auth</code>
+would have let any open web page run programs.</li>
+<li><strong>The door refuses arguments it does not know</strong>, so <code>--max-alow io</code> is
+an error instead of a door whose ceiling silently stayed at every
+effect. A non-local <code>--host</code> now also warns that the door speaks
+plain HTTP and the token crosses the network in clear without a TLS
+proxy in front. The <code>Server</code> header no longer carries the Python
+version.</li>
+<li><strong>A ceiling on the MCP server.</strong> <code>--max-allow</code> takes the grammar the
+HTTP door takes - effects, <code>fs:read:</code>/<code>fs:write:</code> paths, <code>net:</code> hosts
+and ports, <code>ffi:</code> modules, <code>@N</code> counts - and the same <code>Budget.covers</code>
+check. A <code>velaris_run</code> asking for more at any level is refused with
+<code>isError</code> and the body the HTTP door sends with its 403: what was not
+granted, and <code>max_allow</code>. <strong>Without the flag the ceiling is <code>io</code></strong>,
+and <code>velaris_run</code>'s description and the <code>.mcpb</code> manifest say so. A
+ceiling that does not parse, or an unknown argument, stops the server
+at start.</li>
+<li><strong>A signed manifest of the MCP tools.</strong> The release workflow asks the
+MCP server inside the wheel it publishes for its tools, writes
+<code>velaris-mcp-tools-X.Y.Z.json</code> (<code>velaris.mcp-tools/1</code>: each tool's
+name, the sha256 of its description, the sha256 of its input schema
+in canonical form), signs it with sigstore alongside the wheel, sdist
+and SBOM, checks the signed manifest against the server with
+<code>velaris mcp-verify</code>, and attaches both to the release.
+<code>velaris mcp-verify &lt;manifest&gt; -- &lt;server command&gt;</code> verifies the
+signature as this workflow at the manifest's tag, starts the server
+the way a client does, and reports every tool whose description or
+schema changed and every tool added or missing (exit 1), or why it
+could not check (exit 2). It lives in <code>velaris.py</code>, not in the server
+file it checks. <code>velaris mcp-manifest</code> makes a manifest for any
+server. EMBEDDING.md says how a client operator uses it and what it
+does not tell them.</li>
+<li><strong>Invocation logging on both doors.</strong> One JSON line per call,
+<code>velaris.invocation/1</code>: when the call arrived, the door, the endpoint
+or tool, the outcome, the duration, the budget granted, the effects
+performed, what was refused and by what, the caller's address (HTTP),
+and the sha256 of the source - never the source, the output, request
+headers, the path as sent, or the token, which is also struck out of
+any line it could appear in. To stderr, or appended to <code>--log-file</code>;
+<code>--log minimal</code> keeps six fields, and nothing turns the log off.
+"Effects performed" is new in the runtime: <code>RunResult.effects_used</code>
+counts, per effect, the builtin calls the budget let through; it
+comes back from the pool workers the doors use, and is <code>None</code> for a
+child that could not report it.</li>
+<li><strong>SARIF 2.1.0.</strong> <code>velaris check --sarif</code>, <code>proofs --sarif</code> and
+<code>audit --sarif</code> write one run whose driver is <code>Velaris</code> at this
+version, with a rule for every code in the compiler's error table and
+for each finding that is not an error, each rule linking to its row
+on the published errors page. Results carry the file, the line and
+the message. Errors are <code>error</code>; a promise left to runtime is a
+<code>warning</code> (an <code>error</code> under <code>--strict</code>); a function promising nothing
+about its data, a loop not shown to end and each effect a function
+may perform are <code>note</code>. The output is validated against the OASIS
+schema, vendored under <code>tests/</code> and held to its digest, in
+<code>check_library.py</code>. The GitHub Action has a <code>sarif</code> input, true by
+default, that writes the file and uploads it with
+<code>github/codeql-action/upload-sarif</code> pinned to the v4.38.0 commit.</li>
+<li><strong>What SARIF output leaves out.</strong> A Velaris fix is a sentence; a
+SARIF <code>fix</code> must carry the exact bytes to change (<code>artifactChanges</code> is
+required by the schema). Rather than make up an edit to fill the
+slot, the suggestions go in each result's <code>properties.fixes</code>. Figures
+with no line - a proven share, an audit's <code>safe_command</code> - go in the
+run's property bag, the latter as each file's <code>velaris.audit/1</code>
+document unchanged.</li>
+<li><strong>The error table.</strong> <code>velaris.ERROR_TABLE</code> holds all 62 codes the
+compiler, runtime and library can give, one line each; the published
+errors page and the SARIF rules are both built from it, and
+<code>check_library.py</code> reads <code>velaris.py</code>'s syntax tree and fails if a code
+is given anywhere that is not in the table, or is in the table and
+given nowhere. The page used to be a scrape of <code>VelarisError(...)</code>
+calls and missed E610, E611 and E612, which are reported another way;
+it now lists all 62, with an anchor on each row.</li>
+</ul>
+<p><strong>What a 3.3 user has to change.</strong> README's stability rule is that
+breaking changes wait for a major version; these three ship in a minor
+version because each closes an open door, and they are listed here so
+nobody meets them by surprise:</p>
+<ol>
+<li>A client of <code>velaris serve</code> must send <code>Authorization: Bearer &lt;token&gt;</code>. Start the door with <code>--token-file</code> or <code>VELARIS_TOKEN</code>, or
+read the made token from its first lines of output.</li>
+<li>An MCP client that relied on <code>velaris_run</code> granting more than <code>io</code>
+must start the server with <code>--max-allow</code>, as EMBEDDING.md shows.</li>
+<li>A workflow using the Action needs <code>permissions: security-events: write</code> for the upload, and code scanning enabled on a private
+repository - or <code>sarif: "false"</code>.</li>
+</ol>
+<p>THREAT_MODEL.md did not, in fact, list the unauthenticated door
+anywhere, as a residual risk or otherwise; it now has the door and the
+MCP server's caller in the trust boundary, the four controls in what is
+defended, what they do not defend in the list of what is not, and
+residual risks for the token, the ceiling, the tool manifest and the
+log. COMPLIANCE.md maps the four controls to OWASP MCP Top 10 (v0.1,
+beta) items MCP01, MCP02, MCP03, MCP07 and MCP08.</p>
+<p><strong>Verified</strong>, on Windows 11 with Python 3.13, before tagging, with the
+proof cache cleared first. With the prover: <code>run_tests.py</code> 92/92,
+<code>check_library.py</code> 142 correct (one skipped: the symlink case is POSIX
+only), <code>check_sandbox.py</code> 45, <code>check_fallible.py</code> 26, <code>check_refusals.py</code>
+21, <code>check_termination.py</code> 44, <code>check_pool.py</code> 39, none wrong;
+<code>fuzz_native.py 30</code> agrees, <code>benchmark --quick --check</code> matches
+<code>results.json</code>, <code>velaris test examples/std_test.vel</code> 7/7, <code>velaris fmt --check</code> clean. Without the prover, in a fresh virtual environment
+holding this tree, jsonschema and no z3 or llvmlite: the same eleven
+pass, with <code>check_library.py</code> 139 correct (two skipped for needing the
+prover, one POSIX only; the SARIF output validates there too, and
+<code>check --strict --sarif</code> reports that it could not check rather than
+passing) and <code>check_refusals.py</code> 11 with 10 skipped for needing the
+prover. Every workflow file and <code>action.yml</code> parse as YAML.
+velaris-spec's <code>tools/check_sync.py</code> and <code>tools/validate.py</code> pass
+against this tree; SPEC.md §6, §7 and §7.1, the grant grammar and
+<code>velaris.audit/1</code> are unchanged, so the spec stays at 0.2. The new
+release steps were run by hand as far as they go without GitHub's
+signing identity: the wheel was built, installed in a clean
+environment, <code>mcp-manifest</code> made the manifest from its server, and
+<code>mcp-verify --skip-signature</code> matched 4 of 4 tools; the signature check
+itself was run against the sigstore bundle this workflow made for the
+3.3.0 SBOM, accepting it and refusing it for changed bytes and for the
+wrong tag.</p>
+<h2 id="33---the-capability-check-now-means-what-the-spec-says">3.3 - The capability check now means what the spec says <a class="anchor" href="#33---the-capability-check-now-means-what-the-spec-says" aria-label="Link to this section">#</a></h2>
+<p>(This heading was lost from this file in the 3.4 release and restored
+in 4.0; the text below it is unchanged.)</p>
+<p>velaris-spec 0.1 was extracted from 3.1.1 and, in writing each rule down
+precisely, found five places where this compiler did not do what the
+format says. 3.2 recorded them and changed no compiler code. 3.3 fixes
+all five, and velaris-spec goes to 0.2 in step, resolving the open
+questions the fixes close.</p>
+<ul>
+<li><p><strong><code>ffi:M</code> is bounded to the module a call actually reaches, not just
+the one it names.</strong> The function argument of <code>py</code>, <code>py_int</code>,
+<code>py_float</code>, <code>py_json</code> and <code>py_new</code> may be a dotted path of attributes,
+and a granted module's attributes include the modules it imported. So
+<code>py("json", "codecs.encode", ...)</code> ran codecs code under <code>ffi:json</code>,
+because <code>json</code> imports <code>codecs</code> into its namespace and the chain walked
+straight into it. The whole dotted path a call names is now checked:
+the attribute chain is resolved step by step, and whenever a step
+yields an object whose owning module (a module's own name, or an
+attribute's <code>__module__</code>) has a top-level package outside the grants,
+the call is refused with E311 naming the module actually reached. The
+same check applies to a method or field reached through a handle
+(<code>py_do</code>, <code>py_field</code>) and to a non-JSON result kept as a handle. Where
+the owning module of an object reached along the chain cannot be
+determined - a bare code object, a frame, a reflective handle - the
+call is refused rather than allowed: the bound errs toward refusing
+more. Inert data (numbers, text, bytes, lists, maps) is not code from
+any module and is not checked, so a legitimate deep attribute like
+<code>json.decoder.JSONDecoder</code> still works. This is a security fix; where
+the chain cannot be placed soundly it refuses, and THREAT_MODEL.md and
+the spec say what remains reachable: a granted module can still do
+whatever that module itself can do.</p></li>
+<li><p><strong><code>ffi</code> grants are additive, like <code>fs</code> and <code>net</code>.</strong> SPEC.md 7.1 says
+grants are additive; the parser restricted <code>ffi</code> to the named modules
+when both <code>ffi</code> and <code>ffi:M</code> appeared, so <code>ffi,ffi:math</code> granted <code>math</code>
+alone. It now grants every module: a plain <code>ffi</code> means every module,
+and the wider grant wins in either order, matching the reference text
+and <code>fs</code>/<code>net</code>. (velaris-spec Q2.)</p></li>
+<li><p><strong><code>safe_command</code> round-trips.</strong> It wrote an IPv6 host without brackets
+(<code>net:::1</code>, which parses as the host <code>:</code> at port 1) and could not
+express a path or host containing <code>,</code> or <code>@</code>. An escaping rule is
+defined in the spec (v0.2 §5.1, §5.2) and implemented on both sides:
+IPv6 hosts are bracketed (<code>net:[::1]</code>, <code>net:[::1]:443</code>), and <code>, @ [ ] %</code> are percent-encoded inside a path or host component and decoded when
+the budget is parsed. <code>parse_budget</code> of an audit's <code>safe_command</code> now
+reproduces the exact budget for awkward paths and hosts.
+(velaris-spec Q5.)</p></li>
+<li><p><strong>The budget parser is strict.</strong> An unknown effect name in a <code>uses</code>
+clause is a compile error (E300) naming the seven real effects;
+<code>uses io, teleport</code> no longer compiles and no longer reaches
+<code>velaris.audit/1</code>. Every malformed budget is a clean budget error, not
+a traceback: a count is ASCII digits only, so <code>fs@²</code> is a budget
+error rather than an uncaught <code>ValueError</code>; <code>ffi</code> takes no count and
+<code>ffi:</code> needs a module; an unbracketed IPv6 address, a stray bracket, a
+doubled <code>@</code> and a scope on an effect that takes none are each refused
+with a readable message. (velaris-spec Q1, Q6.)</p></li>
+<li><p><strong>The command line's <code>audit --json</code> emits <code>velaris.audit/1</code>.</strong> It
+printed an older, unversioned shape the schema rejected; it now calls
+the library's <code>audit().as_dict()</code>, the same document the library, the
+MCP server, the HTTP door, the npm package, the CrewAI tool and the
+Action all emit. Its <code>safe_command</code> for <code>examples/json_ffi.vel</code> now
+says <code>ffi:math,io</code> rather than <code>ffi,io</code>. (velaris-spec Q3.)</p></li>
+</ul>
+<p><strong>The README's claim about <code>ffi:M</code> is restored.</strong> In 3.2 the README's
+"grants Python for those modules only; any other is refused" was weakened
+to say what was and was not reachable, because the claim was false: a
+granted module was a door into the modules it imported. With the first
+fix above it is true again, and the strong wording is back.</p>
+<p><strong>velaris-spec 0.2.</strong> The spec is revised where the behaviour changed and
+bumped to 0.2 with a dated annotated tag. It resolves Q1 (unknown names
+in <code>uses</code> are rejected), Q2 (<code>ffi</code> is additive; the wider grant wins),
+Q3 (the command line emits <code>velaris.audit/1</code>), Q5 (<code>safe_command</code> and
+<code>net_hosts</code> bracket IPv6 and the escaping rule holds <code>,</code> and <code>@</code>), and
+Q6 (non-ASCII count digits, <code>ffi:M@N</code> and <code>ffi:</code> are budget errors); the
+escaping rule is added to §5.1 and §5.2. Its section 2 still quotes this
+repository's SPEC.md §6, §7 and §7.1 word for word - those sections did
+not change, since "grants are additive" is now true for <code>ffi</code> too - so
+<code>tools/check_sync.py</code> still passes.</p>
+<p><strong>Sources, named</strong> (CONTRIBUTING.md rule): every fix here comes from the
+velaris-spec 0.1 extraction of 3.1.1, recorded in that spec's section 11
+as open questions Q1, Q2, Q3, Q5 and Q6. HALL_OF_FAME.md credits the
+extraction under the standing challenge.</p>
+<p><strong>Verified</strong>, on Windows 11 with Python 3.13, before tagging. With the
+prover: <code>run_tests.py</code> 92/92, <code>check_library.py</code> 82 correct,
+<code>check_sandbox.py</code> 45, <code>check_pool.py</code> 39, <code>check_refusals.py</code> 21,
+<code>check_fallible.py</code> 26, <code>check_termination.py</code> 44, none wrong. Without
+the prover, in a fresh virtual environment holding this tree and no z3 -
+the subset the conformance suite requires: <code>check_termination.py</code> 44,
+<code>check_sandbox.py</code> 45, <code>check_refusals.py</code> 11 with 10 skipped for needing
+the prover, <code>check_fallible.py</code> 26, <code>check_library.py</code> with the runtime
+fallback asserted where a proof was, none wrong. <code>fuzz_native.py 30</code>,
+<code>benchmark --quick --check</code>, <code>velaris test examples/std_test.vel</code> and
+<code>velaris fmt --check</code> all pass. velaris-spec <code>tools/check_sync.py</code> and
+<code>tools/validate.py</code> pass against this tree.</p>
+<h2 id="32---the-capability-format-published-as-a-spec">3.2 - The capability format, published as a spec <a class="anchor" href="#32---the-capability-format-published-as-a-spec" aria-label="Link to this section">#</a></h2>
+<p>Nothing in the compiler changed: <code>velaris.py</code> differs from 3.1.1 only
+in its version string.</p>
+<p><strong>velaris-spec 0.1.</strong> The capability format has a specification of its
+own now, in a separate repository,
+<a href="https://github.com/gowrishankar-infra/velaris-spec">gowrishankar-infra/velaris-spec</a>,
+tagged v0.1: the seven effects and what "transitive" means; the grant
+grammar - <code>fs:read:path</code>, <code>net:host:port</code>, <code>net:*.domain</code>,
+<code>ffi:module</code>, <code>@N</code> - as this compiler parses and enforces it, edge
+cases included; what a budget guarantees at runtime and what it does
+not; <code>velaris.audit/1</code> field by field; and <code>velaris.capabilities/0</code>, a
+ratchet baseline for CI that this compiler does not read yet, marked
+provisional until it does. It is written so that the format can be
+implemented in another language without reading <code>velaris.py</code>, and
+where a rule could not be stated precisely it says so, as one of eleven
+open questions. Its section 2 quotes sections 6, 7 and 7.1 of this
+repository's SPEC.md word for word; <code>tools/check_sync.py</code> there, run
+weekly by its CI, fails if the two drift. The spec is CC0, so anyone
+may implement it; this implementation stays MIT.</p>
+<p>Conformance is defined here, not there. ARCHITECTURE.md now names
+<code>check_termination.py</code>, <code>check_sandbox.py</code>, <code>check_refusals.py</code>,
+<code>check_fallible.py</code> and <code>check_library.py</code> as the conformance suite,
+and an implementation claiming velaris.capabilities compliance must
+pass the subset that does not require the prover. The spec's JSON
+Schema for <code>velaris.audit/1</code> was held against the audit of every one of
+the 107 <code>.vel</code> files in <code>examples/</code> and <code>stdlib/</code>, and all 107
+validate.</p>
+<p><strong>What writing it down found.</strong> Stating each rule precisely enough for
+someone else to implement it turned up places where the compiler, its
+documentation and its own SPEC.md do not say the same thing. None is
+fixed here, because this release changes no compiler code; each is
+recorded in the spec as what the reference does, and listed there as an
+open question:</p>
+<ul>
+<li><strong><code>velaris audit</code> on the command line is not <code>velaris.audit/1</code>.</strong>
+With <code>--json</code> it prints an older, unversioned summary - <code>compiles</code>
+for <code>ok</code>, <code>errors</code> for <code>problems</code>, <code>functions</code> as a count - and both
+its <code>safe_command</code> and the command it prints under HOW TO RUN IT
+SAFELY are built from the coarse effects alone: for
+<code>examples/json_ffi.vel</code>, which calls only <code>math</code>, it says
+<code>--allow ffi,io</code> where <code>velaris.audit()</code> says <code>--allow ffi:math,io</code>.
+The library, the MCP server, the HTTP door, the npm package, the
+CrewAI tool and the Action's PR comment are all built on
+<code>velaris.audit/1</code>; the command line is the exception. The schema
+rejects the command line's output, and the spec says so rather than
+bending the schema to fit.</li>
+<li><strong>Grants are not all additive.</strong> SPEC.md 7.1 says they are. For <code>fs</code>
+and <code>net</code> that holds; for <code>ffi</code> it does not: <code>ffi,ffi:math</code> grants
+<code>math</code> alone. The spec follows the parser, since that is the reading
+that refuses.</li>
+<li><strong><code>ffi:M</code> checks the module name a call gives, not what is reachable
+through the module.</strong> The function argument of <code>py</code> may be a dotted
+path of attributes, and a granted module's attributes include the
+modules it imported. THREAT_MODEL.md already said the allow-list
+narrows which modules and not what a module does; the README said
+"any other is refused", and now says what is refused and what is
+not.</li>
+<li><strong><code>safe_command</code> is wrong in three cases.</strong> It writes an IPv6 host
+without brackets (<code>net:::1</code>, which parses as the host <code>:</code> at port 1);
+it passes through a path containing <code>,</code> or <code>@</code>, which the grammar
+cannot hold; and it copies in any name a <code>uses</code> clause gives, because
+<code>uses io, teleport</code> compiles and <code>teleport</code> reaches the audit.</li>
+<li><strong>The budget parser reads a count with Python's <code>isdigit</code></strong>, so
+<code>fs@٣</code> is a count of 3 and <code>fs@²</code> stops the parser with an uncaught
+error instead of a budget error; and <code>ffi:math@5</code> is accepted as a
+module literally named <code>math@5</code>.</li>
+<li><strong>Six rules the spec states have no case in any <code>check_*.py</code>
+suite</strong>: a dotted function path through a granted module, <code>ffi</code>
+together with <code>ffi:M</code>, a URL without a scheme taken as HTTPS, IPv6
+grants, an existence check under a write-only grant, and <code>@0</code> or a
+count spent by an operation that then fails. The spec lists them as
+its Q9; adding the cases is work for a release that may change
+behaviour if a case fails.</li>
+</ul>
+<p><strong>Related work, cited.</strong> The README has a Related work section after
+the opening, naming TACIT (ACM CAIS '26, arXiv 2603.00991), CaMeL and
+WASI, what each does, and what Velaris does differently, including what
+it does not do: it tracks no data flow, and its command line grants
+every effect when no budget is given. The spec's PRIOR_ART.md has the
+longer account, with object capabilities, in-toto and SLSA, SARIF,
+Deno's permissions and effect systems. The README's <code>velaris card</code> line
+said ~1,500 words, the size of the card in 2.41; it is 3,335 words by
+<code>wc -w</code> now, and the README says ~3,300 in both places.</p>
+<p><strong>Sources, named.</strong> CONTRIBUTING.md gains a rule: when a design
+decision comes from published work, name the source in the CHANGELOG
+entry for that release; say which person, model or bot found a review
+finding; and when the origin is not known, do not guess. Applied
+backwards where the record allows it. 2.41.1 (a Gemini model), 2.41.2
+(a ChatGPT model), 2.42 and 2.44 to 2.47 (a Claude model) now say which
+model family found what, from the maintainer's account, since none of
+those entries recorded it at the time and HALL_OF_FAME.md had declined
+to guess; HALL_OF_FAME.md carries the same names now. 2.59 names
+CodeRabbit on crewAIInc/crewAI#7279, from the public pull request,
+which also dates its review 2026-09-05; HALL_OF_FAME.md had said
+2026-09-10, and is corrected. Nothing else was attributed, because no
+other entry's provenance is on record.</p>
+<p>This release's own sources, under the new rule: the schemas are JSON
+Schema draft 2020-12, the spec's requirement words are those of RFC
+2119 and RFC 8174, and its license is Creative Commons CC0 1.0. The
+work in PRIOR_ART.md is related work, not a source - none of it is on
+record as the origin of a Velaris design decision, and the spec says
+so.</p>
+<p><strong>Verified</strong>, on Windows 11 with Python 3.13, before tagging. With the
+prover: <code>run_tests.py</code> 92/92, <code>check_library.py</code> 75 correct,
+<code>check_sandbox.py</code> 34, <code>check_pool.py</code> 39, <code>check_refusals.py</code> 21,
+<code>check_fallible.py</code> 26, <code>check_termination.py</code> 44, none wrong; the one
+skip in each of the first two is the symlink escape, which needs POSIX.
+Without the prover, in a fresh virtual environment holding this tree
+and no z3, as rule 7 asks - the subset the conformance suite requires:
+<code>check_termination.py</code> 44, <code>check_sandbox.py</code> 34, <code>check_refusals.py</code>
+11 with 10 skipped for needing the prover, <code>check_fallible.py</code> 26,
+<code>check_library.py</code> 73 with the runtime fallback asserted where a proof
+was, none wrong. The reference implementation passes its own
+conformance subset.</p>
+<h2 id="311---a-pool-test-that-passed-for-the-wrong-reason">3.1.1 - A pool test that passed for the wrong reason <a class="anchor" href="#311---a-pool-test-that-passed-for-the-wrong-reason" aria-label="Link to this section">#</a></h2>
+<p><code>check_pool.py</code> claimed to hold a program that reaches into the
+compiler through a granted <code>ffi</code> module, adds <code>fs</code> to the live budget,
+and is then unable to leave it added for the next program. It did not.
+The program named <code>py("velaris", "EFFECT_BUDGET.add", ["fs"])</code>, and a
+worker runs <code>velaris.py</code> as <code>__main__</code> - so that name imported a
+<em>second</em> copy of the module and widened that copy's budget, never the
+one the interpreter was enforcing. The next program was refused <code>fs</code>
+because it had never been granted, not because anything was reset. The
+check passed, and would have passed just as well with
+<code>reset_program_state</code> deleted.</p>
+<p>It now names <code>__main__</code>, which is the live module, and reads a file
+immediately afterwards so the suite can assert the widening really took
+hold before it asserts that the next program is refused. Two checks
+where there was one:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code>ok  a program CAN widen its own budget through ffi - the cliff is
+    real, <span class="k">and</span> this is what the next <span class="k">check</span> is against
+ok  ...<span class="k">and</span> it cannot widen it <span class="k">for</span> the next program</code></pre></div>
+<p>The reset was correct the whole time - the counted-grant check
+(<code>fs:read:&lt;dir&gt;@2</code>, spent per program rather than per worker) was
+already exercising the same reinstall from a different angle, and it
+still passes. What was wrong was a test whose label was stronger than
+its body, which is worse than no test at all: it is the one thing that
+makes a suite untrustworthy about everything else in it. The 3.1 entry
+below says "the suite has one that does exactly this"; of 3.1.0 that
+sentence was false, and it is true from 3.1.1.</p>
+<p>Also here: <code>check_library.py</code>'s skip messages said "(needs the prover)"
+for skips that had nothing to do with the prover - the macOS memory cap
+and the POSIX-only symlink escape now say why they were actually
+skipped.</p>
+<p>39 checks in <code>check_pool.py</code>, all passing with and without the prover.
+Nothing in <code>velaris.py</code> changed.</p>
+<h2 id="31---a-pool-that-keeps-its-budget-memory-caps-on-windows-and-a-lockfile">3.1 - A pool that keeps its budget, memory caps on Windows, and a lockfile <a class="anchor" href="#31---a-pool-that-keeps-its-budget-memory-caps-on-windows-and-a-lockfile" aria-label="Link to this section">#</a></h2>
+<p><strong>velaris.Pool: bounded runs without a new interpreter every time.</strong>
+Every run with a <code>timeout</code> or a <code>max_memory_mb</code> started a Python
+process, about a tenth of a second before a line of Velaris was read.
+An agent platform calling <code>run</code> thousands of times an hour paid that
+every time.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>pool = velaris.Pool(size=4, allow={"io"}, timeout=30,
+                    max_memory_mb=512)
+result = pool.run(source)          # the same RunResult run() returns
+pool.close()                       # also a context manager</code></pre></div>
+<p>Measured by <code>check_pool.py</code> on the machine this was written on, 200
+sequential bounded runs of a small program: <strong>46.56 s a process at a
+time, 0.48 s on a pool</strong> - 233 ms each against 2.4 ms each, 96.7x. The
+suite asserts at least 3x and prints both numbers, so the claim is
+re-measured wherever it runs rather than quoted from here.</p>
+<p>The speed is why it exists. The isolation is why it can be used, and
+these are the rules, each one asserted in <code>check_pool.py</code>:</p>
+<ul>
+<li><p><strong>The budget is the pool's, not the program's.</strong> It is parsed once,
+when the pool is made, and installed by each worker at startup.
+<code>pool.run</code> takes no <code>allow</code> argument - there is nowhere for a caller
+or a program to ask for more, and a different budget means a
+different pool. The budget is re-asserted from the pool before every
+program, so an <code>@N</code> count is spent per program rather than shared
+across a worker's whole life. A program that reaches into the
+compiler through a granted <code>ffi</code> module and adds <code>fs</code> to the live
+budget - the suite has one that does exactly this - cannot leave it
+added for the next program.</p></li>
+<li><p><strong>A worker is used once unless the run was clean.</strong> Anything other
+than <code>ok</code> - a refused effect, a failure that escaped, a program that
+did not compile, the timeout, the memory cap - kills the worker and
+starts a fresh one. This is stricter than it has to be: a program
+that failed to compile never ran, so it left nothing behind, and
+retiring its worker costs a restart. It is stricter on purpose,
+because "only a clean run hands its worker back" is a rule a reader
+can check in one line of <code>Pool.run</code>, and the weaker version is a
+rule about which failures are harmless.</p></li>
+<li><p><strong>A reused worker starts empty.</strong> Before every program the child
+resets every module-level mutable there is. Searching for them was
+the work; the list, exhaustively, is <code>PROGRAM_ARGS</code>,
+<code>EFFECT_BUDGET</code>, <code>FFI_MODULES</code>, <code>FS_GRANTS</code>, <code>NET_GRANTS</code>,
+<code>OP_LIMITS</code>, <code>OP_COUNTS</code>, <code>PY_OBJECTS</code> (handles from <code>py_new</code>,
+closed by the program or not), <code>PY_NEXT</code> (so handle numbering starts
+again), <code>TRACE</code>, and <code>_NATIVE_KEEPALIVE</code> - which holds the JIT
+engines and, through them, the native text arena. There is no proof
+cache in memory to clear: <code>check_proofs</code> keeps its cache on disk and
+only when asked (<code>use_cache=True</code>), and the library never asks. Three
+things that belong to the process rather than the module are put
+back too, because a granted <code>ffi</code> module can change all three: the
+working directory, the environment, and the recursion limit the
+interpreter raises. They are named in <code>MUTABLE_GLOBALS</code> and
+<code>reset_program_state</code>, and <code>check_pool.py</code> parses <code>velaris.py</code>'s own
+module-level assignments and fails if a mutable one appears in
+neither that list nor its list of constants - so the next person to
+add a global cannot forget. That is now rule 6 in ARCHITECTURE.md.</p></li>
+<li><p><strong>The parent owns the deadline.</strong> A worker that has not answered
+within <code>timeout</code> is killed by the parent, not asked to stop, and a
+replacement is started; the call returns E610.</p></li>
+<li><p><strong>A program cannot reach the pipe.</strong> The worker keeps private
+duplicates of its own file descriptors 0 and 1 for the protocol and
+points the program's at the null device. The suite has a program
+that runs <code>echo</code> through <code>ffi:os</code> straight at file descriptor 1; the
+shell's output goes nowhere and the next program still runs.</p></li>
+<li><p><strong>Closing kills every worker</strong>, including one still running a
+program. A pool collected without <code>close()</code> is closed by its
+finalizer, one that outlives the interpreter is closed at exit, and
+a worker whose pipe closes ends by itself. The suite checks all
+three against the operating system's own answer about the process
+ids, not the parent's bookkeeping.</p></li>
+</ul>
+<p><code>velaris.PoolRegistry</code> keeps one pool per distinct budget and makes
+each the first time that budget is asked for - what a server needs,
+since it learns the budget from the request. The MCP server and the
+HTTP door each keep one and close it on shutdown; a caller who varies
+the budget every time cannot make either hold processes without end,
+because the registry keeps at most eight pools and closes the least
+recently used. The CrewAI and LangChain tools stay on plain <code>run</code>: a
+crew's tool is not called often enough for a pool to pay for itself,
+and one process per call is easier for a reviewer to reason about.</p>
+<p><strong>Memory caps are enforced on Windows.</strong> Windows has no <code>RLIMIT_AS</code>.
+The equivalent is a job object with <code>JOB_OBJECT_LIMIT_PROCESS_MEMORY</code>,
+which has to exist before the child does: the child is created
+suspended, assigned to the job, and only then resumed, so no
+instruction of it runs outside the cap. An allocation past the cap
+fails and reaches a Python child as <code>MemoryError</code>, which is already
+what <code>_run_bounded</code> reads as E611. <code>JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE</code>
+means closing the handle kills whatever is inside, which is also how a
+pool kills a Windows worker. It is <code>ctypes</code>; no new dependency. If any
+step fails - <code>CreateJobObject</code>, <code>SetInformationJobObject</code>,
+<code>AssignProcessToJobObject</code> - the cap is recorded and not enforced,
+which is exactly what Windows did before 3.1, rather than the run
+failing.</p>
+<p>So the platform rule is now: enforced on Linux (<code>RLIMIT_AS</code>) and on
+Windows (a job object); best-effort on macOS, where the limit is set
+and not reliably honoured and the timeout is what stops a runaway.
+<code>velaris.memory_cap_is_enforced()</code> answers for the machine you are on,
+and <code>check_library.py</code> asks it rather than reading the platform name,
+so the assertion now runs on Windows as well as Linux and skips only
+where the mechanism genuinely does not hold. Every place that stated
+the old rule was rewritten: EMBEDDING.md, THREAT_MODEL.md,
+COMPLIANCE.md, SECURITY.md, the MCP tool description, <code>run</code>'s
+docstring, <code>benchmark/README.md</code> and the header <code>benchmark/run.py</code>
+writes - the last of which now asks the compiler instead of guessing
+from <code>sys.platform</code>.</p>
+<p>On POSIX the cap moved from a <code>preexec_fn</code> in the parent to
+<code>--max-memory-mb</code> on the child's own command line, which the child
+applies before it does anything else. <code>preexec_fn</code> is documented as
+unsafe when the parent has threads, and the HTTP door has had threads
+since 2.54 - a latent hazard, not an observed failure, and it is gone.</p>
+<p><strong>velaris.lock.</strong> <code>velaris add</code> already recorded a sha256 in
+<code>velaris.toml</code>. It now also writes <code>velaris.lock</code>: every vendored
+library with its source, its sha256 and the version of Velaris that
+added it, as JSON, sorted, one library per entry.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>velaris deps --verify      # do the files match the lock?
+velaris add &lt;url&gt; --force  # replace a library with different bytes</code></pre></div>
+<p><code>velaris deps --verify</code> (<code>velaris verify</code> is the older spelling of the
+same check) fails if a vendored file's hash differs from the lock or a
+locked library is not on disk, and says which. A project with no lock
+falls back to checking <code>velaris.toml</code> and says the lock is missing.
+<code>velaris add</code> refuses to overwrite a library that is already vendored
+when the incoming bytes differ, printing both digests; <code>--force</code>
+replaces it. A library that does not compile is still not accepted -
+and now the file it would have replaced is put back rather than
+deleted.</p>
+<p>One thing changed underneath: a vendored library is written as the
+exact bytes that arrived, in binary, rather than decoded and rewritten
+as text. Before 3.1 the same library added on Windows and on Linux
+locked two different hashes, because the rewrite translated line
+endings - which makes a lockfile useless for the one thing it is for.
+The digest is now the digest of what the source published, and the
+same everywhere.</p>
+<p><strong>Fixed: an empty budget did not survive the trip to a child process.</strong>
+<code>velaris.run(source, allow=set(), timeout=1)</code> came back with E000 and
+"'''' is not an effect" instead of refusing <code>io</code> with E310. The parent
+spelled an empty budget as the two characters <code>''</code>, which a shell
+strips and <code>subprocess</code> does not. <code>Budget.parse</code> now reads <code>''</code> and
+<code>""</code> as an empty budget. Without a timeout the same call was always
+correct, which is why it went unnoticed.</p>
+<p><strong>Fixed: <code>run</code> left Python handles behind in a shared process.</strong> It
+restored the budget and the program's arguments afterwards and not
+<code>PY_OBJECTS</code>, so a framework calling <code>run</code> in a loop accumulated every
+handle every program opened and did not close. It now puts those back
+the same way, which is also what a pool worker does between programs.</p>
+<p><strong>The benchmark.</strong> Rerun in full on Windows 11 with Deno 2.9.6 and
+Python 3.13: identical verdicts to 3.0 on all 63 programs. Of the 56
+dangerous programs Velaris caught 54 - 42 before running, 12 while
+running - and missed 2; Deno caught 32 (5 before, 27 during) and
+missed 24; plain Python caught 28 (all while running) and missed 28;
+none of the three flagged any of the 7 controls. The Windows job
+object changed no verdict: in category 8 the interpreter still reaches
+the 5-second deadline before 256 MB, and <code>RESULTS.md</code> says so rather
+than implying the cap did the work. THREAT_MODEL.md had been carrying
+the 2.62 figures (60 programs, 53 dangerous, 51 caught) and
+COMPLIANCE.md said 60 programs; both now match RESULTS.md, and the
+README and docs/index.html carry the table for the first time. Two
+other stale counts in the README went with them: <code>check_sandbox.py</code> is
+24 escape attempts and 10 honest programs, not 11 attempts, and
+<code>check_refusals.py</code> is 21 wrong programs, not 20.</p>
+<p><strong>The published docs were three versions stale.</strong> <code>docs/</code> had last
+been rebuilt at 2.60, so the reference page still said the effects were
+<code>io, fs, net, clock, rand, ffi</code> with no <code>env</code>, and the library page
+still showed <code>env_tools.setting</code> using <code>io</code>. Rebuilding for this
+release brought the site up to 3.1; the error-code count on the home
+page is now read from the generated page rather than typed by hand,
+where it had drifted from 49 to 59.</p>
+<p><strong>New suite.</strong> <code>check_pool.py</code> - 38 checks, run without the prover
+first, as ARCHITECTURE.md rule 7 requires. <code>check_termination.py</code>
+joined CI at the same time; it had existed since 2.62 and never been
+wired in.</p>
+<h2 id="30---budgets-that-name-paths-hosts-counts-and-secrets">3.0 - Budgets that name paths, hosts, counts, and secrets <a class="anchor" href="#30---budgets-that-name-paths-hosts-counts-and-secrets" aria-label="Link to this section">#</a></h2>
+<p>This is a major version because a program that compiled under 2.x can
+be refused by 3.0: <code>env()</code> is its own effect now, and a function that
+called it under <code>uses io</code> alone is refused at compile time with exactly
+"env() now needs 'uses env'" and the fix. The reason is the sentence
+THREAT_MODEL.md had to carry since 2.63 - an <code>io</code>-only budget could
+read and print every secret in the environment. It cannot now. <code>io</code> is
+the console: <code>print</code>, <code>read_line</code>, <code>args</code>. <code>stdlib/env_tools.vel</code> and
+the two examples that read the environment declare <code>env</code>.</p>
+<p><strong>The 2.60 module allow-list, extended to every coarse effect.</strong> The
+budget grammar (SPEC.md 7.1) narrows <code>fs</code> and <code>net</code> the way <code>ffi:math</code>
+narrows <code>ffi</code>:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>fs:read:./data  fs:write:./out       one direction, under a path
+net:api.example.com:443              one host and port
+net:*.example.com                    one label in place of the star
+fs:read:./data@50  net:...@100       at most that many operations</code></pre></div>
+<p>Every path is resolved with <code>realpath</code> when the budget is parsed and
+again at every <code>read_file</code>, <code>write_file</code> and <code>file_exists</code>, then
+compared as a prefix, so <code>..</code> and symlinks cannot reach past a grant
+(E313, naming the path). <code>fetch</code>, <code>post</code>, <code>fetch_status</code> and <code>request</code>
+check the URL's host and port before any connection (E314); a
+wildcard matches exactly one label and never the domain itself, and
+no wildcard may stand over an IP literal. A count is the smallest
+given for that effect and applies to the whole run (E315); a budget
+with no count is a budget on what, not on how much. Every one of
+these refusals is uncatchable, like E310 and E311. The one catchable
+case is a redirect whose target lies outside the <code>net:</code> grants: the
+program asked for one host and was sent to another, so the request
+fails with the target named and the program hears why.</p>
+<p>The grammar travels unchanged through <code>--allow</code>, <code>velaris.run(allow=)</code>,
+the bounded child (which receives the budget re-spelled with absolute
+paths), the MCP server, the HTTP door, the CrewAI and LangChain tools
+and the Jupyter magic. The door's <code>--max-allow</code> takes it too, and a
+caller may not ask for more than the server grants at any level - an
+effect, a module, a wider path prefix, a host the server does not
+name, a port, a larger count, or an unscoped <code>fs</code> or <code>net</code> against a
+scoped ceiling - and is told which. The audit reads the paths and
+hosts a program names in literals (<code>fs_paths</code>, <code>net_hosts</code>, added
+within <code>velaris.audit/1</code>) and its <code>safe_command</code> grants exactly those,
+falling back to <code>fs:read</code> or <code>net</code> where a value is built at runtime.</p>
+<p>Stated as outside the rule rather than claimed: a hard link inside a
+granted directory is that directory's content; a file system changed
+by another process between the check and the open is outside the
+model, and a Velaris program has no threads to race itself; where a
+granted host name resolves is DNS's business.</p>
+<p><strong>Tested.</strong> <code>check_sandbox.py</code> gained twelve cases: a read outside the
+prefix, a write with only read granted, a <code>..</code> escape, a symlink
+escape (POSIX; skipped on Windows), a host not in the list, a wildcard
+that must not match its parent domain, a port not in the list, a
+redirect to an ungranted host against a local server, the count
+reached on fs and on net, <code>env()</code> with only io granted, and an honest
+program using exactly its grants that must run - plus a redirect to a
+granted host that must be followed. <code>check_library.py</code> has the same
+through <code>velaris.run</code> and through the HTTP door with a ceiling
+narrower than the request at each level. <code>check_fallible.py</code> has the
+redirect failure as a recipe. The benchmark gained category 11 - a
+read outside the granted directory, a request to an ungranted host, a
+secret read through <code>env</code> - run under the narrowest budget each task
+needs, with Deno given the matching <code>--allow-read=&lt;dir&gt;</code> and
+<code>--allow-net=&lt;host:port&gt;</code>; Velaris refuses all three (the path and the
+URL arrive on stdin, so the first two are refused while running, and
+the third is flagged before), Deno refuses all three at the call, and
+Python, with no budget, does all three. THREAT_MODEL.md moves "io
+includes env", "fs has no path list" and "net has no host list" from
+the non-defences to the defences, each with its suite.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#34---the-doors-are-locked-and-the-findings-go-where-findings-go">3.4 - The doors are locked, and the findings go where findings go</a></li><li><a href="#33---the-capability-check-now-means-what-the-spec-says">3.3 - The capability check now means what the spec says</a></li><li><a href="#32---the-capability-format-published-as-a-spec">3.2 - The capability format, published as a spec</a></li><li><a href="#311---a-pool-test-that-passed-for-the-wrong-reason">3.1.1 - A pool test that passed for the wrong reason</a></li><li><a href="#31---a-pool-that-keeps-its-budget-memory-caps-on-windows-and-a-lockfile">3.1 - A pool that keeps its budget, memory caps on Windows, and a lockfile</a></li><li><a href="#30---budgets-that-name-paths-hosts-counts-and-secrets">3.0 - Budgets that name paths, hosts, counts, and secrets</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

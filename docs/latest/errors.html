@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Error reference - Velaris 8.3.1</title>
+<meta name="description" content="Every error Velaris can give, from the error table in the compiler source, which the test suite holds against every code the compiler can raise, so this ...">
+<meta name="velaris-version" content="8.3.1">
+<link rel="canonical" href="https://velaris-lang.dev/errors.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Velaris</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html" aria-current="page">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc wide" tabindex="-1">
+<h1 id="error-reference">Error reference</h1>
+<p class="lead">Every error Velaris can give, from the error table in the compiler source, which the test suite holds against every code the compiler can raise, so this page cannot go stale. In the message templates, braces are filled with your program&rsquo;s names and values; every error also arrives with numbered fixes, and as JSON with <code>--json</code>.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Code</th><th>What it means</th><th>Message template</th></tr></thead>
+<tbody>
+<tr id="E000"><td class="ecode">E000</td><td>a character the lexer cannot read, or a run that stopped without a Velaris error to report</td><td>unexpected character {source[pos]!r}</td></tr>
+<tr id="E001"><td class="ecode">E001</td><td>the program&#x27;s file cannot be found</td><td>cannot find file &#x27;{path}&#x27;</td></tr>
+<tr id="E002"><td class="ecode">E002</td><td>an unknown escape sequence in a text literal</td><td>unknown escape &#x27;\\{e}&#x27; in text</td></tr>
+<tr id="E100"><td class="ecode">E100</td><td>the parser expected something else here</td><td>expected &#x27;{want}&#x27; but found &#x27;{t.text or &#x27;end of file&#x27;}&#x27;</td></tr>
+<tr id="E101"><td class="ecode">E101</td><td>a token that cannot start an expression here</td><td>unexpected &#x27;{t.text}&#x27;</td></tr>
+<tr id="E102"><td class="ecode">E102</td><td>an expression that nests, or chains operators, too deeply, or blocks nested too deeply</td><td>blocks nest more than {BLOCK_NEST_LIMIT} deep here (an &#x27;if&#x27;, &#x27;while&#x27;, &#x27;for&#x27; or &#x27;else if&#x27; inside another)</td></tr>
+<tr id="E200"><td class="ecode">E200</td><td>an unknown function, or an import with no such function</td><td>&#x27;{ns}&#x27; has no function called &#x27;{fname}&#x27;</td></tr>
+<tr id="E204"><td class="ecode">E204</td><td>a function named like a built-in, which would shadow it</td><td>&#x27;{n}&#x27; is the name of a built-in, so a function called &#x27;{n}&#x27; would shadow it; through 7.x the built-in silently won and this function was never reached</td></tr>
+<tr id="E300"><td class="ecode">E300</td><td>an effect used but not declared in &#x27;uses&#x27;, or a name in &#x27;uses&#x27; that is not an effect</td><td>function &#x27;{fn.name}&#x27; declares &#x27;{unknown[0]}&#x27;, which is not an effect; the effects are {&#x27;, &#x27;.join(ALL_EFFECTS)}</td></tr>
+<tr id="E310"><td class="ecode">E310</td><td>an effect outside the run&#x27;s budget (while running); or a promise that calls a function with effects or uses &#x27;try&#x27;</td><td>the &#x27;{where}&#x27; promise of &#x27;{fn.name}&#x27; calls &#x27;{node.name}&#x27; which has effects ({&#x27;, &#x27;.join(sorted(eff))}); promises must be pure</td></tr>
+<tr id="E311"><td class="ecode">E311</td><td>a Python module outside the run&#x27;s ffi: grants was reached</td><td>&#x27;{what}&#x27; reaches {described}, whose owning Python module cannot be determined; this run allows ffi:{granted} and refuses what it cannot place</td></tr>
+<tr id="E313"><td class="ecode">E313</td><td>a path outside the run&#x27;s fs grants</td><td>&#x27;{what}&#x27; reaches &#x27;{path}&#x27; (resolved: {real}), which this run&#x27;s fs grants do not cover</td></tr>
+<tr id="E314"><td class="ecode">E314</td><td>a host or port outside the run&#x27;s net grants</td><td>&#x27;{what}&#x27; reaches host &#x27;{host}&#x27;, which this run does not allow: {why}</td></tr>
+<tr id="E315"><td class="ecode">E315</td><td>the run&#x27;s fs or net operation count was reached</td><td>&#x27;{what}&#x27; is the {_state.OP_COUNTS[kind]}{_ordinal(_state.OP_COUNTS[kind])} {kind} operation, and this run allows {limit}</td></tr>
+<tr id="E316"><td class="ecode">E316</td><td>a file larger than the read ceiling (raise it with --max-read)</td><td>&#x27;{args[0]}&#x27; is {size} bytes, over the read ceiling of {_state.MAX_READ_BYTES} bytes - a file is read whole, into memory, so a large one is capped</td></tr>
+<tr id="E317"><td class="ecode">E317</td><td>a network request whose socket peer is a proxy the run&#x27;s net grants do not cover (an ambient HTTP_PROXY / HTTPS_PROXY)</td><td>an ambient proxy ({proxy}) would carry this request, and its host {peer}:{port} is outside this run&#x27;s net grants: a net grant bounds the URL&#x27;s host, and from 8.0 also the socket&#x27;s peer</td></tr>
+<tr id="E318"><td class="ecode">E318</td><td>read_file on a documented credential location; read a secret with read_file_secret, or grant its exact path</td><td>&#x27;{what}&#x27; reaches &#x27;{path}&#x27; (resolved: {real}), a documented credential location the fs grants do not name explicitly; a broad grant does not include it</td></tr>
+<tr id="E400"><td class="ecode">E400</td><td>there is no &#x27;main&#x27; function</td><td>there is no &#x27;main&#x27; - a program needs somewhere to start</td></tr>
+<tr id="E401"><td class="ecode">E401</td><td>the wrong number of arguments, or parameters on &#x27;main&#x27;</td><td>&#x27;{node.name}&#x27; expects {len(ptypes)} argument(s) but got {len(node.args)}</td></tr>
+<tr id="E402"><td class="ecode">E402</td><td>an unknown variable, or break or continue, which the language does not have</td><td>unknown variable &#x27;{node.name}&#x27;: it is not defined where this function value is written, nor in it</td></tr>
+<tr id="E403"><td class="ecode">E403</td><td>division or remainder by zero while running</td><td>percent_of with a denominator of zero</td></tr>
+<tr id="E405"><td class="ecode">E405</td><td>random(n) with n less than 1</td><td>random(n) needs n greater than 0</td></tr>
+<tr id="E406"><td class="ecode">E406</td><td>the placeholders in a format text and the values given do not match</td><td>this text has {holes} placeholder(s) but got {given} value(s)</td></tr>
+<tr id="E407"><td class="ecode">E407</td><td>a whole number grew past 64 bits</td><td>this whole number has {len(t.text)} digits (whole numbers go from -9223372036854775808 to 9223372036854775807)</td></tr>
+<tr id="E408"><td class="ecode">E408</td><td>an exit code outside 0 to 255</td><td>an exit code must be between 0 and 255, not {code}</td></tr>
+<tr id="E500"><td class="ecode">E500</td><td>an unknown type</td><td></td></tr>
+<tr id="E501"><td class="ecode">E501</td><td>types do not match</td><td>&#x27;{node.name}&#x27; here is the builtin, which needs {want} for argument {i}; the function &#x27;{node.name}&#x27; of this program is hidden by it</td></tr>
+<tr id="E502"><td class="ecode">E502</td><td>a value is needed from a function that returns nothing</td><td>argument {i} of &#x27;{node.name}&#x27; is a call to a function that returns nothing</td></tr>
+<tr id="E503"><td class="ecode">E503</td><td>a return does not match the declared return type</td><td>&#x27;{fn.name}&#x27; promises to return {declared_ret} but this return gives nothing</td></tr>
+<tr id="E504"><td class="ecode">E504</td><td>an &#x27;if&#x27; or &#x27;while&#x27; condition that is not a Bool</td><td>&#x27;while&#x27; needs a yes/no condition (Bool), but this is {c}</td></tr>
+<tr id="E505"><td class="ecode">E505</td><td>a requires, ensures or invariant that is not a Bool</td><td>&#x27;invariant&#x27; must be a yes/no promise (Bool)</td></tr>
+<tr id="E506"><td class="ecode">E506</td><td>an empty list or map with no type to say what it holds</td><td>cannot tell what an empty list holds</td></tr>
+<tr id="E507"><td class="ecode">E507</td><td>a record defined twice, a field given twice in a record, or one name used for a record and a function</td><td>&#x27;{r.name}&#x27; is used for both a record and a function</td></tr>
+<tr id="E508"><td class="ecode">E508</td><td>an unknown record</td><td>unknown record &#x27;{node.name}&#x27;</td></tr>
+<tr id="E509"><td class="ecode">E509</td><td>a record value with a missing, unknown or repeated field, or a map with a repeated key</td><td>record &#x27;{node.name}&#x27; is missing field(s): {&#x27;, &#x27;.join(missing)}</td></tr>
+<tr id="E510"><td class="ecode">E510</td><td>a field that the value does not have</td><td>record &#x27;{t}&#x27; has no field &#x27;{node.field}&#x27;</td></tr>
+<tr id="E511"><td class="ecode">E511</td><td>a record changed in place</td><td>records cannot be changed in place</td></tr>
+<tr id="E512"><td class="ecode">E512</td><td>an imported file cannot be found</td><td>cannot import &#x27;{path}&#x27;: it is not UTF-8 text, so it is not Velaris source</td></tr>
+<tr id="E513"><td class="ecode">E513</td><td>a function or record defined in two files</td><td>function &#x27;{f.name}&#x27; is defined {where}</td></tr>
+<tr id="E514"><td class="ecode">E514</td><td>a variable named like an import</td><td>&#x27;{name}&#x27; is the name of an import, so it cannot also be a variable</td></tr>
+<tr id="E515"><td class="ecode">E515</td><td>an import from outside the directory a program is served from, or of a file there that is not a .vel file</td><td>cannot import &#x27;{path}&#x27;: {why}</td></tr>
+<tr id="E520"><td class="ecode">E520</td><td>a failure that is ignored: a call that can fail, not handled with check or passed up with try</td><td>&#x27;get&#x27; on a map can fail - the key may be missing, and that cannot be ignored</td></tr>
+<tr id="E521"><td class="ecode">E521</td><td>&#x27;try&#x27; in a function that cannot fail, or a failure that escaped the program while running</td><td>&#x27;try&#x27; passes failure up, but &#x27;{fn.name}&#x27; cannot fail</td></tr>
+<tr id="E522"><td class="ecode">E522</td><td>&#x27;try&#x27; or &#x27;check&#x27; on a call that cannot fail</td><td>&#x27;{shown_name(node.subject.name)}&#x27; cannot fail - call it directly, no check needed</td></tr>
+<tr id="E523"><td class="ecode">E523</td><td>&#x27;fail&#x27; in a function that does not declare &#x27;or fail&#x27;</td><td>&#x27;fail&#x27; is used, but &#x27;{fn.name}&#x27; does not declare it can fail</td></tr>
+<tr id="E524"><td class="ecode">E524</td><td>&#x27;main&#x27; declared &#x27;or fail&#x27;</td><td>&#x27;main&#x27; cannot be &#x27;or fail&#x27; - there is no one above it to handle the failure</td></tr>
+<tr id="E525"><td class="ecode">E525</td><td>a check&#x27;s ok arm names the result of a call that returns nothing, or leaves a returned value unnamed</td><td>&#x27;{node.subject.name}&#x27; returns nothing - write &#x27;ok {{ ... }}&#x27; with no name</td></tr>
+<tr id="E530"><td class="ecode">E530</td><td>a function passed as a value that has effects or can fail</td><td>&#x27;{f2.name}&#x27; uses effects ({&#x27;, &#x27;.join(sorted(f2.effects))}) - only pure functions can be passed as values</td></tr>
+<tr id="E540"><td class="ecode">E540</td><td>a type variable that appears only in the return type</td><td>type variable &#x27;{tv}&#x27; must appear in at least one parameter (a {tv} only in the return type cannot be inferred)</td></tr>
+<tr id="E541"><td class="ecode">E541</td><td>a type variable named like a real type</td><td>type variable &#x27;{tv}&#x27; shadows a real type</td></tr>
+<tr id="E542"><td class="ecode">E542</td><td>an argument that does not fit the shape a generic function&#x27;s type variables took</td><td>&#x27;{node.name}&#x27; argument {i} should look like {want}, but this is {got}</td></tr>
+<tr id="E543"><td class="ecode">E543</td><td>a generic function passed as a value</td><td>&#x27;{f2.name}&#x27; is generic - generic functions cannot be passed as values yet</td></tr>
+<tr id="E550"><td class="ecode">E550</td><td>amounts in two different currencies added, compared, or one given where the other is needed</td><td></td></tr>
+<tr id="E551"><td class="ecode">E551</td><td>a currency that is not in velaris.CURRENCIES, or one not written as text in the call</td><td>the currency must be written in the call, as text</td></tr>
+<tr id="E552"><td class="ecode">E552</td><td>a rounding mode other than &quot;half_up&quot;, &quot;half_even&quot; or &quot;down&quot;, or one not written as text in the call</td><td>the rounding mode must be written in the call:</td></tr>
+<tr id="E553"><td class="ecode">E553</td><td>an amount divided with &#x27;/&#x27; or &#x27;%&#x27;, which would round without saying how</td><td>&#x27;{op}&#x27; on an amount would round without saying how</td></tr>
+<tr id="E560"><td class="ecode">E560</td><td>a Secret given to something that emits it: a builtin with an effect, a generic function with an effect, or a &#x27;fail&#x27; reason</td><td>{what} is {t}, and {where} - a Secret cannot be printed, written, sent or passed to Python. It came from {origin}</td></tr>
+<tr id="E561"><td class="ecode">E561</td><td>declassify without a reason written as text in the call, or given something that is not a Secret</td><td>the reason given to &#x27;{said}&#x27; must be written as text in the call</td></tr>
+<tr id="E562"><td class="ecode">E562</td><td>a Secret of a Secret</td><td>a Secret of a Secret is the same secret; write {inner}</td></tr>
+<tr id="E563"><td class="ecode">E563</td><td>an &#x27;if&#x27; or &#x27;while&#x27; branching on a value derived from a Secret</td><td>&#x27;{kind}&#x27; would branch on {t}, which came from {origin} - a program does not choose what to do by looking at a secret. A comparison over one gives a Secret of Bool exactly so that this is refused: in a loop it would read the secret out a character at a time</td></tr>
+<tr id="E600"><td class="ecode">E600</td><td>a &#x27;requires&#x27; broke while running</td><td>broken promise: {nice_name(name)} requires {expr_str(expr)} ({vals(expr)})</td></tr>
+<tr id="E601"><td class="ecode">E601</td><td>an &#x27;ensures&#x27; broke while running</td><td>broken promise: {nice_name(name)} ensures {expr_str(expr)} ({vals(expr, (retval,))})</td></tr>
+<tr id="E602"><td class="ecode">E602</td><td>a position outside a list or text while running</td><td>position {i} is outside the text (it has {len(t)} character(s))</td></tr>
+<tr id="E607"><td class="ecode">E607</td><td>a text grew too large to build, or there was no input to read</td><td>this text grew too large to build</td></tr>
+<tr id="E608"><td class="ecode">E608</td><td>a file could not be written</td><td>could not write &#x27;{str(args[0]).replace(chr(0), chr(92) + &#x27;0&#x27;)}&#x27;: a path cannot hold a NUL character</td></tr>
+<tr id="E609"><td class="ecode">E609</td><td>recursion too deep, a value nested too deeply, or split by empty text</td><td>&#x27;{name}&#x27; called itself {DEPTH_LIMIT} deep - this looks like recursion that never stops</td></tr>
+<tr id="E610"><td class="ecode">E610</td><td>the run&#x27;s time limit was reached and the program stopped</td><td>the program ran longer than {self.timeout} second(s) and was stopped</td></tr>
+<tr id="E611"><td class="ecode">E611</td><td>the run&#x27;s memory cap was reached and the program stopped</td><td>the program used more than {self.max_memory_mb} MB and was stopped</td></tr>
+<tr id="E612"><td class="ecode">E612</td><td>a loop whose end cannot be shown (check --strict only)</td><td></td></tr>
+<tr id="E613"><td class="ecode">E613</td><td>a check or audit ran past its time ceiling and was stopped</td><td>the {what} did not finish within {self.timeout:g} second(s) and was stopped; the source may be crafted to stall the checker</td></tr>
+<tr id="E614"><td class="ecode">E614</td><td>a check or audit grew past its memory ceiling and was stopped</td><td>the {what} used more than {self.max_memory_mb} MB and was stopped; the source may be crafted to bloat the checker</td></tr>
+<tr id="E615"><td class="ecode">E615</td><td>a run under velaris eval was asked to stop from outside, and stopped at the next call or loop turn</td><td>this run was asked to stop and had not stopped {grace:g} second(s) later, so its worker was killed</td></tr>
+<tr id="E616"><td class="ecode">E616</td><td>a run replayed with recorded tool responses made a call the recording does not hold, in that place</td><td>tool call {self.at} of this replayed run is {builtin} {json.dumps(call)[:120]}, where the recorded run made {entry.get(&#x27;builtin&#x27;)} {json.dumps(entry.get(&#x27;call&#x27;))[:120]}</td></tr>
+<tr id="E700"><td class="ecode">E700</td><td>a promise that is provably false, with the input that breaks it</td><td>promise cannot be kept: {nice_name(fn.name)} ensures {expr_str(ens_expr)} - proven without running the program: {vals} gives result = {rv}</td></tr>
+<tr id="E701"><td class="ecode">E701</td><td>a call that can break the called function&#x27;s &#x27;requires&#x27;, with the input that does</td><td>this call can break a promise: &#x27;{fnB.name}&#x27; requires {expr_str(r_expr)}, but &#x27;{ctx.caller}&#x27; can call it with {vals} - proven without running the program</td></tr>
+<tr id="E703"><td class="ecode">E703</td><td>a loop invariant the prover cannot show holds</td><td>cannot prove the loop keeps &#x27;invariant {expr_str(inv_expr)}&#x27; {where} in &#x27;{ctx.caller}&#x27; - the promises allow: {vals}</td></tr>
+<tr id="E704"><td class="ecode">E704</td><td>a loop invariant broke while running</td><td>loop broke its promise: invariant {expr_str(inv_expr)} ({vals})</td></tr>
+<tr id="E705"><td class="ecode">E705</td><td>a list read the prover shows can go past the end</td><td>this &#x27;get&#x27; can reach position {m.eval(idx, model_completion=True)}, but the list has {m.eval(length, model_completion=True)} item(s) - proven without running the program</td></tr>
+<tr id="E706"><td class="ecode">E706</td><td>a divisor the prover shows can be zero</td><td>this can {word} zero</td></tr>
+<tr id="E999"><td class="ecode">E999</td><td>the self-test in &#x27;velaris doctor&#x27; failed</td><td>self-test failed</td></tr>
+</tbody></table></div>
+<h2 id="findings-that-are-not-compile-errors">Findings that are not compile errors <a class="anchor" href="#findings-that-are-not-compile-errors" aria-label="Link to this section">#</a></h2>
+<p>What <code>velaris check --sarif</code>, <code>proofs --sarif</code>, <code>audit --sarif</code> and <code>capabilities check --sarif</code> report besides the codes above, at the level SARIF reports each at.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Rule</th><th>Level</th><th>What it means</th></tr></thead>
+<tbody>
+<tr id="unproven-promise"><td class="ecode">unproven-promise</td><td>warning</td><td>a requires or ensures that is checked while the program runs, not proven before it runs</td></tr>
+<tr id="contract-coverage"><td class="ecode">contract-coverage</td><td>note</td><td>a function that takes or returns data and promises nothing about it</td></tr>
+<tr id="loop-not-shown-to-end"><td class="ecode">loop-not-shown-to-end</td><td>note</td><td>a loop the termination rule cannot show to end; check --strict refuses it as E612</td></tr>
+<tr id="ffi-native"><td class="ecode">ffi-native</td><td>note</td><td>a granted Python module ships native code (a compiled extension: .so/.pyd/.dylib), found on disk without importing it; there is no source to read and a budget does not contain what it does</td></tr>
+<tr id="secret-source"><td class="ecode">secret-source</td><td>note</td><td>a builtin that hands the program a Secret (env, read_file_secret); the compiler will not let its result be printed, written or sent</td></tr>
+<tr id="secret-declassified"><td class="ecode">secret-declassified</td><td>warning</td><td>a declassify call turns a Secret into an ordinary value, with a stated reason; an error under check --strict unless the reason is listed in --allow-declassify-reasons</td></tr>
+<tr id="uses-io"><td class="ecode">uses-io</td><td>note</td><td>a function that may perform io: the console</td></tr>
+<tr id="uses-env"><td class="ecode">uses-env</td><td>note</td><td>a function that may perform env: environment variables</td></tr>
+<tr id="uses-fs"><td class="ecode">uses-fs</td><td>note</td><td>a function that may perform fs: files</td></tr>
+<tr id="uses-net"><td class="ecode">uses-net</td><td>note</td><td>a function that may perform net: the network</td></tr>
+<tr id="uses-clock"><td class="ecode">uses-clock</td><td>note</td><td>a function that may perform clock: the time</td></tr>
+<tr id="uses-rand"><td class="ecode">uses-rand</td><td>note</td><td>a function that may perform rand: randomness</td></tr>
+<tr id="uses-ffi"><td class="ecode">uses-ffi</td><td>note</td><td>a function that may perform ffi: Python, and so anything Python can do</td></tr>
+<tr id="uses-declassify"><td class="ecode">uses-declassify</td><td>note</td><td>a function that may perform declassify: turning a Secret into an ordinary value, which anything may then emit</td></tr>
+<tr id="capability-widened"><td class="ecode">capability-widened</td><td>error</td><td>code that needs a grant velaris.capabilities does not give: an effect, a Python module, a path outside the recorded ones, a host, a scoped grant made unscoped, or more fs or net operations in a run than recorded (capabilities check)</td></tr>
+<tr id="capability-effect-gained"><td class="ecode">capability-effect-gained</td><td>error</td><td>a function velaris.capabilities records now declares an effect it did not declare there (capabilities check)</td></tr>
+<tr id="capability-narrowed"><td class="ecode">capability-narrowed</td><td>note</td><td>velaris.capabilities gives more than the code needs now; capabilities init --force records the narrower surface</td></tr>
+<tr id="dependency-capability-widened"><td class="ecode">dependency-capability-widened</td><td>error</td><td>an upgraded Velaris dependency needs a grant its previous version did not: an effect, a Python module, a path, a host, or more fs or net operations in a run (deps-diff)</td></tr>
+<tr id="dependency-effect-gained"><td class="ecode">dependency-effect-gained</td><td>error</td><td>a function of an upgraded Velaris dependency declares an effect it did not declare in the previous version (deps-diff)</td></tr>
+<tr id="dependency-install-script"><td class="ecode">dependency-install-script</td><td>error</td><td>an upgraded dependency runs an install-time script its previous version did not, or a different one; what the script does is not derived (deps-diff)</td></tr>
+<tr id="dependency-surface-unknown"><td class="ecode">dependency-surface-unknown</td><td>note</td><td>an upgraded dependency holds code other than Velaris, or could not be read, so what it can do was not derived; unknown is not safe (deps-diff)</td></tr>
+<tr id="dependency-added"><td class="ecode">dependency-added</td><td>note</td><td>a dependency the upgraded version declares that the previous one did not; its own surface was not examined (deps-diff)</td></tr>
+<tr id="dependency-narrowed"><td class="ecode">dependency-narrowed</td><td>note</td><td>an upgraded Velaris dependency needs less than its previous version did (deps-diff)</td></tr>
+</tbody></table></div>
+<h2 id="removed-codes">Removed codes <a class="anchor" href="#removed-codes" aria-label="Link to this section">#</a></h2>
+<p>None. A code that stops being given is listed here, and is never given again for anything else (<a href="stability.html">STABILITY.md</a>).</p>
+</main>
+<footer class="foot wide">
+<p>Generated from velaris.ERROR_TABLE by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#findings-that-are-not-compile-errors">Findings that are not compile errors</a></li><li><a href="#removed-codes">Removed codes</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>
