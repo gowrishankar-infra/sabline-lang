@@ -1012,8 +1012,7 @@ def describe_macos() -> None:
     print("-" * 62)
     for name in ("prefix", "base_prefix", "exec_prefix", "executable"):
         value = str(getattr(sys, name))
-        print(f"  sys.{name}: {value}
-    resolves to {os.path.realpath(value)}")
+        print(f"  sys.{name}: {value} -> {os.path.realpath(value)}")
     print(f"  home: {Path.home()} -> {os.path.realpath(Path.home())}")
     print(f"  os.__file__: {os.__file__} -> {os.path.realpath(os.__file__)}")
     profile = confine.mac_profile(confine.os_policy(Budget.parse("io")), [],
