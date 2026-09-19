@@ -865,13 +865,17 @@ def mac_profile(policy: dict[str, Any], reads: list[str], writes: list[str],
         while step not in above:
             above.append(step)
             step = os.path.dirname(step)
-        lines += [f"(deny file-read-data (subpath {_sbpl_text(home)}) "
-                  f'(subpath "/Volumes"))',
-                  "(allow file-read* " + " ".join(
-                      f"({'subpath' if os.path.isdir(p) else 'literal'} "
-                      f"{_sbpl_text(p)})" for p in allowed) + ")",
-                  "(allow file-read* " + " ".join(
-                      f"(literal {_sbpl_text(p)})" for p in above) + ")"]
+        # The denial names what it leaves out itself. A later `allow
+        # file-read*` does not take back a `deny file-read-data`: the rule
+        # for the one operation beats the rule for the family, whichever
+        # comes last - which a Python installed under the home directory,
+        # as a runner's 3.10 is, was the first to meet.
+        kept = [f"(require-not ({'subpath' if os.path.isdir(p) else 'literal'}"
+                f" {_sbpl_text(p)}))" for p in allowed] + [
+                    f"(require-not (literal {_sbpl_text(p)}))" for p in above]
+        lines += ["(deny file-read-data (require-all (require-any "
+                  f'(subpath {_sbpl_text(home)}) (subpath "/Volumes")) '
+                  + " ".join(kept) + "))"]
     return "\n".join(lines)
 
 
