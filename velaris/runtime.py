@@ -1164,6 +1164,10 @@ def _run_on_big_stack(fn: Callable[[], _R]) -> _R:
     started = False
     try:
         t = threading.Thread(target=worker)
+        # said before the thread starts, not after: under load the thread
+        # can reach its first statement, and ask, before this one runs again
+        if on_main:
+            _MAIN_SERVING.set()
         try:
             t.start()
             started = True
@@ -1173,10 +1177,10 @@ def _run_on_big_stack(fn: Callable[[], _R]) -> _R:
             # loaded. Run in place - the big stack is a best-effort guard,
             # never a requirement.
             started = False
+            _MAIN_SERVING.clear()
         if started and on_main:
             # the main thread waits here, and meanwhile does what the run
             # asks of it by call_on_main_thread (8.4)
-            _MAIN_SERVING.set()
             try:
                 while True:
                     asked = _MAIN_CALLS.get()
