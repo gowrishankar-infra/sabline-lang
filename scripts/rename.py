@@ -185,6 +185,11 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # package is velaris/; the differential runs such a tree.
     "release_checks.py": ("velaris",),
     "check_differential.py": ("velaris", "VELARIS_"),
+    # the suite that scans for the variables the package reads, and the one
+    # place that names velaris.toml outside project.py
+    "check_self_budget.py": ("VELARIS_", "velaris.toml"),
+    # the sidebar entry for the page that says what the project was called
+    "build_docs.py": ("Velaris",),
     # The final release under the old name, and the packages that hold the
     # old names on PyPI and npm so that nobody else can take them.
     "packaging/farewell/**": ("velaris", "Velaris", "VELARIS_"),

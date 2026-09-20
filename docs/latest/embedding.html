@@ -8,7 +8,7 @@
 <meta name="description" content="Sabline is a library as well as a command. An agent framework, an MCP server, a CI dashboard or an internal tool can check, audit and run Sabline without ...">
 <meta name="sabline-version" content="8.6.0">
 <link rel="canonical" href="https://sabline.dev/embedding.html">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
 </head>
@@ -44,12 +44,12 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="renamed.html">Velaris is now Sabline</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html" aria-current="page">Embedding</a>
 </li>
 <li><span class="sec-label">Spec</span>
-<ul><li><a href="stability.html">Stability</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
 <ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
@@ -873,10 +873,9 @@ sabline attest src --output src.jsonl               # one Statement per file</co
 <p><code>sabline attest</code> writes an in-toto Statement v1 whose predicate type is
 <code>https://velaris-lang.dev/capability/v1</code>
 (sabline-spec section 8.5; the URL is the type's description and
-schema). Until 8.3 the same type was named at the project's earlier
-documentation address, which now redirects there; a Statement written by
-4.2 to 8.2.1 carries that name, and <code>sabline verify</code> (below) reads either
-as this type and refuses every other. Its subjects are the audited file and every file it imports,
+schema). Two earlier addresses named the same type, and <code>sabline verify</code>
+(below) reads all three as this type and refuses every other
+(<a href="renamed.html">what moved where</a>). Its subjects are the audited file and every file it imports,
 each by the sha256 of its bytes - a file of the standard library named
 <code>&lt;stdlib&gt;/NAME</code> - and its predicate is</p>
 <div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"producer": {"name": "sabline-lang", "uri": "https://github.com/gowrishankar-infra/sabline-lang"},
@@ -962,8 +961,8 @@ sabline verify effects.intoto.sigstore.json \
     --identity you@example.com --issuer https://github.com/login/oauth
 sabline verify effects.intoto.json --json            # sabline.verify/1</code></pre></div>
 <p>It exits 0 when the type is capability/v1 or receipt/v1, at sabline.dev
-or where 8.2.1 and earlier named it, and every subject matches; 1 when the
-type is any other - <code>https://velaris.dev/capability/v1</code> among them - or the
+or at either earlier address, and every subject matches; 1 when the type is
+any other - <code>https://velaris.dev/capability/v1</code> among them - or the
 predicate has the wrong shape, or a subject's bytes differ; and 2 when it
 could not check: a file it cannot read as a Statement, a key written twice
 in one object (so two readers cannot see two different types), a subject

@@ -1054,10 +1054,9 @@ sabline attest src --output src.jsonl               # one Statement per file
 `sabline attest` writes an in-toto Statement v1 whose predicate type is
 `https://velaris-lang.dev/capability/v1`
 (sabline-spec section 8.5; the URL is the type's description and
-schema). Until 8.3 the same type was named at the project's earlier
-documentation address, which now redirects there; a Statement written by
-4.2 to 8.2.1 carries that name, and `sabline verify` (below) reads either
-as this type and refuses every other. Its subjects are the audited file and every file it imports,
+schema). Two earlier addresses named the same type, and `sabline verify`
+(below) reads all three as this type and refuses every other
+([what moved where](https://sabline.dev/renamed.html)). Its subjects are the audited file and every file it imports,
 each by the sha256 of its bytes - a file of the standard library named
 `<stdlib>/NAME` - and its predicate is
 
@@ -1175,8 +1174,8 @@ sabline verify effects.intoto.json --json            # sabline.verify/1
 ```
 
 It exits 0 when the type is capability/v1 or receipt/v1, at sabline.dev
-or where 8.2.1 and earlier named it, and every subject matches; 1 when the
-type is any other - `https://velaris.dev/capability/v1` among them - or the
+or at either earlier address, and every subject matches; 1 when the type is
+any other - `https://velaris.dev/capability/v1` among them - or the
 predicate has the wrong shape, or a subject's bytes differ; and 2 when it
 could not check: a file it cannot read as a Statement, a key written twice
 in one object (so two readers cannot see two different types), a subject

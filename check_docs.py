@@ -1271,6 +1271,7 @@ OLD_HOSTS = ("gowrishankar-infra.github.io", "velaris-lang.dev")
 OLD_HOST_ALLOWED = {
     "CHANGELOG.md": "the history of the releases that named it",
     "check_urls.py": "the test that the card's earlier addresses redirect",
+    "check_library.py": "the same test, run against the live site",
     "check_docs.py": "this check",
     "check_rename.py": "the test that a Statement of an earlier predicate "
                        "type still verifies",

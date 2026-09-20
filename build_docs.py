@@ -279,7 +279,7 @@ DOCUMENTS = [("TUTORIAL.md", "tutorial.html"), ("SPEC.md", "spec.html"),
              ("SECURITY.md", "security.html")]
 # a docs/*.md page's section; one not named here goes under Threat model,
 # those in DOCS_ORDER first and in that order, the rest by name
-DOCS_SECTION = {"floats.md": "Floats"}
+DOCS_SECTION = {"floats.md": "Floats", "renamed.md": "Spec"}
 DOCS_ORDER = ["confinement.md", "runner.md", "eval.md",
               "structurally-impossible.md", "crosswalk.md"]
 MISSING: list[str] = []         # links to a repository file that is not here
@@ -1007,6 +1007,7 @@ def collect(out: Path) -> tuple[list[Page], list[Section], dict[str, str]]:
          threat + [("security.html", by_path["security.html"].title)]),
         ("Embedding", "embedding.html", []),
         ("Spec", None, [("stability.html", "Stability"),
+                        ("renamed.html", "Renamed from Velaris"),
                         ("capability/v1/index.html", "capability/v1"),
                         ("receipt/v1/index.html", "receipt/v1")]),
         ("Changelog", "changelog.html",
@@ -1023,7 +1024,7 @@ FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'"
            " viewBox='0 0 32 32'%3E%3Crect width='32' height='32'"
            " rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22'"
            " font-family='Arial' font-size='18' font-weight='700'"
-           " fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E")
+           " fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E")
 CSP = ("default-src 'none'; style-src 'self'; script-src 'self'; "
        "img-src 'self' data:; connect-src 'self'; base-uri 'none'; "
        "form-action 'none'")
