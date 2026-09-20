@@ -205,6 +205,17 @@ request's twenty-one legs found four faults before it was merged:
   run's thread, so about one run in forty on a loaded runner reported
   partial, correctly. It says so first now.
 
+And the release workflow's own `differential` job found a fifth, after the
+merge and before anything was tagged: **on Linux a program could not read
+back a file it had just written.** `examples/ledger.vel` runs under
+`fs:read:ledger.txt,fs:write:ledger.txt`, saves, and loads; the file is not
+there when the run is confined, the read grant named nothing Landlock could
+open, and the load failed where 8.3.1's succeeded. A read grant that does not
+exist yet is now held to the nearest directory that does, as a write grant
+is, and the level says partial and why; on macOS the profile names the path
+whether or not it is there. The differential check had been run on Windows,
+where reads are not held; it is run on Linux as well now.
+
 `check_confine.py` runs straight after the unit tests, and on macOS prints
 where Python is and the profile a run gets, for whoever reads a failed leg
 without a Mac.
