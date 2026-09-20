@@ -21,6 +21,18 @@ sys.path.insert(0, str(HERE))
 import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
+def _spec_schema(schemas: Any, which: str) -> Any:
+    """One of sabline-spec's schemas, under whichever name the checkout has
+    it: they are named for the documents they describe, and the corpus
+    keeps the velaris.* names a published implementation opens by name
+    (sabline/conform.py says why). Newest name first."""
+    for name in (f"sabline.{which}.schema.json", f"velaris.{which}.schema.json"):
+        path = schemas / name
+        if path.exists():
+            return path
+    return schemas / f"sabline.{which}.schema.json"
+
+
 # its own directory, so two runs at once do not collide
 WORK = isolate("check_library")
 
@@ -2612,7 +2624,7 @@ def main() -> int:
     spec_dir = next((d for d in (HERE.parent / "sabline-spec",
                                  HERE / "sabline-spec")
                      if (d / "schemas").is_dir()), HERE.parent / "sabline-spec")
-    audit_schema = spec_dir / "schemas" / "sabline.audit.1.schema.json"
+    audit_schema = _spec_schema(spec_dir / "schemas", "audit.1")
     try:
         from jsonschema import Draft202012Validator as _V
         if audit_schema.exists():
@@ -2836,8 +2848,8 @@ def main() -> int:
            "(ffi:math,io, not ffi,io)",
            doc.get("safe_command") == "sabline <file> --allow ffi:math,io",
            doc.get("safe_command"))
-        schema_path = (HERE.parent / "sabline-spec" / "schemas"
-                       / "sabline.audit.1.schema.json")
+        schema_path = _spec_schema(
+            HERE.parent / "sabline-spec" / "schemas", "audit.1")
         try:
             from jsonschema import Draft202012Validator
         except ImportError:

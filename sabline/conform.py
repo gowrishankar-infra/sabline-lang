@@ -111,6 +111,24 @@ def _conf_files(root: str, files: dict[Any, Any]) -> None:
             fh.write(text)
 
 
+def _corpus_schema(schemas: str, which: str) -> str:
+    """The path to one of sabline-spec's schemas, under whichever name the
+    corpus has it.
+
+    These files are named for the documents they describe, and those were
+    velaris.* until 8.6. The corpus keeps the old names for the same reason
+    it keeps the old corpus format - a published implementation opens them
+    by name, and none of them can be changed (see CORPUS_FORMAT above). The
+    new name is looked for first, so that the day sabline-spec does rename
+    them this release already reads them; the old name is what is there
+    today, and both are tried before anything is opened."""
+    for name in (f"sabline.{which}.schema.json", f"velaris.{which}.schema.json"):
+        path = os.path.join(schemas, name)
+        if os.path.exists(path):
+            return path
+    return os.path.join(schemas, f"sabline.{which}.schema.json")
+
+
 def _conf_validator(schema_path: str) -> Any:
     """A JSON Schema validator for one of sabline-spec's schemas, or None
     when jsonschema is not installed."""
@@ -571,10 +589,10 @@ def conformance(corpus: str, levels: Any = (1, 2, 3)) -> dict[str, Any]:
         raise ValueError(f"{corpus}/index.json is not "
                          + " or ".join(CORPUS_FORMATS))
     schemas = os.path.join(corpus, "..", "schemas")
-    ctx = {"audit_schema": _conf_validator(os.path.join(
-               schemas, "sabline.audit.1.schema.json")),
-           "capabilities_schema": _conf_validator(os.path.join(
-               schemas, "sabline.capabilities.1.schema.json"))}
+    ctx = {"audit_schema": _conf_validator(
+               _corpus_schema(schemas, "audit.1")),
+           "capabilities_schema": _conf_validator(
+               _corpus_schema(schemas, "capabilities.1"))}
     kinds = dict(_CONFORMANCE_KINDS)
     wanted = sorted({n for lvl, _, needs in CONFORMANCE_LEVELS
                      if lvl in levels for n in needs})

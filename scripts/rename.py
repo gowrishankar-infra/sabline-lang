@@ -151,6 +151,8 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # name: every published implementation reads that field strictly, and
     # none of them can be changed (sabline-spec 0.14.0).
     "sabline/conform.py": ("velaris.conformance-corpus/1", "velaris"),
+    # and the suite that validates against the same schemas
+    "check_library.py": ("velaris.", "velaris"),
     # The Action reads the committed baseline and a permissions-ratchet
     # document under either name, so a repository that has not renamed its
     # file does not quietly lose its ratchet the day its pin moves here.
