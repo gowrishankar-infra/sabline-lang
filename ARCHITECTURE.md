@@ -37,7 +37,8 @@ imports one after it.
 | `loader` | imports, blame, `_import_refusal` (E515) |
 | `values` | runtime values and `FailSignal` |
 | `wrappers` | `Secret of T` and `Money of CUR` over type text |
-| `budget` | `Budget`, every grant and refusal, the guarded opener, `checked_int` |
+| `budget` | `Budget`, every grant and refusal, the guarded opener, `checked_int`; from 8.5 the `tool` grants and `tool_pattern_matches` |
+| `tools` | the runner's first cut (8.5): `read_manifest` (velaris.tools/1), `schema_problem`, `held_by`, `ToolSession` - the door on standard input and output - and `run_tool` |
 | `effects` | the effect checker, and E204 |
 | `checker` | types, the Secret sink check (E560), the rules for `main` |
 | `termination` | whether each loop is shown to end |
@@ -62,6 +63,9 @@ imports one after it.
 | `receipts` | `receipt_statement` |
 | `statements` | `velaris verify` of an attestation or a receipt |
 | `receipt_diff` | `velaris receipts diff` |
+| `viewer` | `velaris receipt show` and `velaris audit --html`: a receipt or an audit as a page, the same bytes for the same input (8.5) |
+| `demo` | `velaris demo` (8.5) |
+| `skill` | `velaris skill verify` (8.5) |
 | `evaluation` | `velaris eval` and its pool |
 | `replay` | `velaris replay` and the recorded tool responses |
 | `upgrades` | `deps-diff` |
@@ -134,6 +138,10 @@ run has a function to compile (`check_cli.py` measures it).
 | CLI commands | `main` (`cli`), near the other `argv[:1] == [...]` checks, and a line in `usage_lines` so `--help` has it |
 | Anything a program can leave behind | `state`, `MUTABLE_GLOBALS` and `reset_program_state` (`pool`), and the scan in `check_pool.py` that fails when a new module-level container appears in neither list |
 | A new error code | `ERROR_TABLE` (`errors`): one line saying what it means. `check_library.py` fails if a code is raised that is not there; the errors page and the SARIF rules are built from it; `check_error_messages.py` needs a case for it. In a minor or patch release it needs a `compatibility:` line in the CHANGELOG (RELEASING.md) |
+| Tools a host offers | `tools`: a call goes `run_tool` -> `ToolSession.call`, which holds it to the manifest (E320), the schema (E323), the budget's and the manifest's grants (`held_by`, E321) and the counts and ceilings (E322) before one line is written to the door, and holds the host's answer to the protocol (E324). The grants are parsed by `Budget._add_tool`; a pattern is `tool_pattern_matches` (`budget`). `_cli_run_with_tools` (`cli`) opens the session before the program is read, because a confined process may not be let start the door's reader thread. THREAT_MODEL.md says who trusts whom (8.5) |
+| A MAC under a Secret key | `run_digest` (`runtime`) and the rule for `HMAC_BUILTINS` in `check_types` (`checker`): the key is a `Secret of Text`, the message carries none, the result is a `Text`, and the effect is `declassify`. The audit's entry is made in `_secrets_named` (`library`), the receipt's - with `key_fingerprint` - in `run_digest` (8.5) |
+| What a grant let through | `_grant_used` (`budget`) counts under the grant's own text in `GRANT_USES`; `_RunRecorder.close` keeps it before the budget is put back, and `receipt_statement` writes `grants_used` (8.5) |
+| The host a URL names | `_url_host` (`library`), used by the audit and by the ratchet: a whole literal, or a fixed beginning that holds the `/` ending the host (8.5) |
 | The HTTP door | `serve_main` (`doors`): the token, `--no-auth`, the ceilings, the endpoints. The time and memory ceilings both doors share are `door_ceilings` and `run_limits` |
 | SARIF, the invocation log, the MCP tool manifest | `findings`: `_SarifRun` and `sarif_check`/`sarif_proofs`/`sarif_audit`, `InvocationLog`; `mcp_manifest`: `mcp_manifest_main` and `mcp_verify_main`, kept out of `velaris_mcp.py` so the server file cannot vouch for itself |
 | The capability ratchet | `ratchet`: `_program_capabilities` derives one file's needs (`_needs` for the grants, `_operation_bounds` for the counts), `capability_scan` a tree's, `capabilities_compare` holds a tree to a baseline - never to a previous commit - and `review` compares a git ref with the working tree. velaris-spec section 9 is the text of every rule there |
@@ -202,6 +210,11 @@ run has a function to compile (`check_cli.py` measures it).
 | `check_policies.py` | do the OPA policy and its Kyverno twin ask what they say (`opa` when installed) |
 | `check_eval.py` | does `velaris eval` refuse every relaxation of its profile, honour a stop from outside, kill a worker past its grace, and write a receipt that names its confinement - and does each refusal that confinement claims hold |
 | `check_confine.py` | does the operating system hold what THREAT_MODEL.md's table says it holds, and no more: the runtime itself attempts an effect outside the budget and the kernel refuses it (E319), or lets it through where the table says it is not held, and always lets it through under `--no-confine`; is every escape target stopped at the kernel where the recorded run says it is |
+| `check_batteries.py` | does each of `azure.vel`, `github.vel`, `k8s.vel` and `aws.vel` speak to a stand-in for its service as the service expects - paging, error shapes, a rate limit, a Signature Version 4 checked the way AWS checks one - calling no Python, under the real host's grant (8.5) |
+| `check_digests.py` | are `sha256` and the encoders the published values, is an HMAC's key a Secret and its MAC the only thing that comes out, and does every other route for the key fail to compile (8.5) |
+| `check_runner.py` | does a tool call pass the manifest, the schema, the grants and the ceilings or never reach the host - fourteen ways past a pattern, five ceilings, a host that lies eleven ways - and does `skill verify` say what a skill needs (8.5) |
+| `check_viewers.py` | is a receipt's or an audit's page the same bytes for the same input, inert, with every value escaped, and does it say what was read, written, fetched, declassified and refused (8.5) |
+| `check_demo.py` | does `velaris demo` show its refusal and its run in under a minute and a screen, leave nothing behind, and read nobody's `.env` whatever it is handed (8.5) |
 | `check_receipts.py` | does `receipts diff` name each kind of difference from an audit and from earlier receipts, does `replay` run the recorded bytes or refuse, and does `verify` refuse what it says it refuses |
 | `check_from_contracts.py` | does a witness the prover finds break an `ensures` left to runtime, pass a true one, and is a function with effects refused |
 | `check_impossible.py` | is each class docs/structurally-impossible.md lists tried, and refused |

@@ -445,6 +445,41 @@ def fn_signature(f: Any) -> str:
     return sig
 
 
+# One line for each library that talks to a service (8.5): what it reaches,
+# the grant it needs, and the example that uses it. None of them calls Python.
+LIBRARY_NOTES = {
+    "azure.vel": (
+        "Azure Resource Manager over REST: GET, PUT, PATCH and DELETE on "
+        "management.azure.com, paging, ARM's error shape. The bearer token is "
+        "the caller's, a Secret of Text. Grant "
+        "<code>net:management.azure.com:443</code> and <code>declassify"
+        "</code>; example: <code>examples/ops/azure_groups.vel</code>."),
+    "k8s.vel": (
+        "The Kubernetes API over REST: list, get and watch-once for the core "
+        "resources, the in-cluster service-account token read as a Secret. "
+        "It reads; every function that changes the cluster begins "
+        "<code>write_</code>. Grant your API server's host and <code>"
+        "declassify</code>; example: <code>examples/ops/k8s_pods.vel</code>."),
+    "github.vel": (
+        "The GitHub REST API: repositories, issues, pull requests, check "
+        "runs, releases and file contents, with paging, and the rate limit "
+        "as a failure that says when it resets. Grant <code>"
+        "net:api.github.com:443</code> and <code>declassify</code>; example: "
+        "<code>examples/ops/github_issues.vel</code>."),
+    "aws.vel": (
+        "Requests signed with Signature Version 4, in Velaris, to S3 and "
+        "STS. The secret key stays a Secret: the signature is one <code>"
+        "hmac_sha256_chain</code> call, which the audit lists as a "
+        "declassification with the reason \"hmac signature\". Grant the "
+        "region's hosts, <code>clock</code> and <code>declassify</code>; "
+        "example: <code>examples/ops/aws_buckets.vel</code>."),
+    "rest.vel": (
+        "What a program that talks to a REST API needs beside "
+        "<code>http.vel</code>: a request asked again within a bound, JSON "
+        "bodies, headers from a map, the items of a JSON list (8.5)."),
+}
+
+
 def library_page() -> Page:
     slug = Slugger()
     body = [heading(1, "Standard library", slug),
@@ -473,6 +508,8 @@ def library_page() -> Page:
             rows.append("".join(row) + "</div>")
         if rows:
             body.append(heading(2, mod.name, slug))
+            if mod.name in LIBRARY_NOTES:
+                body.append(f"<p>{LIBRARY_NOTES[mod.name]}</p>")
             body.extend(rows)
     body.append(heading(2, "Built-in functions", slug))
     rows = []
@@ -549,6 +586,24 @@ START_INSTALL = """pip install velaris-lang
 velaris doctor
 velaris new hello && cd hello && velaris main.vel"""
 
+START_DEMO = """pip install velaris-lang
+velaris demo"""
+
+# what `velaris demo` prints, shortened; check_demo.py holds each line here to
+# be the beginning of a line the command writes
+START_DEMO_OUTPUT = """1. A script that reads ./.env and posts it to a webhook. No budget is given, so it gets io:
+
+   $ velaris agent_script.vel --receipt refused.receipt.json
+   line 6: check read_file("./.env") {
+   error[E310] 'read_file' needs the 'fs' effect, which this run does not allow (it allows: io)
+   exit 1. receipt: refused; E310 (fs) at line 6; grants used: none
+
+2. The same task inside a budget: one file to read, one directory to write, no network:
+
+   $ velaris inside_budget.vel --allow io,fs:read:settings.txt,fs:write:out --receipt allowed.receipt.json
+   3 setting(s); the report is in out/report.txt
+   exit 0. receipt: ok; grants used: fs:read:./settings.txt x1, fs:write:./out x1"""
+
 START_EXAMPLE = """fn discount(price: Int) -> Int
     requires price >= 0
     ensures result >= 0
@@ -575,7 +630,15 @@ def start_page() -> Page:
 
     body = [
         heading(1, "Velaris", slug),
-        '<p class="lead">A programming language in which a function\'s '
+        '<p class="lead">Start here: one command, no arguments, no network, '
+        "under a minute. It writes the kind of script an agent writes - read "
+        "<code>./.env</code>, post it to a webhook - runs it, and shows the "
+        "refusal, its line and the run's receipt; then the same task inside "
+        "a budget, and what differs between the two receipts. It writes what "
+        "it runs, and reads nothing of yours.</p>",
+        code_block("sh", START_DEMO),
+        code_block("text", START_DEMO_OUTPUT),
+        '<p>A programming language in which a function\'s '
         "signature states the types it takes and gives, the effects it may "
         "perform, whether it can fail, and what it promises about its result. "
         "The compiler checks the effects and the failures before the program "
@@ -756,7 +819,7 @@ def receipt_page() -> Page:
     import hashlib
     types = predicate_types("RECEIPT")
     digest = hashlib.sha256(
-        (HERE / "examples" / "effects.vel").read_bytes()).hexdigest()
+        lf_bytes(HERE / "examples" / "effects.vel")).hexdigest()
     example = """{
   "_type": "https://in-toto.io/Statement/v1",
   "subject": [
@@ -1090,6 +1153,15 @@ def resolve_links(text: str, site_path: str, tree: str, in_tree: set[str],
                   text)
 
 
+def lf_bytes(path: Path) -> bytes:
+    """A text file's bytes with line feeds for line ends, as the repository
+    holds it. A Windows checkout may hold the same file with CR LF, and until
+    8.5 a page that carried a file's digest, or a copy of a file, was then
+    different bytes from the one a runner builds - so the release's own
+    rebuild of docs/ touched pages nothing had changed."""
+    return path.read_bytes().replace(b"\r\n", b"\n")
+
+
 def write_file(path: Path, data: bytes) -> None:
     """Written beside itself and renamed over the old one, so a reader at the
     same moment - a suite reading the errors page while another run rebuilds
@@ -1136,10 +1208,10 @@ def write_tree(dest: Path, prefix: str, pages: list[Page],
     write_file(dest / "search-index.json", index)
     tree.files["search-index.json"] = len(index)
     for name in ("site.css", "site.js"):
-        data = (ASSETS / name).read_bytes()
+        data = lf_bytes(ASSETS / name)
         write_file(dest / "assets" / name, data)
         tree.files[f"assets/{name}"] = len(data)
-    card = (HERE / "LLM.md").read_bytes()        # byte for byte (8.0)
+    card = lf_bytes(HERE / "LLM.md")     # byte for byte (8.0), line feeds
     write_file(dest / "llms.txt", card)
     tree.files["llms.txt"] = len(card)
     return tree
@@ -1175,7 +1247,7 @@ def build(out: Path = OUT) -> Built:
     trees = [write_tree(out, "", pages, sections, anchors)]
     play = HERE / "playground" / "index.html"
     if play.is_file():
-        write_file(out / "playground.html", play.read_bytes())
+        write_file(out / "playground.html", lf_bytes(play))
         trees[0].files["playground.html"] = play.stat().st_size
     write_file(out / ".nojekyll", b"")        # served as written, not by Jekyll
     for prefix in ("latest/", f"{VERSION_DIR}/"):

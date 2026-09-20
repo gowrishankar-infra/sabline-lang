@@ -1,0 +1,6 @@
+fn main() uses io, tool {
+    check tool("search", "{}") {
+        ok found { print(found) }
+        fail why { print(why) }
+    }
+}

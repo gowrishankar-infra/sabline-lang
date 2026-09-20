@@ -303,10 +303,22 @@ Field meanings, all stable within `velaris.audit/1`:
 | `prover` | true when a prover checked the promises; false without one, when no status is `proven` and a `proven_share` of 0 says nothing about what could be proven - and false when the file does not compile (added in 4.2) |
 | `secrets` | `{"sources": [...], "declassifies": bool, "declassifications": [{"reason", "function", "line"}]}` - which builtins handed the program a `Secret` (`env`, `read_file_secret`), whether it ever declassifies one, and with what reason. `declassifies: false` with `ok: true` is the answer to "does this program ever let a secret out"; `null` when the file could not be loaded, and not null merely because `ok` is false (added in 6.0) |
 
+| `tools` | `{"names": [...], "any": bool}` - the tools the program's `tool` and `tool_secret` calls name as text, and whether any names one with a value built while running; `safe_command` grants `tool:NAME` for each, or plain `tool` (added in 8.5) |
+
+From 8.5 `net_hosts` also names the host of a URL that only *begins*
+fixed - `"https://api.example.com/" + path` - when the fixed part holds
+the scheme, the host and the `/` that ends it; and `secrets.declassifications`
+lists an `hmac_sha256` call with the reason `hmac signature` and a
+`"builtin"` key naming it.
+
+`velaris audit program.vel --html [-o FILE]` writes the same document as
+a page: plain HTML with the documentation site's stylesheet inside it, no
+script and nothing fetched, the same bytes for the same program.
+
 A new field may be added within version 1; a field will not change
 meaning or disappear without the schema name changing. `effects` and
-each function's `effects` hold only real effect names - the seven, and
-`declassify` from 6.0 - even in the audit of a program that does not
+each function's `effects` hold only real effect names - the seven,
+`declassify` from 6.0 and `tool` from 8.5 - even in the audit of a program that does not
 compile because it names another in a `uses` clause (from 4.1; until
 then that name was listed, and made `safe_command` a budget that does
 not parse).
@@ -1232,7 +1244,9 @@ it did. It is an in-toto Statement of the predicate type
 | `run_parameters` | `seed` and `freeze_time`; `timeout` and `max_memory_mb`, null when there were none; `max_read_bytes`; and, from 8.4, what the operating system held of the run: `confinement` - `"full"`, `"partial"`, or `"none"` when the budget was the only boundary - `confinement_reason`, `confinement_layers` and `os_policy_sha256` ([docs/confinement.md](docs/confinement.md)). Until 8.4 `confinement` was `"none"` everywhere but under `velaris eval`, where it named a mechanism |
 | `effects_used` | each effect and how many operations the budget let through; null when the run was killed before it could say |
 | `refusals` | `{"code", "effect", "line", "stopped", "times"}` for each place the budget refused - `stopped` is false for a refused redirect, which the program is told about and may carry on from |
-| `declassifications` | `{"reason", "line", "times"}` for each place the program declassified |
+| `grants_used` | `{"grant", "times"}` for each grant of the budget that let an operation through, by the grant's own text: `net:api.example.com:443` three times, `fs:read:/srv/data` once, `tool:send_email:to=*@corp.com` once. It is the operator's text - never the URL, path or argument the program gave (added in 8.5) |
+| `declassifications` | `{"reason", "line", "times"}` for each place the program declassified; an `hmac_sha256` or `hmac_sha256_chain` call is one, with the reason `hmac signature` and a `key_fingerprint` - twelve hexadecimal digits that tell one key from another and are not the key (8.5) |
+| `tool_calls`, `tool_ceiling` | only in the receipt of a run given `--tools`: `{"tool", "line", "times", "secret", "held_to"}` for each place a tool was called, `held_to` the grants whose patterns held its arguments; and the manifest's ceiling, what was spent of it, and the manifest's sha256 (8.5) |
 | `exit` | `status`, `outcome` - `ok`, `refused`, `failed`, `did_not_compile`, `timeout` or `out_of_memory` - and the `code` that ended the run |
 | `complete` | false when the run was stopped from outside: what is listed happened, and each `times` is at least that |
 
@@ -1276,6 +1290,107 @@ signed both ways and verified in the release workflow before it is attached
 A signed receipt says its signer ran this Velaris on these bytes, under
 this budget, and saw this run. It is no stronger than the machine it ran
 on, and it says nothing about any other run.
+
+**Reading one.** `velaris receipt show effects.receipt.json` writes a
+receipt as a page - what was read, written and fetched, by grant and with
+counts; which secrets were declassified and why; what was refused and
+where; the confinement level, the wall time, the subjects - to standard
+output or `-o FILE`. It is plain HTML with the documentation site's
+stylesheet inside it: no script, nothing fetched, every value escaped, and
+the same bytes for the same receipt on every system. `--text` writes the
+same for a terminal, with control characters written as escapes. It reads
+a Statement, a DSSE envelope or a Sigstore bundle, and verifies nothing:
+that is `velaris verify`.
+
+## Hosting a run that calls tools (8.5)
+
+A host - an agent framework, a service, a script - starts a program and
+offers it tools. There is no adapter for any framework yet; the protocol
+below is all of it, and `examples/runner/host.py` is a whole host in a
+hundred lines.
+
+<!-- illustrative: needs a host on the other end of the pipe -->
+```sh
+velaris run program.vel --tools tools.json \
+    --allow io,tool:search@20,tool:send_email:to=*@corp.com \
+    --receipt run.receipt.json
+```
+
+**The manifest** (`velaris.tools/1`) is the host's:
+
+```json
+{"schema": "velaris.tools/1",
+ "tools": {
+   "search": {"description": "Look a phrase up.",
+              "arguments": {"type": "object",
+                            "properties": {"query": {"type": "string"}},
+                            "required": ["query"]},
+              "cost": 1},
+   "vault":  {"arguments": {"type": "object"}, "result": "secret"}},
+ "allow": ["tool:search@20"],
+ "ceiling": {"calls": 25, "cost": 40, "unit": "credits"}}
+```
+
+`arguments` is a JSON Schema, of the keywords Velaris checks and no others
+(`type`, `properties`, `required`, `additionalProperties`, `items`, `enum`,
+`const`, `minLength`, `maxLength`, `minimum`, `maximum`, `minItems`,
+`maxItems`; a manifest that uses another is refused, because a constraint
+nobody checks is one somebody believes). An object takes no property its
+schema does not name unless `additionalProperties` says so. `result:
+"secret"` makes the result a `Secret of Text`, which the program has to ask
+for with `tool_secret`. `cost` is what a call spends, in a unit that is
+the host's. `allow` is the host's own grants, in the budget's grammar; a
+call has to pass them and the operator's `--allow`. `ceiling` is the most
+calls and the most cost one run may spend.
+
+**The budget** is the operator's, as for any effect: `tool` (any tool),
+`tool:NAME`, `tool:NAME:ARGUMENT=PATTERN`, `tool:NAME@N`, `tool@N`. With no
+`tool` grant every call is refused (E310). SPEC.md 7.2 has the pattern
+rules; THREAT_MODEL.md what they hold against.
+
+**The door** is the run's standard input and output, one JSON object to a
+line, UTF-8. From the run:
+
+| Event | Fields |
+|---|---|
+| `ready` | first: `protocol` (`velaris.tools-door/1`), `velaris`, `budget`, `tools` |
+| `output` | `text`: one line the program printed. Its standard error is still standard error |
+| `call` | `id`, `tool`, `arguments` (a JSON object, already held to the schema, the grants and the ceilings) |
+| `exit` | last, whatever ended the run: `status`, and the ceiling record - `calls`, `cost`, `unit`, `calls_used`, `cost_used`, `manifest_sha256` |
+
+To the run, one line for each `call`, while the run waits:
+
+```json
+{"id": 1, "result": "three documents matched"}
+{"id": 2, "error": "the index is offline"}
+```
+
+`result` is a text, or any JSON value, which the program receives as JSON
+text. `error` becomes a failure the program handles with `check`. `cost`,
+when given, replaces the manifest's for that call, and must be a number, 0
+or more. `"secret": true` marks one result secret. Anything else in a
+reply is ignored. One call is open at a time. A reply that is not a line of
+JSON, carries another id, holds both or neither of `result` and `error`, or
+does not come within `--tool-timeout` seconds (120) stops the run with
+E324. The program reads nothing from standard input while it is hosted:
+`read_line` gives an empty line.
+
+`velaris skill verify DIR` reads a skill before any of it runs: the
+programs under `DIR`, and the manifest in `DIR/tools.json` (or `--tools
+FILE`). It reports the tools the programs name and whether the manifest
+offers each, the budget that covers every program, what they declassify
+and which Python modules they call, and the manifest's own grants and
+ceiling; it exits 1 when a program does not compile, names a tool the
+manifest lacks or one built while running, or would take a secret result
+as `Text`. `--json` writes `velaris.skill-verify/1`.
+
+**What is not here yet.** A result is a `Text` like any other; nothing
+marks it as the host's words rather than the program's, so what a tool
+returns can steer a program anywhere inside its budget, though nowhere
+outside it. That mark, `Untrusted`, arrives in 9.0, with the HTTP door for
+tools and the first framework adapters. `velaris.tools/1`,
+`velaris.tools-door/1` and `velaris.skill-verify/1` are provisional until
+then (STABILITY.md).
 
 ## The operating system holds the budget too (8.4)
 

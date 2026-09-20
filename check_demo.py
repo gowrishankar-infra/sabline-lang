@@ -101,13 +101,21 @@ def main() -> int:
            "budget: io -> fs:read:./settings.txt,fs:write:./out,io" in out
            and "refusals: E310 (fs) at line 6, x1 -> none" in out
            and "exit.outcome: refused -> ok" in out, out)
+    import build_docs
+    shown = [line.strip() for line in
+             build_docs.START_DEMO_OUTPUT.split("\n") if line.strip()]
+    wrote = [line.strip() for line in lines]
+    missing = [line for line in shown
+               if not any(w.startswith(line) for w in wrote)]
+    expect("every line the documentation's first page shows of it is the "
+           "beginning of a line it writes", not missing, missing)
     expect("the directory it was run from is as it was, and its .env was "
            "not read: the value in it is nowhere in the output",
            sorted(p.name for p in victim.iterdir()) == before
            and CANARY not in out + err)
     where = out.split("\n")[0].rsplit(" in ", 1)[-1].strip()
-    expect("nothing is left behind", where and not os.path.exists(where),
-           where)
+    expect("nothing is left behind",
+           bool(where) and not os.path.exists(where), where)
 
     print("--keep")
     code, out, err, _ = demo(["--keep"], victim)

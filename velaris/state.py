@@ -57,14 +57,14 @@ EFFECT_USES: dict[str, int] = {}     # effect -> how many builtin calls the
 # caps, by tool name and under "" for the whole run; TOOL_COUNTS what has
 # been spent of them. GRANT_USES counts what each grant let through, by the
 # grant's own text - the operator's words, never the program's - which is
-# what a receipt's `grants_used` is made from. TOOLS is the session `velaris
+# what a receipt's `grants_used` is made from. TOOL_SESSION is the session `velaris
 # run --tools` opened (velaris/tools.py), or None: then there is no tool to
 # reach and a call is E320.
 TOOL_GRANTS: "dict[str, list[tuple[str, str]] | None] | None" = {}
 TOOL_LIMITS: dict[str, int] = {}
 TOOL_COUNTS: dict[str, int] = {}
 GRANT_USES: dict[str, int] = {}
-TOOLS: _typing.Any = None
+TOOL_SESSION: _typing.Any = None
 
 # Determinism knobs (8.0). --seed makes random() reproducible; --freeze-time
 # makes now() a fixed instant. Neither is a grant: a program still needs

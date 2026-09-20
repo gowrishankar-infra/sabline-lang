@@ -144,12 +144,12 @@ def main() -> int:
                "    let none: List of Text = []\n"
                '    print(hmac_sha256_chain(env("K", ""), none))'),
                env={"K": KEY}).problems] == ["E609"])
-    report = velaris.audit(sign)
+    secrets = velaris.audit(sign).secrets or {}
     expect("the audit lists the call under secrets, reason 'hmac signature'",
-           report.secrets["declassifies"] is True
-           and report.secrets["declassifications"] == [
+           secrets["declassifies"] is True
+           and secrets["declassifications"] == [
                {"reason": "hmac signature", "function": "main", "line": 2,
-                "builtin": "hmac_sha256"}], report.secrets)
+                "builtin": "hmac_sha256"}], secrets)
     got = run(sign, env={"K": KEY})
     noted = got.receipt["predicate"]["declassifications"]
     expect("the receipt records it with the key's fingerprint - twelve hex "
@@ -189,14 +189,15 @@ def main() -> int:
     for name, body in routes.items():
         found = codes(main_of(body, "io, env, fs, net, tool, declassify"))
         expect(f"the key {name}: does not compile",
-               found and set(found) <= {"E560", "E563"}, found)
+               bool(found) and set(found) <= {"E560", "E563"}, found)
     loop = main_of(
         "    let key = env(\"K\", \"\")\n"
         "    let out = \"\"\n"
         "    for c in chars(key) {\n"
         "        out = out + c\n    }\n    print(out)")
     expect("the key walked a character at a time: still a secret (E560)",
-           set(codes(loop)) <= {"E560", "E563"} and codes(loop), codes(loop))
+           set(codes(loop)) <= {"E560", "E563"} and bool(codes(loop)),
+           codes(loop))
     many = main_of(
         "    let key = env(\"K\", \"\")\n    let i = 0\n"
         "    while i < 40 {\n"

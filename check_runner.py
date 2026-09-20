@@ -13,7 +13,6 @@ steer the program past its budget (it cannot; that the program may act on it
 inside its budget is the 9.0 Untrusted case, and is said, not fixed).
 """
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -37,7 +36,7 @@ def expect(what: str, ok: bool, detail: Any = "") -> None:
         print(f"  FAILED: {what}" + (f"\n    {detail}" if detail != "" else ""))
 
 
-MANIFEST = {
+MANIFEST: dict[str, Any] = {
     "schema": "velaris.tools/1",
     "tools": {
         "search": {"arguments": {"type": "object", "properties": {

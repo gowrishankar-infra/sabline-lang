@@ -29,7 +29,7 @@
 // A Secret resource's data is ordinary Text once it has been read over the
 // network; this library has no function for reading one, on purpose.
 
-import "http.vel" as http
+import "rest.vel" as rest
 
 record K8sCluster {
     // "https://kubernetes.default.svc:443" - scheme, host and port, no path
@@ -74,7 +74,7 @@ uses net, declassify or fail
 {
     let bearer = declassify("Bearer " + c.token, "the service-account token is sent to the Kubernetes API server as the Authorization header")
     let headers = json_of({ "Authorization": bearer, "Accept": "application/json", "Content-Type": content_type })
-    let answer = try http.call_retrying(method, c.server + "/" + http.no_leading_slash(path), body, headers, attempts)
+    let answer = try rest.call_retrying(method, c.server + "/" + rest.no_leading_slash(path), body, headers, attempts)
     return K8sReply(status: answer.status, body: answer.body)
 }
 
@@ -135,7 +135,7 @@ uses net, declassify or fail
     while pages < most_pages {
         pages = pages + 1
         let body = try read(c, path + joiner + "limit=500" + more)
-        for item in try http.items(body, "items") {
+        for item in try rest.items(body, "items") {
             out = push(out, item)
         }
         let next = ""

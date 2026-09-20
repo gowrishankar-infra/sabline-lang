@@ -1534,7 +1534,7 @@ def _cli_run_with_tools(filename: str, as_json: bool,
         print(f"velaris: the tool manifest {manifest_path} cannot be used: "
               f"{getattr(e, 'strerror', None) or e}", file=sys.stderr)
         return 2
-    vars(_state)["TOOLS"] = session
+    vars(_state)["TOOL_SESSION"] = session
     session.send({"event": "ready", "protocol": TOOLS_PROTOCOL,
                   "velaris": VERSION, "budget": budget.spec(),
                   "tools": sorted(session.manifest["tools"])})
@@ -1554,7 +1554,7 @@ def _cli_run_with_tools(filename: str, as_json: bool,
         session.send({"event": "exit", "status": status,
                       **session.ceiling_record()})
         sys.stdout = real_out
-        vars(_state)["TOOLS"] = None
+        vars(_state)["TOOL_SESSION"] = None
 
 
 def _open_for_later(path: str) -> Any:

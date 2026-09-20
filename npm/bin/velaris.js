@@ -62,6 +62,9 @@ const INTRODUCED = {
   eval: "8.3.0",
   receipts: "8.3.0",
   replay: "8.3.0",
+  demo: "8.5.0",
+  receipt: "8.5.0",
+  skill: "8.5.0",
 };
 
 // The two flags the compiler takes before any command, each with a

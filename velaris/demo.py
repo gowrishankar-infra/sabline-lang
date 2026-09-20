@@ -160,8 +160,8 @@ def _demo(here: str, keep: bool) -> int:
         ["agent_script.vel", "--receipt", REFUSED_RECEIPT], here)
     first = _receipt(os.path.join(here, REFUSED_RECEIPT))
     out += _indent(printed)
-    refusal = next(iter((first.get("predicate") or {}).get("refusals")
-                        or []), {})
+    refusal: dict[str, Any] = next(
+        iter((first.get("predicate") or {}).get("refusals") or []), {})
     line_no = refusal.get("line")
     source = AGENT_SCRIPT.split("\n")
     if isinstance(line_no, int) and 0 < line_no <= len(source):

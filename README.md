@@ -68,6 +68,20 @@ caveats every review raised, the ffi cliff, unbounded execution, and
 rather than holes. It is a real guard for the situation everyone is
 now in — running a program someone, or something, else wrote.
 
+**To see it happen**, with nothing to read first (8.5):
+
+<!-- illustrative: writes and runs its own files in a temporary directory -->
+```sh
+velaris demo
+```
+
+It writes the kind of script an agent writes - read `./.env`, post it to a
+webhook - runs it with no budget given, and shows the refusal, its line and
+the run's receipt; then the same task inside a budget, and what differs
+between the two receipts. No arguments, no network, under a minute; it
+writes what it runs and reads nothing of yours. `--keep` leaves the files,
+and `velaris receipt show refused.receipt.json` renders a receipt as a page.
+
 ## The other half: promises, proven
 
 <!-- expect: E700 -->
@@ -421,6 +435,29 @@ discount is never a surcharge, and what is left is never negative. That
 is the sentence a platform can show a customer before offering to enable
 a rule, and it is not one a sandbox can produce.
 
+## A program that calls your tools
+
+<!-- illustrative: needs a host on the other end of the pipe -->
+```sh
+velaris run agent.vel --tools tools.json \
+    --allow io,tool:search@20,tool:send_email:to=*@corp.com
+```
+
+The runner's first cut (8.5). A host process offers a program tools through
+a manifest - a JSON Schema for each tool's arguments, a cost, a ceiling -
+and the operator's budget says which may be called and holds arguments to
+patterns. A call that is outside either is refused before the host hears of
+it, and the receipt records every call, the patterns that held it and the
+ceiling. [`examples/runner/host.py`](examples/runner/host.py) is a whole
+host in Python: it offers `search` and `send_email`, and the second example
+program is refused when it tries to mail outside `corp.com`. The protocol
+is JSON lines on standard input and output
+([EMBEDDING.md](EMBEDDING.md#hosting-a-run-that-calls-tools-85)); there is
+no framework adapter yet, and a tool's result is not yet marked as the
+host's words rather than the program's - that is `Untrusted`, in 9.0.
+`velaris skill verify <dir>` reports the tools and the budget a skill's
+programs would need, without running them.
+
 ## Written by a model, audited by you, run in a box
 
 ```sh
@@ -580,6 +617,26 @@ check db.count(conn, "notes") { ok n { ... } fail why { ... } }
 Written in Velaris, so they carry their effects — a program using
 `http` shows `net`, one using `db` shows `ffi`, and a pure function
 can call neither.
+
+From 8.5 four of them talk to the services an operations script talks to,
+and none calls Python, so the audit of a program that uses one shows no
+`ffi` at all:
+
+| Library | Reaches | Example |
+|---|---|---|
+| [`azure.vel`](stdlib/azure.vel) | Azure Resource Manager: GET, PUT, PATCH, DELETE, paging, ARM's errors. `net:management.azure.com:443` | [`azure_groups.vel`](examples/ops/azure_groups.vel): resource groups and tag drift |
+| [`github.vel`](stdlib/github.vel) | the GitHub REST API: repos, issues, pulls, checks, releases, contents, the rate limit. `net:api.github.com:443` | [`github_issues.vel`](examples/ops/github_issues.vel) |
+| [`k8s.vel`](stdlib/k8s.vel) | the Kubernetes API: list, get, watch-once; every function that changes the cluster begins `write_` | [`k8s_pods.vel`](examples/ops/k8s_pods.vel): the pods that are not running |
+| [`aws.vel`](stdlib/aws.vel) | S3 and STS, signed with Signature Version 4 in Velaris | [`aws_buckets.vel`](examples/ops/aws_buckets.vel) |
+
+A token or a key goes in as a `Secret of Text` and the library says, in the
+audit, the one place it leaves: a bearer token through `declassify` with a
+reason that names the host, an AWS signature through `hmac_sha256_chain`,
+listed as `hmac signature` - the key itself never stops being a Secret
+([THREAT_MODEL.md](THREAT_MODEL.md) says why that is sound).
+`check_batteries.py` runs each against a stand-in for its service on every
+CI leg. [velaris-kit](https://github.com/gowrishankar-infra/velaris-kit) is
+a template repository that starts from the Azure script.
 
 ## Libraries
 

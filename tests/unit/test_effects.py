@@ -36,13 +36,21 @@ DOCUMENTED_EFFECTS = {
     "py": "ffi", "py_int": "ffi", "py_float": "ffi", "py_json": "ffi",
     "py_new": "ffi", "py_do": "ffi", "py_field": "ffi", "py_close": "ffi",
     "declassify": "declassify",
+    # 8.5: a MAC under a Secret key is a way out of Secret, and a tool call
+    # is an effect of its own (SPEC.md 3.1, 7)
+    "hmac_sha256": "declassify", "hmac_sha256_chain": "declassify",
+    "tool": "tool", "tool_secret": "tool",
 }
 
 # SPEC.md 10.1, and the Secret builtins of 6.0 (SPEC.md 3.1): added in
 # 4.3 or later, so a program's own function of the name is allowed.
 GIVE_WAY = ("money", "units_of", "with_units", "percent_of",
             "divide_or_fail", "text_of", "parse_money",
-            "read_file_secret", "declassify")
+            "read_file_secret", "declassify",
+            # 8.5 (SPEC.md 10.1)
+            "sha256", "hex_encode", "hex_decode", "base64_encode",
+            "base64_decode", "url_encode", "hmac_sha256",
+            "hmac_sha256_chain", "tool", "tool_secret")
 
 
 def parse(source: str) -> list[Any]:

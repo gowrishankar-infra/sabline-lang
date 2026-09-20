@@ -356,7 +356,8 @@ def _url_host(e: Any, text_of: Any) -> str | None:
             and isinstance(e.args[0], Str):
         fixed = e.args[0].value.split("{}", 1)[0]
     elif isinstance(e, BinOp) and e.op == "+":
-        parts, at = [], e
+        parts: list[Any] = []
+        at: Any = e
         while isinstance(at, BinOp) and at.op == "+":
             parts.append(at.right)
             at = at.left

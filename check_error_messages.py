@@ -92,6 +92,15 @@ UNREACHABLE: dict[str, str] = {
             "outside; check_eval.py stops one mid-loop and holds the receipt",
     "E616": "given only under velaris replay --responses, to a call its "
             "recording does not hold; check_receipts.py tampers with one",
+    # 8.5: four codes that need a host on the other side of the tools door
+    "E321": "given only to a tool call under velaris run --tools; "
+            "check_runner.py hosts one and holds each refusal",
+    "E322": "given only to a tool call under velaris run --tools, past a "
+            "ceiling; check_runner.py passes each of the five",
+    "E323": "given only to a tool call under velaris run --tools, whose "
+            "arguments the manifest does not take; check_runner.py",
+    "E324": "given only when the host on the tools door breaks its "
+            "protocol; check_runner.py is that host, eleven ways",
     # 8.4: a code no program can reach at all
     "E319": "given only under the fault-injection hook (VELARIS_FAULT_INJECT), "
             "when the operating system's confinement refuses what the "

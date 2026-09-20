@@ -34,7 +34,7 @@ from typing import Any
 
 RECEIPT_SCHEMA = "velaris.receipt/1"
 # the type is velaris/predicates.py's, at velaris-lang.dev from 8.3
-RECEIPT_SPEC = "velaris-spec 0.12.0"
+RECEIPT_SPEC = "velaris-spec 0.13.0"
 # the refusals a receipt lists and the doors log: the budget's, and the
 # read ceiling's
 REFUSAL_CODES = ("E310", "E311", "E313", "E314", "E315", "E316", "E317",
@@ -108,8 +108,8 @@ class _RunRecorder:
         """The run has ended: keep what the budget counted, before the
         budget that was there before is put back."""
         self.grant_uses = dict(_state.GRANT_USES)
-        if _state.TOOLS is not None:
-            self.tools = _state.TOOLS.ceiling_record()
+        if _state.TOOL_SESSION is not None:
+            self.tools = _state.TOOL_SESSION.ceiling_record()
 
     def _send(self, event: dict[Any, Any]) -> None:
         if self.emit is None:

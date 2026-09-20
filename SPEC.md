@@ -72,12 +72,13 @@ what it printed was the secret. `Secret of T` is the other half: a
 value the compiler tracks so that it cannot reach anything that emits
 it.
 
-**Where one comes from.** Two builtins, and nothing else:
+**Where one comes from.** Three builtins, and nothing else:
 
 | Builtin | Returns |
 |---|---|
 | `env(name, fallback)` | `Secret of Text` |
 | `read_file_secret(path)` | `Secret of Text`, and can fail |
+| `tool_secret(name, arguments)` | `Secret of Text`, and can fail (8.5, §7.2) |
 
 A program cannot make a Secret out of a value it already holds. Nothing
 else is secret by default, and a secret that arrives some other way -
@@ -226,6 +227,23 @@ names every place it does and the reason given (velaris-spec §8.6, the
 `secrets` field); and an operator can run the program without letting
 it.
 
+**A MAC under a secret key (8.5).** `hmac_sha256(key, message)` and
+`hmac_sha256_chain(key, messages)` take a `Secret of Text` key and give
+an ordinary `Text`: the HMAC-SHA256, as 64 hexadecimal digits, of the
+message's UTF-8 bytes under the key's. The chain applies HMAC once for
+each message in order, each result - its 32 raw bytes - the key of the
+next, and gives the last; an empty list is E609. A signature is sent in
+the clear, which is why the result is not a Secret, and that makes
+these the second way out, held as `declassify` is: the function needs
+`uses declassify` (E300), the run needs the grant (E310), and the audit
+lists each call under `secrets.declassifications` with the reason `hmac
+signature` and the builtin's name. The key is a `Secret of Text` and
+nothing else (E561); the message carries no secret (E560), since its MAC
+under a key the program chose would be its digest in the open.
+THREAT_MODEL.md says why a MAC does not give the key away, what somebody
+holding one can do, and what a program with the `declassify` grant could
+do with these that it could already do without them.
+
 **What a Secret is while running.** Nothing. It is a compile-time
 distinction with no runtime representation, so it costs nothing, and
 `declassify` evaluates to the value itself. Two places print values a
@@ -367,8 +385,9 @@ A function declares what it may do:
 The effects are `io` (the console: `print`, `read_line`, `args`),
 `env` (environment variables, through `env()`), `fs` (files), `net`
 (network), `clock` (the time), `rand` (randomness), `ffi` (calling the
-host language, §12) and `declassify` (turning a `Secret` into an
-ordinary value, §3.1). `env` became its own effect in 3.0; before that
+host language, §12), `declassify` (turning a `Secret` into an
+ordinary value, §3.1) and, from 8.5, `tool` (calling a tool the host
+process offers, §7.2). `env` became its own effect in 3.0; before that
 it was part of `io`, which meant an io-only budget could read every
 secret in the environment. `declassify` became the eighth in 6.0: it
 reaches nothing outside the program, but it is the one way a value the
@@ -418,6 +437,10 @@ A grant names an effect, and may narrow it:
 | `net:*.D` | hosts with exactly one label in place of the star |
 | `ffi` | any Python module |
 | `ffi:a,b` | those top-level modules |
+| `tool` | any tool the host offers (8.5, §7.2) |
+| `tool:NAME` | that tool |
+| `tool:NAME:ARG=PATTERN` | that tool, with its argument `ARG` held to the pattern |
+| `tool:NAME@N`, `tool@N` | at most N calls of that tool, or of tools, in the run |
 | `...@N` | and at most N operations of that effect in the run |
 
 Grants are additive. Paths are resolved with `realpath` when the budget
@@ -442,6 +465,48 @@ directory is that directory's content; a file system changed by another
 process between the check and the open is outside the model; where a
 granted host name resolves is DNS's business.
 
+### 7.2 Tools (8.5)
+
+    fn mail(to: Text) -> Text uses tool or fail {
+        return try tool("send_email", json_of({"to": to, "body": "hello"}))
+    }
+
+`tool(name, arguments)` calls a tool the host process offers and gives
+back its result as `Text`; `tool_secret` is the same call and gives a
+`Secret of Text`. `arguments` is a JSON object as text. Both need the
+`tool` effect and can fail: a tool that reports an error is a failure the
+caller handles, like a request that does not get through.
+
+Which tools exist is not the language's to say. `velaris run program.vel
+--tools manifest.json` is given a manifest (`velaris.tools/1`,
+velaris-spec §8.10) naming each tool, a JSON Schema for its arguments,
+whether its result is secret, what a call costs, and the most calls and
+cost one run may spend; with no manifest there is no tool, and a call is
+E320. A call is made only when all of these hold, and is otherwise a
+refusal that stops the run and cannot be caught:
+
+- the manifest offers the tool (E320);
+- the budget grants it, and so do the manifest's own grants, if it has
+  any; and every argument a grant holds to a pattern is there and matches
+  (E321). A pattern is matched against the whole value: every character
+  stands for itself, and `*` for one or more characters that are not the
+  literal following the star, not one of `, ; < > " ' \`, not white space
+  and not a control or format character; a value holding `..` matches
+  only a pattern that holds it. A list matches when every item does.
+  Several patterns for one argument are alternatives; a `tool:NAME` with
+  no pattern, written anywhere in the budget, grants every argument;
+- no count is passed: `tool:NAME@N`, `tool@N`, or the manifest's ceiling
+  on calls or on cost (E322). A call's cost is the manifest's unless the
+  host's answer gives one;
+- the arguments are a JSON object the tool's schema accepts - an object
+  takes no property its schema does not name - and a tool whose result is
+  secret is called through `tool_secret` (E323).
+
+The host answers each call on the run's standard input, and an answer
+that is not one - E324 - stops the run. A result is a value like any
+other: nothing yet marks it as the host's words rather than the
+program's own. That mark, `Untrusted of T`, is 9.0's.
+
 ## 8. Failure
 
 A function that can fail says so:
@@ -464,7 +529,8 @@ Fallible builtins: `to_int`, `read_file`, `read_file_secret`, `fetch`,
 `mod_or_fail`, `divide_or_fail`, `parse_money`, `py`, `py_int`,
 `py_float`, `py_json`, `py_new`, `py_do`, `py_field`, `json_get`,
 `json_int`, `json_float` and `json_len` - every `py_*` builtin but
-`py_close`. `get` on a **list** is not fallible: list bounds are the
+`py_close` - and from 8.5 `hex_decode`, `base64_decode`, `tool` and
+`tool_secret`. `get` on a **list** is not fallible: list bounds are the
 prover's domain (§9.4), and `get_or(m, k, default)` gives a total map
 lookup.
 
@@ -626,7 +692,10 @@ shows nothing of its content, with or without an import root.
 A builtin added in **4.3 or later** gives way to a function of the same
 name that the program defines: `money`, `units_of`, `with_units`,
 `percent_of`, `divide_or_fail`, `text_of` and `parse_money` are the
-program's own wherever it declares one. A program written before a
+program's own wherever it declares one, and so are 6.0's
+`read_file_secret` and `declassify` and 8.5's `sha256`, `hex_encode`,
+`hex_decode`, `base64_encode`, `base64_decode`, `url_encode`,
+`hmac_sha256`, `hmac_sha256_chain`, `tool` and `tool_secret`. A program written before a
 builtin existed therefore keeps meaning exactly what it meant, which is
 what lets a minor version add one at all. Inside a library imported
 **with a name**, such a call always reaches the builtin: the library's
@@ -634,7 +703,18 @@ own functions carry its prefix, and it was not written against the
 program importing it.
 
 The builtins that existed before 4.3 keep the precedence they have
-always had: a function named like one of those is never reached.
+always had: a function named like one of those is never reached. That
+holds inside a library imported with a name too: `get(xs, i)` written in
+`http.vel` reaches the builtin, though `http.vel` has a `get` of its own
+(8.5; until then the library's own function took the call, so such a
+library could not index a list or use a `for` loop).
+
+**Digests and encoders (8.5)**, all pure, over a Text's UTF-8 bytes:
+`sha256(text)` gives 64 hexadecimal digits; `hex_encode` and
+`base64_encode` (RFC 4648, padded) encode; `hex_decode` and
+`base64_decode` decode, and fail on text that is not the encoding or
+whose bytes are not UTF-8; `url_encode` percent-encodes every byte but
+the unreserved characters of RFC 3986 (`A-Z a-z 0-9 - . _ ~`).
 
 ## 11. Compilation and execution
 

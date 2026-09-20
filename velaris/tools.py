@@ -31,7 +31,7 @@ from . import state as _state
 from .errors import VelarisError
 from .values import FailSignal
 from .budget import Budget, BudgetError, tool_pattern_matches
-from typing import Any
+from typing import Any, cast
 
 TOOLS_SCHEMA = "velaris.tools/1"
 TOOLS_PROTOCOL = "velaris.tools-door/1"
@@ -358,15 +358,17 @@ class ToolSession:
         waiting inside Python's buffered reader holds that reader's lock,
         and the interpreter cannot shut down past it."""
         import os
+        inp: Any = self._inp
+        fd: int | None
         try:
-            fd = self._inp.fileno()
+            fd = int(inp.fileno())
         except (AttributeError, OSError, ValueError):
             fd = None
         held = b""
         while True:
             try:
                 if fd is None:
-                    chunk = self._inp.readline(MAX_REPLY_BYTES + 2)
+                    chunk = inp.readline(MAX_REPLY_BYTES + 2)
                 else:
                     chunk = os.read(fd, 65536)
             except (OSError, ValueError):
@@ -559,7 +561,7 @@ def _arguments_error(builtin: str, name: str, why: str,
 def run_tool(builtin: str, args: list[Any], line: int) -> Any:
     """`tool` and `tool_secret` while running. The `tool` effect was spent
     before this ran."""
-    session = _state.TOOLS
+    session = _state.TOOL_SESSION
     if session is None:
         raise VelarisError("E320",
             f"'{builtin}' calls tool '{args[0]}', and this run has no tools: "
@@ -585,6 +587,6 @@ def open_session(path: str, timeout: float = TOOL_TIMEOUT_DEFAULT
     manifest = read_manifest(text)
     session = ToolSession(manifest, hashlib.sha256(raw).hexdigest(),
                           timeout=timeout)
-    sys.stdout = _EventStream(session)     # type: ignore[assignment]
+    sys.stdout = cast(Any, _EventStream(session))
     sys.stdin = io.StringIO("")
     return session

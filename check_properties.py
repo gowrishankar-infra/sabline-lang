@@ -992,13 +992,18 @@ def site_text(effect: str, k: int, variant: int) -> str:
     if effect == "ffi":
         return ('check py("math", "floor", ["2.5"])'
                 + handled.format(n=n, use=f"length({n}v)"))
+    if effect == "tool":
+        # with no host there is no tool, so the call is E320 when it runs:
+        # the effect is attempted, which is what the properties ask about
+        return (f'check tool("tool{k}", "{{}}")'
+                + handled.format(n=n, use=f"length({n}v)"))
     # declassify needs a Secret, and env() is where one comes from
     return (f'let {n} = declassify(env("VELARIS_PROP_{k}", "") == "", '
             f'"property {k}")')
 
 
 VARIANTS = {"io": 2, "env": 1, "fs": 2, "net": 2, "clock": 1, "rand": 1,
-            "ffi": 1, "declassify": 1}
+            "ffi": 1, "declassify": 1, "tool": 1}
 
 
 class Site:
@@ -1258,11 +1263,27 @@ def prop_check_deterministic(ex: Example) -> None:
                              f"  first:  {first}\n  second: {second}")
 
 
+class _EveryTool:
+    """A tool session that offers whatever is asked for (8.5): with no host
+    there is no tool and a call ends the run, and this property is about
+    runs that finish."""
+
+    def call(self, builtin: str, name: str, arguments: str, line: int) -> str:
+        return ""
+
+    def ceiling_record(self) -> dict[str, Any]:
+        return {}
+
+
 def prop_audit_says_what_runs(ex: Example) -> None:
     a = audit(ex.source)
     assert a.ok, f"the audit refused it: {a.problems}"
-    r = quietly(velaris.run, ex.source, allow=set(velaris.ALL_EFFECTS),
-                seed=RUN_SEED, freeze_time=FREEZE)
+    vars(velaris.state)["TOOL_SESSION"] = _EveryTool()
+    try:
+        r = quietly(velaris.run, ex.source, allow=set(velaris.ALL_EFFECTS),
+                    seed=RUN_SEED, freeze_time=FREEZE)
+    finally:
+        vars(velaris.state)["TOOL_SESSION"] = None
     assert r.ok and r.exit_code == 0, (
         f"the run did not finish (so it cannot say what it attempts): "
         f"exit {r.exit_code}, refused {r.refused_effect}, {r.problems}\n"
@@ -1278,12 +1299,14 @@ KNOWN_AUDIT_FIELDS = {
     "schema", "velaris_version", "ok", "problems", "effects", "functions",
     "proven_share", "safe_command", "warnings", "ffi_modules",
     "loops_unshown", "contract_coverage", "fs_paths", "net_hosts",
-    "ffi_any", "counts", "prover", "secrets", "ffi_native", "confinement"}
+    "ffi_any", "counts", "prover", "secrets", "ffi_native", "confinement",
+    "tools"}
 # what moves with any effect (checked in detail below) ...
 MOVES_WITH_ANY = {"effects", "safe_command", "functions"}
 # ... and what moves with one effect in particular (check_metamorphic.py)
 MOVES_WITH = {"io": set(), "clock": set(), "rand": set(),
               "env": {"secrets"}, "declassify": {"secrets"},
+              "tool": {"tools"},               # 8.5: the tools its calls name
               # confinement (8.4) is derived from the budget: a write grant
               # changes what Windows holds, a host what any kernel can, and
               # a Python module widens the OS policy

@@ -124,9 +124,13 @@ def reroute(port: int) -> None:
             return real(("127.0.0.1", port), *args, **kw)
         raise OSError(f"check_batteries.py reaches no real host ({host})")
 
-    socket.create_connection = create_connection  # type: ignore[assignment]
     trust = ssl.create_default_context(cafile=str(STANDIN / "standin-cert.pem"))
-    ssl._create_default_https_context = lambda: trust  # type: ignore[assignment]
+
+    def trusting() -> ssl.SSLContext:
+        return trust
+
+    vars(socket)["create_connection"] = create_connection
+    vars(ssl)["_create_default_https_context"] = trusting
 
 
 # ---- the checks --------------------------------------------------------------
@@ -580,7 +584,8 @@ def check_k8s() -> None:
                 or re.search(r"\bwrite_\w+\(", m.group(2)):
             writers.add(m.group(1))
     expect("k8s: every function that sends a changing method is named write_",
-           writers and all(w.startswith("write_") for w in writers), writers)
+           bool(writers) and all(w.startswith("write_") for w in writers),
+           writers)
     audit_example("k8s_pods.vel", None)
 
 
@@ -804,7 +809,7 @@ def check_aws() -> None:
     audit_example("aws_buckets.vel", None)
     import velaris
     report = velaris.audit(source, path=str(example))
-    hmacs = [d for d in report.secrets["declassifications"]
+    hmacs = [d for d in (report.secrets or {})["declassifications"]
              if d.get("builtin") == "hmac_sha256_chain"]
     expect("aws: the audit lists the signature under secrets, reason 'hmac "
            "signature'",

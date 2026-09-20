@@ -1,5 +1,233 @@
 # Velaris changelog
 
+## 8.5 - Taste
+
+A minor version, additive throughout: what it is like to use. One command
+that shows a refusal and a run inside a budget with nothing to read first;
+four libraries, written in Velaris, so that an operations script against
+Azure, Kubernetes, GitHub or AWS calls no Python; a receipt and an audit as
+a page a person can read; and the first cut of the runner, in which a host
+process offers a program tools and the budget holds their arguments.
+
+No program that compiles and runs under 8.4.0 inside its budget is refused
+by 8.5.0. Every new builtin gives way to a function of the program's own
+name (SPEC.md 10.1); `uses tool` did not compile and a `tool` grant did not
+parse until now; with no `--tools` there is no tool to reach.
+`check_differential.py` holds the examples, velaris-spec's corpus and the
+quick benchmark to 8.4.0's outputs.
+
+compatibility: `sha256`, `hex_encode`, `hex_decode`, `base64_encode`, `base64_decode` and `url_encode` are new pure builtins, and each gives way to a function of that name in the program (they are in `NEW_BUILTINS`, SPEC.md 10.1), so a program that defined its own `sha256` under 8.4 still calls its own; a program that called an undefined one did not compile (E200).
+compatibility: `hmac_sha256` and `hmac_sha256_chain` are new builtins that give way to the program's own function in the same way; they need the `declassify` effect, which no program can come to need without calling them, and the E560, E561 and E609 they can give are given only to a program that calls them, which under 8.4 was E200.
+compatibility: `tool` is a ninth effect. `uses tool` was E300 under 8.4 and `--allow tool` a budget error, so no program or command line that worked changes meaning; `--allow all` now grants nine effects and says so in the line it has always written to standard error, and a program run under it that does not call `tool` runs as before; `velaris.ALL_EFFECTS` is one longer.
+compatibility: `tool` and `tool_secret` are new builtins that give way to the program's own function; E320, E321, E322, E323 and E324 are given only to a call of one of them, which no program that compiled under 8.4 makes, and the last four only under `velaris run --tools`.
+compatibility: `velaris demo`, `velaris receipt show` (and `velaris receipts show`, the same page), `velaris skill verify`, `velaris audit --html [-o FILE]` and `velaris run --tools MANIFEST [--tool-timeout S]` are new; a file named `demo`, `receipt` or `skill` in the working directory is now run with `velaris run demo`, as a file named `audit` or `check` always had to be.
+compatibility: `velaris.receipt/1` gains `grants_used` in every receipt, `tool_calls` and `tool_ceiling` in the receipt of a run given `--tools`, and `key_fingerprint` on the declassification an hmac call records - all within version 1, where fields may be added (velaris-spec 8.7, 0.13.0); `velaris replay` and `receipts diff` compare what they compared, and a receipt written by 8.4 is read, shown and verified as before.
+compatibility: `velaris.audit/1` gains `tools` within version 1, and `secrets.declassifications` gains an entry, with a `builtin` key, for each hmac call; `effects` may hold `tool`.
+compatibility: the audit and the capability ratchet now name the host of a URL that only begins fixed - `"https://api.example.com/" + path`, or `format("https://api.example.com/{}", id)` - when the fixed part holds the `/` that ends the host, where 8.4 said "a host built while running". `net_hosts`, `safe_command` and a derived baseline are narrower for such a program, never wider: the ratchet passes a narrowing against an 8.4 baseline, and the run-time check of `net:` grants is unchanged. velaris-spec 9.3 states the rule (0.13.0).
+compatibility: inside a library imported with a name, a call to a builtin older than 4.3 reaches the builtin, as it does in a flat import and as SPEC.md 10 says a named import behaves; until now a library's own `get` took a `get(list, i)` written inside it, a `for` loop's included. Only the shipped library may define such a name (E204) - `http.vel` has a `get` - and no shipped library made such a call, so no program's meaning changes.
+compatibility: `stdlib/http.vel` is byte for byte what it was in 8.4.0. What the batteries needed beside it - retries within a bound, JSON bodies, headers from a map - is in a new file, `stdlib/rest.vel`, because a function added to `http.vel` would stop a program that imports `http.vel` without a name and has a function of that name itself (E513), and `items` and `succeeded` are names a program has; `azure.vel`, `github.vel`, `k8s.vel`, `aws.vel` and `rest.vel` are new files that no 8.4 program imports.
+compatibility: `host_refusal` takes an optional `count` and the run state gains `TOOL_GRANTS`, `TOOL_LIMITS`, `TOOL_COUNTS`, `GRANT_USES` and `TOOL_SESSION`, none of which STABILITY.md covers and each of which has the value a run without tools had before.
+api: `AuditResult` gains the `tools` slot; `velaris.ALL_EFFECTS` gains `tool`; the run state gains `TOOL_GRANTS`, `TOOL_LIMITS`, `TOOL_COUNTS`, `GRANT_USES` and `TOOL_SESSION`; `host_refusal(url)` becomes `host_refusal(url, count=False)`; the command line gains `demo`, `receipt`, `skill`, `audit --html` and `run --tools`/`--tool-timeout`; receipts from every door gain `grants_used`, and audits `tools`.
+
+### `velaris demo`
+
+One command, no arguments, no network, about a second. It makes a directory,
+writes into it a `.env` whose one value is made up, a script of the kind an
+agent writes - read `./.env`, post it to a webhook - and the same task
+rewritten to stay inside a budget. It runs the first with no budget given
+and shows the refusal, the exact line, the reason and the receipt; runs the
+second under `io,fs:read:settings.txt,fs:write:out` and shows it succeed,
+with its receipt; and prints what differs between the two receipts. `--keep`
+leaves the files. The documentation's first page now opens with it.
+`check_demo.py` runs it on every leg: under a minute, under a screen, exit
+0, nothing left behind.
+
+### Batteries, written in Velaris
+
+- **`stdlib/azure.vel`**: Azure Resource Manager over REST - `read`,
+  `put_resource`, `patch_resource`, `delete_resource`, `list` with
+  `nextLink` paging (a link that leaves the host is not followed), a 429 or
+  a 5xx asked again within a bound, and ARM's `{"error": {"code",
+  "message"}}` as the failure's words. The bearer token is the caller's
+  `Secret of Text`; nothing in the library signs in. Every request is
+  written `"https://management.azure.com:443/" + path`, so the audit of a
+  program that uses it names exactly `management.azure.com:443`.
+- **`stdlib/k8s.vel`**: the API server over REST with a `Secret` token;
+  `in_cluster()` reads the service-account file with `read_file_secret`;
+  `list` (with `metadata.continue`), `read`, `watch_once`, and `pods`,
+  `pod`, `services`, `deployments`, `deployment`, `configmaps`, `events`,
+  `nodes`, `namespaces`. It reads; what changes the cluster is
+  `write_create`, `write_patch`, `write_delete` and `write_scale`, and the
+  suite fails if a function that sends a changing method is named otherwise.
+  It has no function for reading a Secret resource, on purpose.
+- **`stdlib/github.vel`**: repos, issues, pulls, check runs, releases and
+  contents; `Link`-header paging held to `api.github.com`; the rate limit
+  in every reply (`remaining`, `reset`) and, when it is reached, a failure
+  that says when it resets and is not asked again.
+- **`stdlib/aws.vel`**: Signature Version 4 in Velaris, to S3 (list
+  buckets, list objects with continuation, get, put, delete) and STS
+  (`GetCallerIdentity`), with a session token when there is one. The date
+  is whole-number arithmetic on `now()`. It reproduces the signature AWS
+  publishes for its own test request, and the stand-in checks each
+  signature the way AWS does, from the request as it arrived.
+- **`hmac_sha256(key: Secret of Text, message: Text) -> Text`** and
+  **`hmac_sha256_chain(key, messages)`**. The result is not a Secret, so the
+  call needs the `declassify` effect and grant, the audit lists it under
+  `secrets` with the reason `hmac signature`, and the receipt records it
+  with the key's fingerprint. The chain exists because SigV4's derived keys
+  are credentials themselves: with it they are never values of the program.
+  THREAT_MODEL.md has a new section saying why a MAC does not give the key
+  away, what somebody holding one can do (replay it while it is valid), and
+  the limit: a program with the `declassify` grant can MAC under a weak key
+  it derived from a strong one - which is no more than `declassify` already
+  let it do, and should be read in an audit as what it is.
+- **`sha256`, `hex_encode`, `hex_decode`, `base64_encode`, `base64_decode`,
+  `url_encode`**: pure, over UTF-8; the decoders fail on what is not the
+  encoding or not text.
+- **Bearer tokens leave through `declassify`**, once, where the header is
+  built, with a reason that names the host. 8.5 adds no builtin that sends a
+  Secret: one that did would make `net` a second `declassify` that no audit
+  names.
+- **`stdlib/rest.vel`** is what the four needed that `http.vel` lacked:
+  `call_retrying` (a bound of ten, no pause - a program has no clock unless
+  granted one), `call_json`, `header_map`, `header_of`, `items`,
+  `succeeded`, `worth_retrying`, `after_prefix`, `no_leading_slash`. It is
+  a new file and `http.vel` is untouched: the first draft added these to
+  `http.vel`, and a program that imports `http.vel` without a name and
+  defines its own `items` then stopped compiling (E513). A minor version
+  does not do that, so they moved.
+- **The audit names the host of a URL that begins fixed** (above), which is
+  what lets a library written against one host audit as that host.
+  `azure.vel` and `github.vel` import nothing, because an audit reads every
+  function a program loads and `http.vel`'s take any URL.
+- **Each has an example** under `examples/ops/` - `azure_groups.vel`
+  (resource groups and tag drift), `k8s_pods.vel`, `github_issues.vel`,
+  `aws_buckets.vel` - a line on the Library page, and a test in
+  `check_batteries.py`, which runs on every leg against a stand-in server in
+  the suite's own process: the request goes to the real host's name over
+  TLS, under the real host's grant, and only where that name connects to is
+  changed (`tests/standin/`, a certificate nothing else trusts).
+
+**The ffi count over `examples/`** (`velaris stats --ffi examples`): at 8.4.0,
+106 programs, 8 of which call Python; at 8.5.0, 112 programs, 8 of which
+call Python. The six new programs - the four under `examples/ops/` and the
+two under `examples/runner/` - call none, and the audit of each shows no
+`ffi` effect and no module. The eight are the ones that were there:
+`database.vel`, `edges.vel`, `ffi.vel`, `json_ffi.vel`, `report_fixes.vel`,
+`sandbox.vel`, `stdlib_tools.vel` and `stress.vel`, which exist to show
+`ffi`, `db.vel` and `dates.vel`; none of them was rewritten.
+
+### Viewers
+
+`velaris receipt show <file>` and `velaris audit <file> --html` write a page:
+what was read, written and fetched - by grant, with counts - which secrets
+were declassified and why, what was refused and where, the confinement
+level, the wall time, the subjects. Plain HTML with the documentation site's
+stylesheet inside it; no script, nothing fetched, every value escaped;
+`--text` for the terminal, with control characters written as escapes. The
+same input gives the same bytes on every system (`tests/viewers/`).
+
+To say which host, a receipt had to know, and a receipt holds no value the
+program handled. So `grants_used` counts what each *grant* let through, by
+the grant's own text - `net:management.azure.com:443` three times - which is
+the operator's and not the program's.
+
+### The runner, first cut
+
+`velaris run program.vel --tools manifest.json`. The manifest
+(`velaris.tools/1`) declares tools by name, a JSON Schema for each one's
+arguments, which results are secret, a cost, and a ceiling in calls and in
+the host's own cost unit. The budget grants them as it grants anything:
+`tool`, `tool:search@20`, `tool:send_email:to=*@corp.com`. A call goes
+through a door to the host - JSON lines on standard input and output now; an
+HTTP door later - pauses the run, and resumes with the result, which is a
+`Secret of Text` when the manifest says so. `Untrusted` arrives in 9.0, and
+the documents say so where it matters. Receipts record every call site, the
+patterns that held its arguments and the ceiling; the audit lists `tool`
+like any effect, and the tools a program names. `examples/runner/` is a host
+in Python offering `search` and `send_email`, and a program that is refused
+(E321) when it mails outside the allowed domain, before the host hears of
+it. `velaris skill verify <dir>` reads a skill's programs and manifest and
+reports the tools and the budget it would need. There is no framework
+adapter; EMBEDDING.md's new section is the whole protocol.
+
+### The adversarial pass
+
+Kept as tests, so that each stays tried.
+
+- **An argument that escapes its constraint** (`check_runner.py`, fourteen
+  ways against `to=*@corp.com`). The first matcher was a glob, and a glob
+  star matches `eve@evil.example, ann@corp.com`. The rule that shipped: a
+  pattern is matched against the whole value, nothing is trimmed or folded,
+  and `*` never stands for the literal that follows it in the pattern, a
+  separator (`, ; < > " ' \`), white space, a control or format character,
+  or across `..`; a list matches when every item does; a held argument that
+  is left out is refused, since the host's default is not the operator's
+  pattern; and an argument the schema does not name is refused, since what
+  nobody described nobody constrained.
+- **A ceiling exceeded**: five of them - `tool:NAME@N`, `tool@N`, the
+  manifest's calls, its cost, and a cost the host reports mid-run.
+- **A host that lies**: another call's id, a Bool for an id, a line that is
+  not JSON, a result and an error, neither, a negative cost to win budget
+  back, a cost that is not a number, NaN, a closed door, silence. Each is
+  E324 and the program does not go on. A reply's other fields change
+  nothing: a result is a `Text` and never a grant.
+- **A result that steers** a host or a path: it cannot leave the budget (the
+  suite has a tool return a URL outside `net:`, which is E314), and inside
+  the budget it can. That is the 9.0 `Untrusted` case and is written down as
+  open in THREAT_MODEL.md, not fixed.
+- **`hmac_sha256`: a key that reaches output other than as a MAC**
+  (`check_digests.py`). Fifteen routes - printed, logged, written, as a URL,
+  as a tool's arguments, encoded first, through a list, a map, `format`,
+  `json_of`, a loop over `chars`, as the *message* of another MAC - none
+  compiles. One thing was changed for it: a call site that signs under many
+  keys names sixteen fingerprints in a receipt and then says `many`, so a
+  loop over keys derived from a secret cannot use the receipt as a channel.
+  The limit above - a weak key derived from a strong one - is stated, not
+  closed.
+- **`velaris demo` turned on a real `.env`** (`check_demo.py`): run from a
+  directory holding a `.env` with a value only the suite knows, with seven
+  argument forms, a proxy in the environment and the temporary directory
+  pointed at the victim's. The value appears nowhere, nothing connects
+  anywhere, and the directory is as it was.
+- **A receipt somebody else wrote**, shown as a page: markup in any value is
+  text, and an escape sequence is written out, not sent to the terminal.
+
+### Known open
+
+- A tool's result is not marked as the host's words (`Untrusted`, 9.0).
+- The pattern rule is conservative: `*@corp.com` does not match
+  `Ann@Corp.com`, and `/data/*.txt` does not match `/data/a.b.txt`.
+- `k8s.vel` verifies TLS against the machine's trust store; a cluster with
+  its own CA needs `SSL_CERT_FILE` set where the run starts. There is no
+  switch that turns verification off, and no way yet to name a CA per run.
+- `aws.vel` and `k8s.vel` take their host from the caller, so an audit says
+  "a host built while running" for them and the operator names the grant.
+- `call_retrying` does not pause between attempts.
+- A named import still renames a library's *parameters* that share a name
+  with one of its functions; `http.vel` avoids the names. 9.0.
+- S3 and STS answer in XML, and `aws.vel` reads values out by tag.
+
+### Housekeeping
+
+- **`build_docs.py` hashes and copies line-feed bytes** (`lf_bytes`): the
+  digest on the receipt page, `site.css`, `site.js`, `llms.txt` and the
+  playground are the same bytes from a Windows checkout and from a runner,
+  so the release's own rebuild of `docs/` no longer touches that page.
+- `velaris/site.css` is the site's stylesheet inside the package, for the
+  viewers; `check_viewers.py` holds it to `site/site.css`.
+- velaris-spec 0.13.0: the `tool` effect and its grants (sections 3.1, 4.1
+  and 5.6), the URL-prefix rule (9.3), receipt `grants_used`, `tool_calls`,
+  `tool_ceiling` and `key_fingerprint` (8.7), the audit's `tools` and the
+  hmac declassification (8.6), and `velaris.tools/1` (8.10, provisional).
+- [velaris-kit](https://github.com/gowrishankar-infra/velaris-kit), a
+  template repository: the Azure script, a committed `velaris.capabilities`,
+  the Action in a workflow, and an empty `FRICTION.md`.
+
+### Measured
+
+PERF_BLOCK
+
 ## 8.4 - The kernel holds the line
 
 A minor version, and the last before 9.0. Until now the budget was enforced

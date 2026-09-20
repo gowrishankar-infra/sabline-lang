@@ -393,6 +393,138 @@ What follows is what is still not defended.
   settle them beforehand. These are limits of the current prover,
   listed in RESULTS.md rather than worked around.
 
+## Signing with a secret key: `hmac_sha256` (8.5)
+
+A request to AWS is signed with an HMAC-SHA256 under a key derived from the
+secret key. The signature is sent in the clear; the key must never be. So 8.5
+has two builtins that take a `Secret of Text` and give back an ordinary
+`Text`: `hmac_sha256(key, message)` and `hmac_sha256_chain(key, messages)`,
+which applies HMAC again and again, each result the next key as raw bytes.
+They are the second way out of `Secret`, after `declassify`, and are held the
+same way: the function needs `uses declassify`, the run needs the
+`declassify` grant, the audit lists the call under `secrets` with the fixed
+reason `hmac signature` and the builtin's name, and a receipt records each
+call site with that reason and the key's fingerprint.
+
+**Why this is sound.** HMAC-SHA256 is a pseudorandom function of the message
+under the key: a MAC, or any number of them over messages an attacker chose,
+does not reveal the key or help forge a MAC over another message, for a key
+with the entropy of a real credential. That is the property every service
+that accepts a signed request already relies on, since it sees exactly this.
+The message may not carry a secret (E560): a MAC of a secret message under a
+key the program chose would be a digest of that message, in the open. The
+chain exists because Signature Version 4's derived keys - for a date, a
+region, a service - are credentials themselves for as long as they are valid;
+with the chain they are never values of the program, and only the last MAC,
+the signature, comes out.
+
+**What somebody holding the MAC can do.** Replay it, for as long as the
+service accepts it: a SigV4 signature is good for the one request it covers,
+for about fifteen minutes around its timestamp, and a program that prints
+one, or a log that keeps one, has given that request away for that long. It
+cannot be turned into another request, and it does not shorten the search
+for the key.
+
+**What this does not hold, and why it is not worse than before.** Every pure
+operation over a secret gives a secret, so a program can build a *weak* key
+out of a strong one - one character of it, or `length(key)` as text - and a
+MAC under a weak key can be matched against guesses offline. A program that
+does this in a loop reads the key out through its MACs. Nothing in the type
+system stops that, and nothing needs to: it requires the `declassify` effect
+and grant, and a program that holds those can already write
+`declassify(key, "...")`. `hmac_sha256` lets out no more than the effect it
+needs already allowed. What it changes is what an audit says: a program that
+only signs shows `hmac signature` and nothing else under
+`secrets.declassifications`, and a reviewer who sees a key argument that is
+not the credential itself, or an hmac call in a loop over pieces of one,
+should read it as a declassification of the key, because it is one.
+
+**The fingerprint** a receipt carries is twelve hexadecimal digits of a
+SHA-256 over a fixed label and the key. It tells two keys apart and the same
+key from run to run, which is what an operator wants from a receipt after a
+rotation. It is a function of the key, so for a guessable key it confirms a
+guess, as a MAC does; for a real credential it does not help find it. One
+call site names at most sixteen fingerprints and then says `many`, so a loop
+over derived keys cannot use the receipt as a second channel.
+`check_digests.py` holds the vectors (RFC 4231, and AWS's own published
+request in `check_batteries.py`), the four refusals, and fifteen routes by
+which a key might reach output other than as a MAC, none of which compiles.
+
+**Bearer tokens.** `stdlib/azure.vel`, `github.vel` and `k8s.vel` send a
+token in an `Authorization` header. A `Secret` cannot be handed to `request`
+(E560), and 8.5 adds no builtin that would let one be: a builtin that sends
+a secret anywhere the `net` grant reaches would turn `net` into a second
+`declassify` that no audit names. The libraries call `declassify` instead,
+once, where the header is built, with a reason that names the host, so the
+audit of a program that uses one says in words that a token leaves and
+where to. From there the token is a `Text` inside that function, and what
+holds it to the named host is the library's text - the request's URL begins
+with a literal `https://host:443/` - and the operator's `net:` grant.
+
+## Tools a host offers: the runner's first cut (8.5)
+
+`velaris run program.vel --tools manifest.json` lets a program call tools
+the process that started it offers (EMBEDDING.md has the protocol). Who
+trusts whom:
+
+- **The host is trusted; the program is not.** The manifest is the host's
+  and the budget is the operator's, and a call has to pass both before the
+  host hears of it: the tool is one the manifest offers (E320), the budget
+  and the manifest's own `allow` grant it and every argument they hold to a
+  pattern matches (E321), no `@N`, call ceiling or cost ceiling is passed
+  (E322), and the arguments are what the tool's JSON Schema says, with no
+  property it does not name (E323). Each is a refusal: it stops the run,
+  cannot be caught, and is in the receipt.
+- **An argument pattern is a whole-value match.** Every character stands for
+  itself and `*` for one or more characters, never the literal that follows
+  the star in the pattern (so `*@corp.com` holds exactly one `@`), never
+  `, ; < > " ' \`, white space, a control or a format character, and never
+  across `..`. Nothing is trimmed, case-folded or normalised first. A list
+  matches when every item does; a map, a null, or an argument that is left
+  out does not match. `check_runner.py` tries fourteen ways past
+  `to=*@corp.com`.
+- **A host that lies** about a result cannot be detected, and is not the
+  threat: the host is the operator's own process. What a reply can do is
+  bounded. It is one line of JSON carrying the open call's id and either a
+  result or an error, or the run stops (E324); a cost that is negative, not a
+  number or NaN is E324, so a reply cannot win budget back; any other field
+  it adds is ignored; and a result is a `Text`, or a `Secret of Text` from
+  `tool_secret` - it is never a grant. A reply may mark its result secret,
+  which a call through `tool` then refuses (E323); it cannot unmark one the
+  manifest marks.
+- **A result that steers** is the case this release does not close. A result
+  is a `Text` like any other, so a program may use it as a URL, a path or
+  another tool's argument, and the budget holds it exactly as it holds any
+  value: a host outside `net:` is E314, an address outside `to=*@corp.com`
+  is E321. *Inside* the budget, a hostile document that a `search` tool
+  returns can still direct what the program does with what it was granted.
+  The mark that would let a program, a signature and an audit tell the
+  host's words from the program's own is `Untrusted of T`, and it arrives in
+  9.0. Until then: grant a program that reads tool results the narrowest
+  budget its task needs, and hold the arguments that matter to patterns.
+- **What the receipt holds.** Each call site - the tool, the line, how
+  often, whether its result was secret - and the grants whose patterns held
+  its arguments, as the operator wrote them; the ceiling, what was spent of
+  it, and the sha256 of the manifest. Not the arguments and not the results:
+  a receipt holds no value the program handled, and that rule has no
+  exception here.
+
+## `velaris demo` (8.5)
+
+The demo writes and runs a script that reads `./.env` and posts it, so it has
+to be impossible to turn on a real one. It takes no argument but `--keep`
+(anything else is exit 2): no path, address, budget or program comes from
+the command line, the environment or the directory it was started in. It
+works in a directory it has just made with `mkdtemp`, and the runs start
+there, so `./.env` is the file it wrote, whose one value is made up and says
+so. The first run is given no `--allow`, so the read is refused (E310)
+before the post is reached, whatever is on the disk; and the webhook's host
+is under `.invalid`, which no resolver answers for. `check_demo.py` runs it
+from a directory holding a `.env` with a value only the suite knows, with a
+proxy in the environment and the temporary directory pointed at that
+directory, and holds that the value appears nowhere, nothing connects
+anywhere, and the directory is as it was.
+
 ## Known open
 
 The gaps this model does not close, kept as a table so the list is one

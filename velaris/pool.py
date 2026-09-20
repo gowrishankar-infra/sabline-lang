@@ -64,7 +64,7 @@ MUTABLE_GLOBALS = ("PROGRAM_ARGS", "EFFECT_BUDGET", "FFI_MODULES",
                    "_NATIVE_KEEPALIVE", "SEED", "FROZEN_TIME", "_RNG",
                    "RUN_RECORDER", "IMPORT_ROOT", "STOP_FILE", "RESPONSES",
                    "PROGRAM_FILES", "TOOL_GRANTS", "TOOL_LIMITS",
-                   "TOOL_COUNTS", "GRANT_USES", "TOOLS")
+                   "TOOL_COUNTS", "GRANT_USES", "TOOL_SESSION")
 
 
 def program_state_baseline() -> dict[str, Any]:
@@ -102,7 +102,7 @@ def reset_program_state(budget: "Budget | None" = None,
                             the tool grants, their caps and what was spent,
                             and what each grant let through (8.5); the
                             budget's install() puts all four back
-        TOOLS               the tool session of `velaris run --tools` (8.5)
+        TOOL_SESSION        the tool session of `velaris run --tools` (8.5)
 
     Nothing about one program's proofs survives to reach the next: a
     proof is made when it is needed and kept nowhere (8.2).
@@ -126,7 +126,7 @@ def reset_program_state(budget: "Budget | None" = None,
     set_run_params(None, None)         # --seed / --freeze-time, per program
     vars(_state)["RUN_RECORDER"] = None   # a receipt is one program's (8.1)
     vars(_state)["RESPONSES"] = None      # recorded responses are one run's (8.3)
-    vars(_state)["TOOLS"] = None          # so is a tool session (8.5)
+    vars(_state)["TOOL_SESSION"] = None          # so is a tool session (8.5)
     (budget if budget is not None else Budget()).install()
     if baseline is None:
         return
