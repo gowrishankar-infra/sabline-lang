@@ -850,10 +850,15 @@ def args_cases() -> None:
 # ---------------------------------------------------------------------------
 # C. The environment
 # ---------------------------------------------------------------------------
-# Every variable sabline/*.py reads by name (grep os.environ). The standard
-# library also reads some on Sabline's behalf: urllib's getproxies and
-# proxy_bypass (HTTP_PROXY, HTTPS_PROXY, NO_PROXY - C9, C10), tempfile (TEMP,
-# TMP, TMPDIR - C12 and G5) and os.path.expanduser (HOME, USERPROFILE - C13).
+# Every variable sabline/*.py reads by name, whether it reads it straight
+# from os.environ or through naming.env()/naming.pop_env(), which read the
+# SABLINE_ name and fall back to the VELARIS_ one (8.6; sabline/naming.py).
+# A VELARIS_ name is not listed separately: naming.env() derives it from the
+# SABLINE_ one, so varying the new name varies the pair, and check_rename.py
+# is where the fallback itself is run. The standard library also reads some
+# on Sabline's behalf: urllib's getproxies and proxy_bypass (HTTP_PROXY,
+# HTTPS_PROXY, NO_PROXY - C9, C10), tempfile (TEMP, TMP, TMPDIR - C12 and
+# G5) and os.path.expanduser (HOME, USERPROFILE - C13).
 KNOWN_ENV = {
     "SABLINE_PROOF_TIMEOUT", "SABLINE_PROVER_SEED", "SABLINE_CHECK_CHILD",
     "SABLINE_CHECK_MEMORY_MB", "SABLINE_TOKEN", "SABLINE_DEBUG_INV",
@@ -870,12 +875,13 @@ def env_names_read() -> Any:
     for text in texts:
         consts.update(re.findall(r'^(\w+_ENV)\s*=\s*"(\w+)"', text, re.M))
     names = set()
+    reader = r'(?:os\.environ(?:\.get|\.pop)?[\(\[]|naming\.(?:env|pop_env)\()'
     for text in texts:
-        names.update(re.findall(
-            r'os\.environ(?:\.get|\.pop)?[\(\[]\s*"(\w+)"', text))
-        for const in re.findall(
-                r'os\.environ(?:\.get|\.pop)?[\(\[]\s*(\w+_ENV)\b', text):
+        names.update(re.findall(reader + r'\s*"(\w+)"', text))
+        for const in re.findall(reader + r'\s*(\w+_ENV)\b', text):
             names.add(consts.get(const, const))
+    # naming.py's own OLD_ENV_PREFIX/NEW_ENV_PREFIX are not variables it
+    # reads; the names it reads are the ones its callers pass, found above.
     return names
 
 
@@ -1057,8 +1063,11 @@ def toml_cases() -> None:
        "planted geo is listed, missing) - and nothing that audits or runs "
        "reads it",
        code == 0 and "geo" in out and "MISSING" in out, out[-200:])
+    # naming.py names it too, and must: it is where the velaris.toml
+    # spelling that project.py still reads is decided (8.6).
     named = sorted(p.name for p in (HERE / "sabline").glob("*.py")
-                   if "sabline.toml" in p.read_text(encoding="utf-8"))
+                   if "sabline.toml" in p.read_text(encoding="utf-8")
+                   and p.name != "naming.py")
     fresh = WORK / "new"
     fresh.mkdir()
     code, out, _ = vel(["new", "demo"], fresh)
