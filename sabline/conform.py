@@ -49,7 +49,22 @@ from typing import Any
 
 
 CONFORMANCE_SCHEMA = "sabline.conformance/1"
-CORPUS_FORMAT = "sabline.conformance-corpus/1"
+
+# The conformance corpus is the one document this project does NOT write
+# under its new name yet, and the reason is the point of the corpus: it is
+# published for an implementation in any language to run, and the
+# implementations that exist are Sabline releases that are already
+# published and frozen. Every one of them reads this field with `!=`
+# against "velaris.conformance-corpus/1", so a corpus that said
+# "sabline.conformance-corpus/1" would stop `velaris conformance` dead for
+# everyone who has not upgraded - the exact break 8.6 exists to avoid.
+#
+# So the corpus keeps the name every released reader accepts, this reads
+# both, and the name it is written under moves when a reader that accepts
+# both is the norm rather than the newest release (sabline-spec 0.14.0
+# says so, and names 0.15.0 as the earliest it could move).
+CORPUS_FORMAT = "velaris.conformance-corpus/1"
+CORPUS_FORMATS = (CORPUS_FORMAT, "sabline.conformance-corpus/1")
 # (level, name, the levels a claim at that level needs)
 CONFORMANCE_LEVELS = ((1, "Declaration", (1,)), (2, "Enforcement", (1, 2)),
                       (3, "Ratchet", (1, 3)))
@@ -552,8 +567,9 @@ def conformance(corpus: str, levels: Any = (1, 2, 3)) -> dict[str, Any]:
             index = json.load(fh)
     except (OSError, ValueError) as e:
         raise ValueError(f"cannot read {corpus}/index.json: {e}")
-    if index.get("format") != CORPUS_FORMAT:
-        raise ValueError(f"{corpus}/index.json is not {CORPUS_FORMAT}")
+    if index.get("format") not in CORPUS_FORMATS:
+        raise ValueError(f"{corpus}/index.json is not "
+                         + " or ".join(CORPUS_FORMATS))
     schemas = os.path.join(corpus, "..", "schemas")
     ctx = {"audit_schema": _conf_validator(os.path.join(
                schemas, "sabline.audit.1.schema.json")),

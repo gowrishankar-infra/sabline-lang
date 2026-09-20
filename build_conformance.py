@@ -23,6 +23,9 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sabline import conform  # noqa: E402
+
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
@@ -30,7 +33,10 @@ import check_library  # noqa: E402
 import check_ratchet  # noqa: E402
 import check_sandbox  # noqa: E402
 
-FORMAT = "sabline.conformance-corpus/1"
+# The corpus keeps the name every published implementation reads, because
+# every one of them reads it strictly and none of them can be changed;
+# sabline/conform.py says the whole of it, and reads both names.
+FORMAT = conform.CORPUS_FORMAT
 LEVELS = {1: "Declaration", 2: "Enforcement", 3: "Ratchet"}
 
 
