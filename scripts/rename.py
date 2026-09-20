@@ -167,8 +167,14 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # VelarisError, which is SablineError under the name it had. A program
     # that catches it must go on catching it.
     "sabline/errors.py": ("VelarisError",),
+    # velaris_version: the one field whose name carried the project's. It
+    # is kept and the new name added beside it, because a required field
+    # of a version-1 document may not disappear (sabline/naming.py).
+    "sabline/results.py": ("velaris_version",),
+    "sabline/ratchet.py": ("velaris_version", "velaris.capabilities",
+                           "velaris"),
     "sabline/__init__.py": ("velaris.VelarisError", "VelarisError"),
-    "tests/api/golden.json": ("VelarisError",),
+    "tests/api/golden.json": ("VelarisError", "velaris_version"),
     # Where every old name that is still read is decided: the VELARIS_*
     # environment variables, the velaris.* document formats, the velaris.*
     # file names.

@@ -243,6 +243,37 @@ def the_documents(work: Path) -> None:
            checked.returncode == 0,
            (checked.stdout + checked.stderr).strip()[:200])
 
+        # ...and re-deriving it keeps the name, because something is
+        # reading it: an Action pinned before the rename knows that name
+        # and no other, and a baseline rewritten under the new one would
+        # turn its ratchet into a red build about a document format.
+        again = run([SABLINE, "capabilities", "init", str(tree), "--force"],
+                    cwd=work)
+        here = sorted(p.name for p in tree.iterdir() if p.is_file())
+        ok("...and init --force rewrites that same file, not a new one",
+           here == ["velaris.capabilities"], f"{again.returncode}: {here}")
+        if here == ["velaris.capabilities"]:
+            said = json.loads((tree / "velaris.capabilities")
+                              .read_text(encoding="utf-8")).get("schema")
+            ok("...under the schema it already had, so its reader keeps "
+               "reading it", said == "velaris.capabilities/1", said)
+
+        # a repository that has none gets the name this version writes
+        fresh = work / "fresh"
+        if fresh.exists():
+            shutil.rmtree(fresh)
+        (fresh / "src").mkdir(parents=True)
+        shutil.copy(HERE / "examples" / "hello.vel", fresh / "src" / "hello.vel")
+        run([SABLINE, "capabilities", "init", str(fresh)], cwd=work)
+        names = sorted(p.name for p in fresh.iterdir() if p.is_file())
+        ok("a repository with no baseline gets sabline.capabilities",
+           names == ["sabline.capabilities"], str(names))
+        if names == ["sabline.capabilities"]:
+            said = json.loads((fresh / "sabline.capabilities")
+                              .read_text(encoding="utf-8")).get("schema")
+            ok("...saying sabline.capabilities/1",
+               said == "sabline.capabilities/1", said)
+
 
 # ---------------------------------------------------------------------------
 # the predicate types

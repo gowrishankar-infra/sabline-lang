@@ -20,6 +20,7 @@ import json
 import os
 import sys
 
+from . import naming
 from .version import SITE
 from .receipt_diff import Unread, load_receipt
 from typing import Any
@@ -271,7 +272,7 @@ def audit_model(audit: dict[str, Any]) -> list[tuple[str, Any]]:
     warnings = audit.get("warnings") or []
     if warnings:
         out.append(("Warnings", (("warning",), [(w,) for w in warnings])))
-    out.append(("Written by", f"sabline-lang {audit.get('sabline_version')}, "
+    out.append(("Written by", f"sabline-lang {naming.version_of(audit)}, "
                               f"schema {audit.get('schema')}."))
     return out
 

@@ -131,6 +131,52 @@ def schema_names(schema: str) -> tuple[str, ...]:
 
 
 # ---------------------------------------------------------------------------
+# the field inside a document
+# ---------------------------------------------------------------------------
+
+# The one field whose NAME carried the project's: `velaris_version` in a
+# sabline.audit/1 and a sabline.capabilities/1 document, and on AuditResult.
+#
+# It could not simply be renamed. STABILITY.md's rule for a versioned
+# document is that within version 1 fields may be ADDED, and none changes
+# meaning or disappears without the schema value changing - and its rule
+# for the library is that the fields of what a call returns are covered.
+# Renaming this one would have made a required field disappear from both
+# documents and an attribute vanish from AuditResult, inside a release
+# whose whole claim is that nothing breaks.
+#
+# So it is added, not renamed: every document carries both names with the
+# same value, every reader takes either, and AuditResult answers to both.
+# The old name goes in 9.0, with everything else here.
+VERSION_FIELD = "sabline_version"
+OLD_VERSION_FIELD = "velaris_version"
+
+
+def with_version_field(doc: dict[str, object]) -> dict[str, object]:
+    """`doc` carrying both spellings of the version field, when it carries
+    either. The written order puts the new name where the old one was, so
+    a document's shape is otherwise what it always was."""
+    value = doc.get(VERSION_FIELD, doc.get(OLD_VERSION_FIELD))
+    if value is None:
+        return doc
+    out: dict[str, object] = {}
+    for key, held in doc.items():
+        if key in (VERSION_FIELD, OLD_VERSION_FIELD):
+            if VERSION_FIELD not in out:
+                out[VERSION_FIELD] = value
+                out[OLD_VERSION_FIELD] = value
+            continue
+        out[key] = held
+    return out
+
+
+def version_of(doc: dict[str, object]) -> object:
+    """The version a document says wrote it, under either name."""
+    got = doc.get(VERSION_FIELD)
+    return doc.get(OLD_VERSION_FIELD) if got is None else got
+
+
+# ---------------------------------------------------------------------------
 # the files on disk
 # ---------------------------------------------------------------------------
 

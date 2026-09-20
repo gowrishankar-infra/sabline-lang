@@ -343,6 +343,7 @@
       "any": "bool",
       "names": []
      },
+     "velaris_version": "str",
      "warnings": []
     },
     "status": 200
@@ -420,6 +421,7 @@
       "any": "bool",
       "names": []
      },
+     "velaris_version": "str",
      "warnings": []
     },
     "status": 200
@@ -1065,7 +1067,8 @@
     "kind": "class",
     "methods": {
      "__init__": "(self, **kw)",
-     "as_dict": "(self)"
+     "as_dict": "(self)",
+     "velaris_version": "property"
     },
     "signature": "(**kw)",
     "slots": [
@@ -2306,7 +2309,7 @@
    },
    "capabilities_document": {
     "kind": "function",
-    "signature": "(scan, date=None)"
+    "signature": "(scan, date=None, schema=None)"
    },
    "capabilities_main": {
     "kind": "function",
@@ -3091,6 +3094,7 @@
       "any": "bool",
       "names": []
      },
+     "velaris_version": "str",
      "warnings": []
     }
    },

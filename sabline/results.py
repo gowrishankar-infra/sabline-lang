@@ -2,6 +2,8 @@
 """
 from typing import Any
 
+from . import naming
+
 
 
 AUDIT_SCHEMA = "sabline.audit/1"     # the shape of audit().as_dict()
@@ -77,12 +79,22 @@ class AuditResult:
     def __init__(self, **kw: Any) -> None:
         for k in self.__slots__:
             setattr(self, k, kw.get(k))
+        if self.sabline_version is None and kw.get("velaris_version"):
+            self.sabline_version = kw["velaris_version"]
+
+    @property
+    def velaris_version(self) -> str:
+        """The name this field had until 8.6 renamed the project. The same
+        value, not a copy: STABILITY.md covers the fields of what a call
+        returns, so this one is added beside the new name rather than
+        replaced by it, and goes in 9.0 (sabline/naming.py)."""
+        return self.sabline_version
 
     def as_dict(self) -> dict[str, Any]:
         out = {k: getattr(self, k) for k in self.__slots__}
         out["problems"] = [p.as_dict() if hasattr(p, "as_dict") else p
                            for p in (out.get("problems") or [])]
-        return out
+        return naming.with_version_field(out)
 
 
 class RunResult:

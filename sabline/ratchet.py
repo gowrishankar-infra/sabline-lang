@@ -836,10 +836,37 @@ def capability_scan(root: str = ".", use_git: bool = True) -> dict[str, Any]:
             "surface": {"grants": grants, "counts": counts}}
 
 
-def capabilities_document(scan: dict[Any, Any], date: str | None = None) -> dict[str, Any]:
+def _schema_of(path: str) -> str | None:
+    """The schema an existing baseline declares, or None for a new file.
+    A document already on disk, already read by something, keeps the name
+    it has (capabilities_document says why)."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            said = json.load(fh).get("schema")
+    except (OSError, ValueError):
+        return None
+    if isinstance(said, str) and naming.schema_matches(
+            said, CAPABILITIES_SCHEMA):
+        return said
+    return None
+
+
+def capabilities_document(scan: dict[Any, Any], date: str | None = None,
+                          schema: str | None = None) -> dict[str, Any]:
     """The sabline.capabilities/1 document for a scan: the Sabline that
     wrote it, the date, the surface, and each program's grants, counts
-    and functions' effects - or compiles: false."""
+    and functions' effects - or compiles: false.
+
+    `schema` is the name to write it under, and defaults to the one this
+    version writes. A repository whose baseline was written before 8.6 has
+    a velaris.capabilities saying velaris.capabilities/1, and something is
+    reading it - a pinned Action from before the rename reads that name and
+    no other. Rewriting the file under a name its reader does not know
+    would turn that repository's ratchet into a red build with a message
+    about a document format, which is not what happened. So the schema
+    follows the file: an existing document keeps the name it has, a new one
+    gets the name this version writes, and renaming the file is the
+    deliberate act that moves both (docs/renamed.md)."""
     import datetime
     if date is None:
         date = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
@@ -852,8 +879,10 @@ def capabilities_document(scan: dict[Any, Any], date: str | None = None) -> dict
         programs.append({"file": rel, "grants": p["grants"],
                          "counts": p["counts"],
                          "functions": dict(sorted(p["functions"].items()))})
-    return {"schema": CAPABILITIES_SCHEMA, "sabline_version": VERSION,
-            "date": date, "surface": scan["surface"], "programs": programs}
+    return naming.with_version_field(
+        {"schema": schema or CAPABILITIES_SCHEMA,
+         "sabline_version": VERSION,
+         "date": date, "surface": scan["surface"], "programs": programs})
 
 
 def capabilities_text(doc: dict[Any, Any]) -> str:
@@ -873,7 +902,8 @@ def capabilities_text(doc: dict[Any, Any]) -> str:
 
     lines = ["{",
              f'  "schema": {dump(doc["schema"])},',
-             f'  "sabline_version": {dump(doc["sabline_version"])},',
+             f'  "sabline_version": {dump(naming.version_of(doc))},',
+             f'  "velaris_version": {dump(naming.version_of(doc))},',
              f'  "date": {dump(doc["date"])},',
              '  "surface": {',
              f'    "grants": {grant_list(doc["surface"]["grants"], "    ")},',
@@ -1070,7 +1100,7 @@ def capabilities_compare(baseline: dict[Any, Any], scan: dict[Any, Any],
     notes: list[Any] = []
     warnings: list[Any] = []
 
-    written_by = baseline.get("sabline_version")
+    written_by = naming.version_of(baseline)
     if written_by != VERSION:
         older = _version_tuple(written_by) < _version_tuple(VERSION)
         warnings.append(
@@ -1379,7 +1409,9 @@ def capabilities_main(argv: list[Any]) -> int:
                   f"diff then shows what changed.", file=sys.stderr)
             return 1
         scan = capability_scan(root)
-        doc = capabilities_document(scan)
+        # the schema follows the file: a baseline written before 8.6
+        # keeps the name whatever reads it already knows
+        doc = capabilities_document(scan, schema=_schema_of(target))
         with open(target, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(capabilities_text(doc))
         broken = [p for p in doc["programs"] if p.get("compiles") is False]
@@ -1418,7 +1450,7 @@ def capabilities_main(argv: list[Any]) -> int:
         return code
     print(f"sabline capabilities check: {result['programs']} program(s) "
           f"under {root}, {result['compared']} compared, against "
-          f"{CAPABILITIES_FILE} (Sabline {baseline.get('sabline_version')}, "
+          f"{CAPABILITIES_FILE} (Sabline {naming.version_of(baseline)}, "
           f"{baseline.get('date')})")
     for w in result["warnings"]:
         print(f"warning: {w}")

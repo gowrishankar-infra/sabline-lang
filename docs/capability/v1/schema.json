@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sabline.dev/capability/v1/schema.json",
   "title": "https://sabline.dev/capability/v1",
-  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://sabline.dev/capability/v1: a sabline.audit/1 document for the source file that is the statement's first subject, and the producer that wrote it. sabline-spec SPEC.md section 8.5 defines it. This schema checks the predicate's shape; the audit field must also validate against sabline.audit.1.schema.json (sabline-spec schemas/), which is not repeated here. Within v1 fields may be added and consumers must ignore fields they do not know.",
+  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://sabline.dev/capability/v1: a sabline.audit/1 document for the source file that is the statement's first subject, and the producer that wrote it. sabline-spec SPEC.md section 8.5 defines it. This schema checks the predicate's shape; the audit field must also validate against velaris.audit.1.schema.json (sabline-spec schemas/), which is not repeated here. Within v1 fields may be added and consumers must ignore fields they do not know.",
   "type": "object",
   "required": ["producer", "audit"],
   "properties": {
