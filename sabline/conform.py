@@ -65,6 +65,14 @@ CONFORMANCE_SCHEMA = "sabline.conformance/1"
 # says so, and names 0.15.0 as the earliest it could move).
 CORPUS_FORMAT = "velaris.conformance-corpus/1"
 CORPUS_FORMATS = (CORPUS_FORMAT, "sabline.conformance-corpus/1")
+
+# The command an expected safe_command in the published corpus is written
+# with. Section 8.3 defines the grant list and not this prefix, and this
+# runner compares the grants (_grants_of) - but a runner from before 0.14.0
+# compares the whole string, so the corpus carries the prefix those runners
+# write, for the same reason it keeps the format name above. It moves when
+# they do.
+CORPUS_SAFE_COMMAND = "velaris <file> --allow "
 # (level, name, the levels a claim at that level needs)
 CONFORMANCE_LEVELS = ((1, "Declaration", (1,)), (2, "Enforcement", (1, 2)),
                       (3, "Ratchet", (1, 3)))

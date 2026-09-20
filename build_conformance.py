@@ -46,6 +46,19 @@ def short(*parts: Any) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:10]
 
 
+def _as_published(expect: Any) -> Any:
+    """An expectation as the published corpus carries it: its
+    safe_command written with the command a runner from before
+    sabline-spec 0.14.0 writes, since those compare the whole string
+    (sabline/conform.py, CORPUS_SAFE_COMMAND). This runner compares the
+    grants, so it reads either."""
+    said = expect.get("safe_command") if isinstance(expect, dict) else None
+    if not isinstance(said, str) or "--allow " not in said:
+        return expect
+    grants = said.split("--allow ", 1)[1]
+    return dict(expect, safe_command=conform.CORPUS_SAFE_COMMAND + grants)
+
+
 def case(id: Any, level: Any, kind: Any, description: Any, source: Any, input: Any, expect: Any, *, spec: Any = (),
          requires: Any = (), known_limit: Any = None) -> dict[str, Any]:
     return {"id": id, "level": level, "kind": kind,
@@ -96,8 +109,8 @@ def level1() -> tuple[Any, ...]:
         out.append(case(
             f"L1-audit-{a['id']}", 1, "audit", a["description"],
             f"check_library.py AUDITS {a['id']}",
-            {"files": files, "entry": next(iter(files))}, a["expect"],
-            spec=["3.2", "8"]))
+            {"files": files, "entry": next(iter(files))},
+            _as_published(a["expect"]), spec=["3.2", "8"]))
     return out, excluded
 
 
