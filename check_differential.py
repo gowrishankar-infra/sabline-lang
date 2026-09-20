@@ -559,6 +559,20 @@ def run_conformance(tree: Tree, run: Run, side: str) -> dict[str, Any]:
             "again": None}      # the runner has no way to run one case
 
 
+# The benchmark records one column per tool, and the column for the
+# implementation this repository ships was called "velaris" until 8.6
+# renamed the project. It is the same column, measured the same way, so it
+# is compared under the name it has now - otherwise every program in the
+# corpus would read as a difference across the rename, and a real change of
+# verdict would be lost in 68 spurious ones. Delete this in 9.0, once no
+# tag the suite compares against predates 8.6.
+RENAMED_TOOL = {"velaris": "sabline"}
+
+
+def tool_now(name: str) -> str:
+    return RENAMED_TOOL.get(name, name)
+
+
 def run_benchmark(tree: Tree, run: Run, side: str, only: Any = None) -> dict[str, Any]:
     out_dir = run.scratch / "benchmark" / (side if only is None
                                            else side + "-again")
@@ -589,14 +603,14 @@ def run_benchmark(tree: Tree, run: Run, side: str, only: Any = None) -> dict[str
         data = json.loads(results.read_text(encoding="utf-8"))
         for p in data["programs"]:
             rows[p["id"]] = {"name": p["name"],
-                             "verdicts": {t: v["verdict"]
+                             "verdicts": {tool_now(t): v["verdict"]
                                           for t, v in p["tools"].items()}}
     else:                       # --quick writes no file: read its table
         tools = None
         for line in done.stdout.decode("utf-8", "replace").splitlines():
             parts = line.split()
             if parts[:1] == ["program"]:
-                tools = parts[1:]
+                tools = [tool_now(name) for name in parts[1:]]
             elif tools and len(parts) == 2 + len(tools) \
                     and all(v in BENCH_VERDICTS for v in parts[2:]):
                 rows[parts[0]] = {"name": parts[1],
