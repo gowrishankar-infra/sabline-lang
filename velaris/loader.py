@@ -10,7 +10,7 @@ from .errors import VelarisError
 from .lexer import lex
 from .nodes import Call, Var
 from .parser import Parser
-from .tables import NEW_BUILTINS
+from .tables import BUILTINS, NEW_BUILTINS
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -41,7 +41,14 @@ def qualify(fs: list[Any], alias: str) -> None:
             return
         if not dataclasses.is_dataclass(node):
             return
-        if isinstance(node, (Call, Var)) and node.name in new_name:
+        # A call to a name that is a builtin older than 4.3 reaches the
+        # builtin, in a flat import and so here too: only the shipped
+        # library may define such a name (E204), and until 8.5 http.vel's
+        # own `get` took every `get(list, i)` written inside http.vel once
+        # it was imported with a name - a `for` loop's included.
+        if isinstance(node, Call) and node.name in BUILTINS                 and node.name not in NEW_BUILTINS:
+            pass
+        elif isinstance(node, (Call, Var)) and node.name in new_name:
             node.name = new_name[node.name]
         for fld in dataclasses.fields(node):
             if fld.name == "name":

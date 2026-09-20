@@ -300,7 +300,519 @@ def check_azure() -> None:
     audit_example("azure_groups.vel", ["management.azure.com:443"])
 
 
-CHECKS = [check_azure]
+# ---- GitHub ------------------------------------------------------------------
+
+def github_route(req: dict[str, Any]) -> tuple[int, dict[str, str], str]:
+    limits = {"X-RateLimit-Remaining": "4990", "X-RateLimit-Reset": "1790000000"}
+    if req["headers"].get("authorization") != f"Bearer {TOKEN}":
+        return 401, {}, json.dumps({"message": "Bad credentials"})
+    path = req["path"]
+    if path.startswith("/repos/octo-org/limited/"):
+        return 403, {"X-RateLimit-Remaining": "0",
+                     "X-RateLimit-Reset": "1790000321"}, json.dumps(
+            {"message": "API rate limit exceeded"})
+    if path.startswith("/repos/octo-org/octo-repo/issues?"):
+        if "page=2" in path:
+            return 200, dict(limits), json.dumps([
+                {"number": 9, "title": "Third", "pull_request": {}}])
+        return 200, dict(limits, Link=(
+            '<https://api.github.com/repos/octo-org/octo-repo/issues?'
+            'state=open&per_page=100&page=2>; rel="next", '
+            '<https://api.github.com/repos/octo-org/octo-repo/issues?'
+            'state=open&per_page=100&page=2>; rel="last"')), json.dumps([
+                {"number": 3, "title": "First"},
+                {"number": 7, "title": "Second, with a \"quote\""}])
+    if path == "/repos/octo-org/octo-repo/releases/latest":
+        return 200, dict(limits), json.dumps({"tag_name": "v1.2.3"})
+    if path == "/repos/octo-org/octo-repo/issues" and req["method"] == "POST":
+        return 201, dict(limits), json.dumps(
+            {"number": 10, "got": json.loads(req["body"])})
+    if path == "/repos/octo-org/octo-repo/issues/10/comments":
+        return 201, dict(limits), json.dumps(
+            {"id": 1, "got": json.loads(req["body"])})
+    if path.startswith("/repos/octo-org/octo-repo/contents/docs/a%20b.md?"):
+        import base64
+        text = base64.encodebytes("caf\u00e9 au lait\n".encode("utf-8") * 8)
+        return 200, dict(limits), json.dumps({"content": text.decode("ascii"),
+                                              "encoding": "base64"})
+    if path.startswith("/repos/octo-org/octo-repo/commits/main/check-runs"):
+        return 200, dict(limits), json.dumps({"total_count": 2, "check_runs": [
+            {"name": "tests", "conclusion": "success"},
+            {"name": "lint", "conclusion": "failure"}]})
+    if path.startswith("/repos/octo-org/octo-repo/pulls?"):
+        return 200, dict(limits), json.dumps([{"number": 9, "title": "Third"}])
+    if path == "/repos/octo-org/octo-repo/pulls/9":
+        return 200, dict(limits), json.dumps({"number": 9, "merged": False})
+    if path == "/repos/octo-org/octo-repo":
+        return 200, dict(limits), json.dumps({"full_name": "octo-org/octo-repo"})
+    if path.startswith("/users/octo-org/repos?"):
+        return 200, dict(limits), json.dumps([{"name": "octo-repo"}])
+    if path.startswith("/repos/octo-org/octo-repo/releases?"):
+        return 200, dict(limits), json.dumps([{"tag_name": "v1.2.3"},
+                                              {"tag_name": "v1.2.2"}])
+    return 404, dict(limits), json.dumps({"message": "Not Found"})
+
+
+GITHUB_REST = """
+import "github.vel" as github
+
+fn show(what: Text, got: Text) uses io {
+    print(what + ": " + got)
+}
+
+fn main() uses io, env, net, declassify {
+    let token = env("GITHUB_TOKEN", "")
+    check github.create_issue(token, "octo-org", "octo-repo", "A title", "The body") {
+        ok made { show("issue", made) }
+        fail why { show("issue failed", why) }
+    }
+    check github.create_comment(token, "octo-org", "octo-repo", 10, "Seen.") {
+        ok made { show("comment", made) }
+        fail why { show("comment failed", why) }
+    }
+    check github.file_text(token, "octo-org", "octo-repo", "docs/a b.md", "main") {
+        ok text { show("file", text) }
+        fail why { show("file failed", why) }
+    }
+    check github.check_runs(token, "octo-org", "octo-repo", "main") {
+        ok runs { show("checks", format("{}", length(runs))) }
+        fail why { show("checks failed", why) }
+    }
+    check github.pulls(token, "octo-org", "octo-repo", "open") {
+        ok found { show("pulls", format("{}", length(found))) }
+        fail why { show("pulls failed", why) }
+    }
+    check github.pull(token, "octo-org", "octo-repo", 9) {
+        ok found { show("pull", found) }
+        fail why { show("pull failed", why) }
+    }
+    check github.repo(token, "octo-org", "octo-repo") {
+        ok found { show("repo", found) }
+        fail why { show("repo failed", why) }
+    }
+    check github.repos_of(token, "octo-org") {
+        ok found { show("repos", format("{}", length(found))) }
+        fail why { show("repos failed", why) }
+    }
+    check github.releases(token, "octo-org", "octo-repo") {
+        ok found { show("releases", format("{}", length(found))) }
+        fail why { show("releases failed", why) }
+    }
+    check github.issues(token, "octo-org", "limited", "open") {
+        ok found { show("limited", "listed") }
+        fail why { show("limited failed", why) }
+    }
+}
+"""
+
+
+def check_github() -> None:
+    print("github.vel")
+    ROUTES["api.github.com"] = github_route
+    example = HERE / "examples" / "ops" / "github_issues.vel"
+    source = example.read_text(encoding="utf-8")
+    budget = "io,env,declassify,net:api.github.com:443@30"
+    RECEIVED.clear()
+    got = run_vel(source, budget, {"GITHUB_TOKEN": TOKEN},
+                  ["octo-org", "octo-repo"], path=str(example))
+    expect("github: the Link header's next page is followed, and pull "
+           "requests are told from issues",
+           got.exit_code == 0 and "#3  First" in got.output
+           and '#7  Second, with a "quote"' in got.output
+           and "2 open issue(s), 1 open pull request(s)" in got.output
+           and "latest release: v1.2.3" in got.output,
+           (got.output, [p.message for p in got.problems]))
+    seen = RECEIVED.all()
+    expect("github: the API version, the media type and the token are sent",
+           all(r["headers"].get("x-github-api-version") == "2022-11-28"
+               and r["headers"].get("accept") == "application/vnd.github+json"
+               and r["headers"].get("authorization") == f"Bearer {TOKEN}"
+               for r in seen) and len(seen) == 3, seen)
+    RECEIVED.clear()
+    got = run_vel(GITHUB_REST, budget, {"GITHUB_TOKEN": TOKEN})
+    out = got.output
+    expect("github: an issue and a comment are created with their JSON bodies",
+           '"got": {"title": "A title", "body": "The body"}' in out
+           and '"got": {"body": "Seen."}' in out, out)
+    expect("github: contents come back as text, from base64 in lines, with "
+           "the path's space encoded",
+           "file: " + "caf\u00e9 au lait\n" * 8 in out, out)
+    expect("github: check runs, pulls, a pull, a repo, repos and releases",
+           "checks: 2" in out and "pulls: 1" in out
+           and 'pull: {"number": 9' in out
+           and 'repo: {"full_name": "octo-org/octo-repo"}' in out
+           and "repos: 1" in out and "releases: 2" in out, out)
+    expect("github: the rate limit is a failure that says when it resets",
+           "limited failed: api.github.com: the rate limit is reached; it "
+           "resets at 1790000321" in out, out)
+    expect("github: a rate-limited request is not asked again",
+           len([r for r in RECEIVED.all() if "/limited/" in r["path"]]) == 1)
+    got = run_vel(source, budget, {"GITHUB_TOKEN": "wrong"},
+                  ["octo-org", "octo-repo"], path=str(example))
+    expect("github: bad credentials are GitHub's own message",
+           got.exit_code == 1 and "answered 401: Bad credentials"
+           in got.output, got.output)
+    audit_example("github_issues.vel", ["api.github.com:443"])
+
+
+# ---- Kubernetes --------------------------------------------------------------
+
+def k8s_route(req: dict[str, Any]) -> tuple[int, dict[str, str], str]:
+    if req["headers"].get("authorization") != f"Bearer {TOKEN}":
+        return 401, {}, json.dumps({"kind": "Status", "reason": "Unauthorized",
+                                    "message": "Unauthorized", "code": 401})
+    url = urllib.parse.urlsplit(req["path"])
+    query = urllib.parse.parse_qs(url.query)
+    if url.path == "/api/v1/namespaces/default/pods":
+        if query.get("watch") == ["true"]:
+            return 200, {}, "\n".join(json.dumps(e) for e in (
+                {"type": "ADDED", "object": {"metadata": {
+                    "name": "web-1", "resourceVersion": "12"}}},
+                {"type": "MODIFIED", "object": {"metadata": {
+                    "name": "web-1", "resourceVersion": "13"}}})) + "\n"
+        if query.get("continue") == ["page two/="]:
+            return 200, {}, json.dumps({"metadata": {}, "items": [
+                {"metadata": {"name": "job-1"},
+                 "status": {"phase": "Succeeded"}}]})
+        return 200, {}, json.dumps({
+            "metadata": {"continue": "page two/="},
+            "items": [{"metadata": {"name": "web-1"},
+                       "status": {"phase": "Running"}},
+                      {"metadata": {"name": "web-2"},
+                       "status": {"phase": "Pending",
+                                  "reason": "Unschedulable"}}]})
+    if url.path == "/api/v1/namespaces/locked/pods":
+        return 403, {}, json.dumps({
+            "kind": "Status", "reason": "Forbidden", "code": 403,
+            "message": 'pods is forbidden: User "sa" cannot list resource '
+                       '"pods" in the namespace "locked"'})
+    if url.path == "/apis/apps/v1/namespaces/default/deployments/web/scale":
+        return 200, {}, json.dumps({"got": json.loads(req["body"]),
+                                    "type": req["headers"].get("content-type")})
+    if url.path == "/api/v1/namespaces/default/configmaps" \
+            and req["method"] == "POST":
+        return 201, {}, json.dumps({"created": json.loads(req["body"])})
+    if url.path == "/api/v1/namespaces/default/configmaps/settings" \
+            and req["method"] == "DELETE":
+        return 200, {}, json.dumps({"kind": "Status", "status": "Success"})
+    return 404, {}, json.dumps({"kind": "Status", "reason": "NotFound",
+                                "message": url.path, "code": 404})
+
+
+K8S_REST = """
+import "k8s.vel" as k8s
+
+fn main() uses io, env, fs, net, declassify {
+    let c = k8s.cluster("https://kubernetes.default.svc:443", k8s.first_line(env("K8S_TOKEN", "")))
+    check k8s.watch_once(c, "/api/v1/namespaces/default/pods", "11", 5) {
+        ok seen { print(format("watched {}: {}", length(seen), get(seen, 1))) }
+        fail why { print("watch failed: " + why) }
+    }
+    check k8s.write_scale(c, "default", "web", 3) {
+        ok done { print("scaled: " + done) }
+        fail why { print("scale failed: " + why) }
+    }
+    check k8s.write_create(c, "/api/v1/namespaces/default/configmaps", json_of({"metadata": {"name": "settings"}})) {
+        ok done { print("created: " + done) }
+        fail why { print("create failed: " + why) }
+    }
+    check k8s.write_delete(c, "/api/v1/namespaces/default/configmaps/settings") {
+        ok done { print("deleted: " + done) }
+        fail why { print("delete failed: " + why) }
+    }
+    check k8s.in_cluster() {
+        ok found { print("in a pod") }
+        fail why { print("not in a pod: " + why) }
+    }
+}
+"""
+
+
+def check_k8s() -> None:
+    print("k8s.vel")
+    ROUTES["kubernetes.default.svc"] = k8s_route
+    example = HERE / "examples" / "ops" / "k8s_pods.vel"
+    source = example.read_text(encoding="utf-8")
+    server = "https://kubernetes.default.svc:443"
+    budget = "io,env,declassify,net:kubernetes.default.svc:443@10"
+    RECEIVED.clear()
+    got = run_vel(source, budget, {"K8S_TOKEN": TOKEN}, [server, "default"],
+                  path=str(example))
+    expect("k8s: a list is followed through metadata.continue, and the pod "
+           "that is not running is named with its reason",
+           got.exit_code == 1
+           and "web-2  Pending  Unschedulable" in got.output
+           and "3 pod(s), 1 not running" in got.output,
+           (got.output, [p.message for p in got.problems]))
+    paths = [r["path"] for r in RECEIVED.all()]
+    expect("k8s: the continue token is sent back encoded",
+           paths == ["/api/v1/namespaces/default/pods?limit=500",
+                     "/api/v1/namespaces/default/pods?limit=500"
+                     "&continue=page%20two%2F%3D"], paths)
+    got = run_vel(source, budget, {"K8S_TOKEN": TOKEN}, [server, "locked"],
+                  path=str(example))
+    expect("k8s: a Status object becomes the failure's words",
+           got.exit_code == 2 and "answered 403: Forbidden: pods is forbidden"
+           in got.output, got.output)
+    RECEIVED.clear()
+    got = run_vel(K8S_REST, budget + ",fs:read:/var/run/secrets",
+                  {"K8S_TOKEN": TOKEN + "\n"})
+    out = got.output
+    expect("k8s: a token file's trailing line end is not sent",
+           all(r["headers"].get("authorization") == f"Bearer {TOKEN}"
+               for r in RECEIVED.all()) and len(RECEIVED.all()) == 4,
+           RECEIVED.all())
+    expect("k8s: watch-once gives the events the server sent, in order",
+           'watched 2: {"type": "MODIFIED"' in out, out)
+    expect("k8s: write_scale is a merge patch of spec.replicas",
+           '"got": {"spec": {"replicas": 3}}' in out
+           and '"type": "application/merge-patch+json"' in out, out)
+    expect("k8s: write_create and write_delete",
+           'created: {"created": {"metadata": {"name": "settings"}}}' in out
+           and '"status": "Success"' in out, out)
+    expect("k8s: outside a pod, in_cluster is a failure and not a stop",
+           "not in a pod: cannot read file" in out, out)
+    import re
+    text = (HERE / "stdlib" / "k8s.vel").read_text(encoding="utf-8")
+    writers = set()
+    for m in re.finditer(r"^fn (\w+)\((.*?)^}", text, re.M | re.S):
+        if re.search(r'"(POST|PUT|PATCH|DELETE)"', m.group(2)) \
+                or re.search(r"\bwrite_\w+\(", m.group(2)):
+            writers.add(m.group(1))
+    expect("k8s: every function that sends a changing method is named write_",
+           writers and all(w.startswith("write_") for w in writers), writers)
+    audit_example("k8s_pods.vel", None)
+
+
+# ---- AWS ---------------------------------------------------------------------
+
+AWS_KEY_ID = "AKIDSTANDIN"
+AWS_SECRET = "standin/secret+key/7f3a"
+AWS_SESSION = "standin-session-token"
+
+
+def sigv4_problem(req: dict[str, Any], service: str) -> str | None:
+    """Why this request's Signature Version 4 is not valid, or None: the
+    check AWS makes, made here from the request as it arrived - its method,
+    path, query, the headers it says it signed, and its body."""
+    headers = req["headers"]
+    auth = headers.get("authorization", "")
+    if not auth.startswith("AWS4-HMAC-SHA256 "):
+        return "no AWS4-HMAC-SHA256 Authorization header"
+    fields = dict(part.strip().split("=", 1)
+                  for part in auth[len("AWS4-HMAC-SHA256 "):].split(","))
+    try:
+        key_id, day, region, svc, last = fields["Credential"].split("/")
+    except (KeyError, ValueError):
+        return "the Credential is not key/date/region/service/aws4_request"
+    if key_id != AWS_KEY_ID or svc != service or last != "aws4_request":
+        return f"the credential scope is wrong: {fields['Credential']}"
+    amz_date = headers.get("x-amz-date", "")
+    if not amz_date.startswith(day):
+        return "x-amz-date and the scope's date differ"
+    sent_at = datetime.datetime.strptime(amz_date, "%Y%m%dT%H%M%SZ").replace(
+        tzinfo=datetime.timezone.utc)
+    if abs((datetime.datetime.now(datetime.timezone.utc)
+            - sent_at).total_seconds()) > 300:
+        return f"x-amz-date {amz_date} is not within five minutes of now"
+    signed = fields.get("SignedHeaders", "").split(";")
+    if "host" not in signed or "x-amz-date" not in signed:
+        return "host and x-amz-date must be signed"
+    body = req["body"].encode("utf-8")
+    payload_hash = hashlib.sha256(body).hexdigest()
+    if headers.get("x-amz-content-sha256") != payload_hash:
+        return "x-amz-content-sha256 is not the body's sha256"
+    url = urllib.parse.urlsplit(req["path"])
+    query = "&".join(sorted(url.query.split("&"))) if url.query else ""
+    canonical = "\n".join([
+        req["method"], url.path, query,
+        "".join(f"{h}:{headers.get(h, '').strip()}\n" for h in signed),
+        ";".join(signed), payload_hash])
+    to_sign = "\n".join(["AWS4-HMAC-SHA256", amz_date,
+                         f"{day}/{region}/{svc}/aws4_request",
+                         hashlib.sha256(canonical.encode()).hexdigest()])
+    key = ("AWS4" + AWS_SECRET).encode()
+    for part in (day, region, svc, "aws4_request"):
+        key = hmac.new(key, part.encode(), hashlib.sha256).digest()
+    want = hmac.new(key, to_sign.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(want, fields.get("Signature", "")):
+        return "SignatureDoesNotMatch"
+    return None
+
+
+def aws_error(code: str, message: str, status: int = 403
+              ) -> tuple[int, dict[str, str], str]:
+    return status, {"Content-Type": "application/xml"}, (
+        f'<?xml version="1.0"?><Error><Code>{code}</Code>'
+        f"<Message>{message}</Message></Error>")
+
+
+def s3_route(req: dict[str, Any]) -> tuple[int, dict[str, str], str]:
+    why = sigv4_problem(req, "s3")
+    if why:
+        return aws_error("SignatureDoesNotMatch", why)
+    xml = {"Content-Type": "application/xml"}
+    url = urllib.parse.urlsplit(req["path"])
+    query = urllib.parse.parse_qs(url.query, keep_blank_values=True)
+    if url.path == "/":
+        return 200, xml, ("<ListAllMyBucketsResult><Buckets>"
+                          "<Bucket><Name>logs-prod</Name></Bucket>"
+                          "<Bucket><Name>a&amp;b</Name></Bucket>"
+                          "</Buckets></ListAllMyBucketsResult>")
+    if url.path == "/logs-prod" and query.get("list-type") == ["2"]:
+        if query.get("continuation-token") == ["next/page=2"]:
+            return 200, xml, ("<ListBucketResult><IsTruncated>false"
+                              "</IsTruncated><Contents><Key>2026/09/c d.log"
+                              "</Key></Contents></ListBucketResult>")
+        return 200, xml, ("<ListBucketResult><IsTruncated>true</IsTruncated>"
+                          "<NextContinuationToken>next/page=2"
+                          "</NextContinuationToken>"
+                          "<Contents><Key>2026/09/a.log</Key></Contents>"
+                          "<Contents><Key>2026/09/b.log</Key></Contents>"
+                          "</ListBucketResult>")
+    if url.path == "/logs-prod/notes/caf%C3%A9%20au%20lait.txt":
+        if req["method"] == "PUT":
+            STATE["s3_object"] = req["body"]
+            return 200, xml, ""
+        if req["method"] == "DELETE":
+            STATE.pop("s3_object", None)
+            return 204, xml, ""
+        if "s3_object" in STATE:
+            return 200, {"Content-Type": "text/plain"}, STATE["s3_object"]
+    return aws_error("NoSuchKey", "The specified key does not exist.", 404)
+
+
+def sts_route(req: dict[str, Any]) -> tuple[int, dict[str, str], str]:
+    why = sigv4_problem(req, "sts")
+    if why:
+        return aws_error("SignatureDoesNotMatch", why)
+    if req["headers"].get("x-amz-security-token") not in (None, AWS_SESSION):
+        return aws_error("InvalidClientTokenId", "the session token is wrong")
+    if "Action=GetCallerIdentity" not in req["body"]:
+        return aws_error("InvalidAction", "only GetCallerIdentity is here", 400)
+    return 200, {"Content-Type": "text/xml"}, (
+        "<GetCallerIdentityResponse><GetCallerIdentityResult>"
+        "<Arn>arn:aws:iam::123456789012:user/standin</Arn>"
+        "<UserId>AIDASTANDIN</UserId><Account>123456789012</Account>"
+        "</GetCallerIdentityResult></GetCallerIdentityResponse>")
+
+
+AWS_OBJECTS = """
+import "aws.vel" as aws
+
+fn main() uses io, env, clock, net, declassify {
+    let creds = aws.credentials_from_env("us-east-1")
+    let key = "notes/café au lait.txt"
+    check aws.s3_put_object(creds, "logs-prod", key, "first line\\nsecond, with é") {
+        ok status { print(format("put {}", status)) }
+        fail why { print("put failed: " + why) }
+    }
+    check aws.s3_get_object(creds, "logs-prod", key) {
+        ok text { print("got: " + text) }
+        fail why { print("get failed: " + why) }
+    }
+    check aws.s3_delete_object(creds, "logs-prod", key) {
+        ok status { print(format("delete {}", status)) }
+        fail why { print("delete failed: " + why) }
+    }
+    check aws.s3_get_object(creds, "logs-prod", key) {
+        ok text { print("still there: " + text) }
+        fail why { print("gone: " + why) }
+    }
+}
+"""
+
+AWS_VECTOR = """
+import "aws.vel" as aws
+
+fn main() uses io, env, declassify {
+    let creds = AwsCredentials(key_id: "AKIDEXAMPLE", secret: env("VECTOR_SECRET", ""), session: env("VECTOR_NONE", ""), region: "us-east-1")
+    let none: List of Text = []
+    let headers = ["host:example.amazonaws.com", "x-amz-date:20150830T123600Z"]
+    print(aws.signature(creds, "service", "20150830T123600Z", "GET", "/", none, headers, sha256("")))
+    print(aws.amz_date_of(1440938160))
+    print(aws.amz_date_of(951782400))
+    print(aws.amz_date_of(1709251199))
+    print(aws.amz_date_of(0))
+}
+"""
+
+
+def check_aws() -> None:
+    print("aws.vel")
+    ROUTES["s3.us-east-1.amazonaws.com"] = s3_route
+    ROUTES["sts.us-east-1.amazonaws.com"] = sts_route
+    got = run_vel(AWS_VECTOR, "io,env,declassify", {
+        "VECTOR_SECRET": "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"})
+    expect("aws: the signature of AWS's own test request (get-vanilla) is "
+           "the one AWS publishes, and dates are the calendar's",
+           got.output.split() == [
+               "5fa00fa31553b73ebf1942676e86291e8372ff2a2260956d9b8aae1d763fbf31",
+               "20150830T123600Z", "20000229T000000Z", "20240229T235959Z",
+               "19700101T000000Z"], (got.output, got.problems))
+    example = HERE / "examples" / "ops" / "aws_buckets.vel"
+    source = example.read_text(encoding="utf-8")
+    budget = ("io,env,clock,declassify,net:sts.us-east-1.amazonaws.com:443,"
+              "net:s3.us-east-1.amazonaws.com:443")
+    keys = {"AWS_ACCESS_KEY_ID": AWS_KEY_ID, "AWS_SECRET_ACCESS_KEY": AWS_SECRET,
+            "AWS_SESSION_TOKEN": ""}
+    RECEIVED.clear()
+    got = run_vel(source, budget, keys, ["us-east-1", "logs-prod", "2026/"],
+                  path=str(example))
+    expect("aws: STS and S3 accept the signatures; buckets, entities and a "
+           "two-page listing come back",
+           got.exit_code == 0
+           and "signed in as arn:aws:iam::123456789012:user/standin"
+           in got.output and "bucket  logs-prod" in got.output
+           and "bucket  a&b" in got.output
+           and "key     2026/09/c d.log" in got.output
+           and "3 key(s)" in got.output,
+           (got.output, [p.message for p in got.problems]))
+    expect("aws: the secret key is in nothing that was sent or printed",
+           all(AWS_SECRET not in json.dumps(r) for r in RECEIVED.all())
+           and AWS_SECRET not in got.output + got.logs)
+    reasons = [d["reason"] for d in
+               got.receipt["predicate"]["declassifications"]]
+    prints = {d.get("key_fingerprint") for d in
+              got.receipt["predicate"]["declassifications"]
+              if d["reason"] == "hmac signature"}
+    expect("aws: the receipt records each signature as a declassification "
+           "'hmac signature' with one key's fingerprint, and not the key",
+           "hmac signature" in reasons and len(prints) == 1
+           and all(isinstance(p, str) and len(p) == 12 for p in prints)
+           and AWS_SECRET not in json.dumps(got.receipt), (reasons, prints))
+    got = run_vel(source, budget, dict(keys, AWS_SESSION_TOKEN=AWS_SESSION),
+                  ["us-east-1"], path=str(example))
+    expect("aws: a session token is sent, and signed",
+           got.exit_code == 0 and "bucket  logs-prod" in got.output,
+           got.output)
+    got = run_vel(source, budget, dict(keys, AWS_SECRET_ACCESS_KEY="wrong"),
+                  ["us-east-1"], path=str(example))
+    expect("aws: a wrong secret key is AWS's error shape, as a failure",
+           got.exit_code == 1 and "AWS answered 403: SignatureDoesNotMatch"
+           in got.output, got.output)
+    got = run_vel(AWS_OBJECTS, budget, keys)
+    expect("aws: an object with a space and a non-ASCII letter in its key is "
+           "put, read back, deleted and gone",
+           got.output == "put 200\ngot: first line\nsecond, with \u00e9\n"
+           "delete 204\ngone: AWS answered 404: NoSuchKey The specified key "
+           "does not exist.\n", (got.output, got.problems))
+    got = run_vel(source, budget.replace(",declassify", ""), keys,
+                  ["us-east-1"], path=str(example))
+    expect("aws: without the declassify grant nothing is signed (E310)",
+           [p.code for p in got.problems] == ["E310"], got.problems)
+    audit_example("aws_buckets.vel", None)
+    import velaris
+    report = velaris.audit(source, path=str(example))
+    hmacs = [d for d in report.secrets["declassifications"]
+             if d.get("builtin") == "hmac_sha256_chain"]
+    expect("aws: the audit lists the signature under secrets, reason 'hmac "
+           "signature'",
+           len(hmacs) == 1 and hmacs[0]["reason"] == "hmac signature"
+           and hmacs[0]["function"] == "aws.signature", report.secrets)
+
+
+CHECKS = [check_azure, check_github, check_k8s, check_aws]
 
 
 def main() -> int:

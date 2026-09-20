@@ -73,8 +73,8 @@ fn post_json(url: Text, body: Text) -> Text uses net or fail {
 // aws.vel), and any other program that talks to a REST API -----------------
 
 // Headers from a map, as `call` and `request` take them:
-// http.headers({"Accept": "application/json"})
-fn headers(of: Map of Text to Text) -> Text {
+// http.header_map({"Accept": "application/json"})
+fn header_map(of: Map of Text to Text) -> Text {
     return json_of(of)
 }
 
@@ -91,8 +91,8 @@ uses net or fail
 
 // Is this a status worth asking again for: told to slow down (429), or the
 // far side, or something in front of it, not answering (502, 503, 504)?
-fn worth_retrying(status: Int) -> Bool {
-    return status == 429 or status == 502 or status == 503 or status == 504
+fn worth_retrying(code: Int) -> Bool {
+    return code == 429 or code == 502 or code == 503 or code == 504
 }
 
 fn succeeded(answer: Answer) -> Bool {

@@ -1,0 +1,75 @@
+// The pods of a namespace that are not running, and why.
+//
+// K8S_TOKEN=... velaris examples/ops/k8s_pods.vel \
+// --allow io,env,declassify,net:my-cluster.example.com:6443@10 \
+// https://my-cluster.example.com:6443 default
+//
+// Inside a pod, write `in-cluster` for the address: the service account's
+// token is read from its file (add fs:read:/var/run/secrets/kubernetes.io/serviceaccount
+// and net:kubernetes.default.svc:443 to the budget). It reads and changes
+// nothing - it calls none of k8s.vel's write_ functions - and it calls no
+// Python. It exits 1 when any pod is not running.
+
+import "k8s.vel" as k8s
+
+fn field(item: Text, path: Text, otherwise: Text) -> Text {
+    if not json_has(item, path) {
+        return otherwise
+    }
+    check json_get(item, path) {
+        ok value {
+            return value
+        }
+        fail why {
+            return otherwise
+        }
+    }
+    return otherwise
+}
+
+fn report(found: List of Text) -> Int uses io {
+    let unwell = 0
+    for item in found {
+        let phase = field(item, "status.phase", "Unknown")
+        if phase != "Running" and phase != "Succeeded" {
+            unwell = unwell + 1
+            print(format("{}  {}  {}", field(item, "metadata.name", "?"), phase, field(item, "status.reason", "no reason given")))
+        }
+    }
+    print(format("{} pod(s), {} not running", length(found), unwell))
+    return unwell
+}
+
+fn connect(address: Text) -> K8sCluster uses env, fs or fail {
+    if address == "in-cluster" {
+        return try k8s.in_cluster()
+    }
+    return k8s.cluster(address, env("K8S_TOKEN", ""))
+}
+
+fn main() uses io, env, fs, net, declassify {
+    let given = args()
+    if length(given) < 2 {
+        print("usage: k8s_pods.vel <https://api-server:port | in-cluster> <namespace>")
+        exit_with(2)
+    }
+    check connect(get(given, 0)) {
+        ok cluster {
+            check k8s.pods(cluster, get(given, 1)) {
+                ok found {
+                    if report(found) > 0 {
+                        exit_with(1)
+                    }
+                }
+                fail why {
+                    print("could not list the pods: " + why)
+                    exit_with(2)
+                }
+            }
+        }
+        fail why {
+            print("could not read the service account: " + why)
+            exit_with(2)
+        }
+    }
+}

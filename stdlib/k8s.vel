@@ -1,0 +1,243 @@
+// The Kubernetes API over REST, with no Python: list, get and watch-once for
+// the core resources, reading by default.
+//
+// import "k8s.vel" as k8s
+// check k8s.in_cluster() {
+// ok cluster {
+// check k8s.pods(cluster, "default") { ok found { ... } fail why { ... } }
+// }
+// fail why { ... }
+// }
+//
+// Everything that changes the cluster begins `write_`: write_create,
+// write_patch, write_delete, write_scale. A program that calls none of them
+// reads and nothing else, and a reviewer can see that from the names.
+//
+// The API server's address is the caller's, so an audit cannot name the host
+// from this file's text: grant the one your cluster has, for example
+// net:kubernetes.default.svc:443. The token is a Secret of Text - from the
+// service-account file inside a pod (in_cluster), or the caller's own
+// (cluster) - and leaves in one place, `send`, through declassify, with the
+// reason the audit prints.
+//
+// TLS: the request is verified against the machine's trusted certificates.
+// A cluster whose API server is signed by its own CA - most are - needs that
+// CA trusted by the process: set SSL_CERT_FILE to the CA file
+// (/var/run/secrets/kubernetes.io/serviceaccount/ca.crt inside a pod) where
+// the run is started. There is no switch here that turns verification off.
+//
+// A Secret resource's data is ordinary Text once it has been read over the
+// network; this library has no function for reading one, on purpose.
+
+import "http.vel" as http
+
+record K8sCluster {
+    // "https://kubernetes.default.svc:443" - scheme, host and port, no path
+    server: Text
+    token: Secret of Text
+}
+
+record K8sReply {
+    status: Int
+    body: Text
+}
+
+fn cluster(server: Text, token: Secret of Text) -> K8sCluster {
+    return K8sCluster(server: server, token: token)
+}
+
+// Inside a pod: the service account's token, and the address every pod is
+// given. It needs fs:read:/var/run/secrets/kubernetes.io/serviceaccount.
+fn in_cluster() -> K8sCluster uses fs or fail {
+    let token = try read_file_secret("/var/run/secrets/kubernetes.io/serviceaccount/token")
+    return K8sCluster(server: "https://kubernetes.default.svc:443", token: first_line(token))
+}
+
+// The namespace the pod runs in.
+fn in_cluster_namespace() -> Text uses fs or fail {
+    let text = try read_file("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+    for line in split(text, "\n") {
+        return line
+    }
+    return text
+}
+
+fn first_line(text: Secret of Text) -> Secret of Text {
+    return get(split(text, "\n"), 0)
+}
+
+// One request. `path` begins with '/': "/api/v1/namespaces/default/pods".
+// `attempts`: how many times to ask while the answer is 429, 502, 503 or 504
+// or does not arrive (at most ten).
+fn send(c: K8sCluster, method: Text, path: Text, body: Text, content_type: Text, attempts: Int) -> K8sReply
+uses net, declassify or fail
+{
+    let bearer = declassify("Bearer " + c.token, "the service-account token is sent to the Kubernetes API server as the Authorization header")
+    let headers = json_of({ "Authorization": bearer, "Accept": "application/json", "Content-Type": content_type })
+    let answer = try http.call_retrying(method, c.server + "/" + http.no_leading_slash(path), body, headers, attempts)
+    return K8sReply(status: answer.status, body: answer.body)
+}
+
+// The API's error shape is a Status object: {"kind": "Status", "reason":
+// ..., "message": ..., "code": ...}. A reply that is not 2xx becomes a
+// failure that says the reason and the message.
+fn expect_ok(reply: K8sReply) -> K8sReply or fail {
+    if reply.status >= 200 and reply.status < 300 {
+        return reply
+    }
+    fail format("the API server answered {}: {}", reply.status, status_of(reply))
+}
+
+fn status_of(reply: K8sReply) -> Text {
+    let reason = ""
+    if json_has(reply.body, "reason") {
+        check json_get(reply.body, "reason") {
+            ok found {
+                reason = found
+            }
+            fail why {
+                reason = ""
+            }
+        }
+    }
+    check json_get(reply.body, "message") {
+        ok message {
+            if reason == "" {
+                return message
+            }
+            return reason + ": " + message
+        }
+        fail why {
+            return "no Status body"
+        }
+    }
+    return "no Status body"
+}
+
+fn read(c: K8sCluster, path: Text) -> Text uses net, declassify or fail {
+    let reply = try expect_ok(try send(c, "GET", path, "", "application/json", 3))
+    return reply.body
+}
+
+// Every item of a collection, 500 at a time, following metadata.continue
+// for at most `most_pages` pages. Each item is JSON text. Running past the
+// limit is a failure, not a short list.
+fn list(c: K8sCluster, path: Text, most_pages: Int) -> List of Text
+uses net, declassify or fail
+{
+    let out: List of Text = []
+    let joiner = "?"
+    if contains(path, "?") {
+        joiner = "&"
+    }
+    let more = ""
+    let pages = 0
+    while pages < most_pages {
+        pages = pages + 1
+        let body = try read(c, path + joiner + "limit=500" + more)
+        for item in try http.items(body, "items") {
+            out = push(out, item)
+        }
+        let next = ""
+        if json_has(body, "metadata.continue") {
+            next = try json_get(body, "metadata.continue")
+        }
+        if next == "" {
+            return out
+        }
+        more = "&continue=" + url_encode(next)
+    }
+    fail format("the list runs past {} page(s)", most_pages)
+}
+
+// ---- the core resources --------------------------------------------------------
+
+fn namespaces(c: K8sCluster) -> List of Text uses net, declassify or fail {
+    return try list(c, "/api/v1/namespaces", 20)
+}
+
+fn nodes(c: K8sCluster) -> List of Text uses net, declassify or fail {
+    return try list(c, "/api/v1/nodes", 20)
+}
+
+fn pods(c: K8sCluster, namespace: Text) -> List of Text uses net, declassify or fail {
+    return try list(c, format("/api/v1/namespaces/{}/pods", url_encode(namespace)), 20)
+}
+
+fn pod(c: K8sCluster, namespace: Text, name: Text) -> Text uses net, declassify or fail {
+    return try read(c, format("/api/v1/namespaces/{}/pods/{}", url_encode(namespace), url_encode(name)))
+}
+
+fn services(c: K8sCluster, namespace: Text) -> List of Text uses net, declassify or fail {
+    return try list(c, format("/api/v1/namespaces/{}/services", url_encode(namespace)), 20)
+}
+
+fn configmaps(c: K8sCluster, namespace: Text) -> List of Text uses net, declassify or fail {
+    return try list(c, format("/api/v1/namespaces/{}/configmaps", url_encode(namespace)), 20)
+}
+
+fn events(c: K8sCluster, namespace: Text) -> List of Text uses net, declassify or fail {
+    return try list(c, format("/api/v1/namespaces/{}/events", url_encode(namespace)), 20)
+}
+
+fn deployments(c: K8sCluster, namespace: Text) -> List of Text uses net, declassify or fail {
+    return try list(c, format("/apis/apps/v1/namespaces/{}/deployments", url_encode(namespace)), 20)
+}
+
+fn deployment(c: K8sCluster, namespace: Text, name: Text) -> Text uses net, declassify or fail {
+    return try read(c, format("/apis/apps/v1/namespaces/{}/deployments/{}", url_encode(namespace), url_encode(name)))
+}
+
+// One watch, once: the events on `path` after `resource_version`, for at
+// most `seconds` (at most 15 - a request here waits 20 seconds in all), as
+// the API server sends them, one JSON text each: {"type": "ADDED", "object":
+// {...}}. It returns when the server ends the watch; call it again with the
+// last object's metadata.resourceVersion to carry on.
+fn watch_once(c: K8sCluster, path: Text, resource_version: Text, seconds: Int) -> List of Text
+uses net, declassify or fail
+{
+    let wait = seconds
+    if wait > 15 {
+        wait = 15
+    }
+    if wait < 1 {
+        wait = 1
+    }
+    let joiner = "?"
+    if contains(path, "?") {
+        joiner = "&"
+    }
+    let body = try read(c, format("{}{}watch=true&timeoutSeconds={}&resourceVersion={}", path, joiner, wait, url_encode(resource_version)))
+    let out: List of Text = []
+    for line in split(body, "\n") {
+        if line != "" {
+            out = push(out, line)
+        }
+    }
+    return out
+}
+
+// ---- what changes the cluster --------------------------------------------------
+
+fn write_create(c: K8sCluster, path: Text, body: Text) -> Text uses net, declassify or fail {
+    let reply = try expect_ok(try send(c, "POST", path, body, "application/json", 1))
+    return reply.body
+}
+
+// A JSON merge patch (RFC 7386): json_of({"metadata": {"labels": {...}}}).
+fn write_patch(c: K8sCluster, path: Text, merge_patch: Text) -> Text uses net, declassify or fail {
+    let reply = try expect_ok(try send(c, "PATCH", path, merge_patch, "application/merge-patch+json", 1))
+    return reply.body
+}
+
+fn write_delete(c: K8sCluster, path: Text) -> Text uses net, declassify or fail {
+    let reply = try expect_ok(try send(c, "DELETE", path, "", "application/json", 1))
+    return reply.body
+}
+
+fn write_scale(c: K8sCluster, namespace: Text, name: Text, replicas: Int) -> Text
+uses net, declassify or fail
+{
+    let body = json_of({ "spec": { "replicas": replicas } })
+    return try write_patch(c, format("/apis/apps/v1/namespaces/{}/deployments/{}/scale", url_encode(namespace), url_encode(name)), body)
+}

@@ -1,0 +1,63 @@
+// A repository's open issues, its open pull requests counted apart, and its
+// latest release.
+//
+// GITHUB_TOKEN=... velaris examples/ops/github_issues.vel \
+// --allow io,env,declassify,net:api.github.com:443@30 octo-org octo-repo
+//
+// It calls no Python: `velaris audit` lists no ffi module, one host, and the
+// one place the token leaves - the Authorization header, in stdlib/github.vel.
+
+import "github.vel" as github
+
+fn field(item: Text, path: Text) -> Text {
+    check json_get(item, path) {
+        ok value {
+            return value
+        }
+        fail why {
+            return "?"
+        }
+    }
+    return "?"
+}
+
+fn report(found: List of Text) -> Int uses io {
+    let pulls = 0
+    for item in found {
+        if json_has(item, "pull_request") {
+            pulls = pulls + 1
+        } else {
+            print(format("#{}  {}", field(item, "number"), field(item, "title")))
+        }
+    }
+    return pulls
+}
+
+fn main() uses io, env, net, declassify {
+    let given = args()
+    if length(given) < 2 {
+        print("usage: github_issues.vel <owner> <repository>")
+        exit_with(2)
+    }
+    let token = env("GITHUB_TOKEN", "")
+    let owner = get(given, 0)
+    let name = get(given, 1)
+    check github.issues(token, owner, name, "open") {
+        ok found {
+            let pulls = report(found)
+            print(format("{} open issue(s), {} open pull request(s)", length(found) - pulls, pulls))
+        }
+        fail why {
+            print("could not list the issues: " + why)
+            exit_with(1)
+        }
+    }
+    check github.latest_release(token, owner, name) {
+        ok release {
+            print("latest release: " + field(release, "tag_name"))
+        }
+        fail why {
+            print("no latest release: " + why)
+        }
+    }
+}

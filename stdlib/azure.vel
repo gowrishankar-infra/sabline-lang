@@ -28,7 +28,7 @@
 // (It imports nothing, not even http.vel: an audit reads every function a
 // program loads, and http.vel's take any URL.)
 
-record Reply {
+record AzureReply {
     status: Int
     body: Text
     // the next page's path, or "" when this is the last
@@ -39,7 +39,7 @@ record Reply {
 // '/' is optional. `body` is JSON text, or "" for none. `attempts` is how
 // many times to ask while the answer is 429, 502, 503 or 504 or does not
 // arrive (at most ten; 1 for a request that must not be repeated).
-fn send(token: Secret of Text, method: Text, path: Text, body: Text, attempts: Int) -> Reply
+fn send(token: Secret of Text, method: Text, path: Text, body: Text, attempts: Int) -> AzureReply
 uses net, declassify or fail
 {
     let bearer = declassify("Bearer " + token, "the bearer token is sent to management.azure.com as the Authorization header")
@@ -58,7 +58,7 @@ uses net, declassify or fail
                 let status = try json_int(raw, "status")
                 if not worth_retrying(status) or tried == most {
                     let got = try json_get(raw, "body")
-                    return Reply(status: status, body: got, next: next_path(got))
+                    return AzureReply(status: status, body: got, next: next_path(got))
                 }
                 last = format("status {}", status)
             }
@@ -96,14 +96,14 @@ fn next_path(body: Text) -> Text {
 
 // ARM's error shape is {"error": {"code": ..., "message": ...}}. A reply
 // that is not 2xx becomes a failure that says both.
-fn expect_ok(reply: Reply) -> Reply or fail {
+fn expect_ok(reply: AzureReply) -> AzureReply or fail {
     if reply.status >= 200 and reply.status < 300 {
         return reply
     }
     fail format("management.azure.com answered {}: {}", reply.status, error_of(reply))
 }
 
-fn error_of(reply: Reply) -> Text {
+fn error_of(reply: AzureReply) -> Text {
     if json_has(reply.body, "error.code") and json_has(reply.body, "error.message") {
         check json_get(reply.body, "error.code") {
             ok code {
@@ -124,25 +124,25 @@ fn error_of(reply: Reply) -> Text {
     return "no error body"
 }
 
-fn read(token: Secret of Text, path: Text) -> Reply uses net, declassify or fail {
+fn read(token: Secret of Text, path: Text) -> AzureReply uses net, declassify or fail {
     return try expect_ok(try send(token, "GET", path, "", 3))
 }
 
 // Create or replace. PUT is idempotent in ARM, so it is asked again like a
 // GET.
-fn put_resource(token: Secret of Text, path: Text, body: Text) -> Reply
+fn put_resource(token: Secret of Text, path: Text, body: Text) -> AzureReply
 uses net, declassify or fail
 {
     return try expect_ok(try send(token, "PUT", path, body, 3))
 }
 
-fn patch_resource(token: Secret of Text, path: Text, body: Text) -> Reply
+fn patch_resource(token: Secret of Text, path: Text, body: Text) -> AzureReply
 uses net, declassify or fail
 {
     return try expect_ok(try send(token, "PATCH", path, body, 1))
 }
 
-fn delete_resource(token: Secret of Text, path: Text) -> Reply
+fn delete_resource(token: Secret of Text, path: Text) -> AzureReply
 uses net, declassify or fail
 {
     return try expect_ok(try send(token, "DELETE", path, "", 1))
