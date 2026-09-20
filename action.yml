@@ -150,7 +150,9 @@ runs:
                 doc = json.load(fh)
         except (OSError, ValueError):
             doc = None
-        if not isinstance(doc, dict) or doc.get("schema") != "sabline.permissions-ratchet/1":
+        if not isinstance(doc, dict) or doc.get("schema") not in (
+                "sabline.permissions-ratchet/1",
+                "velaris.permissions-ratchet/1"):   # its name before 8.6
             if status == "2":
                 print("::error::permissions-ratchet could not compare the workflows; the log above says why")
             else:
@@ -211,6 +213,14 @@ runs:
     # repository declared - and never to the previous commit, so capability
     # added over many small pull requests fails every one of them until
     # someone widens the file itself, where the change shows in review.
+    #
+    # 8.6 renamed the project, and a repository that declared its surface
+    # before that has a velaris.capabilities. Sabline reads either, and so
+    # does this: a repository that has not renamed its file keeps its
+    # ratchet, rather than quietly losing it the day its pin moves here.
+    # Renaming the file - deleting velaris.capabilities and adding
+    # sabline.capabilities in one change - is a rename and not a deletion,
+    # so it does not trip the rule below.
     # It runs whether or not the check passed: a file that does not
     # compile cannot run, and the ratchet reports it rather than failing.
     - name: Capability ratchet
@@ -224,15 +234,26 @@ runs:
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
       run: |
         mode="$MODE"
+        # the name this file has now, and the one it had before 8.6
+        baseline=""
+        for name in sabline.capabilities velaris.capabilities; do
+          [ -f "$name" ] && { baseline="$name"; break; }
+        done
         if [ -z "$mode" ]; then
-          if [ -f sabline.capabilities ]; then
+          if [ -n "$baseline" ]; then
             mode=check
           elif [ "$EVENT" = "pull_request" ] \
-              && git fetch --no-tags --depth=1 origin "$BASE_SHA" >/dev/null 2>&1 \
-              && git cat-file -e "$BASE_SHA:sabline.capabilities" 2>/dev/null; then
-            echo "::error::this pull request deletes sabline.capabilities, which turns the capability ratchet off. If that is intended, set capabilities: off in the workflow, where the change shows in review."
-            echo '{"removed": true}' > "$RUNNER_TEMP/sabline-capabilities.json"
-            exit 1
+              && git fetch --no-tags --depth=1 origin "$BASE_SHA" >/dev/null 2>&1; then
+            had=""
+            for name in sabline.capabilities velaris.capabilities; do
+              git cat-file -e "$BASE_SHA:$name" 2>/dev/null && { had="$name"; break; }
+            done
+            if [ -n "$had" ]; then
+              echo "::error::this pull request deletes $had, which turns the capability ratchet off. If that is intended, set capabilities: off in the workflow, where the change shows in review. (Renaming it to sabline.capabilities in the same change is a rename, not a deletion, and is fine.)"
+              echo '{"removed": true}' > "$RUNNER_TEMP/sabline-capabilities.json"
+              exit 1
+            fi
+            mode=off
           else
             mode=off
           fi

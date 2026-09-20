@@ -144,6 +144,11 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     "npm/package.json": ("velaris",),
     "npm/bin/velaris.js": ("velaris", "Velaris"),
     "sabline/cli.py": ("velaris", "Velaris"),
+    # The Action reads the committed baseline and a permissions-ratchet
+    # document under either name, so a repository that has not renamed its
+    # file does not quietly lose its ratchet the day its pin moves here.
+    "action.yml": ("velaris.capabilities", "velaris.permissions-ratchet/1",
+                   "velaris"),
     # The `velaris` import, and the three modules an MCP config or a
     # notebook may name. Each is an alias, not a copy.
     "velaris/__init__.py": ("velaris", "Velaris", "VELARIS"),
