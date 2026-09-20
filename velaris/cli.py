@@ -142,6 +142,12 @@ Usage:
                                            and every other effect is refused
   velaris repl                             interactive session
   velaris run program.vel                  the same as velaris program.vel
+  velaris demo [--keep]                    a refusal, a run inside a budget
+                                           and their receipts, in a minute;
+                                           it writes what it runs
+  velaris run f.vel --tools MANIFEST       offer the program the manifest's
+        [--tool-timeout S]                 tools, over stdin and stdout as
+                                           JSON lines (EMBEDDING.md)
   velaris <command> --help                 how to use one command
   velaris <file> --allow io,fs:read:./data grant exactly this, nothing else
   velaris <file> --allow all               every effect; says so on stderr
@@ -178,6 +184,7 @@ Usage:
   velaris explain program.vel              walk through what it does
   velaris audit program.vel                what it can touch, before you run it
   velaris audit <files or folders> --sarif what they can touch, as SARIF
+  velaris audit program.vel --html [-o F]  the audit as a page to read
   velaris card                             the language, for pasting into a model
   velaris mcp [--max-allow G]              the MCP server on stdin/stdout,
         [--max-timeout S]                  the same one python -m velaris_mcp
@@ -226,6 +233,11 @@ Usage:
         [--stop-file F] [--grace S]        not run, a stop honoured, and a
         [--seed N] [--freeze-time T]       receipt always (docs/eval.md)
         [--json] [--confinement-probe]
+  velaris receipt show <receipt>           a receipt as a page to read: what
+        [--text] [-o FILE]                 was read, written, fetched and
+                                           refused (HTML; --text for here)
+  velaris skill verify <dir>               the tools and the budget a skill's
+        [--tools MANIFEST] [--json]        programs would need; runs nothing
   velaris receipts diff <receipt>          what a run did that its audit does
         [--audit PROGRAM|AUDIT|STATEMENT]  not name, or that earlier runs of
         [--against RECEIPT|DIR] [--json]   the same bytes did not (exit 1)
@@ -400,6 +412,9 @@ from .receipts import _receipt_subjects, _run_parameters, receipt_statement
 from .statements import verify_main
 from .evaluation import eval_main
 from .receipt_diff import receipts_main
+from .viewer import audit_html, receipt_main, write_page
+from .demo import demo_main
+from .skill import skill_main
 from .replay import ResponseLog, replay_main
 from .upgrades import deps_diff_main
 from .stats import stats_main
@@ -795,7 +810,15 @@ def main() -> int:
     if argv[:1] == ["eval"]:
         return eval_main(argv[1:], program_words)
     if argv[:1] == ["receipts"]:
+        if argv[1:2] == ["show"]:          # the same page, either spelling
+            return receipt_main(argv[1:])
         return receipts_main(argv[1:])
+    if argv[:1] == ["receipt"]:
+        return receipt_main(argv[1:])
+    if argv[:1] == ["demo"]:
+        return demo_main(argv[1:])
+    if argv[:1] == ["skill"]:
+        return skill_main(argv[1:])
     if argv[:1] == ["replay"]:
         return replay_main(argv[1:], program_words)
     if argv[:1] == ["eject"]:
@@ -926,6 +949,19 @@ def main() -> int:
                            path=target)
             print(json.dumps(result.as_dict(), indent=2))
             return 0 if result.ok else 1
+        if "--html" in argv:
+            # the same document as a page (8.5): -o FILE, or standard output
+            result = _audit_here(open(target, encoding="utf-8").read(),
+                                 path=target)
+            try:
+                out_to = _flag_value(argv, "-o")
+            except BudgetError as e:
+                print(str(e), file=sys.stderr)
+                return 2
+            wrote = write_page(audit_html(result.as_dict(),
+                                          target.replace(os.sep, "/")),
+                               out_to, "velaris audit --html")
+            return wrote or (0 if result.ok else 1)
 
         print(f"AUDIT  {target}")
         print("=" * 62)

@@ -19,6 +19,7 @@ _MODULES = (
     "project", "session", "results", "library", "pool",
     "findings", "mcp_manifest", "doors", "migrate", "ratchet",
     "conform", "attestation", "receipts", "statements", "receipt_diff",
+    "viewer", "demo", "skill",
     "evaluation", "replay",
     "upgrades", "stats",
     "eject", "permissions", "cli",
@@ -32,7 +33,8 @@ from . import witnesses  # noqa: E402,F401
 from . import editor, formatter, project, session, results, library  # noqa: E402,F401
 from . import pool, findings, mcp_manifest, doors, migrate, ratchet  # noqa: E402,F401
 from . import conform, attestation, receipts, statements  # noqa: E402,F401
-from . import receipt_diff, evaluation, replay  # noqa: E402,F401
+from . import receipt_diff, viewer, demo, skill  # noqa: E402,F401
+from . import evaluation, replay  # noqa: E402,F401
 from . import upgrades  # noqa: E402,F401
 from . import stats, eject  # noqa: E402,F401
 from . import permissions  # noqa: E402,F401
