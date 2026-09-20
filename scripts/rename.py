@@ -171,6 +171,10 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # is kept and the new name added beside it, because a required field
     # of a version-1 document may not disappear (sabline/naming.py).
     "sabline/results.py": ("velaris_version",),
+    # GET /health names the version under both keys, and deps-diff finds a
+    # dependency's lockfile under either name
+    "sabline/doors.py": ("velaris",),
+    "sabline/upgrades.py": ("velaris.lock", "velaris"),
     "sabline/ratchet.py": ("velaris_version", "velaris.capabilities",
                            "velaris"),
     "sabline/__init__.py": ("velaris.VelarisError", "VelarisError"),

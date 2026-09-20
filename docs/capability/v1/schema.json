@@ -38,7 +38,7 @@
       "type": "object",
       "required": ["schema", "sabline_version", "ok", "effects", "safe_command"],
       "properties": {
-        "schema": {"const": "sabline.audit/1"}
+        "schema": {"enum": ["sabline.audit/1", "velaris.audit/1"]}
       }
     }
   }

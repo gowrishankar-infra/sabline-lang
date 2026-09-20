@@ -6,7 +6,7 @@
   "type": "object",
   "required": ["schema", "producer", "budget", "run_parameters", "refusals", "declassifications", "exit", "wall_time_ms", "complete"],
   "properties": {
-    "schema": {"const": "sabline.receipt/1"},
+    "schema": {"enum": ["sabline.receipt/1", "velaris.receipt/1"]},
     "producer": {
       "description": "The implementation that ran the program and wrote the receipt.",
       "type": "object",

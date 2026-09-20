@@ -500,7 +500,12 @@ def serve_main(argv: list[Any]) -> int:
                            run_params=rec.get("run_params"))
 
         def status(self) -> dict[Any, Any]:
-            doc = {"sabline": VERSION, "prover": bool(HAVE_Z3),
+            # both names for the version: GET /health is documented
+            # and is not provisional, and what reads it is somebody's
+            # monitoring script, which would have started reading null
+            # rather than failing. `velaris` goes in 9.0 (naming.py).
+            doc = {"sabline": VERSION, "velaris": VERSION,
+                   "prover": bool(HAVE_Z3),
                    "auth": "bearer" if want is not None else "none"}
             if self.authorized():
                 doc["max_allow"] = sorted(max_allow)

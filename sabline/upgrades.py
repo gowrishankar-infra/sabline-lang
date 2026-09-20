@@ -67,6 +67,9 @@ _LOCKFILES = {
     "uv.lock": ("toml-packages", "pypi"),
     "pdm.lock": ("toml-packages", "pypi"),
     "sabline.lock": ("sabline-lock", "sabline"),
+    # the name this project's own lockfile had before 8.6: a dependency
+    # locked by an earlier release has one, and deps-diff has to see it
+    "velaris.lock": ("sabline-lock", "sabline"),
 }
 _LOCKFILES_NOT_READ = ("yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb",
                        "Cargo.lock", "go.sum", "Gemfile.lock", "composer.lock",
