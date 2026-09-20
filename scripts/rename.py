@@ -173,6 +173,11 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # The paper's submission log records builds made under the old name.
     "paper/arxiv/README-for-me.txt": ("Velaris", "velaris"),
     "check_policies.py": ("velaris.audit/1",),
+    # why naming._said is written once per process and never reset
+    "check_pool.py": ("velaris",),
+    # why the pre-8.3 card address could not be kept: a repository of that
+    # name would end GitHub's redirect from every old repository URL
+    "check_urls.py": ("velaris-lang",),
     # The gate reads the compiler at a tag from before the rename, where the
     # package is velaris/; the differential runs such a tree.
     "release_checks.py": ("velaris",),

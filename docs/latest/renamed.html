@@ -128,13 +128,28 @@ will.</p>
 <div class="table-wrap" tabindex="0"><table>
 <thead><tr><th>Address</th><th>Now</th></tr></thead>
 <tbody>
-<tr><td><code>gowrishankar-infra.github.io/velaris-lang/...</code></td><td>301 to <code>sabline.dev/...</code> (it has redirected since 8.3)</td></tr>
 <tr><td><code>velaris-lang.dev/...</code></td><td>301 to <code>sabline.dev/...</code>, path for path</td></tr>
+<tr><td><code>gowrishankar-infra.github.io/sabline-lang/...</code></td><td>301 to <code>sabline.dev/...</code></td></tr>
+<tr><td><code>gowrishankar-infra.github.io/velaris-lang/...</code></td><td><strong>404 — this one could not be kept</strong></td></tr>
 <tr><td><code>sabline.dev</code></td><td>the site</td></tr>
 </tbody></table></div>
-<p><code>velaris-lang.dev</code> is kept and will go on redirecting. Errors printed by
-releases 8.0 to 8.2.1 name the GitHub Pages address, and errors printed by
-8.3 to 8.5 name <code>velaris-lang.dev</code>; both still lead a reader to the card.</p>
+<p><code>velaris-lang.dev</code> is kept and will go on redirecting, so an error printed
+by 8.3 to 8.5 still leads a reader to the card.</p>
+<p><strong>The one address the rename broke.</strong> A GitHub Pages site is served at
+<code>&lt;owner&gt;.github.io/&lt;repo&gt;</code>, so renaming the repository moved it:
+<code>gowrishankar-infra.github.io/velaris-lang/...</code> answers 404, and the
+<code>reference:</code> line in every error and refusal printed by <strong>8.0 to 8.2.1</strong>
+points there. The only way to serve that path again is a repository called
+<code>velaris-lang</code>, and creating one would end GitHub's redirect from every old
+repository URL — <code>git clone</code>, every link, and every workflow that says
+<code>uses: gowrishankar-infra/velaris-lang@&lt;commit&gt;</code>. Those are worth more than
+one address, so it was left broken rather than traded for them. A reader
+who meets an 8.0-to-8.2.1 error can read the card at
+<a href="llms.txt">https://sabline.dev/llms.txt</a>, and upgrading fixes the line.</p>
+<p>This does <strong>not</strong> affect the predicate type named at that address. A
+predicate type is a name, not a page: nothing is fetched from it to verify
+a Statement, and <code>sabline verify</code> reads the name as it always did. Every
+attestation and receipt signed by 4.2 to 8.2.1 still verifies.</p>
 <h3 id="the-predicate-types">The predicate types <a class="anchor" href="#the-predicate-types" aria-label="Link to this section">#</a></h3>
 <p>An in-toto predicate type is a name, and this project has named its two
 types at three addresses. Every Statement ever signed still verifies,

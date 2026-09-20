@@ -546,9 +546,26 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
                  # confinement's tables (8.4): what a granted module widens
                  # the OS policy to, and seccomp's numbers for each machine
                  "FFI_WIDENS", "_AUDIT_ARCH", "_SYSCALLS", "_SYS_SECCOMP",
+                 # which release last wrote a predicate type at each
+                 # address this project has used (8.6), read only
+                 "_NAMED_UNTIL",
                  # each module's names from the modules after it, which
                  # the package reads once, when it binds them (8.2)
                  "__forward__"}
+    # A third kind, and the only one: module-level mutables that a running
+    # program cannot reach, written once per process rather than per run,
+    # and deliberately not reset. Each needs the argument beside it.
+    PROCESS_ONCE = {
+        # 8.6: which of the names the rename kept has already had its one
+        # line on stderr in this process (sabline/naming.py). Only the
+        # `velaris` command, the `velaris` import and the three module
+        # shims write it, all before any program is loaded; no builtin, no
+        # effect and no budget reaches it, so it carries nothing from one
+        # program to the next. Resetting it between runs would make a pool
+        # worker say "this is now sabline" once per program, which is what
+        # "say it once" exists to stop. It goes in 9.0 with the aliases.
+        "_said",
+    }
     makers = {"dict", "list", "set", "defaultdict", "deque", "Counter",
               "OrderedDict"}
     found = set()
@@ -573,9 +590,10 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     # the budget's four are assigned None here and replaced through
     # globals() by Budget.install, so no literal names them
     found.update({"FFI_MODULES", "FS_GRANTS", "NET_GRANTS"})
-    unaccounted = sorted(found - set(sabline.MUTABLE_GLOBALS) - CONSTANTS)
-    ok("every module-level mutable in the package is reset or a listed "
-       "constant", not unaccounted,
+    unaccounted = sorted(found - set(sabline.MUTABLE_GLOBALS) - CONSTANTS
+                         - PROCESS_ONCE)
+    ok("every module-level mutable in the package is reset, a listed "
+       "constant, or listed as written once per process", not unaccounted,
        f"not accounted for: {unaccounted}")
 
     written = []

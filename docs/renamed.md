@@ -80,13 +80,30 @@ will.
 
 | Address | Now |
 |---|---|
-| `gowrishankar-infra.github.io/velaris-lang/...` | 301 to `sabline.dev/...` (it has redirected since 8.3) |
 | `velaris-lang.dev/...` | 301 to `sabline.dev/...`, path for path |
+| `gowrishankar-infra.github.io/sabline-lang/...` | 301 to `sabline.dev/...` |
+| `gowrishankar-infra.github.io/velaris-lang/...` | **404 — this one could not be kept** |
 | `sabline.dev` | the site |
 
-`velaris-lang.dev` is kept and will go on redirecting. Errors printed by
-releases 8.0 to 8.2.1 name the GitHub Pages address, and errors printed by
-8.3 to 8.5 name `velaris-lang.dev`; both still lead a reader to the card.
+`velaris-lang.dev` is kept and will go on redirecting, so an error printed
+by 8.3 to 8.5 still leads a reader to the card.
+
+**The one address the rename broke.** A GitHub Pages site is served at
+`<owner>.github.io/<repo>`, so renaming the repository moved it:
+`gowrishankar-infra.github.io/velaris-lang/...` answers 404, and the
+`reference:` line in every error and refusal printed by **8.0 to 8.2.1**
+points there. The only way to serve that path again is a repository called
+`velaris-lang`, and creating one would end GitHub's redirect from every old
+repository URL — `git clone`, every link, and every workflow that says
+`uses: gowrishankar-infra/velaris-lang@<commit>`. Those are worth more than
+one address, so it was left broken rather than traded for them. A reader
+who meets an 8.0-to-8.2.1 error can read the card at
+<https://sabline.dev/llms.txt>, and upgrading fixes the line.
+
+This does **not** affect the predicate type named at that address. A
+predicate type is a name, not a page: nothing is fetched from it to verify
+a Statement, and `sabline verify` reads the name as it always did. Every
+attestation and receipt signed by 4.2 to 8.2.1 still verifies.
 
 ### The predicate types
 

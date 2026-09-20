@@ -3033,11 +3033,18 @@ def main() -> int:
                sabline.SablineError("E700", "x", 1).human("f")
                for _ in (0,)))
     import urllib.request as _u
+    here = (HERE / "LLM.md").read_text(encoding="utf-8")
+    deployed = False
     try:
         with _u.urlopen(sabline.REFERENCE_URL, timeout=20) as r:
-            served = r.read(4000).decode("utf-8", "replace")
+            served = r.read().decode("utf-8", "replace")
+        deployed = served.strip() == here.strip()
         ok("the live REFERENCE_URL serves the card", card_marker in served,
            served[:80])
+        if not deployed:
+            skip("...and serves this commit's card",
+                 "the site is behind this checkout; it catches up at this "
+                 "release's docs deploy")
     except Exception as e:
         skip("the live REFERENCE_URL serves the card",
              f"could not fetch it now ({type(e).__name__}); it serves after "
@@ -3049,14 +3056,24 @@ def main() -> int:
        sabline.REFERENCE_URL == "https://sabline.dev/llms.txt"
        and sabline.REFERENCE_URL == sabline.SITE + "/llms.txt",
        sabline.REFERENCE_URL)
+    # Statements about the DEPLOYED site, so they wait for the deploy: a
+    # checkout whose card the site does not serve yet is ahead of it, and
+    # where the earlier addresses lead is not this commit's to say. `served`
+    # above is what the site has; once it is this card, each earlier address
+    # must reach it, through however many redirects.
     import check_urls as _check_urls
     for earlier in _check_urls.EARLIER_CARD_URLS:
-        moved, where = _check_urls.redirect_of(earlier)
-        if moved is None:
-            skip(f"{earlier} redirects to REFERENCE_URL",
+        if not deployed:
+            skip(f"{earlier} leads a reader to the card",
+                 "the site does not serve this commit's card yet")
+            continue
+        reaches, where = _check_urls.leads_to_card(earlier, here)
+        if reaches is None:
+            skip(f"{earlier} leads a reader to the card",
                  f"could not ask it now ({where})")
         else:
-            ok(f"{earlier} redirects to REFERENCE_URL", moved, where)
+            ok(f"{earlier} leads a reader to the card - it {where}",
+               reaches, where)
 
     pdoc, pdone = sabline_sarif("proofs", "_sarif_box")
     adoc, adone = sabline_sarif("audit", "_sarif_box/capable.vel")
