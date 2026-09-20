@@ -1,12 +1,12 @@
-# The Velaris language reference
+# The Sabline language reference
 
-This is the specification: what Velaris means, precisely. It is not a
+This is the specification: what Sabline means, precisely. It is not a
 tutorial ([TUTORIAL.md](TUTORIAL.md) is), and it does not teach
 programming. It exists so that anyone deciding whether to depend on
 this language can find out exactly what it promises — and what it
 does not.
 
-Version 8.5.0. Where this document and the implementation disagree,
+Version 8.6.0. Where this document and the implementation disagree,
 that is a bug in one of them; please report it.
 
 ## 1. Programs
@@ -204,7 +204,7 @@ prints redacts the values whose type is secret. THREAT_MODEL.md lists
 the bit per run that remains.
 
 **What is still not bounded.** This bounds what a program can *do* with
-a secret it cannot see. It does not make Velaris non-interfering, and
+a secret it cannot see. It does not make Sabline non-interfering, and
 this document does not claim that it does: a program still chooses how
 long to run and whether to stop, and an operator who runs the same
 program repeatedly is outside anything stated here. THREAT_MODEL.md
@@ -216,14 +216,14 @@ gives back the `T`. It is the only way, and it says so three times:
 - the function doing it needs `uses declassify`, checked across the
   whole call graph like any other effect (§7, E300);
 - `reason` must be written as text in the call, not built while
-  running, so that `velaris audit` can report it without running the
+  running, so that `sabline audit` can report it without running the
   program (E561 - and E561 again for an empty reason, or for something
   that is not a Secret);
 - the operator's budget must grant `declassify`, or the call is refused
   at the moment it happens (E310, §7.1), like any other effect.
 
 So a program that can let a secret out says so in its type; the audit
-names every place it does and the reason given (velaris-spec §8.6, the
+names every place it does and the reason given (sabline-spec §8.6, the
 `secrets` field); and an operator can run the program without letting
 it.
 
@@ -248,7 +248,7 @@ do with these that it could already do without them.
 distinction with no runtime representation, so it costs nothing, and
 `declassify` evaluates to the value itself. Two places print values a
 program did not ask them to print, and both write `<secret>` instead:
-`velaris trace`, and the message of a broken `requires` or `ensures`
+`sabline trace`, and the message of a broken `requires` or `ensures`
 (E600, E601).
 
 ## 4. Numbers
@@ -293,7 +293,7 @@ program's decisions, not a language's.
 
 `money` and `parse_money` take the currency as text **written in the
 call**, and it must be one the implementation knows
-(`velaris.CURRENCIES`, §4.4); anything else is E551. A function may be generic in
+(`sabline.CURRENCIES`, §4.4); anything else is E551. A function may be generic in
 a currency: `fn f(m: Money of C) -> Money of C for any C`.
 
 **Arithmetic.** Two amounts in the same currency add, subtract and
@@ -331,14 +331,14 @@ text with more digits than the currency has.
 
 Dividing an amount into parts that still add up to it is
 `money.split(amount, n)` from `stdlib/money.vel`, which is written in
-Velaris so that its promises are proven with the program that imports
+Sabline so that its promises are proven with the program that imports
 it (§9.2): `length(result) == n`, `units_of(result) == units_of(amount)`,
 and no part with a sign the amount does not have.
 
 ### 4.4 Which currencies
 
 An implementation carries a table of currency codes and how many digits
-each has after the point: `velaris.CURRENCIES`, which today
+each has after the point: `sabline.CURRENCIES`, which today
 holds 21 of them — 2 digits for INR, USD, EUR and most others, 0 for JPY
 and KRW, 3 for KWD, BHD, JOD and OMR. **It is not exhaustive.** A
 currency outside it is refused (E551) rather than assumed to have two
@@ -413,8 +413,8 @@ an effect is attempted, whatever the source declares. A refusal stops
 the program and cannot be caught.
 
 An operator who writes no budget gets `io` - the console, and nothing
-else. That is the default in 5.0 for `velaris file.vel`,
-`velaris.run(source)` with no `allow`, `velaris.Pool(...)` with no
+else. That is the default in 5.0 for `sabline file.vel`,
+`sabline.run(source)` with no `allow`, `sabline.Pool(...)` with no
 `allow`, and the ceilings of both doors. Before 5.0 the first three
 granted all seven effects. `--deny` narrows whatever `--allow` gave,
 so a denial alone narrows `io`; `--allow all` is a command-line
@@ -478,8 +478,8 @@ back its result as `Text`; `tool_secret` is the same call and gives a
 caller handles, like a request that does not get through.
 
 Which tools exist is not the language's to say. A run started with
-`--tools` is given a manifest (`velaris.tools/1`,
-velaris-spec §8.10) naming each tool, a JSON Schema for its arguments,
+`--tools` is given a manifest (`sabline.tools/1`,
+sabline-spec §8.10) naming each tool, a JSON Schema for its arguments,
 whether its result is secret, what a call costs, and the most calls and
 cost one run may spend; with no manifest there is no tool, and a call is
 E320. A call is made only when all of these hold, and is otherwise a
@@ -552,7 +552,7 @@ Contract expressions must be pure and may call pure functions.
 
 ### 9.2 What "proven" means
 
-When Velaris says a promise is **proven**, it means: for every input
+When Sabline says a promise is **proven**, it means: for every input
 permitted by the `requires`, the `ensures` holds — established by the
 Z3 theorem prover before the program runs, using the semantics in this
 document, with no execution and no sampling.
@@ -564,7 +564,7 @@ always literally realisable.
 
 When neither can be established, the promise is **checked at runtime**
 instead, and violating it is an error when it happens (E600, E601).
-`velaris explain` reports which of the three applies to each function.
+`sabline explain` reports which of the three applies to each function.
 The compiler never reports a promise as proven when it was in fact
 left to a runtime check.
 
@@ -606,7 +606,7 @@ anything richer must be written.
 
 A proof gets **120 seconds** when the function mentions `Float` and
 **3 seconds** otherwise, and either can be replaced for one run with
-`--proof-timeout SECONDS` or `VELARIS_PROOF_TIMEOUT`. A proof that
+`--proof-timeout SECONDS` or `SABLINE_PROOF_TIMEOUT`. A proof that
 spends its budget without an answer is **abandoned**, and an
 implementation must say so: reporting it the same way it reports a
 promise the prover looked at and found nothing wrong is a soundness
@@ -654,11 +654,11 @@ rewrites it; ARCHITECTURE.md) and goes through it unchanged: `for i in a to b` i
 assigns `i` or changes `b`, and `for x in xs` unless the body assigns
 `xs`.
 
-The verdict is reported by `velaris explain` ("loops: 2 terminate, 1 not
-shown") and by `velaris audit` (`loops_unshown` per function, and a
+The verdict is reported by `sabline explain` ("loops: 2 terminate, 1 not
+shown") and by `sabline audit` (`loops_unshown` per function, and a
 warning naming the functions). It is an error only under
-`velaris check --strict`, as E612; without the flag a loop whose end is
-not shown is not a problem, and the time limit in `velaris.run` remains
+`sabline check --strict`, as E612; without the flag a loop whose end is
+not shown is not a problem, and the time limit in `sabline.run` remains
 the guard against a loop that never ends. The compiler never reports
 `terminates` for a shape outside the rule above.
 
@@ -756,7 +756,7 @@ crossing it is **visible** — a function that reaches the host says
 
 ## 13. Concurrency
 
-**Velaris is single-threaded, deliberately, and has no concurrency
+**Sabline is single-threaded, deliberately, and has no concurrency
 model.** There are no threads, no async functions, no channels, and no
 parallel execution. A program is one sequence of steps.
 
@@ -768,7 +768,7 @@ extending the effect system to describe them would break the one
 promise the language exists to make.
 
 If concurrency is added, it will be as an effect with rules stated
-here first. Until then, a Velaris program that needs parallelism should
+here first. Until then, a Sabline program that needs parallelism should
 get it outside the program: run several, or reach the host language
 through `uses ffi` and accept that what happens there is unverified.
 
@@ -792,7 +792,7 @@ function is still caught while running.
 
 ## 13a. Early loop exit: considered, and answered
 
-Velaris has no `break` or `continue`. An adversarial review argued the
+Sabline has no `break` or `continue`. An adversarial review argued the
 absence *hurts* the invariant story it presumably protects: exiting via
 a flag (`while going and i < n`) makes invariants harder to state, not
 easier. That criticism is fair, and this section is the considered
@@ -833,7 +833,7 @@ as a field. `--json` emits them as structured data. The complete list is
 generated from the compiler source itself and published with the
 documentation.
 
-`velaris check` reports every error it can find in one pass, recovering
+`sabline check` reports every error it can find in one pass, recovering
 at statement boundaries rather than stopping at the first. **The first
 error reported is authoritative**: it is the one a run of a program with
 only that error would give, and the errors after it may be its
@@ -850,7 +850,7 @@ runtime contract violations, E7xx proof results.
 
 ## 15. Versioning and stability
 
-Velaris follows semantic versioning. Breaking changes happen only at
+Sabline follows semantic versioning. Breaking changes happen only at
 major versions; 2.0 made four builtins fallible and the compiler
 pointed at every call site that needed updating. Minor versions add;
 patch versions fix. [STABILITY.md](STABILITY.md) states what that

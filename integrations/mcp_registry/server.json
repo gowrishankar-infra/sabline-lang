@@ -1,20 +1,20 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.gowrishankar-infra/velaris",
-  "title": "Velaris",
-  "description": "Write Velaris, audit what it can touch, and run it under an effect budget.",
+  "name": "io.github.gowrishankar-infra/sabline",
+  "title": "Sabline",
+  "description": "Write Sabline, audit what it can touch, and run it under an effect budget.",
   "repository": {
-    "url": "https://github.com/gowrishankar-infra/velaris-lang",
+    "url": "https://github.com/gowrishankar-infra/sabline-lang",
     "source": "github"
   },
-  "websiteUrl": "https://velaris-lang.dev/",
-  "version": "8.5.0",
+  "websiteUrl": "https://sabline.dev/",
+  "version": "8.6.0",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
-      "identifier": "velaris-lang",
-      "version": "8.5.0",
+      "identifier": "sabline-lang",
+      "version": "8.6.0",
       "runtimeHint": "python",
       "runtimeArguments": [
         {
@@ -23,7 +23,7 @@
         },
         {
           "type": "positional",
-          "value": "velaris_mcp"
+          "value": "sabline_mcp"
         }
       ],
       "transport": {
@@ -33,8 +33,8 @@
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
-      "identifier": "velaris-lang",
-      "version": "8.5.0",
+      "identifier": "sabline-lang",
+      "version": "8.6.0",
       "transport": {
         "type": "stdio"
       },

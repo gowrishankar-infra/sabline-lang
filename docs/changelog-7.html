@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Changelog: 7.x - Velaris 8.5.0</title>
+<title>Changelog: 7.x - Sabline 8.6.0</title>
 <meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
-<meta name="velaris-version" content="8.5.0">
-<link rel="canonical" href="https://velaris-lang.dev/changelog-7.html">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/changelog-7.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
@@ -17,8 +17,8 @@
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="renamed.html">Velaris is now Sabline</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,7 +52,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html" aria-current="page">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html" aria-current="page">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -78,7 +78,7 @@ either; the VS Code Marketplace, as before; the GitHub release; the MCP
 registry, logged in by GitHub OIDC, with <code>server.json</code> listing both
 packages; and the attestation. Last, PyPI, npm, the registry and the
 GitHub release must all report the version, or the run fails and names
-the one that does not. <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/RELEASING.md">RELEASING.md</a> is the procedure,
+the one that does not. <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/RELEASING.md">RELEASING.md</a> is the procedure,
 what a person still does - publishing an advisory, yanking - and the rule
 that nobody tags by hand. <code>check_release.py</code> holds the gate to fixtures
 (a docs-only commit, a version bump without a CHANGELOG entry, a correct
@@ -136,7 +136,7 @@ ignored; <code>velaris audit</code> prints <code>ignored: ./.velaris/</code>. If
 can be written, the run proceeds without one. A poisoned <code>./.velaris/</code> is
 therefore never read: the first run on a malicious program refutes the false
 promise (E700 with the prover, or the runtime check E601 without it). See
-<a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-proof-cache.md">advisory-proof-cache.md</a> and THREAT_MODEL.md.</p>
+<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/advisory-proof-cache.md">advisory-proof-cache.md</a> and THREAT_MODEL.md.</p>
 <p><strong>Native recursion is bounded like interpreted recursion (hardening).</strong> A
 runaway recursive function compiled to native code looped unbounded, because
 the interpreter's E609 "recursion that never stops" guard had no equivalent
@@ -456,7 +456,7 @@ ordinary <code>Bool</code>. The argument was that a comparison is one bit, that
 <code>if key == ""</code> has to be writable, and that refusing <code>print(k == "")</code>
 while allowing <code>if k == "" { print("empty") }</code> would stop nothing.
 Every step of that is true of <em>one</em> comparison. It is false of a loop:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">let</span> at = <span class="n">0</span>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">let</span> at = <span class="n">0</span>
 <span class="k">while</span> at &lt; <span class="n">3</span> {
     <span class="k">for</span> c in alphabet {
         <span class="k">if</span> code_at(key, at) == code_at(c, <span class="n">0</span>) {
@@ -493,7 +493,7 @@ a secret out in a loop, and its message already redacts the values
 whose type is secret.</li>
 </ul>
 <p>To look at a secret, a program says so:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">let</span> empty = declassify(key == <span class="s">""</span>,
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">let</span> empty = declassify(key == <span class="s">""</span>,
 <span class="s">"whether a key is set at all is not the key"</span>)
 <span class="k">if</span> empty { ... }</code></pre></div>
 <p>which needs <code>uses declassify</code>, the operator's grant, and a reason the
@@ -551,7 +551,7 @@ velaris-spec goes to 0.8.0: no rule of the format changes, and section
 missed, 0 false positives.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#72---releases-that-tag-themselves">7.2 - Releases that tag themselves</a></li><li><a href="#712---the-proof-cache-could-be-lied-to">7.1.2 - The proof cache could be lied to</a></li><li><a href="#711---710-did-not-import-on-python-310-or-311">7.1.1 - 7.1.0 did not import on Python 3.10 or 3.11</a></li><li><a href="#71---what-an-upgrade-gained">7.1 - What an upgrade gained</a></li><li><a href="#70---a-secret-you-cannot-look-at">7.0 - A secret you cannot look at</a></li></ul></nav>

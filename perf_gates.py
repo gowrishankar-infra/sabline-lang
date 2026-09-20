@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""How fast Velaris starts, checks, proves, compiles and runs, on this machine.
+"""How fast Sabline starts, checks, proves, compiles and runs, on this machine.
 
     python perf_gates.py                      # every measurement, a report on stdout
     python perf_gates.py --runs 3 --markdown  # a table to paste into a CHANGELOG entry
@@ -8,39 +8,39 @@
 
 WHAT IS MEASURED, in the tree this file is in, under the Python running it:
 
-  cold     The cold start of `velaris --version`, and of `velaris check` on a
+  cold     The cold start of `sabline --version`, and of `sabline check` on a
            one-line file: a fresh process each time, one warm-up run first,
            then the median of --runs.
   check    Check time per 1,000 lines: a valid generated program of about
            1,000 and about 10,000 lines (records, loops, branches, lists,
            text and `%`; no contracts, though the prover still settles what
            the operations oblige, such as a divisor), checked in this process
-           with velaris.check(timeout=None, max_memory_mb=None) - as `velaris
+           with sabline.check(timeout=None, max_memory_mb=None) - as `sabline
            check` does, and again with prove=False to show the checker alone;
            one warm-up check, then the median of --runs, in seconds per 1,000
            lines.
   proof    Proof time with z3: every examples/*.vel with a `requires` or
-           `ensures` is checked in this process with velaris.check(...,
+           `ensures` is checked in this process with sabline.check(...,
            timeout=None), after one warm-up check; each file's time is the
            median of --runs, and p50 and p95 (nearest rank) are taken over
            the files. Skipped, and said, when z3 is not installed.
   jit      JIT compile time against the gain, on examples/bench.vel: in a fresh
            process the program is loaded, checked and proved, and then
            llvmlite is imported and compile_native() timed; the run times
-           are `velaris examples/bench.vel --time`, native and --no-native
+           are `sabline examples/bench.vel --time`, native and --no-native
            (the `[--time] ran in` figure: the program's run, not start-up,
            check or compile). The speed-up is interpreted / native, the gain
            their difference.
   lite     The size of a `--lite` build. The repository is searched for one;
            when none exists that is said, and nothing is measured.
-  pool     Memory of a velaris.Pool(size=1) worker: its resident set after one
+  pool     Memory of a sabline.Pool(size=1) worker: its resident set after one
            warm-up run and after --pool-runs (1,000) more runs of a small
            program, read with psutil when it is installed, else with
            GetProcessMemoryInfo on Windows, /proc/PID/status on Linux, and
            `ps` elsewhere. The worker's whole process tree is added up: under
            a Windows virtual environment python.exe is a launcher, and the
            interpreter doing the work is its child.
-  imports  Lazy imports: `python -X importtime velaris.py --version`, and
+  imports  Lazy imports: `python -X importtime sabline.py --version`, and
            `check` of a file with no contracts (with PYTHONPROFILEIMPORTTIME
            set as well, so the check's ceiling child reports its imports),
            must import neither z3 nor llvmlite. What importing each costs:
@@ -180,15 +180,15 @@ JIT_HELPER = """\
 import json, sys, time
 root, path = sys.argv[1], sys.argv[2]
 sys.path.insert(0, root)
-import velaris
-funcs, records = velaris.load_program(path)
+import sabline
+funcs, records = sabline.load_program(path)
 errors = []
-velaris.check_effects(funcs, errors)
+sabline.check_effects(funcs, errors)
 if not errors:
-    velaris.check_types(funcs, records, errors)
+    sabline.check_types(funcs, records, errors)
 proven = set()
 if not errors:
-    velaris.check_proofs(funcs, records, errors, proven)
+    sabline.check_proofs(funcs, records, errors, proven)
 t0 = time.perf_counter()
 try:
     import llvmlite.ir, llvmlite.binding
@@ -196,7 +196,7 @@ try:
 except ImportError:
     have = False
 t1 = time.perf_counter()
-native = velaris.compile_native(funcs, proven) if have and not errors else {}
+native = sabline.compile_native(funcs, proven) if have and not errors else {}
 t2 = time.perf_counter()
 print(json.dumps({"errors": [str(e) for e in errors], "llvmlite": have,
                   "import_s": t1 - t0, "compile_s": t2 - t1,
@@ -314,14 +314,14 @@ def machine_load() -> str:
 
 # ------------------------------------------------------------ the tree
 
-class Velaris:
-    """A tree of Velaris to start as `python velaris.py`."""
+class Sabline:
+    """A tree of Sabline to start as `python sabline.py`."""
 
     def __init__(self, root: Path, label: str) -> None:
         self.root, self.label = Path(root), label
-        self.script = self.root / "velaris.py"
+        self.script = self.root / "sabline.py"
         if not self.script.is_file():
-            raise CannotMeasure(f"{label} has no velaris.py")
+            raise CannotMeasure(f"{label} has no sabline.py")
 
     def cmd(self, *args: Any) -> list[Any]:
         return [sys.executable, str(self.script)] + [str(a) for a in args]
@@ -338,17 +338,17 @@ class Velaris:
         return float(m.group(1))
 
 
-def import_velaris() -> Any:
-    import velaris
-    if Path(velaris.__file__).resolve().parent.parent != HERE:
-        raise CannotMeasure(f"import velaris found {velaris.__file__}, not "
+def import_sabline() -> Any:
+    import sabline
+    if Path(sabline.__file__).resolve().parent.parent != HERE:
+        raise CannotMeasure(f"import sabline found {sabline.__file__}, not "
                             f"this tree")
-    return velaris
+    return sabline
 
 
 # --------------------------------------------------------- measurements
 
-def measure_cold(tree: Velaris, work: Path, runs: int) -> dict[str, Any]:
+def measure_cold(tree: Sabline, work: Path, runs: int) -> dict[str, Any]:
     one = work / "one_line.vel"
     one.write_text(ONE_LINE, encoding="utf-8")
     version = timed_processes(tree.cmd("--version"), work, runs)
@@ -370,7 +370,7 @@ def generate_program(lines: int) -> str:
 
 
 def measure_check(work: Path, runs: int) -> dict[Any, Any]:
-    velaris = import_velaris()
+    sabline = import_sabline()
     rows = {}
     programs = {}
     for size in CHECK_SIZES:
@@ -379,14 +379,14 @@ def measure_check(work: Path, runs: int) -> dict[Any, Any]:
         path.write_text(source, encoding="utf-8")
         programs[size] = (path, source, source.count("\n"))
     path, source, _ = programs[CHECK_SIZES[0]]
-    warm = velaris.check(source, path=str(path), timeout=None,
+    warm = sabline.check(source, path=str(path), timeout=None,
                          max_memory_mb=None)
     for size, (path, source, count) in programs.items():
         times: dict[bool, list[float]] = {True: [], False: []}
         for _ in range(runs):
             for prove in (True, False):
                 began = time.perf_counter()
-                result = velaris.check(source, path=str(path), prove=prove,
+                result = sabline.check(source, path=str(path), prove=prove,
                                        timeout=None, max_memory_mb=None)
                 times[prove].append(time.perf_counter() - began)
                 if not result.ok:
@@ -426,8 +426,8 @@ def contracted_functions(source: str) -> int:
 
 
 def measure_proof(runs: int) -> dict[Any, Any]:
-    velaris = import_velaris()
-    if not velaris.HAVE_Z3:
+    sabline = import_sabline()
+    if not sabline.HAVE_Z3:
         say("proof: skipped, z3 is not installed under this Python")
         return {"skipped": "z3 is not installed"}
     files = sorted(p for p in (HERE / "examples").glob("*.vel")
@@ -435,14 +435,14 @@ def measure_proof(runs: int) -> dict[Any, Any]:
     if not files:
         return {"skipped": "no example has a contract"}
     first = files[0]
-    velaris.check(first.read_text(encoding="utf-8"), path=str(first),
+    sabline.check(first.read_text(encoding="utf-8"), path=str(first),
                   timeout=None, max_memory_mb=None)
     per_file: dict[str, list[float]] = {}
     for _ in range(runs):
         for path in files:
             source = path.read_text(encoding="utf-8")
             began = time.perf_counter()
-            velaris.check(source, path=str(path), timeout=None,
+            sabline.check(source, path=str(path), timeout=None,
                           max_memory_mb=None)
             per_file.setdefault(path.name, []).append(
                 time.perf_counter() - began)
@@ -462,7 +462,7 @@ def measure_proof(runs: int) -> dict[Any, Any]:
     return out
 
 
-def compile_once(tree: Velaris, program: Path, work: Path) -> dict[Any, Any]:
+def compile_once(tree: Sabline, program: Path, work: Path) -> dict[Any, Any]:
     """Load, check and prove `program` in a fresh process, then import
     llvmlite and compile it: the helper's report."""
     cmd = [sys.executable, "-c", JIT_HELPER, str(tree.root), str(program)]
@@ -480,7 +480,7 @@ def compile_once(tree: Velaris, program: Path, work: Path) -> dict[Any, Any]:
     return got
 
 
-def jit_compile(tree: Velaris, program: Path, work: Path, runs: int) -> dict[str, Any]:
+def jit_compile(tree: Sabline, program: Path, work: Path, runs: int) -> dict[str, Any]:
     compile_once(tree, program, work)                  # the warm-up
     samples = [compile_once(tree, program, work) for _ in range(runs)]
     return {"llvmlite": samples[-1]["llvmlite"],
@@ -531,7 +531,7 @@ def measure_numeric(trees: list[Any], work: Path, runs: int) -> dict[str, Any]:
             "ms": out}
 
 
-def measure_jit(tree: Velaris, work: Path, runs: int, numeric: Any) -> dict[Any, Any]:
+def measure_jit(tree: Sabline, work: Path, runs: int, numeric: Any) -> dict[Any, Any]:
     bench = work / "bench.vel"
     if not bench.exists():
         numeric_programs(work)
@@ -563,7 +563,7 @@ def measure_jit(tree: Velaris, work: Path, runs: int, numeric: Any) -> dict[Any,
 
 
 LITE_WORD = re.compile(r"(?i)(?<![\w-])--lite\b|(?<![\w-])lite(?![\w-])"
-                       r"|velaris[-_]lite")
+                       r"|sabline[-_]lite")
 LITE_NAME = re.compile(r"(?i)(^|[-_.])lite([-_.]|$)")
 TEXT_SUFFIXES = {".py", ".md", ".toml", ".yml", ".yaml", ".json", ".js",
                  ".cfg", ".txt", ".sh", ".ps1", ".in", ".ini", ".spec", ""}
@@ -761,8 +761,8 @@ def tree_memory(pid: int) -> dict[str, Any]:
 
 
 def measure_pool(runs: int) -> dict[Any, Any]:
-    velaris = import_velaris()
-    with velaris.Pool(size=1) as pool:
+    sabline = import_sabline()
+    with sabline.Pool(size=1) as pool:
         first = pool.run(POOL_PROGRAM)
         if not first.ok:
             raise CannotMeasure(f"the pool's program did not run: "
@@ -811,7 +811,7 @@ def roots(rows: list[Any], names: Any = ("z3", "llvmlite")) -> list[Any]:
                    if mod.split(".")[0] in names})
 
 
-def measure_imports(tree: Velaris, work: Path, runs: int) -> dict[Any, Any]:
+def measure_imports(tree: Sabline, work: Path, runs: int) -> dict[Any, Any]:
     one = work / "one_line.vel"
     one.write_text(ONE_LINE, encoding="utf-8")
     env = child_env(PYTHONPROFILEIMPORTTIME="1")
@@ -878,9 +878,9 @@ def result_rows(report: dict[Any, Any]) -> list[Any]:
     rows = []
     r = report.get("cold")
     if r:
-        rows.append(("Cold start, `velaris --version`",
+        rows.append(("Cold start, `sabline --version`",
                      fmt_s(r["version"]["median"])))
-        rows.append(("Cold start, `velaris check` of a one-line file",
+        rows.append(("Cold start, `sabline check` of a one-line file",
                      fmt_s(r["check_one_line"]["median"])))
     r = report.get("check")
     if r:
@@ -957,7 +957,7 @@ def result_rows(report: dict[Any, Any]) -> list[Any]:
 def heading(report: dict[Any, Any]) -> str:
     meta = report["meta"]
     return (f"Measured by `perf_gates.py` on {meta['platform']}, Python "
-            f"{meta['python']}, Velaris {meta['velaris']}: medians of "
+            f"{meta['python']}, Sabline {meta['sabline']}: medians of "
             f"{meta['runs']} run(s) after one warm-up. Machine load when it "
             f"began: {meta['load']}. Wall-clock figures on a machine that "
             f"may carry other load are noisy.")
@@ -978,7 +978,7 @@ def plain(report: dict[Any, Any]) -> str:
 
 def main(argv: Any = None) -> int:
     ap = argparse.ArgumentParser(
-        description="Measure Velaris's start-up, check, proof, JIT, pool "
+        description="Measure Sabline's start-up, check, proof, JIT, pool "
                     "memory, lazy imports and pure-numeric speed.")
     ap.add_argument("--runs", type=int, default=5,
                     help="timed runs of each measurement, after one warm-up "
@@ -1011,15 +1011,15 @@ def main(argv: Any = None) -> int:
     work = isolate("perf_gates")
     from check_differential import CannotRun, Checkouts, tree_version
     checkouts = Checkouts(work)
-    tree = Velaris(HERE, "working tree")
-    report: dict[str, Any] = {"schema": "velaris.perf/1", "meta": {
+    tree = Sabline(HERE, "working tree")
+    report: dict[str, Any] = {"schema": "sabline.perf/1", "meta": {
         # the build number too: Python before 3.12 calls Windows 11 "10"
         "platform": f"{platform.system()} {platform.release()} "
                     f"({platform.version()}) {platform.machine()}",
-        "python": platform.python_version(), "velaris": tree_version(HERE),
+        "python": platform.python_version(), "sabline": tree_version(HERE),
         "tree": tree.label, "runs": args.runs, "against": args.against,
         "slower_limit": SLOWER_LIMIT, "measures": chosen}}
-    say(f"perf_gates: Velaris {report['meta']['velaris']} in {HERE}, Python "
+    say(f"perf_gates: Sabline {report['meta']['sabline']} in {HERE}, Python "
         f"{report['meta']['python']}, {args.runs} run(s) after a warm-up")
     report["meta"]["load"] = machine_load()
     say(f"machine load: {report['meta']['load']}. These are wall-clock "
@@ -1029,7 +1029,7 @@ def main(argv: Any = None) -> int:
         trees = [tree]
         if args.against:
             ref = checkouts.checkout(args.against, "against")
-            trees.append(Velaris(ref.root, args.against))
+            trees.append(Sabline(ref.root, args.against))
             report["meta"]["against_commit"] = ref.commit
             report["meta"]["against_version"] = ref.version
         if "cold" in chosen:

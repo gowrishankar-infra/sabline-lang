@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://velaris-lang.dev/capability/v1/schema.json",
-  "title": "https://velaris-lang.dev/capability/v1",
-  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://velaris-lang.dev/capability/v1: a velaris.audit/1 document for the source file that is the statement's first subject, and the producer that wrote it. velaris-spec SPEC.md section 8.5 defines it. This schema checks the predicate's shape; the audit field must also validate against velaris.audit.1.schema.json (velaris-spec schemas/), which is not repeated here. Within v1 fields may be added and consumers must ignore fields they do not know.",
+  "$id": "https://sabline.dev/capability/v1/schema.json",
+  "title": "https://sabline.dev/capability/v1",
+  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://sabline.dev/capability/v1: a sabline.audit/1 document for the source file that is the statement's first subject, and the producer that wrote it. sabline-spec SPEC.md section 8.5 defines it. This schema checks the predicate's shape; the audit field must also validate against sabline.audit.1.schema.json (sabline-spec schemas/), which is not repeated here. Within v1 fields may be added and consumers must ignore fields they do not know.",
   "type": "object",
   "required": ["producer", "audit"],
   "properties": {
     "producer": {
-      "description": "The implementation that wrote the audit. Its version is the audit's velaris_version.",
+      "description": "The implementation that wrote the audit. Its version is the audit's sabline_version.",
       "type": "object",
       "required": ["name"],
       "properties": {
@@ -16,7 +16,7 @@
       }
     },
     "specification": {
-      "description": "The velaris-spec version the producer followed, as 'velaris-spec 0.4'. Informative.",
+      "description": "The sabline-spec version the producer followed, as 'sabline-spec 0.4'. Informative.",
       "type": "string"
     },
     "auditedAt": {
@@ -25,7 +25,7 @@
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
     },
     "conformance": {
-      "description": "The levels of velaris-spec CONFORMANCE.md the producer claims, and the corpus it ran. A claim, not evidence.",
+      "description": "The levels of sabline-spec CONFORMANCE.md the producer claims, and the corpus it ran. A claim, not evidence.",
       "type": "object",
       "required": ["levels"],
       "properties": {
@@ -34,11 +34,11 @@
       }
     },
     "audit": {
-      "description": "A velaris.audit/1 document (velaris-spec section 8) produced from the bytes of the statement's subjects.",
+      "description": "A sabline.audit/1 document (sabline-spec section 8) produced from the bytes of the statement's subjects.",
       "type": "object",
-      "required": ["schema", "velaris_version", "ok", "effects", "safe_command"],
+      "required": ["schema", "sabline_version", "ok", "effects", "safe_command"],
       "properties": {
-        "schema": {"const": "velaris.audit/1"}
+        "schema": {"const": "sabline.audit/1"}
       }
     }
   }

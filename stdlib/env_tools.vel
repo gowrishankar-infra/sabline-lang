@@ -12,7 +12,7 @@ fn setting(name: Text, fallback: Text) -> Secret of Text uses env {
 
 // A setting the program says is not a secret - a user name, a region, a
 // log level. Saying so is what `declassify` is for: the reason below is
-// what `velaris audit` reports, and an operator who does not want any
+// what `sabline audit` reports, and an operator who does not want any
 // setting made public refuses the `declassify` grant.
 fn public_setting(name: Text, fallback: Text) -> Text uses env, declassify {
     let raw = setting(name, fallback)

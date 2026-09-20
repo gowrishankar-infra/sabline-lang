@@ -16,40 +16,40 @@ major version.
   to do is the operator's budget, not the language, and the budget a
   run gets when nobody writes one changed in 5.0 - see *Breaks we have
   made*.
-- **The error codes** in `velaris.ERROR_TABLE`, and what each means.
-  The [errors page](https://velaris-lang.dev/errors.html)
+- **The error codes** in `sabline.ERROR_TABLE`, and what each means.
+  The [errors page](https://sabline.dev/errors.html)
   is built from that table.
-- **`velaris.audit/1`**: the fields and their meanings, as
+- **`sabline.audit/1`**: the fields and their meanings, as
   [EMBEDDING.md](EMBEDDING.md) and
-  [velaris-spec](https://github.com/gowrishankar-infra/velaris-spec)
+  [sabline-spec](https://github.com/gowrishankar-infra/sabline-spec)
   section 8 state them. Within version 1 fields may be added; none
   changes meaning or disappears without the `schema` value changing.
-  The other versioned documents Velaris writes follow the same rule
-  within their version: `velaris.capabilities/1`,
-  `velaris.capabilities-check/1`, `velaris.review/1`,
-  `velaris.invocation/1`, `velaris.mcp-tools/1`, from 4.1
-  `velaris.conformance/1`, and from 8.1 `velaris.receipt/1` and the receipt
-  Statement that carries it (velaris-spec section 8.7).
-- **The library API**: `velaris.check`, `velaris.audit`, `velaris.run`,
-  `velaris.Pool` (with `Pool.check` and `Pool.audit` from 8.1),
-  `velaris.card` and, from 4.2, `velaris.attest` - their
+  The other versioned documents Sabline writes follow the same rule
+  within their version: `sabline.capabilities/1`,
+  `sabline.capabilities-check/1`, `sabline.review/1`,
+  `sabline.invocation/1`, `sabline.mcp-tools/1`, from 4.1
+  `sabline.conformance/1`, and from 8.1 `sabline.receipt/1` and the receipt
+  Statement that carries it (sabline-spec section 8.7).
+- **The library API**: `sabline.check`, `sabline.audit`, `sabline.run`,
+  `sabline.Pool` (with `Pool.check` and `Pool.audit` from 8.1),
+  `sabline.card` and, from 4.2, `sabline.attest` - their
   names, their parameters, and the fields of what they return
   (`CheckResult`, `AuditResult`, `RunResult`, `Problem`, and the in-toto
-  Statements `attest` returns, whose predicate velaris-spec section 8.5
+  Statements `attest` returns, whose predicate sabline-spec section 8.5
   defines). A new optional parameter or a new field is an addition, not
   a break.
 - **The budget grammar**: SPEC.md section 7.1, stated in full in
-  velaris-spec sections 4 and 5. A budget that parses keeps parsing,
+  sabline-spec sections 4 and 5. A budget that parses keeps parsing,
   and grants the same thing.
 - **The command line**: the command names, the flags documented for
-  them (`velaris` with no arguments prints them, and README and
+  them (`sabline` with no arguments prints them, and README and
   EMBEDDING.md describe them), and the exit codes those documents give.
   The budget a command line with no `--allow` installs is part of this,
   and 5.0 changed it.
 
 ## What it does not cover
 
-- **Anything else in the `velaris` package** (`velaris.py` until 8.2):
+- **Anything else in the `sabline` package** (`sabline.py` until 8.2):
   every function, class and
   module-level name not listed above, including those the doors and
   suites use (`Budget`, `InvocationLog`, `inspect_source`,
@@ -60,22 +60,22 @@ major version.
 - **Which promises happen to prove.** A new version may prove a promise
   an older one left to runtime, or leave to runtime one an older one
   proved.
-- **The canonical style `velaris fmt` writes.** A change to it is named
+- **The canonical style `sabline fmt` writes.** A change to it is named
   in the CHANGELOG, because `fmt --check` in CI will see it.
-- **Anything marked provisional**, in SPEC.md or in velaris-spec. From
-  7.1 that includes `velaris.deps-diff/1` and
-  `velaris.deps-diff-lockfiles/1`, the JSON `velaris deps-diff` writes:
+- **Anything marked provisional**, in SPEC.md or in sabline-spec. From
+  7.1 that includes `sabline.deps-diff/1` and
+  `sabline.deps-diff-lockfiles/1`, the JSON `sabline deps-diff` writes:
   their fields may change in a minor release, named in the CHANGELOG,
   until a release says they are covered. The command, its flags and its
   exit codes are covered like any other command's. From 8.3 the same holds
-  for `velaris.eval/1`, `velaris.receipt-stream/1`,
-  `velaris.receipts-diff/1`, `velaris.replay/1`, `velaris.responses/1`,
-  `velaris.from-contracts/1`, `velaris.verify/1` and
-  `velaris.permissions-ratchet/1`. `velaris.receipt/1` gains `stop` and
-  `run_parameters.profile` within version 1 (velaris-spec section 8.7).
+  for `sabline.eval/1`, `sabline.receipt-stream/1`,
+  `sabline.receipts-diff/1`, `sabline.replay/1`, `sabline.responses/1`,
+  `sabline.from-contracts/1`, `sabline.verify/1` and
+  `sabline.permissions-ratchet/1`. `sabline.receipt/1` gains `stop` and
+  `run_parameters.profile` within version 1 (sabline-spec section 8.7).
   From 8.5 the same holds for the runner's first cut: the tool manifest
-  `velaris.tools/1`, the JSON lines of `velaris.tools-door/1`, and
-  `velaris.skill-verify/1`. The `tool` effect, its grants in the budget
+  `sabline.tools/1`, the JSON lines of `sabline.tools-door/1`, and
+  `sabline.skill-verify/1`. The `tool` effect, its grants in the budget
   grammar, the `tool` and `tool_secret` builtins and the commands are
   covered like any other; what a manifest may say and what travels on the
   door may change in a minor release, named in the CHANGELOG, until 9.0
@@ -93,7 +93,7 @@ major version.
    and is removed no sooner than the next major version.
 3. **An error code is never reused for a different meaning.** A code
    that is no longer given stays listed as removed (`REMOVED_ERRORS` in
-   `velaris/errors.py`, and the errors page), with what it meant and the
+   `sabline/errors.py`, and the errors page), with what it meant and the
    version that removed it.
 4. **Every major version's CHANGELOG entry says what a user of the
    previous major has to change**, item by item.
@@ -113,8 +113,15 @@ major version.
 
 | Deprecated | Since | What it does now | Removed in |
 |---|---|---|---|
-| `--no-cache` | 8.2 | nothing: Velaris keeps no proofs between runs. It is accepted wherever it was, and says once on stderr that it does nothing | 9.0 |
-| `velaris clean` | 8.2 | nothing, exit 0, with the same notice | 9.0 |
+| `--no-cache` | 8.2 | nothing: Sabline keeps no proofs between runs. It is accepted wherever it was, and says once on stderr that it does nothing | 9.0 |
+| `sabline clean` | 8.2 | nothing, exit 0, with the same notice | 9.0 |
+| the `velaris` command | 8.6 | runs `sabline`, saying once on stderr that the name has changed. It is the same function under another entry point, not a second command | 9.0 |
+| `import velaris` | 8.6 | gives the `sabline` module itself - the same object - and warns once, with a `DeprecationWarning` and a line on stderr | 9.0 |
+| `velaris.VelarisError` | 8.6 | is `SablineError`, the same class, so `except` and `isinstance` answer as they did | 9.0 |
+| `velaris_mcp`, `velaris_mcp_install`, `velaris_magic` | 8.6 | give the `sabline_*` module of the same name, with the same notice | 9.0 |
+| `VELARIS_*` | 8.6 | read where the `SABLINE_*` name of the same variable is unset. Both set and disagreeing is refused, not guessed | 9.0 |
+| `velaris.capabilities`, `velaris.toml`, `velaris.lock` | 8.6 | read when the `sabline.*` file is not beside them. Sabline writes only the `sabline.*` name | 9.0 |
+| a `velaris.*` document schema | 8.6 | read as the `sabline.*` format of the same version. Sabline writes only `sabline.*` | 9.0 |
 
 **The prover's reach.** A prover that settles more is not a breaking
 change, even when it refuses a program that compiled before: a promise
@@ -156,11 +163,11 @@ became fallible: a call to one of them not handled with `check` or
 
 **3.4 (minor) shipped three breaking changes it named, and three it
 did not.** Named in its CHANGELOG, which said they shipped in a minor
-version because each closed an open door: a client of `velaris serve`
+version because each closed an open door: a client of `sabline serve`
 had to send a bearer token; the MCP server granted `io` only unless
 started with `--max-allow`; and the GitHub Action, with `sarif` on by
 default, needed `permissions: security-events: write`. Not named:
-`velaris serve` refused an argument it did not know, where it had
+`sabline serve` refused an argument it did not know, where it had
 ignored it; the MCP server did the same; and `GET /health` stopped
 naming the ceiling to a caller without the token. **3.4 should have
 been 4.0**: closing an open door is a reason to release soon, not a
@@ -178,7 +185,7 @@ grant every module, where it had granted `math` alone - the same budget
 text granting more. A call through a granted module into a module that
 was not granted was refused (E311) where it had run. `%` followed by
 `2C`, `40`, `5B`, `5D` or `25` in a path or host began to be decoded.
-And `velaris audit --json` changed shape to `velaris.audit/1`. Each was
+And `sabline audit --json` changed shape to `sabline.audit/1`. Each was
 a correct fix; together they were a major version.
 
 **Earlier minor releases** that broke something covered above:
@@ -186,14 +193,14 @@ a correct fix; together they were a major version.
 | Release | What broke |
 |---|---|
 | 2.20 | Whole numbers became 64-bit: arithmetic past that range stopped with E407, where the interpreter had kept counting |
-| 2.42 | `velaris fmt` changed where it puts `requires`, `ensures` and `invariant`, so `fmt --check` failed on files the previous version had formatted |
+| 2.42 | `sabline fmt` changed where it puts `requires`, `ensures` and `invariant`, so `fmt --check` failed on files the previous version had formatted |
 | 2.44 | `pop`, `slice` and `set_at` had to be handled with `check` or `try` (E520); a missing `main`, a `main` with parameters and a `main` marked `or fail` became compile-time errors (E400, E401, E523); Python calls began to receive arguments that read as numbers as numbers |
 | 2.47 | `http.vel`'s `call` returned an `Answer` record instead of text |
 | 2.56 | `audit().problems` held `Problem` objects instead of dictionaries |
 | 2.59 | The MCP server and the HTTP door stopped a run at 30 seconds and 512 MB, where it had had no limit |
 | 2.62 | `args()` stopped including `--allow`, `--deny`, `--timeout` and their values; `check --strict` began refusing a loop not shown to end (E612) |
-| 3.1 | The memory cap began to hold on Windows, so a run past it stopped with E611 where it had continued; `velaris add` refused to replace a vendored library with different bytes without `--force` |
-| 8.2 | Each named on a `compatibility:` line of its entry, where rule 5 now requires it. On a run, `--` ends Velaris's flags, so `args()` no longer holds `--` and a flag written after it no longer applies (a Goal C fix); a local or parameter named like a builtin, or like one of the program's functions, no longer hides a call from the effect check (E300) or the Secret check (E560); unary minus of the smallest whole number, and that number divided by -1, stop with E407; blocks nested more than 4,000 deep are E102, where more than some thousands were a Python traceback; `velaris check` gives a `main` marked `or fail` E524, as a run always did, where it gave E523; `--no-cache` and `velaris clean` do nothing |
+| 3.1 | The memory cap began to hold on Windows, so a run past it stopped with E611 where it had continued; `sabline add` refused to replace a vendored library with different bytes without `--force` |
+| 8.2 | Each named on a `compatibility:` line of its entry, where rule 5 now requires it. On a run, `--` ends Sabline's flags, so `args()` no longer holds `--` and a flag written after it no longer applies (a Goal C fix); a local or parameter named like a builtin, or like one of the program's functions, no longer hides a call from the effect check (E300) or the Secret check (E560); unary minus of the smallest whole number, and that number divided by -1, stop with E407; blocks nested more than 4,000 deep are E102, where more than some thousands were a Python traceback; `sabline check` gives a `main` marked `or fail` E524, as a run always did, where it gave E523; `--no-cache` and `sabline clean` do nothing |
 
 **Refusals from a stronger prover**, which the rule above does not
 count as breaks, in 2.6, 2.9, 2.12, 2.18, 2.41.2, 2.43, 2.44 and 2.45:
@@ -208,17 +215,17 @@ time limit. Rule 3 forbids that from 4.0 on. No code has been removed
 since.
 
 **4.0 (major).** Listed item by item in the CHANGELOG under "What a 3.4
-user has to change": `velaris serve` without `--max-allow` grants `io`
+user has to change": `sabline serve` without `--max-allow` grants `io`
 only; on both doors a request's `timeout` and `max_memory_mb` may not
 exceed the operator's `--max-timeout` and `--max-memory-mb`, 30 seconds
-and 512 MB by default, and must be numbers; and `velaris serve
+and 512 MB by default, and must be numbers; and `sabline serve
 --max-memory-mb`, which on Linux and macOS capped the door's own
 process, is now the most each run may have.
 
 **5.0 (major), 2026-09-12.** A run given no budget gets `io` - the
 console, and nothing else - where it got all seven effects.
-`velaris file.vel`, `velaris.run(source)` with no `allow`, and
-`velaris.Pool(...)` with no `allow` are all affected; the two doors
+`sabline file.vel`, `sabline.run(source)` with no `allow`, and
+`sabline.Pool(...)` with no `allow` are all affected; the two doors
 were already `io` (the MCP server in 3.4, the HTTP door in 4.0), and
 this is the release that makes every place a budget comes from answer
 the same way. `--deny` now narrows what `--allow` gave rather than
@@ -234,7 +241,7 @@ made it plain: Boruna's default policy grants nothing.
 
 A 4.x user has to change: every command, script, CI step, notebook
 cell and library call that runs a program needing more than `io` and
-did not say so. `velaris migrate --to 5.0 [path]` reads a program or a
+did not say so. `sabline migrate --to 5.0 [path]` reads a program or a
 tree, works out the narrowest budget each program needs from its own
 audit, and prints the command to run it under 5.0; `--write` updates
 the shell scripts and CI files it can parse and names the lines it
@@ -250,7 +257,7 @@ one that emits what `env()` returned; one whose signature says it
 returns a `Text` and returns what `env()` gave it (E503); and one that
 puts it in a `Text` variable, field or parameter (E501). `declassify`
 is an eighth effect, so `--allow all` now grants eight, a `uses` clause
-may name it, and `velaris.audit/1`'s `effects` may hold it - a change
+may name it, and `sabline.audit/1`'s `effects` may hold it - a change
 to a list STABILITY.md's *budget grammar* clause covers.
 `stdlib/env_tools.vel` changed with the language: `setting` returns
 `Secret of Text`, `number_setting` declares `uses env, declassify`, and
@@ -268,7 +275,7 @@ releases that got that wrong. A version number costs nothing.
 
 A 5.x user has to change: every use of `env()`'s result as a `Text`,
 which the compiler points at one by one; and a repository with a
-committed `velaris.capabilities` has to record `declassify` the first
+committed `sabline.capabilities` has to record `declassify` the first
 time one of its programs needs it, in review, which is the ratchet
 working rather than a break.
 
@@ -308,7 +315,7 @@ the CHANGELOG under "What a user of 7.x has to change":
   granted host - the grant bounded a string, not the socket's peer. This
   was the open gap THREAT_MODEL.md recorded. 8.0 disables ambient
   proxies unless the proxy's own host:port is inside the net budget;
-  `velaris add` no longer defers to a proxy either. With no proxy set,
+  `sabline add` no longer defers to a proxy either. With no proxy set,
   behaviour is unchanged.
 - **A function named like a built-in is refused (E204).** `fn print`,
   `fn env`, `fn read_file` and the like were silently shadowed by the
@@ -318,11 +325,11 @@ the CHANGELOG under "What a user of 7.x has to change":
 - **`read_file` on a documented credential location is refused (E318),**
   pointed at `read_file_secret`; and such a location is not covered by a
   broad `fs:read:` grant unless a path within it is named explicitly.
-- **`velaris add` refuses a redirect from `https` to `http`, and a
+- **`sabline add` refuses a redirect from `https` to `http`, and a
   redirect to a host outside the URL's origin.**
 
 Three new error codes, E204, E317 and E318; none reuses a meaning
-(rule 3). `velaris.audit/1` gains `ffi_native` within version 1 (an
+(rule 3). `sabline.audit/1` gains `ffi_native` within version 1 (an
 addition, not a break), and the invocation log gains an optional
 `run_params`. Nothing published before 8.0 is moved.
 
@@ -337,11 +344,11 @@ what the budget already refused - and a granted `ffi` module the table does
 not know widens the OS policy to nothing rather than risk refusing what it
 needs. `--no-confine` and `confine=False` restore 8.3.1 exactly. Two things
 a consumer of documents can see: a receipt's `run_parameters.confinement`,
-`"none"` in 8.3 for every run but `velaris eval`'s, is now the level
-(`full`, `partial`, `none`) with three fields beside it, and under `velaris
+`"none"` in 8.3 for every run but `sabline eval`'s, is now the level
+(`full`, `partial`, `none`) with three fields beside it, and under `sabline
 eval` the mechanism names 8.3 wrote there (`landlock-net`, `landlock`,
 `job-one-process`, `sandbox-exec`) moved to `confinement_layers`; and
-`velaris eval`, which 8.3 ran under the budget alone where the system
+`sabline eval`, which 8.3 ran under the budget alone where the system
 offered nothing, now refuses to run there, which is the one refusal 8.4
 adds and is of a command documented as provisional.
 
@@ -381,10 +388,68 @@ record stays whole.
   door whose programs import from elsewhere has one flag to set, `--root`.
   The library, which the list does cover, refuses nothing new:
   `import_root=` is an added parameter.
-- **`velaris.check()`, `velaris.audit()` and `velaris.attest()` stop at 60
+- **`sabline.check()`, `sabline.audit()` and `sabline.attest()` stop at 60
   seconds and 2048 MB** unless raised, where 8.0 waited. The command line has
   had the same ceiling since 8.0, whose CHANGELOG counted it as an addition
   (its memory cap took hold only on Windows until 8.1, and now holds on
   Linux as documented);
   this applies that reading to the library. A check that needs longer passes
   `timeout=`, and `None` restores 8.0's call exactly.
+
+**8.6 (minor): the project is renamed, and nothing that worked stops.**
+Velaris is Sabline from 8.6.0. The name belongs to an unrelated company in
+the same market (velaris.io), and was given up rather than contested. It is
+recorded here because a reader of this file should find every change to a
+name this file covers, and because the rename touches four of the six things
+the list at the top covers: the error codes' page address, the documents
+Sabline writes, the library API's module name, and the command line's
+command name.
+
+It is not a break by this file's rules, and the release gate's
+`compatibility:` line argues each one. Every name that was covered still
+answers, for one major version, under the rule that a deprecation is
+announced in a minor version, warns while it is in force, and is removed no
+sooner than the next major (rule 2). *Deprecations in force* above lists all
+nine, and `check_rename.py` runs each of them on every leg of CI:
+
+- The `velaris` command is `sabline`'s `main()` under a second entry point,
+  on PyPI and on npm.
+- `import velaris` hands back the `sabline` module object itself, so
+  `velaris.check`, `velaris.audit`, `velaris.run`, `velaris.Pool`,
+  `velaris.card` and `velaris.attest` - the six names the *library API*
+  clause covers - are the same functions, not forwarding copies, and
+  `VelarisError` is `SablineError` rather than a subclass of it.
+- A `velaris.audit/1` document, and every other `velaris.*` schema this
+  project has defined, is read as the `sabline.*` format of that version.
+  Sabline writes `sabline.*`. This is an addition to what a reader accepts,
+  which the *velaris.audit/1* clause allows within version 1.
+- A committed `velaris.capabilities` still holds the ratchet, so a
+  repository that upgrades needs no commit to keep its baseline working.
+- The budget grammar, the effects, the error codes and their meanings, the
+  exit codes and every flag are untouched. No code was added or removed.
+
+Three things about a rename that a version number cannot cover, and what
+was done about each:
+
+- **The predicate types are names that were signed.** They named the
+  project's GitHub Pages address from 4.2, and velaris-lang.dev from 8.3.
+  Both are kept as spellings a reader accepts, beside the sabline.dev names
+  8.6 writes, and nothing is ever removed from that list - a name only ever
+  joins it (`sabline/predicates.py`). Every attestation and receipt signed
+  before 8.6 verifies unchanged.
+- **A published version is never moved.** Nothing on PyPI, npm, the MCP
+  registry, the Marketplace or the GitHub releases was deleted, yanked or
+  re-published, for the reason 3.4 was not retagged and 6.0.0 was yanked
+  rather than deleted: an install pinned to `velaris-lang==8.5.0` resolves
+  to the same file, with the same digest and the same signature. The old
+  names get one last release that depends on the new one and says so.
+- **A VS Code Marketplace extension id cannot be renamed.** The extension
+  is republished as `gowrishankar-infra.sabline`; the old id gets a final
+  version whose README says where it went. That one is a genuine break for
+  anyone who had it installed, it could not be avoided, and
+  [docs/renamed.md](docs/renamed.md) says so plainly.
+
+[docs/renamed.md](docs/renamed.md) is the whole list: every published
+address, where it now points, and what was deliberately not renamed (the
+`.vel` extension, the eight advisories, this file's own history and the
+CHANGELOG before 8.6, and the archived documentation of 8.3 to 8.5).

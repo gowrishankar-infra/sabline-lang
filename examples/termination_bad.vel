@@ -1,6 +1,6 @@
 // Every loop here does end when run - but none of them has the one
 // shape the compiler recognises, so their ending is not shown. The
-// program runs normally; `velaris check examples/termination_bad.vel
+// program runs normally; `sabline check examples/termination_bad.vel
 // --strict` refuses it with E612 on each loop.
 
 // steps by two: not one step toward the limit

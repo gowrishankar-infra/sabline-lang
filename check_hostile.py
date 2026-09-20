@@ -6,9 +6,9 @@ library) against a program built to abuse a resource - the stack, file
 descriptors, the disk, memory, the console encoding, the path length, the
 size of a single function - and asserts three things:
 
-  * a known Velaris E-code, or a clean success where success is right;
+  * a known Sabline E-code, or a clean success where success is right;
   * no "Traceback" anywhere in stdout or stderr - a Python traceback
-    reaching the user, or a process that dies with no Velaris error, is
+    reaching the user, or a process that dies with no Sabline error, is
     a bug;
   * an exit code that says what happened.
 
@@ -35,9 +35,9 @@ from pathlib import Path
 from typing import IO, Any, cast
 
 HERE = Path(__file__).resolve().parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_hostile")
@@ -95,7 +95,7 @@ def write(d: Any, source: Any, name: str = "p.vel") -> Any:
 
 
 def run_cli(args: Any, cwd: Any = None, env: Any = None, stdin: Any = None, timeout: int = 120, preexec: Any = None) -> tuple[Any, ...]:
-    """Run velaris. Returns (exit_code, combined_text, seconds). A timeout
+    """Run sabline. Returns (exit_code, combined_text, seconds). A timeout
     is reported as exit -99 and a [TIMEOUT] marker; the raw bytes are
     decoded with errors=replace so a cp1252 crash still shows as one."""
     e = dict(os.environ)
@@ -106,7 +106,7 @@ def run_cli(args: Any, cwd: Any = None, env: Any = None, stdin: Any = None, time
         kw["preexec_fn"] = preexec
     t0 = time.perf_counter()
     try:
-        r = subprocess.run([sys.executable, str(VELARIS)] + args,
+        r = subprocess.run([sys.executable, str(SABLINE)] + args,
                            capture_output=True, cwd=cwd, env=e,
                            input=stdin, timeout=timeout, **kw)
         out = (r.stdout or b"").decode("utf-8", "replace") + \
@@ -198,7 +198,7 @@ def nested_blocks(kind: Any, depth: Any) -> str:
             + "\n    return x\n}\nfn main() uses io { print(f()) }\n")
 
 
-NEST = velaris.EXPR_NEST_LIMIT      # 1000; the parser stops past it (E102)
+NEST = sabline.EXPR_NEST_LIMIT      # 1000; the parser stops past it (E102)
 OVER = NEST + 20
 
 
@@ -247,7 +247,7 @@ def lsp_answers(source: Any, requests: Any) -> tuple[Any, ...]:
     path = write(d, source)
     p = str(path).replace("\\", "/")
     uri = "file://" + ("" if p.startswith("/") else "/") + p
-    srv = subprocess.Popen([sys.executable, str(VELARIS), "lsp"],
+    srv = subprocess.Popen([sys.executable, str(SABLINE), "lsp"],
                            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                            stderr=subprocess.PIPE, cwd=str(d))
     got: queue.Queue[Any] = queue.Queue()
@@ -300,7 +300,7 @@ def lsp_answers(source: Any, requests: Any) -> tuple[Any, ...]:
     result = {}
     result["initialize"] = ask(1, "initialize", {"capabilities": {}})
     send({"jsonrpc": "2.0", "method": "textDocument/didOpen",
-          "params": {"textDocument": {"uri": uri, "languageId": "velaris",
+          "params": {"textDocument": {"uri": uri, "languageId": "sabline",
                                       "version": 1, "text": source}}})
     at = {"textDocument": {"uri": uri}, "position": {"line": 0,
                                                      "character": 4}}
@@ -386,7 +386,7 @@ def recursion_runtime_cases() -> None:
     """A DEEP_N-deep runtime value, walked by print / == / to_text /
     json_of / format. Each walks the value in Python with no depth guard,
     so it overflows with a RecursionError traceback (the DEPTH_LIMIT guard
-    counts Velaris call frames, not value traversal)."""
+    counts Sabline call frames, not value traversal)."""
     print("1. RecursionError - a %d-deep runtime value" % DEEP_N)
     for op in ("print", "eq", "to_text", "json_of", "format"):
         d = new_dir("deepval_" + op)
@@ -484,13 +484,13 @@ def recursion_blocks_cases() -> None:
     d = new_dir("blk_lib")
     src = nested_blocks("if", DEEP)
     try:
-        c = velaris.check(src, timeout=None, max_memory_mb=None)
+        c = sabline.check(src, timeout=None, max_memory_mb=None)
         raised = None
         libclean = True
     except BaseException as e:      # noqa: BLE001 - a crash is the finding
         raised = type(e).__name__
-        libclean = raised == "VelarisError"
-    ok("nested if x%d, velaris.check(timeout=None) -> VelarisError, "
+        libclean = raised == "SablineError"
+    ok("nested if x%d, sabline.check(timeout=None) -> SablineError, "
        "not a Python exception" % DEEP, libclean,
        "raised %s" % raised if raised else "returned ok=%s"
        % getattr(c, "ok", "?"), finding=not libclean)
@@ -671,7 +671,7 @@ def disk_cases() -> None:
              "    check read_file(\"%s/a\\u0000b\") {\n"
              "        ok t { print(t) }\n        fail w { print(\"f\") }\n"
              "    }\n}\n", "a failure the program handles")):
-        # NUL is not a Velaris escape, so place the byte in the source here
+        # NUL is not a Sabline escape, so place the byte in the source here
         text = (src % dm).replace("\\u0000", chr(0))
         write(d, text, name="nul.vel")
         code, out, _ = run_cli(
@@ -1033,14 +1033,14 @@ def counterexample_cases() -> None:
        clean(out) and (("E701" in out and code == 1) if HAVE_Z3 else True),
        "code=%s %s" % (code, out.strip()[-160:]), finding=not clean(out))
     try:
-        result = velaris.check(UNNAMED_VALUE, path=str(d / "p.vel"),
+        result = sabline.check(UNNAMED_VALUE, path=str(d / "p.vel"),
                                timeout=None, max_memory_mb=None)
         got = [(p.code, p.line) for p in result.problems]
         said = " ".join(p.message for p in result.problems)
         raised = ""
     except Exception as e:                  # the defect: reported, not raised
         got, said, raised = [], "", "%s: %s" % (type(e).__name__, e)
-    ok("velaris.check() -> %s, no exception"
+    ok("sabline.check() -> %s, no exception"
        % ("E701 at line 35, p0 = <unknown>" if HAVE_Z3 else "no E701"),
        not raised and ((got == [("E701", 35)] and "p0 = <unknown>" in said)
                        if HAVE_Z3 else ("E701", 35) not in got),

@@ -1,6 +1,6 @@
-# What cannot occur in a Velaris program
+# What cannot occur in a Sabline program
 
-Some weaknesses cannot be written in Velaris at all: the language has no
+Some weaknesses cannot be written in Sabline at all: the language has no
 way to express them. Each class below is one of those, with the condition
 under which that holds. [`check_impossible.py`](../check_impossible.py) holds
 a program that tries each, and fails if one gets through; a class without a

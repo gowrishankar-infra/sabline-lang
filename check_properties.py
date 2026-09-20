@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Property-based tests: random valid Velaris programs, held to five laws.
+"""Property-based tests: random valid Sabline programs, held to five laws.
 
 fuzz_native.py draws a handful of fixed program shapes; this suite builds
 whole programs from Hypothesis strategies - records, functions over Int,
@@ -8,7 +8,7 @@ Bool, Text, lists and records, arithmetic and comparisons, `let`,
 between the generated functions, fallible functions handled with `check`
 and `try`, inline function values, contracts the prover settles quickly,
 and effectful calls in the functions that declare them. Every program the
-strategies make passes `velaris.check`; that is asserted inside the
+strategies make passes `sabline.check`; that is asserted inside the
 strategy, so a generator that makes a bad program fails loudly instead of
 being filtered away.
 
@@ -52,8 +52,8 @@ from typing import Any, Callable, cast
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
-from velaris import nodes as _nodes  # noqa: E402
+import sabline  # noqa: E402
+from sabline import nodes as _nodes  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 try:
@@ -65,7 +65,7 @@ except ImportError:                                   # pragma: no cover
     print("check_properties.py needs hypothesis: pip install hypothesis")
     sys.exit(2)
 
-# velaris raises Python's recursion limit when it loads a program
+# sabline raises Python's recursion limit when it loads a program
 # (loader.py) and while it runs one (runtime.py); Hypothesis notices after
 # every test and warns. Expected here, and noise in the output.
 warnings.filterwarnings("ignore", message="The recursion limit will not be "
@@ -84,7 +84,7 @@ os.environ["NO_PROXY"] = os.environ["no_proxy"] = "127.0.0.1,localhost"
 
 DATA_FILE = WORK / "data.txt"
 DATA_FILE.write_text("property data\n", encoding="utf-8")
-DATA_PATH = str(DATA_FILE).replace("\\", "/")      # a Velaris text literal
+DATA_PATH = str(DATA_FILE).replace("\\", "/")      # a Sabline text literal
 
 
 class _Quiet(http.server.BaseHTTPRequestHandler):
@@ -109,18 +109,18 @@ RUN_SEED = 1234
 
 
 def quietly(fn: Any, *args: Any, **kw: Any) -> Any:
-    """Call into velaris with its stderr notes (no z3, no llvmlite) kept
+    """Call into sabline with its stderr notes (no z3, no llvmlite) kept
     off the suite's output."""
     with contextlib.redirect_stderr(io.StringIO()):
         return fn(*args, **kw)
 
 
 def check(src: Any) -> Any:
-    return quietly(velaris.check, src, timeout=None, max_memory_mb=None)
+    return quietly(sabline.check, src, timeout=None, max_memory_mb=None)
 
 
 def audit(src: Any) -> Any:
-    return quietly(velaris.audit, src, timeout=None, max_memory_mb=None)
+    return quietly(sabline.audit, src, timeout=None, max_memory_mb=None)
 
 
 # ---------------------------------------------------------------------------
@@ -147,10 +147,10 @@ def add_noise(src: str, rng: random.Random, level: int) -> str:
     """Re-lay `src` out without changing its tokens: other spacing between
     tokens, line breaks inside statements, indentation, trailing comments,
     blank and comment-only lines, and CRLF line ends. Whitespace is
-    insignificant in Velaris, so the syntax tree is the same up to lines."""
+    insignificant in Sabline, so the syntax tree is the same up to lines."""
     if level <= 0:
         return src
-    toks = velaris.lex(src, keep_trivia=True)
+    toks = sabline.lex(src, keep_trivia=True)
     out = []
     comment_words = ["note", "x = 1", "TODO: {}", "a // b", "-", "fn main"]
     nl = "\n"
@@ -235,13 +235,13 @@ _KNOWN_FIELDS = {"Num": {"value"}, "FloatNum": {"value"},
 
 
 def nodes_are_known() -> str | None:
-    """The comparison is written over velaris/nodes.py as it is: a node or
+    """The comparison is written over sabline/nodes.py as it is: a node or
     a field added there must be classified here (location or not) before
     this suite can say two trees are the same. None when it is current."""
     have = {c.__name__: {f.name for f in dataclasses.fields(c)}
             for c in NODE_TYPES}
     if have != _KNOWN_FIELDS:
-        return (f"velaris/nodes.py changed: {sorted(have.items())} - "
+        return (f"sabline/nodes.py changed: {sorted(have.items())} - "
                 f"classify the new fields in check_properties.py")
     return None
 
@@ -253,7 +253,7 @@ def shape(node: Any, names: dict[Any, Any]) -> Any:
         raise TypeError(f"a class in a syntax tree: {node!r}")
     if dataclasses.is_dataclass(node):
         if type(node) not in NODE_TYPES:
-            raise TypeError(f"not a velaris.nodes node: {type(node)}")
+            raise TypeError(f"not a sabline.nodes node: {type(node)}")
         cls = type(node).__name__
         out: list[Any] = [cls]
         declared = set()
@@ -287,7 +287,7 @@ def shape(node: Any, names: dict[Any, Any]) -> Any:
 
 
 def parse_shape(src: str) -> tuple[Any, ...]:
-    funcs, records, imports = velaris.Parser(velaris.lex(src)).parse_program()
+    funcs, records, imports = sabline.Parser(sabline.lex(src)).parse_program()
     names: dict[Any, Any] = {}
     return (tuple(shape(f, names) for f in funcs),
             tuple(shape(r, names) for r in records),
@@ -975,7 +975,7 @@ def site_text(effect: str, k: int, variant: int) -> str:
     if effect == "io":
         return (f'print("{n}")', f'log("{n}")')[variant]
     if effect == "env":
-        return f'let {n} = env("VELARIS_PROP_{k}", "")'
+        return f'let {n} = env("SABLINE_PROP_{k}", "")'
     if effect == "fs":
         return (f'check read_file("{DATA_PATH}")'
                 + handled.format(n=n, use=f"length({n}v)"),
@@ -998,7 +998,7 @@ def site_text(effect: str, k: int, variant: int) -> str:
         return (f'check tool("tool{k}", "{{}}")'
                 + handled.format(n=n, use=f"length({n}v)"))
     # declassify needs a Secret, and env() is where one comes from
-    return (f'let {n} = declassify(env("VELARIS_PROP_{k}", "") == "", '
+    return (f'let {n} = declassify(env("SABLINE_PROP_{k}", "") == "", '
             f'"property {k}")')
 
 
@@ -1116,7 +1116,7 @@ class Example:
 
 def assert_valid(src: str) -> None:
     c = check(src)
-    assert c.ok, ("velaris.check refused a generated program - a generator "
+    assert c.ok, ("sabline.check refused a generated program - a generator "
                   "bug, or a compiler finding if the program is valid:\n"
                   + src + "\n" + "\n".join(repr(p) for p in c.problems))
 
@@ -1147,7 +1147,7 @@ def programs(draw: Any) -> Program:
 def valid_sources(draw: Any) -> Example:
     """Properties 1-3: any program, some effects, laid out any way."""
     prog = draw(programs())
-    place(draw, prog, draw(st.lists(st.sampled_from(velaris.ALL_EFFECTS),
+    place(draw, prog, draw(st.lists(st.sampled_from(sabline.ALL_EFFECTS),
                                     max_size=3, unique=True)))
     level = draw(st.integers(0, 3))
     rng = random.Random(draw(st.integers(0, 2 ** 16)))
@@ -1160,7 +1160,7 @@ def valid_sources(draw: Any) -> Example:
 def effect_programs(draw: Any) -> Example:
     """Property 4: every effect drawn is performed on a path main runs."""
     prog = draw(programs())
-    effects = draw(st.lists(st.sampled_from(velaris.ALL_EFFECTS),
+    effects = draw(st.lists(st.sampled_from(sabline.ALL_EFFECTS),
                             min_size=1, unique=True))
     place(draw, prog, effects)
     src = prog.render()
@@ -1175,12 +1175,12 @@ def effect_edits(draw: Any) -> Example:
     prog = draw(programs())
     # one of the sixteen (mode, effect) pairs, drawn from a wide integer so
     # that the draw is not weighted toward the first few; it still shrinks
-    combo = draw(st.integers(0, 2 ** 20)) % (2 * len(velaris.ALL_EFFECTS))
+    combo = draw(st.integers(0, 2 ** 20)) % (2 * len(sabline.ALL_EFFECTS))
     mode = ("add", "remove")[combo % 2]
-    effect = velaris.ALL_EFFECTS[combo // 2]
+    effect = sabline.ALL_EFFECTS[combo // 2]
     # a declassify site reads env() as well, so while env is the effect
     # that moves there are none; while declassify moves, env stays put
-    others = [e for e in velaris.ALL_EFFECTS if e != effect
+    others = [e for e in sabline.ALL_EFFECTS if e != effect
               and not (effect == "env" and e == "declassify")]
     base = draw(st.lists(st.sampled_from(others), max_size=4, unique=True))
     if effect == "declassify" and "env" not in base:
@@ -1224,11 +1224,11 @@ def effect_edits(draw: Any) -> Example:
 # ---------------------------------------------------------------------------
 
 def prop_parse_after_fmt(ex: Example) -> None:
-    formatted = velaris.format_source(ex.source)
+    formatted = sabline.format_source(ex.source)
     before = parse_shape(ex.source)
     try:
         after = parse_shape(formatted)
-    except velaris.VelarisError as e:
+    except sabline.SablineError as e:
         raise AssertionError(
             f"fmt's output does not parse: [{e.code}] line {e.line}: "
             f"{e.message}\n--- fmt output ---\n{formatted}")
@@ -1238,8 +1238,8 @@ def prop_parse_after_fmt(ex: Example) -> None:
 
 
 def prop_fmt_idempotent(ex: Example) -> None:
-    once = velaris.format_source(ex.source)
-    twice = velaris.format_source(once)
+    once = sabline.format_source(ex.source)
+    twice = sabline.format_source(once)
     if twice != once:
         a, b = once.split("\n"), twice.split("\n")
         at = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y),
@@ -1278,12 +1278,12 @@ class _EveryTool:
 def prop_audit_says_what_runs(ex: Example) -> None:
     a = audit(ex.source)
     assert a.ok, f"the audit refused it: {a.problems}"
-    vars(velaris.state)["TOOL_SESSION"] = _EveryTool()
+    vars(sabline.state)["TOOL_SESSION"] = _EveryTool()
     try:
-        r = quietly(velaris.run, ex.source, allow=set(velaris.ALL_EFFECTS),
+        r = quietly(sabline.run, ex.source, allow=set(sabline.ALL_EFFECTS),
                     seed=RUN_SEED, freeze_time=FREEZE)
     finally:
-        vars(velaris.state)["TOOL_SESSION"] = None
+        vars(sabline.state)["TOOL_SESSION"] = None
     assert r.ok and r.exit_code == 0, (
         f"the run did not finish (so it cannot say what it attempts): "
         f"exit {r.exit_code}, refused {r.refused_effect}, {r.problems}\n"
@@ -1294,9 +1294,9 @@ def prop_audit_says_what_runs(ex: Example) -> None:
         f"{sorted(attempted)} (effects_used {r.effects_used})")
 
 
-AUDIT_FIELDS = set(velaris.AuditResult.__slots__)
+AUDIT_FIELDS = set(sabline.AuditResult.__slots__)
 KNOWN_AUDIT_FIELDS = {
-    "schema", "velaris_version", "ok", "problems", "effects", "functions",
+    "schema", "sabline_version", "ok", "problems", "effects", "functions",
     "proven_share", "safe_command", "warnings", "ffi_modules",
     "loops_unshown", "contract_coverage", "fs_paths", "net_hosts",
     "ffi_any", "counts", "prover", "secrets", "ffi_native", "confinement",
@@ -1443,12 +1443,12 @@ _CSV_CALL: list[Any] = []
 def csv_call() -> Any:
     """stdlib/csv.vel's functions, loaded and checked once."""
     if not _CSV_CALL:
-        funcs, records = velaris.load_program(str(HERE / "stdlib" / "csv.vel"))
+        funcs, records = sabline.load_program(str(HERE / "stdlib" / "csv.vel"))
         errors: list[Any] = []
-        velaris.check_effects(funcs, errors)
-        velaris.check_types(funcs, records, errors)
+        sabline.check_effects(funcs, errors)
+        sabline.check_types(funcs, records, errors)
         assert not errors, f"stdlib/csv.vel does not check: {errors[0].code}"
-        _CSV_CALL.append(velaris.build_runtime(funcs, {})["call"])
+        _CSV_CALL.append(sabline.build_runtime(funcs, {})["call"])
     return _CSV_CALL[0]
 
 
@@ -1564,7 +1564,7 @@ def main(argv: Any = None) -> int:
     # property 5's shrinking meets that hundreds of times. The promises the
     # generator writes settle far inside one second, so what is proven
     # does not change; only an abandoned proof is abandoned sooner.
-    velaris.set_proof_timeout(args.proof_timeout)
+    sabline.set_proof_timeout(args.proof_timeout)
     examples = args.examples or (300 if args.long else 25)
     only = {int(x) for x in args.only.split(",") if x.strip()}
     stale = nodes_are_known()
@@ -1573,11 +1573,11 @@ def main(argv: Any = None) -> int:
         return 1
     missing = KNOWN_AUDIT_FIELDS ^ AUDIT_FIELDS
     if missing:
-        print(f"velaris.audit/1 fields changed: {sorted(missing)} - say in "
+        print(f"sabline.audit/1 fields changed: {sorted(missing)} - say in "
               f"check_properties.py which move with an effect")
         return 1
     print(f"property tests: {examples} examples each, seed {args.seed}, "
-          f"prover {'on, ' + format(args.proof_timeout, 'g') + 's a query' if velaris.HAVE_Z3 else 'absent (no z3)'}, "
+          f"prover {'on, ' + format(args.proof_timeout, 'g') + 's a query' if sabline.HAVE_Z3 else 'absent (no z3)'}, "
           f"Python {sys.version.split()[0]}")
     print("-" * 62)
     t0 = time.monotonic()

@@ -1,8 +1,8 @@
-name: "Velaris capability audit"
-description: "Report what a repository's Velaris programs may touch and what they leave unproven, as GitHub code scanning findings."
+name: "Sabline capability audit"
+description: "Report what a repository's Sabline programs may touch and what they leave unproven, as GitHub code scanning findings."
 # name and description are what the Marketplace listing shows as its title and
 # tagline; the listing renders this repository's README below them. The name has
-# to be unique across the whole Marketplace - "Velaris" alone was already taken
+# to be unique across the whole Marketplace - "Sabline" alone was already taken
 # (2.36.4) - and changing it changes the listing's URL slug. A new release has to
 # be published to the Marketplace before either reaches the listing.
 branding:
@@ -15,7 +15,7 @@ inputs:
     required: false
     default: ""
   version:
-    description: "Which Velaris version to install. Default: the Action's own version - the tag it was used at (`@v8.1.0` installs velaris-lang 8.1.0), or, when it is pinned to a commit, the version that commit's velaris/version.py names; the newest on PyPI only if that version is not there."
+    description: "Which Sabline version to install. Default: the Action's own version - the tag it was used at (`@v8.1.0` installs sabline-lang 8.1.0), or, when it is pinned to a commit, the version that commit's sabline/version.py names; the newest on PyPI only if that version is not there."
     required: false
     default: ""
   proofs:
@@ -31,7 +31,7 @@ inputs:
     required: false
     default: ""
   pr-comment:
-    description: "On a pull_request event, post one comment holding the velaris audit of every changed .vel file, and edit that same comment on later runs (true/false). Needs pull-requests: write."
+    description: "On a pull_request event, post one comment holding the sabline audit of every changed .vel file, and edit that same comment on later runs (true/false). Needs pull-requests: write."
     required: false
     default: "false"
   sarif:
@@ -39,11 +39,11 @@ inputs:
     required: false
     default: "true"
   capabilities:
-    description: "The capability ratchet: 'check' holds every .vel file to the surface declared in velaris.capabilities at the repository root and fails the job if anything widened; 'off' skips it. Default: 'check' when velaris.capabilities exists, otherwise 'off' - except that a pull request which deletes the file fails, since that would turn the ratchet off. Findings go to code scanning with the check's when sarif is true."
+    description: "The capability ratchet: 'check' holds every .vel file to the surface declared in sabline.capabilities at the repository root and fails the job if anything widened; 'off' skips it. Default: 'check' when sabline.capabilities exists, otherwise 'off' - except that a pull request which deletes the file fails, since that would turn the ratchet off. Findings go to code scanning with the check's when sarif is true."
     required: false
     default: ""
   deps-diff:
-    description: "On a pull_request event, compare every dependency the pull request upgrades in a lockfile and post one comment with what each upgraded version gained, edited in place on later runs (true/false). For a Velaris library that is its declared capability surface; for any other package it is only the install-time scripts and declared dependencies, and the comment says the surface is unknown. It reads what is declared, not what code does. Informational: it does not fail the job. Needs pull-requests: write; findings go to code scanning when sarif is true."
+    description: "On a pull_request event, compare every dependency the pull request upgrades in a lockfile and post one comment with what each upgraded version gained, edited in place on later runs (true/false). For a Sabline library that is its declared capability surface; for any other package it is only the install-time scripts and declared dependencies, and the comment says the surface is unknown. It reads what is declared, not what code does. Informational: it does not fail the job. Needs pull-requests: write; findings go to code scanning when sarif is true."
     required: false
     default: "false"
   permissions-ratchet:
@@ -65,7 +65,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Install Velaris
+    - name: Install Sabline
       id: install
       shell: bash
       env:
@@ -73,23 +73,23 @@ runs:
         ACTION_REF: ${{ github.action_ref }}
         ACTION_PATH: ${{ github.action_path }}
       run: |
-        pkg="velaris-lang"
+        pkg="sabline-lang"
         pinned=""
         if [ -n "$VERSION_INPUT" ]; then
-          pkg="velaris-lang==$VERSION_INPUT"
+          pkg="sabline-lang==$VERSION_INPUT"
         else
           # default to the Action's own version, so the compiler and the
           # Action agree: the tag it was used at (@v8.1.0 installs 8.1.0),
           # or - pinned to a commit, as the README shows - the version that
-          # commit's velaris/version.py names (velaris.py before 8.2). Only
+          # commit's sabline/version.py names (sabline.py before 8.2). Only
           # when neither gives a version
           # that installs does it fall back to the newest on PyPI.
           ver="${ACTION_REF#v}"
           if ! echo "$ver" | grep -qE '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
-            ver=$(sed -n 's/^VERSION = "\([0-9.]*\)"$/\1/p' "$ACTION_PATH/velaris/version.py" "$ACTION_PATH/velaris.py" 2>/dev/null | head -n 1)
+            ver=$(sed -n 's/^VERSION = "\([0-9.]*\)"$/\1/p' "$ACTION_PATH/sabline/version.py" "$ACTION_PATH/sabline.py" 2>/dev/null | head -n 1)
           fi
           if [ -n "$ver" ]; then
-            pkg="velaris-lang==$ver"
+            pkg="sabline-lang==$ver"
             pinned="$ver"
           fi
         fi
@@ -100,16 +100,16 @@ runs:
         echo "installing $pkg (action ref: ${ACTION_REF:-none})"
         if ! pip install "$pkg" $extra; then
           if [ -n "$pinned" ]; then
-            echo "::warning::velaris-lang $pinned, the Action's own version, did not install; installing the newest on PyPI instead"
-            pip install velaris-lang $extra
+            echo "::warning::sabline-lang $pinned, the Action's own version, did not install; installing the newest on PyPI instead"
+            pip install sabline-lang $extra
           else
             exit 1
           fi
         fi
-        velaris doctor
+        sabline doctor
 
     # The permissions each workflow gives its jobs, at the pull request's
-    # head against its base (velaris permissions-ratchet). It reads
+    # head against its base (sabline permissions-ratchet). It reads
     # .github/workflows, not .vel files, so it runs in a repository that
     # has none, and it runs before the check so that its failure is the
     # first one in the log. A base commit that cannot be fetched, a
@@ -130,11 +130,11 @@ runs:
           echo "::error::permissions-ratchet: the base commit $BASE_SHA could not be fetched from origin, so no workflow was compared"
           exit 2
         fi
-        saved="$RUNNER_TEMP/velaris-permissions.json"
+        saved="$RUNNER_TEMP/sabline-permissions.json"
         status=0
-        velaris permissions-ratchet --against "$BASE_SHA" --json > "$saved" || status=$?
+        sabline permissions-ratchet --against "$BASE_SHA" --json > "$saved" || status=$?
         # the same comparison as text, for the log
-        velaris permissions-ratchet --against "$BASE_SHA" || true
+        sabline permissions-ratchet --against "$BASE_SHA" || true
         STATUS="$status" SAVED="$saved" python - <<'PY'
         import json, os, sys
 
@@ -150,7 +150,7 @@ runs:
                 doc = json.load(fh)
         except (OSError, ValueError):
             doc = None
-        if not isinstance(doc, dict) or doc.get("schema") != "velaris.permissions-ratchet/1":
+        if not isinstance(doc, dict) or doc.get("schema") != "sabline.permissions-ratchet/1":
             if status == "2":
                 print("::error::permissions-ratchet could not compare the workflows; the log above says why")
             else:
@@ -191,11 +191,11 @@ runs:
         fi
         echo "checking $(echo "$files" | wc -w) file(s)"
         if [ "$SARIF" = "true" ]; then
-          sarif="$RUNNER_TEMP/velaris.sarif"
+          sarif="$RUNNER_TEMP/sabline.sarif"
           echo "sarif-file=$sarif" >> "$GITHUB_OUTPUT"
-          velaris check $files --sarif > "$sarif"
+          sabline check $files --sarif > "$sarif"
         else
-          velaris check $files
+          sabline check $files
         fi
 
     # Runs whether the check passed or not: the findings of a failing
@@ -207,7 +207,7 @@ runs:
       with:
         sarif_file: ${{ steps.check.outputs.sarif-file }}
 
-    # The ratchet holds the tree to velaris.capabilities - the surface the
+    # The ratchet holds the tree to sabline.capabilities - the surface the
     # repository declared - and never to the previous commit, so capability
     # added over many small pull requests fails every one of them until
     # someone widens the file itself, where the change shows in review.
@@ -225,13 +225,13 @@ runs:
       run: |
         mode="$MODE"
         if [ -z "$mode" ]; then
-          if [ -f velaris.capabilities ]; then
+          if [ -f sabline.capabilities ]; then
             mode=check
           elif [ "$EVENT" = "pull_request" ] \
               && git fetch --no-tags --depth=1 origin "$BASE_SHA" >/dev/null 2>&1 \
-              && git cat-file -e "$BASE_SHA:velaris.capabilities" 2>/dev/null; then
-            echo "::error::this pull request deletes velaris.capabilities, which turns the capability ratchet off. If that is intended, set capabilities: off in the workflow, where the change shows in review."
-            echo '{"removed": true}' > "$RUNNER_TEMP/velaris-capabilities.json"
+              && git cat-file -e "$BASE_SHA:sabline.capabilities" 2>/dev/null; then
+            echo "::error::this pull request deletes sabline.capabilities, which turns the capability ratchet off. If that is intended, set capabilities: off in the workflow, where the change shows in review."
+            echo '{"removed": true}' > "$RUNNER_TEMP/sabline-capabilities.json"
             exit 1
           else
             mode=off
@@ -239,7 +239,7 @@ runs:
         fi
         case "$mode" in
           off)
-            echo "capability ratchet: off (no velaris.capabilities; write one with: velaris capabilities init)"
+            echo "capability ratchet: off (no sabline.capabilities; write one with: sabline capabilities init)"
             exit 0 ;;
           check) ;;
           *)
@@ -247,13 +247,13 @@ runs:
             exit 2 ;;
         esac
         status=0
-        velaris capabilities check . --json > "$RUNNER_TEMP/velaris-capabilities.json" || status=$?
+        sabline capabilities check . --json > "$RUNNER_TEMP/sabline-capabilities.json" || status=$?
         if [ "$SARIF" = "true" ]; then
-          sarif="$RUNNER_TEMP/velaris-capabilities.sarif"
+          sarif="$RUNNER_TEMP/sabline-capabilities.sarif"
           echo "sarif-file=$sarif" >> "$GITHUB_OUTPUT"
-          velaris capabilities check . --sarif > "$sarif" || true
+          sabline capabilities check . --sarif > "$sarif" || true
         fi
-        velaris capabilities check . || true
+        sabline capabilities check . || true
         exit $status
 
     - name: Upload the ratchet's findings to code scanning
@@ -265,7 +265,7 @@ runs:
     - name: Proven share
       if: ${{ inputs.min-proven != '' }}
       shell: bash
-      run: velaris proofs . --min "${{ inputs.min-proven }}"
+      run: sabline proofs . --min "${{ inputs.min-proven }}"
 
     - name: Formatting
       if: ${{ inputs.format == 'true' }}
@@ -277,7 +277,7 @@ runs:
         if [ -z "$files" ]; then
           files=$(find . -name '*.vel' -not -path './.git/*' | sort)
         fi
-        velaris fmt $files --check
+        sabline fmt $files --check
 
     # One comment per pull request, found again by the hidden marker
     # and edited in place, so a long review does not fill up with
@@ -297,7 +297,7 @@ runs:
         CHECKS_STATUS: ${{ job.status }}
       run: |
         set -u
-        marker="<!-- velaris-audit-comment -->"
+        marker="<!-- sabline-audit-comment -->"
 
         # which .vel files the pull request changes; a shallow checkout
         # may not hold the base, so fetch it, and fall back to every file
@@ -308,26 +308,26 @@ runs:
           scope="all (the base commit could not be fetched)"
           files=$(find . -name '*.vel' -not -path './.git/*' | sed 's|^\./||' | sort)
         fi
-        printf '%s\n' "$files" > /tmp/velaris_changed.txt
+        printf '%s\n' "$files" > /tmp/sabline_changed.txt
         export SCOPE="$scope"
 
         # what changed since the base, as facts: the capability surface,
         # the proven share, new fallible functions, new hosts and paths,
         # and a risk word computed from those alone
         review_file=""
-        if [ "$scope" = "changed" ] && velaris review --against "$BASE_SHA" --json \
-            > "$RUNNER_TEMP/velaris-review.json" 2> "$RUNNER_TEMP/velaris-review.err"; then
-          review_file="$RUNNER_TEMP/velaris-review.json"
+        if [ "$scope" = "changed" ] && sabline review --against "$BASE_SHA" --json \
+            > "$RUNNER_TEMP/sabline-review.json" 2> "$RUNNER_TEMP/sabline-review.err"; then
+          review_file="$RUNNER_TEMP/sabline-review.json"
         fi
         export REVIEW_FILE="$review_file"
-        export RATCHET_FILE="$RUNNER_TEMP/velaris-capabilities.json"
+        export RATCHET_FILE="$RUNNER_TEMP/sabline-capabilities.json"
 
         # the comment body, from the same audit the library gives
-        python - <<'PY' > /tmp/velaris_comment.json
+        python - <<'PY' > /tmp/sabline_comment.json
         import json, os, sys
-        import velaris
-        marker = "<!-- velaris-audit-comment -->"
-        files = [f for f in open("/tmp/velaris_changed.txt").read().split("\n") if f.strip()]
+        import sabline
+        marker = "<!-- sabline-audit-comment -->"
+        files = [f for f in open("/tmp/sabline_changed.txt").read().split("\n") if f.strip()]
         scope = os.environ.get("SCOPE", "changed")
         head = os.environ["HEAD_SHA"][:7]
         status = os.environ.get("CHECKS_STATUS", "")
@@ -343,7 +343,7 @@ runs:
             return str(text).replace("|", "\\|").replace("\n", " ")
 
         ratchet, review = load("RATCHET_FILE"), load("REVIEW_FILE")
-        L = [marker, f"## Velaris audit of {len(files)} changed file(s) at `{head}`", ""]
+        L = [marker, f"## Sabline audit of {len(files)} changed file(s) at `{head}`", ""]
         L.append(f"Checks: **{status}**. Audit scope: {scope} `.vel` files.")
         L.append("")
         if ratchet is not None:
@@ -351,14 +351,14 @@ runs:
             L.append("")
             findings = ratchet.get("findings") or []
             if ratchet.get("removed"):
-                L.append("**Failed.** This pull request deletes `velaris.capabilities`, which "
+                L.append("**Failed.** This pull request deletes `sabline.capabilities`, which "
                          "turns the ratchet off. If that is intended, set `capabilities: off` "
                          "in the workflow.")
             elif findings:
-                L.append(f"**Failed.** The code needs more than `velaris.capabilities` declares "
+                L.append(f"**Failed.** The code needs more than `sabline.capabilities` declares "
                          f"({len(findings)} widening(s)), compared with the declared surface, not "
                          f"with the previous commit. If a widening is intended, make the edit "
-                         f"named under it to `velaris.capabilities` in this pull request, where "
+                         f"named under it to `sabline.capabilities` in this pull request, where "
                          f"it shows in review.")
                 L.append("")
                 for f in findings:
@@ -387,7 +387,7 @@ runs:
                     L.append(text)
                     L.append("  - if intended: " + "; ".join(f["accept"]))
             else:
-                L.append("Passed: nothing needs more than `velaris.capabilities` declares.")
+                L.append("Passed: nothing needs more than `sabline.capabilities` declares.")
             for w in ratchet.get("warnings") or []:
                 L.append("")
                 L.append(f"> {w}")
@@ -417,7 +417,7 @@ runs:
             L.append("| new hosts | " + (cell(", ".join(f"`{h}`" for h in review["new_hosts"])) or "none") + " |")
             L.append("| new paths | " + (cell(", ".join(paths)) or "none") + " |")
             L.append("| new Python modules | " + (cell(", ".join(f"`{m}`" for m in review["new_modules"])) or "none") + " |")
-            L.append(f"| velaris.capabilities | {cell(declared)} |")
+            L.append(f"| sabline.capabilities | {cell(declared)} |")
             L.append("")
             for why in review.get("risk_because") or []:
                 L.append(f"- {why}")
@@ -429,7 +429,7 @@ runs:
         for f in files:
             try:
                 src = open(f, encoding="utf-8").read()
-                a = velaris.audit(src, path=f)
+                a = sabline.audit(src, path=f)
             except Exception as e:  # the audit must never break the job
                 L.append(f"### `{f}`\n\ncould not audit: {type(e).__name__}: {e}\n")
                 continue
@@ -452,7 +452,7 @@ runs:
             for w in a.warnings:
                 L.append(f"| warning | {w} |")
             L.append("")
-        L.append("<sub>Posted by the Velaris action; this comment is edited in place on later runs.</sub>")
+        L.append("<sub>Posted by the Sabline action; this comment is edited in place on later runs.</sub>")
         json.dump({"body": "\n".join(L)}, sys.stdout)
         PY
 
@@ -466,11 +466,11 @@ runs:
         while [ "$page" -le 10 ]; do
           curl -sS "${auth[@]}" \
             "$API_URL/repos/$REPO/issues/$PR_NUMBER/comments?per_page=100&page=$page" \
-            > /tmp/velaris_comments.json
+            > /tmp/sabline_comments.json
           found=$(MARKER="$marker" python - <<'PY'
         import json, os
         marker = os.environ["MARKER"]
-        data = json.load(open("/tmp/velaris_comments.json"))
+        data = json.load(open("/tmp/sabline_comments.json"))
         hit = next((c["id"] for c in data if marker in (c.get("body") or "")), None)
         print(hit if hit is not None else ("next" if len(data) == 100 else ""))
         PY
@@ -487,16 +487,16 @@ runs:
           echo "editing comment $comment_id"
           curl -sS -o /dev/null -w "%{http_code}\n" "${auth[@]}" -X PATCH \
             "$API_URL/repos/$REPO/issues/comments/$comment_id" \
-            --data @/tmp/velaris_comment.json
+            --data @/tmp/sabline_comment.json
         else
           echo "posting a new comment"
           curl -sS -o /dev/null -w "%{http_code}\n" "${auth[@]}" -X POST \
             "$API_URL/repos/$REPO/issues/$PR_NUMBER/comments" \
-            --data @/tmp/velaris_comment.json
+            --data @/tmp/sabline_comment.json
         fi
 
     # What each dependency a pull request upgrades gained between its two
-    # versions (velaris deps-diff). The comparison runs once and is saved;
+    # versions (sabline deps-diff). The comparison runs once and is saved;
     # the log, the SARIF and the comment are all rendered from that file,
     # so the registries are read once. The comment is its own - a second
     # marker - and is edited in place like the audit's. It informs and
@@ -517,20 +517,20 @@ runs:
           echo "::warning::deps-diff: the base commit could not be fetched, so no lockfile was compared"
           exit 0
         fi
-        saved="$RUNNER_TEMP/velaris-deps.json"
+        saved="$RUNNER_TEMP/sabline-deps.json"
         status=0
-        velaris deps-diff --against "$BASE_SHA" --json > "$saved" || status=$?
+        sabline deps-diff --against "$BASE_SHA" --json > "$saved" || status=$?
         if [ "$status" = "2" ]; then
           echo "::warning::deps-diff could not compare the lockfiles"
           exit 0
         fi
-        velaris deps-diff --from "$saved" || true
+        sabline deps-diff --from "$saved" || true
         if [ "$SARIF" = "true" ]; then
-          sarif="$RUNNER_TEMP/velaris-deps.sarif"
-          velaris deps-diff --from "$saved" --sarif > "$sarif" || true
+          sarif="$RUNNER_TEMP/sabline-deps.sarif"
+          sabline deps-diff --from "$saved" --sarif > "$sarif" || true
           echo "sarif-file=$sarif" >> "$GITHUB_OUTPUT"
         fi
-        if ! velaris deps-diff --from "$saved" --comment --pr "$PR_NUMBER"; then
+        if ! sabline deps-diff --from "$saved" --comment --pr "$PR_NUMBER"; then
           echo "::warning::deps-diff could not post its comment (a pull request from a fork has a read-only token)"
         fi
         exit 0

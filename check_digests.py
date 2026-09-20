@@ -20,7 +20,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 from suite_dirs import isolate  # noqa: E402
 
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 
 WORK = isolate("check_digests")
 FAILED: list[str] = []
@@ -41,14 +41,14 @@ def run(source: str, allow: str = "io,env,declassify",
     saved = dict(os.environ)
     os.environ.update(env or {})
     try:
-        return velaris.run(source, allow=allow)
+        return sabline.run(source, allow=allow)
     finally:
         os.environ.clear()
         os.environ.update(saved)
 
 
 def codes(source: str) -> list[str]:
-    return [p.code for p in velaris.check(source, prove=False).problems]
+    return [p.code for p in sabline.check(source, prove=False).problems]
 
 
 def main_of(body: str, uses: str = "io, env, declassify") -> str:
@@ -144,7 +144,7 @@ def main() -> int:
                "    let none: List of Text = []\n"
                '    print(hmac_sha256_chain(env("K", ""), none))'),
                env={"K": KEY}).problems] == ["E609"])
-    secrets = velaris.audit(sign).secrets or {}
+    secrets = sabline.audit(sign).secrets or {}
     expect("the audit lists the call under secrets, reason 'hmac signature'",
            secrets["declassifies"] is True
            and secrets["declassifications"] == [

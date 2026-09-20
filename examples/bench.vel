@@ -2,8 +2,8 @@
 // fib is the classic recursion torture test; burn is a hot loop.
 // burn is compiled to machine code via LLVM. fib stays interpreted: native
 // code refuses a recursive function, which keeps the E609 depth guard.
-// Run:      python velaris.py bench.vel --time
-// Compare:  python velaris.py bench.vel --time --no-native
+// Run:      python sabline.py bench.vel --time
+// Compare:  python sabline.py bench.vel --time --no-native
 
 fn fib(n: Int) -> Int {
     if n < 2 {

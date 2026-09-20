@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""velaris receipts diff and velaris replay (8.3), each shape of difference
+"""sabline receipts diff and sabline replay (8.3), each shape of difference
 and each refusal, against real runs.
 
     python check_receipts.py
@@ -7,7 +7,7 @@ and each refusal, against real runs.
 receipts diff, against an audit: a clean receipt; an effect used, a host, a
 path and a module granted, a declassification and a count past the audit's
 bound, each one the audit does not have; a program that is not the audited
-bytes; the audit given as a program, as a velaris.audit/1 document and as a
+bytes; the audit given as a program, as a sabline.audit/1 document and as a
 capability Statement. Against earlier receipts: a new host, path and module,
 a count above the earlier maximum, a first declassification and a new reason;
 earlier receipts of other subjects left out, and nothing to compare with
@@ -33,11 +33,11 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_receipts")
-VELARIS = [sys.executable, str(HERE / "velaris.py")]
+SABLINE = [sys.executable, str(HERE / "sabline.py")]
 PASSED = FAILED = 0
 
 READER = ('fn main() uses io, fs {\n    check read_file("data/in.txt") {\n'
@@ -54,7 +54,7 @@ DECLASSIFY = ('fn main() uses io, fs, declassify {\n'
               '        }\n        fail why {\n            print("no key")\n'
               '        }\n    }\n}\n')
 TOOL = ('fn main() uses io, ffi {\n'
-        '    check py("fickle_tools", "search", ["velaris"]) {\n'
+        '    check py("fickle_tools", "search", ["sabline"]) {\n'
         '        ok a {\n            print(a)\n        }\n'
         '        fail why {\n            print(why)\n        }\n    }\n}\n')
 FICKLE = ('import random\n_n = [0]\n\n\ndef search(q):\n    _n[0] += 1\n'
@@ -73,9 +73,9 @@ def ok(label: str, good: object, detail: Any = "") -> None:
             print(f"          {str(detail)[:700]}")
 
 
-def velaris_cmd(*args: str, env: dict[str, str] | None = None
+def sabline_cmd(*args: str, env: dict[str, str] | None = None
                 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(VELARIS + list(args), capture_output=True,
+    return subprocess.run(SABLINE + list(args), capture_output=True,
                           text=True, encoding="utf-8", errors="replace",
                           cwd=str(WORK), timeout=600, env=env)
 
@@ -98,7 +98,7 @@ def dump(name: str, doc: Any) -> str:
 
 
 def diff(*args: str) -> tuple[int, dict[str, Any]]:
-    done = velaris_cmd("receipts", "diff", *args, "--json")
+    done = sabline_cmd("receipts", "diff", *args, "--json")
     try:
         return done.returncode, json.loads(done.stdout)
     except ValueError:
@@ -123,12 +123,12 @@ def diffs() -> None:
     write("data/key.txt", "not-a-real-key\n")
     write("reader.vel", READER)
     for name in ("r1.json", "r2.json"):
-        velaris_cmd("reader.vel", "--allow", "io,fs:read:data",
+        sabline_cmd("reader.vel", "--allow", "io,fs:read:data",
                     "--receipt", name)
     base = load("r1.json")
     code, report = diff("r1.json", "--audit", "reader.vel")
     ok("a receipt against its program's audit: clean, exit 0", code == 0
-       and report.get("schema") == "velaris.receipts-diff/1"
+       and report.get("schema") == "sabline.receipts-diff/1"
        and report.get("differences") == 0, report)
     cases = [
         ("an effect the audit does not have", "effect",
@@ -156,14 +156,14 @@ def diffs() -> None:
                         "reader.vel")
     ok("against the audit: a receipt of other bytes is named (subject)",
        code == 1 and "subject" in kinds(report, "against_audit"), report)
-    audit = velaris.audit(READER, path=str(WORK / "reader.vel")).as_dict()
+    audit = sabline.audit(READER, path=str(WORK / "reader.vel")).as_dict()
     dump("reader.audit.json", audit)
     code, report = diff("r1.json", "--audit", "reader.audit.json")
-    ok("an audit given as velaris.audit/1: compared, and its lack of digests "
+    ok("an audit given as sabline.audit/1: compared, and its lack of digests "
        "said", code == 0 and any("digests" in n for n in
                                  report["against_audit"]["not_compared"]),
        report)
-    velaris_cmd("attest", "reader.vel", "--output", "reader.intoto.json")
+    sabline_cmd("attest", "reader.vel", "--output", "reader.intoto.json")
     code, report = diff(dump("forged-subject2.json", lying), "--audit",
                         "reader.intoto.json")
     ok("an audit given as a capability Statement: its digests are compared",
@@ -206,7 +206,7 @@ def diffs() -> None:
        "receipt left out with why", code == 0 and any(
            "junk.json" in x["file"] for x in
            report["against_receipts"]["left_out"]), report)
-    statement = velaris.attest(str(WORK / "reader.vel"))[0]
+    statement = sabline.attest(str(WORK / "reader.vel"))[0]
     for label, doc in [
             ("an attestation given as a receipt", statement),
             ("a Statement of an unknown type",
@@ -229,47 +229,47 @@ def replays() -> None:
     print()
     print("replay")
     print("-" * 62)
-    velaris_cmd("reader.vel", "--allow", "io,fs:read:data", "--receipt",
+    sabline_cmd("reader.vel", "--allow", "io,fs:read:data", "--receipt",
                 "read.json")
     (WORK / "read.out").write_text("hello\n\n", encoding="utf-8")
-    done = velaris_cmd("replay", "read.json", "--max-allow", "io,fs:read",
+    done = sabline_cmd("replay", "read.json", "--max-allow", "io,fs:read",
                        "--expect-output", "read.out", "--json")
     report = json.loads(done.stdout or "{}")
     ok("the same run: exit 0, its output as expected",
        done.returncode == 0 and report.get("differences") == []
        and report.get("output_compared") is True, done.stdout[-500:])
     (WORK / "wrong.out").write_text("goodbye\n", encoding="utf-8")
-    done = velaris_cmd("replay", "read.json", "--max-allow", "io,fs:read",
+    done = sabline_cmd("replay", "read.json", "--max-allow", "io,fs:read",
                        "--expect-output", "wrong.out", "--json")
     report = json.loads(done.stdout or "{}")
     ok("a different output is named, with the first line that differs",
        done.returncode == 1 and report["differences"][-1]["field"] == "output"
        and report["differences"][-1]["first_differing_line"] == 1, report)
-    done = velaris_cmd("replay", "read.json", "--json")
+    done = sabline_cmd("replay", "read.json", "--json")
     report = json.loads(done.stdout or "{}")
     ok("a budget wider than --max-allow (io unless raised) is refused",
        done.returncode == 2 and "max-allow" in (report.get("refused") or ""),
        report)
     wide = load("read.json")
     wide["predicate"]["budget"] = "clock,env,fs,io,net,rand"
-    done = velaris_cmd("replay", dump("wide.json", wide), "--max-allow",
+    done = sabline_cmd("replay", dump("wide.json", wide), "--max-allow",
                        "io,fs:read", "--json")
     ok("...a receipt whose budget was widened by hand among them",
        done.returncode == 2, done.stdout[-300:])
     write("lib/pick.vel", PICK)
     write("lucky.vel", LUCKY)
-    velaris_cmd("lucky.vel", "--allow", "io,rand,clock", "--seed", "11",
+    sabline_cmd("lucky.vel", "--allow", "io,rand,clock", "--seed", "11",
                 "--freeze-time", "2026-01-01T00:00:00Z", "--receipt",
                 "lucky.json")
-    first = velaris_cmd("lucky.vel", "--allow", "io,rand,clock", "--seed",
+    first = sabline_cmd("lucky.vel", "--allow", "io,rand,clock", "--seed",
                         "11", "--freeze-time", "2026-01-01T00:00:00Z").stdout
     (WORK / "lucky.out").write_text(first, encoding="utf-8")
-    done = velaris_cmd("replay", "lucky.json", "--max-allow", "io,rand,clock",
+    done = sabline_cmd("replay", "lucky.json", "--max-allow", "io,rand,clock",
                        "--expect-output", "lucky.out")
     ok("a seeded, frozen-clock run with an import replays the same, output "
        "included", done.returncode == 0, done.stderr[-400:])
     write("lib/pick.vel", PICK.replace("random(n)", "random(n) + 1"))
-    done = velaris_cmd("replay", "lucky.json", "--max-allow", "io,rand,clock",
+    done = sabline_cmd("replay", "lucky.json", "--max-allow", "io,rand,clock",
                        "--json")
     report = json.loads(done.stdout or "{}")
     ok("a changed import is refused before anything runs, named",
@@ -279,7 +279,7 @@ def replays() -> None:
     dropped = load("lucky.json")
     dropped["subject"] = dropped["subject"][:1]
     write("lib/pick.vel", PICK.replace("random(n)", "random(n) + 1"))
-    done = velaris_cmd("replay", dump("dropped.json", dropped), "--max-allow",
+    done = sabline_cmd("replay", dump("dropped.json", dropped), "--max-allow",
                        "io,rand,clock", "--json")
     report = json.loads(done.stdout or "{}")
     # the import resolves inside the replay's own directory, where only the
@@ -298,7 +298,7 @@ def replays() -> None:
     here = os.getcwd()
     os.chdir(WORK)
     try:
-        bounded = velaris.run(READER, path="reader.vel",
+        bounded = sabline.run(READER, path="reader.vel",
                               allow="io,fs:read:" + str(WORK / "data"),
                               timeout=20, max_memory_mb=256)
     finally:
@@ -307,32 +307,32 @@ def replays() -> None:
     absolute = json.loads(json.dumps(bounded.receipt))
     absolute["subject"][0]["name"] = str(WORK / "reader.vel").replace(
         "\\", "/")
-    done = velaris_cmd("replay", dump("absolute.json", absolute),
+    done = sabline_cmd("replay", dump("absolute.json", absolute),
                        "--max-allow", "io,fs:read", "--json")
     ok("a receipt naming its program by an absolute path is refused, and "
        "that file is not read", done.returncode == 2
        and "absolute" in (json.loads(done.stdout or "{}").get("refused")
                           or ""), done.stdout[-300:])
-    done = velaris_cmd("replay", "bounded.json", "--max-allow", "io,fs:read",
+    done = sabline_cmd("replay", "bounded.json", "--max-allow", "io,fs:read",
                        "--json")
     report = json.loads(done.stdout or "{}")
     ok("a run with a time and memory limit replays in a worker with them",
        done.returncode == 0, report.get("differences") or report)
-    velaris_cmd("eval", "reader.vel", "--allow", "io,fs:read:data",
+    sabline_cmd("eval", "reader.vel", "--allow", "io,fs:read:data",
                 "--receipt", "evaluated.json")
-    done = velaris_cmd("replay", "evaluated.json", "--max-allow",
+    done = sabline_cmd("replay", "evaluated.json", "--max-allow",
                        "io,fs:read", "--json")
     report = json.loads(done.stdout or "{}")
     ok("an eval run replays under eval's profile, its confinement the same",
        done.returncode == 0, report.get("differences") or report)
     write("declassify.vel", DECLASSIFY)
-    velaris_cmd("declassify.vel", "--allow",
+    sabline_cmd("declassify.vel", "--allow",
                 "io,fs:read:data/key.txt,declassify", "--receipt", "d.json")
-    done = velaris_cmd("replay", "d.json", "--max-allow", "io,fs,declassify")
+    done = sabline_cmd("replay", "d.json", "--max-allow", "io,fs,declassify")
     ok("a run that declassified replays with the same declassification",
        done.returncode == 0, done.stderr[-400:])
-    source_receipt = velaris.run(READER, allow="io").receipt
-    done = velaris_cmd("replay", dump("source.json", source_receipt),
+    source_receipt = sabline.run(READER, allow="io").receipt
+    done = sabline_cmd("replay", dump("source.json", source_receipt),
                        "--json")
     ok("a receipt of a program given as text, with no file, is refused",
        done.returncode == 2, done.stdout[-300:])
@@ -341,16 +341,16 @@ def replays() -> None:
     write("fickle_tools.py", FICKLE)
     write("tool.vel", TOOL)
     env = dict(os.environ, PYTHONPATH=str(WORK))
-    recorded = velaris_cmd("tool.vel", "--allow", "io,ffi:fickle_tools",
+    recorded = sabline_cmd("tool.vel", "--allow", "io,ffi:fickle_tools",
                            "--receipt", "tool.json", "--record-responses",
                            "tool.responses.json", env=env)
     (WORK / "tool.out").write_text(recorded.stdout, encoding="utf-8")
-    live = velaris_cmd("tool.vel", "--allow", "io,ffi:fickle_tools",
+    live = sabline_cmd("tool.vel", "--allow", "io,ffi:fickle_tools",
                        env=env).stdout
     ok("the tool answers differently every time it is called live",
        live != recorded.stdout and recorded.returncode == 0,
        [recorded.stdout, live])
-    done = velaris_cmd("replay", "tool.json", "--max-allow",
+    done = sabline_cmd("replay", "tool.json", "--max-allow",
                        "io,ffi:fickle_tools", "--responses",
                        "tool.responses.json", "--expect-output", "tool.out",
                        env=env)
@@ -358,7 +358,7 @@ def replays() -> None:
        "recorded run's", done.returncode == 0, done.stderr[-400:])
     tampered = load("tool.responses.json")
     tampered["calls"][0]["call"][1] = "delete_everything"
-    done = velaris_cmd("replay", "tool.json", "--max-allow",
+    done = sabline_cmd("replay", "tool.json", "--max-allow",
                        "io,ffi:fickle_tools", "--responses",
                        dump("tampered.json", tampered), "--json", env=env)
     report = json.loads(done.stdout or "{}")
@@ -366,13 +366,13 @@ def replays() -> None:
        "E616, named", done.returncode == 1 and any(
            d["field"] == "exit" and (d["replayed"] or {}).get("code")
            == "E616" for d in report.get("differences", [])), report)
-    done = velaris_cmd("replay", "tool.json", "--max-allow", "io",
+    done = sabline_cmd("replay", "tool.json", "--max-allow", "io",
                        "--responses", "tool.responses.json", "--json",
                        env=env)
     ok("...and recorded responses do not stand in for a grant: without "
        "ffi:fickle_tools the replay is refused", done.returncode == 2,
        done.stdout[-300:])
-    done = velaris_cmd("replay", "bounded.json", "--max-allow", "io,fs:read",
+    done = sabline_cmd("replay", "bounded.json", "--max-allow", "io,fs:read",
                        "--responses", "tool.responses.json", "--json")
     ok("recorded responses with a run that had limits are refused, saying "
        "why", done.returncode == 2, done.stdout[-300:])

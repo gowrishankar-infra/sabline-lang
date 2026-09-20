@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """The command line answers for itself.
 
-- `velaris --help`, `velaris -h`, and every command followed by --help or
+- `sabline --help`, `sabline -h`, and every command followed by --help or
   -h, print usage and exit 0 with nothing on stderr (8.2). The commands are
   the ones main() dispatches, read from its source, and each must have
   lines in the usage list - so a new command cannot arrive without them.
   An outside functional pass of 8.0.0 found commands that took --help for a
   file name. After `run` or a file, --help is the program's argument.
-- `velaris stats --ffi` counts what the audit reads, over a directory of
+- `sabline stats --ffi` counts what the audit reads, over a directory of
   known programs made here (8.2).
 - A command that proves nothing imports neither z3 nor llvmlite: --version,
   card, fmt, and check of a file with no promises, under python -X
@@ -28,11 +28,11 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_cli")
-VELARIS = [sys.executable, str(HERE / "velaris.py")]
+SABLINE = [sys.executable, str(HERE / "sabline.py")]
 
 try:
     import z3  # noqa: F401
@@ -53,17 +53,17 @@ def ok(label: str, good: bool, detail: str = "") -> None:
         print(f"  WRONG  {label}" + (f"\n         {detail}" if detail else ""))
 
 
-def velaris_cmd(*args: Any, env: Any = None, cwd: Any = None, python_flags: Any = ()) -> tuple[Any, ...]:
-    done = subprocess.run([sys.executable, *python_flags, *VELARIS[1:],
+def sabline_cmd(*args: Any, env: Any = None, cwd: Any = None, python_flags: Any = ()) -> tuple[Any, ...]:
+    done = subprocess.run([sys.executable, *python_flags, *SABLINE[1:],
                            *args], capture_output=True, text=True,
                           cwd=str(cwd or WORK), timeout=300,
                           env=dict(os.environ, **(env or {})))
     return done.returncode, done.stdout, done.stderr
 
 
-def velaris_source() -> str:
-    """Velaris's own source: velaris.py, or every module of the package."""
-    where = Path(velaris.__file__)
+def sabline_source() -> str:
+    """Sabline's own source: sabline.py, or every module of the package."""
+    where = Path(sabline.__file__)
     files = (sorted(where.parent.glob("*.py")) if where.name == "__init__.py"
              else [where])
     return "\n".join(p.read_text(encoding="utf-8") for p in files)
@@ -72,7 +72,7 @@ def velaris_source() -> str:
 def dispatched() -> set[Any]:
     """Every command main() dispatches on, read from its source."""
     names: set[Any] = set()
-    for m in re.finditer(r"argv\[:1\] (?:==|in) (.+)", velaris_source()):
+    for m in re.finditer(r"argv\[:1\] (?:==|in) (.+)", sabline_source()):
         names |= set(re.findall(r'"([a-z][a-z-]*)"', m.group(1)))
     return names
 
@@ -81,31 +81,31 @@ def help_cases() -> None:
     print("--help, for every command and the top level")
     print("-" * 62)
     commands = dispatched()
-    usage = velaris.usage_lines()
+    usage = sabline.usage_lines()
     ok("main() dispatches commands, and the usage list names every one",
        bool(commands) and not commands - set(usage),
        f"no usage lines for: {sorted(commands - set(usage))}")
     ok("...and names no command main() does not have",
        not set(usage) - commands, str(sorted(set(usage) - commands)))
     for flag in ("--help", "-h"):
-        code, out, err = velaris_cmd(flag)
-        ok(f"velaris {flag}: usage, exit 0, nothing on stderr",
-           code == 0 and "usage:" in out and "velaris check" in out
+        code, out, err = sabline_cmd(flag)
+        ok(f"sabline {flag}: usage, exit 0, nothing on stderr",
+           code == 0 and "usage:" in out and "sabline check" in out
            and not err.strip(), f"{code} {err[:160]}")
     for command in sorted(commands):
         for flag in ("--help", "-h"):
-            code, out, err = velaris_cmd(command, flag)
-            ok(f"velaris {command} {flag}: its usage, exit 0",
+            code, out, err = sabline_cmd(command, flag)
+            ok(f"sabline {command} {flag}: its usage, exit 0",
                code == 0 and out.startswith("usage:")
-               and f"velaris {command}" in out and not err.strip(),
+               and f"sabline {command}" in out and not err.strip(),
                f"exit {code}; stdout {out[:120]!r}; stderr {err[:160]!r}")
     prog = WORK / "args.vel"
     prog.write_text('fn main() uses io {\n    print(args())\n}\n',
                     encoding="utf-8")
     for words in ((str(prog), "--help"), ("run", str(prog), "--help"),
                   ("trace", str(prog), "-h")):
-        code, out, err = velaris_cmd(*words)
-        ok(f"velaris {' '.join(w if w.startswith('-') or w in ('run', 'trace') else 'args.vel' for w in words)}: "
+        code, out, err = sabline_cmd(*words)
+        ok(f"sabline {' '.join(w if w.startswith('-') or w in ('run', 'trace') else 'args.vel' for w in words)}: "
            f"the flag after a file is the program's argument",
            code == 0 and "usage:" not in out
            and ("--help" in out or "-h" in out), f"{code} {out[:120]!r}")
@@ -113,7 +113,7 @@ def help_cases() -> None:
 
 def stats_cases() -> None:
     print()
-    print("velaris stats --ffi")
+    print("sabline stats --ffi")
     print("-" * 62)
     box = WORK / "stats"
     box.mkdir()
@@ -140,13 +140,13 @@ def stats_cases() -> None:
         '        ok v { print(v) }\n'
         '        fail w { print(w) }\n    }\n}\n', encoding="utf-8")
     (box / "broken.vel").write_text(BROKEN, encoding="utf-8")
-    code, out, err = velaris_cmd("stats", "--ffi", str(box), "--json")
+    code, out, err = sabline_cmd("stats", "--ffi", str(box), "--json")
     try:
         doc = json.loads(out)
     except ValueError:
         doc = {}
     ok("stats --ffi --json: five files, one not counted, three call Python",
-       code == 0 and doc.get("schema") == "velaris.stats-ffi/1"
+       code == 0 and doc.get("schema") == "sabline.stats-ffi/1"
        and doc.get("files") == 5 and doc.get("not_counted") == ["broken.vel"]
        and doc.get("needing_ffi") == 3, f"{code} {out[:300]} {err[:200]}")
     grants = {p["file"]: p["grant"] for p in doc.get("programs", [])}
@@ -157,14 +157,14 @@ def stats_cases() -> None:
     ok("...and each module is counted once per program that names it",
        {m: e["programs"] for m, e in doc.get("modules", {}).items()}
        == {"json": 1, "math": 2}, str(doc.get("modules")))
-    code, out, _ = velaris_cmd("stats", "--ffi", str(box))
+    code, out, _ = sabline_cmd("stats", "--ffi", str(box))
     ok("stats --ffi prints the same counts as text",
        code == 0 and "3 call Python" in out and "ffi:json,math" in out,
        out[:300])
     for words, label in ((("stats", str(box)), "without --ffi"),
                          (("stats", "--ffi", str(box / "nope")),
                           "on a directory that is not there")):
-        code, out, err = velaris_cmd(*words)
+        code, out, err = sabline_cmd(*words)
         ok(f"stats {label}: exit 2, with a line saying why",
            code == 2 and err.strip(), f"{code} {err[:160]}")
 
@@ -186,7 +186,7 @@ def import_cases() -> None:
                        encoding="utf-8")
 
     def imported(*args: Any) -> tuple[Any, ...]:
-        code, out, err = velaris_cmd(*args, python_flags=("-X", "importtime"))
+        code, out, err = sabline_cmd(*args, python_flags=("-X", "importtime"))
         names = {ln.rsplit("|", 1)[-1].strip() for ln in err.splitlines()
                  if ln.startswith("import time:")}
         return code, names

@@ -1,44 +1,44 @@
-# Velaris from inside your program
+# Sabline from inside your program
 
-Velaris is a library as well as a command. An agent framework, an MCP
+Sabline is a library as well as a command. An agent framework, an MCP
 server, a CI dashboard or an internal tool can check, audit and run
-Velaris without shelling out - and the effect budget is enforced the
+Sabline without shelling out - and the effect budget is enforced the
 same way it is on the command line, whatever a program's source claims
 about itself.
 
 <!-- illustrative: installs from PyPI -->
 ```sh
-pip install velaris-lang
+pip install sabline-lang
 ```
 
 ## Three calls
 
 ```python
-import velaris
+import sabline
 
 source = open("agent_output.vel").read()
 
-result = velaris.check(source)
+result = sabline.check(source)
 if not result.ok:
     for p in result.problems:
         print(p.code, p.line, p.message, p.fixes)
 
-report = velaris.audit(source)
+report = sabline.audit(source)
 print(report.effects)        # ['fs', 'net'] - what it can touch
 print(report.proven_share)   # 66.7 - how much is proven, not just checked
 print(report.warnings)       # ffi cannot be contained by a budget
 
-run = velaris.run(source, allow={"io"})
+run = sabline.run(source, allow={"io"})
 print(run.ok, run.output, run.refused_effect)
 ```
 
-`velaris.card()` returns the language in about <!-- count:card-words -->5,100<!-- /count --> words - paste it
-into a model before asking for Velaris.
+`sabline.card()` returns the language in about <!-- count:card-words -->5,100<!-- /count --> words - paste it
+into a model before asking for Sabline.
 
 ## Limits: time and memory
 
 ```python
-run = velaris.run(source, allow={"io"}, timeout=30, max_memory_mb=512)
+run = sabline.run(source, allow={"io"}, timeout=30, max_memory_mb=512)
 run.timed_out        # True if it ran past the limit and was stopped
 run.out_of_memory    # True if it grew past the cap and was stopped
 ```
@@ -60,7 +60,7 @@ Memory caps use whatever the operating system has:
 
 If the Windows job object cannot be made, the cap is recorded and not
 enforced rather than the run failing - the behaviour before 3.1.
-`velaris.memory_cap_is_enforced()` answers for the machine you are on,
+`sabline.memory_cap_is_enforced()` answers for the machine you are on,
 so a suite can assert the cap where the mechanism holds and skip it
 where it does not. The timeout is enforced on every platform.
 
@@ -75,18 +75,18 @@ caller sent none, and a caller who sent more got more.
 `check` and `audit` read a program before anything runs, and a program
 can be written to make reading it slow: a promise the prover spends its
 whole budget on, or an expression the checker takes many seconds to take
-apart. From 8.1 both run in a child process under the ceiling `velaris
+apart. From 8.1 both run in a child process under the ceiling `sabline
 check` has had since 8.0 - 60 seconds and 2048 MB unless raised; until
 8.1 its memory cap took hold only on Windows - and come back with a
 problem instead of holding the caller:
 
 ```python
-report = velaris.audit(source, timeout=10, max_memory_mb=512)
+report = sabline.audit(source, timeout=10, max_memory_mb=512)
 if any(p.code in ("E613", "E614") for p in report.problems):
     ...        # it did not finish: report.ok is False, nothing determined
 ```
 
-E613 is the clock and E614 the memory cap. `velaris.attest` takes the
+E613 is the clock and E614 the memory cap. `sabline.attest` takes the
 same two parameters. `timeout=None, max_memory_mb=None` checks in your
 own process with no ceiling, as every call did before 8.1 - fine for
 source you wrote, not for source you were sent. A child costs an
@@ -100,17 +100,17 @@ imports to one directory: an import that resolves outside it, or to a
 file there that is not `.vel`, is refused (E515) without being read.
 Pass it whenever the source is someone else's. The doors always hold
 imports to a directory (below). And wherever an imported file is not
-Velaris source, the error names the file and shows nothing of what it
+Sabline source, the error names the file and shows nothing of what it
 holds; until 8.1 it quoted the first word it found there.
 
 ## Many runs: a pool
 
 Every bounded run starts a Python interpreter - about a tenth of a
-second before a line of Velaris is read. Calling `run` thousands of
+second before a line of Sabline is read. Calling `run` thousands of
 times an hour pays that every time. A pool keeps workers alive:
 
 ```python
-pool = velaris.Pool(size=4, allow={"io"}, timeout=30, max_memory_mb=512)
+pool = sabline.Pool(size=4, allow={"io"}, timeout=30, max_memory_mb=512)
 result = pool.run(source)        # the same RunResult run() returns
 pool.close()                     # also a context manager
 ```
@@ -170,14 +170,14 @@ A pool changes none of the guarantees in
 whatever that module can do, inside a worker as anywhere else; what a
 pool promises is that it cannot do it to the *next* program.
 
-`velaris.PoolRegistry()` keeps one pool per distinct budget and makes
+`sabline.PoolRegistry()` keeps one pool per distinct budget and makes
 each one the first time that budget is asked for - what a server needs,
 since it learns the budget from the request. The MCP server and the
 HTTP door each keep one. The CrewAI and LangChain tools stay on plain
 `run`: a crew's tool is not called often enough to need a pool, and one
 process per call is easier to reason about.
 
-## A platform whose customers write Velaris
+## A platform whose customers write Sabline
 
 [`examples/platform/`](examples/platform/) puts `audit` and `Pool`
 together in the shape a SaaS team would copy - a FastAPI service in one
@@ -204,7 +204,7 @@ Submitting [`examples/discount.vel`](examples/discount.vel) answers with
 promises. That is what the pattern is for: a platform can tell a
 customer, before enabling a rule it did not write, that the rule can
 never return a negative total. fastapi is a dependency of the example,
-never of Velaris.
+never of Sabline.
 
 ## What `run` guarantees
 
@@ -220,19 +220,19 @@ there is; now forgetting it gets the narrowest useful one. The ways to
 ask for everything, both of which say so where you can see them:
 
 ```python
-velaris.run(source, allow="all")                  # one line to stderr
-velaris.run(source, allow=set(velaris.ALL_EFFECTS))
+sabline.run(source, allow="all")                  # one line to stderr
+sabline.run(source, allow=set(sabline.ALL_EFFECTS))
 ```
 
-`velaris.Pool(...)` and `velaris.run(..., timeout=...)` take the same
-default, and so does `velaris <file>` on the command line: one answer
+`sabline.Pool(...)` and `sabline.run(..., timeout=...)` take the same
+default, and so does `sabline <file>` on the command line: one answer
 in every place a budget comes from.
 
 A grant can be narrower than an effect, in the same grammar the
 command line takes (SPEC.md 7.1):
 
 ```python
-velaris.run(source, allow={"io", "env",
+sabline.run(source, allow={"io", "env",
                            "fs:read:./data", "fs:write:./out@50",
                            "net:api.example.com:443@100",
                            "ffi:math,json"})
@@ -264,8 +264,8 @@ it; the `schema` field names the version.
 
 ```json
 {
-  "schema": "velaris.audit/1",
-  "velaris_version": "2.52.0",
+  "schema": "sabline.audit/1",
+  "sabline_version": "2.52.0",
   "ok": true,
   "problems": [],
   "effects": ["fs", "io"],
@@ -275,17 +275,17 @@ it; the `schema` field names the version.
      "status": "proven"}
   ],
   "proven_share": 66.7,
-  "safe_command": "velaris <file> --allow fs,io",
+  "safe_command": "sabline <file> --allow fs,io",
   "warnings": []
 }
 ```
 
-Field meanings, all stable within `velaris.audit/1`:
+Field meanings, all stable within `sabline.audit/1`:
 
 | Field | Meaning |
 |---|---|
 | `schema` | the format's name and version |
-| `velaris_version` | the compiler that produced this |
+| `sabline_version` | the compiler that produced this |
 | `ok` | did it compile |
 | `problems` | code, message, line, file, fixes |
 | `effects` | everything the program may perform, transitively |
@@ -299,7 +299,7 @@ Field meanings, all stable within `velaris.audit/1`:
 | `fs_paths` | `{"read": [...], "write": [...], "read_any": bool, "write_any": bool}` - the path literals a program reads and writes; a flag says a path was built at runtime (added in 3.0) |
 | `net_hosts` | `{"hosts": [...], "any": bool}` - the hosts (with ports when given) named in URL literals (added in 3.0) |
 | `ffi_any` | true when a py* call names its module with a value built while running, which `ffi_modules` cannot list (added in 4.0) |
-| `counts` | `{"fs": n, "net": n}`: the most file and network operations one call to any of the file's functions can perform, by velaris-spec 9.4's fixed rules - `0` for an effect none of them declares, `null` where the text fixes no bound; the whole field `null` when the file does not compile (added in 4.2) |
+| `counts` | `{"fs": n, "net": n}`: the most file and network operations one call to any of the file's functions can perform, by sabline-spec 9.4's fixed rules - `0` for an effect none of them declares, `null` where the text fixes no bound; the whole field `null` when the file does not compile (added in 4.2) |
 | `prover` | true when a prover checked the promises; false without one, when no status is `proven` and a `proven_share` of 0 says nothing about what could be proven - and false when the file does not compile (added in 4.2) |
 | `secrets` | `{"sources": [...], "declassifies": bool, "declassifications": [{"reason", "function", "line"}]}` - which builtins handed the program a `Secret` (`env`, `read_file_secret`), whether it ever declassifies one, and with what reason. `declassifies: false` with `ok: true` is the answer to "does this program ever let a secret out"; `null` when the file could not be loaded, and not null merely because `ok` is false (added in 6.0) |
 
@@ -321,19 +321,19 @@ not parse).
 
 <!-- illustrative lines 1,3: they change the configuration of the assistants on this machine -->
 ```sh
-velaris mcp-install          # adds it wherever it finds a client
-velaris mcp-install --list   # show what it found, change nothing
-velaris mcp-install --remove # take it back out
+sabline mcp-install          # adds it wherever it finds a client
+sabline mcp-install --list   # show what it found, change nothing
+sabline mcp-install --remove # take it back out
 ```
 
 It knows where Claude Code, Cline, Cursor, Windsurf, Continue and Zed
-keep their configuration, adds a `velaris` server without disturbing
+keep their configuration, adds a `sabline` server without disturbing
 anything else already there, and backs up each file first. Restart the
 assistant afterwards - closing the window is usually not enough.
 
 **Claude Desktop:** newer builds only accept remote connectors in the
 Add-connector dialog, so use the bundle instead. Download
-`velaris.mcpb` from any release and open it, or drag it into
+`sabline.mcpb` from any release and open it, or drag it into
 Settings -> Extensions. The compiler travels inside the bundle, so
 nothing needs installing first. (The prover does not travel with it -
 without `pip install z3-solver` promises are checked while running
@@ -341,24 +341,24 @@ rather than proven, and the tools say so rather than hiding it.)
 
 ## As an MCP server
 
-`velaris_mcp.py` speaks the Model Context Protocol over stdin/stdout,
-so an assistant can write Velaris, check it, audit it and run it in a
+`sabline_mcp.py` speaks the Model Context Protocol over stdin/stdout,
+so an assistant can write Sabline, check it, audit it and run it in a
 box without leaving the conversation.
 
 ```json
-{"mcpServers": {"velaris": {"command": "python",
-                            "args": ["-m", "velaris_mcp"]}}}
+{"mcpServers": {"sabline": {"command": "python",
+                            "args": ["-m", "sabline_mcp"]}}}
 ```
 
 Three spellings start the same server, and it is the same process
-whichever you use: `python -m velaris_mcp`, `velaris mcp` through the
-console script, and `npx velaris-lang mcp` through the npm wrapper -
+whichever you use: `python -m sabline_mcp`, `sabline mcp` through the
+console script, and `npx sabline-lang mcp` through the npm wrapper -
 which calls the Python package, so it still needs
-`pip install velaris-lang`. Every flag below is the server's own and is
+`pip install sabline-lang`. Every flag below is the server's own and is
 taken by all three.
 
-Four tools: `velaris_card`, `velaris_check`, `velaris_audit` and
-`velaris_run` (which takes `allow`, defaulting to `["io"]`).
+Four tools: `sabline_card`, `sabline_check`, `sabline_audit` and
+`sabline_run` (which takes `allow`, defaulting to `["io"]`).
 
 **The server has a ceiling, and it is `io` unless you raise it.**
 `allow` is what the caller asks for; `--max-allow` is the most the
@@ -367,11 +367,11 @@ line take - effects, `fs:read:`/`fs:write:` paths, `net:` hosts and
 ports, `ffi:` modules, `@N` counts:
 
 ```json
-{"mcpServers": {"velaris": {"command": "python",
-  "args": ["-m", "velaris_mcp", "--max-allow", "io,fs:read:./data"]}}}
+{"mcpServers": {"sabline": {"command": "python",
+  "args": ["-m", "sabline_mcp", "--max-allow", "io,fs:read:./data"]}}}
 ```
 
-A `velaris_run` that asks for more than the ceiling at any level - an
+A `sabline_run` that asks for more than the ceiling at any level - an
 effect, a module, a wider path, another host, a larger count, or plain
 `fs` against a scoped ceiling - does not run. The result is marked
 `isError` and holds the same body the HTTP door sends with its 403:
@@ -383,7 +383,7 @@ effect, a module, a wider path, another host, a larger count, or plain
 
 **The operator also sets the time and memory (4.0).** `--max-timeout`
 and `--max-memory-mb` are the most one run may have, 30 seconds and
-512 MB when the flags are absent. A `velaris_run` that names no
+512 MB when the flags are absent. A `sabline_run` that names no
 `timeout` or `max_memory_mb` gets the ceiling; one that asks for less
 gets less; one that asks for more is refused the same way, naming the
 ceiling (`"this server allows at most 30 second(s) per run; the request
@@ -392,21 +392,21 @@ a bad request. Before 4.0 a caller could ask for any timeout and any
 memory cap and have it.
 
 ```json
-{"mcpServers": {"velaris": {"command": "python",
-  "args": ["-m", "velaris_mcp", "--max-timeout", "10",
+{"mcpServers": {"sabline": {"command": "python",
+  "args": ["-m", "sabline_mcp", "--max-timeout", "10",
            "--max-memory-mb", "256"]}}}
 ```
 
 Without the flag the server grants `io` alone: a program can print,
 read its arguments and its stdin, and nothing else. The `.mcpb` bundle
-and `velaris mcp-install` start the server without the flag; add it to
+and `sabline mcp-install` start the server without the flag; add it to
 the `args` above to widen it. A `--max-allow` that does not parse
 stops the server before it answers anything.
 
 **From 8.1** the server checks and audits under `--check-timeout` and
 `--check-memory-mb` (60 seconds and 2048 MB unless raised), on a worker of
 its own, and holds a program's imports to `--root` - the directory it was
-started in unless named - as the HTTP door does. `velaris_run` takes
+started in unless named - as the HTTP door does. `sabline_run` takes
 `"receipt": true` for the run's receipt.
 
 ### What can connect, and what runs
@@ -414,14 +414,14 @@ started in unless named - as the HTTP door does. `velaris_run` takes
 **The MCP server** reads requests from its standard input and answers on
 its standard output. It opens no port, so the only thing that can talk to
 it is the process that started it - the MCP client - and the client decides
-what the model may send. **The language server** (`velaris lsp`) is the
+what the model may send. **The language server** (`sabline lsp`) is the
 same: its editor, over stdin and stdout, and nothing else.
 
-Neither runs a program to answer anything but `velaris_run`. The MCP
-server's `velaris_check` and `velaris_audit`, and the language server's
+Neither runs a program to answer anything but `sabline_run`. The MCP
+server's `sabline_check` and `sabline_audit`, and the language server's
 diagnostics, hovers, code lenses, completions, outline and rename, parse,
 type-check and (where the prover is installed) prove - they never call
-`main`. The language server offers no formatting request, and `velaris fmt`
+`main`. The language server offers no formatting request, and `sabline fmt`
 reads tokens and writes text. `check_library.py` sends both servers, and
 `fmt`, a program whose `main` writes a file, and asserts no file is
 written. What they do run is the compiler over text the client sent, and
@@ -433,21 +433,21 @@ written to stall the prover waits for it.
 An MCP client shows the model each tool's description, and a model
 follows what a description says - which is why a changed description is
 an attack (tool poisoning, OWASP MCP Top 10 MCP03). Every release from
-3.4 carries `velaris-mcp-tools-X.Y.Z.json`: the name of every tool the
+3.4 carries `sabline-mcp-tools-X.Y.Z.json`: the name of every tool the
 server offers, the sha256 of its description and the sha256 of its
 input schema, generated by the release workflow from the server inside
 the wheel it publishes and signed with sigstore
-(`velaris-mcp-tools-X.Y.Z.json.sigstore.json`), like the wheel.
+(`sabline-mcp-tools-X.Y.Z.json.sigstore.json`), like the wheel.
 
 To check the server you run against it:
 
 <!-- illustrative: downloads a release, and verifies its signature online -->
 ```sh
-gh release download v4.0.0 --repo gowrishankar-infra/velaris-lang \
-  --pattern 'velaris-mcp-tools-4.0.0.json*'
+gh release download v4.0.0 --repo gowrishankar-infra/sabline-lang \
+  --pattern 'sabline-mcp-tools-4.0.0.json*'
 pip install sigstore
-velaris mcp-verify velaris-mcp-tools-4.0.0.json \
-  -- python -m velaris_mcp --max-allow io
+sabline mcp-verify sabline-mcp-tools-4.0.0.json \
+  -- python -m sabline_mcp --max-allow io
 ```
 
 Everything after `--` is the command your client's configuration runs;
@@ -456,14 +456,14 @@ and compares:
 
 <!-- illustrative: what mcp-verify prints for a server that changed -->
 ```text
-manifest:  velaris-mcp-tools-4.0.0.json (4 tool(s), velaris 4.0.0)
-signature: verified, signed by https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/v4.0.0
-server:    python -m velaris_mcp --max-allow io (velaris 4.0.0)
-  ok       velaris_audit
-  ok       velaris_card
-  CHANGED  velaris_check: input schema
-  CHANGED  velaris_run: description
-  NEW      velaris_shell: offered by the server, not in the manifest
+manifest:  sabline-mcp-tools-4.0.0.json (4 tool(s), sabline 4.0.0)
+signature: verified, signed by https://github.com/gowrishankar-infra/sabline-lang/.github/workflows/release.yml@refs/tags/v4.0.0
+server:    python -m sabline_mcp --max-allow io (sabline 4.0.0)
+  ok       sabline_audit
+  ok       sabline_card
+  CHANGED  sabline_check: input schema
+  CHANGED  sabline_run: description
+  NEW      sabline_shell: offered by the server, not in the manifest
 2 of 5 tool(s) match the manifest; 3 differ
 ```
 
@@ -477,7 +477,7 @@ releases stopped being started by tags (RELEASING.md). The main identity
 names no version, so the version is the one inside the signed manifest,
 which `mcp-verify` prints on its first line beside what the server
 reports. `--identity` changes the identity for a fork, or for checking a
-7.2.0 or later manifest with a Velaris older than 7.2.0; `--bundle`
+7.2.0 or later manifest with a Sabline older than 7.2.0; `--bundle`
 names the bundle, and `--skip-signature` compares against a manifest
 you have verified some other way.
 
@@ -486,7 +486,7 @@ environment your client runs in. What it does and does not tell you:
 
 * A description or schema that differs from what the release workflow
   built is reported, whichever way it got there - an edited
-  `velaris_mcp.py`, a different package answering to the same name, a
+  `sabline_mcp.py`, a different package answering to the same name, a
   local patch.
 * The description hash is of the exact text the server sends; the
   schema hash is of the schema with its keys sorted and no whitespace
@@ -498,49 +498,49 @@ environment your client runs in. What it does and does not tell you:
   the code.
 * It checks one moment. A server that changes its tools after you ran
   it is caught the next time you run it, not before.
-* The checker is in the `velaris` package, not in `velaris_mcp.py`, so a changed
+* The checker is in the `sabline` package, not in `sabline_mcp.py`, so a changed
   server file does not change the code that checks it. An installation
   in which both were changed is caught by verifying the wheel, or by
-  running `mcp-verify` from a separately verified Velaris (a signed
+  running `mcp-verify` from a separately verified Sabline (a signed
   standalone executable, say) with the server command after `--`.
 
-`velaris mcp-manifest -o tools.json -- <server command>` writes the same
+`sabline mcp-manifest -o tools.json -- <server command>` writes the same
 manifest for any server, which is how the release workflow makes it.
 
-## Vendored libraries, and velaris.lock
+## Vendored libraries, and sabline.lock
 
 <!-- illustrative lines 1-2: they fetch a library over the network -->
 ```sh
-velaris add https://example.com/geo.vel as geo   # vendored into lib/
-velaris add https://example.com/geo.vel --force  # replace different bytes
-velaris deps                                     # what you depend on
-velaris deps --verify                            # do they match the lock?
+sabline add https://example.com/geo.vel as geo   # vendored into lib/
+sabline add https://example.com/geo.vel --force  # replace different bytes
+sabline deps                                     # what you depend on
+sabline deps --verify                            # do they match the lock?
 ```
 
-`velaris add` writes two files. `velaris.toml` says what the project
-depends on. **`velaris.lock`** says exactly which bytes were vendored:
-every library with its source, its sha256 and the version of Velaris
+`sabline add` writes two files. `sabline.toml` says what the project
+depends on. **`sabline.lock`** says exactly which bytes were vendored:
+every library with its source, its sha256 and the version of Sabline
 that added it. The digest is of the fetched bytes exactly as they
 arrived, so it is the digest the source published and the same on every
 platform.
 
-`velaris deps --verify` (`velaris verify` is the older spelling of the
+`sabline deps --verify` (`sabline verify` is the older spelling of the
 same check) fails if a vendored file's hash differs from the lock, or
 if a lock entry has no file on disk. Run it in CI: a library that
 changed under you is worth looking at before trusting it.
 
-`velaris add` refuses to overwrite a library that is already vendored
+`sabline add` refuses to overwrite a library that is already vendored
 when the incoming bytes are different, and prints both digests;
 `--force` replaces it. A project made before 3.1 has no lock, and
-`deps --verify` says so and falls back to checking `velaris.toml`.
+`deps --verify` says so and falls back to checking `sabline.toml`.
 
 ## The embedding limit
 
-Velaris embeds natively in one language and one only: Python. `import
-velaris` runs the compiler and the program in your process, and the
+Sabline embeds natively in one language and one only: Python. `import
+sabline` runs the compiler and the program in your process, and the
 three calls above return in microseconds to milliseconds - no process,
 no serialization. From any other language the boundary is a process:
-`velaris serve` (below) puts the same three calls behind a local HTTP
+`sabline serve` (below) puts the same three calls behind a local HTTP
 door, and the CrewAI and LangChain tools, being Python, stay on the
 native library. The cost of the process boundary is real - a request to
 the door pays HTTP framing and a JSON round trip, on the order of a
@@ -555,12 +555,12 @@ the boundary the OS enforces, which is stronger than the language's.
 
 ## From a language that is not Python
 
-`velaris serve` opens a local HTTP door, so a Node service, a Go tool,
+`sabline serve` opens a local HTTP door, so a Node service, a Go tool,
 a Rust agent or a shell script can use the same three calls.
 
 <!-- illustrative: starts a door, which runs until it is stopped -->
 ```sh
-velaris serve --token-file ~/.velaris-token \
+sabline serve --token-file ~/.sabline-token \
               --max-allow io,fs:read:./data,net:api.example.com@100 \
               --max-timeout 10 --max-memory-mb 256
                                        # localhost:8787, grants at most this
@@ -572,7 +572,7 @@ GET  /health         version, whether the prover is installed; with the
                      token, the ceilings too. The one endpoint without a token.
 GET  /card           the language, for pasting into a model
 POST /check          {"source": "..."}                  -> problems, proven
-POST /audit          {"source": "..."}                  -> velaris.audit/1
+POST /audit          {"source": "..."}                  -> sabline.audit/1
 POST /run            {"source": "...", "allow": ["io"], "stdin": "", "args": [],
                       "timeout": 10, "max_memory_mb": 256, "receipt": false}
 ```
@@ -593,7 +593,7 @@ true` on `/run` returns the run's receipt with the result.
 const answer = await fetch("http://127.0.0.1:8787/run", {
   method: "POST",
   headers: {
-    "Authorization": `Bearer ${process.env.VELARIS_TOKEN}`,
+    "Authorization": `Bearer ${process.env.SABLINE_TOKEN}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({ source, allow: ["io"] }),
@@ -608,7 +608,7 @@ The token comes from one of three places, in this order:
 1. `--token-file <path>` - a file holding the token and nothing else
    (surrounding whitespace is ignored). On Linux and macOS the door
    warns if other users can read it.
-2. `VELARIS_TOKEN` in the door's environment. The door removes it from
+2. `SABLINE_TOKEN` in the door's environment. The door removes it from
    its environment as it starts, so the worker processes that run
    programs do not inherit it and a program granted `env` cannot read
    it.
@@ -628,7 +628,7 @@ answer, to any path, `/card` and unknown paths included:
 
 <!-- illustrative: an answer from the door -->
 ```text
-401   WWW-Authenticate: Bearer realm="velaris"
+401   WWW-Authenticate: Bearer realm="sabline"
       {"error": "unauthorized"}
 ```
 
@@ -697,7 +697,7 @@ wider ceiling now takes naming it: `--max-allow
 io,env,fs,net,clock,rand,ffi` is what 3.4 granted by default, and from
 5.0 `--max-allow all` is the same thing written shorter - the door
 writes one line to stderr when it is started that way.
-`--max-memory-mb` on `velaris serve` used to set a cap on the door's
+`--max-memory-mb` on `sabline serve` used to set a cap on the door's
 own process (on Linux and macOS); it is now the most each run may have,
 and the door's process is not capped.
 
@@ -722,7 +722,7 @@ appended to a file with `--log-file <path>`. There is no way to turn it
 off; `--log minimal` writes fewer fields. A full line from the door:
 
 ```json
-{"schema": "velaris.invocation/1", "ts": "2026-09-11T05:50:30.776Z",
+{"schema": "sabline.invocation/1", "ts": "2026-09-11T05:50:30.776Z",
  "door": "http", "endpoint": "POST /run", "outcome": "ok",
  "duration_ms": 284.7, "client": "127.0.0.1", "budget": "env,io",
  "effects": {"env": 1, "io": 1}, "refusals": [],
@@ -732,8 +732,8 @@ off; `--log minimal` writes fewer fields. A full line from the door:
 and from the MCP server, a call the ceiling refused:
 
 ```json
-{"schema": "velaris.invocation/1", "ts": "2026-09-11T05:51:02.114Z",
- "door": "mcp", "tool": "velaris_run", "outcome": "ceiling",
+{"schema": "sabline.invocation/1", "ts": "2026-09-11T05:51:02.114Z",
+ "door": "mcp", "tool": "sabline_run", "outcome": "ceiling",
  "duration_ms": 0.3, "budget": null, "effects": null,
  "refusals": [{"by": "ceiling", "what": "this server does not grant ffi"}],
  "source_sha256": "9809d3a9..."}
@@ -741,7 +741,7 @@ and from the MCP server, a call the ceiling refused:
 
 | Field | What it holds |
 |---|---|
-| `schema` | `velaris.invocation/1` |
+| `schema` | `sabline.invocation/1` |
 | `ts` | when the call arrived, UTC, to the millisecond |
 | `door` | `http` or `mcp` |
 | `endpoint` / `tool` | `POST /run`, `GET /card`...; an unknown path is written `POST (no such endpoint)`, never as sent. The MCP tool's name, or `(no such tool)` |
@@ -772,12 +772,12 @@ if a write to it fails later, the line goes to stderr instead.
 
 <!-- illustrative: installs from npm -->
 ```sh
-npm install velaris-lang        # or: npx velaris-lang script.vel --allow io
+npm install sabline-lang        # or: npx sabline-lang script.vel --allow io
 ```
 
 <!-- illustrative: needs Node and the npm package -->
 ```javascript
-import { audit, run } from "velaris-lang";
+import { audit, run } from "sabline-lang";
 
 const report = await audit(source);
 const result = await run(source, { allow: ["io"] });
@@ -787,20 +787,20 @@ console.log(result.ok, result.output, result.refusedEffect);
 Leaving `allow` out is `io`, the same default the command line and the
 Python library have from 5.0.
 
-The compiler is a Python package, so `pip install velaris-lang` once;
+The compiler is a Python package, so `pip install sabline-lang` once;
 the npm package says so plainly if it is missing. Types ship with it.
 
 ## In a notebook
 
 <!-- illustrative: Jupyter commands -->
 ```text
-%pip install velaris-lang
-%load_ext velaris_magic
+%pip install sabline-lang
+%load_ext sabline_magic
 ```
 
 <!-- illustrative: a Jupyter cell -->
 ```text
-%%velaris --audit --allow io
+%%sabline --audit --allow io
 fn main() uses io {
     print("proven before it ran")
 }
@@ -822,22 +822,22 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: gowrishankar-infra/velaris-lang@6fa46df01cd2dd14998a3557c6c75da0f11654a9  # v8.5.0
+  - uses: gowrishankar-infra/sabline-lang@6fa46df01cd2dd14998a3557c6c75da0f11654a9  # v8.5.0
     with:
       min-proven: "80"
       pr-comment: "true"
-      capabilities: "check"   # the default when velaris.capabilities exists
+      capabilities: "check"   # the default when sabline.capabilities exists
       deps-diff: "true"       # off by default
 ```
 
-The action installs Velaris with the prover, checks every `.vel` file
+The action installs Sabline with the prover, checks every `.vel` file
 (or the `files` glob), and fails the job if anything does not compile
 or a promise cannot be kept. With `sarif` on (the default), the check's
 findings are also written as SARIF 2.1.0 and uploaded to code scanning
 by `github/codeql-action/upload-sarif`, pinned to a commit; the README's
 CI section says what each result holds and at what level. With `pr-comment: "true"`, on a
 `pull_request` event it also posts one comment holding the audit of
-each changed `.vel` file - the same `velaris.audit()` this document
+each changed `.vel` file - the same `sabline.audit()` this document
 describes: effects, Python modules named, proven share, the safe
 command, and the warnings (`loops_unshown`, `contract_coverage`) - and
 on later runs edits its own comment, found by a hidden HTML marker,
@@ -846,14 +846,14 @@ rather than adding another. It talks to the REST API with the job's
 
 From 4.0 the comment also holds the capability ratchet's result, with
 each widening, where it came from and the edit to
-`velaris.capabilities` that would accept it; and a review of the pull
-request against its base (`velaris review`, below): whether the
+`sabline.capabilities` that would accept it; and a review of the pull
+request against its base (`sabline review`, below): whether the
 capability surface changed, the proven share before and after, new
 fallible functions, new hosts, paths and modules, whether
-`velaris.capabilities` itself changed, and a risk word.
+`sabline.capabilities` itself changed, and a risk word.
 
 With `capabilities` left at its default the action runs the ratchet
-whenever `velaris.capabilities` exists at the repository root, and
+whenever `sabline.capabilities` exists at the repository root, and
 fails the job if the code needs more than it declares. A pull request
 that deletes the file fails too, since that would turn the ratchet off;
 `capabilities: "off"` in the workflow is the way to turn it off, where
@@ -861,10 +861,10 @@ the change is visible. The ratchet's findings go to code scanning
 beside the check's when `sarif` is on.
 
 With `deps-diff: "true"` (7.1), on a pull request the action runs
-`velaris deps-diff --against` the base branch's commit: every dependency
+`sabline deps-diff --against` the base branch's commit: every dependency
 the pull request upgrades in a lockfile it reads is compared version
 against version, and one comment - its own marker, edited in place like
-the audit's - says what each gained. For a Velaris library that is its
+the audit's - says what each gained. For a Sabline library that is its
 declared capability surface; for any other package it is the
 install-time scripts and declared dependencies, with the surface said
 to be unknown. The step informs and never fails the job. The README's
@@ -874,11 +874,11 @@ CI section lists the lockfiles it reads and what it cannot see.
 
 <!-- illustrative lines 5: needs a git repository with a remote -->
 ```sh
-velaris capabilities init              # record the surface in velaris.capabilities
-velaris capabilities check             # exit 1 if the code needs more than that
-velaris capabilities check --json      # the same, for tools
-velaris capabilities check --sarif     # the same, for code scanning
-velaris review --against origin/main   # what a branch changed, as facts
+sabline capabilities init              # record the surface in sabline.capabilities
+sabline capabilities check             # exit 1 if the code needs more than that
+sabline capabilities check --json      # the same, for tools
+sabline capabilities check --sarif     # the same, for code scanning
+sabline review --against origin/main   # what a branch changed, as facts
 ```
 
 A model, a contributor or a dependency update can add capability to a
@@ -890,9 +890,9 @@ cumulative, and forty small steps reach exactly as far as one large
 one - but only a comparison with a declared baseline sees that. A
 comparison with the previous commit sees forty small steps.
 
-`velaris capabilities init` reads every `.vel` file under the path
-(not `.git`, and not what git ignores) and writes `velaris.capabilities`
-(`velaris.capabilities/1`, specified in velaris-spec section 9):
+`sabline capabilities init` reads every `.vel` file under the path
+(not `.git`, and not what git ignores) and writes `sabline.capabilities`
+(`sabline.capabilities/1`, specified in sabline-spec section 9):
 
 - the **surface**: every grant the repository's programs need, in the
   budget grammar - effects, `fs:read:`/`fs:write:` paths, `net:` hosts,
@@ -900,12 +900,12 @@ comparison with the previous commit sees forty small steps.
   can perform, or `null` where the text sets no bound;
 - for each **program**, its own grants and counts, and the effects each
   of its functions declares - or `"compiles": false`;
-- the Velaris version that wrote it, and the date.
+- the Sabline version that wrote it, and the date.
 
 It refuses to replace an existing file without `--force`: the file is
 what the repository declared, and replacing it is a decision.
 
-`velaris capabilities check` derives the same from the working tree and
+`sabline capabilities check` derives the same from the working tree and
 compares it with the file - never with a previous commit. It fails
 (exit 1) when:
 
@@ -923,14 +923,14 @@ A program or function the file does not record is held to rule 1
 alone: a new program that stays inside the surface is not a widening.
 Narrowing never fails; it is reported, so the file can be tightened. A
 file that does not compile cannot run, so it adds nothing, and it is
-reported rather than compared. A file written by another Velaris
+reported rather than compared. A file written by another Sabline
 version is compared with a warning, never a failure on that account.
 Exit 2 means the check could not be made: no file, a file that is not
-`velaris.capabilities/1`, or one that does not read.
+`sabline.capabilities/1`, or one that does not read.
 
 Each widening names what widened, the file and function that introduced
 it - the call, its line, and the chain of calls from `main` that reaches
-it - and the edit to `velaris.capabilities` that would accept it:
+it - and the edit to `sabline.capabilities` that would accept it:
 
 <!-- illustrative: the check's report of the sixth change of check_ratchet.py's gradual history -->
 ```text
@@ -942,9 +942,9 @@ WIDENED  net:collector.example.net - a new effect, net
     "net:collector.example.net" to the grants of app.vel
 ```
 
-Accepting a widening is an edit to `velaris.capabilities`, or `velaris
+Accepting a widening is an edit to `sabline.capabilities`, or `sabline
 capabilities init --force` and a commit, so the change is in the diff
-a reviewer reads. `--json` is `velaris.capabilities-check/1`; `--sarif`
+a reviewer reads. `--json` is `sabline.capabilities-check/1`; `--sarif`
 reports each widening as an error at the line that introduced it
 (`capability-widened`, `capability-effect-gained`) and each narrowing
 as a note.
@@ -961,12 +961,12 @@ a variable bound once to one; one built while running is recorded as
 the unscoped grant (`fs:read`, `net`, `ffi`), which a scoped surface
 does not cover.
 
-**`velaris review --against REF`** runs the same derivation, and the
+**`sabline review --against REF`** runs the same derivation, and the
 audit, on the files at a git ref - read with `git show REF:PATH`, with
 nothing checked out - and on the working tree, and reports the delta:
 whether the capability surface widened, narrowed or is unchanged, the
 proven share before and after, functions that became fallible, hosts,
-paths and modules newly named, whether `velaris.capabilities` itself
+paths and modules newly named, whether `sabline.capabilities` itself
 changed, and one word of risk computed from those facts alone -
 `high` when the surface widened, or the declared surface widened or was
 removed; `medium` when it did not, but a program or function the ref
@@ -983,10 +983,10 @@ is a new function.
 ## Moving a 4.x project to 5.0
 
 ```sh
-velaris migrate --to 5.0                # every program under .
-velaris migrate --to 5.0 src/report.vel # one of them
-velaris migrate --to 5.0 --json         # velaris.migrate/1
-velaris migrate --to 5.0 --write        # and change what it can parse
+sabline migrate --to 5.0                # every program under .
+sabline migrate --to 5.0 src/report.vel # one of them
+sabline migrate --to 5.0 --json         # sabline.migrate/1
+sabline migrate --to 5.0 --write        # and change what it can parse
 ```
 
 In 5.0 a run given no budget gets `io` rather than all seven effects,
@@ -996,11 +996,11 @@ reads, it derives the narrowest budget the program's own audit can
 write - the grants `safe_command` carries - and prints the command to
 run it under 5.0.
 
-<!-- output of: velaris migrate --to 5.0 examples/wordcount.vel -->
+<!-- output of: sabline migrate --to 5.0 examples/wordcount.vel -->
 ```text
 examples/wordcount.vel
     uses:  fs, io
-    run:   velaris examples/wordcount.vel --allow fs:read,io
+    run:   sabline examples/wordcount.vel --allow fs:read,io
 ```
 
 A program that uses `io` or no effect at all is counted and not
@@ -1016,29 +1016,29 @@ writes `.sh`, `.bash`, `.yml` and `.yaml` files, puts the flag after
 the file name and before the program's own arguments, and lists every
 line it left alone with the budget to add by hand.
 
-## Running velaris-spec's conformance corpus
+## Running sabline-spec's conformance corpus
 
 <!-- illustrative lines 4: DIR stands for a directory -->
 ```sh
-velaris conformance                    # L1, L2 and L3; exit 1 if any case fails
-velaris conformance --level 3          # the cases a claim at L3 needs: L1 and L3
-velaris conformance --json             # velaris.conformance/1, one result per case
-velaris conformance --corpus DIR       # DIR is velaris-spec's tests/
+sabline conformance                    # L1, L2 and L3; exit 1 if any case fails
+sabline conformance --level 3          # the cases a claim at L3 needs: L1 and L3
+sabline conformance --json             # sabline.conformance/1, one result per case
+sabline conformance --corpus DIR       # DIR is sabline-spec's tests/
 ```
 
-[velaris-spec](https://github.com/gowrishankar-infra/velaris-spec)'s
+[sabline-spec](https://github.com/gowrishankar-infra/sabline-spec)'s
 `tests/` is a conformance corpus for the capability format: JSON cases
 an implementation in any language runs its own way, at the three levels
 of its CONFORMANCE.md - L1 Declaration (the budget grammar, the effect
-surface, `velaris.audit/1`), L2 Enforcement (refusals at run time) and
-L3 Ratchet (`velaris.capabilities/1`). `velaris conformance` finds it
-beside the working directory or this installation (`velaris-spec/tests`
-or `../velaris-spec/tests`), or where `--corpus` or
-`VELARIS_CONFORMANCE_CORPUS` says, and runs every case through the
+surface, `sabline.audit/1`), L2 Enforcement (refusals at run time) and
+L3 Ratchet (`sabline.capabilities/1`). `sabline conformance` finds it
+beside the working directory or this installation (`sabline-spec/tests`
+or `../sabline-spec/tests`), or where `--corpus` or
+`SABLINE_CONFORMANCE_CORPUS` says, and runs every case through the
 budget parser, the audit, the command line under a budget, and the
 baseline writer and check. It prints one line per level and a verdict;
 a failure names the case and what differed. Validating documents
-against velaris-spec's schemas needs `jsonschema`; without it those
+against sabline-spec's schemas needs `jsonschema`; without it those
 cases are skipped and the level is reported as not shown. A case that
 needs a symbolic link is skipped where the system will not make one,
 and the verdict says so.
@@ -1046,31 +1046,31 @@ and the verdict says so.
 ## An in-toto Statement of what a program may do
 
 ```sh
-velaris attest examples/effects.vel --output effects.intoto.json
-velaris attest examples/effects.vel --json          # the Statement on stdout
-velaris attest src --output src.jsonl               # one Statement per file
+sabline attest examples/effects.vel --output effects.intoto.json
+sabline attest examples/effects.vel --json          # the Statement on stdout
+sabline attest src --output src.jsonl               # one Statement per file
 ```
 
-`velaris attest` writes an in-toto Statement v1 whose predicate type is
+`sabline attest` writes an in-toto Statement v1 whose predicate type is
 `https://velaris-lang.dev/capability/v1`
-(velaris-spec section 8.5; the URL is the type's description and
+(sabline-spec section 8.5; the URL is the type's description and
 schema). Until 8.3 the same type was named at the project's earlier
 documentation address, which now redirects there; a Statement written by
-4.2 to 8.2.1 carries that name, and `velaris verify` (below) reads either
+4.2 to 8.2.1 carries that name, and `sabline verify` (below) reads either
 as this type and refuses every other. Its subjects are the audited file and every file it imports,
 each by the sha256 of its bytes - a file of the standard library named
 `<stdlib>/NAME` - and its predicate is
 
 ```json
-{"producer": {"name": "velaris-lang", "uri": "https://github.com/gowrishankar-infra/velaris-lang"},
- "specification": "velaris-spec 0.5",
+{"producer": {"name": "sabline-lang", "uri": "https://github.com/gowrishankar-infra/sabline-lang"},
+ "specification": "sabline-spec 0.5",
  "auditedAt": "2026-09-11T00:00:00Z",
- "audit": { "...": "the velaris.audit/1 document of that file" }}
+ "audit": { "...": "the sabline.audit/1 document of that file" }}
 ```
 
 The audit is `audit()`'s output for those bytes, as it stands - effects,
 `fs_paths`, `net_hosts`, `ffi_modules`, `ffi_any`, `counts`,
-`proven_share`, `prover`, the Velaris version - so the Statement cannot
+`proven_share`, `prover`, the Sabline version - so the Statement cannot
 say more than the audit, or differ from it. What the audit cannot
 determine it says in its own fields, and the Statement carries them: a
 module named while running is `ffi_any: true`, not a shorter list of
@@ -1081,16 +1081,16 @@ not compile is `ok: false` with its problems, `counts: null` and
 `proven_share` of 0 is not read as proofs that failed. A file that
 changes while it is being attested is an error, not a Statement.
 
-A directory gives one Statement per `.vel` file, found as `velaris
+A directory gives one Statement per `.vel` file, found as `sabline
 capabilities` finds them, one Statement to a line (JSON Lines), since
 the predicate type has one audit per Statement. An in-toto Bundle
 (`.intoto.jsonl`) is JSON Lines too, of signed envelopes: sign each line
 and write the envelopes one to a line to make one. `SOURCE_DATE_EPOCH`, when
 set, fixes `auditedAt`, so one commit gives the same bytes twice.
-`velaris.attest(path)` in the library returns the same Statements as a
+`sabline.attest(path)` in the library returns the same Statements as a
 list.
 
-**Signing.** Velaris writes the Statement and signs nothing. Signing it
+**Signing.** Sabline writes the Statement and signs nothing. Signing it
 turns it into an attestation: a DSSE envelope over the Statement, in a
 Sigstore bundle.
 
@@ -1153,28 +1153,28 @@ first subject's digest must then be the sha256 of the file.
 file as bytes rather than as a DSSE envelope, the way the release signs
 its other files.
 
-Every release carries one: `velaris-attestation-X.Y.Z.intoto.json` for
+Every release carries one: `sabline-attestation-X.Y.Z.intoto.json` for
 `examples/effects.vel`, signed both ways by the release workflow's
 identity and verified in that workflow before it is attached
 ([SECURITY.md](SECURITY.md)).
 
-**Verifying a Statement** (8.3). `velaris verify` reads an attestation or a
+**Verifying a Statement** (8.3). `sabline verify` reads an attestation or a
 receipt - a Statement as `attest` or `--receipt` wrote it, the JSON Lines a
 directory gives, a DSSE envelope, or a Sigstore bundle holding one - and
-says whether its predicate type is one Velaris defines, whether its
+says whether its predicate type is one Sabline defines, whether its
 predicate has that type's shape, and whether each subject is the bytes on
 this disk:
 
-<!-- illustrative: needs a Statement written by velaris attest, and the file it names -->
+<!-- illustrative: needs a Statement written by sabline attest, and the file it names -->
 ```sh
-velaris verify effects.intoto.json                   # beside examples/, as attested
-velaris verify effects.intoto.json --root checkout   # subjects read under checkout/
-velaris verify effects.intoto.sigstore.json \
+sabline verify effects.intoto.json                   # beside examples/, as attested
+sabline verify effects.intoto.json --root checkout   # subjects read under checkout/
+sabline verify effects.intoto.sigstore.json \
     --identity you@example.com --issuer https://github.com/login/oauth
-velaris verify effects.intoto.json --json            # velaris.verify/1
+sabline verify effects.intoto.json --json            # sabline.verify/1
 ```
 
-It exits 0 when the type is capability/v1 or receipt/v1, at velaris-lang.dev
+It exits 0 when the type is capability/v1 or receipt/v1, at sabline.dev
 or where 8.2.1 and earlier named it, and every subject matches; 1 when the
 type is any other - `https://velaris.dev/capability/v1` among them - or the
 predicate has the wrong shape, or a subject's bytes differ; and 2 when it
@@ -1186,34 +1186,34 @@ Sigstore bundle's signature is checked against `--identity` and `--issuer`
 with sigstore-python, if it is installed; a bare DSSE envelope's signature
 needs the key that made it, so check it with cosign and pass
 `--skip-signature`. An unsigned Statement verifies only as what it is: a
-claim anyone could write. `velaris verify` with no file is still the older
-spelling of `velaris deps --verify`. `velaris.verify/1` is provisional.
+claim anyone could write. `sabline verify` with no file is still the older
+spelling of `sabline deps --verify`. `sabline.verify/1` is provisional.
 
 ## A receipt of what one run did (8.1)
 
 ```sh
-velaris examples/effects.vel \
+sabline examples/effects.vel \
     --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand \
     --receipt effects.receipt.json
 ```
 
 ```python
-result = velaris.run(source, allow={"io"})
+result = sabline.run(source, allow={"io"})
 result.receipt               # the same Statement, as a dict
 ```
 
 An attestation says what a program may do. A receipt says what one run of
 it did. It is an in-toto Statement of the predicate type
 `https://velaris-lang.dev/receipt/v1`
-(velaris-spec section 8.7), whose predicate is `velaris.receipt/1`:
+(sabline-spec section 8.7), whose predicate is `sabline.receipt/1`:
 
 ```json
 {"_type": "https://in-toto.io/Statement/v1",
  "subject": [{"name": "examples/effects.vel", "digest": {"sha256": "e483..."}}],
  "predicateType": "https://velaris-lang.dev/receipt/v1",
  "predicate": {
-   "schema": "velaris.receipt/1",
-   "producer": {"name": "velaris-lang", "version": "8.1.0", "uri": "..."},
+   "schema": "sabline.receipt/1",
+   "producer": {"name": "sabline-lang", "version": "8.1.0", "uri": "..."},
    "startedAt": "2026-09-14T09:12:03.418Z", "wall_time_ms": 41.7,
    "budget": "clock,fs:read:/work/report.txt,fs:write:/work/report.txt,io,rand",
    "run_parameters": {"seed": null, "freeze_time": null, "timeout": null,
@@ -1231,12 +1231,12 @@ it did. It is an in-toto Statement of the predicate type
 
 | Field | What it holds |
 |---|---|
-| `subject` | the program by the sha256 of the text that ran - named as given, or `<source>` - then each file it imported: the subjects `velaris attest` writes for the same bytes, so an attestation and a receipt of one program match by digest |
+| `subject` | the program by the sha256 of the text that ran - named as given, or `<source>` - then each file it imported: the subjects `sabline attest` writes for the same bytes, so an attestation and a receipt of one program match by digest |
 | `budget` | the budget the run had, in the budget grammar, paths absolute |
-| `run_parameters` | `seed` and `freeze_time`; `timeout` and `max_memory_mb`, null when there were none; `max_read_bytes`; and, from 8.4, what the operating system held of the run: `confinement` - `"full"`, `"partial"`, or `"none"` when the budget was the only boundary - `confinement_reason`, `confinement_layers` and `os_policy_sha256` ([docs/confinement.md](docs/confinement.md)). Until 8.4 `confinement` was `"none"` everywhere but under `velaris eval`, where it named a mechanism |
+| `run_parameters` | `seed` and `freeze_time`; `timeout` and `max_memory_mb`, null when there were none; `max_read_bytes`; and, from 8.4, what the operating system held of the run: `confinement` - `"full"`, `"partial"`, or `"none"` when the budget was the only boundary - `confinement_reason`, `confinement_layers` and `os_policy_sha256` ([docs/confinement.md](docs/confinement.md)). Until 8.4 `confinement` was `"none"` everywhere but under `sabline eval`, where it named a mechanism |
 | `effects_used` | each effect and how many operations the budget let through; null when the run was killed before it could say |
 | `refusals` | `{"code", "effect", "line", "stopped", "times"}` for each place the budget refused - `stopped` is false for a refused redirect, which the program is told about and may carry on from |
-| `grants_used` | `{"grant", "times"}`: what each grant let through, by the grant's own text (8.5; `velaris receipt show` reads it as a page) |
+| `grants_used` | `{"grant", "times"}`: what each grant let through, by the grant's own text (8.5; `sabline receipt show` reads it as a page) |
 | `declassifications` | `{"reason", "line", "times"}` for each place the program declassified; an hmac call is one, with the reason `hmac signature` and a `key_fingerprint` (8.5) |
 | `tool_calls`, `tool_ceiling` | under `--tools`: each call site, and the ceiling (8.5) |
 | `exit` | `status`, `outcome` - `ok`, `refused`, `failed`, `did_not_compile`, `timeout` or `out_of_memory` - and the `code` that ended the run |
@@ -1275,17 +1275,17 @@ cosign verify-blob-attestation --bundle effects.receipt.sigstore.json \
 or sigstore-python's `sign_dsse` and `Verifier.verify_dsse`, as shown for
 the attestation; `verify-blob-attestation` fails unless the file named is
 the receipt's first subject, by digest. Every release carries
-`velaris-receipt-X.Y.Z.intoto.json` for one run of `examples/effects.vel`,
+`sabline-receipt-X.Y.Z.intoto.json` for one run of `examples/effects.vel`,
 signed both ways and verified in the release workflow before it is attached
 ([SECURITY.md](SECURITY.md)).
 
-A signed receipt says its signer ran this Velaris on these bytes, under
+A signed receipt says its signer ran this Sabline on these bytes, under
 this budget, and saw this run. It is no stronger than the machine it ran
 on, and it says nothing about any other run.
 
 ## Hosting a run that calls tools (8.5)
 
-`velaris run` with `--tools` lets a host offer a program tools, held by the
+`sabline run` with `--tools` lets a host offer a program tools, held by the
 budget: [docs/runner.md](docs/runner.md). Provisional.
 
 ## The operating system holds the budget too (8.4)
@@ -1301,31 +1301,31 @@ and [docs/confinement.md](docs/confinement.md) says what each system holds
 and what it leaves.
 
 ```python
-result = velaris.run(source, allow={"io"}, timeout=30)
+result = sabline.run(source, allow={"io"}, timeout=30)
 result.receipt["predicate"]["run_parameters"]["confinement"]   # "full" on Linux
 
-velaris.run(source, timeout=30, confine=False)                 # do not ask
-velaris.Pool(size=4, allow={"io"}, confine=False)
-velaris.PoolRegistry(confine=False)
+sabline.run(source, timeout=30, confine=False)                 # do not ask
+sabline.Pool(size=4, allow={"io"}, confine=False)
+sabline.PoolRegistry(confine=False)
 ```
 
-A `run()` with neither limit happens in your process, which Velaris does not
+A `run()` with neither limit happens in your process, which Sabline does not
 confine - it could not be taken off again - and its receipt says `none` and
 why. A `Pool` holds reads only when it is given an `import_root`, as both
 doors give theirs; without one its workers must be able to read whatever
-`.vel` file an import names. `velaris serve --no-confine` and `python -m
-velaris_mcp --no-confine` are the operator's switch on the doors, and no
+`.vel` file an import names. `sabline serve --no-confine` and `python -m
+sabline_mcp --no-confine` are the operator's switch on the doors, and no
 request can carry it.
 
 ## A run as an evaluation harness runs it (8.3)
 
 <!-- illustrative: runs a program and writes its receipt -->
 ```sh
-velaris eval task.vel --allow io,fs:read:data --receipt ../receipts/task.json
-velaris eval --confinement-probe
+sabline eval task.vel --allow io,fs:read:data --receipt ../receipts/task.json
+sabline eval --confinement-probe
 ```
 
-`velaris eval` runs one program under a profile its command line cannot
+`sabline eval` runs one program under a profile its command line cannot
 relax: no net, ffi or env; time and memory limits always; a stop from
 outside honoured and recorded; the worker confined by the operating
 system, fully or partly, the level in the receipt, and no run at all where
@@ -1337,12 +1337,12 @@ exactly what it guarantees and what it does not.
 
 <!-- illustrative: needs receipts written by earlier runs -->
 ```sh
-velaris receipts diff run.json --audit task.vel          # against the program's audit
-velaris receipts diff run.json --against receipts/       # against earlier runs of the same bytes
-velaris replay run.json --max-allow io,fs:read --expect-output run.out
+sabline receipts diff run.json --audit task.vel          # against the program's audit
+sabline receipts diff run.json --against receipts/       # against earlier runs of the same bytes
+sabline replay run.json --max-allow io,fs:read --expect-output run.out
 ```
 
-`velaris receipts diff` names what a run did that its program's audit
+`sabline receipts diff` names what a run did that its program's audit
 does not say - an effect it used or was refused, a host, path or module its
 budget granted that the audit does not name, a declassification the audit
 does not record, a count past the audit's bound, bytes other than the
@@ -1351,9 +1351,9 @@ a host, a path, a module, a count above the earlier maximum, a first
 declassification. A receipt names no path or host a run reached, only what
 its budget granted, so that is what is compared. It exits 0 when nothing
 differs, 1 when something does, and 2 when it could not compare;
-`velaris.receipts-diff/1` is provisional.
+`sabline.receipts-diff/1` is provisional.
 
-`velaris replay` makes the run again from its receipt: each subject is read
+`sabline replay` makes the run again from its receipt: each subject is read
 from disk under `--root`, held to its digest - a subject that is missing,
 different, or named by an absolute path or one that leaves the directory is
 refused before anything runs - and copied into a directory of its own, to
@@ -1365,9 +1365,9 @@ recorded one and every difference is named. A receipt holds no output or
 input: give the input again (`--stdin FILE`, and words after `--`), and the
 output with `--expect-output FILE` to have it compared.
 
-A program that calls tools reaches them through Python. `velaris
+A program that calls tools reaches them through Python. `sabline
 program.vel --record-responses FILE` records what each `py`, `py_int`,
-`py_float` and `py_json` call gave back, in order, and `velaris replay
+`py_float` and `py_json` call gave back, in order, and `sabline replay
 --responses FILE` gives those back in place of calling Python - after the
 budget and the module grants are checked, as for any call. A call that is not
 the one recorded in its place stops the run with E616. Handles are not
@@ -1378,7 +1378,7 @@ you would its output.
 
 <!-- illustrative: needs the prover -->
 ```sh
-velaris test pricing.vel --from-contracts --count 20
+sabline test pricing.vel --from-contracts --count 20
 ```
 
 For each function with a `requires`, the prover is asked for up to
@@ -1403,9 +1403,9 @@ and answers with the reasons to refuse:
 
 <!-- illustrative lines 2-3: needs OPA -->
 ```sh
-velaris attest agent.vel --output agent.intoto.json
+sabline attest agent.vel --output agent.intoto.json
 opa eval -d policies/opa/capability.rego -d platform.json \
-    -i agent.intoto.json 'data.velaris.capability.deny'
+    -i agent.intoto.json 'data.sabline.capability.deny'
 ```
 
 ```json
@@ -1419,7 +1419,7 @@ and a host outside `hosts` - an entry without a port admits any port, and
 cannot check: an audit whose program did not compile, and a host built
 while the program runs. `opa test policies/opa` runs its tests, which hold
 a pass and a fail; `conftest test agent.intoto.json -p policies/opa
---namespace velaris.capability -d platform.json` asks the same in conftest.
+--namespace sabline.capability -d platform.json` asks the same in conftest.
 
 [`policies/kyverno/require-capability-attestation.yaml`](policies/kyverno/require-capability-attestation.yaml)
 is its twin at admission: a Kyverno `ClusterPolicy` that refuses a Pod
@@ -1429,7 +1429,7 @@ compiled. The attestation is attached to the image with cosign:
 
 <!-- illustrative lines 2-4: needs cosign and a registry -->
 ```sh
-velaris attest agent.vel --json | jq .predicate > capability.json
+sabline attest agent.vel --json | jq .predicate > capability.json
 cosign attest --yes \
     --type https://velaris-lang.dev/capability/v1 \
     --predicate capability.json registry.example.com/agents/agent@sha256:...
@@ -1445,13 +1445,13 @@ deprecated in favour of `ImageValidatingPolicy`.
 ## Ejecting a program (8.1)
 
 ```sh
-velaris eject agent.vel -o agent-ejected
+sabline eject agent.vel -o agent-ejected
 python -I agent-ejected/main.py
 ```
 
-`velaris eject` writes a directory that runs, and builds into one
+`sabline eject` writes a directory that runs, and builds into one
 executable, with nothing from this project installed: the program and its
-imports, a copy of the `velaris` package and of the standard library files it uses,
+imports, a copy of the `sabline` package and of the standard library files it uses,
 `main.py` with the budget written into it (the audit's narrowest, or
 `--allow`), `requirements.txt` pinning the prover and the native compiler
 to the versions installed, `proofs.json`, `build.py` with the PyInstaller
@@ -1465,30 +1465,30 @@ ejected and what does not. In short:
   `--changed-ok`; a changed runtime never runs.
 - **A run cannot rewrite the next.** `main.py` refuses a budget whose
   writes reach its own directory, or a directory Python imports from.
-- **The proofs are a record** of what this Velaris proved at eject time.
+- **The proofs are a record** of what this Sabline proved at eject time.
   Nothing trusts them when the program runs - with z3-solver installed each
   run proves again - and `main.py --prove` checks them again.
-- **No fix arrives.** The directory is the Velaris you ejected with; eject
+- **No fix arrives.** The directory is the Sabline you ejected with; eject
   again to take a later one.
 
 ## As a commit hook
 
 ```yaml
 repos:
-  - repo: https://github.com/gowrishankar-infra/velaris-lang
+  - repo: https://github.com/gowrishankar-infra/sabline-lang
     rev: v8.5.0
     hooks:
-      - id: velaris-check      # it compiles, and the promises hold
-      - id: velaris-fmt        # canonically formatted
-      - id: velaris-proofs     # at least 80% proven, not just checked
+      - id: sabline-check      # it compiles, and the promises hold
+      - id: sabline-fmt        # canonically formatted
+      - id: sabline-proofs     # at least 80% proven, not just checked
 ```
 
 ## Trying it with nothing installed
 
 <!-- illustrative: installs from PyPI -->
 ```sh
-pipx run --spec velaris-lang velaris hello.vel --allow io
+pipx run --spec sabline-lang sabline hello.vel --allow io
 ```
 
-Or open the [playground](https://velaris-lang.dev/playground.html) -
+Or open the [playground](https://sabline.dev/playground.html) -
 the real compiler, in a browser, nothing to install.

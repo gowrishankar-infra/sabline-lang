@@ -1,6 +1,6 @@
-// Velaris VS Code extension: syntax highlighting is declarative (see
+// Sabline VS Code extension: syntax highlighting is declarative (see
 // package.json); this file adds LIVE ERRORS by speaking the Language
-// Server Protocol to `velaris lsp` directly - no npm dependencies, so
+// Server Protocol to `sabline lsp` directly - no npm dependencies, so
 // the folder-copy install keeps working.
 const vscode = require("vscode");
 const cp = require("child_process");
@@ -62,7 +62,7 @@ function handle(msg) {
         r.start.line, r.start.character, r.end.line, r.end.character);
       const diag = new vscode.Diagnostic(
         range, d.message, vscode.DiagnosticSeverity.Error);
-      diag.source = d.source || "velaris";
+      diag.source = d.source || "sabline";
       return diag;
     });
     collection.set(vscode.Uri.parse(uri), diags);
@@ -72,30 +72,30 @@ function handle(msg) {
 function docParams(doc) {
   return {
     textDocument: {
-      uri: doc.uri.toString(), languageId: "velaris",
+      uri: doc.uri.toString(), languageId: "sabline",
       version: doc.version, text: doc.getText(),
     },
   };
 }
 
 function activate(context) {
-  collection = vscode.languages.createDiagnosticCollection("velaris");
+  collection = vscode.languages.createDiagnosticCollection("sabline");
   context.subscriptions.push(collection);
   try {
-    proc = cp.spawn("velaris", ["lsp"], { shell: process.platform === "win32" });
+    proc = cp.spawn("sabline", ["lsp"], { shell: process.platform === "win32" });
   } catch (e) { proc = null; }
   if (!proc) return;
   proc.on("error", () => {
     proc = null;
     vscode.window.showInformationMessage(
-      "Velaris: install the compiler (pip install .) to get live errors.");
+      "Sabline: install the compiler (pip install .) to get live errors.");
   });
   proc.stdout.on("data", onData);
 
   send({ jsonrpc: "2.0", id: nextId++, method: "initialize", params: {} });
   send({ jsonrpc: "2.0", method: "initialized", params: {} });
 
-  const isVel = (doc) => doc.languageId === "velaris";
+  const isVel = (doc) => doc.languageId === "sabline";
   for (const doc of vscode.workspace.textDocuments) {
     if (isVel(doc)) {
       send({ jsonrpc: "2.0", method: "textDocument/didOpen",
@@ -111,7 +111,7 @@ function activate(context) {
 
   context.subscriptions.push(
     // what a function takes, promises, and may do
-    vscode.languages.registerHoverProvider("velaris", {
+    vscode.languages.registerHoverProvider("sabline", {
       async provideHover(doc, position) {
         const got = await request("textDocument/hover", at(doc, position));
         if (!got || !got.contents) return null;
@@ -121,7 +121,7 @@ function activate(context) {
     }),
 
     // functions in scope with their contracts, builtins with their effects
-    vscode.languages.registerCompletionItemProvider("velaris", {
+    vscode.languages.registerCompletionItemProvider("sabline", {
       async provideCompletionItems(doc, position) {
         const got = await request("textDocument/completion",
                                   at(doc, position));
@@ -141,7 +141,7 @@ function activate(context) {
     }, ".", " "),
 
     // jump to where a function is written, across imports
-    vscode.languages.registerDefinitionProvider("velaris", {
+    vscode.languages.registerDefinitionProvider("sabline", {
       async provideDefinition(doc, position) {
         const got = await request("textDocument/definition",
                                   at(doc, position));
@@ -152,7 +152,7 @@ function activate(context) {
     }),
 
     // "promises proven before running" above each function
-    vscode.languages.registerCodeLensProvider("velaris", {
+    vscode.languages.registerCodeLensProvider("sabline", {
       async provideCodeLenses(doc) {
         const got = await request("textDocument/codeLens", {
           textDocument: { uri: doc.uri.toString() },
@@ -165,7 +165,7 @@ function activate(context) {
     }),
 
     // an outline of the file's functions
-    vscode.languages.registerDocumentSymbolProvider("velaris", {
+    vscode.languages.registerDocumentSymbolProvider("sabline", {
       async provideDocumentSymbols(doc) {
         const got = await request("textDocument/documentSymbol", {
           textDocument: { uri: doc.uri.toString() },
@@ -178,7 +178,7 @@ function activate(context) {
     }),
 
     // rename a function everywhere it is used in this file
-    vscode.languages.registerRenameProvider("velaris", {
+    vscode.languages.registerRenameProvider("sabline", {
       async provideRenameEdits(doc, position, newName) {
         const params = at(doc, position);
         params.newName = newName;

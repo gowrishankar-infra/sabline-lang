@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Coverage-guided fuzzing of the parts of Velaris that read what they are given.
+"""Coverage-guided fuzzing of the parts of Sabline that read what they are given.
 
-A Velaris error is a VelarisError with a stable code, and a fallible
+A Sabline error is a SablineError with a stable code, and a fallible
 builtin fails with FailSignal. Anything else that escapes - a Python
 traceback, a RecursionError, a process that dies or stops making progress
 - is a bug, whatever the input. Five targets:
@@ -13,7 +13,7 @@ traceback, a RecursionError, a process that dies or stops making progress
     csv        stdlib/csv.vel - fields, rows_of, column, column_int,
                line_of - run by the interpreter, so split and to_int too
     py_json    py_json (and py, py_int, py_float) turning arbitrary Python
-               values back into Velaris values
+               values back into Sabline values
     contracts  generated signatures with requires / ensures, well- and
                ill-typed, through check_effects / check_types /
                check_proofs (needs z3-solver; skipped without it)
@@ -29,10 +29,10 @@ traceback, a RecursionError, a process that dies or stops making progress
 
 The engine is atheris when it can be imported (it does not support
 Windows). Otherwise it is a small coverage-guided loop of its own: a seed
-corpus, byte- and token-level mutations, line coverage of Velaris
+corpus, byte- and token-level mutations, line coverage of Sabline
 (sys.monitoring on 3.12+, sys.settrace before), and an input kept in the
-corpus whenever it reaches a line no input reached before. Velaris is
-whatever `import velaris` finds: one velaris.py, or a velaris/ package.
+corpus whenever it reaches a line no input reached before. Sabline is
+whatever `import sabline` finds: one sabline.py, or a sabline/ package.
 
 Each target runs in a child process that writes the input it is about to
 try to a journal first, so an input that kills the process outright (a C
@@ -71,13 +71,13 @@ if "--work" in sys.argv[1:-1]:
 else:
     WORK = isolate("fuzz_parsers")
 
-V: Any = None            # velaris, imported by the child that fuzzes it
-VFILES: dict[Any, Any] = {}        # its files (velaris_files), for coverage and blame
+V: Any = None            # sabline, imported by the child that fuzzes it
+VFILES: dict[Any, Any] = {}        # its files (sabline_files), for coverage and blame
 PROOF_SECONDS = 0.25     # per prover query: a fuzzed promise is not worth more
 MAX_RESTARTS = 10        # process deaths per target before it is given up
 PROGRESS_SECONDS = 15.0  # how often a child reports, so a death loses little
 SLOW_SECONDS = 10.0      # an input this slow is saved and reported
-FFI_MODULE = "velaris_fuzz_ffi"
+FFI_MODULE = "sabline_fuzz_ffi"
 
 # Seeds that found a defect, run after the run's own seed whenever it is
 # given a number of iterations and no --seed (8.2.1), so every leg of CI
@@ -91,23 +91,23 @@ FIXED_SEEDS = (
 NULL_OUT = open(os.devnull, "w", encoding="utf-8", errors="replace")
 
 
-def load_velaris(instrument: bool = False) -> Any:
+def load_sabline(instrument: bool = False) -> Any:
     global V, VFILES
     if instrument:
         import atheris
-        with atheris.instrument_imports(include=["velaris"]):
-            import velaris
+        with atheris.instrument_imports(include=["sabline"]):
+            import sabline
     else:
-        import velaris
-    V, VFILES = velaris, velaris_files(velaris)
-    return velaris
+        import sabline
+    V, VFILES = sabline, sabline_files(sabline)
+    return sabline
 
 
-def velaris_global(function_name: str) -> dict[Any, Any]:
-    """The namespace the run state is read from: velaris/state.py, which
+def sabline_global(function_name: str) -> dict[Any, Any]:
+    """The namespace the run state is read from: sabline/state.py, which
     every module of the package reads as _state.NAME (8.2), or, for a
-    single-file velaris.py, that function's own globals. Writing
-    `velaris.EFFECT_BUDGET = ...` would only set an attribute of the
+    single-file sabline.py, that function's own globals. Writing
+    `sabline.EFFECT_BUDGET = ...` would only set an attribute of the
     package; writing here reaches what the runtime reads."""
     state = getattr(V, "state", None)
     if state is not None and hasattr(state, "EFFECT_BUDGET"):
@@ -132,7 +132,7 @@ def preview(data: bytes, limit: int = 240) -> str:
 
 
 def as_text(data: bytes) -> str:
-    """Bytes as the text a Velaris value would hold; lone surrogates survive."""
+    """Bytes as the text a Sabline value would hold; lone surrogates survive."""
     try:
         return data.decode("utf-8", "surrogatepass")
     except UnicodeDecodeError:
@@ -143,8 +143,8 @@ def as_bytes(text: str) -> bytes:
     return text.encode("utf-8", "surrogatepass")
 
 
-def velaris_files(module: Any) -> dict[Any, Any]:
-    """The files that are Velaris, found from where it was imported: every
+def sabline_files(module: Any) -> dict[Any, Any]:
+    """The files that are Sabline, found from where it was imported: every
     .py file beside a package's __init__.py, or else the one module file.
     Keyed by normcase(realpath); the value is a short name for reports."""
     origin = Path(module.__file__)
@@ -173,12 +173,12 @@ def child_seed(seed: int, index: int, run: int) -> int:
 
 
 # ---------------------------------------------------------------------------
-# line coverage of Velaris
+# line coverage of Sabline
 # ---------------------------------------------------------------------------
 
 class LineCoverage:
-    """The lines of Velaris reached so far, as (file name, line); `fresh`
-    counts new ones. A file counts when velaris_files() names it, so the
+    """The lines of Sabline reached so far, as (file name, line); `fresh`
+    counts new ones. A file counts when sabline_files() names it, so the
     one-file layout and the package layout are measured the same way."""
 
     def __init__(self, files: dict[Any, Any]) -> None:
@@ -333,7 +333,7 @@ def signature(exc: Any) -> str:
         return kind
     if isinstance(exc, RecursionError) and \
             sum(f.name == where.name for f in mine) > 1:
-        return f"{kind} in {where.name}"     # Velaris recursing: the line wanders
+        return f"{kind} in {where.name}"     # Sabline recursing: the line wanders
     return (f"{kind} at {os.path.basename(where.filename)}:{where.lineno} "
             f"in {where.name}")
 
@@ -576,7 +576,7 @@ class Target:
     expected: tuple[Any, ...] = ()
 
     def setup(self) -> None:
-        self.expected = (V.VelarisError, V.FailSignal)
+        self.expected = (V.SablineError, V.FailSignal)
 
     def seeds(self, rng: Any) -> list[Any]:
         return []
@@ -609,7 +609,7 @@ def imports_are_plain(tokens: Any) -> bool:
 
 
 def compile_text(source: str, entry: str, prove: bool) -> None:
-    """What `velaris file.vel` does before running: load_program (lex,
+    """What `sabline file.vel` does before running: load_program (lex,
     parse, imports; it lifts the recursion limit), then the checkers."""
     tokens = V.lex(source)
     if not imports_are_plain(tokens):
@@ -684,8 +684,8 @@ JSON_SEEDS = [
 ]
 
 
-def velaris_value(v: Any, most_depth: int = 64) -> bool:
-    """Could a Velaris program hold this (64-bit Ints, no null, not deep)?"""
+def sabline_value(v: Any, most_depth: int = 64) -> bool:
+    """Could a Sabline program hold this (64-bit Ints, no null, not deep)?"""
     stack = [(v, 0)]
     while stack:
         x, d = stack.pop()
@@ -741,7 +741,7 @@ class JsonTarget(Target):
             value = json.loads(doc)
         except Exception:
             return
-        if velaris_value(value):
+        if sabline_value(value):
             text = run("json_of", [value], 1)
             try:
                 run("json_get", [text, path], 1)
@@ -770,7 +770,7 @@ class CsvTarget(Target):
 
     def setup(self) -> None:
         super().setup()
-        # the repo's stdlib/ beside this file; else beside velaris (a module
+        # the repo's stdlib/ beside this file; else beside sabline (a module
         # file, or a package directory and its parent)
         home = Path(V.__file__).resolve().parent
         candidates = [HERE / "stdlib" / "csv.vel", home / "stdlib" / "csv.vel",
@@ -804,7 +804,7 @@ class CsvTarget(Target):
 
 # py_json: a Python value is built from the input by a small stack machine,
 # returned by a function of a module that exists only in this process, and
-# turned back into a Velaris value by py_json (and py / py_int / py_float).
+# turned back into a Sabline value by py_json (and py / py_int / py_float).
 INT_EDGES = [0, 1, -1, 2 ** 63 - 1, 2 ** 63, -2 ** 63, -2 ** 63 - 1, 2 ** 64,
              10 ** 20, 10 ** 308, 10 ** 400, 10 ** 4299, 10 ** 5000, True, False]
 FLOAT_EDGES = [0.0, -0.0, 0.5, 1e308, -1e308, 5e-324, float("inf"),
@@ -1015,15 +1015,15 @@ class PyJsonTarget(Target):
         self.thing_class, self.extras = odd_objects(mod)
         sys.modules[FFI_MODULE] = mod
         # the run's budget and grants, where the runtime reads them
-        velaris_global("spend")["EFFECT_BUDGET"] = {"io", "ffi"}   # --allow io,ffi
-        self.grant_spaces = [velaris_global("ffi_reach"), velaris_global("allow_module")]
-        self.objects = velaris_global("run_builtin")["PY_OBJECTS"]
+        sabline_global("spend")["EFFECT_BUDGET"] = {"io", "ffi"}   # --allow io,ffi
+        self.grant_spaces = [sabline_global("ffi_reach"), sabline_global("allow_module")]
+        self.objects = sabline_global("run_builtin")["PY_OBJECTS"]
         # fuzzing is only worth anything if py_json reaches the module
         self.grant(None)
         box[0] = [1, "two"]
         try:
             got = V.run_builtin("py_json", [FFI_MODULE, "produce", "[]"], 1)
-        except (V.VelarisError, V.FailSignal) as e:
+        except (V.SablineError, V.FailSignal) as e:
             raise RuntimeError("py_json cannot reach the fuzz module: "
                                + str(getattr(e, "message", getattr(e, "reason", e))))
         if got != '[1, "two"]':
@@ -1045,7 +1045,7 @@ class PyJsonTarget(Target):
         try:
             self.box[0] = build_py_value(program[1:], self.extras)
         except Exception:
-            self.box[0] = None                  # the builder's problem, not Velaris's
+            self.box[0] = None                  # the builder's problem, not Sabline's
         self.objects.clear()
         self.objects[1] = [1, "two"]
         self.objects[2] = self.thing_class()
@@ -1419,7 +1419,7 @@ def child_main(args: Any) -> int:
     name = args.child
     events = Events(args.events)
     try:
-        load_velaris(instrument=args.engine == "atheris" and not args.replay)
+        load_sabline(instrument=args.engine == "atheris" and not args.replay)
         target = make_target(name)
         target.setup()
     except Exception as e:
@@ -1450,12 +1450,12 @@ def child_main(args: Any) -> int:
         finally:
             cov.uninstall()
 
-    # every target runs where Velaris runs the same work: on a big thread
+    # every target runs where Sabline runs the same work: on a big thread
     # stack before 3.11 (_run_on_big_stack). From 8.2 that is the whole
     # command, the compiler included, and the library's check, audit and run;
     # until then only a running program's builtins were, and a deep contract
     # fuzzed on the calling thread overflowed CPython 3.10's stack on Windows
-    # in a way no entry point of Velaris would
+    # in a way no entry point of Sabline would
     big = getattr(V, "_run_on_big_stack", None) or getattr(
         getattr(V, "interpret", None), "__globals__", {}).get("_run_on_big_stack")
     result, slow = big(go) if big is not None else go()
@@ -1496,7 +1496,7 @@ def hang_budget(args: Any) -> float:
 
     Coverage is `sys.monitoring` from 3.12 and `sys.settrace` before it, and
     the tracer costs about twenty-five times as much on a target that runs
-    Velaris code: one 16 KiB input through `stdlib/csv.vel` takes about 3
+    Sabline code: one 16 KiB input through `stdlib/csv.vel` takes about 3
     seconds untraced on 3.10 and about 80 traced. A budget meant for
     untraced work therefore calls a merely slow input a hang, so before 3.12
     it is multiplied (8.3). A child that is really stuck still shows no new
@@ -1650,7 +1650,7 @@ def replay(name: Any, args: Any, crashes: Any, total: Any) -> None:
 
 def minimize(args: Any) -> int:
     """Shrink a saved input while it still gives the same finding."""
-    load_velaris()
+    load_sabline()
     target = make_target(args.target)
     target.setup()
     data = Path(args.minimize).read_bytes()
@@ -1689,7 +1689,7 @@ def minimize(args: Any) -> int:
 
 def main(argv: Any = None) -> int:
     ap = argparse.ArgumentParser(
-        description="Coverage-guided fuzzing of Velaris's parsers and translators.")
+        description="Coverage-guided fuzzing of Sabline's parsers and translators.")
     ap.add_argument("iterations", nargs="?", type=int,
                     help="iterations per target (default 200)")
     ap.add_argument("--minutes", type=float, help="a time budget split across the targets")

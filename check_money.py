@@ -29,10 +29,10 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 # its own directory, so two runs at once do not collide
@@ -63,7 +63,7 @@ def run(source: str, *args: str) -> tuple[Any, ...]:
     """Run a program; (exit code, its output)."""
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
-        [sys.executable, str(VELARIS), str(SCRATCH), *args],
+        [sys.executable, str(SABLINE), str(SCRATCH), *args],
         capture_output=True, text=True, timeout=600, cwd=str(HERE))
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
@@ -71,7 +71,7 @@ def run(source: str, *args: str) -> tuple[Any, ...]:
 def check(source: str, *args: str) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
-        [sys.executable, str(VELARIS), "check", str(SCRATCH), *args],
+        [sys.executable, str(SABLINE), "check", str(SCRATCH), *args],
         capture_output=True, text=True, timeout=600, cwd=str(HERE))
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
@@ -248,7 +248,7 @@ ok("split zero ways is refused: with the prover before running (E701), "
 code, out = check(MONEY + 'fn main() uses io {\n'
                   '    print(length(money.split(money(100, "INR"), 0)))\n}\n')
 ok("...and with the prover installed that is a compile error",
-   (code != 0 and "E701" in out) or not velaris.HAVE_Z3, out.strip()[:160])
+   (code != 0 and "E701" in out) or not sabline.HAVE_Z3, out.strip()[:160])
 
 # ---- 5. rounding, against Python's decimal module ---------------------------
 MODES = {"half_up": ROUND_HALF_UP, "half_even": ROUND_HALF_EVEN,
@@ -262,16 +262,16 @@ def oracle(p: int, q: int, mode: str) -> int:
 
 halves = [(5, 2), (-5, 2), (7, 2), (-7, 2), (1, 2), (-1, 2), (3, 2),
           (-3, 2), (250, 100), (-250, 100), (350, 100), (-350, 100)]
-bad = [f"{p}/{q} {m}: {velaris.round_ratio(p, q, m)} not {oracle(p, q, m)}"
+bad = [f"{p}/{q} {m}: {sabline.round_ratio(p, q, m)} not {oracle(p, q, m)}"
        for p, q in halves for m in MODES
-       if velaris.round_ratio(p, q, m) != oracle(p, q, m)]
+       if sabline.round_ratio(p, q, m) != oracle(p, q, m)]
 ok("every rounding mode on a half case, both signs, matches decimal",
    not bad, "; ".join(bad[:4]))
 rng = random.Random(43)
 pairs = [(rng.randint(-10 ** 12, 10 ** 12), rng.randint(1, 10 ** 6))
          for _ in range(600)]
 bad = [f"{p}/{q} {m}" for p, q in pairs for m in MODES
-       if velaris.round_ratio(p, q, m) != oracle(p, q, m)]
+       if sabline.round_ratio(p, q, m) != oracle(p, q, m)]
 ok("600 random ratios in three modes match decimal", not bad,
    "; ".join(bad[:4]))
 prints("half_up takes a half away from zero, in the language",
@@ -358,14 +358,14 @@ prints("a currency with no minor unit refuses a point",
        "'12.5' has digits after the point, and JPY has no minor unit")
 
 round_trip = []
-for cur, digits in sorted(velaris.CURRENCIES.items()):
+for cur, digits in sorted(sabline.CURRENCIES.items()):
     for units in (0, 1, -1, 5, -5, 1250, -999999, 10 ** 12):
-        m = velaris.MoneyValue(units, cur)
-        back = velaris.parse_money_text(velaris.money_text(m), cur)
+        m = sabline.MoneyValue(units, cur)
+        back = sabline.parse_money_text(sabline.money_text(m), cur)
         if back != m:
-            round_trip.append(f"{cur} {units} -> {velaris.money_text(m)} "
+            round_trip.append(f"{cur} {units} -> {sabline.money_text(m)} "
                               f"-> {back}")
-ok(f"text and parse round-trip for all {len(velaris.CURRENCIES)} "
+ok(f"text and parse round-trip for all {len(sabline.CURRENCIES)} "
    f"currencies, 8 amounts each", not round_trip, "; ".join(round_trip[:3]))
 
 # ---- 7. the property test: the parts always add up to the whole -------------
@@ -458,9 +458,9 @@ fn main() uses io {
 }
 '''
 SCRATCH.write_text(CONTRACTS, encoding="utf-8")
-report = velaris.inspect_source(str(SCRATCH))
+report = sabline.inspect_source(str(SCRATCH))
 status = {f["name"]: f["status"] for f in report["functions"]}
-if not velaris.HAVE_Z3:
+if not sabline.HAVE_Z3:
     print("  note  z3-solver is absent: the promises below are checked "
           "while running, and are not asserted here")
     for _ in range(7):
@@ -481,12 +481,12 @@ else:
        status.get("net_of") == "proven", str(status))
     ok("money.split itself proves, where it is written",
        all(f["status"] == "proven"
-           for f in velaris.inspect_source(
+           for f in sabline.inspect_source(
                str(HERE / "stdlib" / "money.vel"))["functions"]
            if f["name"] == "split"))
 
 # ---- 9. the prover's formulas are the interpreter's -------------------------
-if not velaris.HAVE_Z3:
+if not sabline.HAVE_Z3:
     ok("(the prover's rounding is not checked without z3)", True)
 else:
     import z3
@@ -496,7 +496,7 @@ else:
         p = rng.randint(-10 ** 9, 10 ** 9)
         d = rng.randint(1, 10 ** 5)
         for mode in MODES:
-            want = velaris.round_ratio(p, d, mode)
+            want = sabline.round_ratio(p, d, mode)
             q, r = z3.IntVal(p) / z3.IntVal(d), z3.IntVal(p) % z3.IntVal(d)
             pz = z3.IntVal(p)
             if mode == "down":
@@ -566,25 +566,25 @@ prints("...and a library imported with a name still reaches the builtin "
                "    return n + 1\n}\n")
 
 # ---- 12. Money changes nothing about effects or the audit -------------------
-audit = velaris.audit((HERE / "examples" / "settlement.vel").read_text(
+audit = sabline.audit((HERE / "examples" / "settlement.vel").read_text(
     encoding="utf-8"), path=str(HERE / "examples" / "settlement.vel"))
 doc = audit.as_dict()
 ok("a program full of amounts still declares only io",
    sorted(doc["effects"]) == ["io"], str(doc["effects"]))
 ok("its safe_command grants io alone",
    doc["safe_command"].endswith("--allow io"), doc["safe_command"])
-ok("velaris.audit/1 is unchanged in shape",
-   doc["schema"] == "velaris.audit/1" and "counts" in doc
+ok("sabline.audit/1 is unchanged in shape",
+   doc["schema"] == "sabline.audit/1" and "counts" in doc
    and "prover" in doc, sorted(doc))
 # Money added no effect of its own. The list is the seven of 3.0 plus
 # declassify, which 6.0 added for Secret, and tool, which 8.5 added for the
 # runner - nothing here is Money's.
-ok("Money added no effect", velaris.ALL_EFFECTS == (
+ok("Money added no effect", sabline.ALL_EFFECTS == (
     "io", "env", "fs", "net", "clock", "rand", "ffi", "declassify", "tool"),
-   str(velaris.ALL_EFFECTS))
+   str(sabline.ALL_EFFECTS))
 ok("no Money builtin has an effect",
-   all(not velaris.BUILTINS[n]["effects"] for n in velaris.MONEY_BUILTINS),
-   str(velaris.MONEY_BUILTINS))
+   all(not sabline.BUILTINS[n]["effects"] for n in sabline.MONEY_BUILTINS),
+   str(sabline.MONEY_BUILTINS))
 
 SCRATCH.unlink(missing_ok=True)
 print("-" * 62)

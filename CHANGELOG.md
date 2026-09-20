@@ -1,4 +1,110 @@
-# Velaris changelog
+# Sabline changelog
+
+This project was called **Velaris** until 8.6.0; every entry
+below 8.6 uses the name it had at the time, which is what the
+record is for. [docs/renamed.md](docs/renamed.md) says what
+moved where.
+
+## 8.6 - The name
+
+The project is renamed. Velaris is **Sabline** from this release. Nothing
+else changed: not the language, not the budget grammar, not an error code,
+not a guarantee, not a line of the threat model. 8.6.0 renames, and does
+nothing else.
+
+**Why.** The name Velaris belongs to an unrelated company in the same
+market - velaris.io, which sells an agent product with an MCP server. Two
+things with one name in one market is a problem for whoever meets the
+second one, and they were there first. The name was given up rather than
+contested. There is no dispute, and nothing was asked of anyone.
+
+**What a user of 8.5 has to change: nothing, until 9.0.** A rename that
+stopped a command, an import, an environment variable or a committed file
+from working would be a break, and a break ships only in a major version
+(STABILITY.md rule 1). So every name that worked in 8.5 works in 8.6, each
+saying once on stderr that it has changed, and each is removed no sooner
+than 9.0 (rule 2). The nine are listed under *Deprecations in force* in
+STABILITY.md, and [docs/renamed.md](docs/renamed.md) is the whole table:
+`velaris` the command, `import velaris`, `velaris.VelarisError`,
+`velaris_mcp`, `velaris_mcp_install`, `velaris_magic`, `VELARIS_*`,
+`velaris.capabilities` / `velaris.toml` / `velaris.lock`, and every
+`velaris.*` document schema. Each is an alias and not a copy - `velaris`
+*is* the `sabline` module object, `VelarisError` *is* `SablineError` - so
+there is no second implementation that can drift.
+
+compatibility: the `velaris` command is kept as a second entry point on the same `main()`, on PyPI and on npm, so every command line, script, CI step and Dockerfile that runs `velaris` runs, with one line on stderr saying the name has changed. No flag, command name or exit code changed; the command line STABILITY.md covers is `sabline`'s, and it is `velaris`'s.
+compatibility: `import velaris` gives back the `sabline` module itself, so the six library names STABILITY.md covers - `velaris.check`, `velaris.audit`, `velaris.run`, `velaris.Pool`, `velaris.card`, `velaris.attest` - are the same functions, returning the same `CheckResult`, `AuditResult`, `RunResult` and `Problem` objects. `velaris.VelarisError` is `SablineError`, the same class rather than a subclass, so `except` and `isinstance` answer as they did. A `DeprecationWarning` is raised as well as the line on stderr, so `-W error` finds it.
+compatibility: Sabline writes `sabline.audit/1`, `sabline.receipt/1`, `sabline.capabilities/1` and every other `sabline.*` schema where 8.5 wrote `velaris.*`, and reads both spellings of each as the same format at the same version. That is an addition to what a reader accepts, which the `velaris.audit/1` clause allows within version 1; nothing a consumer could rely on disappeared. A tool outside Sabline that matched the schema string exactly must accept both - the Kyverno policy in `policies/` shows how, with `AnyIn`.
+compatibility: a committed `velaris.capabilities` still holds the capability ratchet, read when there is no `sabline.capabilities` beside it, so a repository that upgrades needs no commit to keep its baseline working; the same rule covers `velaris.toml` and `velaris.lock`. Sabline writes only the `sabline.*` name.
+compatibility: a `VELARIS_*` environment variable is read where the `SABLINE_*` name of that variable is unset. Both set to different text is refused rather than guessed, because a guess at `SABLINE_TOKEN` decides who may reach a door; both set to the same text is one name written twice, and is fine.
+compatibility: `sabline attest` writes the predicate type `https://sabline.dev/capability/v1`, and a receipt names `https://sabline.dev/receipt/v1`, where 8.3 to 8.5 named both at velaris-lang.dev and 4.2 to 8.2.1 at the project's GitHub Pages address. All three spellings are read as the same type by `sabline verify`, `sabline receipts diff`, `sabline replay` and the OPA policy, so every attestation and receipt ever signed still verifies; nothing is removed from that list, a name only ever joins it. A verifier outside Sabline that pins one type name - cosign's `--type`, the Kyverno policy - takes the name the Statement carries.
+compatibility: the documentation site is sabline.dev. velaris-lang.dev and the GitHub Pages address redirect to it, path for path, so the `reference:` line every error and refusal printed by 8.0 through 8.5 still leads to the card. Error codes, messages and the errors page's anchors are unchanged.
+compatibility: no error code was added, removed or changed in meaning; no flag was removed; no default changed. The release gate reads the compiler's source at v8.5.0 under the name it had then (`release_checks.py`, `RENAMED_IN_8_6`), so the package moving from `velaris/` to `sabline/` is not read as every code, flag and default being added at once - which is what it looked like before that was taught to it.
+compatibility: the VS Code extension is republished under a new id, `gowrishankar-infra.sabline`, because a Marketplace id cannot be renamed. The old id gets a final version whose README says where it went. This one is a real break for anyone who had the extension installed: they must install the new one. It could not be avoided, and it is the only thing in this release that a user must do something about.
+api: `velaris.VelarisError` is added to the library's names, as an alias of `SablineError`; `CAPABILITY_PREDICATE_TYPE` and `RECEIPT_PREDICATE_TYPE` name sabline.dev, and each of `CAPABILITY_PREDICATE_TYPES` and `RECEIPT_PREDICATE_TYPES` gains a third spelling. No name was removed, no signature changed, and no return type changed.
+differential: `examples/avg_bad.vel`, `examples/builtin_unhandled.vel`, `examples/callsite_bad.vel`, `examples/caught.vel`, `examples/conj_bad.vel`, `examples/contract_broken.vel`, `examples/contract_impure.vel`, `examples/discount_bad.vel`, `examples/div_bad.vel`, `examples/fail_proof_bad.vel`, `examples/failing_bad.vel`, `examples/ffi.vel`, `examples/floats_bad.vel`, `examples/fp_proof_bad.vel`, `examples/funcs_bad.vel`, `examples/generics_bad.vel`, `examples/grid_bad.vel`, `examples/import_bad.vel`, `examples/lambda_contract_bad.vel`, `examples/list_mixed.vel`, `examples/list_oob.vel`, `examples/list_proof_bad.vel`, `examples/loop_bad.vel`, `examples/loop_proof_bad.vel`, `examples/many_errors.vel`, `examples/map_bad.vel`, `examples/maps_bad.vel`, `examples/ns_bad.vel`, `examples/offbyone_bad.vel`, `examples/proof_catch.vel`, `examples/qlist_bad.vel`, `examples/rec_proof_bad.vel`, `examples/records_bad.vel`, `examples/secret_bad.vel`, `examples/sneaky.vel`, `examples/std_bad.vel`, `examples/types_bad.vel` - each prints the `reference:` line every error and refusal has carried since 8.0, and it now names sabline.dev where it named velaris-lang.dev. Nothing else in any of their outputs differs: same exit code, same error codes, same message text, same fixes. The old address redirects, so the line printed by 8.0 to 8.5 still reaches the card.
+differential: `examples/edges.vel` - its own output shouts the project's name and encodes it: `first, shouted: VELARIS` is now SABLINE, and `base64: dmVsYXJpcw==` is the base64 of `sabline`. The program is a text-and-encoder exercise; the name is its input.
+differential: `examples/text_tools.vel` - the same: the program's heading reads `Sabline edge and property tests`, and a shouted name in its output is SABLINE.
+differential: `examples/tools.vel` - its usage line says `try: sabline examples/tools.vel alpha beta` where it said `velaris`.
+differential: `examples/trace_demo.vel` - the prover's timeout note names SABLINE_PROOF_TIMEOUT where it named VELARIS_PROOF_TIMEOUT; both are read (STABILITY.md), and the note gives the name to write now.
+differential: `examples/native_build.vel` - it reports `[sabline]` where it reported `[velaris]`.
+differential: `examples/sandbox.vel` - it tries to read the compiler's own launcher by name and is refused: `cannot read file 'sabline.py'` where the file was velaris.py. The refusal is the point of the program and is unchanged.
+
+### What is renamed
+
+- **The packages.** PyPI and npm `velaris-lang` become `sabline-lang`; the
+  MCP registry server `io.github.gowrishankar-infra/velaris` becomes
+  `.../sabline`; the VS Code extension `gowrishankar-infra.velaris` becomes
+  `gowrishankar-infra.sabline`.
+- **The repositories**, renamed in place with `gh repo rename`, so GitHub
+  redirects every old URL - the web page, `git clone`, and a workflow that
+  says `uses: gowrishankar-infra/velaris-lang@<commit>`:
+  `velaris-lang`, `velaris-spec`, `velaris-kit` and `velaris-canary` are
+  `sabline-lang`, `sabline-spec`, `sabline-kit` and `sabline-canary`.
+- **The domain.** sabline.dev. `security@sabline.dev` is the security
+  contact; `security@velaris-lang.dev` still reaches the maintainer.
+- **The source**, by `scripts/rename.py`, which is committed: 7,393
+  occurrences in 293 files, as one case-preserving substitution with two
+  lists beside it - the strings in which the old name is the fact being
+  recorded, and the files that record rather than describe. The script run
+  with no arguments is the drift test, and `check_rename.py` runs it on
+  every leg of CI beside a case for each of the nine aliases.
+
+### What is not renamed
+
+- **`.vel`**, the file extension. It is name-neutral, and changing it would
+  break every program that exists.
+- **The eight published advisories**, their text and their GHSA ids. An
+  advisory records what was wrong with a release that was called Velaris,
+  and its affected package really is `velaris-lang` on PyPI.
+- **This changelog before this entry**, and STABILITY.md's record of earlier
+  releases. They say what happened.
+- **The documentation of 8.3, 8.4 and 8.5**, at `/8.3/`, `/8.4/` and
+  `/8.5/`, left as those releases published it, at the address it was
+  published at. Every link in it redirects.
+- **Anything already published.** Nothing on PyPI, npm, the MCP registry,
+  the Marketplace or the GitHub releases was deleted, yanked or moved. An
+  install pinned to `velaris-lang==8.5.0` resolves to the same file, with
+  the same digest and the same signature, for the reason 3.4 was not
+  retagged and 6.0.0 was yanked rather than deleted. The old names get one
+  last release that depends on the new one and prints the notice, and the
+  npm one is marked deprecated.
+- **Git history.** Every file was moved with `git mv`.
+
+### The new things this release does have
+
+- **`docs/renamed.md`**, at [sabline.dev/renamed.html](https://sabline.dev/renamed.html):
+  every published address, where it now points, and what was deliberately
+  not renamed.
+- **`sabline/naming.py`**, where every old name that is still accepted is
+  decided - the environment, the document schemas, the file names, and the
+  one-line notice each alias prints. One place to read, and one place to
+  delete in 9.0.
+- **`check_rename.py`**, which runs every promise above: the command, the
+  import, the submodule import, the warning, `VelarisError`, both spellings
+  of six schemas, a `velaris.capabilities` of `velaris.capabilities/1`
+  checked by the ratchet, and a Statement of each earlier predicate type
+  verified - and refuses one of a type Sabline does not define.
 
 ## 8.5 - Taste
 

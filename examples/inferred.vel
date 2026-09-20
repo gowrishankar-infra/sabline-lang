@@ -2,7 +2,7 @@
 // ones itself - that each counter never goes below where it started -
 // and that is enough to prove these promises before the program runs.
 //
-// Check it with:  velaris explain examples/inferred.vel
+// Check it with:  sabline explain examples/inferred.vel
 
 fn count_up(n: Int) -> Int
     requires n >= 0

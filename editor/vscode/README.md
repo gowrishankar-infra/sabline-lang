@@ -1,6 +1,6 @@
-# Velaris for VS Code
+# Sabline for VS Code
 
-Language support for [Velaris](https://velaris-lang.dev/) —
+Language support for [Sabline](https://sabline.dev/) —
 the language where a function's signature declares its types, its
 effects, whether it can fail, and promises that a theorem prover checks
 before the program runs.
@@ -24,21 +24,21 @@ before the program runs.
 
 ## Requirements
 
-Velaris itself:
+Sabline itself:
 
 ```
-pip install velaris-lang
-velaris doctor
+pip install sabline-lang
+sabline doctor
 ```
 
-If `velaris` is not on your PATH, set `velaris.command` in settings.
+If `sabline` is not on your PATH, set `sabline.command` in settings.
 
 ## Settings
 
 | Setting | Default | What it does |
 |---|---|---|
-| `velaris.command` | `velaris` | How to run Velaris |
-| `velaris.checkOnSave` | `true` | Check and prove on save |
+| `sabline.command` | `sabline` | How to run Sabline |
+| `sabline.checkOnSave` | `true` | Check and prove on save |
 
 MIT licensed. Issues and ideas:
-[github.com/gowrishankar-infra/velaris-lang](https://github.com/gowrishankar-infra/velaris-lang/issues)
+[github.com/gowrishankar-infra/sabline-lang](https://github.com/gowrishankar-infra/sabline-lang/issues)

@@ -2,14 +2,14 @@
 """Every error code, and the exact words it says.
 
 check_refusals.py holds that a wrong program is refused for the right
-reason. This holds the words: for every code in velaris.ERROR_TABLE at
+reason. This holds the words: for every code in sabline.ERROR_TABLE at
 least one case under tests/error_messages/ produces that code, and what
 it says is compared, character for character, with the message recorded
 in tests/error_messages/golden.json. A message cannot change without
 someone deciding that it should.
 
 What is compared is the problem's code, its line (where the case has
-one) and Problem.message: the one-line message a VelarisError carries,
+one) and Problem.message: the one-line message a SablineError carries,
 without the "how to fix" list or the `reference:` line that human()
 adds around it. Only what is not the message's own is normalised first:
 the case's scratch directory and program path become <dir> and <file>
@@ -24,12 +24,12 @@ repository's own capability ratchet, which compiles every .vel file, at
 its check ceiling: the two cases that push a check past its ceilings.
 How a case is reached is one of:
 
-    check    velaris.check(source, path=<file>, timeout=None,
+    check    sabline.check(source, path=<file>, timeout=None,
              max_memory_mb=None) - in this process, as before 8.1 - or
              with the ceiling the "how" names
-    run      velaris.run(source, path=<file>, allow=[...]) with the
+    run      sabline.run(source, path=<file>, allow=[...]) with the
              budget, args, stdin and ceilings the "how" names
-    cli      python velaris.py <argv>, reading the --json problem the
+    cli      python sabline.py <argv>, reading the --json problem the
              command prints
     library  a named call with particular arguments (LIBRARY below)
 
@@ -69,11 +69,11 @@ from pathlib import Path
 from typing import Any, Iterator, cast
 
 HERE = Path(__file__).resolve().parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 CORPUS = HERE / "tests" / "error_messages"
 GOLDEN = CORPUS / "golden.json"
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_error_messages")
@@ -88,21 +88,21 @@ except ImportError:
 # operating system. Kept as small as honesty allows; the suite prints it.
 UNREACHABLE: dict[str, str] = {
     # 8.3: two codes a program cannot reach by itself in this harness
-    "E615": "given only under velaris eval, to a run asked to stop from "
+    "E615": "given only under sabline eval, to a run asked to stop from "
             "outside; check_eval.py stops one mid-loop and holds the receipt",
-    "E616": "given only under velaris replay --responses, to a call its "
+    "E616": "given only under sabline replay --responses, to a call its "
             "recording does not hold; check_receipts.py tampers with one",
     # 8.5: four codes that need a host on the other side of the tools door
-    "E321": "given only to a tool call under velaris run --tools; "
+    "E321": "given only to a tool call under sabline run --tools; "
             "check_runner.py hosts one and holds each refusal",
-    "E322": "given only to a tool call under velaris run --tools, past a "
+    "E322": "given only to a tool call under sabline run --tools, past a "
             "ceiling; check_runner.py passes each of the five",
-    "E323": "given only to a tool call under velaris run --tools, whose "
+    "E323": "given only to a tool call under sabline run --tools, whose "
             "arguments the manifest does not take; check_runner.py",
     "E324": "given only when the host on the tools door breaks its "
             "protocol; check_runner.py is that host, eleven ways",
     # 8.4: a code no program can reach at all
-    "E319": "given only under the fault-injection hook (VELARIS_FAULT_INJECT), "
+    "E319": "given only under the fault-injection hook (SABLINE_FAULT_INJECT), "
             "when the operating system's confinement refuses what the "
             "runtime itself attempted, and its message names this machine's "
             "layers; check_confine.py holds it on every leg",
@@ -143,7 +143,7 @@ def normalise(text: Any, case_dir: Path, program: Path) -> Any:
                       flags=flags)
     text = _PATH_TAIL.sub(
         lambda m: m.group(0).replace("\\\\", "/").replace("\\", "/"), text)
-    return text.replace(velaris.VERSION, "<version>")
+    return text.replace(sabline.VERSION, "<version>")
 
 
 def ascii_only(text: Any) -> str:
@@ -255,7 +255,7 @@ def via_check(how: Any, case_dir: Any, program: Any) -> Any:
     if how.get("import_root"):
         kw["import_root"] = fill(how["import_root"], case_dir, program)
     with inside(case_dir):
-        return first(velaris.check(source, **kw).problems)
+        return first(sabline.check(source, **kw).problems)
 
 
 def via_run(how: Any, case_dir: Any, program: Any) -> Any:
@@ -270,7 +270,7 @@ def via_run(how: Any, case_dir: Any, program: Any) -> Any:
     if how.get("import_root"):
         kw["import_root"] = fill(how["import_root"], case_dir, program)
     with inside(case_dir):
-        return first(velaris.run(source, **kw).problems)
+        return first(sabline.run(source, **kw).problems)
 
 
 def _json_problems(text: str) -> list[Any]:
@@ -297,7 +297,7 @@ def via_cli(how: Any, case_dir: Any, program: Any) -> tuple[Any, ...]:
             env.pop(k, None)
         else:
             env[k] = fill(v, case_dir, program)
-    done = subprocess.run([sys.executable, str(VELARIS)] + argv,
+    done = subprocess.run([sys.executable, str(SABLINE)] + argv,
                           capture_output=True, text=True, cwd=case_dir,
                           env=env, timeout=how.get("wait", 120))
     problems = _json_problems(done.stdout) or _json_problems(done.stderr)
@@ -323,8 +323,8 @@ def _doctor_self_test(how: Any, case_dir: Any, program: Any) -> tuple[Any, ...]:
     made = []
     # the names as doctor() looks them up - its own module's globals,
     # wherever in the compiler that module is
-    names = velaris.doctor.__globals__
-    real_error, real_types = names["VelarisError"], names["check_types"]
+    names = sabline.doctor.__globals__
+    real_error, real_types = names["SablineError"], names["check_types"]
 
     class Recorded(real_error):  # type: ignore[valid-type,misc]  # the class doctor() finds, read at run time
         def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -336,12 +336,12 @@ def _doctor_self_test(how: Any, case_dir: Any, program: Any) -> tuple[Any, ...]:
         errors.append(real_error("E501", "a problem made up by "
                                  "check_error_messages", 1))
 
-    names["VelarisError"], names["check_types"] = Recorded, failing_types
+    names["SablineError"], names["check_types"] = Recorded, failing_types
     try:
         with inside(case_dir):
-            status = velaris.doctor()
+            status = sabline.doctor()
     finally:
-        names["VelarisError"], names["check_types"] = real_error, real_types
+        names["SablineError"], names["check_types"] = real_error, real_types
     if status == 0:
         raise CaseError("doctor() passed with its self-test broken")
     ours = [e for e in made if e.code == "E999"]
@@ -374,7 +374,7 @@ def skip_reason(how: Any) -> str | None:
     needs = how.get("needs")
     if needs == "prover" and not HAVE_Z3:
         return "needs the prover"
-    if needs == "memory cap" and not velaris.memory_cap_is_enforced():
+    if needs == "memory cap" and not sabline.memory_cap_is_enforced():
         return (f"the memory cap is not enforced on {sys.platform}; "
                 f"the timeout is what stops a runaway there")
     return None
@@ -402,7 +402,7 @@ def coverage_problems(golden: dict[Any, Any]) -> list[Any]:
     no reason, a reason for a code that has a case or is not a code, a
     case for a code the table does not have, a program no case uses."""
     wrong = []
-    table = velaris.ERROR_TABLE
+    table = sabline.ERROR_TABLE
     have = {entry.get("code") for entry in golden.values()}
     for code in sorted(table):
         if code not in have and code not in UNREACHABLE:
@@ -437,7 +437,7 @@ def main(argv: Any) -> int:
               if not only or any(k.startswith(o) for o in only)}
     began = time.monotonic()
     passed = failed = skipped = changed = 0
-    print(f"{len(chosen)} error-message cases, {len(velaris.ERROR_TABLE)} "
+    print(f"{len(chosen)} error-message cases, {len(sabline.ERROR_TABLE)} "
           f"codes in ERROR_TABLE"
           + ("" if HAVE_Z3 else " (no prover: E7xx cases skip)"))
     print("-" * 62)
@@ -498,8 +498,8 @@ def main(argv: Any) -> int:
             print(f"  WRONG coverage: {problem}")
             failed += 1
         cases_for = {e.get("code") for e in golden.values()}
-        print(f"{len(cases_for & set(velaris.ERROR_TABLE))} of "
-              f"{len(velaris.ERROR_TABLE)} codes have a case, "
+        print(f"{len(cases_for & set(sabline.ERROR_TABLE))} of "
+              f"{len(sabline.ERROR_TABLE)} codes have a case, "
               f"{len(UNREACHABLE)} listed unreachable")
     note = f", {skipped} skipped" if skipped else ""
     done = f", {changed} message(s) rewritten" if update else ""

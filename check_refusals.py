@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 sys.path.insert(0, str(HERE))
 from suite_dirs import isolate  # noqa: E402
 
@@ -247,7 +247,7 @@ fn main() uses io, env {
 '''),
 ]
 
-# refused only by `velaris check --strict`; the same programs run normally
+# refused only by `sabline check --strict`; the same programs run normally
 STRICT_CASES = [
     ("a loop whose end cannot be shown", "E612", True, '''
 fn by_twos(n: Int) -> Int {
@@ -283,7 +283,7 @@ def main() -> int:
         path = work / "_refusal_check.vel"
         path.write_text(source.lstrip(), encoding="utf-8")
         run = subprocess.run(
-            [sys.executable, str(VELARIS), str(path)],
+            [sys.executable, str(SABLINE), str(path)],
             capture_output=True, text=True, timeout=300, cwd=HERE)
         output = (run.stderr or "") + (run.stdout or "")
         if run.returncode == 0:
@@ -309,10 +309,10 @@ def main() -> int:
         path = work / "_refusal_check.vel"
         path.write_text(source.lstrip(), encoding="utf-8")
         plain = subprocess.run(
-            [sys.executable, str(VELARIS), str(path)],
+            [sys.executable, str(SABLINE), str(path)],
             capture_output=True, text=True, timeout=300, cwd=HERE)
         run = subprocess.run(
-            [sys.executable, str(VELARIS), "check", str(path), "--strict"],
+            [sys.executable, str(SABLINE), "check", str(path), "--strict"],
             capture_output=True, text=True, timeout=300, cwd=HERE)
         output = (run.stderr or "") + (run.stdout or "")
         if plain.returncode != 0:

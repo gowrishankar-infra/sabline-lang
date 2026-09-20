@@ -9,7 +9,7 @@ date would be a guess dressed as a promise.
 - Answering issues and fixing what people actually hit. A reported bug
   from a real user outranks everything below it.
 - Editor depth: completion, and rename.
-- A Docker image, and cross-compilation for `velaris build` (today it
+- A Docker image, and cross-compilation for `sabline build` (today it
   builds only for the machine it runs on).
 
 ## Next
@@ -26,7 +26,7 @@ date would be a guess dressed as a promise.
 - Native `push` (building lists in machine code), which needs an
   ownership design the language has deliberately avoided so far.
 - Richer text proofs.
-- Self-hosting: writing the Velaris compiler in Velaris.
+- Self-hosting: writing the Sabline compiler in Sabline.
 
 ## Not planned
 
@@ -34,13 +34,13 @@ date would be a guess dressed as a promise.
   effect system cannot currently describe data races, and threads
   without that would break the language's central claim.
 - **A package registry.** Libraries are vendored with a recorded
-  hash (`velaris add`), which is auditable and does not require
+  hash (`sabline add`), which is auditable and does not require
   anyone to run infrastructure forever.
 - **Exceptions**, closures, inheritance, macros, operator overloading.
   Each was considered and left out; SPEC.md §16 lists them.
 
 ## How this changes
 
-Open an issue. A concrete use case that Velaris handles badly is the
+Open an issue. A concrete use case that Sabline handles badly is the
 most persuasive thing you can send, and it is how most of the last
 thirty releases were chosen.

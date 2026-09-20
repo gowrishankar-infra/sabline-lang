@@ -1,7 +1,7 @@
-// Velaris from Node: check what a program does, audit what it may
+// Sabline from Node: check what a program does, audit what it may
 // touch, and run it under an effect budget.
 //
-//   import { check, audit, run } from "velaris-lang";
+//   import { check, audit, run } from "sabline-lang";
 //
 //   const report = await audit(source);
 //   console.log(report.effects);              // ['fs', 'net']
@@ -15,7 +15,7 @@
 // cannot be caught by the program.
 
 import { spawn } from "node:child_process";
-import { behindWarning, findVelaris, packageVersion } from "./python.js";
+import { behindWarning, findSabline, packageVersion } from "./python.js";
 
 let cachedPython = null;
 
@@ -24,15 +24,15 @@ let cachedPython = null;
 // the caller was printing.
 let saidBehind = false;
 
-// Not the first Python that can import velaris - the one with the
-// newest velaris. Taking the first let an old install earlier in PATH
+// Not the first Python that can import sabline - the one with the
+// newest sabline. Taking the first let an old install earlier in PATH
 // shadow a newer one, which then answered every call in this module
 // with the behaviour of a version the caller did not ask for.
 function findPython() {
   if (cachedPython) return cachedPython;
-  const found = findVelaris();
+  const found = findSabline();
   if (!found) {
-    throw new Error("velaris is not installed: pip install velaris-lang");
+    throw new Error("sabline is not installed: pip install sabline-lang");
   }
   if (!saidBehind) {
     const behind = behindWarning(found, packageVersion());
@@ -57,7 +57,7 @@ function callPython(script, payload) {
       try {
         resolve(JSON.parse(out));
       } catch {
-        reject(new Error(err.trim() || "velaris gave no answer"));
+        reject(new Error(err.trim() || "sabline gave no answer"));
       }
     });
     child.stdin.end(JSON.stringify(payload));
@@ -66,18 +66,18 @@ function callPython(script, payload) {
 
 const BRIDGE = `
 import json, sys
-import velaris
+import sabline
 ask = json.load(sys.stdin)
 what = ask["what"]
 source = ask["source"]
 if what == "check":
-    print(json.dumps(velaris.check(source).as_dict()))
+    print(json.dumps(sabline.check(source).as_dict()))
 elif what == "audit":
-    print(json.dumps(velaris.audit(source).as_dict()))
+    print(json.dumps(sabline.audit(source).as_dict()))
 elif what == "card":
-    print(json.dumps({"card": velaris.card()}))
+    print(json.dumps({"card": sabline.card()}))
 else:
-    out = velaris.run(source, allow=set(ask.get("allow") or ["io"]),
+    out = sabline.run(source, allow=set(ask.get("allow") or ["io"]),
                       stdin=ask.get("stdin", ""),
                       args=ask.get("args") or [])
     print(json.dumps(out.as_dict()))

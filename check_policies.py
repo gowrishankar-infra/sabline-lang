@@ -2,7 +2,7 @@
 """policies/: the OPA policy and its Kyverno twin ask what they say.
 
 With `opa` on PATH (or the binary OPA names): `opa check` and `opa test` on
-policies/opa, then `opa eval` of the policy against Statements `velaris
+policies/opa, then `opa eval` of the policy against Statements `sabline
 attest` writes now - one program inside the platform's lists, and ones
 outside them. Without it those are skipped, with a notice saying so. The
 Kyverno policy is read (as YAML with PyYAML when it is installed, by its
@@ -21,7 +21,7 @@ from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_policies")
@@ -82,12 +82,12 @@ def main() -> int:
     print("policies/: what a policy asks of an attestation (8.1)")
     print("-" * 62)
     rego = (OPA_DIR / "capability.rego").read_text(encoding="utf-8")
-    ok("the OPA policy names the capability/v1 predicate type velaris "
-       "writes", f'predicate_type := "{velaris.CAPABILITY_PREDICATE_TYPE}"'
+    ok("the OPA policy names the capability/v1 predicate type sabline "
+       "writes", f'predicate_type := "{sabline.CAPABILITY_PREDICATE_TYPE}"'
        in rego)
-    ok("...and admits every spelling of that type velaris reads, and no "
+    ok("...and admits every spelling of that type sabline reads, and no "
        "other (8.3)",
-       all(f'"{t}"' in rego for t in velaris.CAPABILITY_PREDICATE_TYPES)
+       all(f'"{t}"' in rego for t in sabline.CAPABILITY_PREDICATE_TYPES)
        and "velaris.dev/capability" not in rego.replace(
            "velaris.dev/capability/v1 among them", ""))
 
@@ -113,12 +113,12 @@ def main() -> int:
             program = WORK / f"{label}.vel"
             program.write_text(source, encoding="utf-8")
             statement = WORK / f"{label}.intoto.json"
-            statement.write_text(json.dumps(velaris.attest(str(program))[0]),
+            statement.write_text(json.dumps(sabline.attest(str(program))[0]),
                                  encoding="utf-8")
             done = subprocess.run(
                 [opa, "eval", "--format", "json",
                  "-d", str(OPA_DIR / "capability.rego"), "-d", str(data),
-                 "-i", str(statement), "data.velaris.capability.deny"],
+                 "-i", str(statement), "data.sabline.capability.deny"],
                 capture_output=True, text=True, timeout=120)
             try:
                 value = json.loads(done.stdout)["result"][0][
@@ -128,7 +128,7 @@ def main() -> int:
             return value, done
 
         denied, done = deny_for("inside", INSIDE)
-        ok("opa eval admits a Statement velaris attest wrote for a program "
+        ok("opa eval admits a Statement sabline attest wrote for a program "
            "inside the lists", denied == [], f"{denied} {done.stderr}")
         denied, done = deny_for("outside", OUTSIDE)
         ok("opa eval refuses one outside them, naming the effect and the "
@@ -173,7 +173,7 @@ def main() -> int:
         for needle in ("apiVersion: kyverno.io/v1", "kind: ClusterPolicy",
                        "failureAction: Enforce", "required: true",
                        "predicateType: "
-                       + velaris.CAPABILITY_PREDICATE_TYPE,
+                       + sabline.CAPABILITY_PREDICATE_TYPE,
                        "issuer: \"https://token.actions.githubusercontent.com\"",
                        "key: \"{{ audit.ok }}\""):
             ok(f"the Kyverno policy holds `{needle}`", needle in text)
@@ -192,15 +192,19 @@ def main() -> int:
            "attestation",
            verify["failureAction"] == "Enforce" and verify["required"] is True
            and verify["verifyDigest"] is True)
-        ok("...of the capability/v1 predicate type velaris writes",
-           attestation["predicateType"] == velaris.CAPABILITY_PREDICATE_TYPE)
+        ok("...of the capability/v1 predicate type sabline writes",
+           attestation["predicateType"] == sabline.CAPABILITY_PREDICATE_TYPE)
         ok("...signed keylessly by a named workflow, logged in Rekor",
            keyless["issuer"] == "https://token.actions.githubusercontent.com"
            and keyless["subject"].startswith("https://github.com/")
            and keyless["rekor"]["url"] == "https://rekor.sigstore.dev")
-        ok("...whose audit is velaris.audit/1 and compiled",
-           {"key": "{{ audit.schema }}", "operator": "Equals",
-            "value": "velaris.audit/1"} in conditions
+        # 8.6: an audit written before the rename says velaris.audit/1, and
+        # Sabline reads the two as one format, so the policy matches with
+        # AnyIn over both spellings rather than Equals over one.
+        ok("...whose audit is sabline.audit/1 - or velaris.audit/1, the "
+           "same format before the rename - and compiled",
+           {"key": "{{ audit.schema }}", "operator": "AnyIn",
+            "value": ["sabline.audit/1", "velaris.audit/1"]} in conditions
            and {"key": "{{ audit.ok }}", "operator": "Equals",
                 "value": True} in conditions, conditions)
 

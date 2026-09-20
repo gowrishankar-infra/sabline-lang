@@ -1,4 +1,4 @@
-// v0.8: proofs COMPOSE. To prove shipping's promise, Velaris must rely
+// v0.8: proofs COMPOSE. To prove shipping's promise, Sabline must rely
 // on clamp_pos's promise (result >= 0). It never looks inside
 // clamp_pos while proving shipping - it trusts the contract, which it
 // proved separately. Verification scales function by function.

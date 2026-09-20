@@ -7,9 +7,9 @@
 CODE BLOCKS. Every fenced block names its kind after the fence, and either
 runs or says in the document why it does not:
 
-  vel         Velaris source: `velaris check` passes on it. A block with no
+  vel         Sabline source: `sabline check` passes on it. A block with no
               `fn main` is checked with an empty one added.
-  sh          commands. Each line runs - `velaris`, `python`, `cd`, `&&`,
+  sh          commands. Each line runs - `sabline`, `python`, `cd`, `&&`,
               `> file` and `| jq .field` as a shell would take them, a glob
               expanded - in a scratch directory of its own that holds the
               files the block names: copied from this repository with what
@@ -23,10 +23,10 @@ runs or says in the document why it does not:
               and it must exit non-zero when it shows one; JSON shown after
               `| jq` must equal what the command gives.
   python      runs with this repository first on sys.path, in a scratch
-              directory holding FIXTURES, with `velaris` imported and `source`
+              directory holding FIXTURES, with `sabline` imported and `source`
               holding agent_output.vel's text.
   json        parses, and validates against the schema its content names:
-              velaris.audit/1 (velaris-spec), an in-toto Statement and its
+              sabline.audit/1 (sabline-spec), an in-toto Statement and its
               predicate, or the capability predicate (tests/ and docs/ here).
               A string holding "..." or an object with a "..." key is an
               elision, and a schema error at or under one is not counted.
@@ -45,14 +45,14 @@ PyPI do not show:
   <!-- output -->                          each line is in what the block
                                            above printed
   <!-- output: codes only; why -->         only its E-codes are held to that
-  <!-- output of: velaris ... -->          each line is in what that prints
+  <!-- output of: sabline ... -->          each line is in what that prints
 
-A line marked illustrative that runs `velaris` must still name a command
-Velaris has, and one that runs `python X.py` a file that is here.
+A line marked illustrative that runs `sabline` must still name a command
+Sabline has, and one that runs `python X.py` a file that is here.
 
-INLINE COMMANDS. A code span `velaris ...` in running text runs, in a scratch
+INLINE COMMANDS. A code span `sabline ...` in running text runs, in a scratch
 directory with FIXTURES, when it names a file, and must exit 0. Otherwise
-`velaris <command> --help` must answer, and name every word of the span; a
+`sabline <command> --help` must answer, and name every word of the span; a
 flag may be named by the top-level usage instead. A span with a placeholder,
 or one that needs a network, a door or a token, is in INLINE_LISTED with its
 reason.
@@ -60,7 +60,7 @@ reason.
 DRIFT. `build_readme.py --check`: every count README.md states, its benchmark
 table, and SPEC.md's version and count of currencies, against what they
 count. Every E-code SPEC.md, README.md, EMBEDDING.md, LLM.md and docs/*.md
-cite is in velaris.ERROR_TABLE, or in REMOVED_ERRORS on a line that says it
+cite is in sabline.ERROR_TABLE, or in REMOVED_ERRORS on a line that says it
 was removed; a group such as E56x holds a code. A code given with a
 description - a table row, or `E### (...)` - matches the table's text (half
 of the description's words are in it), or is in PARAPHRASES with a reason.
@@ -68,9 +68,9 @@ No number in README.md's running text or code comments is left ungenerated
 unless NOT_COUNTS says why (a number with a point is read as a version).
 "Not a security boundary" stands within 8 lines of README's headline. Every
 path README.md names exists, but NOT_PATHS. SPEC.md's `Version X.Y.Z.` is
-velaris.VERSION. CONSTANTS - the proof budgets, the currencies' digits,
+sabline.VERSION. CONSTANTS - the proof budgets, the currencies' digits,
 the doors' ceilings - say what the implementation holds, and SPEC.md's and
-LLM.md's lists of fallible builtins are velaris.FALLIBLE_BUILTINS.
+LLM.md's lists of fallible builtins are sabline.FALLIBLE_BUILTINS.
 
 NOTHING REACHES THE INTERNET: a line that would is marked, and every command
 runs with HTTP_PROXY and HTTPS_PROXY at a closed local port (NO_PROXY for
@@ -78,7 +78,7 @@ runs with HTTP_PROXY and HTTPS_PROXY at a closed local port (NO_PROXY for
 
 Without z3-solver, what only the prover decides - an expected E7xx, the exit
 status of `proofs --min`, the proven share - is skipped with a notice.
-Without velaris-spec's corpus, `velaris conformance` is skipped the same way;
+Without sabline-spec's corpus, `sabline conformance` is skipped the same way;
 without its schemas, jsonschema or PyYAML, what needs them is.
 """
 from __future__ import annotations
@@ -100,11 +100,11 @@ from typing import Any, Callable, cast
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_docs")
-VELARIS_PY = str(HERE / "velaris.py")
+SABLINE_PY = str(HERE / "sabline.py")
 DOCS = ("README.md", "SPEC.md", "EMBEDDING.md", "TUTORIAL.md")
 CODE_DOCS = (["SPEC.md", "README.md", "EMBEDDING.md", "LLM.md", "TUTORIAL.md"]
              + sorted(f"docs/{p.name}" for p in (HERE / "docs").glob("*.md")))
@@ -161,18 +161,18 @@ FIXTURES = {
 
 # what a command reads on its standard input, by the line as written
 STDIN = {
-    "velaris new hello && cd hello && velaris main.vel": "21\n",
+    "sabline new hello && cd hello && sabline main.vel": "21\n",
 }
 
 INLINE_LISTED = {
-    "velaris <file>": "a placeholder for a program",
-    "velaris examples/wordcount.vel --allow fs:read,io <file> [n]":
+    "sabline <file>": "a placeholder for a program",
+    "sabline examples/wordcount.vel --allow fs:read,io <file> [n]":
         "a placeholder for the file to count",
-    "velaris examples/linkcheck.vel --allow io,net <url> ...":
+    "sabline examples/linkcheck.vel --allow io,net <url> ...":
         "it reaches the network",
-    "velaris mcp-manifest -o tools.json -- <server command>":
+    "sabline mcp-manifest -o tools.json -- <server command>":
         "a placeholder for the server's command",
-    "velaris proofs examples stdlib":
+    "sabline proofs examples stdlib":
         "build_readme.py runs it to measure the proven share; it exits 1, "
         "since some examples are built to be refused",
 }
@@ -193,7 +193,7 @@ PARAPHRASES = {
 }
 
 # (document, the text just before the list, the text just after): each
-# names exactly velaris.FALLIBLE_BUILTINS, and `get` on a map
+# names exactly sabline.FALLIBLE_BUILTINS, and `get` on a map
 FALLIBLE_LISTS = (
     ("SPEC.md", "Fallible builtins:", "`get` on a **list**"),
     ("LLM.md", "These can fail:", "Handle with"),
@@ -220,13 +220,15 @@ NOT_COUNTS = [
     (r"~90 MB", "the size of one build, which differs by platform"),
     (r"below 80%", "the threshold the command is given"),
     (r"exit 1 as the plain check", "an exit status"),
+    (r"stops working in 8\.x", "the major version in which the names "
+                                "the rename kept still work"),
 ]
 
 # repository-shaped names in README.md that are not files here: (name, why)
 NOT_PATHS = {
-    ".github/workflows/velaris.yml":
+    ".github/workflows/sabline.yml":
         "the workflow a reader copies into their own repository",
-    "main.py": "the file velaris eject writes",
+    "main.py": "the file sabline eject writes",
     "setup.py": "a Python package's, which deps-diff reads",
 }
 
@@ -234,32 +236,32 @@ NOT_PATHS = {
 CONSTANTS = (
     ("SPEC.md", r"\*\*(\d+) seconds\*\* when the function mentions `Float` "
                 r"and\s+\*\*(\d+) seconds\*\* otherwise",
-     lambda: (velaris.FLOAT_PROOF_SECONDS, velaris.PROOF_SECONDS)),
+     lambda: (sabline.FLOAT_PROOF_SECONDS, sabline.PROOF_SECONDS)),
     ("SPEC.md", r"(\d) digits for INR, USD, EUR and most others, (\d) for "
                 r"JPY\s+and KRW, (\d) for KWD, BHD, JOD and OMR",
      lambda: (currency_digits(("INR", "USD", "EUR"), majority=True),
               currency_digits(("JPY", "KRW")),
               currency_digits(("KWD", "BHD", "JOD", "OMR")))),
     ("EMBEDDING.md", r"\| seconds per run \| `--max-timeout` \| (\d+) \|",
-     lambda: (velaris.DOOR_MAX_TIMEOUT,)),
+     lambda: (sabline.DOOR_MAX_TIMEOUT,)),
     ("EMBEDDING.md", r"\| MB per run \| `--max-memory-mb` \| (\d+) \|",
-     lambda: (velaris.DOOR_MAX_MEMORY_MB,)),
+     lambda: (sabline.DOOR_MAX_MEMORY_MB,)),
     ("EMBEDDING.md", r"\| seconds per check or audit \(8\.1\) \| "
                      r"`--check-timeout` \| (\d+) \|",
-     lambda: (velaris.CHECK_TIMEOUT_DEFAULT,)),
+     lambda: (sabline.CHECK_TIMEOUT_DEFAULT,)),
     ("EMBEDDING.md", r"\| MB per check or audit \(8\.1\) \| "
                      r"`--check-memory-mb` \| (\d+) \|",
-     lambda: (velaris.CHECK_MEMORY_MB_DEFAULT,)),
+     lambda: (sabline.CHECK_MEMORY_MB_DEFAULT,)),
     ("EMBEDDING.md", r"\| requests a minute \(8\.1\) \| `--rate-limit` \| "
                      r"(\d+) \|",
-     lambda: (velaris.DOOR_RATE_LIMIT,)),
+     lambda: (sabline.DOOR_RATE_LIMIT,)),
 )
 
 
 def currency_digits(codes: Any, majority: bool = False) -> Any:
-    got = {velaris.CURRENCIES[c] for c in codes}
+    got = {sabline.CURRENCIES[c] for c in codes}
     if majority:
-        values = list(velaris.CURRENCIES.values())
+        values = list(sabline.CURRENCIES.values())
         got.add(max(set(values), key=values.count))
     return got.pop() if len(got) == 1 else sorted(got)
 
@@ -467,8 +469,8 @@ def argv_of(words: list[Any], cwd: Path) -> list[Any]:
             rest += [os.path.relpath(f, cwd) for f in found] or [w]
         else:
             rest.append(w)
-    if head == "velaris":
-        return [sys.executable, VELARIS_PY] + rest
+    if head == "sabline":
+        return [sys.executable, SABLINE_PY] + rest
     if head == "python":
         return [sys.executable] + rest
     raise Unsupported(f"{head!r} is not a command this suite runs")
@@ -480,7 +482,7 @@ CACHE: dict[str, tuple[int, str]] = {}
 def run_line(line: str, cwd: Path, stdin: str = "") -> tuple[Any, ...]:
     """(exit status, what it printed, the directory it ended in)"""
     key = plain(line)
-    cacheable = key.startswith("velaris conformance")
+    cacheable = key.startswith("sabline conformance")
     if cacheable:
         with LOCK:
             if key in CACHE:
@@ -570,25 +572,25 @@ def scratch(lines: list[Any]) -> Path:
 
 
 def corpus_found() -> bool:
-    """Whether velaris-spec's corpus is here - and, when it is, the commands
-    this suite runs are told where, through VELARIS_CONFORMANCE_CORPUS. They
-    run from a scratch directory, and an installed velaris looks beside the
+    """Whether sabline-spec's corpus is here - and, when it is, the commands
+    this suite runs are told where, through SABLINE_CONFORMANCE_CORPUS. They
+    run from a scratch directory, and an installed sabline looks beside the
     working directory and beside its own install, neither of which is this
-    checkout: CI checks velaris-spec out inside it, so every documented
-    `velaris conformance` exited 2 there until 8.2 said where."""
-    places = [HERE / "velaris-spec" / "tests",
-              HERE.parent / "velaris-spec" / "tests"]
-    if os.environ.get("VELARIS_CONFORMANCE_CORPUS"):
-        places.insert(0, Path(os.environ["VELARIS_CONFORMANCE_CORPUS"]))
+    checkout: CI checks sabline-spec out inside it, so every documented
+    `sabline conformance` exited 2 there until 8.2 said where."""
+    places = [HERE / "sabline-spec" / "tests",
+              HERE.parent / "sabline-spec" / "tests"]
+    if os.environ.get("SABLINE_CONFORMANCE_CORPUS"):
+        places.insert(0, Path(os.environ["SABLINE_CONFORMANCE_CORPUS"]))
     for place in places:
         if (place / "index.json").is_file():
-            ENV.setdefault("VELARIS_CONFORMANCE_CORPUS", str(place.resolve()))
+            ENV.setdefault("SABLINE_CONFORMANCE_CORPUS", str(place.resolve()))
             return True
     return False
 
 
 def usage_commands() -> set[Any]:
-    return set(velaris.usage_lines())
+    return set(sabline.usage_lines())
 
 
 def prover_decides(words: list[Any], codes: list[Any]) -> bool:
@@ -604,12 +606,12 @@ def check_marked_line(result: Result, where: str, text: str) -> None:
         return
     if not words:
         return
-    if words[0] == "velaris" and len(words) > 1:
+    if words[0] == "sabline" and len(words) > 1:
         w = words[1]
         if not (w in usage_commands() or w.startswith("-")
                 or w.endswith(".vel")):
-            result.wrong(f"{where}: `velaris {w}` is not a command "
-                         "velaris --help lists")
+            result.wrong(f"{where}: `sabline {w}` is not a command "
+                         "sabline --help lists")
         elif w.endswith(".vel") and w.startswith("examples/") \
                 and not (HERE / w).exists():
             result.wrong(f"{where}: {w} is not in this repository")
@@ -649,7 +651,7 @@ def run_sh(block: Block) -> Result:
     where = scratch(runnable)
     if any("capabilities check" in t for t in runnable) and not any(
             "capabilities init" in t for t in runnable):
-        subprocess.run([sys.executable, VELARIS_PY, "capabilities", "init"],
+        subprocess.run([sys.executable, SABLINE_PY, "capabilities", "init"],
                        cwd=where, capture_output=True, timeout=TIMEOUT, env=ENV)
     cwd = where
     for n, text in lines:
@@ -665,7 +667,7 @@ def run_sh(block: Block) -> Result:
             r.wrong(f"{label}: cannot be read as a command ({e})")
             continue
         if "conformance" in words and not corpus_found():
-            r.skip(f"{label}: `{plain(text)}` - velaris-spec's corpus is not "
+            r.skip(f"{label}: `{plain(text)}` - sabline-spec's corpus is not "
                    "beside or inside this checkout")
             continue
         try:
@@ -728,7 +730,7 @@ def run_vel(block: Block) -> Result:
     if not re.search(r"^fn main\(", source, re.M):
         source += "\nfn main() {\n}\n"
     (where / "block.vel").write_text(source, encoding="utf-8")
-    text = "velaris check block.vel"
+    text = "sabline check block.vel"
     code, shown, _ = run_line(text, where)
     r.ran = True
     r.output = shown
@@ -737,7 +739,7 @@ def run_vel(block: Block) -> Result:
     return r
 
 
-PRELUDE = ("import sys\nsys.path.insert(0, {repo!r})\nimport velaris\n"
+PRELUDE = ("import sys\nsys.path.insert(0, {repo!r})\nimport sabline\n"
            "source = open('agent_output.vel', encoding='utf-8').read()\n"
            "# ---- the block\n")
 
@@ -766,7 +768,7 @@ def run_python(block: Block) -> Result:
 
 
 def schema_file(*parts: Any) -> Path | None:
-    for base in (HERE, HERE / "velaris-spec", HERE.parent / "velaris-spec"):
+    for base in (HERE, HERE / "sabline-spec", HERE.parent / "sabline-spec"):
         p = base.joinpath(*parts)
         if p.is_file():
             return p
@@ -803,8 +805,8 @@ def run_json(block: Block) -> Result:
     r.ran = True
     checks: list[tuple[Any, tuple[str, ...]]] = []
     if isinstance(document, dict):
-        if document.get("schema") == "velaris.audit/1":
-            checks.append((document, ("schemas", "velaris.audit.1.schema.json")))
+        if document.get("schema") == "sabline.audit/1":
+            checks.append((document, ("schemas", "sabline.audit.1.schema.json")))
         if document.get("_type") == "https://in-toto.io/Statement/v1":
             checks.append((document, ("tests", "in-toto-statement-v1.schema.json")))
             kind = str(document.get("predicateType", "")).rstrip("/").split("/")
@@ -838,7 +840,7 @@ def run_json(block: Block) -> Result:
 
 def action_tag() -> str | None:
     text = (HERE / "README.md").read_text(encoding="utf-8")
-    m = re.search(r"gowrishankar-infra/velaris-lang@[0-9a-f]{40}\s+#\s*(v[\d.]+)",
+    m = re.search(r"gowrishankar-infra/sabline-lang@[0-9a-f]{40}\s+#\s*(v[\d.]+)",
                   text)
     return m.group(1) if m else None
 
@@ -923,7 +925,7 @@ def usage_of(command: str | None) -> tuple[Any, ...]:
     with LOCK:
         if key in HELP:
             return HELP[key]
-    done = subprocess.run([sys.executable, VELARIS_PY]
+    done = subprocess.run([sys.executable, SABLINE_PY]
                           + ([command] if command else []) + ["--help"],
                           capture_output=True, text=True, encoding="utf-8",
                           errors="replace", timeout=TIMEOUT, env=ENV)
@@ -963,18 +965,18 @@ def run_inline(span: str, places: list[Any]) -> Result:
     absent = [w for w in words[1:] if w not in out
               and not (w.startswith("-") and w in top)]
     if code != 0 or not out.startswith("usage:") or err.strip():
-        r.wrong(f"{where_text}: `velaris {words[0]} --help` exited {code}: "
+        r.wrong(f"{where_text}: `sabline {words[0]} --help` exited {code}: "
                 f"{shorten(out + err)}")
     elif absent:
-        r.wrong(f"{where_text}: `{span}` - `velaris {words[0]} --help` does "
+        r.wrong(f"{where_text}: `{span}` - `sabline {words[0]} --help` does "
                 f"not name {absent}")
     else:
-        r.ok(f"{where_text}: `{span}` - velaris {words[0]} --help names it")
+        r.ok(f"{where_text}: `{span}` - sabline {words[0]} --help names it")
     return r
 
 
 def inline_spans(prose: list[Any]) -> list[Any]:
-    """[(span, line)] for every `velaris ...` span, one across a line break
+    """[(span, line)] for every `sabline ...` span, one across a line break
     included."""
     numbered, text = [], ""
     for n, line in prose:
@@ -983,7 +985,7 @@ def inline_spans(prose: list[Any]) -> list[Any]:
     found = []
     for m in re.finditer(r"`([^`]+)`", text):
         span = " ".join(m.group(1).split())
-        if span.startswith("velaris "):
+        if span.startswith("sabline "):
             line = max(n for at, n in numbered if at <= m.start())
             found.append((span, line))
     return found
@@ -1019,7 +1021,7 @@ GROUP = re.compile(r"(?<![A-Za-z0-9_])E(\d)(\d|x)x(?![0-9A-Za-z])")
 def check_codes() -> Result:
     r = Result("error codes")
     removed = {entry[0]
-               for entry in cast(tuple[Any, ...], velaris.REMOVED_ERRORS)}
+               for entry in cast(tuple[Any, ...], sabline.REMOVED_ERRORS)}
     cited = described = 0
     used_paraphrases = set()
     for doc in CODE_DOCS:
@@ -1029,7 +1031,7 @@ def check_codes() -> Result:
             if line.startswith("## "):
                 section = line[3:].strip()
             # docs/crosswalk.md quotes AIUC-1's requirement identifiers, whose
-            # E001 to E017 are AIUC-1's and not Velaris's error codes (8.3)
+            # E001 to E017 are AIUC-1's and not Sabline's error codes (8.3)
             if doc == "docs/crosswalk.md" and (
                     section == "AIUC-1" or "AIUC-1:" in line):
                 continue
@@ -1039,14 +1041,14 @@ def check_codes() -> Result:
                 if code in removed and "removed" not in line.lower():
                     r.wrong(f"{doc}:{n}: {code} was removed, and the line does "
                             "not say so")
-                elif code not in velaris.ERROR_TABLE and code not in removed:
-                    r.wrong(f"{doc}:{n}: {code} is not in velaris.ERROR_TABLE")
+                elif code not in sabline.ERROR_TABLE and code not in removed:
+                    r.wrong(f"{doc}:{n}: {code} is not in sabline.ERROR_TABLE")
             for m in GROUP.finditer(line):
                 prefix = "E" + m.group(1) + (m.group(2) if m.group(2) != "x"
                                              else "")
-                if not any(c.startswith(prefix) for c in velaris.ERROR_TABLE):
+                if not any(c.startswith(prefix) for c in sabline.ERROR_TABLE):
                     r.wrong(f"{doc}:{n}: {m.group(0)} holds no code in "
-                            "velaris.ERROR_TABLE")
+                            "sabline.ERROR_TABLE")
             pairs = []
             if line.lstrip().startswith("|"):
                 cells = [c.strip() for c in line.strip().strip("|").split("|")]
@@ -1059,7 +1061,7 @@ def check_codes() -> Result:
             for m in re.finditer(r"(?<![A-Za-z0-9_])(E\d{3}) \(([^)]+)\)", line):
                 pairs.append((m.group(1), m.group(2)))
             for code, said in pairs:
-                table = velaris.ERROR_TABLE.get(code)
+                table = sabline.ERROR_TABLE.get(code)
                 if table is None:
                     continue
                 described += 1
@@ -1076,7 +1078,7 @@ def check_codes() -> Result:
     for key in sorted(set(PARAPHRASES) - used_paraphrases):
         r.wrong(f"PARAPHRASES lists {key}, which no document has now")
     r.ok(f"{cited} citations of an error code in {len(CODE_DOCS)} documents are "
-         f"in velaris.ERROR_TABLE; {described} descriptions match it or are "
+         f"in sabline.ERROR_TABLE; {described} descriptions match it or are "
          f"listed ({len(used_paraphrases)} listed)")
     return r
 
@@ -1195,11 +1197,11 @@ def small_drift() -> Result:
                 f"lines of its headline (headline {head}, sentence {said})")
     spec = (HERE / "SPEC.md").read_text(encoding="utf-8")
     m = re.search(r"^Version (\d+\.\d+\.\d+)\. ", spec, re.M)
-    if m and m.group(1) == velaris.VERSION:
-        r.ok(f"SPEC.md is labelled Version {velaris.VERSION}, as velaris.VERSION")
+    if m and m.group(1) == sabline.VERSION:
+        r.ok(f"SPEC.md is labelled Version {sabline.VERSION}, as sabline.VERSION")
     else:
         r.wrong(f"SPEC.md is labelled {m.group(1) if m else 'no version'}; "
-                f"velaris.VERSION is {velaris.VERSION} (python build_readme.py "
+                f"sabline.VERSION is {sabline.VERSION} (python build_readme.py "
                 "--write sets it)")
     for doc, before, after in FALLIBLE_LISTS:
         text = (HERE / doc).read_text(encoding="utf-8")
@@ -1210,11 +1212,11 @@ def small_drift() -> Result:
                     f"{before!r} and {after!r}")
             continue
         named = set(re.findall(r"`(\w+)`", text[start:end]))
-        want = set(velaris.FALLIBLE_BUILTINS) | {"get"}
+        want = set(sabline.FALLIBLE_BUILTINS) | {"get"}
         extra = named - want - {"py_close"}
         if named >= want and not extra:
             r.ok(f"{doc}: its list of fallible builtins is "
-                 f"velaris.FALLIBLE_BUILTINS and get on a map "
+                 f"sabline.FALLIBLE_BUILTINS and get on a map "
                  f"({len(want)} names)")
         else:
             r.wrong(f"{doc}: its list of fallible builtins lacks "
@@ -1254,41 +1256,88 @@ def build_readme_check() -> Result:
 
 # ---------------------------------------------------------------------------
 
-OLD_HOST = "gowrishankar-infra.github.io"
-# 8.3: the documentation site is velaris-lang.dev. These are the only tracked
-# files that may name its earlier address, each for the reason given.
+# Where the documentation site was before sabline.dev, and who may still
+# say so. The site has had three addresses: the project's GitHub Pages
+# address until 8.3, velaris-lang.dev from 8.3 until the project was
+# renamed Sabline in 8.6, and sabline.dev now. Both earlier addresses
+# redirect, and both are also predicate type names that were signed into
+# Statements, so a handful of files must go on naming them. Every one of
+# those files is here, with the reason.
+OLD_HOSTS = ("gowrishankar-infra.github.io", "velaris-lang.dev")
+
+# Named by any earlier address, for the same reason in each case. These are
+# the source documents and the code; the pages built from them are allowed
+# by OLD_HOST_ALLOWED_PAGES below, in whichever tree the build writes them.
 OLD_HOST_ALLOWED = {
     "CHANGELOG.md": "the history of the releases that named it",
-    "check_urls.py": "the test that the card's earlier address redirects",
+    "check_urls.py": "the test that the card's earlier addresses redirect",
     "check_docs.py": "this check",
-    "velaris/predicates.py": "the earlier spelling of the two predicate "
+    "check_rename.py": "the test that a Statement of an earlier predicate "
+                       "type still verifies",
+    "scripts/rename.py": "the rename's own rules: the strings in which the "
+                         "old name is the fact and must not change",
+    "sabline/predicates.py": "the earlier spellings of the two predicate "
                              "types, which a reader of Statements accepts",
+    "sabline/statements.py": "what `sabline verify` says a Statement of an "
+                             "earlier spelling is, and when it was current",
+    "sabline/version.py": "where the site was, which now redirects here",
+    "build_docs.py": "the earlier addresses a link may still be written "
+                     "to, which it makes relative like any other",
     "policies/opa/capability.rego": "the policy admits a Statement written "
-                                    "before 8.3",
+                                    "before the address moved",
     "policies/opa/capability_test.rego": "the test that it does",
-    "docs/capability/v1/index.html": "the type's page names the spelling it "
-                                     "is also read under",
-    "docs/receipt/v1/index.html": "the type's page names the spelling it is "
-                                  "also read under",
-    "playground/index.html": "it holds the velaris package, predicates.py "
-                             "among it",
-    "docs/playground.html": "it holds the velaris package, predicates.py "
-                            "among it",
+    "policies/kyverno/require-capability-attestation.yaml":
+        "how to admit an image attested before the address moved",
+    "tests/viewers/receipt.json": "a receipt of an earlier predicate type, "
+                                  "which the viewer must still render",
+    "tests/viewers/receipt.html": "the page the viewer renders from it",
+    # 8.6: the rename, and where every published address now points
+    "README.md": "the paragraph that says what the project was called",
+    "STABILITY.md": "the record of the rename and what it keeps working",
+    "THREAT_MODEL.md": "that each move of the predicate types widens what a "
+                       "verifier trusts the maintainer to keep",
+    "PROVENANCE.md": "what was published under the earlier name",
+    "SECURITY.md": "what a verifier of an earlier Statement should expect",
+    "EMBEDDING.md": "the predicate types a consumer of Statements accepts",
+    "docs/renamed.md": "the page that lists every address and where it "
+                       "now points",
+    "docs/crosswalk.md": "the predicate types, under every spelling",
+    "packaging/farewell/README.md": "the last release under the old name",
+    "playground/index.html": "it holds the sabline package's source, "
+                             "predicates.py among it (build_playground.py)",
 }
-# 8.3.1: the site is generated, and a page rendered from CHANGELOG.md holds
-# the history above - as does the search index built from those pages. Every
-# tree the build writes (the top, latest/ and <major.minor>/) has them.
+# A page built from one of those documents names it for the same reason the
+# document does. build_docs.py writes each page three times - at the top of
+# the site, under latest/, and under the release's major.minor - so each is
+# allowed in whichever tree it lands in.
+OLD_HOST_ALLOWED_PAGES = (
+    "index.html", "renamed.html", "crosswalk.html", "embedding.html",
+    "stability.html", "threat-model.html", "security.html", "spec.html",
+    "playground.html", "search-index.json", "library.html",
+    "capability/v1/index.html", "receipt/v1/index.html",
+)
 OLD_HOST_ALLOWED_PATH = re.compile(
+    # the rendered CHANGELOG, and a page built from a document that is
+    # allowed above, in any of the three trees a build writes
     r"docs/(?:latest/|\d+\.\d+/)?"
-    r"(?:changelog-\d+(?:-\d+)?\.html|search-index\.json)")
-OLD_HOST_ALLOWED_PATH_REASON = ("the rendered CHANGELOG, and the search "
-                                "index built from it, name it in its history")
-SITE_URL = re.compile(r"https?://velaris-lang\.dev(?:/[^\s<>\"'`)\]}|\\&]*)?")
+    r"(?:changelog-\d+(?:-\d+)?\.html|"
+    + "|".join(p.replace(".", r"\.").replace("/", "/")
+               for p in OLD_HOST_ALLOWED_PAGES) + r")"
+    # 8.6: and the pages 8.3, 8.4 and 8.5 published, frozen at the address
+    # they were published at. build_docs.py never rewrites another
+    # major.minor, and rewriting them here would make the archive say
+    # something that did not happen; every link in them redirects.
+    r"|docs/(?:8\.3|8\.4|8\.5)/.*")
+OLD_HOST_ALLOWED_PATH_REASON = ("the rendered CHANGELOG, a page built from a "
+                                "document listed above, and the archived "
+                                "pages of 8.3 to 8.5, which were published "
+                                "at that address")
+SITE_URL = re.compile(r"https?://sabline\.dev(?:/[^\s<>\"'`)\]}|\\&]*)?")
 
 
 def domain_check() -> Result:
     """No tracked file names the documentation site's earlier address but
-    those OLD_HOST_ALLOWED lists, and every velaris-lang.dev URL a tracked
+    those OLD_HOST_ALLOWED lists, and every sabline.dev URL a tracked
     file names is a page under docs/, which GitHub Pages serves there."""
     import urllib.parse
     res = Result("domain")
@@ -1309,18 +1358,22 @@ def domain_check() -> Result:
             text = (HERE / rel).read_bytes().decode("utf-8")
         except (OSError, UnicodeDecodeError):
             continue
-        if (OLD_HOST in text and rel not in OLD_HOST_ALLOWED
-                and not OLD_HOST_ALLOWED_PATH.fullmatch(rel)):
-            named.append(f"{rel}:{text[:text.index(OLD_HOST)].count(chr(10)) + 1}")
+        if rel not in OLD_HOST_ALLOWED and not                 OLD_HOST_ALLOWED_PATH.fullmatch(rel):
+            for host in OLD_HOSTS:
+                if host in text:
+                    line = text[:text.index(host)].count(chr(10)) + 1
+                    named.append(f"{rel}:{line} ({host})")
         for m in SITE_URL.finditer(text):
             urls.setdefault(m.group(0).rstrip(".,;:!?*_"), rel)
     if named:
-        res.wrong(f"{OLD_HOST}, the documentation site's earlier address, is "
-                  f"named in {', '.join(named)}; the site is velaris-lang.dev")
+        res.wrong(f"an earlier address of the documentation site "
+                  f"({' or '.join(OLD_HOSTS)}) is named in "
+                  f"{', '.join(named)}; the site is sabline.dev")
     else:
-        res.ok(f"no tracked file names {OLD_HOST} but the "
-               f"{len(OLD_HOST_ALLOWED)} listed with their reasons, and the "
-               f"generated pages that hold the changelog's history")
+        res.ok(f"no tracked file names {' or '.join(OLD_HOSTS)} but the "
+               f"{len(OLD_HOST_ALLOWED)} listed with their reasons, the "
+               f"generated pages that hold the changelog's history, and the "
+               f"archived pages of 8.3 to 8.5")
     missing = []
     for url, rel in sorted(urls.items()):
         path = urllib.parse.unquote(urllib.parse.urlsplit(url).path)
@@ -1330,10 +1383,10 @@ def domain_check() -> Result:
         if not page.is_file():
             missing.append(f"{url} (named in {rel})")
     if missing:
-        res.wrong("a velaris-lang.dev URL that docs/ does not serve: "
+        res.wrong("a sabline.dev URL that docs/ does not serve: "
                   + "; ".join(missing))
     else:
-        res.ok(f"every velaris-lang.dev URL a tracked file names "
+        res.ok(f"every sabline.dev URL a tracked file names "
                f"({len(urls)}) is a page docs/ serves")
     return res
 
@@ -1364,7 +1417,7 @@ def _table_first_cells(text: str, heading: str) -> list[str]:
 
 def crosswalk_check() -> Result:
     """docs/crosswalk.md (8.3) names every guarantee in README.md's "Why
-    Velaris" table and every row of THREAT_MODEL.md's Known open table, and
+    Sabline" table and every row of THREAT_MODEL.md's Known open table, and
     nothing that is not one; every row it has gives one of the four words."""
     res = Result("crosswalk")
     page = HERE / "docs" / "crosswalk.md"
@@ -1374,7 +1427,7 @@ def crosswalk_check() -> Result:
     text = page.read_text(encoding="utf-8")
     readme = (HERE / "README.md").read_text(encoding="utf-8")
     threat = (HERE / "THREAT_MODEL.md").read_text(encoding="utf-8")
-    guarantees = _table_first_cells(readme, "## Why Velaris")
+    guarantees = _table_first_cells(readme, "## Why Sabline")
     listed = _section_headings(text, "Every guarantee, and where it lands")
     listed = [h for h in listed if h != "Rows that rest on no guarantee"]
     if set(guarantees) != set(listed) or not guarantees:
@@ -1405,7 +1458,7 @@ def crosswalk_check() -> Result:
             in_controls = False
             continue
         cells = [c.strip() for c in line.split("|")[1:-1]]
-        if cells == ["Control", "Velaris", "Status", "Where"]:
+        if cells == ["Control", "Sabline", "Status", "Where"]:
             in_controls = True
             continue
         if not in_controls or cells[0].startswith("---"):
@@ -1541,7 +1594,7 @@ def main() -> int:
                 summary["run"] += 1
             show(res)
     print()
-    print("inline `velaris ...` commands")
+    print("inline `sabline ...` commands")
     print("-" * 62)
     ran_inline = helped = 0
     for s, f in inline_futures:

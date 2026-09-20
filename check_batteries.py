@@ -3,7 +3,7 @@
 
     python check_batteries.py
 
-stdlib/azure.vel, k8s.vel, github.vel and aws.vel are written in Velaris and
+stdlib/azure.vel, k8s.vel, github.vel and aws.vel are written in Sabline and
 call no Python. Each is run here, by this implementation, against a server
 in this process that answers as the real one does - paging, the error
 shapes, a rate limit, a signature checked the way AWS checks one - and what
@@ -149,11 +149,11 @@ def expect(what: str, ok: bool, detail: Any = "") -> None:
 
 def run_vel(source: str, allow: str, env: dict[str, str] | None = None,
             args: list[str] | None = None, path: str | None = None) -> Any:
-    import velaris
+    import sabline
     saved = dict(os.environ)
     os.environ.update(env or {})
     try:
-        return velaris.run(source, allow=allow, args=args or [], path=path)
+        return sabline.run(source, allow=allow, args=args or [], path=path)
     finally:
         os.environ.clear()
         os.environ.update(saved)
@@ -162,9 +162,9 @@ def run_vel(source: str, allow: str, env: dict[str, str] | None = None,
 def audit_example(name: str, hosts: list[str] | None) -> None:
     """No Python module, no ffi effect, and the hosts the text fixes (None
     for a library whose host is the caller's)."""
-    import velaris
+    import sabline
     path = HERE / "examples" / "ops" / name
-    report = velaris.audit(path.read_text(encoding="utf-8"), path=str(path))
+    report = sabline.audit(path.read_text(encoding="utf-8"), path=str(path))
     expect(f"{name}: compiles", report.ok,
            [p.message for p in report.problems])
     expect(f"{name}: the audit shows no ffi",
@@ -807,8 +807,8 @@ def check_aws() -> None:
     expect("aws: without the declassify grant nothing is signed (E310)",
            [p.code for p in got.problems] == ["E310"], got.problems)
     audit_example("aws_buckets.vel", None)
-    import velaris
-    report = velaris.audit(source, path=str(example))
+    import sabline
+    report = sabline.audit(source, path=str(example))
     hmacs = [d for d in (report.secrets or {})["declassifications"]
              if d.get("builtin") == "hmac_sha256_chain"]
     expect("aws: the audit lists the signature under secrets, reason 'hmac "

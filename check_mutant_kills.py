@@ -5,7 +5,7 @@ untested (8.3 item 12).
 check_mutants.py changes the functions a guarantee rests on, one small
 change at a time, and runs the suites that should notice. Run 34978389207
 (at 9972e41) made 521 mutants, ran 191 of them in its 90 minutes, and 67
-survived: 67 changes to velaris/budget.py, effects.py, prover.py and
+survived: 67 changes to sabline/budget.py, effects.py, prover.py and
 wrappers.py that every killer suite passed. The rule is that a survivor in
 a guarantee-bearing function gets a test in the release. This suite is
 those tests. Each case below fails with its mutant applied and passes
@@ -93,9 +93,9 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
-from velaris.budget import (  # noqa: E402
+from sabline.budget import (  # noqa: E402
     Budget,
     BudgetError,
     _ffi_resolve,
@@ -106,9 +106,9 @@ from velaris.budget import (  # noqa: E402
     guarded_opener,
     host_refusal,
 )
-from velaris.errors import VelarisError  # noqa: E402
-from velaris.tables import INT_MAX  # noqa: E402
-from velaris.values import FailSignal, MoneyValue  # noqa: E402
+from sabline.errors import SablineError  # noqa: E402
+from sabline.tables import INT_MAX  # noqa: E402
+from sabline.values import FailSignal, MoneyValue  # noqa: E402
 
 try:
     import z3  # noqa: F401
@@ -215,10 +215,10 @@ def covers(label: str, ceiling: str, asked: str) -> None:
 
 
 def raises(action: Callable[[], Any], code: str, fact: str) -> tuple[bool, str]:
-    """(action raised VelarisError `code` naming `fact`, what it did)."""
+    """(action raised SablineError `code` naming `fact`, what it did)."""
     try:
         got = action()
-    except VelarisError as e:
+    except SablineError as e:
         return (e.code == code and fact in e.message,
                 f"raised {e.code}: {e.message[:160]}; wanted {code} "
                 f"naming {fact!r}")
@@ -334,7 +334,7 @@ def host_cases() -> None:
     def no_module() -> tuple[bool, str]:
         with budget("ffi"):
             try:
-                got = _ffi_resolve("velaris_no_such_module_zz", "f", "py", 1)
+                got = _ffi_resolve("sabline_no_such_module_zz", "f", "py", 1)
             except FailSignal as f:
                 return ("cannot import" in str(f.reason),
                         f"failed with: {f.reason}")
@@ -349,11 +349,11 @@ def host_cases() -> None:
           lambda: raises(lambda: checked_int(MoneyValue(INT_MAX + 1, "USD"),
                                              "+", 1), "E407", "amount"))
     holds("[R3] an amount of INT_MIN minor units is in range",
-          lambda: (checked_int(MoneyValue(velaris.INT_MIN, "USD"), "-",
-                               1).units == velaris.INT_MIN, "it was refused"))
+          lambda: (checked_int(MoneyValue(sabline.INT_MIN, "USD"), "-",
+                               1).units == sabline.INT_MIN, "it was refused"))
     holds("[R4] an amount of INT_MIN - 1 minor units is refused (E407)",
           lambda: raises(lambda: checked_int(
-              MoneyValue(velaris.INT_MIN - 1, "USD"), "-", 1), "E407",
+              MoneyValue(sabline.INT_MIN - 1, "USD"), "-", 1), "E407",
               "amount"))
 
 
@@ -441,10 +441,10 @@ def proxy_cases() -> None:
 
 # ---- the effect checker (check_effects) --------------------------------------
 
-def problems(source: str, prove: bool = False) -> velaris.CheckResult:
+def problems(source: str, prove: bool = False) -> sabline.CheckResult:
     """check() in this process, the prover's notes kept off the console."""
     with contextlib.redirect_stderr(io.StringIO()):
-        return velaris.check(source.lstrip(), prove=prove, timeout=None,
+        return sabline.check(source.lstrip(), prove=prove, timeout=None,
                              max_memory_mb=None)
 
 
@@ -878,7 +878,7 @@ def prover_cases() -> None:
     holds(labels[9], values_shown)
     compiles(labels[10], PROVER["invariant_written"], prove=True,
              proven=("total_to",))
-    with environ({velaris.prover.PROOF_TIMEOUT_ENV: "1"}):
+    with environ({sabline.prover.PROOF_TIMEOUT_ENV: "1"}):
         compiles(labels[11], PROVER["invariant_undecided"], prove=True,
                  runtime=("f",))
 

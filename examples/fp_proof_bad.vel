@@ -1,6 +1,6 @@
 // In real-number math this promise is obviously true. In FLOATING
 // POINT it is false - rounding makes x + 0.1 + 0.1 differ from
-// x + 0.2 for many x. Velaris proves in IEEE-754, so it refuses.
+// x + 0.2 for many x. Sabline proves in IEEE-754, so it refuses.
 
 fn add_twice(x: Float) -> Float
     ensures result == x + 0.2

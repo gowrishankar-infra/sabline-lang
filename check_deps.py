@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""velaris deps-diff: what an upgrade gained, and what it cannot see.
+"""sabline deps-diff: what an upgrade gained, and what it cannot see.
 
 A dependency can change what it does between two versions while its
 name, its publisher and its list of dependencies stay the same. This
-suite holds the two answers `velaris deps-diff` gives to that:
+suite holds the two answers `sabline deps-diff` gives to that:
 
-- for a Velaris library, the capability surface each version declares,
-  compared the way `velaris capabilities check` compares a tree with its
+- for a Sabline library, the capability surface each version declares,
+  compared the way `sabline capabilities check` compares a tree with its
   baseline - so a version that gains an effect, a host inside an effect
   it had, a path, a module, a count or a function's effect is reported,
   and one that narrows or only moves text around is not;
-- for a package that is not Velaris, the install-time scripts and the
+- for a package that is not Sabline, the install-time scripts and the
   declared dependencies, and the plain statement that its capability
   surface is unknown - never an effect read off source the tool cannot
   check.
@@ -41,9 +41,9 @@ from pathlib import Path
 from typing import Any, cast
 
 HERE = Path(__file__).parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 isolate("check_deps")                 # its own directory
@@ -54,15 +54,15 @@ except ImportError:                        # the SARIF cases say they skipped
     Draft4Validator = None  # type: ignore[misc, assignment]  # optional; tested for None
 
 HAVE_GIT = shutil.which("git") is not None
-SCRATCH = Path(tempfile.mkdtemp(prefix="velaris-deps-check-"))
+SCRATCH = Path(tempfile.mkdtemp(prefix="sabline-deps-check-"))
 
 
 # ---- the command line --------------------------------------------------------
 
-def velaris_cli(*words: Any, cwd: Any = None, env: Any = None) -> Any:
+def sabline_cli(*words: Any, cwd: Any = None, env: Any = None) -> Any:
     full = dict(os.environ)
     full.update(env or {})
-    return subprocess.run([sys.executable, str(VELARIS), *words],
+    return subprocess.run([sys.executable, str(SABLINE), *words],
                           cwd=str(cwd or SCRATCH), capture_output=True,
                           text=True, encoding="utf-8", env=full, timeout=600)
 
@@ -86,7 +86,7 @@ def versions_dir(name: str, versions: dict[Any, Any]) -> Path:
 
 
 def findings(result: dict[Any, Any]) -> list[Any]:
-    return cast(list[Any], (result.get("velaris") or {}).get("findings", []))
+    return cast(list[Any], (result.get("sabline") or {}).get("findings", []))
 
 
 def grant_finding(result: dict[Any, Any], grant: str) -> dict[Any, Any]:
@@ -94,7 +94,7 @@ def grant_finding(result: dict[Any, Any], grant: str) -> dict[Any, Any]:
                  if f["kind"] == "grant" and f["grant"] == grant), {})
 
 
-# ---- Velaris libraries -------------------------------------------------------
+# ---- Sabline libraries -------------------------------------------------------
 
 RENDER_PURE = '''fn render(total: Int) -> Text {
     return "total " + to_text(total)
@@ -403,8 +403,8 @@ def place_12(key: str, prog: dict[Any, Any]) -> tuple[Any, ...]:
     beside each, with the placeholders filled as the harness fills them."""
     dep = prog["dependency"]
     where = SCRATCH / "bench" / prog["id"]
-    fills = {"{url}": f"http://127.0.0.1:50001/{prog['id']}/velaris",
-             "{other_url}": f"http://127.0.0.1:50002/{prog['id']}/velaris",
+    fills = {"{url}": f"http://127.0.0.1:50001/{prog['id']}/sabline",
+             "{other_url}": f"http://127.0.0.1:50002/{prog['id']}/sabline",
              "{path}": (where / "written.txt").as_posix(),
              "{granted}": (where / "granted").as_posix()}
 
@@ -449,13 +449,13 @@ def main() -> int:
         skipped += 1
 
     def diff(package: Any, old: Any, new: Any, *more: Any, env: Any = None) -> tuple[Any, ...]:
-        done = velaris_cli("deps-diff", package, old, new, "--json", *more,
+        done = sabline_cli("deps-diff", package, old, new, "--json", *more,
                            env=env)
         return done.returncode, as_json(done), done
 
     registry, base = serve(Served)
     github, api = serve(GitHub)
-    reg_env = {"VELARIS_NPM_REGISTRY": base, "VELARIS_PYPI_URL": base}
+    reg_env = {"SABLINE_NPM_REGISTRY": base, "SABLINE_PYPI_URL": base}
     schema = json.loads((HERE / "tests" / "sarif-schema-2.1.0.json")
                         .read_text(encoding="utf-8"))
 
@@ -468,7 +468,7 @@ def main() -> int:
 
     try:
         # --------------------------------------------------------------------
-        print("a Velaris library: the declared surface of two versions")
+        print("a Sabline library: the declared surface of two versions")
         print("-" * 62)
         lib = versions_dir("report", {"1.0.0": {"report.vel": RENDER_PURE},
                                       "1.1.0": {"report.vel":
@@ -480,13 +480,13 @@ def main() -> int:
         ok("a library that gains net: exit 1, the grant reported as a new "
            "effect outside the old surface and the file's old entry (W1, "
            "W3), and the function that gained it (W5)",
-           code == 1 and r.get("schema") == "velaris.deps-diff/1"
+           code == 1 and r.get("schema") == "sabline.deps-diff/1"
            and r["capability"] == "derived" and g.get("new_effect") is True
            and g.get("rules") == ["W1", "W3"]
            and fn.get("function") == "render" and fn.get("rules") == ["W5"]
            and fn.get("gained") == ["net"]
-           and r["velaris"]["gained"]["effects"] == ["net"]
-           and r["velaris"]["gained"]["hosts"] == ["telemetry.example.net"],
+           and r["sabline"]["gained"]["effects"] == ["net"]
+           and r["sabline"]["gained"]["hosts"] == ["telemetry.example.net"],
            r)
         origin = (g.get("programs") or [{}])[0].get("origins", [{}])[0]
         ok("...naming the file, line and call that introduced it",
@@ -502,15 +502,15 @@ def main() -> int:
            "exit 1, the host outside the old surface, no new effect",
            code == 1 and g.get("new_effect") is False
            and g.get("outside_surface") is True
-           and r["velaris"]["gained"]["effects"] == []
-           and r["velaris"]["gained"]["hosts"] == ["collector.example.net"]
-           and "net:mail.example.com" in r["velaris"]["before"]["grants"],
+           and r["sabline"]["gained"]["effects"] == []
+           and r["sabline"]["gained"]["hosts"] == ["collector.example.net"]
+           and "net:mail.example.com" in r["sabline"]["before"]["grants"],
            r)
         ok("...and the second request as a count: at most 2 net operations "
            "where there was 1",
            any(f["kind"] == "count" and f["effect"] == "net"
                and f["current"] == 2 for f in findings(r)), findings(r))
-        text = velaris_cli("deps-diff", f"dir:{lib}", "1.4.0", "1.5.0")
+        text = sabline_cli("deps-diff", f"dir:{lib}", "1.4.0", "1.5.0")
         ok("...and the text report says GAINED and names the host",
            text.returncode == 1
            and "GAINED  net:collector.example.net" in text.stdout,
@@ -519,10 +519,10 @@ def main() -> int:
         code, r, _ = diff(f"dir:{lib}", "1.5.0", "1.4.0")
         ok("a library that narrows: exit 0, nothing widened, the narrowing "
            "reported",
-           code == 0 and r["velaris"]["widened"] is False
+           code == 0 and r["sabline"]["widened"] is False
            and r["gained"] is False
            and any("net:collector.example.net" in n
-                   for n in r["velaris"]["narrowed"]), r)
+                   for n in r["sabline"]["narrowed"]), r)
 
         lib = versions_dir("greeter", {"2.0.0": {"greet.vel": GREETER},
                                        "2.0.1": {"greet.vel":
@@ -530,17 +530,17 @@ def main() -> int:
         code, r, _ = diff(f"dir:{lib}", "2.0.0", "2.0.1")
         ok("a library unchanged in surface - reordered, renamed, a literal "
            "moved into a variable - exit 0, no finding, no narrowing",
-           code == 0 and findings(r) == [] and r["velaris"]["narrowed"] == []
-           and r["velaris"]["before"] == r["velaris"]["after"], r)
+           code == 0 and findings(r) == [] and r["sabline"]["narrowed"] == []
+           and r["sabline"]["before"] == r["sabline"]["after"], r)
 
         lib = versions_dir("pinger", {"1.0.0": {"ping.vel": PING_ONCE},
                                       "1.1.0": {"ping.vel": PING_TEN}})
         code, r, _ = diff(f"dir:{lib}", "1.0.0", "1.1.0")
         ok("a library whose one request becomes ten: exit 1, the count "
            "from 1 to 10",
-           code == 1 and r["velaris"]["gained"]["counts"] == [
+           code == 1 and r["sabline"]["gained"]["counts"] == [
                {"effect": "net", "file": "ping.vel", "old": 1, "new": 10}],
-           r.get("velaris"))
+           r.get("sabline"))
 
         code, r, done = diff(f"dir:{lib}", "1.0.0", "9.9.9")
         ok("a version that does not exist: exit 2, naming it and the "
@@ -561,8 +561,8 @@ def main() -> int:
             code, r, _ = diff(f"git:{repo}", "v1.0.0", "v1.1.0")
             ok("a library read from git tags that gains a Python module: "
                "exit 1, ffi:math, a new effect",
-               code == 1 and r["velaris"]["gained"]["modules"] == ["math"]
-               and r["velaris"]["gained"]["effects"] == ["ffi"], r)
+               code == 1 and r["sabline"]["gained"]["modules"] == ["math"]
+               and r["sabline"]["gained"]["effects"] == ["ffi"], r)
             code, r, done = diff(f"git:{repo}", "v1.0.0", "v2.0.0")
             ok("...and a tag that does not exist: exit 2, listing the tags",
                code == 2 and "v2.0.0" in done.stderr
@@ -570,7 +570,7 @@ def main() -> int:
 
         # --------------------------------------------------------------------
         print()
-        print("a package that is not Velaris: what can be read, and no more")
+        print("a package that is not Sabline: what can be read, and no more")
         print("-" * 62)
         npm_publish(base, "plainjs", "2.0.0", {
             "package.json": npm_package_json("plainjs", "2.0.0",
@@ -584,12 +584,12 @@ def main() -> int:
                         "'https://collector.example.net/' + s); "
                         "return ' ' + s; };\n"})
         code, r, done = diff("npm:plainjs", "2.0.0", "2.1.0", env=reg_env)
-        text = velaris_cli("deps-diff", "npm:plainjs", "2.0.0", "2.1.0",
+        text = sabline_cli("deps-diff", "npm:plainjs", "2.0.0", "2.1.0",
                            env=reg_env)
-        ok("a package with no Velaris in it: exit 3, not a failure - the "
+        ok("a package with no Sabline in it: exit 3, not a failure - the "
            "surface unknown, and no effect or host read off its JavaScript",
            code == 3 and r.get("capability") == "unknown"
-           and r.get("velaris") is None and r.get("gained") is False
+           and r.get("sabline") is None and r.get("gained") is False
            and "collector.example.net" not in done.stdout
            and "JavaScript" in r["not_derived"][0]
            and "not derived" in r["not_derived"][0]
@@ -647,7 +647,7 @@ def main() -> int:
            and all(c["name"] == "postinstall" and any(
                "setup.js" in w and "not the same file" in w
                for w in c["what"]) for c in changed), r.get("install_time"))
-        text = velaris_cli("deps-diff", "npm:hooked", "1.0.0", "1.0.1",
+        text = sabline_cli("deps-diff", "npm:hooked", "1.0.0", "1.0.1",
                            env=reg_env)
         ok("...said once in the report, with both places it was read",
            text.stdout.count("CHANGED  npm postinstall") == 1
@@ -688,10 +688,10 @@ def main() -> int:
             "lib/report.vel": RENDER_PHONES_HOME,
             "index.js": "export {};\n"})
         code, r, _ = diff("npm:mixed", "0.1.0", "0.2.0", env=reg_env)
-        ok("a package holding Velaris and JavaScript: the .vel surface "
+        ok("a package holding Sabline and JavaScript: the .vel surface "
            "compared (net gained), and the rest said to be not derived",
            code == 1 and r["capability"] == "partial"
-           and r["velaris"]["gained"]["effects"] == ["net"]
+           and r["sabline"]["gained"]["effects"] == ["net"]
            and "JavaScript" in r["not_derived"][0], r)
 
         members = io.BytesIO()
@@ -718,7 +718,7 @@ def main() -> int:
         ok("a tarball with paths that climb out, are absolute or name a "
            "drive: those entries are left out, and nothing is written "
            "outside",
-           code == 3 and r["old"]["velaris_files"] == 0
+           code == 3 and r["old"]["sabline_files"] == 0
            and not (SCRATCH.parent / "evil.vel").exists(), r.get("old"))
 
         code, r, done = diff("npm:textkit", "1.0.0", "4.0.0", env=reg_env)
@@ -775,13 +775,13 @@ def main() -> int:
            "releases", code == 2 and "3.0" in done.stderr
            and "1.1" in done.stderr, done.stderr)
 
-        done = velaris_cli("deps-diff", "textkit", "1.0.0", "1.1.0")
+        done = sabline_cli("deps-diff", "textkit", "1.0.0", "1.1.0")
         ok("a package that does not say which registry: exit 2, asking for "
            "pypi:, npm:, git: or dir:",
            done.returncode == 2 and "pypi:NAME" in done.stderr
            and "npm:NAME" in done.stderr, done.stderr)
 
-        sarif = velaris_cli("deps-diff", "npm:textkit", "1.0.0", "1.1.0",
+        sarif = sabline_cli("deps-diff", "npm:textkit", "1.0.0", "1.1.0",
                             "--sarif", env=reg_env)
         log = as_json(sarif)
         results = (log.get("runs") or [{}])[0].get("results", [])
@@ -816,7 +816,7 @@ def main() -> int:
                          "requirements.txt": "pyplain==1.1\n",
                          "yarn.lock": "# yarn lockfile v1\n"})
             commit(repo, "upgrade textkit and pyplain")
-            done = velaris_cli("deps-diff", "--against", "HEAD~1", "--json",
+            done = sabline_cli("deps-diff", "--against", "HEAD~1", "--json",
                                cwd=repo, env=reg_env)
             r = as_json(done)
             ups = {u["name"]: u for u in r.get("upgrades", [])}
@@ -825,7 +825,7 @@ def main() -> int:
             ok("--against a base: each upgraded dependency compared, at the "
                "line of the lockfile that pins it",
                done.returncode == 1
-               and r.get("schema") == "velaris.deps-diff-lockfiles/1"
+               and r.get("schema") == "sabline.deps-diff-lockfiles/1"
                and set(ups) == {"textkit", "pyplain"}
                and ups["textkit"]["old"] == "1.0.0"
                and ups["textkit"]["line"] == want_line
@@ -838,7 +838,7 @@ def main() -> int:
             saved = repo / "deps.json"
             saved.write_text(done.stdout, encoding="utf-8")
 
-            sarif = velaris_cli("deps-diff", "--from", str(saved), "--sarif",
+            sarif = sabline_cli("deps-diff", "--from", str(saved), "--sarif",
                                 cwd=repo)
             log = as_json(sarif)
             results = (log.get("runs") or [{}])[0].get("results", [])
@@ -857,12 +857,12 @@ def main() -> int:
                        GITHUB_REPOSITORY="o/r", GITHUB_API_URL=api)
             GitHub.comments[:] = [{"id": 99, "body": "looks fine to me"}]
             GitHub.calls[:] = []
-            first = velaris_cli("deps-diff", "--against", "HEAD~1",
+            first = sabline_cli("deps-diff", "--against", "HEAD~1",
                                 "--comment", "--pr", "7", cwd=repo, env=env)
-            second = velaris_cli("deps-diff", "--against", "HEAD~1",
+            second = sabline_cli("deps-diff", "--against", "HEAD~1",
                                  "--comment", "--pr", "7", cwd=repo, env=env)
             ours = [c for c in GitHub.comments
-                    if velaris.DEPS_COMMENT_MARKER in c["body"]]
+                    if sabline.DEPS_COMMENT_MARKER in c["body"]]
             writes = [c for c in GitHub.calls if c[0] != "GET"]
             ok("the pull-request comment: posted once, then edited in place "
                "on the second run - one comment, not two",
@@ -880,7 +880,7 @@ def main() -> int:
                and "unknown" in comment_body and "yarn.lock" in comment_body
                and "not safe" in comment_body, comment_body[:900])
             GitHub.calls[:] = []
-            quiet = velaris_cli("deps-diff", "--against", "HEAD", "--comment",
+            quiet = sabline_cli("deps-diff", "--against", "HEAD", "--comment",
                                 "--pr", "7", cwd=repo, env=env)
             ok("...and when no lockfile changes any more, the same comment "
                "says so",
@@ -889,7 +889,7 @@ def main() -> int:
                and "any more" in ours[0]["body"], GitHub.calls)
             GitHub.comments[:] = []
             GitHub.calls[:] = []
-            velaris_cli("deps-diff", "--against", "HEAD", "--comment", "--pr",
+            sabline_cli("deps-diff", "--against", "HEAD", "--comment", "--pr",
                         "7", cwd=repo, env=env)
             ok("...while a pull request that never changed a lockfile gets "
                "no comment at all",
@@ -897,13 +897,13 @@ def main() -> int:
                and GitHub.comments == [], GitHub.calls)
 
             registry.shutdown()
-            md = velaris_cli("deps-diff", "--from", str(saved), "--markdown",
+            md = sabline_cli("deps-diff", "--from", str(saved), "--markdown",
                              cwd=repo)
             ok("--from renders a saved result with no registry to reach",
-               md.returncode == 1 and velaris.DEPS_COMMENT_MARKER in md.stdout
+               md.returncode == 1 and sabline.DEPS_COMMENT_MARKER in md.stdout
                and "npm:textkit" in md.stdout, md.stderr)
 
-            plain = velaris_cli("deps-diff", "--from", str(saved), cwd=repo)
+            plain = sabline_cli("deps-diff", "--from", str(saved), cwd=repo)
             ok("...and as text, the form the Action prints to the job log: "
                "each upgrade, its line, what it gained, and what was not "
                "read",
@@ -924,7 +924,7 @@ def main() -> int:
                                  "/x> for @octocat")
             forged = repo / "hostile.json"
             forged.write_text(json.dumps(hostile), encoding="utf-8")
-            md = velaris_cli("deps-diff", "--from", str(forged), "--markdown",
+            md = sabline_cli("deps-diff", "--from", str(forged), "--markdown",
                              cwd=repo)
             ok("text a pull request's lockfile controls reaches the comment "
                "with no HTML, no mention, and no way out of its code span",
@@ -933,47 +933,47 @@ def main() -> int:
                md.stdout[:900])
 
             vendored = git_repo({"lib/mailer.vel": MAILER})
-            write(vendored, {"velaris.lock": json.dumps({
-                "lockfile": "velaris.lock/1", "libraries": [{
+            write(vendored, {"sabline.lock": json.dumps({
+                "lockfile": "sabline.lock/1", "libraries": [{
                     "name": "mailer", "file": "lib/mailer.vel",
                     "source": "https://example.com/mailer.vel",
                     "sha256": hashlib.sha256(MAILER.encode()).hexdigest(),
-                    "added_by": velaris.VERSION}]}, indent=2) + "\n"})
+                    "added_by": sabline.VERSION}]}, indent=2) + "\n"})
             commit(vendored, "vendor mailer")
             write(vendored, {"lib/mailer.vel": MAILER_WITH_COPY,
-                             "velaris.lock": json.dumps({
-                                 "lockfile": "velaris.lock/1", "libraries": [{
+                             "sabline.lock": json.dumps({
+                                 "lockfile": "sabline.lock/1", "libraries": [{
                                      "name": "mailer",
                                      "file": "lib/mailer.vel",
                                      "source": "https://example.com/m.vel",
                                      "sha256": hashlib.sha256(
                                          MAILER_WITH_COPY.encode())
                                      .hexdigest(),
-                                     "added_by": velaris.VERSION}]},
+                                     "added_by": sabline.VERSION}]},
                                  indent=2) + "\n"})
-            done = velaris_cli("deps-diff", "--against", "HEAD", "--json",
+            done = sabline_cli("deps-diff", "--against", "HEAD", "--json",
                                cwd=vendored)
             r = as_json(done)
             up = (r.get("upgrades") or [{}])[0]
             res = up.get("result") or {}
-            ok("a library velaris.lock vendors, replaced: the file at the "
+            ok("a library sabline.lock vendors, replaced: the file at the "
                "base against the file in the tree - the new host reported",
-               done.returncode == 1 and up.get("ecosystem") == "velaris"
-               and (res.get("velaris") or {}).get("gained", {}).get("hosts")
+               done.returncode == 1 and up.get("ecosystem") == "sabline"
+               and (res.get("sabline") or {}).get("gained", {}).get("hosts")
                == ["collector.example.net"]
                and res.get("capability") == "derived", r)
 
-            write(vendored, {"velaris.lock": json.dumps({
-                "lockfile": "velaris.lock/1", "libraries": [{
+            write(vendored, {"sabline.lock": json.dumps({
+                "lockfile": "sabline.lock/1", "libraries": [{
                     "name": "mailer", "file": "../outside.vel",
                     "source": "https://example.com/m.vel",
-                    "sha256": "1" * 64, "added_by": velaris.VERSION}]},
+                    "sha256": "1" * 64, "added_by": sabline.VERSION}]},
                 indent=2) + "\n"})
-            done = velaris_cli("deps-diff", "--against", "HEAD", "--json",
+            done = sabline_cli("deps-diff", "--against", "HEAD", "--json",
                                cwd=vendored)
             r = as_json(done)
             up = (r.get("upgrades") or [{}])[0]
-            ok("a velaris.lock entry naming a file outside the repository: "
+            ok("a sabline.lock entry naming a file outside the repository: "
                "not read, and said, with exit 3",
                done.returncode == 3 and up.get("result") is None
                and "inside the repository" in (up.get("error") or ""), r)
@@ -995,7 +995,7 @@ def main() -> int:
             "private": {"version": "1.0.0",
                         "resolved": "https://npm.corp.example/private/-/"
                                     "private-1.0.0.tgz"}}}, indent=2)
-        got, notes = velaris._parse_lockfile("npm-lock", v1)
+        got, notes = sabline._parse_lockfile("npm-lock", v1)
         ok("package-lock.json v1: nested entries read; one resolved from git "
            "and one from another registry left out, and said - the public "
            "package of the same name is a different package",
@@ -1016,8 +1016,8 @@ def main() -> int:
             "develop": {"internal-tool": {"index": "corp",
                                           "version": "==1.0"},
                         "localpkg": {"path": "."}}}, indent=4)
-        got, notes = velaris._parse_lockfile("pipfile-lock", pip)
-        line = velaris._lock_line(pip, "pipfile-lock", "requests", "4.2.0")
+        got, notes = sabline._parse_lockfile("pipfile-lock", pip)
+        line = sabline._lock_line(pip, "pipfile-lock", "requests", "4.2.0")
         ok("Pipfile.lock: names normalised; an entry from another index and "
            "one from a path left out; the line found for the right package "
            "when two pin the same version",
@@ -1032,8 +1032,8 @@ def main() -> int:
                   'description = "y"\n\n[package.source]\ntype = "git"\n'
                   'url = "https://github.com/o/mylib.git"\n\n'
                   '[metadata]\nlock-version = "2.0"\n')
-        got, notes = velaris._parse_lockfile("toml-packages", poetry)
-        line = velaris._lock_line(poetry, "toml-packages",
+        got, notes = sabline._parse_lockfile("toml-packages", poetry)
+        line = sabline._lock_line(poetry, "toml-packages",
                                   "typing-extensions", "4.8.0")
         ok("poetry.lock: a package from git left out and said; a name "
            "written with an underscore found on its line",
@@ -1045,7 +1045,7 @@ def main() -> int:
               'version = "0.27.0"\n'
               'source = { registry = "https://pypi.org/simple" }\n'
               'dependencies = [\n    { name = "anyio" },\n]\n')
-        got, notes = velaris._parse_lockfile("toml-packages", uv)
+        got, notes = sabline._parse_lockfile("toml-packages", uv)
         ok("uv.lock: the project's own editable entry left out, a package "
            "from PyPI read",
            got == {"httpx": {"0.27.0": "package"}}
@@ -1057,9 +1057,9 @@ def main() -> int:
                 "Urllib3===2.0.7  # comment\n"
                 "-e git+https://github.com/o/x.git#egg=x\n"
                 "flask>=2\n")
-        got, notes = velaris._parse_lockfile("requirements", reqs)
-        line = velaris._lock_line(reqs, "requirements", "urllib3", "2.0.7")
-        fenced, fenced_notes = velaris._parse_lockfile(
+        got, notes = sabline._parse_lockfile("requirements", reqs)
+        line = sabline._lock_line(reqs, "requirements", "urllib3", "2.0.7")
+        fenced, fenced_notes = sabline._parse_lockfile(
             "requirements", "--extra-index-url https://pypi.corp.example/s\n"
                             "requests==2.31.0\n")
         ok("requirements*.txt: pins with extras, markers, hashes and === "
@@ -1068,7 +1068,7 @@ def main() -> int:
            set(got) == {"requests", "urllib3"} and line == 4
            and fenced == {} and fenced_notes, (got, line, fenced_notes))
 
-        ups, adds, rems = velaris._lock_changes(
+        ups, adds, rems = sabline._lock_changes(
             {"a": {"1.0.0": 1}, "b": {"2.0.0": 1}, "c": {"1.0": 1}},
             {"a": {"1.1.0": 1}, "b": {"2.0.0": 1, "3.0.0": 1},
              "d": {"0.1": 1}})
@@ -1090,11 +1090,11 @@ def main() -> int:
         for prog in programs:
             dep = prog["dependency"]
             versions, callers, fills = place_12(key, prog)
-            compiles = all(velaris_cli("check", str(callers[side]))
+            compiles = all(sabline_cli("check", str(callers[side]))
                            .returncode == 0 for side in ("old", "new"))
             code, r, _ = diff(f"dir:{versions}", dep["old"], dep["new"])
-            gained = (r.get("velaris") or {}).get("gained", {})
-            before = (r.get("velaris") or {}).get("before", {})
+            gained = (r.get("sabline") or {}).get("gained", {})
+            before = (r.get("sabline") or {}).get("before", {})
             if prog["id"] == "12a":
                 g = grant_finding(r, "net:127.0.0.1:50002")
                 good = (code == 1 and g.get("new_effect") is True
@@ -1122,10 +1122,10 @@ def main() -> int:
             else:
                 good = (code == 0 and r.get("gained") is False
                         and findings(r) == []
-                        and r["velaris"]["narrowed"] != [])
+                        and r["sabline"]["narrowed"] != [])
                 what = "12d: report narrows, and nothing is flagged"
             ok(what + "; the unchanged caller compiles against both versions",
-               good and compiles, (compiles, r.get("velaris")))
+               good and compiles, (compiles, r.get("sabline")))
     finally:
         for server in (registry, github):
             try:

@@ -1,6 +1,6 @@
 // v1.19: the standard library, grown up. Everything below is written
-// in Velaris, in stdlib/std.vel - sort PROMISES is_sorted(result),
-// and is_sorted is itself a Velaris function. The library keeps its
+// in Sabline, in stdlib/std.vel - sort PROMISES is_sorted(result),
+// and is_sorted is itself a Sabline function. The library keeps its
 // own promises with the same machinery it offers you.
 
 import "std.vel"

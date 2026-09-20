@@ -1,0 +1,161 @@
+"""sabline.receipt/1: what one run did, as an in-toto Statement.
+"""
+import os
+
+from . import state as _state
+from .version import VERSION
+from .recorder import RECEIPT_PREDICATE_TYPE, RECEIPT_SCHEMA, RECEIPT_SPEC
+from .budget import _frozen_epoch
+from .findings import REPOSITORY
+from .attestation import INTOTO_STATEMENT_TYPE, _sha256_of, _subject_name
+from typing import Any
+
+
+def _receipt_subjects(entry: str, name: str, entry_bytes: bytes,
+                      loaded: list[Any]) -> list[Any]:
+    """A receipt's subjects, as attest_statement makes them: the program, by
+    the sha256 of the text that ran, then each file it read, by the sha256
+    of its bytes, named in the program's terms or as <stdlib>/NAME."""
+    import hashlib
+    subjects = [{"name": name, "digest": {
+        "sha256": hashlib.sha256(entry_bytes).hexdigest()}}]
+    seen = {os.path.abspath(entry)}
+    for p in loaded:
+        if os.path.abspath(p) in seen:
+            continue
+        seen.add(os.path.abspath(p))
+        try:
+            digest = _sha256_of(p)
+        except OSError:
+            continue
+        subjects.append({"name": _subject_name(p, entry, name),
+                         "digest": {"sha256": digest}})
+    return subjects
+
+
+def _confinement_fields(confinement: Any) -> dict[str, Any]:
+    """A confinement report as a receipt's run_parameters say it (8.4): the
+    level, why it is that level, the layers that were applied, and the
+    sha256 of the OS policy derived from the budget."""
+    said = confinement if isinstance(confinement, dict) else {}
+    level = str(said.get("level") or "none")
+    return {"confinement": level if level != "pending" else "none",
+            "confinement_reason": str(
+                said.get("reason") or "nothing was asked of the operating "
+                "system") if level != "pending" else
+            "the run stopped before its first statement, where the "
+            "confinement is applied",
+            "confinement_layers": [str(x) for x in said.get("layers") or []],
+            "os_policy_sha256": said.get("policy_sha256")}
+
+
+def _run_parameters(seed: Any, freeze_time: Any, timeout: Any, max_memory_mb: Any,
+                    confinement: Any = None) -> dict[str, Any]:
+    """What a run was given besides its budget, as its receipt says it.
+    ValueError for a freeze_time that is not an instant. `confinement` is
+    the report of what the operating system held (sabline/confine.py); not
+    given, it is what was applied to this process, and none when nothing
+    was."""
+    import datetime
+    from . import confine as _confine
+    frozen = _frozen_epoch(freeze_time)
+    if confinement is None:
+        confinement = _confine.current() or _state.WORKER_CONFINEMENT
+    return {"seed": None if seed is None else int(seed),
+            "freeze_time": None if frozen is None else
+            datetime.datetime.fromtimestamp(frozen, datetime.timezone.utc)
+            .strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "timeout": timeout,
+            "max_memory_mb": (None if max_memory_mb is None
+                              else int(max_memory_mb)),
+            "max_read_bytes": _state.MAX_READ_BYTES,
+            **_confinement_fields(confinement)}
+
+
+def _grants_used(uses: Any) -> list[dict[str, Any]]:
+    """A receipt's `grants_used` (8.5): how many operations each grant of the
+    budget let through, by the grant's own text. It is the operator's text:
+    `net:api.example.com:443`, never the URL the program asked for."""
+    if not isinstance(uses, dict):
+        return []
+    return [{"grant": str(g), "times": int(n)}
+            for g, n in sorted(uses.items()) if isinstance(n, int)]
+
+
+def receipt_statement(recorder: Any, *, name: Any, entry_bytes: Any, budget: Any, parameters: Any,
+                      result: Any, started_at: Any, wall_time_ms: Any,
+                      complete: bool = True) -> dict[str, Any]:
+    """The in-toto Statement of one run's receipt (sabline-spec 8.7). The
+    recorder carries the run's GRANT_USES as `grant_uses`, and as `tools`
+    the ceiling record of a run that had a tool session, which then also
+    lists its tool calls (8.5)."""
+    grants_used = getattr(recorder, "grant_uses", None)
+    tools = getattr(recorder, "tools", None)
+    import hashlib
+    subjects = recorder.subjects or [{"name": name, "digest": {
+        "sha256": hashlib.sha256(entry_bytes).hexdigest()}}]
+    sites = list(recorder.sites.values())
+    refusals = sorted(
+        ({"code": s.get("code"), "effect": s.get("effect"),
+          "line": s.get("line"), "stopped": bool(s.get("stopped")),
+          "times": s.get("times", 1)}
+         for s in sites if s.get("kind") == "refusal"),
+        key=lambda r: (r["line"] or 0, str(r["code"]), str(r["effect"]),
+                       r["stopped"]))
+    # an hmac_sha256 call is a declassification with the fixed reason "hmac
+    # signature" and the fingerprint of its key, and nothing else has one (8.5)
+    declassifications = sorted(
+        ({"reason": s.get("reason"), "line": s.get("line"),
+          "times": s.get("times", 1),
+          **({"key_fingerprint": s["key_fingerprint"]}
+             if s.get("key_fingerprint") else {})}
+         for s in sites if s.get("kind") == "declassify"),
+        key=lambda d: (d["line"] or 0, str(d["reason"]),
+                       str(d.get("key_fingerprint") or "")))
+    code: str | None
+    if result.timed_out:
+        outcome, code = "timeout", "E610"
+    elif result.out_of_memory:
+        outcome, code = "out_of_memory", "E611"
+    else:
+        code = (recorder.stop or {}).get("code") or (
+            result.problems[0].code if result.problems and not result.ok
+            else None)
+        if any(r["stopped"] for r in refusals):
+            outcome = "refused"
+        elif result.ok:
+            outcome = "ok"
+        elif complete and not recorder.compiled and result.problems:
+            outcome = "did_not_compile"
+        else:
+            outcome = "failed"
+    return {"_type": INTOTO_STATEMENT_TYPE,
+            "subject": subjects,
+            "predicateType": RECEIPT_PREDICATE_TYPE,
+            "predicate": {
+                "schema": RECEIPT_SCHEMA,
+                "producer": {"name": "sabline-lang", "uri": REPOSITORY,
+                             "version": VERSION},
+                "specification": RECEIPT_SPEC,
+                "startedAt": started_at,
+                "wall_time_ms": round(float(wall_time_ms), 1),
+                "budget": budget,
+                "run_parameters": parameters,
+                "effects_used": result.effects_used,
+                "grants_used": _grants_used(grants_used),
+                "refusals": refusals,
+                "declassifications": declassifications,
+                **({"tool_calls": sorted(
+                    ({"tool": s.get("tool"), "line": s.get("line"),
+                      "times": s.get("times", 1),
+                      "secret": bool(s.get("secret")),
+                      # the grants that held its arguments: the operator's
+                      # patterns, never the values the program gave
+                      "held_to": [g for g in str(s.get("held") or "")
+                                  .split("\n") if g]}
+                     for s in sites if s.get("kind") == "tool"),
+                    key=lambda t: (t["line"] or 0, str(t["tool"]))),
+                    "tool_ceiling": tools} if tools is not None else {}),
+                "exit": {"status": result.exit_code, "outcome": outcome,
+                         "code": code},
+                "complete": bool(complete)}}

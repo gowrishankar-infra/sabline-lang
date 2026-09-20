@@ -1,11 +1,11 @@
-// LEDGER - a real expense tracker, written in Velaris.
+// LEDGER - a real expense tracker, written in Sabline.
 //
-// velaris examples/ledger.vel --allow fs:read:ledger.txt,fs:write:ledger.txt,io
+// sabline examples/ledger.vel --allow fs:read:ledger.txt,fs:write:ledger.txt,io
 //
 // Everything the language stands for, carrying actual weight:
 // records for data, contracts on the math, 'or fail' parsing that
 // cannot be ignored, file persistence visible as 'uses fs', and a
-// safe number parser written in Velaris itself (no crashing to_int).
+// safe number parser written in Sabline itself (no crashing to_int).
 // Money is stored as whole cents (Int) - never Float - on purpose.
 
 import "std.vel"

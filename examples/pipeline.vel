@@ -1,7 +1,7 @@
 // v2.34: what an unattended job looks like.
 //
-// velaris examples/pipeline.vel < data.csv               (io is enough)
-// velaris examples/pipeline.vel < data.csv 2>/dev/null   (results only)
+// sabline examples/pipeline.vel < data.csv               (io is enough)
+// sabline examples/pipeline.vel < data.csv 2>/dev/null   (results only)
 //
 // Messages go to the error channel through log, results go to the
 // output channel through print, and the exit code says whether it

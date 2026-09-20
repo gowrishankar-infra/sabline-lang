@@ -1,8 +1,8 @@
-// Finding the Python that holds the Velaris compiler.
+// Finding the Python that holds the Sabline compiler.
 //
 // The npm package is a wrapper, not a copy: it finds a Python that can
-// import `velaris` and calls it. Until 4.3.4 it took the first Python
-// that could import the module at all, which meant an old Velaris in an
+// import `sabline` and calls it. Until 4.3.4 it took the first Python
+// that could import the module at all, which meant an old Sabline in an
 // early candidate silently shadowed a newer one further down - and a
 // subcommand added after that old version came out looked to the user
 // like a missing file rather than a missing compiler.
@@ -16,14 +16,14 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 // One line of JSON on stdout: the version the module declares, and the
-// interpreter it came from. `velaris.VERSION` has been there since 1.0,
-// so every real Velaris answers; something importable as `velaris` that
-// is not one is reported as a null version rather than as no Velaris at
+// interpreter it came from. `sabline.VERSION` has been there since 1.0,
+// so every real Sabline answers; something importable as `sabline` that
+// is not one is reported as a null version rather than as no Sabline at
 // all, and ranks below everything that can say what it is.
 const PROBE =
-  "import json,sys,velaris;" +
+  "import json,sys,sabline;" +
   "sys.stdout.write(json.dumps({" +
-  '"version": getattr(velaris, "VERSION", None), ' +
+  '"version": getattr(sabline, "VERSION", None), ' +
   '"interpreter": sys.executable}))';
 
 export function candidates() {
@@ -60,14 +60,14 @@ function newer(a, b) {
 }
 
 /**
- * The candidate holding the newest Velaris.
+ * The candidate holding the newest Sabline.
  *
  * Returns null if no candidate has it at all, else { command,
  * interpreter, version, all }: `version` is null when the module
- * declares none, and `all` is every candidate that had Velaris, in the
+ * declares none, and `all` is every candidate that had Sabline, in the
  * order they were tried.
  */
-export function findVelaris() {
+export function findSabline() {
   const found = [];
   const seen = new Set();
   for (const command of candidates()) {
@@ -123,21 +123,21 @@ export function behindWarning(found, ours) {
   if (!ours) return null;
   if (found.version === null) {
     return (
-      `velaris-lang ${ours} (npm) is using a Velaris at ${found.interpreter} ` +
+      `sabline-lang ${ours} (npm) is using a Sabline at ${found.interpreter} ` +
       "that does not say which version it is; upgrade it with: " +
-      "pip install -U velaris-lang"
+      "pip install -U sabline-lang"
     );
   }
   if (compareVersions(found.version, ours) >= 0) return null;
   return (
-    `velaris-lang ${ours} (npm) is using Velaris ${found.version}, from ` +
+    `sabline-lang ${ours} (npm) is using Sabline ${found.version}, from ` +
     `${found.interpreter}; upgrade the compiler with: ` +
-    "pip install -U velaris-lang"
+    "pip install -U sabline-lang"
   );
 }
 
 export const NOT_INSTALLED =
-  "Velaris needs its compiler, which is a Python package:\n" +
-  "\n    pip install velaris-lang\n" +
+  "Sabline needs its compiler, which is a Python package:\n" +
+  "\n    pip install sabline-lang\n" +
   "\nOr try it with nothing installed:\n" +
-  "    https://velaris-lang.dev/playground.html";
+  "    https://sabline.dev/playground.html";

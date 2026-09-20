@@ -1,5 +1,5 @@
 // v0.14 usability pack: 'else if', '%' (remainder), and text tools.
-// Yes, this is fizzbuzz - the classic interview question - in Velaris.
+// Yes, this is fizzbuzz - the classic interview question - in Sabline.
 
 fn fizzbuzz(n: Int) -> Text {
     if n % 15 == 0 {
@@ -18,8 +18,8 @@ fn main() uses io {
         print(fizzbuzz(i))
         i = i + 1
     }
-    let words = split("velaris proves your promises", " ")
+    let words = split("sabline proves your promises", " ")
     print("words: " + length(words))
     print("first, shouted: " + upper(get(words, 0)))
-    print("contains 'proves'? " + contains("velaris proves", "proves"))
+    print("contains 'proves'? " + contains("sabline proves", "proves"))
 }

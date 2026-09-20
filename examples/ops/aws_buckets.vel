@@ -1,13 +1,13 @@
 // Who these AWS credentials are, the buckets they can see, and the first
 // keys of one of them.
 //
-// AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... velaris examples/ops/aws_buckets.vel \
+// AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... sabline examples/ops/aws_buckets.vel \
 // --allow io,env,clock,declassify,net:sts.us-east-1.amazonaws.com:443,net:s3.us-east-1.amazonaws.com:443 \
 // us-east-1 my-bucket logs/
 //
-// Every request is signed with Signature Version 4 in Velaris itself
+// Every request is signed with Signature Version 4 in Sabline itself
 // (stdlib/aws.vel): it calls no Python. The secret key is never anything but
-// a Secret; `velaris audit` lists the signature as a declassification with
+// a Secret; `sabline audit` lists the signature as a declassification with
 // the reason "hmac signature", and the access key id and the session token
 // with reasons of their own.
 

@@ -1,6 +1,6 @@
 // Every fix from the 86-artifact adversarial report, demonstrated.
 //
-// velaris examples/report_fixes.vel --allow ffi:math,io
+// sabline examples/report_fixes.vel --allow ffi:math,io
 //
 // 1. pop/slice/set_at demand handling (the soundness hole)
 // 2. the typed FFI carries numbers

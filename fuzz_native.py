@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate random Velaris programs; demand that both engines agree.
+"""Generate random Sabline programs; demand that both engines agree.
 
 Native compilation is only allowed to be faster, never different. This
 builds random pure functions over Ints, Floats, lists and text, runs
@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 sys.path.insert(0, str(HERE))
 from suite_dirs import isolate  # noqa: E402
 
@@ -94,7 +94,7 @@ def gen_program(r: Any) -> str:
 
 
 def run(path: Any, native: bool) -> tuple[Any, ...]:
-    args = [sys.executable, str(VELARIS), str(path)]
+    args = [sys.executable, str(SABLINE), str(path)]
     if not native:
         args.append("--no-native")
     p = subprocess.run(args, capture_output=True, text=True, timeout=120)

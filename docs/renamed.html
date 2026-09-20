@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Velaris is now Sabline - Sabline 8.6.0</title>
+<meta name="description" content="This project was called Velaris from 1.0 to 8.5.0. From 8.6.0 it is called Sabline.">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/renamed.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="renamed.html" aria-current="page">Velaris is now Sabline</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="velaris-is-now-sabline">Velaris is now Sabline</h1>
+<p>This project was called <strong>Velaris</strong> from 1.0 to 8.5.0. From <strong>8.6.0</strong> it is
+called <strong>Sabline</strong>.</p>
+<h2 id="why">Why <a class="anchor" href="#why" aria-label="Link to this section">#</a></h2>
+<p>The name belongs to an unrelated company in the same market — velaris.io,
+which sells an agent product with an MCP server. Two things with one name in
+one market is a problem for whoever meets the second one, and the company
+was there first and is funded. The name was given up rather than contested.</p>
+<p>Nothing about the language, the format, the guarantees or the threat model
+changed with the name. 8.6.0 renames and nothing else.</p>
+<h2 id="what-you-have-to-change-nothing-in-8x">What you have to change: nothing, in 8.x <a class="anchor" href="#what-you-have-to-change-nothing-in-8x" aria-label="Link to this section">#</a></h2>
+<p>The rename is additive. STABILITY.md's rule 1 says a break ships only in a
+major version, and a rename that stopped a command, an import or a
+committed file from working would be a break. So every old name still
+works, each saying once on stderr that it has changed, and each goes no
+sooner than 9.0.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>What you wrote</th><th>Still works in 8.x</th><th>Write instead</th></tr></thead>
+<tbody>
+<tr><td><code>velaris program.vel</code></td><td>yes, with a notice</td><td><code>sabline program.vel</code></td></tr>
+<tr><td><code>npx velaris ...</code></td><td>yes, with a notice</td><td><code>npx sabline ...</code></td></tr>
+<tr><td><code>import velaris</code></td><td>yes, with a notice and a <code>DeprecationWarning</code></td><td><code>import sabline</code></td></tr>
+<tr><td><code>from velaris.budget import Budget</code></td><td>yes</td><td><code>from sabline.budget import ...</code></td></tr>
+<tr><td><code>except velaris.VelarisError</code></td><td>yes — it is <code>SablineError</code> under the old name</td><td><code>except sabline.SablineError</code></td></tr>
+<tr><td><code>python -m velaris_mcp</code></td><td>yes, with a notice</td><td><code>python -m sabline_mcp</code></td></tr>
+<tr><td><code>%load_ext velaris_magic</code></td><td>yes, with a notice</td><td><code>%load_ext sabline_magic</code></td></tr>
+<tr><td><code>VELARIS_TOKEN</code>, <code>VELARIS_PROOF_TIMEOUT</code>, any <code>VELARIS_*</code></td><td>yes, when the <code>SABLINE_*</code> name is not set</td><td><code>SABLINE_*</code></td></tr>
+<tr><td>a committed <code>velaris.capabilities</code></td><td>yes, read when there is no <code>sabline.capabilities</code> beside it</td><td>rename the file</td></tr>
+<tr><td><code>velaris.toml</code>, <code>velaris.lock</code></td><td>yes, same rule</td><td>rename them</td></tr>
+<tr><td>a <code>velaris.audit/1</code> / <code>velaris.receipt/1</code> / <code>velaris.capabilities/1</code> document</td><td>yes, read as the <code>sabline.*</code> format of the same version</td><td>nothing; Sabline writes <code>sabline.*</code> from 8.6</td></tr>
+<tr><td>a Statement of the <code>velaris-lang.dev</code> or GitHub Pages predicate type</td><td>yes, verified as the same type</td><td>nothing; new Statements name <code>sabline.dev</code></td></tr>
+</tbody></table></div>
+<p>Two names for one thing, set to different values, is an error rather than a
+guess: <code>SABLINE_TOKEN=a VELARIS_TOKEN=b</code> stops and says so, because a guess
+there decides what a run is allowed to do.</p>
+<p><code>sabline</code> and <code>velaris</code> are the same command, <code>sabline</code> and <code>velaris</code> are
+the same Python module object, and <code>SablineError</code> and <code>VelarisError</code> are the
+same class — not copies, so nothing can drift apart.</p>
+<h2 id="every-published-address-and-where-it-now-points">Every published address, and where it now points <a class="anchor" href="#every-published-address-and-where-it-now-points" aria-label="Link to this section">#</a></h2>
+<h3 id="the-packages">The packages <a class="anchor" href="#the-packages" aria-label="Link to this section">#</a></h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Was</th><th>Is</th><th>What happens to the old one</th></tr></thead>
+<tbody>
+<tr><td>PyPI <code>velaris-lang</code></td><td>PyPI <a href="https://pypi.org/project/sabline-lang/"><code>sabline-lang</code></a></td><td>a final release that depends on <code>sabline-lang</code> and prints the rename notice; earlier versions stay exactly where they are</td></tr>
+<tr><td>npm <code>velaris-lang</code></td><td>npm <a href="https://www.npmjs.com/package/sabline-lang"><code>sabline-lang</code></a></td><td>the same, and marked deprecated with <code>npm deprecate</code></td></tr>
+<tr><td>PyPI/npm <code>velaris</code> (the bare name, a placeholder)</td><td>PyPI/npm <code>sabline</code></td><td>kept, pointing at <code>sabline-lang</code></td></tr>
+<tr><td>MCP registry <code>io.github.gowrishankar-infra/velaris</code></td><td><code>io.github.gowrishankar-infra/sabline</code></td><td>the old server keeps its published versions and is marked deprecated</td></tr>
+<tr><td>VS Code <code>gowrishankar-infra.velaris</code></td><td><a href="https://marketplace.visualstudio.com/items?itemName=gowrishankar-infra.sabline"><code>gowrishankar-infra.sabline</code></a></td><td>a Marketplace extension id cannot be renamed, so the old one gets a final version whose README says to install Sabline</td></tr>
+</tbody></table></div>
+<p>Nothing published under the old name is deleted, yanked or moved. A pin to
+<code>velaris-lang==8.5.0</code> resolves to the same file it always did, with the same
+digest and the same signature — that is the rule this project has kept since
+3.4 and is not breaking now.</p>
+<h3 id="the-repositories">The repositories <a class="anchor" href="#the-repositories" aria-label="Link to this section">#</a></h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Was</th><th>Is</th></tr></thead>
+<tbody>
+<tr><td><code>gowrishankar-infra/velaris-lang</code></td><td><a href="https://github.com/gowrishankar-infra/sabline-lang"><code>gowrishankar-infra/sabline-lang</code></a></td></tr>
+<tr><td><code>gowrishankar-infra/velaris-spec</code></td><td><a href="https://github.com/gowrishankar-infra/sabline-spec"><code>gowrishankar-infra/sabline-spec</code></a></td></tr>
+<tr><td><code>gowrishankar-infra/velaris-kit</code></td><td><a href="https://github.com/gowrishankar-infra/sabline-kit"><code>gowrishankar-infra/sabline-kit</code></a></td></tr>
+<tr><td><code>gowrishankar-infra/velaris-canary</code></td><td><a href="https://github.com/gowrishankar-infra/sabline-canary"><code>gowrishankar-infra/sabline-canary</code></a></td></tr>
+</tbody></table></div>
+<p>Each was renamed in place, so GitHub redirects the old URL — the web page,
+<code>git clone</code>, and <code>uses: gowrishankar-infra/velaris-lang@&lt;commit&gt;</code> in a
+workflow. A pin by commit keeps naming the same commit. The redirect lasts
+only as long as nobody creates a repository at the old name, and nobody
+will.</p>
+<h3 id="the-site">The site <a class="anchor" href="#the-site" aria-label="Link to this section">#</a></h3>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Address</th><th>Now</th></tr></thead>
+<tbody>
+<tr><td><code>gowrishankar-infra.github.io/velaris-lang/...</code></td><td>301 to <code>sabline.dev/...</code> (it has redirected since 8.3)</td></tr>
+<tr><td><code>velaris-lang.dev/...</code></td><td>301 to <code>sabline.dev/...</code>, path for path</td></tr>
+<tr><td><code>sabline.dev</code></td><td>the site</td></tr>
+</tbody></table></div>
+<p><code>velaris-lang.dev</code> is kept and will go on redirecting. Errors printed by
+releases 8.0 to 8.2.1 name the GitHub Pages address, and errors printed by
+8.3 to 8.5 name <code>velaris-lang.dev</code>; both still lead a reader to the card.</p>
+<h3 id="the-predicate-types">The predicate types <a class="anchor" href="#the-predicate-types" aria-label="Link to this section">#</a></h3>
+<p>An in-toto predicate type is a name, and this project has named its two
+types at three addresses. Every Statement ever signed still verifies,
+because a reader takes all three as the same type:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Written by</th><th>capability/v1</th><th>receipt/v1</th></tr></thead>
+<tbody>
+<tr><td>4.2 – 8.2.1</td><td><code>https://gowrishankar-infra.github.io/velaris-lang/capability/v1</code></td><td><code>.../receipt/v1</code> (from 8.1)</td></tr>
+<tr><td>8.3 – 8.5</td><td><code>https://velaris-lang.dev/capability/v1</code></td><td><code>https://velaris-lang.dev/receipt/v1</code></td></tr>
+<tr><td>8.6 on</td><td><code>https://sabline.dev/capability/v1</code></td><td><code>https://sabline.dev/receipt/v1</code></td></tr>
+</tbody></table></div>
+<p><code>sabline verify</code>, <code>sabline receipts diff</code>, <code>sabline replay</code> and the OPA
+policy read all three. A verifier outside Sabline that pins one type name —
+cosign's <code>--type</code>, the Kyverno policy — takes the name the Statement
+actually carries; the Kyverno policy in <code>policies/</code> shows how.</p>
+<p><code>velaris.dev</code> was never this project's domain. It is registered to someone
+else, no release ever wrote a type under it, and a Statement naming one is
+refused like any other type Sabline does not define. Neither is velaris.io.</p>
+<h3 id="security-contact">Security contact <a class="anchor" href="#security-contact" aria-label="Link to this section">#</a></h3>
+<p><code>security@velaris-lang.dev</code> still reaches the maintainer. New reports should
+go to <strong>security@sabline.dev</strong>; SECURITY.md says so.</p>
+<h2 id="what-is-not-renamed">What is not renamed <a class="anchor" href="#what-is-not-renamed" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong><code>.vel</code></strong> stays the file extension. It is name-neutral, and changing it
+would break every program that exists.</li>
+<li><strong>The eight published advisories</strong> keep their text and their GHSA ids. An
+advisory records what was wrong with a release that was called Velaris,
+and its affected package really is <code>velaris-lang</code> on PyPI.</li>
+<li><strong>The CHANGELOG before 8.6.0</strong> keeps the old name throughout. It is a
+record of what happened.</li>
+<li><strong>The documentation of 8.3, 8.4 and 8.5</strong> under <code>/8.3/</code>, <code>/8.4/</code> and
+<code>/8.5/</code> is left as those releases published it, at the address they were
+published at. Its links redirect.</li>
+<li><strong>Git history</strong>, which is why every file was moved with <code>git mv</code>.</li>
+</ul>
+<h2 id="how-it-was-done">How it was done <a class="anchor" href="#how-it-was-done" aria-label="Link to this section">#</a></h2>
+<p><code>scripts/rename.py</code>, committed, so the diff is reviewable as a set of rules
+rather than as 27,000 changed lines. The same script, run with no arguments,
+is the drift test: it fails on any occurrence of the old name that the rules
+do not account for, and <code>check_rename.py</code> runs it in CI beside the cases
+that prove every alias in the table above still works.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/renamed.md">docs/renamed.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#why">Why</a></li><li><a href="#what-you-have-to-change-nothing-in-8x">What you have to change: nothing, in 8.x</a></li><li><a href="#every-published-address-and-where-it-now-points">Every published address, and where it now points</a><ul><li><a href="#the-packages">The packages</a></li><li><a href="#the-repositories">The repositories</a></li><li><a href="#the-site">The site</a></li><li><a href="#the-predicate-types">The predicate types</a></li><li><a href="#security-contact">Security contact</a></li></ul></li><li><a href="#what-is-not-renamed">What is not renamed</a></li><li><a href="#how-it-was-done">How it was done</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

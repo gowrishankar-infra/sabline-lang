@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Changelog: 2.x: 2.63.1 to 2.40.1 - Velaris 8.5.0</title>
+<title>Changelog: 2.x: 2.63.1 to 2.40.1 - Sabline 8.6.0</title>
 <meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
-<meta name="velaris-version" content="8.5.0">
-<link rel="canonical" href="https://velaris-lang.dev/changelog-2-1.html">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/changelog-2-1.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
@@ -17,8 +17,8 @@
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="renamed.html">Velaris is now Sabline</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,7 +52,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html" aria-current="page">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html" aria-current="page">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -312,7 +312,7 @@ holds a line across a project - but the compiler itself always
 accepted a promise that fell back to a runtime check.</p>
 <p><code>velaris check program.vel --strict</code> refuses when any promise could not
 be proven, and names them:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code>examples/wordcount.vel: <span class="n">2</span> promise(s) could <span class="k">not</span> be proven, <span class="k">and</span>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code>examples/wordcount.vel: <span class="n">2</span> promise(s) could <span class="k">not</span> be proven, <span class="k">and</span>
 --strict does <span class="k">not</span> accept runtime checks:
   bar
       needs    biggest &gt; <span class="n">0</span>
@@ -764,7 +764,7 @@ New hero image to match, and the limits stated in the same breath as
 the feature.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#2631---the-memory-cap-claim-narrowed-to-where-it-holds">2.63.1 - The memory cap claim, narrowed to where it holds</a></li><li><a href="#263---what-a-security-reviewer-looks-for">2.63 - What a security reviewer looks for</a></li><li><a href="#262---loops-that-provably-end-and-a-corpus-built-to-fool-it">2.62 - Loops that provably end, and a corpus built to fool it</a></li><li><a href="#261---a-table-anyone-can-rerun">2.61 - A table anyone can rerun</a></li><li><a href="#260---the-ffi-cliff-becomes-a-permission">2.60 - The ffi cliff becomes a permission</a></li><li><a href="#259---time-and-memory-limits-prompted-by-a-review-bot">2.59 - Time and memory limits, prompted by a review bot</a></li><li><a href="#258---ready-to-submit-to-the-frameworks">2.58 - Ready to submit to the frameworks</a></li><li><a href="#257-----strict-from-a-question-on-rcompilers">2.57 - --strict, from a question on r/Compilers</a></li><li><a href="#256---seamless-means-tested-not-claimed">2.56 - Seamless means tested, not claimed</a></li><li><a href="#255---four-more-doors">2.55 - Four more doors</a></li><li><a href="#254---a-door-for-languages-that-are-not-python">2.54 - A door for languages that are not Python</a></li><li><a href="#2531---the-library-suite-knows-what-needs-the-prover">2.53.1 - The library suite knows what needs the prover</a></li><li><a href="#253---setting-it-up-should-not-be-a-chore">2.53 - Setting it up should not be a chore</a></li><li><a href="#252---velaris-from-inside-other-programs">2.52 - Velaris from inside other programs</a></li><li><a href="#251---smaller-per-call-costs-and-an-honest-note-about-the-ceiling">2.51 - Smaller per-call costs, and an honest note about the ceiling</a></li><li><a href="#250---function-values-carry-their-surroundings">2.50 - Function values carry their surroundings</a></li><li><a href="#249---the-cards-gaps-were-hiding-three-real-bugs">2.49 - The card&#x27;s gaps were hiding three real bugs</a></li><li><a href="#248---speed-without-touching-a-single-guarantee">2.48 - Speed, without touching a single guarantee</a></li><li><a href="#247---the-periphery-round">2.47 - The periphery round</a></li><li><a href="#246---contents-not-just-lengths">2.46 - Contents, not just lengths</a></li><li><a href="#245---the-road-from-84">2.45 - The road from 84</a></li><li><a href="#244---everything-the-adversarial-report-found">2.44 - Everything the adversarial report found</a></li><li><a href="#243---the-prover-crosses-the-loop-boundary">2.43 - The prover crosses the loop boundary</a></li><li><a href="#242---findings-from-a-model-that-installed-it-and-tried-to-break-it">2.42 - Findings from a model that installed it and tried to break it</a></li><li><a href="#2412---a-loop-no-longer-hides-a-divide-by-zero">2.41.2 - A loop no longer hides a divide by zero</a></li><li><a href="#2411---the-card-worked-and-the-first-program-it-produced-found-a-bug">2.41.1 - The card worked, and the first program it produced found a bug</a></li><li><a href="#241---written-by-a-model-audited-by-you-run-in-a-box">2.41 - Written by a model, audited by you, run in a box</a></li><li><a href="#2401---leading-with-the-sandbox">2.40.1 - Leading with the sandbox</a></li></ul></nav>

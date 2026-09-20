@@ -4,7 +4,7 @@
     {
       "id": "csv_total",
       "title": "a CSV total",
-      "prompt": "Write a complete Velaris program. The list [\"chai,2500\", \"book,45000\", \"auto,12000\"] holds CSV rows of label and amount. Add up the amounts and print exactly one line: total 59500 (that is, the word total, a space, and the sum). Handle any parse failure with check; do not let a failure go unhandled.",
+      "prompt": "Write a complete Sabline program. The list [\"chai,2500\", \"book,45000\", \"auto,12000\"] holds CSV rows of label and amount. Add up the amounts and print exactly one line: total 59500 (that is, the word total, a space, and the sum). Handle any parse failure with check; do not let a failure go unhandled.",
       "needs": ["io"],
       "stdin": "",
       "expect": {"stdout": "total 59500"},
@@ -13,7 +13,7 @@
     {
       "id": "grade_filter",
       "title": "a grade filter with a proven contract",
-      "prompt": "Write a complete Velaris program with a pure function is_passing(score: Int) -> Bool that is true when score >= 50, and a function passing(scores: List of Int) -> List of Int that keeps only the passing scores and carries the promise ensures all_of(result, is_passing). Do not write an invariant; the prover can settle this promise on its own when every push is guarded. In main, print exactly one line with the number of passing scores in [35, 70, 50, 49, 99], which is 3.",
+      "prompt": "Write a complete Sabline program with a pure function is_passing(score: Int) -> Bool that is true when score >= 50, and a function passing(scores: List of Int) -> List of Int that keeps only the passing scores and carries the promise ensures all_of(result, is_passing). Do not write an invariant; the prover can settle this promise on its own when every push is guarded. In main, print exactly one line with the number of passing scores in [35, 70, 50, 49, 99], which is 3.",
       "needs": ["io"],
       "stdin": "",
       "expect": {"stdout": "3"},
@@ -22,7 +22,7 @@
     {
       "id": "sandboxed_read",
       "title": "a sandboxed file read with check",
-      "prompt": "Write a complete Velaris program that reads one line from standard input (a file path), reads that file with read_file inside a check, and prints either `<N> characters` (the length of the file's text) or `could not read: <reason>`. Declare every effect the program needs. The person running it may refuse the file effect; that refusal is not something the program can catch, and the program must not try to.",
+      "prompt": "Write a complete Sabline program that reads one line from standard input (a file path), reads that file with read_file inside a check, and prints either `<N> characters` (the length of the file's text) or `could not read: <reason>`. Declare every effect the program needs. The person running it may refuse the file effect; that refusal is not something the program can catch, and the program must not try to.",
       "needs": ["io"],
       "stdin": "does-not-matter.txt\n",
       "expect": {"refused_effect": "fs"},
@@ -31,7 +31,7 @@
     {
       "id": "json_path",
       "title": "a JSON path read",
-      "prompt": "Write a complete Velaris program. The text {\"user\": {\"name\": \"gowri\", \"tags\": [\"a\", \"b\"]}} is a JSON document held in a Text value. Using json_get and json_len with check (both can fail), print exactly one line: gowri has 2 tags.",
+      "prompt": "Write a complete Sabline program. The text {\"user\": {\"name\": \"gowri\", \"tags\": [\"a\", \"b\"]}} is a JSON document held in a Text value. Using json_get and json_len with check (both can fail), print exactly one line: gowri has 2 tags.",
       "needs": ["io"],
       "stdin": "",
       "expect": {"stdout": "gowri has 2 tags"},
@@ -40,7 +40,7 @@
     {
       "id": "stack_calc",
       "title": "a stack calculator using pop and div_or_fail",
-      "prompt": "Write a complete Velaris program: a reverse-Polish calculator over the token list [\"6\", \"3\", \"/\", \"2\", \"*\"]. Keep a stack as a List of Int. A number token is pushed. An operator pops two values (pop can fail on an empty stack; handle it with check or try) and pushes the result; use div_or_fail for division so a zero divisor is a catchable failure, not a crash. Print exactly one line: result 4.",
+      "prompt": "Write a complete Sabline program: a reverse-Polish calculator over the token list [\"6\", \"3\", \"/\", \"2\", \"*\"]. Keep a stack as a List of Int. A number token is pushed. An operator pops two values (pop can fail on an empty stack; handle it with check or try) and pushes the result; use div_or_fail for division so a zero divisor is a catchable failure, not a crash. Print exactly one line: result 4.",
       "needs": ["io"],
       "stdin": "",
       "expect": {"stdout": "result 4"},

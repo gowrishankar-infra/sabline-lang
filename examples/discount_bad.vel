@@ -1,7 +1,7 @@
 // DISCOUNT_BAD - the same rule as examples/discount.vel, with the last
 // guard in discount_for deleted.
 //
-// velaris check examples/discount_bad.vel
+// sabline check examples/discount_bad.vel
 //
 // The cap holds the discount to 20.00. It does not hold it to what the
 // basket is worth, so a 5.00 flat discount on a 3.00 basket takes the

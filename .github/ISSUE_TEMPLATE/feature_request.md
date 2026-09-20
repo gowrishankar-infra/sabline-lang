@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Something Velaris should be able to do
+about: Something Sabline should be able to do
 labels: enhancement
 ---
 
@@ -8,7 +8,7 @@ labels: enhancement
 
 **What you wish you could write**
 ```
-(sketch the Velaris code you want to exist)
+(sketch the Sabline code you want to exist)
 ```
 
 **How you work around it today**

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Velaris test suite: runs every example and checks its expected verdict.
+"""Sabline test suite: runs every example and checks its expected verdict.
 
     python run_tests.py              # uses native compilation if available
     python run_tests.py --no-native  # force full interpretation
@@ -109,7 +109,7 @@ EXPECT = {
 # The budget each example needs, narrowest first. From 5.0 a run with
 # no --allow gets io, so every example that touches a file, a host, the
 # clock, randomness, the environment or Python has to say so - and says
-# exactly what it needs, never `all`. `velaris migrate --to 5.0 examples`
+# exactly what it needs, never `all`. `sabline migrate --to 5.0 examples`
 # derives this list from each program's own audit; an example missing
 # from it runs under the 5.0 default.
 ALLOW = {
@@ -153,12 +153,12 @@ def check_versions() -> None:
     """The packaged version and the compiler's version must agree."""
     import re as _re
     root = Path(__file__).parent
-    src = (root / "velaris" / "version.py").read_text(encoding="utf-8")
+    src = (root / "sabline" / "version.py").read_text(encoding="utf-8")
     tom = (root / "pyproject.toml").read_text(encoding="utf-8")
     a = cast("_re.Match[str]", _re.search(r'VERSION = "([\d.]+)"', src)).group(1)
     b = cast("_re.Match[str]", _re.search(r'version = "([\d.]+)"', tom)).group(1)
     if a != b:
-        print(f"VERSION MISMATCH: velaris/version.py says {a}, "
+        print(f"VERSION MISMATCH: sabline/version.py says {a}, "
               f"pyproject.toml says {b}")
         raise SystemExit(1)
     # every other place a version lives: an npm package or an .mcpb
@@ -174,7 +174,7 @@ def check_versions() -> None:
         if path.exists():
             got = read(path)
             if got != a:
-                print(f"VERSION MISMATCH: velaris/version.py says {a}, "
+                print(f"VERSION MISMATCH: sabline/version.py says {a}, "
                       f"{label} says {got}")
                 raise SystemExit(1)
 
@@ -183,7 +183,7 @@ def check_versions() -> None:
         import json as _json
         c = _json.loads(ext.read_text(encoding="utf-8"))["version"]
         if c != a:
-            print(f"VERSION MISMATCH: velaris/version.py says {a}, "
+            print(f"VERSION MISMATCH: sabline/version.py says {a}, "
                   f"the VS Code extension says {c}")
             raise SystemExit(1)
 
@@ -194,7 +194,7 @@ def check_versions() -> None:
         doc = _j.loads(reg.read_text(encoding="utf-8"))
         said = [doc["version"]] + [p["version"] for p in doc["packages"]]
         if any(v != a for v in said):
-            print(f"VERSION MISMATCH: velaris/version.py says {a}, "
+            print(f"VERSION MISMATCH: sabline/version.py says {a}, "
                   f"the MCP registry manifest says {said}")
             raise SystemExit(1)
 
@@ -209,23 +209,23 @@ def check_versions() -> None:
             encoding="utf-8"), _re.M)
         got = m.group(1) if m else None
         if got != a:
-            print(f"VERSION MISMATCH: velaris/version.py says {a}, CITATION.cff "
+            print(f"VERSION MISMATCH: sabline/version.py says {a}, CITATION.cff "
                   f"says {got}")
             raise SystemExit(1)
 
     # and what the compiler says it is when it is run with no arguments.
     # Until 4.4 that line was frozen at the version its docstring was
     # written in, and said 2.36 however old that became.
-    printed = subprocess.run([sys.executable, str(root / "velaris.py")],
+    printed = subprocess.run([sys.executable, str(root / "sabline.py")],
                              capture_output=True, text=True).stdout
     first = next((ln for ln in printed.splitlines() if ln.strip()), "")
-    if f"Velaris {a}" not in first:
-        print(f"VERSION MISMATCH: velaris.py with no arguments opens "
-              f"{first!r}, not 'Velaris {a}'")
+    if f"Sabline {a}" not in first:
+        print(f"VERSION MISMATCH: sabline.py with no arguments opens "
+              f"{first!r}, not 'Sabline {a}'")
         raise SystemExit(1)
 
 
-REPOSITORY_URL = "https://github.com/gowrishankar-infra/velaris-lang.git"
+REPOSITORY_URL = "https://github.com/gowrishankar-infra/sabline-lang.git"
 
 
 def _tag_commits(root: Path) -> dict[Any, Any]:
@@ -271,14 +271,14 @@ def check_action_pins(root: Path) -> None:
     for doc in ("README.md", "EMBEDDING.md"):
         text = (root / doc).read_text(encoding="utf-8")
         for m in _re.finditer(
-                r"gowrishankar-infra/velaris-lang@(\S+)(?:[ \t]+#[ \t]*"
+                r"gowrishankar-infra/sabline-lang@(\S+)(?:[ \t]+#[ \t]*"
                 r"(v[\d.]+))?", text):
             pins.append((doc, m.group(1), m.group(2)))
         installs += [(doc, v) for v in
                      _re.findall(r'^\s*version:\s*"([^"]*)"', text, _re.M)]
     if not any(doc == "README.md" for doc, _, _ in pins):
         print("PIN MISMATCH: README.md no longer shows the Action "
-              "(gowrishankar-infra/velaris-lang@<commit>  # <tag>), which "
+              "(gowrishankar-infra/sabline-lang@<commit>  # <tag>), which "
               "this check reads")
         raise SystemExit(1)
     loose = [(doc, ref) for doc, ref, tag in pins
@@ -353,7 +353,7 @@ def main() -> int:
             continue
         budget = (["--allow", ALLOW[name]] if name in ALLOW else [])
         r = subprocess.run(
-            [sys.executable, str(here / "velaris.py"), str(path)]
+            [sys.executable, str(here / "sabline.py"), str(path)]
             + budget + ARGS.get(name, []) + extra,
             capture_output=True, text=True, timeout=300,
             input=STDIN.get(name), cwd=work)

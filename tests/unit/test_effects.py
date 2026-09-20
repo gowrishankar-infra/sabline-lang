@@ -1,10 +1,10 @@
-"""Stage 4, the effect resolver, alone: velaris.effects.check_effects(funcs,
+"""Stage 4, the effect resolver, alone: sabline.effects.check_effects(funcs,
 errors) on programs the lexer and parser build.
 
 SPEC.md 7: a function may perform only the effects it declares, calling a
 function needs everything it declares, and the eight effects are io, env,
 fs, net, clock, rand, ffi and declassify. LLM.md's builtin list says which
-effect each builtin needs (velaris.tables.BUILTINS is what the resolver
+effect each builtin needs (sabline.tables.BUILTINS is what the resolver
 reads). SPEC.md 9.1 and 12a: promises and function values are pure.
 SPEC.md 10.1: builtins and the program's own names (E204, give-way).
 """
@@ -12,10 +12,10 @@ import os
 import unittest
 
 import _support
-from velaris.effects import check_effects
-from velaris.lexer import lex
-from velaris.parser import Parser
-from velaris.tables import BUILTINS
+from sabline.effects import check_effects
+from sabline.lexer import lex
+from sabline.parser import Parser
+from sabline.tables import BUILTINS
 from typing import Any
 
 STAGE = "effects"

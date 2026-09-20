@@ -1,26 +1,26 @@
-- id: velaris-check
-  name: velaris check
-  description: Compile every Velaris file, and prove the promises it makes.
-  entry: velaris check
+- id: sabline-check
+  name: sabline check
+  description: Compile every Sabline file, and prove the promises it makes.
+  entry: sabline check
   language: python
-  additional_dependencies: ["velaris-lang", "z3-solver"]
+  additional_dependencies: ["sabline-lang", "z3-solver"]
   files: \.vel$
   pass_filenames: true
 
-- id: velaris-fmt
-  name: velaris fmt
-  description: Check that every Velaris file is canonically formatted.
-  entry: velaris fmt --check
+- id: sabline-fmt
+  name: sabline fmt
+  description: Check that every Sabline file is canonically formatted.
+  entry: sabline fmt --check
   language: python
-  additional_dependencies: ["velaris-lang"]
+  additional_dependencies: ["sabline-lang"]
   files: \.vel$
   pass_filenames: true
 
-- id: velaris-proofs
-  name: velaris proofs
+- id: sabline-proofs
+  name: sabline proofs
   description: Fail when too few promises are proven rather than checked at runtime.
-  entry: velaris proofs . --min 80
+  entry: sabline proofs . --min 80
   language: python
-  additional_dependencies: ["velaris-lang", "z3-solver"]
+  additional_dependencies: ["sabline-lang", "z3-solver"]
   files: \.vel$
   pass_filenames: false

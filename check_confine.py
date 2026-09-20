@@ -20,7 +20,7 @@ much of it.
              made under a net grant, a temporary file under ffi:tempfile, a
              proof and native code made inside a confined pool worker
   reported   the receipt's level, reason, layers and policy digest; the
-             audit's confinement; `velaris doctor`; `velaris receipts diff`
+             audit's confinement; `sabline doctor`; `sabline receipts diff`
              naming a level that changed; eval refusing to run at none
   unreachable --no-confine after `--`, in a door's request, and in a
              program's own words changes nothing
@@ -28,7 +28,7 @@ much of it.
              network and a process through a granted ffi module, a process
              asked to leave the Windows job, a mount, another thread
   the targets every escape of check_sandbox.py, and the file and ffi
-             targets of check_adversarial.py, run on a Velaris whose budget
+             targets of check_adversarial.py, run on a Sabline whose budget
              checks are knocked out (tests/confine/faulty_runtime.py): which
              the kernel stops, and which the language alone does. --record
              writes tests/confine/kernel-<platform>.json
@@ -50,12 +50,12 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).resolve().parent
-VELARIS = str(HERE / "velaris.py")
+SABLINE = str(HERE / "sabline.py")
 FAULTY = str(HERE / "tests" / "confine" / "faulty_runtime.py")
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
-from velaris import confine  # noqa: E402
-from velaris.budget import Budget  # noqa: E402
+import sabline  # noqa: E402
+from sabline import confine  # noqa: E402
+from sabline.budget import Budget  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_confine")
@@ -91,7 +91,7 @@ def cli(*words: str, env: dict[str, str] | None = None, cwd: Any = None,
     full.pop(confine.FAULT_ENV, None)
     full.update(env or {})
     done = subprocess.run(
-        [sys.executable, FAULTY if faulty else VELARIS, *words],
+        [sys.executable, FAULTY if faulty else SABLINE, *words],
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         env=full, cwd=cwd, timeout=timeout)
     return done.returncode, done.stdout, done.stderr
@@ -110,7 +110,7 @@ def outside_dir() -> Path:
     """A directory no budget here grants. Under the home directory on macOS,
     where reads are refused only there and under /Volumes."""
     if PLATFORM == "macos":
-        made = Path(tempfile.mkdtemp(prefix=".velaris-check-confine-",
+        made = Path(tempfile.mkdtemp(prefix=".sabline-check-confine-",
                                      dir=str(Path.home())))
         import atexit
         atexit.register(shutil.rmtree, made, ignore_errors=True)
@@ -402,22 +402,22 @@ def honesty_cases() -> None:
         # (confined at its first statement) and a pool (confined at start)
         os.environ[confine.FAULT_ENV] = attempts(outside, port)["write"]
         try:
-            r = velaris.run(HELLO, timeout=60)
+            r = sabline.run(HELLO, timeout=60)
             ok("run(timeout=): the write is refused by the kernel (E319)",
                not r.ok and r.problems and r.problems[0].code == "E319"
                and not written.exists(),
                [p.as_dict() for p in r.problems])
-            with velaris.Pool(size=1, timeout=60) as pool:
+            with sabline.Pool(size=1, timeout=60) as pool:
                 r = pool.run(HELLO)
             ok("a Pool: the write is refused by the kernel (E319)",
                not r.ok and r.problems and r.problems[0].code == "E319"
                and not written.exists(),
                [p.as_dict() for p in r.problems])
-            r = velaris.run(HELLO, timeout=60, confine=False)
+            r = sabline.run(HELLO, timeout=60, confine=False)
             ok("run(timeout=, confine=False): it goes through",
                r.ok and written.exists(), [p.as_dict() for p in r.problems])
             written.unlink(missing_ok=True)
-            with velaris.Pool(size=1, timeout=60, confine=False) as pool:
+            with sabline.Pool(size=1, timeout=60, confine=False) as pool:
                 r = pool.run(HELLO)
             ok("Pool(confine=False): it goes through",
                r.ok and written.exists(), [p.as_dict() for p in r.problems])
@@ -519,7 +519,7 @@ fn main() uses io, net {{
 
     prog = program("temp.vel", '''
 fn main() uses io, ffi {
-    check py("tempfile", "mkdtemp", ["-velaris"]) {
+    check py("tempfile", "mkdtemp", ["-sabline"]) {
         ok where { print("a temporary directory was made") }
         fail why { print("no temporary directory: " + why) }
     }
@@ -541,14 +541,14 @@ fn main() uses io {
     print(double(21))
 }
 '''
-    with velaris.Pool(size=1, timeout=120) as pool:
+    with sabline.Pool(size=1, timeout=120) as pool:
         first = pool.run(HELLO)             # the worker is confined by now
         checked = pool.check(proved)
         ran = pool.run(proved)
     ok("a pool worker confined at its start still proves (Z3, when it is "
        "installed) and runs native code",
        first.ok and checked.ok and ran.ok and ran.output.strip() == "42"
-       and (not velaris.HAVE_Z3 or "double" in checked.proven),
+       and (not sabline.HAVE_Z3 or "double" in checked.proven),
        [checked.as_dict(), ran.as_dict()])
 
     receipt = WORK / "receipt.json"
@@ -589,18 +589,18 @@ def reported_cases() -> None:
        in b.get("confinement_reason", "") and b.get("confinement_layers") == []
        and b.get("os_policy_sha256") == confine.policy_sha256(
            confine.os_policy(io, confine=False)), b)
-    r = velaris.run(HELLO)
+    r = sabline.run(HELLO)
     params = parameters_of(r)
     ok("a run in the caller's own process says none, and that it is "
-       "because the caller's process is not Velaris's to confine",
+       "because the caller's process is not Sabline's to confine",
        params["confinement"] == "none" and "caller's own process"
        in params["confinement_reason"], params)
-    r = velaris.run(HELLO, timeout=60)
+    r = sabline.run(HELLO, timeout=60)
     params = parameters_of(r)
     ok("run(timeout=) is confined as the command line is",
        params["confinement"] == LEVEL.get(PLATFORM)
        and params["os_policy_sha256"] == a["os_policy_sha256"], params)
-    r = velaris.run("fn main() uses io {\n    print(1 +)\n}\n", timeout=60)
+    r = sabline.run("fn main() uses io {\n    print(1 +)\n}\n", timeout=60)
     params = parameters_of(r)
     ok("a program that did not compile never reached its first statement, "
        "and its receipt says none and why",
@@ -620,7 +620,7 @@ def reported_cases() -> None:
                          str(confined), "--json")
     ok("...and nothing when it did not", code == 0, out[:400] + err)
 
-    doc = velaris.audit(HELLO).as_dict()
+    doc = sabline.audit(HELLO).as_dict()
     systems = (doc.get("confinement") or {}).get("systems") or {}
     ok("the audit reports what a run under its safe_command gets on each "
        "system, with the reason: full on Linux, partial on macOS and on "
@@ -635,7 +635,7 @@ def reported_cases() -> None:
              '    check py("subprocess", "getoutput", ["echo x"]) {\n'
              '        ok v { print(v) }\n        fail w { print(w) }\n'
              '    }\n}\n')
-    doc = velaris.audit(shell).as_dict()
+    doc = sabline.audit(shell).as_dict()
     assert doc["confinement"] is not None
     ok("...and that ffi:subprocess widens the policy to nothing enforced, "
        "on every system",
@@ -650,11 +650,11 @@ def reported_cases() -> None:
        and "ffi:subprocess widens the OS policy to nothing enforced" in out,
        out[-700:])
     code, out, err = cli("doctor")
-    ok("velaris doctor reports the level, and the reason when it is not "
+    ok("sabline doctor reports the level, and the reason when it is not "
        "full", f"confinement: {LEVEL.get(PLATFORM)}" in out
        and (LEVEL.get(PLATFORM) == "full" or "why:" in out), out)
 
-    from velaris.evaluation import EvalRefused, _EvalPool
+    from sabline.evaluation import EvalRefused, _EvalPool
 
     class NoneWorker:
         confinement: dict[str, Any] = {
@@ -677,7 +677,7 @@ def reported_cases() -> None:
         refused = str(e)
     finally:
         pool.close()
-    ok("velaris eval refuses to run on a worker whose confinement is none, "
+    ok("sabline eval refuses to run on a worker whose confinement is none, "
        "before anything is sent to it",
        "this worker got none" in refused and worker.disposed, refused)
 
@@ -705,7 +705,7 @@ fn main() uses io {
        code == 0 and "word: --no-confine" in out, out + err[-300:])
     code, out, err = cli("eval", words, "--no-confine", "--receipt",
                          str(WORK / "eval.json"))
-    ok("velaris eval refuses the flag", code == 2 and "--no-confine" in err,
+    ok("sabline eval refuses the flag", code == 2 and "--no-confine" in err,
        err)
 
     token = "confine-" + os.urandom(12).hex()
@@ -713,8 +713,8 @@ fn main() uses io {
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
     door = subprocess.Popen(
-        [sys.executable, VELARIS, "serve", "--port", str(port)],
-        env=dict(os.environ, VELARIS_TOKEN=token, **fault),
+        [sys.executable, SABLINE, "serve", "--port", str(port)],
+        env=dict(os.environ, SABLINE_TOKEN=token, **fault),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=str(WORK))
     import time
     import urllib.error
@@ -827,7 +827,7 @@ def against_cases() -> None:
         ok("a process asked to leave the job object "
            "(CREATE_BREAKAWAY_FROM_JOB) is refused", "error[E319]" in err,
            err[-400:])
-        r = velaris.run('fn main() uses io {\n    let big = grow("x")\n'
+        r = sabline.run('fn main() uses io {\n    let big = grow("x")\n'
                         '    print(length(big))\n}\n'
                         'fn grow(s: Text) -> Text {\n    let t = s\n'
                         '    let i = 0\n    while i < 40 {\n'
@@ -865,7 +865,7 @@ def against_cases() -> None:
             target = granted / "mounted"
             target.mkdir(exist_ok=True)
             script = (f'mount --bind "{outside}" "{target}" && '
-                      f'"{sys.executable}" "{VELARIS}" "{hello}" --allow '
+                      f'"{sys.executable}" "{SABLINE}" "{hello}" --allow '
                       f'"io,fs:read:{granted}"')
             env = dict(os.environ)
             env[confine.FAULT_ENV] = f"read:{target / 'held.txt'}"
@@ -877,7 +877,7 @@ def against_cases() -> None:
                "contains)", done.returncode == 0 and "succeeded"
                in done.stderr, done.stderr[-400:])
             env[confine.FAULT_ENV] = f"mount:{outside}:{target}"
-            script = (f'"{sys.executable}" "{VELARIS}" "{hello}" --allow '
+            script = (f'"{sys.executable}" "{SABLINE}" "{hello}" --allow '
                       f'"io,fs:read:{granted}"')
             done = subprocess.run([unshare, "-rm", "sh", "-c", script],
                                   capture_output=True, text=True, env=env)
@@ -894,8 +894,8 @@ def against_cases() -> None:
             [sys.executable, "-c",
              "import sys, threading\n"
              f"sys.path.insert(0, {str(HERE)!r})\n"
-             "from velaris import confine\n"
-             "from velaris.budget import Budget\n"
+             "from sabline import confine\n"
+             "from sabline.budget import Budget\n"
              "box = {}\n"
              "def work():\n"
              "    box['done'] = confine.apply(confine.os_policy("
@@ -946,10 +946,10 @@ MARKERS = ("READ IT", "WROTE IT", "REACHED IT", "CALLED IT", "OPENED IT",
 def target_cases(record: bool) -> None:
     import check_sandbox
     print()
-    print("every escape target, on a Velaris whose budget checks are "
+    print("every escape target, on a Sabline whose budget checks are "
           "knocked out")
     print("-" * 62)
-    root = Path(tempfile.mkdtemp(prefix="velaris-confine-targets-",
+    root = Path(tempfile.mkdtemp(prefix="sabline-confine-targets-",
                                  dir=str(outside_dir())))
     srv_a, srv_b, port_a, port_b = check_sandbox.local_servers()
     values = check_sandbox.fixture(root, (port_a, port_b), symlink=True)
@@ -1008,7 +1008,7 @@ def target_cases(record: bool) -> None:
     kept = HERE / "tests" / "confine" / f"kernel-{PLATFORM}.json"
     if record:
         kept.write_text(json.dumps(
-            {"platform": PLATFORM, "velaris": velaris.VERSION,
+            {"platform": PLATFORM, "sabline": sabline.VERSION,
              "kernel": len(kernel), "language_only": len(language),
              "not_applicable": len(other), "targets": rows}, indent=2) + "\n",
             encoding="utf-8", newline="\n")

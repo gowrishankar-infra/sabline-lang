@@ -8,8 +8,8 @@
         "io"
       ],
       "replies": [
-        "```velaris\nfn main() {\n    let total = 0\n    let i = 1\n    while i <= 10 {\n        total = total + i\n        i = i + 1\n    }\n    print(to_text(total))\n}\n```",
-        "```velaris\nfn main() uses io {\n    let total = 0\n    let i = 1\n    while i <= 10 {\n        total = total + i\n        i = i + 1\n    }\n    print(to_text(total))\n}\n```"
+        "```sabline\nfn main() {\n    let total = 0\n    let i = 1\n    while i <= 10 {\n        total = total + i\n        i = i + 1\n    }\n    print(to_text(total))\n}\n```",
+        "```sabline\nfn main() uses io {\n    let total = 0\n    let i = 1\n    while i <= 10 {\n        total = total + i\n        i = i + 1\n    }\n    print(to_text(total))\n}\n```"
       ]
     },
     {
@@ -19,8 +19,8 @@
         "io"
       ],
       "replies": [
-        "```velaris\nfn main() uses io {\n    let n = to_int(\"42\")\n    print(to_text(n + 1))\n}\n```",
-        "```velaris\nfn main() uses io {\n    check to_int(\"42\") {\n        ok n { print(to_text(n + 1)) }\n        fail why { print(why) }\n    }\n}\n```"
+        "```sabline\nfn main() uses io {\n    let n = to_int(\"42\")\n    print(to_text(n + 1))\n}\n```",
+        "```sabline\nfn main() uses io {\n    check to_int(\"42\") {\n        ok n { print(to_text(n + 1)) }\n        fail why { print(why) }\n    }\n}\n```"
       ]
     },
     {
@@ -30,8 +30,8 @@
         "io"
       ],
       "replies": [
-        "```velaris\nfn larger(a: Int, b: Int) -> Int\n    ensures result >= a\n    ensures result >= b\n{\n    if a > b {\n        return a\n    }\n    return \"b\"\n}\n\nfn main() uses io {\n    print(to_text(larger(3, 7)))\n}\n```",
-        "```velaris\nfn larger(a: Int, b: Int) -> Int\n    ensures result >= a\n    ensures result >= b\n{\n    if a > b {\n        return a\n    }\n    return b\n}\n\nfn main() uses io {\n    print(to_text(larger(3, 7)))\n}\n```"
+        "```sabline\nfn larger(a: Int, b: Int) -> Int\n    ensures result >= a\n    ensures result >= b\n{\n    if a > b {\n        return a\n    }\n    return \"b\"\n}\n\nfn main() uses io {\n    print(to_text(larger(3, 7)))\n}\n```",
+        "```sabline\nfn larger(a: Int, b: Int) -> Int\n    ensures result >= a\n    ensures result >= b\n{\n    if a > b {\n        return a\n    }\n    return b\n}\n\nfn main() uses io {\n    print(to_text(larger(3, 7)))\n}\n```"
       ]
     },
     {
@@ -42,8 +42,8 @@
         "io"
       ],
       "replies": [
-        "```velaris\nfn main() uses io {\n    write_file(\"out.txt\", \"hello\")\n    print(\"written\")\n}\n```",
-        "```velaris\nfn main() uses fs, io {\n    write_file(\"out.txt\", \"hello\")\n    print(\"written\")\n}\n```"
+        "```sabline\nfn main() uses io {\n    write_file(\"out.txt\", \"hello\")\n    print(\"written\")\n}\n```",
+        "```sabline\nfn main() uses fs, io {\n    write_file(\"out.txt\", \"hello\")\n    print(\"written\")\n}\n```"
       ]
     },
     {
@@ -54,8 +54,8 @@
         "net"
       ],
       "replies": [
-        "```velaris\nfn main() uses io {\n    check fetch(\"https://example.com/\") {\n        ok body { print(to_text(length(body))) }\n        fail why { print(why) }\n    }\n}\n```",
-        "```velaris\nfn main() uses io, net {\n    check fetch(\"https://example.com/\") {\n        ok body { print(to_text(length(body))) }\n        fail why { print(why) }\n    }\n}\n```"
+        "```sabline\nfn main() uses io {\n    check fetch(\"https://example.com/\") {\n        ok body { print(to_text(length(body))) }\n        fail why { print(why) }\n    }\n}\n```",
+        "```sabline\nfn main() uses io, net {\n    check fetch(\"https://example.com/\") {\n        ok body { print(to_text(length(body))) }\n        fail why { print(why) }\n    }\n}\n```"
       ]
     },
     {
@@ -65,8 +65,8 @@
         "io"
       ],
       "replies": [
-        "```velaris\nfn main() uses io {\n    let count = 0\n    for n in [1, 2, 3, 4, 5, 6] {\n        if n % 2 == 0 {\n            count = count + 1\n        }\n    }\n    print(to_text(cuont))\n}\n```",
-        "```velaris\nfn main() uses io {\n    let count = 0\n    for n in [1, 2, 3, 4, 5, 6] {\n        if n % 2 == 0 {\n            count = count + 1\n        }\n    }\n    print(to_text(count))\n}\n```"
+        "```sabline\nfn main() uses io {\n    let count = 0\n    for n in [1, 2, 3, 4, 5, 6] {\n        if n % 2 == 0 {\n            count = count + 1\n        }\n    }\n    print(to_text(cuont))\n}\n```",
+        "```sabline\nfn main() uses io {\n    let count = 0\n    for n in [1, 2, 3, 4, 5, 6] {\n        if n % 2 == 0 {\n            count = count + 1\n        }\n    }\n    print(to_text(count))\n}\n```"
       ]
     },
     {
@@ -76,8 +76,8 @@
         "io"
       ],
       "replies": [
-        "```velaris\nfn main() uses io {\n    let parts = money.split(money(10000, \"INR\"), 3)\n    for part in parts {\n        print(text_of(part))\n    }\n}\n```",
-        "```velaris\nimport \"money.vel\" as money\n\nfn main() uses io {\n    let parts = money.split(money(10000, \"INR\"), 3)\n    for part in parts {\n        print(text_of(part))\n    }\n}\n```"
+        "```sabline\nfn main() uses io {\n    let parts = money.split(money(10000, \"INR\"), 3)\n    for part in parts {\n        print(text_of(part))\n    }\n}\n```",
+        "```sabline\nimport \"money.vel\" as money\n\nfn main() uses io {\n    let parts = money.split(money(10000, \"INR\"), 3)\n    for part in parts {\n        print(text_of(part))\n    }\n}\n```"
       ]
     },
     {
@@ -87,8 +87,8 @@
         "io"
       ],
       "replies": [
-        "```velaris\nrecord Point {\n    x: Int\n    y: Int\n}\n\nfn add(a: Point, b: Point) -> Point {\n    return Point(x: a.x + b.x, y: a.y + b.y)\n}\n\nfn main() uses io {\n    let p = add(Point(x: 1, y: 2), Point(x: 3, y: 4))\n    print(to_text(p.z))\n}\n```",
-        "```velaris\nrecord Point {\n    x: Int\n    y: Int\n}\n\nfn add(a: Point, b: Point) -> Point {\n    return Point(x: a.x + b.x, y: a.y + b.y)\n}\n\nfn main() uses io {\n    let p = add(Point(x: 1, y: 2), Point(x: 3, y: 4))\n    print(to_text(p.x))\n}\n```"
+        "```sabline\nrecord Point {\n    x: Int\n    y: Int\n}\n\nfn add(a: Point, b: Point) -> Point {\n    return Point(x: a.x + b.x, y: a.y + b.y)\n}\n\nfn main() uses io {\n    let p = add(Point(x: 1, y: 2), Point(x: 3, y: 4))\n    print(to_text(p.z))\n}\n```",
+        "```sabline\nrecord Point {\n    x: Int\n    y: Int\n}\n\nfn add(a: Point, b: Point) -> Point {\n    return Point(x: a.x + b.x, y: a.y + b.y)\n}\n\nfn main() uses io {\n    let p = add(Point(x: 1, y: 2), Point(x: 3, y: 4))\n    print(to_text(p.x))\n}\n```"
       ]
     },
     {
@@ -100,8 +100,8 @@
         "io"
       ],
       "replies": [
-        "```velaris\nfn main() uses io, env {\n    let home = env(\"HOME\", \"\")\n    print(home)\n}\n```",
-        "```velaris\nfn main() uses io, env, declassify {\n    let home = env(\"HOME\", \"\")\n    let missing = declassify(home == \"\", \"whether HOME is set is not its value\")\n    if missing {\n        print(\"HOME is not set\")\n    } else {\n        print(\"HOME is set\")\n    }\n}\n```"
+        "```sabline\nfn main() uses io, env {\n    let home = env(\"HOME\", \"\")\n    print(home)\n}\n```",
+        "```sabline\nfn main() uses io, env, declassify {\n    let home = env(\"HOME\", \"\")\n    let missing = declassify(home == \"\", \"whether HOME is set is not its value\")\n    if missing {\n        print(\"HOME is not set\")\n    } else {\n        print(\"HOME is set\")\n    }\n}\n```"
       ]
     },
     {
@@ -111,8 +111,8 @@
         "io"
       ],
       "replies": [
-        "```velaris\nfn positive(n: Int) -> Bool {\n    print(\"checking\")\n    return n > 0\n}\n\nfn main() uses io {\n    print(to_text(positive(-3)))\n}\n```",
-        "```velaris\nfn positive(n: Int) -> Bool {\n    return n > 0\n}\n\nfn main() uses io {\n    print(to_text(positive(-3)))\n}\n```"
+        "```sabline\nfn positive(n: Int) -> Bool {\n    print(\"checking\")\n    return n > 0\n}\n\nfn main() uses io {\n    print(to_text(positive(-3)))\n}\n```",
+        "```sabline\nfn positive(n: Int) -> Bool {\n    return n > 0\n}\n\nfn main() uses io {\n    print(to_text(positive(-3)))\n}\n```"
       ]
     }
   ]

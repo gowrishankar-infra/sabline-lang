@@ -159,7 +159,7 @@ def add_case_tests(cls: Any, stage: str, filename: str, check: Any) -> None:
 
 
 def quiet_unclosed_source_files() -> None:
-    """Silence the ResourceWarning velaris/loader.py causes. It reads each
+    """Silence the ResourceWarning sabline/loader.py causes. It reads each
     source with open(path).read() and leaves the file for the garbage
     collector to close, which unittest's warning filter prints once per
     file read. That is reported with these tests, not tested by them.
@@ -167,7 +167,7 @@ def quiet_unclosed_source_files() -> None:
     import warnings
     warnings.filterwarnings("ignore", category=ResourceWarning,
                             message=r"unclosed file",
-                            module=r"velaris\.loader")
+                            module=r"sabline\.loader")
 
 
 def codes_and_lines(errors: Any) -> list[Any]:
@@ -188,7 +188,7 @@ def on_big_stack(fn: Any, recursion_limit: int = 20000) -> Any:
     CPython 3.10 on Windows overflows its main thread's C stack a few
     hundred brackets in, well short of the cap, and the process dies
     without an error; the command line checks where that cannot happen
-    (see velaris/runtime.py, _run_on_big_stack), and so do these tests."""
+    (see sabline/runtime.py, _run_on_big_stack), and so do these tests."""
     box: dict[Any, Any] = {}
 
     def work() -> None:

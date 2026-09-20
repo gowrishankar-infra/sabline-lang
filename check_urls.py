@@ -9,8 +9,8 @@ are examples or placeholders by construction (example.com and its kind,
 127.0.0.1, localhost, anything holding `<` or `{`) are not asked. A link
 into this repository at a commit or on main is asked like any other.
 
-Last, https://velaris-lang.dev/llms.txt must serve LLM.md: every compiler
-error names it as the reference (8.0; at velaris-lang.dev from 8.3). The
+Last, https://sabline.dev/llms.txt must serve LLM.md: every compiler
+error names it as the reference (8.0; at sabline.dev from 8.3). The
 documentation site's earlier address must answer that card's old URL with a
 redirect to the new one, since errors printed by 8.0 to 8.2.1 name it.
 
@@ -30,12 +30,15 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).resolve().parent
-CARD_URL = "https://velaris-lang.dev/llms.txt"
-# the card's address until 8.3, which the errors 8.0 to 8.2.1 print name; it
-# must redirect to CARD_URL. check_docs holds this, check_library's redirect
-# test, the CHANGELOG's history and the readers of earlier predicate types to
-# be the only places in the repository that name the earlier address.
-EARLIER_CARD_URL = "https://gowrishankar-infra.github.io/velaris-lang/llms.txt"
+CARD_URL = "https://sabline.dev/llms.txt"
+# Where the card was before sabline.dev, newest first. Each is an address
+# the errors of some released version print - 8.0 to 8.2.1 print the GitHub
+# Pages one, 8.3 to 8.5 print velaris-lang.dev - so each must still answer,
+# with a redirect to CARD_URL. check_docs holds this, check_library's
+# redirect test, the CHANGELOG's history and the readers of earlier
+# predicate types to be the only places that name an earlier address.
+EARLIER_CARD_URLS = ("https://velaris-lang.dev/llms.txt",
+                     "https://gowrishankar-infra.github.io/velaris-lang/llms.txt")
 SOURCES = ["*.md", "docs/*.md", "benchmark/*.md", "paper/*.md", "stdlib/*.md",
            "editor/vscode/*.md", "npm/*.md", "integrations/**/*.md",
            "action.yml", "pyproject.toml", "CITATION.cff",
@@ -82,7 +85,7 @@ def ask(url: str) -> tuple[str, str | None]:
     for attempt in range(3):
         for method in ("HEAD", "GET"):
             request = urllib.request.Request(url, method=method, headers={
-                "User-Agent": "velaris-check-urls"})
+                "User-Agent": "sabline-check-urls"})
             try:
                 with urllib.request.urlopen(request, timeout=30) as response:
                     if response.status < 400:
@@ -118,7 +121,7 @@ def main(argv: list[str]) -> int:
     card = (HERE / "LLM.md").read_text(encoding="utf-8")
     try:
         with urllib.request.urlopen(urllib.request.Request(
-                CARD_URL, headers={"User-Agent": "velaris-check-urls"}),
+                CARD_URL, headers={"User-Agent": "sabline-check-urls"}),
                 timeout=30) as response:
             served = response.read().decode("utf-8", errors="replace")
         same = served.strip() == card.strip()
@@ -128,10 +131,13 @@ def main(argv: list[str]) -> int:
     except (urllib.error.URLError, OSError) as e:
         same = False
         print(f"  BROKEN  {CARD_URL}  ({getattr(e, 'reason', e)})")
-    moved, said = redirect_of(EARLIER_CARD_URL)
-    print(f"  {'ok' if moved else 'BROKEN'}      {EARLIER_CARD_URL} "
-          f"{'redirects to ' + said if moved else '(' + said + ')'}")
-    return 1 if bad or not same or moved is not True else 0
+    redirects = True
+    for earlier in EARLIER_CARD_URLS:
+        moved, said = redirect_of(earlier)
+        print(f"  {'ok' if moved else 'BROKEN'}      {earlier} "
+              f"{'redirects to ' + said if moved else '(' + said + ')'}")
+        redirects = redirects and moved is True
+    return 1 if bad or not same or not redirects else 0
 
 
 class _Stay(urllib.request.HTTPRedirectHandler):
@@ -150,7 +156,7 @@ def redirect_of(url: str) -> tuple[bool | None, str]:
     when it could not be asked at all."""
     opener = urllib.request.build_opener(_Stay)
     request = urllib.request.Request(url, headers={
-        "User-Agent": "velaris-check-urls"})
+        "User-Agent": "sabline-check-urls"})
     try:
         with opener.open(request, timeout=30) as response:
             return False, f"HTTP {response.status}, not a redirect"

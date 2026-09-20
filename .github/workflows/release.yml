@@ -1,6 +1,6 @@
 name: release
 
-# A release of Velaris is made by this workflow and by nothing else.
+# A release of Sabline is made by this workflow and by nothing else.
 # RELEASING.md is the long form. In short:
 #
 #   1. It starts when the tests workflow (test.yml, named "tests")
@@ -8,7 +8,7 @@ name: release
 #      starts a release: no trigger here listens for tags, and GitHub
 #      starts no workflow for the tag this one pushes.
 #   2. The gate asks release_checks.py whether that commit is a release:
-#      velaris/version.py's VERSION is newer than every tag, CHANGELOG.md
+#      sabline/version.py's VERSION is newer than every tag, CHANGELOG.md
 #      has an entry heading for it, all six version files agree, and a
 #      minor or patch release that adds an error code, removes a flag or
 #      changes a default says so on a compatibility: line. If not, it
@@ -33,8 +33,8 @@ name: release
 # Every artifact is signed with sigstore (keyless, through this
 # workflow's OIDC identity), the wheel is built twice and compared, and a
 # CycloneDX SBOM travels with the release, as do a signed manifest of the
-# MCP server's tools (velaris mcp-verify) and a signed in-toto
-# attestation of one example program (velaris attest). A workflow_run
+# MCP server's tools (sabline mcp-verify) and a signed in-toto
+# attestation of one example program (sabline attest). A workflow_run
 # runs on main, so from 7.2.0 that identity is release.yml@refs/heads/main
 # and the certificate also names the commit and the workflow_run trigger;
 # SECURITY.md says how to verify. Every third-party action is pinned to a
@@ -128,10 +128,10 @@ jobs:
           sbom-env/bin/pip install "$(ls dist/*.whl)[full]"
           cyclonedx-py environment --of JSON \
             --mc-type application \
-            -o "dist/velaris-lang-$V.cdx.json" \
+            -o "dist/sabline-lang-$V.cdx.json" \
             sbom-env/bin/python
           python -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['bomFormat'], d['specVersion'], len(d.get('components', [])), 'components')" \
-            "dist/velaris-lang-$V.cdx.json"
+            "dist/sabline-lang-$V.cdx.json"
       # Every MCP tool's name, description hash and input-schema hash,
       # asked of the server inside the wheel this run publishes - the
       # server a client will run - so what is signed is what ships.
@@ -139,10 +139,10 @@ jobs:
         run: |
           python -m venv mcp-env
           mcp-env/bin/pip install "$(ls dist/*.whl)"
-          mcp-env/bin/velaris mcp-manifest \
-            -o "dist/velaris-mcp-tools-$V.json" \
-            -- mcp-env/bin/python -m velaris_mcp
-          cat "dist/velaris-mcp-tools-$V.json"
+          mcp-env/bin/sabline mcp-manifest \
+            -o "dist/sabline-mcp-tools-$V.json" \
+            -- mcp-env/bin/python -m sabline_mcp
+          cat "dist/sabline-mcp-tools-$V.json"
       - name: Sign the wheel, the sdist, the SBOM and the tool manifest (sigstore)
         uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9  # v3.5.0
         with:
@@ -150,7 +150,7 @@ jobs:
             ./dist/*.whl
             ./dist/*.tar.gz
             ./dist/*.cdx.json
-            ./dist/velaris-mcp-tools-*.json
+            ./dist/sabline-mcp-tools-*.json
       # The check a client operator runs, with the real signature: every
       # tool of the wheel's server must match it. On a release it runs
       # exactly as a user would, with the identity mcp-verify expects by
@@ -159,17 +159,17 @@ jobs:
         run: |
           mcp-env/bin/pip install sigstore
           if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
-            mcp-env/bin/velaris mcp-verify "dist/velaris-mcp-tools-$V.json" \
-              -- mcp-env/bin/python -m velaris_mcp
+            mcp-env/bin/sabline mcp-verify "dist/sabline-mcp-tools-$V.json" \
+              -- mcp-env/bin/python -m sabline_mcp
           else
-            mcp-env/bin/velaris mcp-verify "dist/velaris-mcp-tools-$V.json" \
+            mcp-env/bin/sabline mcp-verify "dist/sabline-mcp-tools-$V.json" \
               --identity "https://github.com/$GITHUB_REPOSITORY/.github/workflows/release.yml@$GITHUB_REF" \
-              -- mcp-env/bin/python -m velaris_mcp
+              -- mcp-env/bin/python -m sabline_mcp
           fi
       - name: Checksums
         run: |
           cd dist
-          sha256sum *.whl *.tar.gz *.cdx.json velaris-mcp-tools-*.json > SHA256SUMS
+          sha256sum *.whl *.tar.gz *.cdx.json sabline-mcp-tools-*.json > SHA256SUMS
           cat SHA256SUMS
       - name: Keep what PyPI gets
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
@@ -187,7 +187,7 @@ jobs:
             dist/*.whl
             dist/*.tar.gz
             dist/*.cdx.json
-            dist/velaris-mcp-tools-*.json
+            dist/sabline-mcp-tools-*.json
             dist/*.sigstore.json
             dist/SHA256SUMS
           if-no-files-found: error
@@ -242,17 +242,17 @@ jobs:
           python-version: "3.12"
       - run: python build_mcpb.py
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
-      - name: Sign velaris.mcpb (cosign, keyless)
+      - name: Sign sabline.mcpb (cosign, keyless)
         run: |
-          cosign sign-blob --yes velaris.mcpb \
-            --output-signature velaris.mcpb.sig \
-            --output-certificate velaris.mcpb.pem \
-            --bundle velaris.mcpb.sigstore.json
-          sha256sum velaris.mcpb > velaris.mcpb.sha256
+          cosign sign-blob --yes sabline.mcpb \
+            --output-signature sabline.mcpb.sig \
+            --output-certificate sabline.mcpb.pem \
+            --bundle sabline.mcpb.sigstore.json
+          sha256sum sabline.mcpb > sabline.mcpb.sha256
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: bundle
-          path: velaris.mcpb*
+          path: sabline.mcpb*
           if-no-files-found: error
 
   binaries:
@@ -264,13 +264,13 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            asset: velaris-windows.exe
+            asset: sabline-windows.exe
             sep: ";"
           - os: ubuntu-latest
-            asset: velaris-linux
+            asset: sabline-linux
             sep: ":"
           - os: macos-latest
-            asset: velaris-macos
+            asset: sabline-macos
             sep: ":"
     runs-on: ${{ matrix.os }}
     permissions:
@@ -288,37 +288,37 @@ jobs:
         run: pip install ".[full]" pyinstaller
       - name: Build standalone executable
         run: >
-          pyinstaller --onefile --name velaris
-          --collect-submodules velaris
+          pyinstaller --onefile --name sabline
+          --collect-submodules sabline
           --collect-all z3 --collect-all llvmlite
           --add-data "stdlib${{ matrix.sep }}stdlib"
-          --add-data "velaris/site.css${{ matrix.sep }}velaris"
-          velaris.py
+          --add-data "sabline/site.css${{ matrix.sep }}sabline"
+          sabline.py
       - name: Smoke test the executable
         shell: bash
         run: |
-          ./dist/velaris* --version
-          ./dist/velaris* doctor
-          ./dist/velaris* examples/hello.vel
+          ./dist/sabline* --version
+          ./dist/sabline* doctor
+          ./dist/sabline* examples/hello.vel
           # the demo starts two runs of this same executable (8.5)
-          ./dist/velaris* demo
+          ./dist/sabline* demo
           # check runs its work in a child under a ceiling; until 8.2 the
-          # executable started velaris.py for it, which it does not hold,
-          # and every check failed with E001 (found by velaris-canary)
-          ./dist/velaris* check examples/discount.vel
+          # executable started sabline.py for it, which it does not hold,
+          # and every check failed with E001 (found by sabline-canary)
+          ./dist/sabline* check examples/discount.vel
           # the executable confines its runs too (8.4): a process the runtime
           # itself tries to start is refused by the operating system on all
           # three systems, and is started under --no-confine
-          if VELARIS_FAULT_INJECT=spawn ./dist/velaris* examples/hello.vel 2> fault.txt; then
+          if SABLINE_FAULT_INJECT=spawn ./dist/sabline* examples/hello.vel 2> fault.txt; then
             cat fault.txt; echo "::error::the executable's run was not confined"; exit 1
           fi
           grep -q 'E319' fault.txt
-          VELARIS_FAULT_INJECT=spawn ./dist/velaris* examples/hello.vel --no-confine
+          SABLINE_FAULT_INJECT=spawn ./dist/sabline* examples/hello.vel --no-confine
       - name: Rename asset
         shell: bash
         run: |
           cd dist
-          for f in velaris velaris.exe; do
+          for f in sabline sabline.exe; do
             [ -f "$f" ] && mv "$f" "${{ matrix.asset }}"
           done
           ls
@@ -348,7 +348,7 @@ jobs:
       contents: read
       id-token: write            # sigstore keyless signing
     env:
-      PREDICATE_TYPE: https://velaris-lang.dev/capability/v1
+      PREDICATE_TYPE: https://sabline.dev/capability/v1
       OIDC_ISSUER: https://token.actions.githubusercontent.com
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
@@ -361,18 +361,18 @@ jobs:
       # with the prover, as a reviewer's machine would have it: the
       # audit says whether one ran (prover), so the Statement differs
       # without it
-      - name: This commit's Velaris with its prover, and sigstore-python
+      - name: This commit's Sabline with its prover, and sigstore-python
         run: pip install ".[full]" "sigstore==4.5.0"
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
-      # the Statement, unsigned, as velaris attest writes it; the time is
+      # the Statement, unsigned, as sabline attest writes it; the time is
       # the commit's, so two runs of one commit write the same bytes
-      - name: The Statement, from velaris attest
+      - name: The Statement, from sabline attest
         run: |
-          V=$(python -c "import velaris; print(velaris.VERSION)")
-          echo "ATT=velaris-attestation-$V" >> "$GITHUB_ENV"
+          V=$(python -c "import sabline; print(sabline.VERSION)")
+          echo "ATT=sabline-attestation-$V" >> "$GITHUB_ENV"
           SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) \
-            velaris attest examples/effects.vel --output "velaris-attestation-$V.intoto.json"
-          cat "velaris-attestation-$V.intoto.json"
+            sabline attest examples/effects.vel --output "sabline-attestation-$V.intoto.json"
+          cat "sabline-attestation-$V.intoto.json"
       - name: Signed with cosign, as a DSSE envelope (keyless)
         run: |
           cosign attest-blob --yes --statement "$ATT.intoto.json" \
@@ -424,19 +424,19 @@ jobs:
       # attestation's "before", bound to the same bytes - signed and verified
       # the same two ways. The program writes report.txt here, which is what
       # its budget grants.
-      - name: The receipt of one run, from velaris --receipt
+      - name: The receipt of one run, from sabline --receipt
         run: |
-          V=$(python -c "import velaris; print(velaris.VERSION)")
-          echo "REC=velaris-receipt-$V" >> "$GITHUB_ENV"
-          velaris examples/effects.vel \
+          V=$(python -c "import sabline; print(sabline.VERSION)")
+          echo "REC=sabline-receipt-$V" >> "$GITHUB_ENV"
+          sabline examples/effects.vel \
             --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand \
-            --receipt "velaris-receipt-$V.intoto.json"
-          cat "velaris-receipt-$V.intoto.json"
-          python - "velaris-receipt-$V.intoto.json" "$ATT.intoto.json" <<'EOF'
+            --receipt "sabline-receipt-$V.intoto.json"
+          cat "sabline-receipt-$V.intoto.json"
+          python - "sabline-receipt-$V.intoto.json" "$ATT.intoto.json" <<'EOF'
           import json, sys
           receipt = json.load(open(sys.argv[1], encoding="utf-8"))
           attestation = json.load(open(sys.argv[2], encoding="utf-8"))
-          assert receipt["predicateType"] == "https://velaris-lang.dev/receipt/v1"
+          assert receipt["predicateType"] == "https://sabline.dev/receipt/v1"
           assert receipt["subject"] == attestation["subject"], "not the attestation's subjects"
           assert receipt["predicate"]["exit"]["outcome"] == "ok", receipt["predicate"]["exit"]
           print("receipt: the attestation's subjects, outcome ok")
@@ -460,7 +460,7 @@ jobs:
           EOF
       - name: Both receipt signatures verify, as this workflow, against the example's bytes
         env:
-          RECEIPT_TYPE: https://velaris-lang.dev/receipt/v1
+          RECEIPT_TYPE: https://sabline.dev/receipt/v1
         run: |
           IDENTITY="https://github.com/$GITHUB_REPOSITORY/.github/workflows/release.yml@$GITHUB_REF"
           cosign verify-blob-attestation --bundle "$REC.cosign.sigstore.json" \
@@ -488,8 +488,8 @@ jobs:
         with:
           name: attestation
           path: |
-            velaris-attestation-*
-            velaris-receipt-*
+            sabline-attestation-*
+            sabline-receipt-*
           if-no-files-found: error
 
   # ---- held to the previous release (8.2) -------------------------------------
@@ -519,7 +519,7 @@ jobs:
       - name: Against the previous tag
         run: python perf_gates.py --only numeric --runs 3 --against "$PREVIOUS"
 
-  # The examples, velaris-spec's conformance corpus and the quick benchmark,
+  # The examples, sabline-spec's conformance corpus and the quick benchmark,
   # run under this commit and under the previous tag. A difference the
   # CHANGELOG entry does not name stops the release (check_differential.py).
   differential:
@@ -537,8 +537,8 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
-          repository: gowrishankar-infra/velaris-spec
-          path: velaris-spec
+          repository: gowrishankar-infra/sabline-spec
+          path: sabline-spec
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
@@ -546,7 +546,7 @@ jobs:
       - name: Install (full)
         run: pip install -c requirements/ci.txt ".[full,test]"
       - name: This commit against the previous tag
-        run: python check_differential.py --old "$PREVIOUS" --spec velaris-spec/tests --benchmark quick
+        run: python check_differential.py --old "$PREVIOUS" --spec sabline-spec/tests --benchmark quick
 
   # ---- tag, then publish in order ---------------------------------------------
 
@@ -736,7 +736,7 @@ jobs:
           fi
           npm install -g @vscode/vsce
           npm version "$V" --no-git-tag-version --allow-same-version
-          landed() { vsce show gowrishankar-infra.velaris | grep -qF "$V"; }
+          landed() { vsce show gowrishankar-infra.sabline | grep -qF "$V"; }
           # what an outage looks like in vsce's own words
           outage="Request timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED"
           outage="$outage|socket hang up|EAI_AGAIN|503|502|504"

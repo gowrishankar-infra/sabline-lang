@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Your verifier is probably lying to you about floats - Velaris 8.5.0</title>
+<title>Your verifier is probably lying to you about floats - Sabline 8.6.0</title>
 <meta name="description" content="Here is a promise that looks obviously true:">
-<meta name="velaris-version" content="8.5.0">
-<link rel="canonical" href="https://velaris-lang.dev/floats.html">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/floats.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
@@ -17,8 +17,8 @@
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html" aria-current="page">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="renamed.html">Velaris is now Sabline</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,14 +52,14 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
 <h1 id="your-verifier-is-probably-lying-to-you-about-floats">Your verifier is probably lying to you about floats</h1>
 <p>Here is a promise that looks obviously true:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> add_twice(x: Float) -&gt; Float
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> add_twice(x: Float) -&gt; Float
     <span class="k">ensures</span> result == x + <span class="n">0.2</span>
 {
     <span class="k">return</span> x + <span class="n">0.1</span> + <span class="n">0.1</span>
@@ -67,7 +67,7 @@
 <p>Adding a tenth twice is the same as adding two tenths. Every algebra
 teacher you have ever had agrees. Most program verifiers agree too.</p>
 <p>They are wrong, and so is the promise.</p>
-<p>Velaris refuses to prove it, and hands back the number that breaks it:</p>
+<p>Sabline refuses to prove it, and hands back the number that breaks it:</p>
 <div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>error[E700] promise cannot be kept: 'add_twice' ensures result == x + 0.2
   proven without running the program:
     x = -1.207290298954004637010939404717646539211273193359375
@@ -96,19 +96,19 @@ that fails on the machine it is compiled for. The proof is valid. The
 theorem is about the wrong object.</p>
 <h2 id="what-honesty-costs">What honesty costs <a class="anchor" href="#what-honesty-costs" aria-label="Link to this section">#</a></h2>
 <p>Z3 has a floating-point theory that implements IEEE-754 exactly:
-rounding modes, subnormals, infinities, NaN, signed zero. Velaris
+rounding modes, subnormals, infinities, NaN, signed zero. Sabline
 translates <code>Float</code> into that theory rather than into <code>Real</code>.</p>
 <p>The bill arrives immediately.</p>
 <p><strong>It is slow.</strong> The FP theory is decided by bit-blasting — expanding
 64-bit values into circuits of individual bits and handing the result
 to a SAT solver. The refutation above takes about fifteen seconds on an
 idle machine and several times that on a busy one. Integer proofs in
-the same compiler finish in milliseconds. Velaris gives float queries a
+the same compiler finish in milliseconds. Sabline gives float queries a
 <strong>120 second</strong> budget and everything else three seconds, and only pays
 the larger cost for functions that actually mention floats. Either
 budget can be replaced for one run:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code>velaris <span class="k">check</span> f.vel --proof-timeout <span class="n">300</span>
-VELARIS_PROOF_TIMEOUT=<span class="n">300</span> velaris <span class="k">check</span> f.vel</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code>sabline <span class="k">check</span> f.vel --proof-timeout <span class="n">300</span>
+SABLINE_PROOF_TIMEOUT=<span class="n">300</span> sabline <span class="k">check</span> f.vel</code></pre></div>
 <p><strong>A budget that runs out says so.</strong> If the solver spends its whole
 budget without an answer, the proof is <em>abandoned</em> — nothing proven,
 nothing refuted — and every report says that in those words:</p>
@@ -116,7 +116,7 @@ nothing refuted — and every report says that in those words:</p>
 abandoned - nothing was proven and nothing was refuted, so its promises
 are checked while running instead. This is not 'the prover found
 nothing wrong'.</code></pre></div>
-<p><code>velaris check</code> marks the file <code>1 proof(s) abandoned: out of time, nothing settled</code>, <code>velaris proofs --detail</code> marks the function
+<p><code>sabline check</code> marks the file <code>1 proof(s) abandoned: out of time, nothing settled</code>, <code>sabline proofs --detail</code> marks the function
 <code>[timeout]</code> rather than <code>[runtime]</code>, and <code>--strict</code> fails and says the
 proof was abandoned rather than unprovable. The next run spends the
 budget again: no proof is kept between runs. A slow machine must never be able to make a lost refutation look like a
@@ -127,7 +127,7 @@ simply false in IEEE-754, and plenty of true-in-IEEE facts are too
 expensive to establish. A verifier that pretends floats are reals has a
 much better success rate on paper. It is winning a game nobody should
 want to play.</p>
-<p><strong>Equality gets strange, correctly.</strong> Velaris compares floats with
+<p><strong>Equality gets strange, correctly.</strong> Sabline compares floats with
 <code>fpEQ</code>, not structural equality, which means NaN is not equal to itself
 and positive zero equals negative zero. Both are IEEE behaviour, and
 both surprise people. Using structural equality would have been faster
@@ -138,7 +138,7 @@ constraints start doing real work. A precondition like <code>requires x &gt;= 0.
 The prover knows that, so a promise you could not otherwise establish
 sometimes becomes provable for free.</p>
 <h2 id="the-rule-underneath">The rule underneath <a class="anchor" href="#the-rule-underneath" aria-label="Link to this section">#</a></h2>
-<p>Velaris has one commitment it will not trade away: <strong>it never claims
+<p>Sabline has one commitment it will not trade away: <strong>it never claims
 something is proven unless the claim is literally true.</strong></p>
 <p>That single rule decided the float design by itself. If you model
 floats as reals, "proven" starts meaning "proven about an idealised
@@ -154,7 +154,7 @@ counterexamples. Anything unprovable degrades to a runtime check rather
 than being waved through.</p>
 <p>None of these make the demo look better. All of them are the reason the
 demo can be believed.</p>
-<h2 id="money-is-not-a-float-and-velaris-will-not-let-you-pretend">Money is not a float, and Velaris will not let you pretend <a class="anchor" href="#money-is-not-a-float-and-velaris-will-not-let-you-pretend" aria-label="Link to this section">#</a></h2>
+<h2 id="money-is-not-a-float-and-sabline-will-not-let-you-pretend">Money is not a float, and Sabline will not let you pretend <a class="anchor" href="#money-is-not-a-float-and-sabline-will-not-let-you-pretend" aria-label="Link to this section">#</a></h2>
 <p>Everything above is about being honest when a program genuinely needs
 IEEE-754. Currency is the case where it does not.</p>
 <p><code>0.10</code> is not a double any more than <code>0.1</code> is. A hundred-rupee balance
@@ -164,10 +164,10 @@ a few paise off, in a direction nobody chose. The proof story makes it
 worse, not better. <code>ensures total &gt;= 0.0</code> about floats is provable and
 almost worthless, because the number it is proving things about is
 already not the amount you meant.</p>
-<p>So an amount in Velaris is not a <code>Float</code> at all. <code>Money of INR</code> (SPEC.md
+<p>So an amount in Sabline is not a <code>Float</code> at all. <code>Money of INR</code> (SPEC.md
 §4.3) is a whole number of minor units - paise, cents, fils - with the
 currency in its type:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">let</span> claim = money(<span class="n">125075</span>, <span class="s">"INR"</span>)           <span class="c">// 1250.75, exactly</span>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">let</span> claim = money(<span class="n">125075</span>, <span class="s">"INR"</span>)           <span class="c">// 1250.75, exactly</span>
 <span class="k">let</span> fee = percent_of(claim, <span class="n">25</span>, <span class="n">1000</span>, <span class="s">"half_up"</span>)   <span class="c">// 2.5%, rounded</span>
                                                    <span class="c">// the way you said</span>
 <span class="k">let</span> parts = money.split(claim, <span class="n">3</span>)          <span class="c">// and they add up to claim</span></code></pre></div>
@@ -178,7 +178,7 @@ add up to exactly what it was given, and that promise is <strong>proven</strong>
 before your program runs, by the prover you already have.</p>
 <p>Three things are compile errors rather than surprises: a <code>Float</code>
 anywhere near an amount, two currencies in one sum, and <code>/</code> on an
-amount - because dividing 100 paise three ways has to round, and Velaris
+amount - because dividing 100 paise three ways has to round, and Sabline
 will not pick the rounding for you. You write <code>"half_up"</code>,
 <code>"half_even"</code> or <code>"down"</code> in the call, or you use <code>money.split</code>, which
 does not round at all.</p>
@@ -187,20 +187,20 @@ this page where the answer is not "be careful with floats" but "do not
 use them".</p>
 <h2 id="try-it">Try it <a class="anchor" href="#try-it" aria-label="Link to this section">#</a></h2>
 <p>The compiler runs in your browser, no install:
-<a href="playground.html">https://velaris-lang.dev/playground.html</a></p>
+<a href="playground.html">https://sabline.dev/playground.html</a></p>
 <p>Paste the function at the top of this page and watch it refuse. Then
 change <code>ensures result == x + 0.2</code> to something IEEE actually
 guarantees — say <code>ensures result &gt;= x</code> — and watch it go through.</p>
-<p>If you can make Velaris say "proven" about something that is false at
+<p>If you can make Sabline say "proven" about something that is false at
 runtime, that is a soundness bug, and this project treats those as
 security reports.</p>
-<p><a href="https://github.com/gowrishankar-infra/velaris-lang">https://github.com/gowrishankar-infra/velaris-lang</a></p>
+<p><a href="https://github.com/gowrishankar-infra/sabline-lang">https://github.com/gowrishankar-infra/sabline-lang</a></p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/docs/floats.md">docs/floats.md</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/floats.md">docs/floats.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#why-the-lie-is-tempting">Why the lie is tempting</a></li><li><a href="#what-honesty-costs">What honesty costs</a></li><li><a href="#the-rule-underneath">The rule underneath</a></li><li><a href="#money-is-not-a-float-and-velaris-will-not-let-you-pretend">Money is not a float, and Velaris will not let you pretend</a></li><li><a href="#try-it">Try it</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#why-the-lie-is-tempting">Why the lie is tempting</a></li><li><a href="#what-honesty-costs">What honesty costs</a></li><li><a href="#the-rule-underneath">The rule underneath</a></li><li><a href="#money-is-not-a-float-and-sabline-will-not-let-you-pretend">Money is not a float, and Sabline will not let you pretend</a></li><li><a href="#try-it">Try it</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

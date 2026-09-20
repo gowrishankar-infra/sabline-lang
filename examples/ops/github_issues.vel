@@ -1,10 +1,10 @@
 // A repository's open issues, its open pull requests counted apart, and its
 // latest release.
 //
-// GITHUB_TOKEN=... velaris examples/ops/github_issues.vel \
+// GITHUB_TOKEN=... sabline examples/ops/github_issues.vel \
 // --allow io,env,declassify,net:api.github.com:443@30 octo-org octo-repo
 //
-// It calls no Python: `velaris audit` lists no ffi module, one host, and the
+// It calls no Python: `sabline audit` lists no ffi module, one host, and the
 // one place the token leaves - the Authorization header, in stdlib/github.vel.
 
 import "github.vel" as github

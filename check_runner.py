@@ -3,7 +3,7 @@
 
     python check_runner.py
 
-Each case starts `velaris run PROGRAM --tools MANIFEST` as a host would,
+Each case starts `sabline run PROGRAM --tools MANIFEST` as a host would,
 speaks the door's JSON lines to it, and holds what happened - what reached
 the host, what the program was told, how the run ended, what its receipt
 says - to what THREAT_MODEL.md and EMBEDDING.md say. The adversarial cases
@@ -23,7 +23,7 @@ from suite_dirs import isolate  # noqa: E402
 
 HERE = Path(__file__).parent
 WORK = isolate("check_runner")
-VELARIS = [sys.executable, str(HERE / "velaris.py")]
+SABLINE = [sys.executable, str(HERE / "sabline.py")]
 FAILED: list[str] = []
 PASSED = [0]
 
@@ -37,7 +37,7 @@ def expect(what: str, ok: bool, detail: Any = "") -> None:
 
 
 MANIFEST: dict[str, Any] = {
-    "schema": "velaris.tools/1",
+    "schema": "sabline.tools/1",
     "tools": {
         "search": {"arguments": {"type": "object", "properties": {
             "query": {"type": "string", "maxLength": 50}},
@@ -77,7 +77,7 @@ def hosted(program: str, allow: str, answer: Callable[[dict[str, Any]], Any],
     tools.write_text(json.dumps(manifest or MANIFEST), encoding="utf-8")
     receipt = WORK / f"{stem}.receipt.json"
     proc = subprocess.Popen(
-        VELARIS + ["run", str(source), "--tools", str(tools), "--allow", allow,
+        SABLINE + ["run", str(source), "--tools", str(tools), "--allow", allow,
                    "--receipt", str(receipt)] + (extra or []),
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     assert proc.stdin is not None and proc.stdout is not None
@@ -188,7 +188,7 @@ def main() -> int:
     expect("a tool the manifest does not offer is E320",
            refused_with(run, "E320") and not run.calls, run.stderr)
     plain = subprocess.run(
-        VELARIS + [str(WORK / "case0.vel"), "--allow", "io,tool"],
+        SABLINE + [str(WORK / "case0.vel"), "--allow", "io,tool"],
         capture_output=True, stdin=subprocess.DEVNULL, timeout=60)
     expect("with no manifest at all a call is E320: there is no tool",
            plain.returncode == 1 and b"error[E320]" in plain.stderr,
@@ -373,7 +373,7 @@ def main() -> int:
                done.returncode == status and sent in text
                and (status == 0 or b"error[E321]" in done.stderr),
                (text, done.stderr))
-    done = subprocess.run(VELARIS + ["skill", "verify",
+    done = subprocess.run(SABLINE + ["skill", "verify",
                                      str(HERE / "examples" / "runner"),
                                      "--json"], capture_output=True,
                           timeout=120)
@@ -383,7 +383,7 @@ def main() -> int:
            and [t["tool"] for t in report["tools"]] == ["search", "send_email"]
            and all(t["offered"] for t in report["tools"])
            and report["budget"] == "io,tool:search,tool:send_email"
-           and report["schema"] == "velaris.skill-verify/1", report)
+           and report["schema"] == "sabline.skill-verify/1", report)
     skill = WORK / "skill"
     skill.mkdir()
     (skill / "SKILL.md").write_text("---\nname: mailer\n---\n",
@@ -392,7 +392,7 @@ def main() -> int:
     (skill / "a.vel").write_text(program(call("vault", "\"{}\"") + "\n"
                                          + call("wire_money", "\"{}\"")),
                                  encoding="utf-8")
-    done = subprocess.run(VELARIS + ["skill", "verify", str(skill), "--json"],
+    done = subprocess.run(SABLINE + ["skill", "verify", str(skill), "--json"],
                           capture_output=True, timeout=120)
     report = json.loads(done.stdout.decode("utf-8"))
     expect("skill verify fails a skill that calls a tool nobody offers, and "

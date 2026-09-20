@@ -1,9 +1,9 @@
 name: placeholders
 
-# Publishes packaging/placeholders/pypi/velaris - the PyPI name `velaris`,
-# which installs velaris-lang and holds no code - by trusted publishing.
+# Publishes packaging/placeholders/pypi/sabline - the PyPI name `sabline`,
+# which installs sabline-lang and holds no code - by trusted publishing.
 # Run by hand, once, after PyPI has a pending publisher for the project
-# `velaris` naming this repository, this file and the environment
+# `sabline` naming this repository, this file and the environment
 # `placeholders` (packaging/placeholders/README.md). It publishes nothing
 # else, stores no token, and a run before that publisher exists fails at the
 # upload having published nothing.
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   pypi:
-    name: the PyPI name velaris
+    name: the PyPI name sabline
     runs-on: ubuntu-latest
     environment: placeholders
     permissions:
@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Build it
-        working-directory: packaging/placeholders/pypi/velaris
+        working-directory: packaging/placeholders/pypi/sabline
         run: |
           pip install build
           python -m build
@@ -38,5 +38,5 @@ jobs:
       - name: Publish it
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
         with:
-          packages-dir: packaging/placeholders/pypi/velaris/dist
+          packages-dir: packaging/placeholders/pypi/sabline/dist
           skip-existing: true

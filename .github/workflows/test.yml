@@ -40,7 +40,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           allow-prereleases: true
-      # [test] is what the suites need and Velaris does not: jsonschema,
+      # [test] is what the suites need and Sabline does not: jsonschema,
       # fastapi and httpx, pyyaml, hypothesis
       - name: Install (full - with Z3 proofs and LLVM native)
         if: matrix.deps == 'full'
@@ -49,15 +49,15 @@ jobs:
         if: matrix.deps == 'minimal'
         run: pip install -c requirements/ci.txt ".[test]"
       - name: Version
-        run: velaris --version
-      # velaris-spec: its conformance corpus, and the schemas the library
+        run: sabline --version
+      # sabline-spec: its conformance corpus, and the schemas the library
       # suite holds audits and attestations to. It holds no .vel file, so
       # the capability check below still sees this repository alone.
-      - name: velaris-spec, for its corpus and schemas
+      - name: sabline-spec, for its corpus and schemas
         uses: actions/checkout@v5
         with:
-          repository: gowrishankar-infra/velaris-spec
-          path: velaris-spec
+          repository: gowrishankar-infra/sabline-spec
+          path: sabline-spec
       # OPA, so check_policies.py runs `opa test` and `opa eval` rather than
       # skipping them
       - name: OPA, for the policy's tests
@@ -75,7 +75,7 @@ jobs:
       - name: The parsers, JSON, CSV, py_json and the contract translator, fuzzed (30 each)
         run: python fuzz_parsers.py 30
       - name: How much is proven
-        run: velaris proofs examples stdlib || true
+        run: sabline proofs examples stdlib || true
       - name: The library and MCP server keep the same guarantees
         run: python check_library.py
       - name: What the library, the command line, the doors and the Action offer, held to a golden
@@ -104,11 +104,11 @@ jobs:
         run: python check_platform.py
       - name: An ejected program runs with nothing from here, and holds its budget
         run: python check_eject.py
-      - name: velaris eval holds its profile, and refuses every relaxation
+      - name: sabline eval holds its profile, and refuses every relaxation
         run: python check_eval.py
       - name: receipts diff names each difference; replay runs the same bytes or refuses
         run: python check_receipts.py
-      - name: velaris demo, end to end, and that it reads nobody's .env (8.5)
+      - name: sabline demo, end to end, and that it reads nobody's .env (8.5)
         run: python check_demo.py
       - name: azure.vel, github.vel, k8s.vel and aws.vel, each against a stand-in for its service (8.5)
         run: python check_batteries.py
@@ -118,6 +118,8 @@ jobs:
         run: python check_runner.py
       - name: A receipt and an audit as a page, the same bytes for the same input (8.5)
         run: python check_viewers.py
+      - name: Everything the rename kept working still works, and no old name has drifted back (8.6)
+        run: python check_rename.py
       - name: A false promise the prover left to runtime is caught by a witness; effects are refused
         run: python check_from_contracts.py
       - name: What docs/structurally-impossible.md says cannot occur, tried
@@ -134,12 +136,12 @@ jobs:
         run: python check_permissions.py
       - name: Every mutant the monthly run left alive in a guarantee's lines is killed by a test
         run: python check_mutant_kills.py
-      - name: This repository needs nothing its velaris.capabilities does not declare
-        run: velaris capabilities check .
-      - name: velaris-spec's corpus is what these suites say (drift test)
-        run: python build_conformance.py --check velaris-spec/tests
-      - name: Conformant at L1, L2 and L3 against velaris-spec's corpus
-        run: velaris conformance --corpus velaris-spec/tests
+      - name: This repository needs nothing its sabline.capabilities does not declare
+        run: sabline capabilities check .
+      - name: sabline-spec's corpus is what these suites say (drift test)
+        run: python build_conformance.py --check sabline-spec/tests
+      - name: Conformant at L1, L2 and L3 against sabline-spec's corpus
+        run: sabline conformance --corpus sabline-spec/tests
       - name: Benchmark harness (one program per category; Deno rows may be absent)
         if: matrix.deps == 'full'
         run: python benchmark/run.py --quick --check
@@ -164,14 +166,14 @@ jobs:
       - name: The model round trip, replayed (agent_loop.py --metric --offline)
         run: python agent_loop.py --metric --offline
       - name: Edge, property and round-trip tests
-        run: velaris examples/edges.vel --allow ffi:datetime,io
-      - name: Velaris tests written in Velaris
-        run: velaris test examples/std_test.vel
+        run: sabline examples/edges.vel --allow ffi:datetime,io
+      - name: Sabline tests written in Sabline
+        run: sabline test examples/std_test.vel
       - name: Compile check (every example compiles)
-        run: velaris check examples/*.vel examples/lib/*.vel stdlib/*.vel || true
+        run: sabline check examples/*.vel examples/lib/*.vel stdlib/*.vel || true
       - name: Formatter check (repo is canonically formatted)
         shell: bash
-        run: velaris fmt examples/*.vel examples/lib/*.vel stdlib/*.vel --check
+        run: sabline fmt examples/*.vel examples/lib/*.vel stdlib/*.vel --check
       - name: Playground builds
         run: python build_playground.py
       - name: Docs site builds
@@ -236,11 +238,11 @@ jobs:
           python-version: "3.12"
       - name: Install (full)
         run: pip install -c requirements/ci.txt ".[full,test]"
-      - name: velaris-spec, for the schemas
+      - name: sabline-spec, for the schemas
         uses: actions/checkout@v5
         with:
-          repository: gowrishankar-infra/velaris-spec
-          path: velaris-spec
+          repository: gowrishankar-infra/sabline-spec
+          path: sabline-spec
       - name: run_tests (native and --no-native), check_library, check_adversarial and fuzz_native, each twice at once
         shell: bash
         run: |

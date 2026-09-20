@@ -1,7 +1,7 @@
 // SETTLEMENT - claims in, a fee taken, what is left split three ways.
 //
-// velaris examples/settlement.vel            (io, the 5.0 default)
-// velaris proofs examples/settlement.vel --detail
+// sabline examples/settlement.vel            (io, the 5.0 default)
+// sabline proofs examples/settlement.vel --detail
 //
 // Every amount here is a whole number of paise, held as Money of INR.
 // No Float touches any of it, the fee says how it rounds, and the two

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Velaris in an hour - Velaris 8.5.0</title>
-<meta name="description" content="Velaris is a language where a function&#x27;s first line tells you everything: what it takes, what it gives back, what it is allowed to touch, whether it can ...">
-<meta name="velaris-version" content="8.5.0">
-<link rel="canonical" href="https://velaris-lang.dev/tutorial.html">
+<title>Sabline in an hour - Sabline 8.6.0</title>
+<meta name="description" content="Sabline is a language where a function&#x27;s first line tells you everything: what it takes, what it gives back, what it is allowed to touch, whether it can ...">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/tutorial.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
@@ -17,8 +17,8 @@
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="renamed.html">Velaris is now Sabline</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,13 +52,13 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
-<h1 id="velaris-in-an-hour">Velaris in an hour</h1>
-<p>Velaris is a language where a function's first line tells you
+<h1 id="sabline-in-an-hour">Sabline in an hour</h1>
+<p>Sabline is a language where a function's first line tells you
 everything: what it takes, what it gives back, what it is allowed to
 touch, whether it can fail, and what it promises about its answer.
 Those promises are checked by a theorem prover before your program
@@ -66,20 +66,20 @@ runs.</p>
 <p>You can follow along in the browser — the
 <a href="playground.html">playground</a>
 runs the real compiler — or install it:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>pip install velaris-lang
-velaris doctor
-velaris new hello &amp;&amp; cd hello &amp;&amp; velaris main.vel</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>pip install sabline-lang
+sabline doctor
+sabline new hello &amp;&amp; cd hello &amp;&amp; sabline main.vel</code></pre></div>
 <h2 id="1-hello">1. Hello <a class="anchor" href="#1-hello" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> main() <span class="k">uses</span> io {
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> main() <span class="k">uses</span> io {
     print(<span class="s">"hello!"</span>)
 }</code></pre></div>
 <p><code>main</code> is where a program starts. <code>uses io</code> is a declaration: this
 function is allowed to talk to the outside world. Remove it and the
 program will not compile, because <code>print</code> needs it.</p>
-<p>That is the whole idea of Velaris in one line — <strong>abilities are
+<p>That is the whole idea of Sabline in one line — <strong>abilities are
 declared, not assumed</strong>.</p>
 <h2 id="2-values-and-types">2. Values and types <a class="anchor" href="#2-values-and-types" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> main() <span class="k">uses</span> io {
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> main() <span class="k">uses</span> io {
     <span class="k">let</span> name = <span class="s">"Gowri"</span>           <span class="c">// Text</span>
     <span class="k">let</span> age = <span class="n">30</span>                 <span class="c">// Int</span>
     <span class="k">let</span> ratio = <span class="n">1.5</span>              <span class="c">// Float</span>
@@ -100,7 +100,7 @@ division that could round says how (SPEC.md §4.3).</p>
 holes for you — the wrong number of values is a compile error, not a
 mess at runtime.</p>
 <h2 id="3-functions-and-effects">3. Functions and effects <a class="anchor" href="#3-functions-and-effects" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> double(n: Int) -&gt; Int {
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> double(n: Int) -&gt; Int {
     <span class="k">return</span> n * <span class="n">2</span>
 }
 
@@ -114,7 +114,7 @@ in through a helper.</p>
 <p>The effects are <code>io</code>, <code>fs</code> (files), <code>net</code> (network), <code>clock</code> (the
 time), and <code>rand</code> (randomness).</p>
 <h2 id="4-promises-proven">4. Promises, proven <a class="anchor" href="#4-promises-proven" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> discount(price: Int) -&gt; Int
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> discount(price: Int) -&gt; Int
     <span class="k">requires</span> price &gt;= <span class="n">0</span>
     <span class="k">ensures</span> result &gt;= <span class="n">0</span>
 {
@@ -126,7 +126,7 @@ promises in return. Run this and the compiler answers:</p>
   proven without running the program: price = 5 gives result = -5</code></pre></div>
 <p>It did not test the function. It proved the promise false and handed
 back the input that breaks it. Fix the code, or fix the promise:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> discount(price: Int) -&gt; Int
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> discount(price: Int) -&gt; Int
     <span class="k">requires</span> price &gt;= <span class="n">0</span>
     <span class="k">ensures</span> result &gt;= <span class="n">0</span>
 {
@@ -135,18 +135,18 @@ back the input that breaks it. Fix the code, or fix the promise:</p>
     }
     <span class="k">return</span> price - <span class="n">10</span>
 }</code></pre></div>
-<p>Now it compiles, and <code>velaris explain</code> will say <code>[proven]</code>.</p>
+<p>Now it compiles, and <code>sabline explain</code> will say <code>[proven]</code>.</p>
 <p>Promises can talk about lists, maps, records and floats too:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> bump(counts: Map of Text to Int, word: Text) -&gt; Map of Text to Int
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> bump(counts: Map of Text to Int, word: Text) -&gt; Map of Text to Int
     <span class="k">ensures</span> get_or(result, word, <span class="n">0</span>) == get_or(counts, word, <span class="n">0</span>) + <span class="n">1</span>
 {
     <span class="k">return</span> put(counts, word, get_or(counts, word, <span class="n">0</span>) + <span class="n">1</span>)
 }</code></pre></div>
-<p>Floats are proven in real IEEE-754, which means Velaris will <em>refuse</em>
+<p>Floats are proven in real IEEE-754, which means Sabline will <em>refuse</em>
 to prove <code>x + 0.1 + 0.1 == x + 0.2</code> — because on a real machine it is
 false. See <a href="floats.html">docs/floats.md</a> for why that matters.</p>
 <h2 id="5-loops">5. Loops <a class="anchor" href="#5-loops" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> count_up(n: Int) -&gt; Int
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> count_up(n: Int) -&gt; Int
     <span class="k">requires</span> n &gt;= <span class="n">0</span>
     <span class="k">ensures</span> result &gt;= <span class="n">0</span>
 {
@@ -161,15 +161,15 @@ false. See <a href="floats.html">docs/floats.md</a> for why that matters.</p>
 <p>No <code>invariant</code> line needed: the compiler works out the boring ones
 itself (each counter never goes below where it started). When you need
 something richer — "this total stays positive" — write it:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code>    <span class="k">while</span> i &lt; length(xs)
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code>    <span class="k">while</span> i &lt; length(xs)
     <span class="k">invariant</span> total &gt;= <span class="n">0</span>
     {
         ...
     }</code></pre></div>
 <h2 id="6-failure">6. Failure <a class="anchor" href="#6-failure" aria-label="Link to this section">#</a></h2>
-<p>Some things genuinely fail. In Velaris that is part of the signature,
+<p>Some things genuinely fail. In Sabline that is part of the signature,
 and ignoring it does not compile:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> parse_age(t: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> {
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> parse_age(t: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> {
     <span class="k">return</span> <span class="k">try</span> to_int(t)
 }
 
@@ -189,7 +189,7 @@ life — <code>to_int</code>, <code>read_file</code>, <code>fetch</code>, and <c
 and <code>get_or(m, key, default)</code> is there when you would rather have a
 fallback than a failure.</p>
 <h2 id="7-records-and-lists">7. Records and lists <a class="anchor" href="#7-records-and-lists" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">record</span> Expense {
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">record</span> Expense {
     what: Text
     amount: Int
 }
@@ -203,7 +203,7 @@ Lists work the same way — <code>push</code> gives you a new list.</p>
 <p>Reading past the end of a list is caught before the program runs when
 the compiler can prove it, and reported cleanly when it cannot.</p>
 <h2 id="8-function-values">8. Function values <a class="anchor" href="#8-function-values" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"std.vel"</span>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"std.vel"</span>
 
 <span class="k">fn</span> main() <span class="k">uses</span> io {
     <span class="k">let</span> xs = [<span class="n">5</span>, <span class="n">3</span>, <span class="n">8</span>, <span class="n">1</span>]
@@ -214,29 +214,29 @@ the compiler can prove it, and reported cleanly when it cannot.</p>
 pass what they need as parameters. They can carry their own promises,
 proven like any other function's.</p>
 <h2 id="9-using-libraries">9. Using libraries <a class="anchor" href="#9-using-libraries" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"std.vel"</span>                    <span class="c">// sort(xs), first(xs), join(...)</span>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"std.vel"</span>                    <span class="c">// sort(xs), first(xs), join(...)</span>
 <span class="k">import</span> <span class="s">"lib/geo.vel"</span> as geo         <span class="c">// geo.distance(a, b)</span></code></pre></div>
 <p>A named import keeps a library's functions behind its own name, so two
 libraries that both define <code>distance</code> can be used in one file. The
-standard library is written in Velaris and keeps its own promises:
+standard library is written in Sabline and keeps its own promises:
 <code>sort</code> carries <code>ensures is_sorted(result)</code>.</p>
 <h2 id="10-the-tools">10. The tools <a class="anchor" href="#10-the-tools" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris program.vel                              # run it, with io and nothing else
-velaris program.vel --allow io,fs:read:./data    # grant exactly that
-velaris program.vel --allow all                  # every effect (it says so)
-velaris migrate --to 5.0 .                       # the budget each program here needs
-velaris check program.vel                        # compile it without running
-velaris explain program.vel                      # what each function does, needs and promises
-velaris explain .                                # the same for a whole project
-velaris trace program.vel                        # watch every call as it happens
-velaris repl                                     # try things, proofs and all
-velaris fmt program.vel                          # canonical formatting
-velaris doctor                                   # check your setup
-velaris new myproject                            # start something
-velaris build program.vel                        # one executable you can give to anyone
-velaris add &lt;url or path&gt;                        # vendor a library into lib/
-velaris verify                                   # check your libraries are unchanged</code></pre></div>
-<p><code>velaris explain</code> is the one to reach for when you meet unfamiliar
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline program.vel                              # run it, with io and nothing else
+sabline program.vel --allow io,fs:read:./data    # grant exactly that
+sabline program.vel --allow all                  # every effect (it says so)
+sabline migrate --to 5.0 .                       # the budget each program here needs
+sabline check program.vel                        # compile it without running
+sabline explain program.vel                      # what each function does, needs and promises
+sabline explain .                                # the same for a whole project
+sabline trace program.vel                        # watch every call as it happens
+sabline repl                                     # try things, proofs and all
+sabline fmt program.vel                          # canonical formatting
+sabline doctor                                   # check your setup
+sabline new myproject                            # start something
+sabline build program.vel                        # one executable you can give to anyone
+sabline add &lt;url or path&gt;                        # vendor a library into lib/
+sabline verify                                   # check your libraries are unchanged</code></pre></div>
+<p><code>sabline explain</code> is the one to reach for when you meet unfamiliar
 code: it lists every function with its effects, its promises, and
 whether those promises were <strong>proven</strong> or are being checked while
 running.</p>
@@ -247,13 +247,13 @@ running.</p>
 <li><p><code>examples/wordcount.vel</code> — text analysis: maps, lambdas, failure.</p></li>
 <li><p><code>examples/fetcher.vel</code> — an HTTP tool: the network, honestly declared.</p></li>
 <li><p><a href="errors.html">The error index</a>
-— every message Velaris can give, scraped from the compiler itself.</p></li>
+— every message Sabline can give, scraped from the compiler itself.</p></li>
 </ul>
 <p>If you can make the prover claim something is proven when it is false,
 that is a security bug and the project wants to hear about it.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/TUTORIAL.md">TUTORIAL.md</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/TUTORIAL.md">TUTORIAL.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#1-hello">1. Hello</a></li><li><a href="#2-values-and-types">2. Values and types</a></li><li><a href="#3-functions-and-effects">3. Functions and effects</a></li><li><a href="#4-promises-proven">4. Promises, proven</a></li><li><a href="#5-loops">5. Loops</a></li><li><a href="#6-failure">6. Failure</a></li><li><a href="#7-records-and-lists">7. Records and lists</a></li><li><a href="#8-function-values">8. Function values</a></li><li><a href="#9-using-libraries">9. Using libraries</a></li><li><a href="#10-the-tools">10. The tools</a></li><li><a href="#where-to-go-next">Where to go next</a></li></ul></nav>

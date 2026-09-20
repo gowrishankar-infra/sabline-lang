@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>capability/v1 predicate type - Velaris 8.5.0</title>
+<title>capability/v1 predicate type - Sabline 8.6.0</title>
 <meta name="description" content="An in-toto predicate type.">
-<meta name="velaris-version" content="8.5.0">
-<link rel="canonical" href="https://velaris-lang.dev/capability/v1/">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/capability/v1/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="../../assets/site.css">
 <script src="../../assets/site.js"></script>
@@ -17,8 +17,8 @@
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="../../index.html">Velaris</a>
-<a class="badge" href="../../versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
+<a class="brand" href="../../index.html">Sabline</a>
+<a class="badge" href="../../versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="../../floats.html">Floats</a>
 </li>
 <li><a href="../../threat-model.html">Threat model</a>
-<ul><li><a href="../../confinement.html">Confinement</a></li><li><a href="../../runner.html">Hosting a run that calls tools</a></li><li><a href="../../eval.html">velaris eval</a></li><li><a href="../../structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="../../crosswalk.html">Crosswalk</a></li><li><a href="../../security.html">Security policy</a></li></ul>
+<ul><li><a href="../../confinement.html">Confinement</a></li><li><a href="../../runner.html">Hosting a run that calls tools</a></li><li><a href="../../eval.html">sabline eval</a></li><li><a href="../../structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="../../crosswalk.html">Crosswalk</a></li><li><a href="../../renamed.html">Velaris is now Sabline</a></li><li><a href="../../security.html">Security policy</a></li></ul>
 </li>
 <li><a href="../../embedding.html">Embedding</a>
 </li>
@@ -52,34 +52,34 @@
 <ul><li><a href="../../stability.html">Stability</a></li><li><a href="index.html" aria-current="page">capability/v1</a></li><li><a href="../../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="../../changelog.html">Changelog</a>
-<ul><li><a href="../../changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="../../changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="../../changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="../../changelog-7.html">7.x</a></li><li><a href="../../changelog-6.html">6.x</a></li><li><a href="../../changelog-5.html">5.x</a></li><li><a href="../../changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="../../changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="../../changelog-3.html">3.x</a></li><li><a href="../../changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="../../changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="../../changelog-1.html">1.x</a></li><li><a href="../../changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="../../changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="../../changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="../../changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="../../changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="../../changelog-7.html">7.x</a></li><li><a href="../../changelog-6.html">6.x</a></li><li><a href="../../changelog-5.html">5.x</a></li><li><a href="../../changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="../../changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="../../changelog-3.html">3.x</a></li><li><a href="../../changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="../../changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="../../changelog-1.html">1.x</a></li><li><a href="../../changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
 <p class="lead">An in-toto predicate type.</p>
 <h1 id="capabilityv1">capability/v1</h1>
-<p>A signed statement that a named tool read these Velaris source files, byte for byte, and reports this capability surface: the effects the program declares, the paths, hosts and modules it names, and the narrowest budget to run it under.</p>
-<p><strong>Predicate type:</strong> <code>https://velaris-lang.dev/capability/v1</code> - this page.</p>
-<p><strong>Also read as this type:</strong> <code>https://gowrishankar-infra.github.io/velaris-lang/capability/v1</code>, the name Statements written by velaris-lang 4.2 to 8.2.1 carry; that address redirects here.</p>
-<p><strong>Schema:</strong> <a href="schema.json">schema.json</a>, JSON Schema draft 2020-12, for the predicate. <strong>Definition:</strong> <a href="https://github.com/gowrishankar-infra/velaris-spec/blob/main/SPEC.md#85-the-audit-as-an-in-toto-predicate">velaris-spec SPEC.md section 8.5</a>, dedicated to the public domain under CC0.</p>
+<p>A signed statement that a named tool read these Sabline source files, byte for byte, and reports this capability surface: the effects the program declares, the paths, hosts and modules it names, and the narrowest budget to run it under.</p>
+<p><strong>Predicate type:</strong> <code>https://sabline.dev/capability/v1</code> - this page.</p>
+<p><strong>Also read as this type:</strong> <code>https://velaris-lang.dev/capability/v1</code>, <code>https://gowrishankar-infra.github.io/velaris-lang/capability/v1</code>, the name Statements written by sabline-lang 4.2 to 8.2.1 carry; that address redirects here.</p>
+<p><strong>Schema:</strong> <a href="schema.json">schema.json</a>, JSON Schema draft 2020-12, for the predicate. <strong>Definition:</strong> <a href="https://github.com/gowrishankar-infra/sabline-spec/blob/main/SPEC.md#85-the-audit-as-an-in-toto-predicate">sabline-spec SPEC.md section 8.5</a>, dedicated to the public domain under CC0.</p>
 <h2 id="what-it-is">What it is <a class="anchor" href="#what-it-is" aria-label="Link to this section">#</a></h2>
-<p>A <code>velaris.audit/1</code> document (velaris-spec section 8) names no file and carries no signature. This predicate type puts one inside an <a href="https://github.com/in-toto/attestation">in-toto Statement v1</a>, whose subjects are the files audited, identified by digest, so that a signed Statement says which source the audit describes, and who says so.</p>
+<p>A <code>sabline.audit/1</code> document (sabline-spec section 8) names no file and carries no signature. This predicate type puts one inside an <a href="https://github.com/in-toto/attestation">in-toto Statement v1</a>, whose subjects are the files audited, identified by digest, so that a signed Statement says which source the audit describes, and who says so.</p>
 <div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{
   "_type": "https://in-toto.io/Statement/v1",
   "subject": [
     {"name": "examples/effects.vel",
      "digest": {"sha256": "e483365ce74a20770a1ef503f185f4de2c16b0524797408784a235e78b6baafb"}}
   ],
-  "predicateType": "https://velaris-lang.dev/capability/v1",
+  "predicateType": "https://sabline.dev/capability/v1",
   "predicate": {
-    "producer": {"name": "velaris-lang",
-                 "uri": "https://github.com/gowrishankar-infra/velaris-lang"},
-    "specification": "velaris-spec 0.13.0",
+    "producer": {"name": "sabline-lang",
+                 "uri": "https://github.com/gowrishankar-infra/sabline-lang"},
+    "specification": "sabline-spec 0.13.0",
     "auditedAt": "2026-09-11T00:00:00Z",
-    "audit": {"schema": "velaris.audit/1", "velaris_version": "8.5.0",
+    "audit": {"schema": "sabline.audit/1", "sabline_version": "8.6.0",
               "ok": true, "effects": ["clock", "fs", "io", "rand"],
-              "safe_command": "velaris &lt;file&gt; --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand",
+              "safe_command": "sabline &lt;file&gt; --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand",
               "counts": {"fs": 2, "net": 0}, "prover": true,
               "...": "the rest of the audit"}
   }
@@ -89,23 +89,23 @@
 <thead><tr><th>Field</th><th>Required</th><th>Meaning</th></tr></thead>
 <tbody>
 <tr><td><code>subject[0]</code></td><td>yes</td><td>the file audited: <code>name</code>, its path as the producer was given it, <code>/</code>-separated; <code>digest.sha256</code> of its bytes. The files it imports should follow, one subject each.</td></tr>
-<tr><td><code>predicate.audit</code></td><td>yes</td><td>a <code>velaris.audit/1</code> document produced from exactly the bytes the subjects name</td></tr>
-<tr><td><code>predicate.producer</code></td><td>yes</td><td><code>name</code> of the implementation that wrote the audit, and optionally <code>uri</code>; its version is the audit's <code>velaris_version</code></td></tr>
-<tr><td><code>predicate.specification</code></td><td>no</td><td>the velaris-spec version followed, as <code>velaris-spec 0.13.0</code></td></tr>
+<tr><td><code>predicate.audit</code></td><td>yes</td><td>a <code>sabline.audit/1</code> document produced from exactly the bytes the subjects name</td></tr>
+<tr><td><code>predicate.producer</code></td><td>yes</td><td><code>name</code> of the implementation that wrote the audit, and optionally <code>uri</code>; its version is the audit's <code>sabline_version</code></td></tr>
+<tr><td><code>predicate.specification</code></td><td>no</td><td>the sabline-spec version followed, as <code>sabline-spec 0.13.0</code></td></tr>
 <tr><td><code>predicate.auditedAt</code></td><td>no</td><td>when the audit was made, RFC 3339 in UTC, by the producer's clock</td></tr>
-<tr><td><code>predicate.conformance</code></td><td>no</td><td>the conformance levels the producer claims (velaris-spec CONFORMANCE.md) and the corpus it ran - a claim, not evidence</td></tr>
+<tr><td><code>predicate.conformance</code></td><td>no</td><td>the conformance levels the producer claims (sabline-spec CONFORMANCE.md) and the corpus it ran - a claim, not evidence</td></tr>
 </tbody></table></div>
 <h2 id="parsing-rules">Parsing rules <a class="anchor" href="#parsing-rules" aria-label="Link to this section">#</a></h2>
 <p>In-toto's standard parsing rules apply. Ignore any field you do not know, in the predicate and in the audit. Fields may be added within v1; a change of meaning is a new type, <code>.../capability/v2</code>. Check that the first subject's digest is the digest of the file you mean to trust.</p>
 <h2 id="what-it-does-not-say">What it does not say <a class="anchor" href="#what-it-does-not-say" aria-label="Link to this section">#</a></h2>
 <p>That the audit is right, that the program is safe to run, or that any runtime will enforce the budget in <code>safe_command</code>. When <code>audit.ok</code> is false, it says nothing about what the program may do. It says that the signer ran the producer on these bytes and got this audit.</p>
 <h2 id="a-producer">A producer <a class="anchor" href="#a-producer" aria-label="Link to this section">#</a></h2>
-<p>velaris-lang writes Statements of this type, from 4.2:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris attest program.vel --output program.intoto.json</code></pre></div>
-<p>It signs none; cosign (<code>cosign attest-blob --statement</code>) and sigstore-python sign them, as <a href="../../embedding.html">EMBEDDING.md</a> shows. Every release of velaris-lang carries one for an example program, signed by its release workflow and verified there; <a href="https://github.com/gowrishankar-infra/velaris-spec/blob/main/examples/capability-statement.json">velaris-spec's example</a> was written by <code>velaris attest</code>.</p>
+<p>sabline-lang writes Statements of this type, from 4.2:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline attest program.vel --output program.intoto.json</code></pre></div>
+<p>It signs none; cosign (<code>cosign attest-blob --statement</code>) and sigstore-python sign them, as <a href="../../embedding.html">EMBEDDING.md</a> shows. Every release of sabline-lang carries one for an example program, signed by its release workflow and verified there; <a href="https://github.com/gowrishankar-infra/sabline-spec/blob/main/examples/capability-statement.json">sabline-spec's example</a> was written by <code>sabline attest</code>.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/build_docs.py">build_docs.py</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/build_docs.py">build_docs.py</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#what-it-is">What it is</a></li><li><a href="#fields">Fields</a></li><li><a href="#parsing-rules">Parsing rules</a></li><li><a href="#what-it-does-not-say">What it does not say</a></li><li><a href="#a-producer">A producer</a></li></ul></nav>

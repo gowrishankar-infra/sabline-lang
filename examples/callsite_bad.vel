@@ -1,6 +1,6 @@
 // The other direction: discount PROMISES to only accept price >= 0,
 // and main tries to call it with -3. In every mainstream language this
-// is found (if ever) when the code runs. Velaris proves the violation
+// is found (if ever) when the code runs. Sabline proves the violation
 // and rejects the file before anything executes.
 
 fn discount(price: Int) -> Int

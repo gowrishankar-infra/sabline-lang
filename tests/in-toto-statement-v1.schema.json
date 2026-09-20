@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/gowrishankar-infra/velaris-lang/blob/main/tests/in-toto-statement-v1.schema.json",
+  "$id": "https://github.com/gowrishankar-infra/sabline-lang/blob/main/tests/in-toto-statement-v1.schema.json",
   "title": "in-toto Statement v1",
   "$comment": "The in-toto project publishes the Statement v1 layer as prose and protobuf, not as JSON Schema. This schema was written from the prose, at in-toto/attestation commit 2dcd055e9f72e746687c306e35f4e59720ff45be: spec/v1/statement.md, spec/v1/resource_descriptor.md and spec/v1/digest_set.md. It states each MUST of those three documents that JSON Schema can state: _type is the v1 URI; subject is a non-empty array of ResourceDescriptors, each with digest set; predicateType is a string; predicate, when present, is an object; a ResourceDescriptor has at least one of uri, digest and content; a DigestSet maps algorithm names to strings, lowercase hex for the named hash algorithms. It does not state the SHOULDs (unique names within subject) or the parsing rules.",
   "type": "object",

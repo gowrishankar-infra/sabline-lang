@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Write Velaris with a model, and iterate against the compiler.
+"""Write Sabline with a model, and iterate against the compiler.
 
 Most agent loops iterate against tests: run it, see what breaks, try
 again. This iterates against a *proof*. The compiler answers with
 structured errors - a code, a message, a line, and numbered fixes - and
 for contracts it answers with the exact input that breaks a promise.
 That is a much stronger signal than a failing test, and it is what
-makes Velaris a good target for generated code.
+makes Sabline a good target for generated code.
 
     export ANTHROPIC_API_KEY=...
     python agent_loop.py "read a CSV of expenses and print the total"
@@ -22,7 +22,7 @@ The metric (8.2) is ten tasks, tests/agent_loop/tasks.json. For each, the
 loop runs to a program that compiles, and the metric records how many rounds
 that took, whether the audit's effects are the ones the task needs, and how
 many promises are proven. With a key, the ten tasks go to the model
-(VELARIS_MODEL, default claude-sonnet-5) and the numbers are that model's.
+(SABLINE_MODEL, default claude-sonnet-5) and the numbers are that model's.
 With --offline, or with no ANTHROPIC_API_KEY, each task replays the replies
 recorded for it, so the loop, the compiler's answers and the metric run with
 no model and no network; CI runs that, and fails unless every task ends as
@@ -41,10 +41,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 HERE = Path(__file__).parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 CARD = HERE / "LLM.md"
 TASKS = HERE / "tests" / "agent_loop" / "tasks.json"
-MODEL = os.environ.get("VELARIS_MODEL", "claude-sonnet-5")
+MODEL = os.environ.get("SABLINE_MODEL", "claude-sonnet-5")
 ROUNDS = 6
 
 Ask = Callable[[list[dict[str, str]]], str]
@@ -53,7 +53,7 @@ Ask = Callable[[list[dict[str, str]]], str]
 def check(path: Path) -> list[dict[str, Any]]:
     """Every problem the compiler can see, as data."""
     done = subprocess.run(
-        [sys.executable, str(VELARIS), "check", str(path), "--json"],
+        [sys.executable, str(SABLINE), "check", str(path), "--json"],
         capture_output=True, text=True, timeout=600)
     text = (done.stdout or "").strip()
     if not text:
@@ -77,7 +77,7 @@ def check(path: Path) -> list[dict[str, Any]]:
 def proof_state(path: Path) -> tuple[int, int]:
     """How many promises are proven rather than checked while running."""
     done = subprocess.run(
-        [sys.executable, str(VELARIS), "proofs", str(path), "--json"],
+        [sys.executable, str(SABLINE), "proofs", str(path), "--json"],
         capture_output=True, text=True, timeout=900)
     try:
         report = json.loads(done.stdout)
@@ -91,7 +91,7 @@ def proof_state(path: Path) -> tuple[int, int]:
 def audit_effects(path: Path) -> list[str]:
     """The effects the audit says the program may cause."""
     done = subprocess.run(
-        [sys.executable, str(VELARIS), "audit", str(path), "--json"],
+        [sys.executable, str(SABLINE), "audit", str(path), "--json"],
         capture_output=True, text=True, timeout=900)
     try:
         report = json.loads(done.stdout)
@@ -145,8 +145,8 @@ def just_the_code(reply: str) -> str:
     if "```" not in reply:
         return reply.strip()
     chunk = reply.split("```", 2)[1]
-    if chunk.startswith("velaris"):
-        chunk = chunk[len("velaris"):]
+    if chunk.startswith("sabline"):
+        chunk = chunk[len("sabline"):]
     return chunk.strip("\n")
 
 
@@ -155,9 +155,9 @@ def loop(task: str, ask: Ask, out: Path, card: str,
     """Ask, check, and ask again with the compiler's answer, until the
     program compiles or ROUNDS run out."""
     messages = [{"role": "user", "content":
-                 f"{card}\n\n---\n\nWrite a Velaris program that does "
+                 f"{card}\n\n---\n\nWrite a Sabline program that does "
                  f"this:\n\n{task}\n\nReturn only the program in one "
-                 f"code block. It must pass `velaris check`."}]
+                 f"code block. It must pass `sabline check`."}]
     seen: list[list[str]] = []
     for attempt in range(1, ROUNDS + 1):
         reply = ask(messages)
@@ -174,7 +174,7 @@ def loop(task: str, ask: Ask, out: Path, card: str,
             say(f"    {line}")
         messages.append({"role": "assistant", "content": reply})
         messages.append({"role": "user", "content":
-                         "`velaris check` reported this. Fix it and "
+                         "`sabline check` reported this. Fix it and "
                          "return the whole program again, only the code "
                          f"block:\n\n{complain(errors)}"})
     return {"compiled": False, "rounds": ROUNDS, "codes": seen,
@@ -190,7 +190,7 @@ def metric(offline: bool, json_to: Path | None) -> int:
     print("-" * 62)
     rows: list[dict[str, Any]] = []
     wrong: list[str] = []
-    with tempfile.TemporaryDirectory(prefix="velaris-agent-") as d:
+    with tempfile.TemporaryDirectory(prefix="sabline-agent-") as d:
         for t in tasks:
             got = loop(t["task"], ask_model if live else replay(t["replies"]),
                        Path(d) / f"{t['id']}.vel", card, say=lambda _: None)
@@ -259,9 +259,9 @@ def main() -> int:
         print("dry run: this is what the model would be told\n")
         print(f"  card:  {CARD} ({len(CARD.read_text(encoding='utf-8').split())} words)")
         print(f"  task:  {task}")
-        print(f"  then:  velaris check {out} --json, "
+        print(f"  then:  sabline check {out} --json, "
               f"fed back for up to {ROUNDS} rounds")
-        print(f"  then:  velaris audit {out}")
+        print(f"  then:  sabline audit {out}")
         return 0
 
     got = loop(task, ask_model, out, CARD.read_text(encoding="utf-8"))
@@ -273,11 +273,11 @@ def main() -> int:
         else:
             print("no contracts to prove.")
         print(f"\nwritten to {out}\n")
-        subprocess.run([sys.executable, str(VELARIS), "audit", str(out)],
+        subprocess.run([sys.executable, str(SABLINE), "audit", str(out)],
                        timeout=900)
         return 0
     print(f"\ngave up after {ROUNDS} rounds. The last attempt is in "
-          f"{out}; run `velaris check {out}` to see what remains.")
+          f"{out}; run `sabline check {out}` to see what remains.")
     return 1
 
 

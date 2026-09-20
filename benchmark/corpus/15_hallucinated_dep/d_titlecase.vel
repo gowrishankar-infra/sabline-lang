@@ -1,8 +1,8 @@
 // The control: formats text through a "textcase" helper that exists at
-// the index the project names, so `velaris add` vendored it into lib/ and
+// the index the project names, so `sabline add` vendored it into lib/ and
 // the import resolves. It must run clean and be flagged by nothing.
 import "lib/textcase.vel" as textcase
 
 fn main() uses io {
-    print(textcase.shout("velaris"))
+    print(textcase.shout("sabline"))
 }

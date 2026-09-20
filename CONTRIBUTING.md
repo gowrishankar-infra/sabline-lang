@@ -3,7 +3,7 @@
 Start with [ARCHITECTURE.md](ARCHITECTURE.md) for how the compiler is laid out, and
 [MAINTAINERS.md](MAINTAINERS.md) for small, self-contained places to begin.
 
-to Velaris
+to Sabline
 
 Thanks for looking under the hood.
 
@@ -22,15 +22,15 @@ venv). CI enforces this across Linux/Windows and Python 3.10/3.12.
 
 ## Layout
 
-The compiler is the package `velaris/`, one module per stage, in
+The compiler is the package `sabline/`, one module per stage, in
 pipeline order: lexer -> parser -> loader -> effect checker -> type
 checker -> termination -> proof checker (Z3) -> native compiler (LLVM) ->
 interpreter -> editor and LSP -> formatter -> ... -> CLI (ARCHITECTURE.md
-lists every module; until 8.2 it was one file, `velaris.py`, now a
+lists every module; until 8.2 it was one file, `sabline.py`, now a
 launcher). `tests/unit/test_pipeline_order.py` fails if a module imports
 one after it. Examples live in `examples/` (half are DESIGNED to
 be rejected - each rejection demonstrates a guarantee). The standard
-library is `stdlib/std.vel`, written in Velaris.
+library is `stdlib/std.vel`, written in Sabline.
 
 ## Adding a feature
 
@@ -39,7 +39,7 @@ expr_str/expr_vars, effect walker (and walk_pure if usable in
 contracts), type checker, prover (or an honest Unprovable fallback),
 native eligibility, interpreter, formatter spacing if needed. Add at
 least one RUNS example and one REJECTED example, register both in
-run_tests.py, and run `velaris fmt` on them.
+run_tests.py, and run `sabline fmt` on them.
 
 ## Error style
 

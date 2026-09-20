@@ -1,5 +1,5 @@
 // textcase: small text helpers. The library the control depends on,
-// vendored here as `velaris add` would leave it in lib/.
+// vendored here as `sabline add` would leave it in lib/.
 fn shout(s: Text) -> Text {
     return upper(s)
 }

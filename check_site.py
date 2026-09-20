@@ -355,7 +355,7 @@ def build(out: Path) -> build_docs.Built:
     earlier = out / "0.1"
     earlier.mkdir(parents=True)
     (earlier / "index.html").write_text(
-        '<!DOCTYPE html><meta name="velaris-version" content="0.1.9">',
+        '<!DOCTYPE html><meta name="sabline-version" content="0.1.9">',
         encoding="utf-8")
     (out / "latest").mkdir()
     (out / "latest" / "stale.html").write_text("an earlier build's", encoding="utf-8")
@@ -657,7 +657,7 @@ def check_earlier(out: Path, built: build_docs.Built) -> None:
     hosts = [h for h in (urllib.parse.urlsplit(s).hostname
                          for s in build_docs.earlier_sites()) if h]
     if not hosts:
-        ok("velaris names no earlier address of the site", True)
+        ok("sabline names no earlier address of the site", True)
         return
     sources: dict[str, int] = {}
     by_source: dict[str, int] = {}
@@ -669,7 +669,7 @@ def check_earlier(out: Path, built: build_docs.Built) -> None:
             text = html.unescape((out / (tree.prefix + page.path)).read_text(
                 encoding="utf-8"))
             if page.source == "build_docs.py":
-                # a predicate type's page names the types velaris writes and
+                # a predicate type's page names the types sabline writes and
                 # reads, whatever address they are on
                 for kind in ("CAPABILITY", "RECEIPT"):
                     for spelling in build_docs.predicate_types(kind):

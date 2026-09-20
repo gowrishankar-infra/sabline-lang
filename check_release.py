@@ -62,29 +62,29 @@ REPOSITORY = release_checks.REPOSITORY
 
 # the 24 files the v7.1.2 release holds, as GitHub listed them
 V712_ASSETS = """SHA256SUMS
-velaris-attestation-7.1.2.cosign.sigstore.json
-velaris-attestation-7.1.2.intoto.json
-velaris-attestation-7.1.2.sigstore-python.sigstore.json
-velaris-lang-7.1.2.cdx.json
-velaris-lang-7.1.2.cdx.json.sigstore.json
-velaris-linux
-velaris-linux.sha256
-velaris-linux.sigstore.json
-velaris-macos
-velaris-macos.sha256
-velaris-macos.sigstore.json
-velaris-mcp-tools-7.1.2.json
-velaris-mcp-tools-7.1.2.json.sigstore.json
-velaris-windows.exe
-velaris-windows.exe.sha256
-velaris-windows.exe.sigstore.json
-velaris.mcpb
-velaris.mcpb.sha256
-velaris.mcpb.sigstore.json
-velaris_lang-7.1.2-py3-none-any.whl
-velaris_lang-7.1.2-py3-none-any.whl.sigstore.json
-velaris_lang-7.1.2.tar.gz
-velaris_lang-7.1.2.tar.gz.sigstore.json""".split()
+sabline-attestation-7.1.2.cosign.sigstore.json
+sabline-attestation-7.1.2.intoto.json
+sabline-attestation-7.1.2.sigstore-python.sigstore.json
+sabline-lang-7.1.2.cdx.json
+sabline-lang-7.1.2.cdx.json.sigstore.json
+sabline-linux
+sabline-linux.sha256
+sabline-linux.sigstore.json
+sabline-macos
+sabline-macos.sha256
+sabline-macos.sigstore.json
+sabline-mcp-tools-7.1.2.json
+sabline-mcp-tools-7.1.2.json.sigstore.json
+sabline-windows.exe
+sabline-windows.exe.sha256
+sabline-windows.exe.sigstore.json
+sabline.mcpb
+sabline.mcpb.sha256
+sabline.mcpb.sigstore.json
+sabline_lang-7.1.2-py3-none-any.whl
+sabline_lang-7.1.2-py3-none-any.whl.sigstore.json
+sabline_lang-7.1.2.tar.gz
+sabline_lang-7.1.2.tar.gz.sigstore.json""".split()
 
 
 # ---- throwaway repositories ----------------------------------------------------
@@ -114,7 +114,7 @@ def write_versions(repo: Path, version: str, overrides: dict[Any, Any] | None = 
     """The six version files, each saying `version` unless `overrides`
     names another for it ("compiler" for the compiler's own);
     overrides["packages"] lists the registry manifest's package types. The
-    compiler is velaris/ as from 8.2, or velaris.py as before
+    compiler is sabline/ as from 8.2, or sabline.py as before
     (layout="file"), holding `codes`, `flags` and `defaults`."""
     said: dict[str, str] = dict(overrides or {})
 
@@ -128,31 +128,31 @@ def write_versions(repo: Path, version: str, overrides: dict[Any, Any] | None = 
              + "".join(f"{k} = {v}\n"
                        for k, v in (defaults or BASE_DEFAULTS).items()))
     files = {
-        "pyproject.toml": f'[project]\nname = "velaris-lang"\n'
+        "pyproject.toml": f'[project]\nname = "sabline-lang"\n'
                           f'version = "{at("pyproject.toml")}"\n',
         "npm/package.json": json.dumps(
-            {"name": "velaris-lang", "version": at("npm/package.json")}),
+            {"name": "sabline-lang", "version": at("npm/package.json")}),
         "mcpb/manifest.json": json.dumps(
-            {"name": "velaris", "version": at("mcpb/manifest.json")}),
+            {"name": "sabline", "version": at("mcpb/manifest.json")}),
         "editor/vscode/package.json": json.dumps(
-            {"name": "velaris", "version": at("editor/vscode/package.json")}),
+            {"name": "sabline", "version": at("editor/vscode/package.json")}),
         "integrations/mcp_registry/server.json": json.dumps({
             "name": SERVER, "version": reg,
-            "packages": [{"registryType": kind, "identifier": "velaris-lang",
+            "packages": [{"registryType": kind, "identifier": "sabline-lang",
                           "version": reg}
                          for kind in said.get("packages", "pypi,npm")
                          .split(",") if kind]}),
     }
     if layout == "package":
-        shutil.rmtree(repo / "velaris.py", ignore_errors=True)
-        if (repo / "velaris.py").exists():
-            (repo / "velaris.py").unlink()
-        files["velaris/version.py"] = f'VERSION = "{at("compiler")}"\n'
-        files["velaris/errors.py"] = table
-        files["velaris/cli.py"] = known
+        shutil.rmtree(repo / "sabline.py", ignore_errors=True)
+        if (repo / "sabline.py").exists():
+            (repo / "sabline.py").unlink()
+        files["sabline/version.py"] = f'VERSION = "{at("compiler")}"\n'
+        files["sabline/errors.py"] = table
+        files["sabline/cli.py"] = known
     else:
-        shutil.rmtree(repo / "velaris", ignore_errors=True)
-        files["velaris.py"] = (f'"""A stand-in."""\n'
+        shutil.rmtree(repo / "sabline", ignore_errors=True)
+        files["sabline.py"] = (f'"""A stand-in."""\n'
                                f'VERSION = "{at("compiler")}"\n'
                                + table + known)
     if golden is not None:
@@ -169,7 +169,7 @@ BASE_ENTRY = ("7.1.2", "The proof cache could be lied to",
 
 def write_changelog(repo: Path, *entries: tuple[str, str, str]) -> None:
     (repo / "CHANGELOG.md").write_text(
-        "# Velaris changelog\n\n" + "".join(
+        "# Sabline changelog\n\n" + "".join(
             f"## {v} - {title}\n\n{text}\n\n" for v, title, text in entries),
         encoding="utf-8")
 
@@ -188,7 +188,7 @@ def base_repo(name: str, extra: dict[Any, Any] | None = None,
     repo = SCRATCH / name
     repo.mkdir()
     git(repo, "init", "-q", "-b", "main")
-    (repo / "README.md").write_text("Velaris\n", encoding="utf-8")
+    (repo / "README.md").write_text("Sabline\n", encoding="utf-8")
     commit(repo, "the beginning")
     git(repo, "tag", "v2.36")
     write_versions(repo, "7.1.2", layout="file", golden=golden)
@@ -266,14 +266,14 @@ def all_at(version: str) -> dict[Any, Any]:
     server = "/v0.1/servers/" + urllib.parse.quote(SERVER, safe="")
     assets = [{"name": n} for n in release_checks.expected_assets(version)]
     return {
-        ("GET", f"/pypi/velaris-lang/{version}/json"): (200, {"info": {
+        ("GET", f"/pypi/sabline-lang/{version}/json"): (200, {"info": {
             "version": version,
-            "description": f"<!-- mcp-name: {SERVER} -->\n# Velaris"}}),
-        ("GET", "/pypi/velaris-lang/json"): (200, {"info": {
+            "description": f"<!-- mcp-name: {SERVER} -->\n# Sabline"}}),
+        ("GET", "/pypi/sabline-lang/json"): (200, {"info": {
             "version": version}}),
-        ("GET", f"/velaris-lang/{version}"): (200, {
+        ("GET", f"/sabline-lang/{version}"): (200, {
             "version": version, "mcpName": SERVER}),
-        ("GET", "/velaris-lang"): (200, {"dist-tags": {"latest": version}}),
+        ("GET", "/sabline-lang"): (200, {"dist-tags": {"latest": version}}),
         ("GET", f"{server}/versions/{version}"): (200, {"server": {
             "version": version}}),
         ("GET", f"{server}/versions/latest"): (200, {"server": {
@@ -381,9 +381,9 @@ class Release:
         self.full = all_at(version)
         self.server = server
         StandIn.routes = {
-            ("GET", "/pypi/velaris-lang/json"): (200, {"info": {
+            ("GET", "/pypi/sabline-lang/json"): (200, {"info": {
                 "version": "7.1.2"}}),
-            ("GET", "/velaris-lang"): (200, {"dist-tags": {
+            ("GET", "/sabline-lang"): (200, {"dist-tags": {
                 "latest": "7.1.2"}}),
             ("GET", f"{server}/versions/latest"): (200, {"server": {
                 "version": "7.1.2"}}),
@@ -405,10 +405,10 @@ class Release:
         self.made[target] += 1
         v, s = self.v, self.server
         if target == "pypi":
-            self._serve(("GET", f"/pypi/velaris-lang/{v}/json"),
-                        ("GET", "/pypi/velaris-lang/json"))
+            self._serve(("GET", f"/pypi/sabline-lang/{v}/json"),
+                        ("GET", "/pypi/sabline-lang/json"))
         elif target == "npm":
-            self._serve(("GET", f"/velaris-lang/{v}"), ("GET", "/velaris-lang"))
+            self._serve(("GET", f"/sabline-lang/{v}"), ("GET", "/sabline-lang"))
         elif target == "vscode":
             self._serve(("POST", "/_apis/public/gallery/extensionquery"))
         elif target == "registry":
@@ -527,7 +527,7 @@ echo "$n" > "$FAKE/attempts"
 answer=$(echo "$VSCE_ANSWERS" | tr ',' '\n' | sed -n "${n}p")
 [ -n "$answer" ] || answer=${VSCE_ANSWERS##*,}
 case "$answer" in
-  ok) touch "$FAKE/landed"; echo "DONE  Published gowrishankar-infra.velaris v$V." ;;
+  ok) touch "$FAKE/landed"; echo "DONE  Published gowrishankar-infra.sabline v$V." ;;
   timeout) echo " ERROR  Request timeout: /_apis/gallery"; exit 1 ;;
   landed) touch "$FAKE/landed"; echo " ERROR  Request timeout: /_apis/gallery"; exit 1 ;;
   refused) echo " ERROR  Failed request: (401)"; exit 1 ;;
@@ -833,7 +833,7 @@ def main() -> int:
     print("-" * 62)
 
     repo = base_repo("docs-only")
-    (repo / "README.md").write_text("Velaris, in more words\n",
+    (repo / "README.md").write_text("Sabline, in more words\n",
                                     encoding="utf-8")
     commit(repo, "README: more words")
     code, out, err, outputs = cli("gate", repo=repo)
@@ -910,7 +910,7 @@ def main() -> int:
     code, out, err, outputs = cli("gate", repo=repo)
     ok("version files that disagree are not a release, and each one that "
        "differs is named",
-       code == 0 and "no release: velaris/version.py says 7.2.0 but" in out
+       code == 0 and "no release: sabline/version.py says 7.2.0 but" in out
        and "npm/package.json says 7.1.2" in out
        and "server.json (npm package) says 7.1.2" in out
        and "pyproject.toml" not in out
@@ -940,7 +940,7 @@ def main() -> int:
     said = {v for _, v in claims}
     ok("this repository's six version files are all read, and agree",
        len(claims) == 8 and None not in said and len(said) == 1
-       and claims[0][0] == "velaris/version.py", claims)
+       and claims[0][0] == "sabline/version.py", claims)
     ok("...and its CHANGELOG has an entry heading for its own VERSION",
        release_checks.changelog_entry(HERE, cast(str, claims[0][1])) is not None,
        claims[0])
@@ -1072,11 +1072,11 @@ def main() -> int:
                   + "".join(f'    "{c}": "what {c} means",\n' for c in BASE_CODES)
                   + "}\n")
     for i, (how, extra) in enumerate((
-            ("by a subscript", {"velaris/errors.py": base_table
+            ("by a subscript", {"sabline/errors.py": base_table
                                 + 'ERROR_TABLE["E615"] = "what E615 means"\n'}),
-            ("by update()", {"velaris/errors.py": base_table
+            ("by update()", {"sabline/errors.py": base_table
                              + 'ERROR_TABLE.update({"E615": "means"})\n'}),
-            ("in a sub-package", {"velaris/codes/more.py":
+            ("in a sub-package", {"sabline/codes/more.py":
                                   'MORE = {"E615": "what E615 means"}\n'}))):
         repo = two_releases(f"code-added-{i}", {}, extra)
         code, out, err, outputs = cli("gate", repo=repo)
@@ -1086,8 +1086,8 @@ def main() -> int:
 
     repo = two_releases(
         "default-through-a-name",
-        {"velaris/limits.py": "_SECONDS = 60\nWAIT_DEFAULT = _SECONDS\n"},
-        {"velaris/limits.py": "_SECONDS = 5\nWAIT_DEFAULT = _SECONDS\n"})
+        {"sabline/limits.py": "_SECONDS = 60\nWAIT_DEFAULT = _SECONDS\n"},
+        {"sabline/limits.py": "_SECONDS = 5\nWAIT_DEFAULT = _SECONDS\n"})
     code, out, err, outputs = cli("gate", repo=repo)
     ok("a default read from another constant is seen when that one changes",
        code == 1 and "changes the default WAIT_DEFAULT from 60 to 5"
@@ -1095,8 +1095,8 @@ def main() -> int:
 
     repo = two_releases(
         "default-of-the-run-state",
-        {"velaris/state.py": 'EFFECT_BUDGET = {"io"}\n'},
-        {"velaris/state.py": 'EFFECT_BUDGET = {"io", "fs", "net"}\n'})
+        {"sabline/state.py": 'EFFECT_BUDGET = {"io"}\n'},
+        {"sabline/state.py": 'EFFECT_BUDGET = {"io", "fs", "net"}\n'})
     code, out, err, outputs = cli("gate", repo=repo)
     ok("a variable of the run state is a default: widening EFFECT_BUDGET is "
        "refused", code == 1 and "changes the default EFFECT_BUDGET"
@@ -1104,8 +1104,8 @@ def main() -> int:
 
     repo = two_releases(
         "default-removed",
-        {"velaris/library.py": "def check(source, timeout=60):\n    pass\n"},
-        {"velaris/library.py": "def check(source, timeout):\n    pass\n"})
+        {"sabline/library.py": "def check(source, timeout=60):\n    pass\n"},
+        {"sabline/library.py": "def check(source, timeout):\n    pass\n"})
     code, out, err, outputs = cli("gate", repo=repo)
     ok("a parameter that loses its default is refused, naming it",
        code == 1 and "removes the default of check(timeout), which was 60"
@@ -1113,7 +1113,7 @@ def main() -> int:
 
     repo = base_repo("version-with-line-breaks")
     write_versions(repo, "7.2.0")
-    (repo / "velaris" / "version.py").write_text(
+    (repo / "sabline" / "version.py").write_text(
         'VERSION = "7.2.0\nrelease=true\nbuild=true"\n', encoding="utf-8")
     write_changelog(repo, ("7.2.0", "A release", "..."), BASE_ENTRY)
     commit(repo, "7.2.0, a VERSION with line breaks")
@@ -1125,7 +1125,7 @@ def main() -> int:
 
     repo = base_repo("unreadable-module")
     write_versions(repo, "7.2.0")
-    (repo / "velaris" / "odd.py").write_bytes(b"X = '\xff\xfe'\n")
+    (repo / "sabline" / "odd.py").write_bytes(b"X = '\xff\xfe'\n")
     write_changelog(repo, ("7.2.0", "A release", "..."), BASE_ENTRY)
     commit(repo, "7.2.0, a module that is not UTF-8")
     code, out, err, outputs = cli("gate", repo=repo)
@@ -1190,7 +1190,7 @@ def main() -> int:
        and body.get("summary", "").startswith(
            "a project-local proof cache could make a false")
        and body.get("vulnerabilities") == [{
-           "package": {"ecosystem": "pip", "name": "velaris-lang"},
+           "package": {"ecosystem": "pip", "name": "sabline-lang"},
            "vulnerable_version_range": ">= 2.29, <= 7.1.1",
            "patched_versions": "7.1.2", "vulnerable_functions": []}]
        and body.get("cvss_vector_string")
@@ -1270,9 +1270,9 @@ def main() -> int:
     ok("a release's files are the 24 the v7.1.2 release holds, by name",
        sorted(release_checks.expected_assets("7.1.2")) == sorted(V712_ASSETS),
        set(release_checks.expected_assets("7.1.2")) ^ set(V712_ASSETS))
-    receipt_files = {"velaris-receipt-8.1.0.intoto.json",
-                     "velaris-receipt-8.1.0.cosign.sigstore.json",
-                     "velaris-receipt-8.1.0.sigstore-python.sigstore.json"}
+    receipt_files = {"sabline-receipt-8.1.0.intoto.json",
+                     "sabline-receipt-8.1.0.cosign.sigstore.json",
+                     "sabline-receipt-8.1.0.sigstore-python.sigstore.json"}
     ok("from 8.1.0 a release also holds the receipt of one run of the "
        "attested example, signed both ways: 27 files, and 8.0.0 still 24",
        len(release_checks.expected_assets("8.1.0")) == 27
@@ -1303,7 +1303,7 @@ def main() -> int:
            and "published=true" in outputs_file.read_text(encoding="utf-8"),
            out)
 
-        StandIn.routes = {("GET", "/pypi/velaris-lang/7.2.0/json"):
+        StandIn.routes = {("GET", "/pypi/sabline-lang/7.2.0/json"):
                           (503, {})}
         try:
             release_checks.published("pypi", "7.2.0")
@@ -1320,8 +1320,8 @@ def main() -> int:
         ok("registry-ready: PyPI and npm both serve 7.2.0 naming the server",
            code == 0, out)
         routes = all_at("7.2.0")
-        routes[("GET", "/pypi/velaris-lang/7.2.0/json")] = (200, {"info": {
-            "version": "7.2.0", "description": "# Velaris"}})
+        routes[("GET", "/pypi/sabline-lang/7.2.0/json")] = (200, {"info": {
+            "version": "7.2.0", "description": "# Sabline"}})
         StandIn.routes = routes
         code, out = in_process("registry-ready", "7.2.0", "--annotate")
         ok("...and not while PyPI's description lacks the mcp-name marker",
@@ -1360,7 +1360,7 @@ def main() -> int:
            code == 1 and "::error::inconsistent: the VS Code Marketplace "
                          "(no version listed)" in out, out)
         routes = all_at("7.2.0")
-        routes[("GET", "/velaris-lang")] = (200, {"dist-tags": {
+        routes[("GET", "/sabline-lang")] = (200, {"dist-tags": {
             "latest": "7.1.1"}})
         StandIn.routes = routes
         code, out = in_process("consistent", "7.2.0", "--annotate")
@@ -1372,12 +1372,12 @@ def main() -> int:
             "tag_name": "v7.2.0",
             "assets": [{"name": n} for n in
                        release_checks.expected_assets("7.2.0")
-                       if n != "velaris-macos.sigstore.json"]})
+                       if n != "sabline-macos.sigstore.json"]})
         StandIn.routes = routes
         code, out = in_process("consistent", "7.2.0", "--annotate")
         ok("...and a GitHub release missing one signature names that file",
            code == 1 and "the GitHub release (latest is v7.2.0, without "
-                         "velaris-macos.sigstore.json)" in out, out)
+                         "sabline-macos.sigstore.json)" in out, out)
 
         # The "not yet" path: a target behind for a while. 8.1.1's release
         # met it for the first time - PyPI's JSON still said 8.1.0 - and the
@@ -1389,7 +1389,7 @@ def main() -> int:
                 return None, f"{type(e).__name__}: {e}"
 
         routes = all_at("7.2.0")
-        routes[("GET", "/pypi/velaris-lang/json")] = [
+        routes[("GET", "/pypi/sabline-lang/json")] = [
             (200, {"info": {"version": "7.1.1"}}),
             (200, {"info": {"version": "7.2.0"}})]
         StandIn.routes = routes
@@ -1400,7 +1400,7 @@ def main() -> int:
            code == 0 and "not yet: PyPI (latest is 7.1.1)\n" in out
            and "::notice::consistent" in out, out)
         routes = all_at("7.2.0")
-        routes[("GET", "/pypi/velaris-lang/json")] = (200, {"info": {
+        routes[("GET", "/pypi/sabline-lang/json")] = (200, {"info": {
             "version": "7.1.1"}})
         StandIn.routes = routes
         code, out = polled("consistent", "7.2.0", "--timeout", "0.3",
@@ -1435,10 +1435,10 @@ def main() -> int:
            and "::error::inconsistent: the VS Code Marketplace (latest is "
                "7.1.2) - does not report 7.2.0" in out, out)
         routes = all_at("7.2.0")
-        routes[("GET", "/pypi/velaris-lang/7.2.0/json")] = [
+        routes[("GET", "/pypi/sabline-lang/7.2.0/json")] = [
             (404, {}),
             (200, {"info": {"version": "7.2.0", "description":
-                            f"<!-- mcp-name: {SERVER} -->\n# Velaris"}})]
+                            f"<!-- mcp-name: {SERVER} -->\n# Sabline"}})]
         StandIn.routes = routes
         code, out = polled("registry-ready", "7.2.0", "--timeout", "30",
                            "--interval", "0", "--annotate")
@@ -1675,7 +1675,7 @@ def main() -> int:
                 ok("...in those two documents exactly five lines: three pins, "
                    "the version: example and the pre-commit rev:",
                    len(lines) == 10 and len(added) == 5
-                   and sum(f"velaris-lang@{fx.sha}  # {fx.tag}" in ln
+                   and sum(f"sabline-lang@{fx.sha}  # {fx.tag}" in ln
                            for ln in added) == 3
                    and sum(f'version: "{fx.version}"' in ln
                            and f"({fx.version})" in ln for ln in added) == 1
@@ -1710,7 +1710,7 @@ def main() -> int:
                    "top of it, in one commit, naming the tagged commit",
                    r["result"] == "success"
                    and git(fx.origin, "rev-parse", f"{head}^") == later
-                   and f"velaris-lang@{fx.sha}  # {fx.tag}" in git(
+                   and f"sabline-lang@{fx.sha}  # {fx.tag}" in git(
                        fx.origin, "show", f"{head}:README.md"),
                    f"{r['steps']} log={r['log'][-1500:]}")
 

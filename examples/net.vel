@@ -1,4 +1,4 @@
-// velaris examples/net.vel --allow io,net
+// sabline examples/net.vel --allow io,net
 //
 // fetch is REAL - this program performs an actual HTTP GET. It needs
 // an internet connection, so it is NOT part of run_tests.py.

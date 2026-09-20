@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "velaris-lang"
-version = "8.5.0"
+name = "sabline-lang"
+version = "8.6.0"
 description = "The language where you can trust code you didn't write - signatures declare types, effects, and machine-checked promises."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,7 +14,7 @@ keywords = ["language", "compiler", "verification", "effects", "contracts", "z3"
 
 [project.optional-dependencies]
 full = ["z3-solver", "llvmlite"]
-# for the suites only, never for Velaris itself: jsonschema validates
+# for the suites only, never for Sabline itself: jsonschema validates
 # check_library.py's SARIF output against the OASIS schema, and fastapi
 # with an http client is what examples/platform is written against, so
 # check_platform.py can exercise it rather than skip; pyyaml reads
@@ -23,19 +23,30 @@ full = ["z3-solver", "llvmlite"]
 test = ["jsonschema>=4.18", "fastapi", "httpx", "pyyaml", "hypothesis"]
 
 [project.scripts]
-velaris = "velaris:main"
+sabline = "sabline:main"
+# The name this command had until 8.6 renamed the project. It runs the
+# same command and says once that the name has changed; it goes no sooner
+# than 9.0 (STABILITY.md, "Deprecations in force").
+velaris = "sabline.cli:velaris_main"
 
 [project.urls]
-Homepage = "https://velaris-lang.dev/"
-Documentation = "https://velaris-lang.dev/"
-Source = "https://github.com/gowrishankar-infra/velaris-lang"
-Changelog = "https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md"
+Homepage = "https://sabline.dev/"
+Documentation = "https://sabline.dev/"
+Source = "https://github.com/gowrishankar-infra/sabline-lang"
+Changelog = "https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
-only-include = ["velaris", "velaris_mcp.py", "velaris_mcp_install.py", "velaris_magic.py"]
+only-include = ["sabline", "sabline_mcp.py", "sabline_mcp_install.py",
+                "sabline_magic.py",
+                # the old names, kept until 9.0 (velaris/__init__.py)
+                "velaris", "velaris_mcp.py", "velaris_mcp_install.py",
+                "velaris_magic.py"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "LLM.md" = "LLM.md"
+"sabline_mcp.py" = "sabline_mcp.py"
+"sabline_mcp_install.py" = "sabline_mcp_install.py"
+"sabline_magic.py" = "sabline_magic.py"
 "velaris_mcp.py" = "velaris_mcp.py"
 "velaris_mcp_install.py" = "velaris_mcp_install.py"
 "velaris_magic.py" = "velaris_magic.py"

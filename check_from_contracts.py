@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""velaris test --from-contracts (8.3): witnesses from the prover, run.
+"""sabline test --from-contracts (8.3): witnesses from the prover, run.
 
     python check_from_contracts.py
 
@@ -25,11 +25,11 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_from_contracts")
-VELARIS = [sys.executable, str(HERE / "velaris.py")]
+SABLINE = [sys.executable, str(HERE / "sabline.py")]
 PASSED = FAILED = SKIPPED = 0
 
 DIGITS = """fn digits(n: Int) -> Int
@@ -121,7 +121,7 @@ def skip(label: str, why: str) -> None:
 
 def run(name: str, text: str, *extra: str) -> tuple[int, dict[str, Any]]:
     (WORK / name).write_text(text, encoding="utf-8", newline="\n")
-    done = subprocess.run(VELARIS + ["test", name, "--from-contracts",
+    done = subprocess.run(SABLINE + ["test", name, "--from-contracts",
                                      "--json", *extra],
                           capture_output=True, text=True, cwd=str(WORK),
                           timeout=900)
@@ -138,9 +138,9 @@ def row(report: dict[str, Any], name: str) -> dict[str, Any]:
 
 
 def main() -> int:
-    print("velaris test --from-contracts")
+    print("sabline test --from-contracts")
     print("-" * 62)
-    if not velaris.HAVE_Z3:
+    if not sabline.HAVE_Z3:
         code, report = run("digits_false.vel", DIGITS.replace("LIMIT", "1000"))
         ok("without the prover the command says so and exits 2",
            code == 2 and any("prover" in p for p in report.get("problems",

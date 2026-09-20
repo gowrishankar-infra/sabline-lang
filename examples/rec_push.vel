@@ -4,7 +4,7 @@
 // shape it can translate, so it abandons the proof and lets the runtime
 // check instead - which is the rule, and it must not crash on the way.
 //
-// Found by the first program a language model ever wrote in Velaris.
+// Found by the first program a language model ever wrote in Sabline.
 
 record Grade {
     student: Text

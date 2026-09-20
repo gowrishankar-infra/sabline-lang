@@ -1,24 +1,24 @@
 cff-version: 1.2.0
 message: >-
-  If you use Velaris, please cite this repository as below. A preprint
+  If you use Sabline, please cite this repository as below. A preprint
   describing it is forthcoming; until it is published, this entry is the
   citation.
-title: "Velaris"
+title: "Sabline"
 abstract: >-
   A small programming language in which a function's signature declares
   the effects it may perform, a runtime refuses any effect outside the
   budget an operator grants, contracts are checked by a prover before
   running, and a repository can declare the capability surface its
   programs may have and fail any change that widens it. The reference
-  implementation of the Velaris capability format (velaris-spec).
+  implementation of the Sabline capability format (sabline-spec).
 type: software
 authors:
   - family-names: Palakurthi
     given-names: Gowri Shankar
-repository-code: "https://github.com/gowrishankar-infra/velaris-lang"
-url: "https://velaris-lang.dev/"
+repository-code: "https://github.com/gowrishankar-infra/sabline-lang"
+url: "https://sabline.dev/"
 license: MIT
-version: "8.5.0"
+version: "8.6.0"
 date-released: "2026-09-20"
 keywords:
   - programming language

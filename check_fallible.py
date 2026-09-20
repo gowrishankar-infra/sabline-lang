@@ -3,7 +3,7 @@
 
 In v2.42, pop/slice/set_at joined FALLIBLE_BUILTINS but the checker
 never demanded handling for them, because a type-checking branch
-returned before the fallibility check ran. A clean `velaris check` was
+returned before the fallibility check ran. A clean `sabline check` was
 followed by a raw Python traceback - the exact failure the language
 exists to prevent, introduced by its own maintainer.
 
@@ -23,10 +23,10 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 # its own directory, so two runs at once do not collide
@@ -109,7 +109,7 @@ def run(source: str, effect: str | None = None) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
     allow = "io" + (f",{effect}" if effect else "")
     done = subprocess.run(
-        [sys.executable, str(VELARIS), str(SCRATCH), "--allow", allow],
+        [sys.executable, str(SABLINE), str(SCRATCH), "--allow", allow],
         capture_output=True, text=True, timeout=300, cwd=HERE)
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
@@ -117,7 +117,7 @@ def run(source: str, effect: str | None = None) -> tuple[Any, ...]:
 def check_only(source: str) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
-        [sys.executable, str(VELARIS), "check", str(SCRATCH)],
+        [sys.executable, str(SABLINE), "check", str(SCRATCH)],
         capture_output=True, text=True, timeout=300, cwd=HERE)
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
@@ -157,7 +157,7 @@ def redirect_case() -> tuple[Any, ...]:
 '''
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
-        [sys.executable, str(VELARIS), str(SCRATCH),
+        [sys.executable, str(SABLINE), str(SCRATCH),
          "--allow", f"io,net:127.0.0.1:{port}"],
         capture_output=True, text=True, timeout=300, cwd=HERE)
     srv.shutdown()
@@ -169,7 +169,7 @@ def redirect_case() -> tuple[Any, ...]:
 
 
 def main() -> int:
-    members = sorted(velaris.FALLIBLE_BUILTINS - SKIP)
+    members = sorted(sabline.FALLIBLE_BUILTINS - SKIP)
     missing = [m for m in members if m not in CALLS]
     if missing:
         print("FALLIBLE_BUILTINS has members this test cannot call:")

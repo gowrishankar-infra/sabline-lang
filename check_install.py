@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""An installed Velaris runs examples/discount.vel and refuses the network.
+"""An installed Sabline runs examples/discount.vel and refuses the network.
 
 The nightly workflow (nightly.yml) builds every artefact a user can install
 from this commit, installs each the way a user would, and hands it to this
@@ -11,23 +11,23 @@ budget and under --allow io, with E310, and never reaches it.
 Every program is copied into an empty directory and run from there, so the
 checkout this script sits in is never what answers.
 
-    python check_install.py --name wheel --command velaris
-    python check_install.py --name sdist --command "python -m velaris"
-    python check_install.py --name binary --command dist/velaris-linux
-    python check_install.py --name docker --docker velaris:nightly
-    python check_install.py --name mcpb --mcp "python bundle/server/velaris_mcp.py" \\
+    python check_install.py --name wheel --command sabline
+    python check_install.py --name sdist --command "python -m sabline"
+    python check_install.py --name binary --command dist/sabline-linux
+    python check_install.py --name docker --docker sabline:nightly
+    python check_install.py --name mcpb --mcp "python bundle/server/sabline_mcp.py" \\
         --pythonpath bundle/server/lib
-    python check_install.py --name vscode --lsp "velaris lsp"
+    python check_install.py --name vscode --lsp "sabline lsp"
     python check_install.py --name pre-commit \\
-        --find "$PRE_COMMIT_HOME/repo*/py_env-*/bin/velaris"
+        --find "$PRE_COMMIT_HOME/repo*/py_env-*/bin/sabline"
 
 The first word of a command is the program: holding a slash, it is a file,
 taken from where this script is started; without one it is found on PATH,
 as a shell finds it. After it, a word naming an existing file is made
 absolute, since the command runs from an empty directory - never a
 directory, and never the module after -m. The first nightly run turned
-`python -m velaris` and `velaris lsp`, started from a checkout holding
-velaris/, into that directory. --find takes a glob for the program instead,
+`python -m sabline` and `sabline lsp`, started from a checkout holding
+sabline/, into that directory. --find takes a glob for the program instead,
 for an install known only by its shape, and checks every file it matches.
 
 A program that is not there, a glob that matches nothing, or a program
@@ -91,10 +91,10 @@ def ok(label: str, good: bool, detail: str = "") -> None:
 
 
 def expected_version() -> str:
-    text = (HERE / "velaris" / "version.py").read_text(encoding="utf-8")
+    text = (HERE / "sabline" / "version.py").read_text(encoding="utf-8")
     found = re.search(r'^VERSION = "([^"]+)"', text, re.M)
     if not found:
-        sys.exit("check_install: no VERSION in velaris/version.py")
+        sys.exit("check_install: no VERSION in sabline/version.py")
     return found.group(1)
 
 
@@ -173,7 +173,7 @@ def run(cmd: list[str], cwd: Path, timeout: int = 600) -> tuple[int, str]:
 
 def as_command(cmd: list[str], work: Path, inside: str | None,
                version: str | None) -> None:
-    """A command line: velaris, python -m velaris, a binary, npm's wrapper,
+    """A command line: sabline, python -m sabline, a binary, npm's wrapper,
     or docker run with the work directory mounted at `inside`."""
     def path(name: str) -> str:
         return f"{inside}/{name}" if inside else name
@@ -201,12 +201,12 @@ def as_mcp(cmd: list[str], work: Path, version: str | None) -> None:
     msgs = [
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
         {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {
-            "name": "velaris_run",
+            "name": "sabline_run",
             "arguments": {"source": discount, "allow": ["io"]}}},
         {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {
-            "name": "velaris_run", "arguments": {"source": NET, "allow": ["io"]}}},
+            "name": "sabline_run", "arguments": {"source": NET, "allow": ["io"]}}},
         {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {
-            "name": "velaris_run",
+            "name": "sabline_run",
             "arguments": {"source": NET, "allow": ["io", "net"]}}},
         {"jsonrpc": "2.0", "method": "exit", "params": {}},
     ]
@@ -227,7 +227,7 @@ def as_mcp(cmd: list[str], work: Path, version: str | None) -> None:
             answers[d["id"]] = d
     info = answers.get(1, {}).get("result", {}).get("serverInfo", {})
     ok(f"the server announces itself{'' if version is None else ' as ' + version}",
-       info.get("name") == "velaris"
+       info.get("name") == "sabline"
        and (version is None or info.get("version") == version),
        f"{info} {done.stderr[-500:]}")
 
@@ -238,11 +238,11 @@ def as_mcp(cmd: list[str], work: Path, version: str | None) -> None:
         except (KeyError, IndexError, TypeError, json.JSONDecodeError):
             return {}
     ran = body(2)
-    ok("velaris_run runs discount.vel and prints what it always prints",
+    ok("sabline_run runs discount.vel and prints what it always prints",
        ran.get("ok") is True
        and all(p in ran.get("output", "") for p in PAYABLE), str(ran)[:600])
     refused = body(3)
-    ok("velaris_run with allow [io] refuses a program that fetches a URL, "
+    ok("sabline_run with allow [io] refuses a program that fetches a URL, "
        "and it never reaches it",
        refused.get("ok") is False and refused.get("refused_effect") == "net"
        and REACHED not in refused.get("output", ""), str(refused)[:600])
@@ -324,7 +324,7 @@ def as_lsp(cmd: list[str], work: Path) -> None:
                 ("broken.vel", BROKEN, True)):
             uri = (work / name).as_uri()
             send({"jsonrpc": "2.0", "method": "textDocument/didOpen",
-                  "params": {"textDocument": {"uri": uri, "languageId": "velaris",
+                  "params": {"textDocument": {"uri": uri, "languageId": "sabline",
                                               "version": 1, "text": text}}})
             said = wait(diagnostics(uri))
             found = (said or {}).get("params", {}).get("diagnostics")
@@ -355,12 +355,12 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--name", required=True, help="what was installed, for the log")
     how = ap.add_mutually_exclusive_group(required=True)
-    how.add_argument("--command", help="the command that runs Velaris")
+    how.add_argument("--command", help="the command that runs Sabline")
     how.add_argument("--find", metavar="GLOB",
-                     help="a glob for the program that runs Velaris; every "
+                     help="a glob for the program that runs Sabline; every "
                           "file it matches is checked")
     how.add_argument("--docker", metavar="IMAGE",
-                     help="an image whose entrypoint is velaris")
+                     help="an image whose entrypoint is sabline")
     how.add_argument("--mcp", help="the command that starts the MCP server")
     how.add_argument("--lsp", help="the command that starts the language server")
     ap.add_argument("--pythonpath", metavar="DIR",
@@ -374,7 +374,7 @@ def main(argv: list[str]) -> int:
         os.environ["PYTHONPATH"] = os.path.abspath(args.pythonpath)
     print(f"installed from {args.name}")
     print("-" * 62)
-    work = Path(tempfile.mkdtemp(prefix="velaris-install-"))
+    work = Path(tempfile.mkdtemp(prefix="sabline-install-"))
     try:
         shutil.copy2(DISCOUNT, work / "discount.vel")
         (work / "net.vel").write_text(NET, encoding="utf-8")

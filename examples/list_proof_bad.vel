@@ -1,5 +1,5 @@
 // The classic off-by-one: 'last' reads position length(xs), which is
-// one PAST the end (positions go 0 to length-1). Velaris proves the
+// one PAST the end (positions go 0 to length-1). Sabline proves the
 // out-of-bounds read exists and rejects the file before running.
 
 fn last(xs: List of Int) -> Int

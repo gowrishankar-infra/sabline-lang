@@ -1,5 +1,5 @@
 // A tiny library: no main(), meant to be imported by other files.
-// Its promises are proven like any other Velaris code.
+// Its promises are proven like any other Sabline code.
 
 fn square(n: Int) -> Int
     ensures result >= 0

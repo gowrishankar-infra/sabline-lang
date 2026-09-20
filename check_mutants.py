@@ -219,7 +219,7 @@ def mutants(chosen: list[str]) -> list[dict[Any, Any]]:
     out = []
     for module in chosen:
         functions, _ = GUARANTEES[module]
-        source = (HERE / "velaris" / f"{module}.py").read_text(encoding="utf-8")
+        source = (HERE / "sabline" / f"{module}.py").read_text(encoding="utf-8")
         tree = ast.parse(source)
         lines = source.splitlines()
         for name in functions:
@@ -236,7 +236,7 @@ def mutants(chosen: list[str]) -> list[dict[Any, Any]]:
 
 
 def mutated_source(m: dict[Any, Any]) -> str | None:
-    source = (HERE / "velaris" / f"{m['module']}.py").read_text(encoding="utf-8")
+    source = (HERE / "sabline" / f"{m['module']}.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     changer = Mutate(m["operator"], m["line"], m["col"], m["what"])
     new = changer.visit(copy.deepcopy(tree))
@@ -313,7 +313,7 @@ def main(argv: list[str]) -> int:
     # under docs/capability and docs/receipt
     shutil.copytree(HERE, tree, ignore=shutil.ignore_patterns(
         ".git", "__pycache__", "playground", "paper", "node_modules",
-        "*.exe", "*.mcpb", "dist", "build", "velaris-spec"))
+        "*.exe", "*.mcpb", "dist", "build", "sabline-spec"))
     killers_of = {module: GUARANTEES[module][1] for module in chosen}
     if "--killers" in argv:
         given = tuple((script,) for script in
@@ -333,10 +333,10 @@ def main(argv: list[str]) -> int:
         new = mutated_source(m)
         if new is None:
             continue
-        target = tree / "velaris" / f"{m['module']}.py"
+        target = tree / "sabline" / f"{m['module']}.py"
         original = target.read_text(encoding="utf-8")
         target.write_text(new, encoding="utf-8")
-        shutil.rmtree(tree / "velaris" / "__pycache__", ignore_errors=True)
+        shutil.rmtree(tree / "sabline" / "__pycache__", ignore_errors=True)
         try:
             passed, why = run_killers(tree, killers_of[m["module"]], deadline)
         finally:
@@ -366,7 +366,7 @@ def main(argv: list[str]) -> int:
             # one issue per title, and until 8.3 every mutant of a function
             # had the same one
             (out / f"{name}.md").write_text(
-                f"A surviving mutant: `velaris/{r['module']}.py` line "
+                f"A surviving mutant: `sabline/{r['module']}.py` line "
                 f"{r['line']}, `{r['function']}`, {r['operator']}\n\n"
                 f"A guarantee rests on `{r['function']}`.\n\n"
                 f"Line {r['line']}: `{r['text']}`\n\n"

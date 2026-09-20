@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Error reference - Velaris 8.5.0</title>
-<meta name="description" content="Every error Velaris can give, from the error table in the compiler source, which the test suite holds against every code the compiler can raise, so this ...">
-<meta name="velaris-version" content="8.5.0">
-<link rel="canonical" href="https://velaris-lang.dev/errors.html">
+<title>Error reference - Sabline 8.6.0</title>
+<meta name="description" content="Every error Sabline can give, from the error table in the compiler source, which the test suite holds against every code the compiler can raise, so this ...">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/errors.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
@@ -17,8 +17,8 @@
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="renamed.html">Velaris is now Sabline</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,17 +52,17 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc wide" tabindex="-1">
 <h1 id="error-reference">Error reference</h1>
-<p class="lead">Every error Velaris can give, from the error table in the compiler source, which the test suite holds against every code the compiler can raise, so this page cannot go stale. In the message templates, braces are filled with your program&rsquo;s names and values; every error also arrives with numbered fixes, and as JSON with <code>--json</code>.</p>
+<p class="lead">Every error Sabline can give, from the error table in the compiler source, which the test suite holds against every code the compiler can raise, so this page cannot go stale. In the message templates, braces are filled with your program&rsquo;s names and values; every error also arrives with numbered fixes, and as JSON with <code>--json</code>.</p>
 <div class="table-wrap" tabindex="0"><table>
 <thead><tr><th>Code</th><th>What it means</th><th>Message template</th></tr></thead>
 <tbody>
-<tr id="E000"><td class="ecode">E000</td><td>a character the lexer cannot read, or a run that stopped without a Velaris error to report</td><td>unexpected character {source[pos]!r}</td></tr>
+<tr id="E000"><td class="ecode">E000</td><td>a character the lexer cannot read, or a run that stopped without a Sabline error to report</td><td>unexpected character {source[pos]!r}</td></tr>
 <tr id="E001"><td class="ecode">E001</td><td>the program&#x27;s file cannot be found</td><td>cannot find file &#x27;{path}&#x27;</td></tr>
 <tr id="E002"><td class="ecode">E002</td><td>an unknown escape sequence in a text literal</td><td>unknown escape &#x27;\\{e}&#x27; in text</td></tr>
 <tr id="E100"><td class="ecode">E100</td><td>the parser expected something else here</td><td>expected &#x27;{want}&#x27; but found &#x27;{t.text or &#x27;end of file&#x27;}&#x27;</td></tr>
@@ -79,7 +79,7 @@
 <tr id="E316"><td class="ecode">E316</td><td>a file larger than the read ceiling (raise it with --max-read)</td><td>&#x27;{args[0]}&#x27; is {size} bytes, over the read ceiling of {_state.MAX_READ_BYTES} bytes - a file is read whole, into memory, so a large one is capped</td></tr>
 <tr id="E317"><td class="ecode">E317</td><td>a network request whose socket peer is a proxy the run&#x27;s net grants do not cover (an ambient HTTP_PROXY / HTTPS_PROXY)</td><td>an ambient proxy ({proxy}) would carry this request, and its host {peer}:{port} is outside this run&#x27;s net grants: a net grant bounds the URL&#x27;s host, and from 8.0 also the socket&#x27;s peer</td></tr>
 <tr id="E318"><td class="ecode">E318</td><td>read_file on a documented credential location; read a secret with read_file_secret, or grant its exact path</td><td>&#x27;{what}&#x27; reaches &#x27;{path}&#x27; (resolved: {real}), a documented credential location the fs grants do not name explicitly; a broad grant does not include it</td></tr>
-<tr id="E319"><td class="ecode">E319</td><td>the operating system&#x27;s confinement refused an effect the runtime itself attempted outside the budget (8.4; given only under the fault-injection hook, VELARIS_FAULT_INJECT)</td><td>the runtime itself attempted {what}, outside this run&#x27;s budget, and the operating system refused it ({type(e).__name__}: {e}); confinement: {level}, by {layers}</td></tr>
+<tr id="E319"><td class="ecode">E319</td><td>the operating system&#x27;s confinement refused an effect the runtime itself attempted outside the budget (8.4; given only under the fault-injection hook, SABLINE_FAULT_INJECT)</td><td>the runtime itself attempted {what}, outside this run&#x27;s budget, and the operating system refused it ({type(e).__name__}: {e}); confinement: {level}, by {layers}</td></tr>
 <tr id="E320"><td class="ecode">E320</td><td>a tool call with no tool to reach: the run was given no manifest (--tools), or the manifest does not offer that tool</td><td>&#x27;{builtin}&#x27; calls tool &#x27;{name}&#x27;, which the host does not offer (it offers: {&#x27;, &#x27;.join(sorted(tools))})</td></tr>
 <tr id="E321"><td class="ecode">E321</td><td>a tool call outside the run&#x27;s tool grants: a tool that is not granted, or an argument that does not match the pattern a grant holds it to</td><td>&#x27;{builtin}&#x27; calls tool &#x27;{name}&#x27; outside {whose}: {why_not}</td></tr>
 <tr id="E322"><td class="ecode">E322</td><td>a tool call past a ceiling: the run&#x27;s tool@N, a tool&#x27;s @N, or the manifest&#x27;s calls or cost</td><td>&#x27;{builtin}&#x27; calls tool &#x27;{name}&#x27; at {tool[&#x27;cost&#x27;]:g} {ceiling[&#x27;unit&#x27;]}, and {self.cost_used:g} of the run&#x27;s {ceiling[&#x27;cost&#x27;]:g} are spent</td></tr>
@@ -105,7 +105,7 @@
 <tr id="E509"><td class="ecode">E509</td><td>a record value with a missing, unknown or repeated field, or a map with a repeated key</td><td>record &#x27;{node.name}&#x27; is missing field(s): {&#x27;, &#x27;.join(missing)}</td></tr>
 <tr id="E510"><td class="ecode">E510</td><td>a field that the value does not have</td><td>record &#x27;{t}&#x27; has no field &#x27;{node.field}&#x27;</td></tr>
 <tr id="E511"><td class="ecode">E511</td><td>a record changed in place</td><td>records cannot be changed in place</td></tr>
-<tr id="E512"><td class="ecode">E512</td><td>an imported file cannot be found</td><td>cannot import &#x27;{path}&#x27;: it is not UTF-8 text, so it is not Velaris source</td></tr>
+<tr id="E512"><td class="ecode">E512</td><td>an imported file cannot be found</td><td>cannot import &#x27;{path}&#x27;: it is not UTF-8 text, so it is not Sabline source</td></tr>
 <tr id="E513"><td class="ecode">E513</td><td>a function or record defined in two files</td><td>function &#x27;{f.name}&#x27; is defined {where}</td></tr>
 <tr id="E514"><td class="ecode">E514</td><td>a variable named like an import</td><td>&#x27;{name}&#x27; is the name of an import, so it cannot also be a variable</td></tr>
 <tr id="E515"><td class="ecode">E515</td><td>an import from outside the directory a program is served from, or of a file there that is not a .vel file</td><td>cannot import &#x27;{path}&#x27;: {why}</td></tr>
@@ -121,7 +121,7 @@
 <tr id="E542"><td class="ecode">E542</td><td>an argument that does not fit the shape a generic function&#x27;s type variables took</td><td>&#x27;{node.name}&#x27; argument {i} should look like {want}, but this is {got}</td></tr>
 <tr id="E543"><td class="ecode">E543</td><td>a generic function passed as a value</td><td>&#x27;{f2.name}&#x27; is generic - generic functions cannot be passed as values yet</td></tr>
 <tr id="E550"><td class="ecode">E550</td><td>amounts in two different currencies added, compared, or one given where the other is needed</td><td></td></tr>
-<tr id="E551"><td class="ecode">E551</td><td>a currency that is not in velaris.CURRENCIES, or one not written as text in the call</td><td>the currency must be written in the call, as text</td></tr>
+<tr id="E551"><td class="ecode">E551</td><td>a currency that is not in sabline.CURRENCIES, or one not written as text in the call</td><td>the currency must be written in the call, as text</td></tr>
 <tr id="E552"><td class="ecode">E552</td><td>a rounding mode other than &quot;half_up&quot;, &quot;half_even&quot; or &quot;down&quot;, or one not written as text in the call</td><td>the rounding mode must be written in the call:</td></tr>
 <tr id="E553"><td class="ecode">E553</td><td>an amount divided with &#x27;/&#x27; or &#x27;%&#x27;, which would round without saying how</td><td>&#x27;{op}&#x27; on an amount would round without saying how</td></tr>
 <tr id="E560"><td class="ecode">E560</td><td>a Secret given to something that emits it: a builtin with an effect, a generic function with an effect, or a &#x27;fail&#x27; reason</td><td>{what} is {t}, and {where} - a Secret cannot be printed, written, sent or passed to Python. It came from {origin}</td></tr>
@@ -139,7 +139,7 @@
 <tr id="E612"><td class="ecode">E612</td><td>a loop whose end cannot be shown (check --strict only)</td><td></td></tr>
 <tr id="E613"><td class="ecode">E613</td><td>a check or audit ran past its time ceiling and was stopped</td><td>the {what} did not finish within {self.timeout:g} second(s) and was stopped; the source may be crafted to stall the checker</td></tr>
 <tr id="E614"><td class="ecode">E614</td><td>a check or audit grew past its memory ceiling and was stopped</td><td>the {what} used more than {self.max_memory_mb} MB and was stopped; the source may be crafted to bloat the checker</td></tr>
-<tr id="E615"><td class="ecode">E615</td><td>a run under velaris eval was asked to stop from outside, and stopped at the next call or loop turn</td><td>this run was asked to stop and had not stopped {grace:g} second(s) later, so its worker was killed</td></tr>
+<tr id="E615"><td class="ecode">E615</td><td>a run under sabline eval was asked to stop from outside, and stopped at the next call or loop turn</td><td>this run was asked to stop and had not stopped {grace:g} second(s) later, so its worker was killed</td></tr>
 <tr id="E616"><td class="ecode">E616</td><td>a run replayed with recorded tool responses made a call the recording does not hold, in that place</td><td>tool call {self.at} of this replayed run is {builtin} {json.dumps(call)[:120]}, where the recorded run made {entry.get(&#x27;builtin&#x27;)} {json.dumps(entry.get(&#x27;call&#x27;))[:120]}</td></tr>
 <tr id="E700"><td class="ecode">E700</td><td>a promise that is provably false, with the input that breaks it</td><td>promise cannot be kept: {nice_name(fn.name)} ensures {expr_str(ens_expr)} - proven without running the program: {vals} gives result = {rv}</td></tr>
 <tr id="E701"><td class="ecode">E701</td><td>a call that can break the called function&#x27;s &#x27;requires&#x27;, with the input that does</td><td>this call can break a promise: &#x27;{fnB.name}&#x27; requires {expr_str(r_expr)}, but &#x27;{ctx.caller}&#x27; can call it with {vals} - proven without running the program</td></tr>
@@ -147,10 +147,10 @@
 <tr id="E704"><td class="ecode">E704</td><td>a loop invariant broke while running</td><td>loop broke its promise: invariant {expr_str(inv_expr)} ({vals})</td></tr>
 <tr id="E705"><td class="ecode">E705</td><td>a list read the prover shows can go past the end</td><td>this &#x27;get&#x27; can reach position {m.eval(idx, model_completion=True)}, but the list has {m.eval(length, model_completion=True)} item(s) - proven without running the program</td></tr>
 <tr id="E706"><td class="ecode">E706</td><td>a divisor the prover shows can be zero</td><td>this can {word} zero</td></tr>
-<tr id="E999"><td class="ecode">E999</td><td>the self-test in &#x27;velaris doctor&#x27; failed</td><td>self-test failed</td></tr>
+<tr id="E999"><td class="ecode">E999</td><td>the self-test in &#x27;sabline doctor&#x27; failed</td><td>self-test failed</td></tr>
 </tbody></table></div>
 <h2 id="findings-that-are-not-compile-errors">Findings that are not compile errors <a class="anchor" href="#findings-that-are-not-compile-errors" aria-label="Link to this section">#</a></h2>
-<p>What <code>velaris check --sarif</code>, <code>proofs --sarif</code>, <code>audit --sarif</code> and <code>capabilities check --sarif</code> report besides the codes above, at the level SARIF reports each at.</p>
+<p>What <code>sabline check --sarif</code>, <code>proofs --sarif</code>, <code>audit --sarif</code> and <code>capabilities check --sarif</code> report besides the codes above, at the level SARIF reports each at.</p>
 <div class="table-wrap" tabindex="0"><table>
 <thead><tr><th>Rule</th><th>Level</th><th>What it means</th></tr></thead>
 <tbody>
@@ -169,21 +169,21 @@
 <tr id="uses-ffi"><td class="ecode">uses-ffi</td><td>note</td><td>a function that may perform ffi: Python, and so anything Python can do</td></tr>
 <tr id="uses-declassify"><td class="ecode">uses-declassify</td><td>note</td><td>a function that may perform declassify: turning a Secret into an ordinary value, which anything may then emit</td></tr>
 <tr id="uses-tool"><td class="ecode">uses-tool</td><td>note</td><td>a function that may perform tool: the tools the host process offers</td></tr>
-<tr id="capability-widened"><td class="ecode">capability-widened</td><td>error</td><td>code that needs a grant velaris.capabilities does not give: an effect, a Python module, a path outside the recorded ones, a host, a scoped grant made unscoped, or more fs or net operations in a run than recorded (capabilities check)</td></tr>
-<tr id="capability-effect-gained"><td class="ecode">capability-effect-gained</td><td>error</td><td>a function velaris.capabilities records now declares an effect it did not declare there (capabilities check)</td></tr>
-<tr id="capability-narrowed"><td class="ecode">capability-narrowed</td><td>note</td><td>velaris.capabilities gives more than the code needs now; capabilities init --force records the narrower surface</td></tr>
-<tr id="dependency-capability-widened"><td class="ecode">dependency-capability-widened</td><td>error</td><td>an upgraded Velaris dependency needs a grant its previous version did not: an effect, a Python module, a path, a host, or more fs or net operations in a run (deps-diff)</td></tr>
-<tr id="dependency-effect-gained"><td class="ecode">dependency-effect-gained</td><td>error</td><td>a function of an upgraded Velaris dependency declares an effect it did not declare in the previous version (deps-diff)</td></tr>
+<tr id="capability-widened"><td class="ecode">capability-widened</td><td>error</td><td>code that needs a grant sabline.capabilities does not give: an effect, a Python module, a path outside the recorded ones, a host, a scoped grant made unscoped, or more fs or net operations in a run than recorded (capabilities check)</td></tr>
+<tr id="capability-effect-gained"><td class="ecode">capability-effect-gained</td><td>error</td><td>a function sabline.capabilities records now declares an effect it did not declare there (capabilities check)</td></tr>
+<tr id="capability-narrowed"><td class="ecode">capability-narrowed</td><td>note</td><td>sabline.capabilities gives more than the code needs now; capabilities init --force records the narrower surface</td></tr>
+<tr id="dependency-capability-widened"><td class="ecode">dependency-capability-widened</td><td>error</td><td>an upgraded Sabline dependency needs a grant its previous version did not: an effect, a Python module, a path, a host, or more fs or net operations in a run (deps-diff)</td></tr>
+<tr id="dependency-effect-gained"><td class="ecode">dependency-effect-gained</td><td>error</td><td>a function of an upgraded Sabline dependency declares an effect it did not declare in the previous version (deps-diff)</td></tr>
 <tr id="dependency-install-script"><td class="ecode">dependency-install-script</td><td>error</td><td>an upgraded dependency runs an install-time script its previous version did not, or a different one; what the script does is not derived (deps-diff)</td></tr>
-<tr id="dependency-surface-unknown"><td class="ecode">dependency-surface-unknown</td><td>note</td><td>an upgraded dependency holds code other than Velaris, or could not be read, so what it can do was not derived; unknown is not safe (deps-diff)</td></tr>
+<tr id="dependency-surface-unknown"><td class="ecode">dependency-surface-unknown</td><td>note</td><td>an upgraded dependency holds code other than Sabline, or could not be read, so what it can do was not derived; unknown is not safe (deps-diff)</td></tr>
 <tr id="dependency-added"><td class="ecode">dependency-added</td><td>note</td><td>a dependency the upgraded version declares that the previous one did not; its own surface was not examined (deps-diff)</td></tr>
-<tr id="dependency-narrowed"><td class="ecode">dependency-narrowed</td><td>note</td><td>an upgraded Velaris dependency needs less than its previous version did (deps-diff)</td></tr>
+<tr id="dependency-narrowed"><td class="ecode">dependency-narrowed</td><td>note</td><td>an upgraded Sabline dependency needs less than its previous version did (deps-diff)</td></tr>
 </tbody></table></div>
 <h2 id="removed-codes">Removed codes <a class="anchor" href="#removed-codes" aria-label="Link to this section">#</a></h2>
 <p>None. A code that stops being given is listed here, and is never given again for anything else (<a href="stability.html">STABILITY.md</a>).</p>
 </main>
 <footer class="foot wide">
-<p>Generated from velaris.ERROR_TABLE by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from sabline.ERROR_TABLE by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#findings-that-are-not-compile-errors">Findings that are not compile errors</a></li><li><a href="#removed-codes">Removed codes</a></li></ul></nav>

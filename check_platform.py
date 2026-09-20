@@ -9,7 +9,7 @@ is refused while it runs - whatever the gate decided about it.
 
     python check_platform.py
 
-fastapi is a dependency of the example, never of Velaris. Without it
+fastapi is a dependency of the example, never of Sabline. Without it
 (or without the http client its test client needs) this suite skips.
 """
 import sys
@@ -19,17 +19,17 @@ from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 isolate("check_platform")             # its own directory
 
-HAVE_PROVER = velaris.HAVE_Z3
+HAVE_PROVER = sabline.HAVE_Z3
 
 READS_A_FILE = ('fn peek(p: Text) -> Text uses fs or fail {\n'
                 '    return try read_file(p)\n}\n\n'
                 'fn main() uses io, fs {\n'
-                '    check peek("velaris.py") {\n'
+                '    check peek("sabline.py") {\n'
                 '        ok body { print("read it") }\n'
                 '        fail why { print("could not") }\n    }\n}\n')
 
@@ -58,7 +58,7 @@ NEVER_ENDS = ('fn main() uses io {\n    let i = 0\n    while i >= 0 {\n'
               '            i = 0\n        }\n    }\n    print(1)\n}\n')
 
 # written to stall the audit, not to run: nine hundred functions, each one
-# expression chained just under the parser's limit - valid Velaris that
+# expression chained just under the parser's limit - valid Sabline that
 # takes the checker many seconds to read
 INFLATED = "".join(
     f"fn f{i}(n: Int) -> Int {{ return {'+'.join(['n'] * 999)} }}\n"
@@ -91,7 +91,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
         print(f"  skipped  {label}")
         print(f"           {why}")
 
-    print("a platform that lets its customers write Velaris")
+    print("a platform that lets its customers write Sabline")
     print("-" * 62)
 
     try:
@@ -124,7 +124,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
            and declares.get("paths", {}).get("read") == []
            and declares.get("modules") == []
            and declares.get("most_operations") == {"fs": 0, "net": 0}
-           and declares.get("audit_schema") == "velaris.audit/1",
+           and declares.get("audit_schema") == "sabline.audit/1",
            str(declares)[:200])
         ok("submitting runs nothing: the pool has not started a worker",
            platform.POOL.started == 0, f"{platform.POOL.started} started")
@@ -217,7 +217,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
            str(ran)[:200])
         ok("and the refusal names the budget the run had, which is the "
            "platform's", ran.get("ran_under") == platform.PLATFORM_ALLOW
-           and platform.POOL.allow == velaris.Budget.parse(
+           and platform.POOL.allow == sabline.Budget.parse(
                platform.PLATFORM_ALLOW).spec(),
            f"{ran.get('ran_under')} vs {platform.POOL.allow}")
 

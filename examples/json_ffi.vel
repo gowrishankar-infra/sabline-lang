@@ -1,6 +1,6 @@
 // v2.26: JSON, and calling Python with real data.
 //
-// velaris examples/json_ffi.vel --allow ffi:math,io
+// sabline examples/json_ffi.vel --allow ffi:math,io
 //
 // json_get / json_int / json_float / json_len / json_has read a
 // document by path ("user.name", "tags[1]"), and json_of turns your

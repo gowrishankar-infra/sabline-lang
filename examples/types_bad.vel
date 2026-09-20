@@ -1,6 +1,6 @@
 // Classic AI slip: adding a word to a number.
 // Python and JavaScript would let this run (and crash or do nonsense).
-// Velaris refuses before running a single line.
+// Sabline refuses before running a single line.
 
 fn add(a: Int, b: Int) -> Int {
     return a + b

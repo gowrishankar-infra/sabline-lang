@@ -1,31 +1,31 @@
-# Velaris for language models
+# Sabline for language models
 
-Paste this whole file into a model before asking it to write Velaris.
+Paste this whole file into a model before asking it to write Sabline.
 It is written to be read by a model, not a person: complete, compact,
-and with the failure modes named. `velaris card` prints it.
+and with the failure modes named. `sabline card` prints it.
 
 ## This is a real language you can run
 
-`pip install velaris-lang`, then `velaris program.vel`. There is a
+`pip install sabline-lang`, then `sabline program.vel`. There is a
 browser playground at
-<https://velaris-lang.dev/playground.html> and
+<https://sabline.dev/playground.html> and
 the compiler is one Python file at
-<https://github.com/gowrishankar-infra/velaris-lang>. Write code
+<https://github.com/gowrishankar-infra/sabline-lang>. Write code
 expecting it to actually execute.
 
-## What Velaris is
+## What Sabline is
 
 A small language where a function's signature declares its types, the
 effects it may perform, whether it can fail, and promises a theorem
 prover checks before the program runs.
 
 Files end in `.vel`. Execution starts at `main`. Run with
-`velaris program.vel`, which grants `io` - print, read a line, read
+`sabline program.vel`, which grants `io` - print, read a line, read
 the arguments - and refuses every other effect at run time. A program
 that needs a file, a host, the clock, randomness, the environment or
-Python has to be run with `--allow` naming it: `velaris program.vel
+Python has to be run with `--allow` naming it: `sabline program.vel
 --allow io,fs:read:./data`. Check without running:
-`velaris check program.vel`.
+`sabline check program.vel`.
 
 ## The whole syntax
 
@@ -472,7 +472,7 @@ args() uses io                  -> Secret of Text (rule 17)
 read_line() uses io           exit_with(code) uses io
 declassify(secret, "why") uses declassify - the only way out of a
   Secret; the reason must be written in the call, and is what
-  velaris audit reports
+  sabline audit reports
 
 length(x)     get(list, i)    push(list, v)    get(map, k) CAN FAIL
 pop(list) CAN FAIL            slice(list, from, to) CAN FAIL
@@ -508,7 +508,7 @@ hmac_sha256_chain(key, [m1, m2, ...]) uses declassify   HMAC again and
 
 tool(name, arguments_json) CAN FAIL uses tool     a tool the host offers
 tool_secret(name, arguments_json) CAN FAIL uses tool -> Secret of Text
-  arguments: json_of({"query": text}). Only under velaris run --tools
+  arguments: json_of({"query": text}). Only under sabline run --tools
   manifest.json; the budget grants tool:NAME and may hold an argument to
   a pattern (tool:send_email:to=*@corp.com). Outside the grant: E321.
 
@@ -516,7 +516,7 @@ read_file(p) CAN FAIL uses fs
 read_file_secret(p) CAN FAIL uses fs   -> Secret of Text (rule 17)
 read_file_secret(p) CAN FAIL uses fs  -> Secret of Text (rule 17)
 declassify(secret, "why") uses declassify - the reason must be
-  written here, not built; it is what velaris audit reports
+  written here, not built; it is what sabline audit reports
 write_file(p, body) uses fs - does NOT fail catchably; an
   unwritable path or full disk stops the program with E608
 file_exists(p) uses fs
@@ -546,27 +546,27 @@ now() uses clock                   random(n) uses rand
 ## Running and inspecting
 
 ```
-velaris program.vel                      run it; since 5.0 it gets io -
+sabline program.vel                      run it; since 5.0 it gets io -
                                          print, read_line, args - and
                                          every other effect is refused
                                          (E310), whatever the source says
-velaris program.vel --allow io,fs:read:./data
+sabline program.vel --allow io,fs:read:./data
                                          grant exactly this and no more
-velaris program.vel --allow all          every effect; one line to stderr
-velaris program.vel --allow all --deny net,ffi
+sabline program.vel --allow all          every effect; one line to stderr
+sabline program.vel --allow all --deny net,ffi
                                          everything but these
-velaris program.vel --allow io,ffi:math,json
+sabline program.vel --allow io,ffi:math,json
                                          ffi for THOSE modules only (E311
                                          for any other); plain ffi grants
                                          every module
-velaris check program.vel [--json]       every problem, as data
-velaris check program.vel --strict       refuse ANY promise left to
+sabline check program.vel [--json]       every problem, as data
+sabline check program.vel --strict       refuse ANY promise left to
                                          runtime; without it an
                                          unprovable promise degrades to
                                          a runtime check
-velaris audit program.vel                what it touches, before running
-velaris proofs program.vel --detail      which promises proved, one by one
-velaris explain program.vel              functions, effects, proof status
+sabline audit program.vel                what it touches, before running
+sabline proofs program.vel --detail      which promises proved, one by one
+sabline explain program.vel              functions, effects, proof status
 ```
 
 The effect budget (`--allow`/`--deny`) is enforced while the program
@@ -595,13 +595,13 @@ fs:read:./data@50           ...and at most 50 file operations in the run
 net:api.example.com@100     ...and at most 100 network operations
 clock  rand                 as before
 declassify                  letting a Secret out, and signing with one
-tool                        any tool the host offers (velaris run --tools)
+tool                        any tool the host offers (sabline run --tools)
 tool:search                 that tool       tool:search@20   at most 20 calls
 tool:send_email:to=*@corp.com   that tool, its `to` held to the pattern
 ```
 
 Examples: `--allow io,fs:read:./data,net:api.example.com:443@20`;
-`velaris.run(source, allow={"io", "env", "fs:write:./out"})`.
+`sabline.run(source, allow={"io", "env", "fs:write:./out"})`.
 
 Paths are resolved with realpath before every comparison, so `..` and
 symlinks cannot reach past a prefix. A redirect to a host the run did
@@ -624,7 +624,7 @@ A budget with no count is a budget on what, not on how much.
 
 ## Errors, and what to do about them
 
-Every error has a stable code. `velaris check program.vel --json` emits
+Every error has a stable code. `sabline check program.vel --json` emits
 them as structured data for a fix loop.
 
 | Code | Means | Fix |
@@ -738,5 +738,5 @@ fn main() uses io {
 - Do empty `[]` and `{}` have types?
 - Are inline functions pure - no printing, reading or failing?
 - Do `format` holes match the values given?
-- Would `velaris check` pass? If unsure, prefer fewer contracts and
+- Would `sabline check` pass? If unsure, prefer fewer contracts and
   simpler code over clever code with promises that may not prove.

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Changelog: 8.x: 8.3.1 to 8.2.1 - Velaris 8.5.0</title>
+<title>Changelog: 8.x: 8.4 to 8.3.1 - Sabline 8.6.0</title>
 <meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
-<meta name="velaris-version" content="8.5.0">
-<link rel="canonical" href="https://velaris-lang.dev/changelog-8-2.html">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/changelog-8-2.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
@@ -17,8 +17,8 @@
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="renamed.html">Velaris is now Sabline</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,13 +52,279 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html" aria-current="page">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html" aria-current="page">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
-<h1 id="changelog">Changelog: 8.x: 8.3.1 to 8.2.1</h1>
+<h1 id="changelog">Changelog: 8.x: 8.4 to 8.3.1</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="84---the-kernel-holds-the-line">8.4 - The kernel holds the line <a class="anchor" href="#84---the-kernel-holds-the-line" aria-label="Link to this section">#</a></h2>
+<p>A minor version, and the last before 9.0. Until now the budget was enforced
+by the interpreter alone, in the process that runs the program, and
+THREAT_MODEL.md said so under "No OS confinement". From 8.4 the process that
+runs a program also asks the operating system to hold the same budget, before
+the program's first statement runs, so that a fault in Velaris itself - in the
+interpreter, a builtin, the budget's own checks - is a crash inside a box and
+not an escape. On Linux that is Landlock and seccomp-bpf, and a run under the
+default budget is fully held. On macOS and on Windows it is partial, and
+every run says which it got and why. Beside it: the release workflow now
+moves its own Action pins, so main does not go red after a release.</p>
+<p>Nothing that compiles and runs under 8.3.1 inside its budget is refused: what
+the system is asked to refuse is what the budget already refused, and
+<code>--no-confine</code> restores 8.3.1 exactly.</p>
+<p>compatibility: confinement is on by default for a run in a process of its own - the command line, <code>run(timeout=...)</code>, <code>Pool</code>, both doors, <code>velaris eval</code> and <code>velaris replay</code> - and asks the operating system to refuse only what the run's budget already refuses, so a program that stays inside its budget runs as it did under 8.3.1, with the same output and exit status; a granted <code>ffi</code> module widens what is asked to what that module needs, and a module the table does not name, <code>ffi:os</code>, <code>ffi:subprocess</code> and plain <code>ffi</code> widen it to nothing enforced rather than risk refusing what worked. <code>--no-confine</code> on the command line, on <code>velaris serve</code> and on the MCP server, and <code>confine=False</code> in the library, do not ask, and say so on stderr. Against v8.3.1 no example's output and no conformance verdict changes.
+compatibility: E319 is given only under the fault-injection hook (<code>VELARIS_FAULT_INJECT</code>, new in 8.4), when the operating system refuses an effect the runtime itself attempted; no program and no run of 8.3.1 or earlier can meet it.
+compatibility: <code>--confine</code> was never a documented flag: 8.3's <code>velaris eval</code> passed it to the pool worker it started, with the directories the worker might write. From 8.4 every pool worker derives its OS policy from its own budget, and the worker's flags are <code>--confine-at</code>, <code>--confine-temp</code> and <code>--no-confine</code>; nothing a person or a script typed is removed.
+compatibility: <code>velaris doctor</code> prints one more line, the confinement level a run under <code>--allow io</code> gets on this machine, and a <code>why:</code> line under it when the level is not full; its exit status and every other line are as they were.
+compatibility: <code>velaris.audit/1</code> gains <code>confinement</code> within version 1 - the level and reason on Linux, macOS and Windows for a run under <code>safe_command</code>, and the granted modules that widen the OS policy - derived from the budget alone, so an audit is still the same bytes on every system; the command line's audit prints a CONFINEMENT ON THIS MACHINE section after the lines it printed before.
+compatibility: a receipt's <code>run_parameters.confinement</code>, which 8.3 wrote as <code>"none"</code> for every run but <code>velaris eval</code>'s and as the name of a mechanism (<code>landlock-net</code>, <code>landlock</code>, <code>job-one-process</code>, <code>sandbox-exec</code>) there, is now the level - <code>full</code>, <code>partial</code> or <code>none</code> - with <code>confinement_reason</code>, <code>confinement_layers</code> (where the mechanism names now are) and <code>os_policy_sha256</code> added beside it, all within <code>velaris.receipt/1</code>; a receipt written before 8.4 still verifies, and <code>velaris replay</code> and <code>velaris receipts diff</code> compare the level only between receipts that have the new fields.
+compatibility: <code>velaris eval</code> refuses to run (exit 2, before the program is sent to the worker) where the operating system holds none of the budget; 8.3 ran such a program under the budget alone and wrote <code>"confinement": "none"</code>. On Linux 5.13 and later, on macOS while it honours sandbox profiles, and on Windows, the level is full or partial and eval runs as before. <code>velaris eval</code> is documented as provisional.
+api: <code>run()</code>, <code>Pool()</code> and <code>PoolRegistry()</code> take <code>confine=True</code>; <code>AuditResult</code> gains the <code>confinement</code> slot; the run state gains <code>CONFINE</code>, <code>CONFINEMENT</code>, <code>WORKER_CONFINEMENT</code>, <code>BEFORE_FIRST_STATEMENT</code> and <code>PROGRAM_FILES</code>; <code>velaris serve</code> and the MCP server take <code>--no-confine</code>; the audit and the receipt the HTTP door and the MCP server return carry the new fields. Nothing is removed and no default argument changes.</p>
+<h3 id="the-release-workflow-moves-its-own-pins">The release workflow moves its own pins <a class="anchor" href="#the-release-workflow-moves-its-own-pins" aria-label="Link to this section">#</a></h3>
+<p>README.md and EMBEDDING.md pin the Action by commit, and <code>run_tests.py</code> fails
+unless that commit is the one the newest tag names. A release commit cannot
+name its own hash, so from the moment a release was tagged main's first test
+step failed until somebody pushed the pin move - twenty of twenty-one jobs,
+after 8.3.1.</p>
+<ul>
+<li><strong><code>release.yml</code>'s <code>move_pins</code> job</strong> runs once the tag exists, whatever the
+publishes after it did. It checks out main, runs <code>release_checks.py move-pins vX.Y.Z --commit &lt;sha&gt;</code> - the pins in both documents, the
+<code>version:</code> example beside them, the pre-commit <code>rev:</code> - rebuilds the pages,
+fails if anything outside README.md, EMBEDDING.md and docs/ changed, commits
+<code>Move the Action pins to vX.Y.Z</code>, asks the gate about that commit and pushes
+only when the gate says it is not a release, and does it again on top of
+main if main moved. A push made with GITHUB_TOKEN starts no workflow, so it
+then starts <code>tests</code> on main by name; <code>test.yml</code> takes <code>workflow_dispatch</code>
+for that, and the <code>release</code> run that follows those tests stops at its gate,
+which takes only a push's tests.</li>
+<li><strong><code>check_release.py</code></strong> runs the job's own steps in bash on a throwaway copy
+of this repository with a simulated tag, and holds the result to be that
+commit and nothing else: one commit past the tagged one, five lines in the
+two documents, pages under docs/, no tag made or moved, the tests started
+once; nothing pushed when it is run again; the pins moved on top of a commit
+that landed meanwhile; and a red job, with main where it was, when the tag
+does not name the released commit.</li>
+</ul>
+<h3 id="the-operating-system-holds-the-budget">The operating system holds the budget <a class="anchor" href="#the-operating-system-holds-the-budget" aria-label="Link to this section">#</a></h3>
+<p><code>velaris/confine.py</code>'s <code>os_policy(budget)</code> is the one derivation: budget in, OS
+policy out, reading nothing of the machine. THREAT_MODEL.md's new section,
+<strong>What the operating system enforces</strong>, prints the module's table - every
+budget item, and what each system enforces for it - and <code>check_confine.py</code>
+fails when the document and the module differ by a word.</p>
+<ul>
+<li><strong>Linux: Landlock and seccomp-bpf.</strong> Landlock holds reads to the <code>fs:read</code>
+grants and what the interpreter itself reads - Python's installation and
+import path, the package and the standard library, shared libraries, the
+devices and <code>/proc</code> entries Python asks for, time zone data, the program's
+own files, and the resolver's files and the TLS roots under a <code>net</code> grant
+only - and writes to the <code>fs:write</code> grants and a private temporary
+directory. seccomp-bpf answers EPERM to every socket call when no <code>net</code> is
+granted; to execve, execveat, fork, vfork and a clone without CLONE_THREAD,
+and ENOSYS to clone3; and always to ptrace, mount and its newer calls,
+pivot_root, chroot, unshare, setns, kernel modules, kexec, bpf,
+perf_event_open, process_vm_readv and writev, keyrings, io_uring,
+userfaultfd, open_by_handle_at, setting the clock, and a signal to any
+process but this one. The filter is installed on every thread; Landlock,
+which holds one thread, is applied to the main thread as well on Python
+3.10, where a run is on a thread of its own, and a thread it could not
+reach makes the level partial and is named.</li>
+<li><strong>macOS: a sandbox profile</strong>, derived from the same policy and applied with
+<code>sandbox_init</code>, the call <code>sandbox-exec</code> makes: writes, the network and
+fork/exec held, reads refused under the home directory and /Volumes. Apple
+has deprecated both, and THREAT_MODEL.md says so.</li>
+<li><strong>Windows: a job object</strong> holding one process, the clipboard and the
+desktop; <strong>every privilege removed</strong> from the token but
+SeChangeNotifyPrivilege; and <strong>the low integrity level</strong> for a budget that
+grants no write, under which the kernel refuses a write to anything of the
+user's. Reads and the network are not held: that needs an AppContainer,
+which a running process cannot enter and which a <code>python.exe</code> from
+python.org, the Store or a virtual environment cannot start in, since it
+could not read its own installation there.</li>
+<li><strong>A granted <code>ffi</code> module widens the policy</strong> to what that module needs,
+named per module in <code>FFI_WIDENS</code> and in THREAT_MODEL.md: nothing, any path,
+any host, or - for <code>ffi:os</code>, <code>ffi:subprocess</code>, plain <code>ffi</code> and any module
+the table does not name - nothing enforced. The audit's
+<code>confinement.widened_by</code> says which.</li>
+<li><strong>The level</strong> a run reports - full, partial or none - is what was applied
+and held, with the reason: in the receipt, in the audit, in <code>velaris doctor</code>. <code>velaris receipts diff</code> names a run whose level no earlier run of
+the same program had, and says when it is weaker. <code>velaris eval</code> requires
+full or partial.</li>
+<li><strong>When it is applied.</strong> A single run - the command line, <code>run(timeout=...)</code>,
+<code>velaris replay</code> - reads, proves and compiles its program first, from
+wherever its imports are, and is confined at the program's first statement.
+A pool worker is confined when it starts, before it is sent anything; it
+holds reads only when the pool has an <code>import_root</code>, as both doors' pools
+do, and says partial otherwise. A receipt and <code>--record-responses</code> are
+opened before the run and written after it, since a confined process cannot
+open them then.</li>
+</ul>
+<h3 id="the-honesty-test">The honesty test <a class="anchor" href="#the-honesty-test" aria-label="Link to this section">#</a></h3>
+<p><code>check_confine.py</code>, on every leg. A fault-injection hook
+(<code>VELARIS_FAULT_INJECT</code>) makes the runtime itself, from Python and not from
+Velaris, read a file, write one, connect, start a process and - except on
+Windows, which has no signal to send - send a signal outside the budget.
+Under confinement, what that system's row says is held is
+refused by the kernel and the run ends with E319 naming the layers; what the
+row says is not held goes through; with <code>--no-confine</code> every one goes
+through. All three are asserted, through the command line, <code>run(timeout=)</code>,
+a pool and the HTTP door, so the table is held true in both directions. The
+seccomp filter is also run instruction by instruction inside the suite, for
+x86_64 and aarch64, over thirty system calls each, so it is held on the
+Windows and macOS legs too.</p>
+<p>Every escape target of <code>check_sandbox.py</code>, and the file and <code>ffi</code> targets of
+<code>check_adversarial.py</code>, were run again on a Velaris whose budget checks are
+knocked out (<code>tests/confine/faulty_runtime.py</code>), confined and not. Of the 44
+targets, 5 are not applicable - refused before running, or not an effect. Of
+the rest, <strong>on Linux 19 of 39 now fail at the kernel as well as at the
+language</strong> - every read, write and network reach outside the budget, the
+symbolic link, <code>..</code>, and a process through <code>py_json</code> or a handle - and 20 at
+the language alone: a host, port or wildcard inside a <code>net</code> grant on a kernel
+without Landlock's TCP rules, the <code>@N</code> counts, <code>env</code>, <code>declassify</code>, and the
+<code>ffi</code> reach cases, where the target is a Python object in the same process.
+<strong>On Windows 8 of 38</strong>: the writes under a budget with no write grant, and the
+processes. They are recorded in <code>tests/confine/kernel-linux.json</code> and
+<code>kernel-windows.json</code>, and the suite fails if a target recorded as stopped at
+the kernel gets through it.</p>
+<p>Nothing legitimate broke: the 97 examples, every suite, velaris-spec's 456
+conformance cases, the quick benchmark, both doors, the pool, a name resolved
+and a request made under a <code>net</code> grant, a temporary file under
+<code>ffi:tempfile</code>, and a proof and native code made inside a worker that was
+already confined, all run under confinement by default.</p>
+<h3 id="the-adversarial-pass-1">The adversarial pass <a class="anchor" href="#the-adversarial-pass-1" aria-label="Link to this section">#</a></h3>
+<p>Against the confinement itself, kept in <code>check_confine.py</code>. It found three
+things to fix before release, all on Linux:</p>
+<ul>
+<li><strong>Input pushed at the terminal.</strong> A confined process could still make the
+TIOCSTI ioctl on the terminal it was started from, and what it pushed would
+be typed at the shell once it ended. The filter now refuses TIOCSTI and
+TIOCLINUX.</li>
+<li><strong>A Unix socket under a <code>net</code> grant.</strong> With any <code>net</code> grant the filter
+allowed every socket, and Landlock does not hold a connection to a Unix
+socket - which is how a process reaches a container runtime or the session
+bus. Under a <code>net</code> grant only IPv4, IPv6 and the resolver's netlink socket
+are allowed now; a granted Python module that widens the policy to any host
+keeps every family.</li>
+<li><strong><code>rt_sigqueueinfo</code>.</strong> kill and tgkill to another process were refused;
+sigqueue was not.</li>
+</ul>
+<p>Tried and refused: a symbolic link inside a granted path to a file outside
+it; <code>/proc/self/root</code>; the network and a process through a granted module
+that needs neither (<code>ffi:json</code>, <code>ffi:shutil</code>); a bind mount made by the
+confined run, even as root of its own user namespace; a process asked to
+leave the Windows job (CREATE_BREAKAWAY_FROM_JOB); a program that exhausts
+the job's memory (E611); confinement applied from a thread with no way to the
+main thread, which says partial and names the thread; and <code>--no-confine</code>
+after <code>--</code>, in a door's request in three spellings, and in a program's own
+arguments, none of which reaches the flag. <code>velaris eval</code> and <code>velaris replay</code> take no such flag.</p>
+<p>Tried and not refused, and written down as such: a bind mount that was inside
+a granted path before the run is that path's content, to Landlock and to the
+language alike.</p>
+<h3 id="what-the-first-runs-on-ci-found">What the first runs on CI found <a class="anchor" href="#what-the-first-runs-on-ci-found" aria-label="Link to this section">#</a></h3>
+<p>It was built on Windows and on Linux under WSL, with no Mac. The pull
+request's twenty-one legs found four faults before it was merged:</p>
+<ul>
+<li><strong>macOS: an allow that never took effect.</strong> The profile denied
+<code>file-read-data</code> under the home directory and then allowed <code>file-read*</code>
+again for Python's installation. A rule for the one operation beats a rule
+for the family, whichever comes last, so the allow did nothing - and
+nothing showed it on the runners' Python 3.12, which is in
+/Library/Frameworks. Their 3.10 is under /Users/runner, and there a
+confined run could not import <code>datetime</code>. The denial is now one rule that
+names what it leaves out.</li>
+<li><strong>macOS: <code>getcwd</code> under the profile.</strong> A pool worker asked for its working
+directory after it was confined, and <code>getcwd</code> opens that directory. The
+worker takes its baseline first, and the profile leaves the names in the
+working directory and in each directory above it readable, which the table
+says.</li>
+<li><strong>Windows: <code>os.kill(pid, 0)</code> is CTRL_C_EVENT.</strong> The hook's signal attempt
+interrupted the suite that asked for it. No signal is attempted on Windows.
+And <code>release_checks.py move-pins</code> left the <code>version:</code> example alone in a
+checkout whose lines end <code>\r\n</code>; the fixture test caught it on every
+Windows leg.</li>
+<li><strong>Linux, Python 3.10: a race in applying Landlock to the main thread.</strong> The
+main thread said it was there to be asked only after it had started the
+run's thread, so about one run in forty on a loaded runner reported
+partial, correctly. It says so first now.</li>
+</ul>
+<p>And the release workflow's own <code>differential</code> job found a fifth, after the
+merge and before anything was tagged: <strong>on Linux a program could not read
+back a file it had just written.</strong> <code>examples/ledger.vel</code> runs under
+<code>fs:read:ledger.txt,fs:write:ledger.txt</code>, saves, and loads; the file is not
+there when the run is confined, the read grant named nothing Landlock could
+open, and the load failed where 8.3.1's succeeded. A read grant that does not
+exist yet is now held to the nearest directory that does, as a write grant
+is, and the level says partial and why; on macOS the profile names the path
+whether or not it is there. The differential check had been run on Windows,
+where reads are not held; it is run on Linux as well now.</p>
+<p><code>check_confine.py</code> runs straight after the unit tests, and on macOS prints
+where Python is and the profile a run gets, for whoever reads a failed leg
+without a Mac.</p>
+<h3 id="known-open-1">Known open <a class="anchor" href="#known-open-1" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>macOS and Windows are partial</strong>, for the reasons THREAT_MODEL.md's known
+open table gives per system, and macOS confinement is verified only on CI:
+on Intel and on Apple silicon runners, with Python inside the home
+directory and outside it.</li>
+<li><strong>Input written to the console on Windows, and TIOCSTI on macOS,</strong> are not
+held: a process attached to a console may write its input buffer, and the
+sandbox profile language has no rule for an ioctl.</li>
+<li><strong>A host in a <code>net:</code> grant is held by the language alone</strong> on every system;
+Linux holds the ports, with Landlock ABI 4 or later.</li>
+<li><strong>An in-process <code>velaris.run()</code>, the REPL, <code>velaris test</code> and <code>velaris bench</code> are not confined</strong>, and say so.</li>
+<li><strong>The command line's private temporary directory on Linux</strong> has a parent
+the same user's other confined runs share, because Landlock lets a
+directory be removed only by a right on the directory above it.</li>
+<li><strong><code>velaris review</code> still has no check ceiling</strong>, <code>db.vel</code> still builds SQL
+from text, and <code>csv.vel</code>'s quoted path is still quadratic (8.3's entry);
+all three are 9.0.</li>
+</ul>
+<h3 id="housekeeping-1">Housekeeping <a class="anchor" href="#housekeeping-1" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong>docs/confinement.md</strong> is a page of the site; <code>docs/eval.md</code>,
+<code>docs/crosswalk.md</code>, EMBEDDING.md, STABILITY.md, RELEASING.md, README.md and
+ARCHITECTURE.md say what is now true. The crosswalk's sandboxing rows
+(ASI05, ASI10, B006, B008, D003, F001, MEASURE 2.7) say what each system
+holds; their status stays partial, because no row of that page is enforced
+by a guard that a granted <code>ffi:os</code> takes away.</li>
+<li><strong>THREAT_MODEL.md's known-open table</strong> drops "No OS confinement" and gains
+one row per system, "Runs that are not confined" and "The fault-injection
+hook". "What 'not a security boundary' means here" is rewritten to say what
+is true on each system.</li>
+<li><strong>Issues #21 and #22</strong> are left open: they close when the next monthly run
+is green.</li>
+<li><strong>velaris-spec 0.12.0</strong> records the receipt's level and its three new
+fields, the audit's <code>confinement</code>, and E319.</li>
+</ul>
+<h3 id="measured-1">Measured <a class="anchor" href="#measured-1" aria-label="Link to this section">#</a></h3>
+<p>Measured by <code>perf_gates.py --against v8.3.1</code> on Windows 11 (10.0.26200,
+AMD64, 16 CPUs, 6% busy when it began), Python 3.13.13, z3-solver 5.1.0 and
+llvmlite 0.49.0: medians of 5 runs after one warm-up.
+Wall-clock figures; another machine will differ.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Measure</th><th>8.4.0</th></tr></thead>
+<tbody>
+<tr><td>Cold start, <code>velaris --version</code></td><td>202 ms</td></tr>
+<tr><td>Cold start, <code>velaris check</code> of a one-line file</td><td>403 ms</td></tr>
+<tr><td>Check, per 1,000 lines (a 1,013- and a 10,013-line program)</td><td>1.02 s and 1.29 s; 0.05 s and 0.07 s without proofs</td></tr>
+<tr><td>Proof time per example with contracts, p50 / p95</td><td>24 ms / 435 ms, over 56 files</td></tr>
+<tr><td>Native code on <code>examples/bench.vel</code>: compile, and llvmlite's import</td><td>74 ms, and 64 ms; <code>burn</code> compiled</td></tr>
+<tr><td><code>examples/bench.vel</code>, native / <code>--no-native</code></td><td>4.88 s / 12.37 s, 2.54 times faster, 7.49 s saved</td></tr>
+<tr><td><code>--lite</code> build</td><td>there is none</td></tr>
+<tr><td>Pool worker's memory, after 1 run and after 1,000 more</td><td>26.1 MB, 27.1 MB</td></tr>
+<tr><td>z3 or llvmlite imported by <code>velaris --version</code>, or by <code>check</code> of a program with no promise</td><td>neither</td></tr>
+<tr><td>Importing z3 when a command needs it</td><td>+139 ms at cold start</td></tr>
+<tr><td>Importing llvmlite when a command needs it</td><td>+156 ms at cold start</td></tr>
+<tr><td>Pure numeric against v8.3.1, native (<code>bench.vel</code> and an integer loop)</td><td>4.88 s against 4.98 s, -1.9% (the gate allows +25%)</td></tr>
+<tr><td>Pure numeric against v8.3.1, interpreted</td><td>15.31 s against 15.92 s, -3.8%</td></tr>
+<tr><td><code>velaris examples/hello.vel</code>, confined and with <code>--no-confine</code> (median of 10)</td><td>Windows: 358 ms and 368 ms, no difference outside the noise; Linux (WSL 2, kernel 6.6, Landlock ABI 3): 130 ms and 122 ms, about 8 ms for the ruleset and the filter</td></tr>
+</tbody></table></div>
+<p><code>check_differential.py</code> against v8.3.1: none of the 97 examples' outputs
+differs, velaris-spec's 456 conformance cases give the same verdicts, and
+the quick benchmark's 15 programs the same verdicts. The full benchmark, run
+at 8.4.0 with every bounded Velaris run confined, gives every one of its 76
+programs the verdict it had at 8.3.0 (Velaris 52/12/2/0, Deno 8/34/24,
+Python 0/31/35); <code>benchmark/results.json</code> changes in its version line alone.</p>
 <h2 id="831---the-documentation-as-a-site">8.3.1 - The documentation, as a site <a class="anchor" href="#831---the-documentation-as-a-site" aria-label="Link to this section">#</a></h2>
 <p>A patch release that adds no code. 8.3 moved the documentation to
 velaris-lang.dev; this builds it into a site rather than a handful of pages.
@@ -112,423 +378,12 @@ site: it rebuilds <code>latest/</code> and its own version directory, and a page
 renamed in a later release would leave its old file behind until it is
 deleted by hand.</li>
 </ul>
-<h2 id="83---what-a-run-can-show">8.3 - What a run can show <a class="anchor" href="#83---what-a-run-can-show" aria-label="Link to this section">#</a></h2>
-<p>A minor version. A receipt has said, since 8.1, what one run did; 8.3 adds
-what can be done with one - a profile for running code in an evaluation
-harness that always leaves a receipt, a comparison of a receipt with its
-program's audit and with earlier runs, a replay of a run from its receipt, and
-a verifier for attestations and receipts. Beside them: promises exercised on
-the inputs the prover finds, a page of what cannot occur in a Velaris program
-with a test for each, RFC 4180 quoting in <code>csv.vel</code>, log lines a value cannot
-forge, two benchmark categories, a workflow-permissions ratchet for the
-Action, and a crosswalk onto four agent-security frameworks. The project's
-documentation moved to velaris-lang.dev, and every name of it moved with it.
-A test written for a surviving mutant found a fault in the prover, which
-reported proven a promise past a comparison of two maps or lists; it is
-fixed, and has an advisory.</p>
-<p>compatibility: E615 is given only under <code>velaris eval</code>, new in 8.3, to a run that was asked to stop from outside; no run of 8.2.1 or earlier can meet it.
-compatibility: E616 is given only under <code>velaris replay --responses</code>, new in 8.3, to a call a recording of tool responses does not hold in that place; no earlier run can meet it.
-compatibility: <code>check</code>, <code>proofs</code>, <code>explain</code>, <code>audit</code>, <code>attest</code> and the library no longer report a promise proven when its proof passes through <code>==</code> or <code>!=</code> on two maps, two lists other than <code>List of Int</code>, a map and <code>put</code> of it, or two records holding a Float field: until 8.3 each such comparison was a constant to the prover, and a promise past it could be reported proven and then break when the program ran (Goal A, advisory-prover-compare.md). Such a promise is now checked while the program runs, as every unproven promise is, so the count of proven promises a report, an audit or an attestation gives can fall. Two records with a <code>List of Int</code> field now compare as two such lists do, so a false promise past that comparison, reported proven until 8.3, can be refused with E700. Against v8.2.1 no example's output and no conformance verdict changes.
-compatibility: every compiler error's and refusal's <code>reference:</code> line, the <code>reference</code> field of <code>--json</code> output and of SARIF, and each SARIF rule's <code>helpUri</code> name <a href="llms.txt">https://velaris-lang.dev/llms.txt</a> and <a href="errors.html">https://velaris-lang.dev/errors.html</a>, where they named the same pages at the project's GitHub Pages address, which now redirects there. Only that text changes; no code, message, exit status or verdict does, and a reader following the earlier address reaches the same page.
-compatibility: <code>velaris attest</code> writes the predicate type <a href="capability/v1/index.html">https://velaris-lang.dev/capability/v1</a>, and a receipt names <a href="receipt/v1/index.html">https://velaris-lang.dev/receipt/v1</a>, where 4.2 to 8.2.1 named both at the project's GitHub Pages address (<a href="index.html">https://gowrishankar-infra.github.io/velaris-lang/</a>...). <code>velaris verify</code>, <code>velaris receipts diff</code>, <code>velaris replay</code> and the OPA policy read each earlier name as the same type, so every attestation and receipt signed until now still verifies with Velaris; a verifier outside Velaris that pins one type name - cosign's <code>--type</code>, the Kyverno policy - takes the name the Statement carries. velaris.dev was never this project's domain: it is registered to someone else, 4.1 chose not to use it, no Velaris ever wrote a type under it, and <code>velaris verify</code> refuses a Statement naming one as it refuses every type Velaris does not define. The types now name a domain the project controls. A Statement's <code>specification</code> and a receipt's say velaris-spec 0.11.0, the version that records the new names.
-compatibility: <code>velaris verify</code> given a file checks it as an attestation or a receipt (exit 0 verified, 1 refused or naming other bytes, 2 not checked); with no file it is the older spelling of <code>velaris deps --verify</code>, as before. Until 8.3 a file given to <code>velaris verify</code> was ignored and the vendored libraries were checked.
-compatibility: <code>log</code>, every function of <code>stdlib/log.vel</code>, and <code>velaris trace</code> write a line feed, a carriage return, an escape, a NUL, every other C0 and C1 control character but tab, DEL, U+2028 and U+2029 in a value as an escape (<code>\n</code>, <code>\r</code>, <code>\xNN</code>, <code>\uNNNN</code>), so each call writes one line. Output changes only for a logged or traced value holding one of those characters, which until 8.3 reached the error channel as it was and could end its line, begin another, or move a terminal's cursor over one; <code>print</code> is unchanged.
-compatibility: <code>stdlib/csv.vel</code> quotes as RFC 4180 does. <code>line_of</code> changes its output only for a value holding a comma, a double quote, a carriage return or a line feed, which it now writes between double quotes with each double quote doubled: a value with a comma never came back from <code>fields</code> as one field, and one with a double quote, a carriage return or a line feed came back from <code>fields</code> but was split by <code>rows_of</code> and by any RFC 4180 reader. <code>fields</code> and <code>column</code> change only for a line with a field that begins with a double quote, now read as a quoted field; <code>rows_of</code> changes only for text in which a line feed falls inside such a field, which now stays in its row.
-compatibility: a receipt may carry <code>stop</code> and <code>run_parameters.profile</code>, added within <code>velaris.receipt/1</code> (velaris-spec 0.11.0, section 8.7); only a run of <code>velaris eval</code> writes them, and a reader ignores a field it does not know.
-api: the command line gains <code>velaris eval</code>, <code>velaris receipts diff</code>, <code>velaris replay</code>, <code>velaris permissions-ratchet</code>, <code>velaris test --from-contracts</code> (with <code>--count</code>, <code>--witness-seconds</code> and <code>--json</code>), <code>velaris verify &lt;file&gt;</code> (with <code>--root</code>, <code>--identity</code>, <code>--skip-signature</code> and <code>--json</code>) and <code>--record-responses</code> on a run; the library gains <code>SITE</code>, <code>CAPABILITY_PREDICATE_TYPES</code>, <code>RECEIPT_PREDICATE_TYPES</code>, <code>predicate_kind</code>, the run-state names <code>STOP_FILE</code> and <code>RESPONSES</code>, and the permissions ratchet's <code>read_workflow</code>, <code>permissions_compare</code>, <code>permissions_ratchet</code>, <code>permissions_lines</code>, <code>permissions_exit</code>, <code>permissions_main</code>, <code>WorkflowUnreadable</code>, <code>PERMISSION_SCOPES</code>, <code>PERMISSION_LEVELS</code> and <code>PERMISSIONS_RATCHET_SCHEMA</code>; <code>check_proofs</code> gains <code>witnesses_out</code> and <code>witness_count</code>; <code>CAPABILITY_PREDICATE_TYPE</code> and <code>RECEIPT_PREDICATE_TYPE</code> are the velaris-lang.dev names; and the Action gains the <code>permissions-ratchet</code> input, off by default.
-differential: 14a - a program of benchmark category 14, new in 8.3, so v8.2.1 has no verdict for it
-differential: 15a - a program of benchmark category 15, new in 8.3, so v8.2.1 has no verdict for it</p>
-<p>Against v8.2.1 (<code>check_differential.py</code>), velaris-spec's 456 conformance
-cases give the same verdicts, and the quick benchmark differs only in the
-two programs above. Of the 97 examples, 36 print something different, and
-in every one the only line that differs is the <code>reference:</code> line of an
-error, which names velaris-lang.dev (the compatibility line above): <code>examples/avg_bad.vel</code>, <code>examples/builtin_unhandled.vel</code>, <code>examples/callsite_bad.vel</code>, <code>examples/caught.vel</code>, <code>examples/conj_bad.vel</code>, <code>examples/contract_broken.vel</code>, <code>examples/contract_impure.vel</code>, <code>examples/discount_bad.vel</code>, <code>examples/div_bad.vel</code>, <code>examples/fail_proof_bad.vel</code>, <code>examples/failing_bad.vel</code>, <code>examples/floats_bad.vel</code>, <code>examples/fp_proof_bad.vel</code>, <code>examples/funcs_bad.vel</code>, <code>examples/generics_bad.vel</code>, <code>examples/grid_bad.vel</code>, <code>examples/import_bad.vel</code>, <code>examples/lambda_contract_bad.vel</code>, <code>examples/list_mixed.vel</code>, <code>examples/list_oob.vel</code>, <code>examples/list_proof_bad.vel</code>, <code>examples/loop_bad.vel</code>, <code>examples/loop_proof_bad.vel</code>, <code>examples/many_errors.vel</code>, <code>examples/map_bad.vel</code>, <code>examples/maps_bad.vel</code>, <code>examples/ns_bad.vel</code>, <code>examples/offbyone_bad.vel</code>, <code>examples/proof_catch.vel</code>, <code>examples/qlist_bad.vel</code>, <code>examples/rec_proof_bad.vel</code>, <code>examples/records_bad.vel</code>, <code>examples/secret_bad.vel</code>, <code>examples/sneaky.vel</code>, <code>examples/std_bad.vel</code>, <code>examples/types_bad.vel</code>.</p>
-<h3 id="a-promise-past-a-comparison-was-reported-proven">A promise past a comparison was reported proven <a class="anchor" href="#a-promise-past-a-comparison-was-reported-proven" aria-label="Link to this section">#</a></h3>
-<p>A test written for a mutant the monthly run left alive found a Goal A break
-in the prover as released, from 2.6 through 8.2.1
-(<a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/advisory-prover-compare.md">advisory-prover-compare.md</a>). <code>==</code> and <code>!=</code> on
-two values the prover holds as its own objects - two maps, two lists of
-lists, two lists of Bool or of Text, a map and <code>put</code> of it - were Python's
-comparison of those objects, a constant. So a branch taken when two maps are
-equal looked unreachable, a promise past it was reported proven, and it broke
-with E601 when the program ran. Two records compared field by field had the
-same fault for a <code>List of Int</code> field; for a <code>Float</code> field, the prover's
-equality and a run's disagree about NaN whichever rule the prover takes.
-Those comparisons now leave the promise to runtime, as SPEC.md 9.4 says a
-premise the prover cannot translate does, and a record's <code>List of Int</code> field
-compares as two such lists do.</p>
-<p>The interpreter checks every promise, proven or not, and no function that can
-hold such a comparison is compiled to native code, so no run went unchecked.
-What was false is the report: <code>check</code>, <code>proofs</code>, <code>explain</code>, the audit, an
-attestation's count of proven promises, the library's <code>proven</code>, and the proof
-of any function that relied on such a function's <code>ensures</code>.
-<code>check_prover_lies.py</code> gains nine lies (COMPARED), <code>check_mutant_kills.py</code>
-V6 holds the map case, and SECURITY.md lists the advisory; a CVE is requested
-for it, as for every Goal A finding.</p>
-<h3 id="the-documentation-moved-to-velaris-langdev">The documentation moved to velaris-lang.dev <a class="anchor" href="#the-documentation-moved-to-velaris-langdev" aria-label="Link to this section">#</a></h3>
-<p>The project holds velaris-lang.dev, and GitHub Pages serves this repository's
-<code>docs/</code> there; the earlier address redirects. Every link that names the
-project's home moved: README, SPEC, TUTORIAL, LLM.md (and so <code>llms.txt</code>),
-EMBEDDING, SECURITY, STABILITY, docs, CITATION.cff, <code>pyproject.toml</code>'s
-Homepage and Documentation, the npm package, the VS Code extension, the MCP
-bundle and registry manifest, the Homebrew and winget manifests, and the
-release workflow. The two predicate types moved too, as the compatibility
-lines above say, and <code>velaris/predicates.py</code> holds both names of each;
-velaris-spec 0.11.0 records the new names and lists the earlier ones as
-accepted for verification.</p>
-<ul>
-<li>SECURITY.md's contact is security@velaris-lang.dev, beside GitHub's private
-reporting, and it says which predicate type a Statement names.</li>
-<li>THREAT_MODEL.md's Known open table gains a row: a predicate type is a name
-on a domain, and a domain can change hands. A type is an identifier, not a
-signature.</li>
-<li><code>check_docs.py</code> holds that no tracked file names the earlier address but
-the ten it lists with a reason (this entry's history, the redirect test,
-the readers of the earlier type names, the pages that name them, and the
-playground, which embeds the package), and that every velaris-lang.dev URL
-a tracked file names is a page <code>docs/</code> serves. <code>check_library.py</code> fetches
-the card at its new address and asserts the earlier address redirects to
-it; <code>check_urls.py</code>, monthly, asks both.</li>
-<li>The site does not enforce HTTPS yet, so the earlier address redirects to
-<code>http://velaris-lang.dev/</code>; the checks accept either scheme and say so.</li>
-</ul>
-<h3 id="what-a-run-can-show">What a run can show <a class="anchor" href="#what-a-run-can-show" aria-label="Link to this section">#</a></h3>
-<p><strong><code>velaris eval</code></strong> runs one program as an evaluation harness runs code it was
-handed, under a profile its command line cannot relax: no net, ffi or env,
-and an fs grant only under a named path; a time and a memory limit always (30
-seconds and 512 MB unless given, at most 600 and 4096); the program
-interpreted, so a stop asked for from outside - a signal, or <code>--stop-file</code>
-appearing - lands at the next call or loop turn with E615, and a worker that
-has not stopped after <code>--grace</code> is killed; a receipt always, written outside
-every fs grant or streamed to <code>--receipt-url</code> (<code>velaris.receipt-stream/1</code>),
-with the stop and <code>profile: "eval"</code> in it; and the worker confined where the
-operating system offers it without privileges, the level named in the
-receipt: <code>landlock-net</code> or <code>landlock</code> on Linux, <code>job-one-process</code> on Windows,
-<code>sandbox-exec</code> on macOS when a trial of its profile starts Python, <code>none</code>
-otherwise. The Windows job holds the processes starting the worker took -
-its own, and a launcher's where <code>python.exe</code> is one, as a virtual
-environment's is - and refuses any further process; a job that insisted on
-exactly one stopped the worker before it began in every venv this was tried
-in ("Unable to create process", "Not enough quota is available to process
-this command"), which is how it was found. A signal is taken only where eval
-runs on the main thread, CPython 3.11 and later; <code>--stop-file</code> works
-everywhere. <code>--confinement-probe</code> has a confined worker try a TCP connection,
-a write outside its directories and a process start, and fails if a refusal
-its level claims did not hold. Anything that would relax the profile is
-refused before the program is read, exit 2. <a href="eval.html">docs/eval.md</a> is
-the one page of what it guarantees and what it does not. <code>check_eval.py</code>
-holds every relaxation refused, a run's receipt matching the profile, a stop
-file honoured and a signal where eval can take one, a stalled compile killed
-after the grace period,
-the stream, and the probe; on Windows and on WSL Ubuntu 24.04, whose kernel
-offers Landlock ABI 3 and so <code>landlock</code>.</p>
-<p><strong><code>velaris receipts diff</code></strong> holds a receipt to its program's audit - an
-effect used or refused, a host, path or module granted, a declassification or
-a count past the audit's bound that the audit does not have, and bytes that
-are not the audited ones - and to earlier receipts of the same bytes: a new
-host, path or module, a count above the earlier maximum, a first
-declassification, a new reason. A receipt names no host or path a run
-reached, only what its budget granted, and that is what is compared. Exit 0
-clean, 1 with a difference, 2 when it could not compare; <code>--json</code> is the
-provisional <code>velaris.receipts-diff/1</code>, whose shape velaris-spec 8.8 records.</p>
-<p><strong><code>velaris replay</code></strong> makes a run again from its receipt: each subject is held
-to its digest and copied before anything runs, imports are held to the copy,
-the budget is no wider than <code>--max-allow</code> (<code>io</code> unless raised), and the
-recorded seed, clock, limits and read ceiling, and eval's profile, apply;
-every difference from the recorded receipt is named, and output is compared
-with <code>--expect-output</code>. Code mode: <code>--record-responses FILE</code> on a run records
-what each <code>py</code>, <code>py_int</code>, <code>py_float</code> and <code>py_json</code> call gave back, and
-<code>replay --responses FILE</code> gives those back after the grants are checked; a
-call not recorded in its place stops the run with E616. No tool-calling door
-exists yet, so the door this stubs is the one a tool reaches a program
-through today: Python.</p>
-<p><strong><code>velaris verify</code></strong> reads an attestation or a receipt - a Statement, JSON
-Lines of them, a DSSE envelope or a Sigstore bundle - refuses any type but
-capability/v1 and receipt/v1 under either name, a predicate without its
-type's shape, and a key given twice, reads a subject only inside <code>--root</code>,
-and checks a bundle's signature against <code>--identity</code>. <code>mcp-verify</code> checks a
-tool manifest signed as bytes, which names no predicate type, so nothing in
-it changed.</p>
-<p><code>check_receipts.py</code> holds each shape of difference and each refusal against
-real runs.</p>
-<h3 id="promises-exercised-and-what-cannot-occur">Promises exercised, and what cannot occur <a class="anchor" href="#promises-exercised-and-what-cannot-occur" aria-label="Link to this section">#</a></h3>
-<ul>
-<li><strong><code>velaris test --from-contracts</code></strong> asks the prover for up to <code>--count</code>
-argument lists each function's <code>requires</code> allows - the least and greatest
-value of each whole number, text length and list length first - and runs
-the function on each, interpreted, with no effect granted; a function that
-declares an effect is refused. <code>check_from_contracts.py</code>: a false <code>ensures</code>
-the prover left to runtime is broken by the witness at the requires'
-boundary; the true one passes; effects are refused; a witness that never
-returns is stopped. Stopping one raced its own stop file on Windows -
-the timer thread writing it while the call's end removed it, which
-WinError 32 refuses - and ended the command in a traceback about one run
-in three; writer and remover now share a lock. The suite's spinning
-witness was rewritten to spin whatever the prover picks, so the race is
-met on every run rather than sometimes.</li>
-<li><strong><a href="structurally-impossible.html">docs/structurally-impossible.md</a></strong>:
-CWE-78, CWE-95 and CWE-94, CWE-502, CWE-200 by the route of a secret in a
-path, and CWE-117, each with the grant that would undo it, and CWE-89 under
-"not structurally impossible": <code>db.vel</code>'s <code>run</code> takes SQL as text and its
-<code>count</code> builds a query with <code>format</code>. Parameterized queries change <code>run</code>'s
-signature and are left for 9.0. <code>check_impossible.py</code> tries each class, and
-fails if the page lists one it does not try.</li>
-<li><strong>CSV and logs</strong>, as the compatibility lines say. <code>check_properties.py</code>
-gains a sixth property, <code>fields(line_of(row)) == row</code> over rows of commas,
-quotes, CR and LF. <code>fields</code> and <code>rows_of</code> read a text holding no double
-quote with <code>split</code>, as 8.2.1's <code>fields</code> was: the character-by-character
-scan runs only where a quote makes it necessary. Without that path a long
-line cost about a hundred times what it did at 8.2.1, and <code>fuzz_parsers.py</code>
-stopped its CSV target for making no progress for 60 seconds.</li>
-</ul>
-<h3 id="benchmark-categories-14-and-15">Benchmark categories 14 and 15 <a class="anchor" href="#benchmark-categories-14-and-15" aria-label="Link to this section">#</a></h3>
-<p>Category 14, a skill supply chain: three agent skills whose helper - a
-"telemetry" call, an "update check" two helpers down, a "setup" step - reads
-a credential and posts it to a second endpoint, and a control that reads one
-ordinary file. Velaris caught all three before running: <code>velaris audit</code> names
-the net effect none of the stated tasks needs, the <code>.env</code> and <code>.pem</code> reads are
-refused with E318 inside a broad <code>fs:read</code> grant, and the environment read
-does not compile (E560). Deno's permissions stopped each send while running,
-and each program swallowed the denial; Python sent all three.</p>
-<p>Category 15, a hallucinated dependency: three programs importing a library
-the model invented, and a control importing one that exists (vendored for
-Velaris and Python, served by a local index for Deno, so no run reaches the
-network). Velaris refuses each import before running (E512), as <code>deno check</code>
-does; Python stops with ModuleNotFoundError when the import runs.</p>
-<p>Over the 76 programs - 66 dangerous, 10 controls - Velaris caught 52 before
-running and 12 while running and missed 2; Deno 8, 34 and 24; Python 0, 31
-and 35; no tool flagged a control. The 68 programs of categories 1 to 13 keep
-the verdict each tool gave them at 8.2.0. Two of them read differently:
-06d's evidence names E520 once, where the file 8.0.0 wrote named it twice,
-and 13a's names the refused read as a credential location, a wording of the
-runner. Ten consecutive full runs wrote identical <code>RESULTS.md</code> and
-<code>results.json</code>; README's tables, THREAT_MODEL.md's figures and the paper's
-were written from them.</p>
-<h3 id="the-actions-permissions-ratchet">The Action's permissions ratchet <a class="anchor" href="#the-actions-permissions-ratchet" aria-label="Link to this section">#</a></h3>
-<p>With <code>permissions-ratchet: "true"</code>, on a pull request the Action compares
-every workflow's <code>permissions:</code> blocks with the base branch's and fails on a
-widening - a scope's level rising, a block removed so a job takes the
-repository's default, a new job or workflow that grants anything - naming the
-file and line; a narrowing is reported. It reads the YAML shapes a
-<code>permissions:</code> value takes with no dependency, and a file it cannot read with
-confidence fails the step. It is the one input that helps a repository with
-no <code>.vel</code> file. <code>check_permissions.py</code>: 30 base and head fixtures, the reader
-against PyYAML, the command against real git repositories, and the step's
-bash.</p>
-<h3 id="the-crosswalk">The crosswalk <a class="anchor" href="#the-crosswalk" aria-label="Link to this section">#</a></h3>
-<p><a href="crosswalk.html">docs/crosswalk.md</a> maps each of README's five guarantees
-and each row of THREAT_MODEL.md's Known open table onto the OWASP Top 10 for
-Agentic Applications, the OWASP Agent Control Standard, AIUC-1 and the NIST AI
-RMF 1.0, one row per control, 151 rows. No row says enforced or recorded:
-every control asks for more than the refusal or the record Velaris makes, and
-the partial rows say which part is covered. The Agent Control Standard is a
-wire specification Velaris does not implement, so all 16 of its rows are not
-addressed. <code>check_docs.py</code> holds the page's guarantees to README's table and
-its known-open items to THREAT_MODEL.md's, both ways.</p>
-<h3 id="housekeeping-2">Housekeeping <a class="anchor" href="#housekeeping-2" aria-label="Link to this section">#</a></h3>
-<p>The monthly workflow ran by hand before this release (run 34978389207).
-Fuzzing, the pool soak and the differential against 8.2.0 passed. Three jobs
-failed, all on faults of the harness, each fixed here:</p>
-<ul>
-<li><strong>The report job</strong> opened the first surviving mutant's issue and then ran
-<code>gh issue comment -1</code>: every mutant of a function had the same title, and a
-just-opened issue was remembered as <code>-1</code>. <code>open_issues.py</code> now keeps the
-number gh gives, and <code>check_mutants.py</code> titles each mutant by line and
-operator; <code>check_workflows.py</code> holds both. The other 65 surviving mutants'
-issues were opened with the fixed script from the run's own reports.</li>
-<li><strong><code>check_urls.py</code></strong> asked identifiers the documents quote - a sigstore
-identity, the OIDC issuers, the Software Heritage API's POST endpoints, a
-placeholder repository - and called them broken. It leaves those out now.</li>
-<li><strong>The sanitizer build</strong> stopped inside CPython 3.12.11's own tokenizer on
-UndefinedBehaviorSanitizer's pointer-overflow check; that one check is left
-out of the build. It is verified only by the next monthly run.</li>
-</ul>
-<p>Issues #21 and #22 stay open until a monthly run passes.</p>
-<p>The mutation job made 521 mutants of the functions a guarantee rests on in
-<code>budget.py</code>, <code>effects.py</code>, <code>prover.py</code> and <code>wrappers.py</code>, ran 191 of them in
-its 90 minutes, and 67 survived (66 issues: two differ only in the column on
-one line). <code>check_mutant_kills.py</code> holds a test for each. Sixty fail with
-their mutant applied, and so do two sites on the same lines the sample never
-ran - checked against the mutants at 9972e41, where the run found them, with
-<code>check_mutants.py --only MODULE:LINE:OPERATOR --killers check_mutant_kills.py</code>. Seven change nothing a caller can observe: six turn
-<code>return False</code> into <code>return None</code> where every caller tests only the result's
-truth, and one flips what <code>uninterpreted_in</code> says of a value that is not a
-Z3 expression, which no program that type-checks reaches since the fix
-above. The suite's docstring gives the reason for each. <code>check_mutants.py</code>
-gains <code>--only</code> and <code>--killers</code>, and lists the suite among the killers of the
-four modules. The test written for <code>uninterpreted_in</code> is what found the
-prover's fault above.</p>
-<h3 id="the-adversarial-pass-2">The adversarial pass <a class="anchor" href="#the-adversarial-pass-2" aria-label="Link to this section">#</a></h3>
-<p>On eval, receipts diff, replay, witnesses, the log sinks and the verifier,
-kept as <code>check_adversarial.py</code> EV1-EV4, RD1-RD3, RP1-RP2, WT1, LG1-LG2 and
-VF1-VF2. It found one thing to fix before release: <code>velaris verify</code> and
-<code>receipts diff</code> printed text from the file they read - a subject name, a
-declassification reason - as it was, so a crafted receipt could print a line
-reading "clean: no difference". Both now print that text through the same
-escaping the log uses. Refused, each tried: grant spellings eval does not
-take (<code>IO,NET</code>, <code>net@0</code>, <code>io, env</code>, <code>fs:read@2</code>); a program writing its own
-receipt's path; <code>VELARIS_CHECK_CHILD</code> in eval's environment; a receipt naming
-other bytes; subject names leaving replay's directory (<code>..</code>, <code>&lt;stdlib&gt;/../..</code>,
-absolute, backslashes); an eval receipt widened to net; a witness run leaving
-the process's budget changed; U+2028, NEL, CR, an OSC 8 escape, DEL and NUL in
-a logged value; and a predicate type that is velaris.dev, upper-cased, given
-a trailing slash, padded, a list, null, or given twice.</p>
-<h3 id="known-open-3">Known open <a class="anchor" href="#known-open-3" aria-label="Link to this section">#</a></h3>
-<ul>
-<li><strong>macOS confinement is verified only on CI</strong>: <code>sandbox-exec</code> is used when
-a trial of its profile starts Python, and <code>none</code> is written otherwise.</li>
-<li><strong>No confinement level holds reads, UDP or a Unix socket</strong>, and
-<code>job-one-process</code> holds neither files nor the network (docs/eval.md).</li>
-<li><strong><code>velaris review</code> still has no check ceiling</strong> (8.2.1's entry).</li>
-<li><strong><code>db.vel</code> builds SQL from text</strong>; parameterized queries are 9.0.</li>
-<li><strong><code>csv.vel</code> assembles a quoted field one character at a time.</strong> Text is
-immutable, so <code>field = field + c</code> copies what it has each turn: a single
-quoted field of n characters costs n² work. Ordinary data never meets it -
-a line with no double quote takes <code>split</code>, and a quoted field is usually
-short - but one field of 16,000 double quotes takes seconds, and under the
-fuzzer's tracer (<code>sys.settrace</code>, CPython before 3.12) long enough that the
-run is stopped for making no progress. Reading a field as a slice of the
-line it came from would be linear, but <code>slice</code> can fail and nothing in the
-standard library handles it yet; that, or a <code>join</code> builtin, is 9.0.
-<code>fuzz_parsers.py</code> multiplies its no-progress budget before 3.12, where
-coverage is <code>sys.settrace</code> rather than <code>sys.monitoring</code>, so that a slow
-input is not reported as a hang; a child that is really stuck shows no
-new input at all and is still caught.</li>
-<li><strong>Two lists equal in every item can be refused with E700.</strong> The prover
-compares two <code>List of Int</code> values as equal arrays and equal lengths, which
-asks more than that they hold the same items, so a true promise such as
-<code>requires length(a) == 0 and length(b) == 0 ensures result == 1</code> over
-<code>if a == b { return 1 } return 0</code> is refused, with two empty lists as its
-counterexample. It is a false refusal, not a false proof, it predates 8.3,
-and a record's <code>List of Int</code> field now compares the same way.</li>
-<li><strong>Kyverno matches one predicate type per attestation entry</strong>: an image
-attested before 8.3 is admitted by the Kyverno policy only once attested
-again with the new type. The OPA policy admits both.</li>
-<li><strong>The in-toto predicate registration drafts</strong> (velaris-spec
-REGISTRY_SUBMISSION.md, now naming the new type) have not been sent.</li>
-<li><strong>The documentation site as reference documentation</strong> - navigation,
-search, versioned builds - is 8.3.1.</li>
-</ul>
-<h3 id="measured-2">Measured <a class="anchor" href="#measured-2" aria-label="Link to this section">#</a></h3>
-<p>Measured by <code>perf_gates.py --against v8.2.1</code> on Windows 11 (10.0.26200,
-AMD64, 16 CPUs, 7% busy when it began), Python 3.13.13, z3-solver 5.1.0 and
-llvmlite 0.49.0: medians of 5 runs after one warm-up. Wall-clock figures;
-another machine will differ, and this one is slower at a cold start than the
-machine 8.2.0 was measured on.</p>
-<div class="table-wrap" tabindex="0"><table>
-<thead><tr><th>Measure</th><th>8.3.0</th></tr></thead>
-<tbody>
-<tr><td>Cold start, <code>velaris --version</code></td><td>202 ms</td></tr>
-<tr><td>Cold start, <code>velaris check</code> of a one-line file</td><td>421 ms</td></tr>
-<tr><td>Check, per 1,000 lines (a 1,013- and a 10,013-line program)</td><td>1.05 s and 0.97 s; 0.06 s and 0.05 s without proofs</td></tr>
-<tr><td>Proof time per example with contracts, p50 / p95</td><td>16 ms / 396 ms, over 56 files</td></tr>
-<tr><td>Native code on <code>examples/bench.vel</code>: compile, and llvmlite's import</td><td>56 ms, and 49 ms; <code>burn</code> compiled</td></tr>
-<tr><td><code>examples/bench.vel</code>, native / <code>--no-native</code></td><td>4.40 s / 11.25 s, 2.56 times faster, 6.85 s saved</td></tr>
-<tr><td><code>--lite</code> build</td><td>there is none</td></tr>
-<tr><td>Pool worker's memory, after 1 run and after 1,000 more</td><td>25.6 MB, 26.6 MB</td></tr>
-<tr><td>z3 or llvmlite imported by <code>velaris --version</code>, or by <code>check</code> of a program with no promise</td><td>neither</td></tr>
-<tr><td>Importing z3 when a command needs it</td><td>+134 ms at cold start</td></tr>
-<tr><td>Importing llvmlite when a command needs it</td><td>+162 ms at cold start</td></tr>
-<tr><td>Pure numeric against v8.2.1, native (<code>bench.vel</code> and an integer loop)</td><td>4.40 s against 4.89 s, -10.0% (the gate allows +25%)</td></tr>
-<tr><td>Pure numeric against v8.2.1, interpreted</td><td>13.80 s against 12.95 s, +6.6%</td></tr>
-</tbody></table></div>
-<p><code>check_differential.py</code> against v8.2.1: of the 97 examples 36 differ, each in
-the <code>reference:</code> line alone and each named above; velaris-spec's 456
-conformance cases give the same verdicts; and of the quick benchmark's 15
-programs the two new categories' are the only ones v8.2.1 has no verdict for.</p>
-<p><code>velaris stats --ffi examples</code>: 106 programs, 70 of which compile. 8 call
-Python, and all 8 name every module they call (a grant like <code>ffi:math</code>);
-none names a module while running. The modules named: <code>builtins</code> in 4
-(native), <code>datetime</code> in 3, <code>math</code> in 3 (native), <code>sqlite3</code> in 3, <code>base64</code>
-in 1.</p>
-<p>Proven share over examples/ and stdlib/: 70 of 99 promise-carrying
-functions (71%), as at 8.2.0. The prover fix above leaves a promise past a
-comparison of two maps or lists to runtime, and no example or standard
-library function has one.</p>
-<p>velaris-spec 0.11.0 records the new predicate type names and accepts the
-earlier ones for verification, adds <code>stop</code> and <code>run_parameters.profile</code> to
-the receipt, and adds section 8.8 (comparing receipts) and 8.9 (the eval
-profile). Its <code>tools/check_sync.py</code> finds SPEC.md sections 6, 7 and 7.1 and
-both predicate schemas as it quotes them.</p>
-<h2 id="821---two-things-that-should-have-been-red">8.2.1 - Two things that should have been red <a class="anchor" href="#821---two-things-that-should-have-been-red" aria-label="Link to this section">#</a></h2>
-<p>A patch release with no features. Under 8.2.0, printing one kind of
-counterexample ended in a Python traceback instead of its error, and the
-release workflow's Marketplace job ended green having published nothing.
-Two gaps are closed with them: <code>velaris capabilities check</code> gets the check
-ceiling, and the perf gate no longer accepts fewer than three runs a side.</p>
-<p>compatibility: <code>velaris capabilities check</code> runs under the ceiling <code>check</code> and <code>audit</code> have had since 8.0 - 60 seconds and 2048 MB, raised with <code>--check-timeout</code> and <code>--check-memory-mb</code>, removed with <code>--no-check-ceiling</code> - and a check past it stops with E613 or E614 and exit 2. A tree whose check takes longer than 60 seconds needs <code>--check-timeout</code>; this repository's takes 0 to 3 seconds on each CI leg. No program that compiled under 8.2.0 is refused, and no report, audit or proof changes.
-api: against 8.2.0 the command line moved in one place: <code>velaris capabilities</code> takes <code>--check-timeout</code> and <code>--check-memory-mb</code>, as <code>check</code> and <code>audit</code> do.</p>
-<h3 id="what-was-wrong">What was wrong <a class="anchor" href="#what-was-wrong" aria-label="Link to this section">#</a></h3>
-<p><strong>A counterexample that could not name a value ended in a traceback.</strong>
-When the prover finds that a call can break its callee's <code>requires</code>
-(E701), the message gives each argument's value in the counterexample. An
-argument the prover does not translate - in the program found, <code>put(...)</code>
-of a map - has no value in the model, and printing it asked Z3 to evaluate
-nothing: <code>check</code>, <code>proofs</code>, <code>audit</code> and the library's <code>check()</code> each ended
-in <code>AttributeError: 'NoneType' object has no attribute 'as_ast'</code> instead of
-E701. The verdict was reached before the printing, and nothing reported
-proven depends on it. Such a value is now shown as <code>&lt;unknown&gt;</code>:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>[E701] this call can break a promise: 'f0' requires false, but 'caller' can call it with p0 = &lt;unknown&gt; - proven without running the program</code></pre></div>
-<p>In that program <code>proofs</code> reports <code>abs_of</code> proven and <code>f0</code> and <code>caller</code>
-checked at runtime. <code>fuzz_parsers.py 30</code> found it under seeds 493132804
-and 769080785, on test.yml's macOS legs for f64552f, which is why no
-release followed that commit; both seeds reproduce it at 8.2.0 on Python
-3.13 and 3.10. The printing dates from 0.13. Which releases could reach it
-was not traced.</p>
-<ul>
-<li><code>check_hostile.py</code> holds the program as found (section 1c: <code>check</code>,
-<code>proofs</code>, <code>audit</code> and <code>velaris.check()</code>).</li>
-<li><code>fuzz_parsers.py</code> runs <code>FIXED_SEEDS</code> after its own seed whenever it is
-given a number of iterations and no <code>--seed</code>, with Python's hash seed
-fixed as <code>--seed</code> fixes it, so every leg runs the two seeds. Run against
-8.2.0's prover, it reports the AttributeError under each of them.</li>
-</ul>
-<p><strong>The Marketplace job ended green having published nothing.</strong> The release
-workflow's <code>vscode</code> job had run with <code>continue-on-error</code> since 2.22, and
-its publish step exited 0 after three Marketplace timeouts. 8.2.0's release
-run (34923131050) reported the job a success with NOT PUBLISHED in its
-summary, and the extension 8.2.0 did not reach the Marketplace in that run.
-Because the job had succeeded, <code>gh run rerun --failed</code> had nothing to
-re-run.</p>
-<p>The job now has no <code>continue-on-error</code>. A timeout is retried up to five
-times, 30, 60, 120, 240 and 480 seconds apart; a failure that is not an
-outage (no token, a token or a manifest the Marketplace refuses) is not
-retried. Whatever the publish step did, the job's last step runs
-<code>release_checks.py published vscode &lt;version&gt; --require --timeout 900</code>,
-which asks the Marketplace until it lists the version and exits 1 if it
-does not, so the job is red whenever the extension is not listed at its
-end. The jobs after it run either way, as before. <code>check_release.py</code> runs
-the job's steps in bash with stand-ins for <code>vsce</code>, <code>npm</code> and <code>sleep</code> -
-every attempt timing out, timeouts that clear, a version listed after a
-timeout, a refused token, no token, a version already listed - and runs a
-failed Marketplace publish, and its re-run, through the job-by-job
-simulation.</p>
-<h3 id="also">Also <a class="anchor" href="#also" aria-label="Link to this section">#</a></h3>
-<ul>
-<li><strong><code>velaris capabilities check</code> stops at the check ceiling.</strong> It compiled
-every program under the directory in its own process with no ceiling, so
-a program built to stall the type checker held it, and the Action's
-ratchet step, until the job's own timeout; 8.2 listed this as known
-open. <code>check_ratchet.py</code> adds a map literal nested 22 deep to a tree and
-holds the check to E613 after <code>--check-timeout 2</code> and after
-<code>--check-timeout 5</code>. THREAT_MODEL.md's known-open table no longer lists
-it. <code>velaris review</code> has the same gap and stays listed; the Action runs it
-in its pull-request comment step.</li>
-<li><strong>The perf gate compares medians of three runs.</strong> release.yml's <code>perf</code>
-job already ran <code>perf_gates.py --runs 3</code>, and each side's figure was the
-median of its three runs, taken in turns (8.2.0's job logged "round 3 of
-3 done"). What changes is that <code>--against</code> refuses fewer than three runs,
-so no gate compares one run with one run. The limit is still 25%.
-<code>check_release.py</code> holds the gate to one slow or one fast run on either
-side.</li>
-</ul>
-<p>velaris-spec is unchanged.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#831---the-documentation-as-a-site">8.3.1 - The documentation, as a site</a></li><li><a href="#83---what-a-run-can-show">8.3 - What a run can show</a></li><li><a href="#821---two-things-that-should-have-been-red">8.2.1 - Two things that should have been red</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#84---the-kernel-holds-the-line">8.4 - The kernel holds the line</a></li><li><a href="#831---the-documentation-as-a-site">8.3.1 - The documentation, as a site</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

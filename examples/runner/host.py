@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""A host for a Velaris program that calls tools: the whole protocol.
+"""A host for a Sabline program that calls tools: the whole protocol.
 
     python examples/runner/host.py examples/runner/digest.vel
     python examples/runner/host.py examples/runner/digest_outside.vel
 
 It offers two tools, `search` and `send_email` (tools.json beside this
-file), starts the program with `velaris run --tools`, and answers each call
+file), starts the program with `sabline run --tools`, and answers each call
 on the run's standard input. It sends no mail: `send_email` appends to the
 list this prints at the end, which is how you can see that the second
 program's mail was refused before this host ever heard of it.
@@ -38,13 +38,13 @@ def search(arguments: dict[str, Any]) -> str:
     return NOTES.get(arguments["query"], "nothing found")
 
 
-def velaris_command() -> list[str]:
-    """This checkout's velaris.py when the example is run from one, else the
+def sabline_command() -> list[str]:
+    """This checkout's sabline.py when the example is run from one, else the
     installed command."""
-    launcher = os.path.join(ROOT, "velaris.py")
+    launcher = os.path.join(ROOT, "sabline.py")
     if os.path.exists(launcher):
         return [sys.executable, launcher]
-    return [sys.executable, "-m", "velaris"]
+    return [sys.executable, "-m", "sabline"]
 
 
 def host(program: str, receipt: str | None = None) -> int:
@@ -55,7 +55,7 @@ def host(program: str, receipt: str | None = None) -> int:
         return f"queued as message {len(outbox)}"
 
     tools = {"search": search, "send_email": send_email}
-    command = velaris_command() + [
+    command = sabline_command() + [
         "run", program, "--tools", os.path.join(HERE, "tools.json"),
         "--allow", BUDGET]
     if receipt:

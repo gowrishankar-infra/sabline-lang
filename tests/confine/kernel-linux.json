@@ -1,6 +1,6 @@
 {
   "platform": "linux",
-  "velaris": "8.4.0",
+  "sabline": "8.4.0",
   "kernel": 19,
   "language_only": 20,
   "not_applicable": 5,

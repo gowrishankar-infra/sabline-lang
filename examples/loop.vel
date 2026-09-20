@@ -1,4 +1,4 @@
-// v0.4: Velaris can finally count. Loops + changeable variables.
+// v0.4: Sabline can finally count. Loops + changeable variables.
 
 fn sum_to(n: Int) -> Int {
     let total = 0

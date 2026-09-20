@@ -2,8 +2,8 @@
 """The capability ratchet: a widening must never pass, and a change that
 does not widen must never fail.
 
-`velaris capabilities check` holds a tree to the surface declared in
-velaris.capabilities. The point of it is gradual change - capability
+`sabline capabilities check` holds a tree to the surface declared in
+sabline.capabilities. The point of it is gradual change - capability
 assembled across many commits, each of which looks fine on its own -
 and that is only caught if every commit is compared with the declared
 baseline, never with the commit before it. So this suite does not
@@ -13,7 +13,7 @@ and it holds a previous-commit comparison beside it to show where that
 one goes blind.
 
 The scenarios are data (4.1). Every entry of DERIVE, CHECKS, SEQUENCES,
-WRITE_GUARD, COVERING, REDUCE and BOUNDS is also a case in velaris-spec's
+WRITE_GUARD, COVERING, REDUCE and BOUNDS is also a case in sabline-spec's
 conformance corpus (tests/L3), written out by build_conformance.py, with
 the expectation written here; main() runs each against this
 implementation first, then asserts what only this implementation
@@ -36,9 +36,9 @@ from pathlib import Path
 from typing import Any, cast
 
 HERE = Path(__file__).parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 isolate("check_ratchet")              # its own directory
@@ -63,7 +63,7 @@ class Tree:
     """A scratch directory of .vel files, optionally a git repository."""
 
     def __init__(self, files: dict[Any, Any], git: bool = False) -> None:
-        self.root = Path(tempfile.mkdtemp(prefix="velaris-ratchet-"))
+        self.root = Path(tempfile.mkdtemp(prefix="sabline-ratchet-"))
         self.git_repo = git
         if git:
             self.git("init", "-q")
@@ -83,17 +83,17 @@ class Tree:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8", newline="\n")
 
-    def velaris(self, *words: Any) -> Any:
-        return subprocess.run([sys.executable, str(VELARIS), *words],
+    def sabline(self, *words: Any) -> Any:
+        return subprocess.run([sys.executable, str(SABLINE), *words],
                               cwd=str(self.root), capture_output=True,
                               text=True, encoding="utf-8", timeout=600)
 
     def init(self, *more: Any, root: str = ".") -> Any:
-        return self.velaris("capabilities", "init", root, *more)
+        return self.sabline("capabilities", "init", root, *more)
 
     def check(self, root: str = ".") -> tuple[Any, ...]:
         """(exit code, the JSON result, or {})"""
-        done = self.velaris("capabilities", "check", root, "--json")
+        done = self.sabline("capabilities", "check", root, "--json")
         try:
             return done.returncode, json.loads(done.stdout)
         except ValueError:
@@ -101,7 +101,7 @@ class Tree:
                                      "_stderr": done.stderr}
 
     def review(self, ref: Any) -> Any:
-        done = self.velaris("review", "--against", ref, "--json")
+        done = self.sabline("review", "--against", ref, "--json")
         try:
             return json.loads(done.stdout)
         except ValueError:
@@ -116,7 +116,7 @@ class Tree:
         self.git("commit", "-q", "-m", message)
 
     def baseline_path(self, root: str = ".") -> Path:
-        return self.root / root / "velaris.capabilities"
+        return self.root / root / "sabline.capabilities"
 
     def baseline(self, root: str = ".") -> dict[Any, Any]:
         return cast("dict[Any, Any]", json.loads(
@@ -124,7 +124,7 @@ class Tree:
 
     def set_baseline(self, doc: dict[Any, Any], root: str = ".") -> None:
         self.baseline_path(root).write_text(
-            velaris.capabilities_text(doc), encoding="utf-8", newline="\n")
+            sabline.capabilities_text(doc), encoding="utf-8", newline="\n")
 
     def close(self) -> None:
         shutil.rmtree(self.root, ignore_errors=True)
@@ -142,7 +142,7 @@ def grant_finding(result: dict[Any, Any], grant: str) -> dict[Any, Any]:
 
 # ---- what a scenario expects, in the corpus's words -------------------------
 #
-# A widening is reported as velaris-spec 9.6 requires: the grant, count or
+# A widening is reported as sabline-spec 9.6 requires: the grant, count or
 # function, the program, and which of W1 to W5 it fails. Nothing else in
 # a check's report is part of a case.
 
@@ -451,7 +451,7 @@ SEQUENCES: list[dict[str, Any]] = [
          + [step("the baseline edited to accept 1000 requests a run",
                  edit={"surface": {"counts": {"net": 1000}},
                        "programs": {"poll.vel": {"counts": {"net": 1000}}}}),
-            step("velaris.capabilities deleted", delete_baseline=True,
+            step("sabline.capabilities deleted", delete_baseline=True,
                  expect=CANNOT)]),
 ]
 
@@ -733,22 +733,22 @@ CHECKS = [
     # ---- versions, and baselines that cannot be read
     case("older-baseline-version", "a baseline from an older producer is "
          "compared, not refused", {"poll.vel": pinger(3)},
-         edit={"velaris_version": "1.0.0"}, spec=["9.2", "9.6"]),
+         edit={"sabline_version": "1.0.0"}, spec=["9.2", "9.6"]),
     case("newer-baseline-version", "...and one from another version the "
          "same way", {"poll.vel": pinger(3)},
-         edit={"velaris_version": "99.0.0"}, spec=["9.2"]),
+         edit={"sabline_version": "99.0.0"}, spec=["9.2"]),
     case("version-never-hides-widening", "...but another version never "
          "hides a widening", {"poll.vel": pinger(3)},
          {"poll.vel": pinger(4)},
          widened(count("net", "poll.vel", 4, ["W2", "W4"])),
-         edit={"velaris_version": "1.0.0"}, spec=["9.6"]),
-    case("baseline-deleted", "with velaris.capabilities deleted the check "
+         edit={"sabline_version": "1.0.0"}, spec=["9.6"]),
+    case("baseline-deleted", "with sabline.capabilities deleted the check "
          "fails rather than passing: deleting the file does not turn the "
          "check off", {"poll.vel": pinger(3)}, expect=CANNOT,
          baseline={"absent": True}, spec=["9.6"]),
-    case("baseline-provisional-v0", "a velaris.capabilities/0 baseline "
+    case("baseline-provisional-v0", "a sabline.capabilities/0 baseline "
          "cannot be compared", {"poll.vel": pinger(3)}, expect=CANNOT,
-         baseline={"text": '{"schema": "velaris.capabilities/0", '
+         baseline={"text": '{"schema": "sabline.capabilities/0", '
                            '"programs": []}\n'}, spec=["9", "9.6"]),
     case("baseline-not-json", "a baseline that is not JSON cannot be "
          "compared", {"poll.vel": pinger(3)}, expect=CANNOT,
@@ -756,7 +756,7 @@ CHECKS = [
     case("baseline-count-in-grant", "a baseline holding a count in a grant "
          "cannot be compared", {"poll.vel": pinger(3)}, expect=CANNOT,
          baseline={"text": json.dumps(
-             {"schema": "velaris.capabilities/1", "velaris_version": "4.1.0",
+             {"schema": "sabline.capabilities/1", "sabline_version": "4.1.0",
               "date": "2026-09-11",
               "surface": {"grants": ["net:h.example@3"], "counts": {}},
               "programs": []}) + "\n"}, spec=["9.2", "9.6"]),
@@ -860,7 +860,7 @@ CHECKS = [
          widened(grant("fs:read", ["W1", "W3"], "read.vel")), spec=["9.3"],
          known_limit="A change that does not widen, reported as one. The "
          "program reads data/in.csv as before, but a parameter is not "
-         "fixed text (velaris-spec 9.3 step 4), so the grant it needs is "
+         "fixed text (sabline-spec 9.3 step 4), so the grant it needs is "
          "fs:read, any path."),
     case("known-limit-backslash-path", "a path written with a backslash is "
          "covered only by the same text, so data\\in.csv is outside a "
@@ -873,14 +873,14 @@ CHECKS = [
          "Windows. A path holding a backslash is compared whole, because "
          "on Windows data/..\\..\\x leaves data; the price is that "
          "data\\in.csv, which is inside data there, is reported too "
-         "(velaris-spec open question Q7)."),
+         "(sabline-spec open question Q7)."),
 ]
 
 
-# ---- DERIVE: the baseline a tree needs (velaris-spec 9.3) --------------------
+# ---- DERIVE: the baseline a tree needs (sabline-spec 9.3) --------------------
 #
 # What a writer must record for `tree`: the surface and every program's
-# entry. velaris_version and date are the writer's own.
+# entry. sabline_version and date are the writer's own.
 
 def entry(file: Any, grants: Any, counts: Any, functions: Any) -> dict[str, Any]:
     return {"file": file, "grants": list(grants), "counts": dict(counts),
@@ -1045,7 +1045,7 @@ WRITE_GUARD: list[dict[str, Any]] = [
 ]
 
 
-# ---- the rules underneath (velaris-spec 9.4, 9.5, 9.2 rule 5) ----------------
+# ---- the rules underneath (sabline-spec 9.4, 9.5, 9.2 rule 5) ----------------
 
 COVERING = [
     ("fs:read:data", "fs:read:data/x.csv", True),
@@ -1139,10 +1139,10 @@ BOUNDS = [
 
 def apply_edit(doc: dict[Any, Any], edit: dict[Any, Any]) -> dict[Any, Any]:
     """A baseline as a person edits it: each key of `surface` and of a
-    program's entry replaced, and velaris_version when given."""
+    program's entry replaced, and sabline_version when given."""
     doc = copy.deepcopy(doc)
-    if "velaris_version" in edit:
-        doc["velaris_version"] = edit["velaris_version"]
+    if "sabline_version" in edit:
+        doc["sabline_version"] = edit["sabline_version"]
     doc["surface"].update(edit.get("surface", {}))
     for file, fields in edit.get("programs", {}).items():
         next(p for p in doc["programs"] if p["file"] == file).update(fields)
@@ -1272,28 +1272,28 @@ def main() -> int:
         print()
         print("the rules underneath")
         print("-" * 62)
-        gp = velaris._grant_parts
+        gp = sabline._grant_parts
         wrong: list[tuple[Any, ...]] = [(b, c, want) for b, c, want in COVERING
-                                        if velaris._covers(gp(b), gp(c)) != want]
+                                        if sabline._covers(gp(b), gp(c)) != want]
         ok(f"{len(COVERING)} covering cases: paths by whole components, "
            f"backslashes whole, wildcards one label deep, ports, modules",
            not wrong, wrong)
-        wrong = [(given, want, velaris._reduce_grants(given))
+        wrong = [(given, want, sabline._reduce_grants(given))
                  for given, want in REDUCE
-                 if velaris._reduce_grants(given) != want]
+                 if sabline._reduce_grants(given) != want]
         ok(f"{len(REDUCE)} reduced grant lists keep one spelling of a path "
            f"and drop what another grant covers", not wrong, wrong)
 
         def bound(source: Any) -> dict[Any, Any]:
-            funcs, _ = velaris.load_program("_bound.vel", source)
-            b, _ = velaris._operation_bounds(funcs)
-            return {k: velaris._as_count(v) for k, v in b["main"].items()}
+            funcs, _ = sabline.load_program("_bound.vel", source)
+            b, _ = sabline._operation_bounds(funcs)
+            return {k: sabline._as_count(v) for k, v in b["main"].items()}
 
         wrong = []
         for _, label, source, want in BOUNDS:
             try:
                 got = bound(source)
-            except velaris.VelarisError as e:
+            except sabline.SablineError as e:
                 got = f"does not compile: {e.message}"
             if got != want:
                 wrong.append((label, got, want))
@@ -1374,7 +1374,7 @@ def main() -> int:
            grant_finding(r, "fs:write:data/in.csv").get("new_effect")
            is False, r.get("findings"))
         ok("a module built while running is flagged by the audit too "
-           "(ffi_any)", velaris.audit(COMPUTED_MODULE).ffi_any is True)
+           "(ffi_any)", sabline.audit(COMPUTED_MODULE).ffi_any is True)
         _, code, r = runs["loop-without-fixed-turns"]
         c = next((f for f in r.get("findings", []) if f["kind"] == "count"),
                  {})
@@ -1391,9 +1391,9 @@ def main() -> int:
         t, code, r = runs["reorder-and-reformat"]
         ok("reordering reports nothing at all, not even narrowing",
            not r.get("narrowed"), r.get("narrowed"))
-        fmt = t.velaris("fmt", "app.vel")
+        fmt = t.sabline("fmt", "app.vel")
         code, r = t.check()
-        ok("velaris fmt on it changes nothing either", fmt.returncode == 0
+        ok("sabline fmt on it changes nothing either", fmt.returncode == 0
            and code == 0 and not r.get("findings"), fmt.stderr or r)
         ok("the rearranged tree's baseline is the original's, bar the date",
            runs["imports-and-counts"][1]["surface"]
@@ -1404,7 +1404,7 @@ def main() -> int:
         ok("a program that stops compiling is noted", any(
             "does not compile" in n for n in r.get("notes", [])), r)
         _, code, r = runs["older-baseline-version"]
-        ok("a baseline from an older Velaris warns",
+        ok("a baseline from an older Sabline warns",
            any("older" in w for w in r.get("warnings", [])),
            r.get("warnings"))
         for vid in ("newer-baseline-version", "version-never-hides-widening"):
@@ -1412,7 +1412,7 @@ def main() -> int:
             ok(f"...{vid.replace('-', ' ')}: warned", bool(r.get("warnings")),
                r.get("warnings"))
         t, code, r = runs["baseline-deleted"]
-        none = t.velaris("capabilities", "check", ".")
+        none = t.sabline("capabilities", "check", ".")
         ok("check with no baseline says how to write one",
            none.returncode == 2 and "capabilities init" in none.stderr,
            none.stderr)
@@ -1422,13 +1422,13 @@ def main() -> int:
            and t.init().returncode == 1, again.stderr)
         t, code, r = runs["rules-named"]
         g = grant_finding(r, "net:evil.example.net")
-        ok("--json is velaris.capabilities-check/1, naming the edit that "
+        ok("--json is sabline.capabilities-check/1, naming the edit that "
            "would accept each widening",
-           r.get("schema") == "velaris.capabilities-check/1"
+           r.get("schema") == "sabline.capabilities-check/1"
            and r.get("widened") is True
            and 'add "net:evil.example.net" to surface.grants'
            in g.get("accept", []), g)
-        sarif = t.velaris("capabilities", "check", ".", "--sarif")
+        sarif = t.sabline("capabilities", "check", ".", "--sarif")
         try:
             log = json.loads(sarif.stdout)
         except ValueError:
@@ -1464,7 +1464,7 @@ def main() -> int:
         # job's own timeout. It now runs under check's and audit's ceiling.
         t = tree({"app.vel": HELLO})
         made = t.init()
-        given = t.velaris("capabilities", "check", ".", "--json",
+        given = t.sabline("capabilities", "check", ".", "--json",
                           "--check-timeout", "120", "--check-memory-mb", "4096")
         try:
             given_doc = json.loads(given.stdout)
@@ -1473,22 +1473,22 @@ def main() -> int:
         ok("with --check-timeout and --check-memory-mb given, a tree inside "
            "its surface passes, and --json is still the result",
            made.returncode == 0 and given.returncode == 0
-           and given_doc.get("schema") == "velaris.capabilities-check/1"
+           and given_doc.get("schema") == "sabline.capabilities-check/1"
            and given_doc.get("widened") is False,
            given.stderr or given.stdout)
-        unbounded = t.velaris("capabilities", "check", ".",
+        unbounded = t.sabline("capabilities", "check", ".",
                               "--no-check-ceiling")
         ok("--no-check-ceiling is accepted, as by check and audit",
            unbounded.returncode == 0 and "no widening" in unbounded.stdout,
            unbounded.stderr)
-        bad = t.velaris("capabilities", "check", ".", "--check-timeout", "0")
+        bad = t.sabline("capabilities", "check", ".", "--check-timeout", "0")
         ok("--check-timeout 0 is refused, as by check",
            bad.returncode == 2
            and "--check-timeout needs a whole number" in bad.stderr, bad.stderr)
         t.write({"stall.vel": STALL})
         for seconds in (2, 5):
             began = time.monotonic()
-            done = t.velaris("capabilities", "check", ".", "--json",
+            done = t.sabline("capabilities", "check", ".", "--json",
                              "--check-timeout", str(seconds))
             took = time.monotonic() - began
             ok(f"a program built to stall the type checker is stopped after "
@@ -1529,7 +1529,7 @@ def main() -> int:
                 "            print(w)\n"
                 "        }\n"
                 "    }")})
-            link = Path(tempfile.mkdtemp(prefix="velaris-link-")) / "repo"
+            link = Path(tempfile.mkdtemp(prefix="sabline-link-")) / "repo"
             made = False
             try:
                 if os.name == "nt":
@@ -1546,7 +1546,7 @@ def main() -> int:
                      "cannot make a junction or link here")
             else:
                 done = subprocess.run(
-                    [sys.executable, str(VELARIS), "review", "--against",
+                    [sys.executable, str(SABLINE), "review", "--against",
                      "HEAD", ".", "--json"], cwd=str(link / "sub"),
                     capture_output=True, text=True, encoding="utf-8",
                     timeout=600)

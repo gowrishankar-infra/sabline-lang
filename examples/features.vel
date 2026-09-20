@@ -1,4 +1,4 @@
-// v0.6: Velaris feels like a real language now.
+// v0.6: Sabline feels like a real language now.
 // Negative numbers, and / or / not, and lists - with a contract on top.
 
 fn biggest(xs: List of Int) -> Int

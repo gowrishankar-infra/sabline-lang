@@ -1,8 +1,8 @@
 // v2.25: reaching the outside world, visibly.
 //
-// velaris examples/ffi.vel --allow ffi:base64,builtins,datetime,io
+// sabline examples/ffi.vel --allow ffi:base64,builtins,datetime,io
 //
-// Velaris can call Python, which means it can reach every library
+// Sabline can call Python, which means it can reach every library
 // Python has - but only through a function that says 'uses ffi'. A
 // pure function still cannot do it, and neither can anything it
 // calls. The power is available; it is never hidden.
@@ -38,7 +38,7 @@ fn main() uses io, ffi {
             print(format("could not ask for the date: {}", why))
         }
     }
-    check base64_of("velaris") {
+    check base64_of("sabline") {
         ok e {
             print(format("base64: {}", e))
         }

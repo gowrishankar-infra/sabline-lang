@@ -1,7 +1,7 @@
 # How the compiler works
 
-The compiler is the package `velaris/`, one module per stage, in the order
-the compiler uses them (8.2; until 8.1.1 it was one file, `velaris.py`,
+The compiler is the package `sabline/`, one module per stage, in the order
+the compiler uses them (8.2; until 8.1.1 it was one file, `sabline.py`,
 in the same order - decisions/0001-split-the-file.md says why it was
 split). Read the modules in that order and you follow a program through
 the whole pipeline. This document is the map.
@@ -9,14 +9,14 @@ the whole pipeline. This document is the map.
     text -> lexer -> parser -> loader -> effects -> checker (types)
          -> termination -> prover -> native codegen -> runtime
 
-`velaris.py` at the top of the repository is a launcher: it puts this
-directory first on the path and runs `velaris.cli.main`. `import velaris`
-and the `velaris` command are what they were in 8.1.1; `check_api.py`
+`sabline.py` at the top of the repository is a launcher: it puts this
+directory first on the path and runs `sabline.cli.main`. `import sabline`
+and the `sabline` command are what they were in 8.1.1; `check_api.py`
 holds both to a golden.
 
 ## The modules, in order
 
-`velaris/__init__.py` imports them in the order of `_MODULES`, and a module
+`sabline/__init__.py` imports them in the order of `_MODULES`, and a module
 imports only modules before it. The few names a stage needs from a later
 one (seven, in `__forward__`) are bound after every module has loaded
 (`_bind_forward`). `tests/unit/test_pipeline_order.py` fails when a module
@@ -26,7 +26,7 @@ imports one after it.
 |---|---|
 | `version` | `VERSION`, `SITE` and `REFERENCE_URL`, where the package and its standard library are, `_launch_command` |
 | `predicates` | the predicate type names, the earlier names each is read as, `predicate_kind` |
-| `errors` | `VelarisError`, `ERROR_TABLE`, `REMOVED_ERRORS` |
+| `errors` | `SablineError`, `ERROR_TABLE`, `REMOVED_ERRORS` |
 | `lexer` | text to tokens |
 | `nodes` | the AST dataclasses (`Function`, `Call`, `Let`, `Closure`, ...) |
 | `parser` | tokens to the AST; `for` becomes `while`, inline functions are lifted |
@@ -38,16 +38,16 @@ imports one after it.
 | `values` | runtime values and `FailSignal` |
 | `wrappers` | `Secret of T` and `Money of CUR` over type text |
 | `budget` | `Budget`, every grant and refusal, the guarded opener, `checked_int`; from 8.5 the `tool` grants and `tool_pattern_matches` |
-| `tools` | the runner's first cut (8.5): `read_manifest` (velaris.tools/1), `schema_problem`, `held_by`, `ToolSession` - the door on standard input and output - and `run_tool` |
+| `tools` | the runner's first cut (8.5): `read_manifest` (sabline.tools/1), `schema_problem`, `held_by`, `ToolSession` - the door on standard input and output - and `run_tool` |
 | `effects` | the effect checker, and E204 |
 | `checker` | types, the Secret sink check (E560), the rules for `main` |
 | `termination` | whether each loop is shown to end |
 | `prover` | Z3: `check_proofs` |
 | `native` | llvmlite: `compile_native` |
 | `runtime` | the interpreter: `interpret`, `run_builtin` |
-| `witnesses` | `velaris test --from-contracts` |
+| `witnesses` | `sabline test --from-contracts` |
 | `editor` | `inspect_source`, `editor_answer`, `lsp_serve` |
-| `formatter` | `velaris fmt` |
+| `formatter` | `sabline fmt` |
 | `project` | `add`, `deps`, `verify`, `build`, `new` |
 | `session` | the REPL |
 | `results` | `CheckResult`, `AuditResult`, `RunResult`, `Problem` |
@@ -56,21 +56,21 @@ imports one after it.
 | `findings` | SARIF (`_SarifRun`, `sarif_check`, ...) and `InvocationLog` |
 | `mcp_manifest` | `mcp-manifest` and `mcp-verify` |
 | `doors` | the HTTP door (`serve_main`), `door_ceilings`, `run_limits` |
-| `migrate` | `velaris migrate` |
+| `migrate` | `sabline migrate` |
 | `ratchet` | the capability ratchet and `review` |
-| `conform` | `velaris conformance` |
+| `conform` | `sabline conformance` |
 | `attestation` | `attest_statement` and `attest` |
 | `receipts` | `receipt_statement` |
-| `statements` | `velaris verify` of an attestation or a receipt |
-| `receipt_diff` | `velaris receipts diff` |
-| `viewer` | `velaris receipt show` and `velaris audit --html`: a receipt or an audit as a page, the same bytes for the same input (8.5) |
-| `demo` | `velaris demo` (8.5) |
-| `skill` | `velaris skill verify` (8.5) |
-| `evaluation` | `velaris eval` and its pool |
-| `replay` | `velaris replay` and the recorded tool responses |
+| `statements` | `sabline verify` of an attestation or a receipt |
+| `receipt_diff` | `sabline receipts diff` |
+| `viewer` | `sabline receipt show` and `sabline audit --html`: a receipt or an audit as a page, the same bytes for the same input (8.5) |
+| `demo` | `sabline demo` (8.5) |
+| `skill` | `sabline skill verify` (8.5) |
+| `evaluation` | `sabline eval` and its pool |
+| `replay` | `sabline replay` and the recorded tool responses |
 | `upgrades` | `deps-diff` |
-| `stats` | `velaris stats --ffi` |
-| `eject` | `velaris eject` and the launcher it writes |
+| `stats` | `sabline stats --ffi` |
+| `eject` | `sabline eject` and the launcher it writes |
 | `permissions` | the workflow-permissions ratchet |
 | `cli` | `main`, `usage_lines`, `--help` |
 
@@ -143,21 +143,21 @@ run has a function to compile (`check_cli.py` measures it).
 | What a grant let through | `_grant_used` (`budget`) counts under the grant's own text in `GRANT_USES`; `_RunRecorder.close` keeps it before the budget is put back, and `receipt_statement` writes `grants_used` (8.5) |
 | The host a URL names | `_url_host` (`library`), used by the audit and by the ratchet: a whole literal, or a fixed beginning that holds the `/` ending the host (8.5) |
 | The HTTP door | `serve_main` (`doors`): the token, `--no-auth`, the ceilings, the endpoints. The time and memory ceilings both doors share are `door_ceilings` and `run_limits` |
-| SARIF, the invocation log, the MCP tool manifest | `findings`: `_SarifRun` and `sarif_check`/`sarif_proofs`/`sarif_audit`, `InvocationLog`; `mcp_manifest`: `mcp_manifest_main` and `mcp_verify_main`, kept out of `velaris_mcp.py` so the server file cannot vouch for itself |
-| The capability ratchet | `ratchet`: `_program_capabilities` derives one file's needs (`_needs` for the grants, `_operation_bounds` for the counts), `capability_scan` a tree's, `capabilities_compare` holds a tree to a baseline - never to a previous commit - and `review` compares a git ref with the working tree. velaris-spec section 9 is the text of every rule there |
+| SARIF, the invocation log, the MCP tool manifest | `findings`: `_SarifRun` and `sarif_check`/`sarif_proofs`/`sarif_audit`, `InvocationLog`; `mcp_manifest`: `mcp_manifest_main` and `mcp_verify_main`, kept out of `sabline_mcp.py` so the server file cannot vouch for itself |
+| The capability ratchet | `ratchet`: `_program_capabilities` derives one file's needs (`_needs` for the grants, `_operation_bounds` for the counts), `capability_scan` a tree's, `capabilities_compare` holds a tree to a baseline - never to a previous commit - and `review` compares a git ref with the working tree. sabline-spec section 9 is the text of every rule there |
 | A removed error code | `REMOVED_ERRORS` (`errors`): STABILITY.md rule 3 |
-| Conformance | `conform`: `conformance` runs velaris-spec's corpus through the budget parser, the audit, the command line and the baseline writer and check; `build_conformance.py` writes that corpus from the tables of `check_sandbox.py`, `check_library.py` and `check_ratchet.py` |
+| Conformance | `conform`: `conformance` runs sabline-spec's corpus through the budget parser, the audit, the command line and the baseline writer and check; `build_conformance.py` writes that corpus from the tables of `check_sandbox.py`, `check_library.py` and `check_ratchet.py` |
 | The attestation | `attestation`: `attest_statement` wraps `audit()`'s own output in an in-toto Statement, the audited file and its imports as subjects by sha256; `attest` does a file or a directory. It signs nothing; the release workflow's `attestation` job signs one with cosign and with sigstore-python and verifies both |
 | A run's receipt | `recorder`: `_RunRecorder` notes each refusal and declassification as it happens, once per place with a count; `receipts`: `receipt_statement` makes the Statement; `_run_in_process` (`library`) attaches one to every run, and a pool worker streams its notes over the protocol pipe so a run killed by its limit keeps them. Nothing there may hold a value the program handled |
 | Checks and audits under a ceiling | `check`, `audit` and `attest` hand the work to a one-worker `Pool` unless both limits are None; `Pool.check` and `Pool.audit` send an `op` request to `pool_worker`, which calls `_check_here` or `_audit_here`, and a kill becomes E613 or E614. `_run_bounded` is a one-worker pool too. `_IN_CHILD` (`state`) keeps a call inside a worker from starting another |
 | Where imports may come from | `IMPORT_ROOT` (`state`) and `_import_refusal` (`loader`), checked in `load_program` before a file is opened (E515). The doors set it to the directory they serve and compile a request as a file there; a program given to the library as text is written into a directory of its own (`_source_to_file`, 8.2) |
 | The command line's own flags | `main` (`cli`): on a run, `--` ends them, and every word after it is the program's `args()` (8.2) |
-| What an upgrade gained | `upgrades`: `deps_diff` reads two versions of one dependency; `_deps_velaris` runs the ratchet's `capabilities_compare` with the older version as the baseline; `_hooks_diff` and `_declared_diff` compare install-time scripts and declared dependencies. Nothing there derives an effect from code that is not Velaris |
-| A predicate type's name | `predicates`: the capability/v1 and receipt/v1 names on velaris-lang.dev, the earlier names each is also read as, and `predicate_kind`, which every reader asks - `statements`, `receipt_diff`, `replay` - so a type Velaris does not define is refused in one place (8.3) |
+| What an upgrade gained | `upgrades`: `deps_diff` reads two versions of one dependency; `_deps_sabline` runs the ratchet's `capabilities_compare` with the older version as the baseline; `_hooks_diff` and `_declared_diff` compare install-time scripts and declared dependencies. Nothing there derives an effect from code that is not Sabline |
+| A predicate type's name | `predicates`: the capability/v1 and receipt/v1 names on sabline.dev, the earlier names each is also read as, and `predicate_kind`, which every reader asks - `statements`, `receipt_diff`, `replay` - so a type Sabline does not define is refused in one place (8.3) |
 | The evaluation profile | `evaluation`: `eval_budget` refuses what the profile does not take before the program is read; `_EvalPool` starts a one-process worker with `--stop-file` and `--confine`; `confine` holds each level (`confine_linux`, the job object's one-process limit from `library`, `mac_wrapper`) and `probe`. The stop is `stop_point` (`runtime`), polled every `STOP_EVERY` calls and loop turns (8.3) |
 | Comparing, replaying and verifying receipts | `receipt_diff`: `against_audit` and `against_receipts`; `replay`: `snapshot` holds each subject to its digest and copies it, `compare` names every field that differs, `ResponseLog` and `ResponseReplay` record and give back `py` calls (E616); `statements`: `unwrap`, `subject_file` and `verify_file` (8.3) |
 | Witnesses from contracts | `find_witnesses` inside `check_proofs` (`prover`) asks Z3 for argument lists the `requires` allows, boundaries first; `witnesses`: `from_contracts` runs each, interpreted, with no effect granted (8.3) |
-| A value in a log line | `log_line` (`values`): `log`, `stdlib/log.vel` and `velaris trace` write every control character, DEL, U+2028 and U+2029 escaped, so a call writes one line (8.3) |
+| A value in a log line | `log_line` (`values`): `log`, `stdlib/log.vel` and `sabline trace` write every control character, DEL, U+2028 and U+2029 escaped, so a call writes one line (8.3) |
 | The workflow-permissions ratchet | `permissions`: `read_workflow` reads each `permissions:` block with no YAML dependency, `permissions_compare` holds the head to the base; the Action's `permissions-ratchet` input runs it (8.3) |
 | Ejecting | `eject`: `eject_main` copies the program, its imports, the package and the standard library files it uses, and writes `main.py` from `_EJECT_LAUNCHER`, which fixes the budget, checks the digests, and refuses a budget that writes into its own directory or where Python imports from |
 | Keeping suites apart | `suite_dirs.py`: each suite's own temporary directory, so two runs from one checkout never write the same file |
@@ -185,7 +185,7 @@ run has a function to compile (`check_cli.py` measures it).
 | `check_money.py` | are amounts exact, kept to one currency, and rounded only where the call says so |
 | `check_secret.py` | can a `Secret` reach anything that emits it, and is `declassify` the only way out |
 | `check_ratchet.py` | does every widening of the capability surface fail, against the declared baseline and not the previous commit, and does every change that does not widen pass |
-| `check_deps.py` | does `deps-diff` report what an upgrade gained - a Velaris library's declared surface; for anything else only its install-time scripts and declared dependencies, with the surface said to be unknown - and is its pull-request comment edited rather than duplicated |
+| `check_deps.py` | does `deps-diff` report what an upgrade gained - a Sabline library's declared surface; for anything else only its install-time scripts and declared dependencies, with the surface said to be unknown - and is its pull-request comment edited rather than duplicated |
 | `check_adversarial.py` | do the attempts of every adversarial pass stay refused - the proof cache that is gone, the proxy, the prover's names, imports, receipts, eject, the door's rate, 64-bit edges, names that shadow, and 8.3's eval, receipts diff, replay, witnesses, log lines and verifier |
 | `check_prover_lies.py` | is a false promise ever reported proven, under five Z3 seeds |
 | `check_metamorphic.py` | is the audit unchanged by renaming, reordering and splitting, and changed by exactly one added effect |
@@ -208,25 +208,25 @@ run has a function to compile (`check_cli.py` measures it).
 | `check_platform.py` | does the reference platform refuse at submission, at run time and at its audit limit what it says it refuses |
 | `check_eject.py` | does an ejected program run from a fresh virtual environment with nothing from here, and hold its budget |
 | `check_policies.py` | do the OPA policy and its Kyverno twin ask what they say (`opa` when installed) |
-| `check_eval.py` | does `velaris eval` refuse every relaxation of its profile, honour a stop from outside, kill a worker past its grace, and write a receipt that names its confinement - and does each refusal that confinement claims hold |
+| `check_eval.py` | does `sabline eval` refuse every relaxation of its profile, honour a stop from outside, kill a worker past its grace, and write a receipt that names its confinement - and does each refusal that confinement claims hold |
 | `check_confine.py` | does the operating system hold what THREAT_MODEL.md's table says it holds, and no more: the runtime itself attempts an effect outside the budget and the kernel refuses it (E319), or lets it through where the table says it is not held, and always lets it through under `--no-confine`; is every escape target stopped at the kernel where the recorded run says it is |
 | `check_batteries.py` | does each of `azure.vel`, `github.vel`, `k8s.vel` and `aws.vel` speak to a stand-in for its service as the service expects - paging, error shapes, a rate limit, a Signature Version 4 checked the way AWS checks one - calling no Python, under the real host's grant (8.5) |
 | `check_digests.py` | are `sha256` and the encoders the published values, is an HMAC's key a Secret and its MAC the only thing that comes out, and does every other route for the key fail to compile (8.5) |
 | `check_runner.py` | does a tool call pass the manifest, the schema, the grants and the ceilings or never reach the host - fourteen ways past a pattern, five ceilings, a host that lies eleven ways - and does `skill verify` say what a skill needs (8.5) |
 | `check_viewers.py` | is a receipt's or an audit's page the same bytes for the same input, inert, with every value escaped, and does it say what was read, written, fetched, declassified and refused (8.5) |
-| `check_demo.py` | does `velaris demo` show its refusal and its run in under a minute and a screen, leave nothing behind, and read nobody's `.env` whatever it is handed (8.5) |
+| `check_demo.py` | does `sabline demo` show its refusal and its run in under a minute and a screen, leave nothing behind, and read nobody's `.env` whatever it is handed (8.5) |
 | `check_receipts.py` | does `receipts diff` name each kind of difference from an audit and from earlier receipts, does `replay` run the recorded bytes or refuse, and does `verify` refuse what it says it refuses |
 | `check_from_contracts.py` | does a witness the prover finds break an `ensures` left to runtime, pass a true one, and is a function with effects refused |
 | `check_impossible.py` | is each class docs/structurally-impossible.md lists tried, and refused |
 | `check_permissions.py` | does every widening of a workflow's `permissions:` fail, and nothing else, from 30 base and head fixtures |
-| `velaris test examples/std_test.vel` | does the standard library behave |
-| `velaris conformance` | does this implementation pass velaris-spec's corpus, at L1, L2 and L3 |
-| `velaris migrate --to 5.0` | the narrowest budget each program needs, now that a run with no `--allow` gets `io` |
-| `build_conformance.py --check` | is velaris-spec's corpus still what these suites' tables say |
+| `sabline test examples/std_test.vel` | does the standard library behave |
+| `sabline conformance` | does this implementation pass sabline-spec's corpus, at L1, L2 and L3 |
+| `sabline migrate --to 5.0` | the narrowest budget each program needs, now that a run with no `--allow` gets `io` |
+| `build_conformance.py --check` | is sabline-spec's corpus still what these suites' tables say |
 
-Conformance to [velaris-spec](https://github.com/gowrishankar-infra/velaris-spec),
+Conformance to [sabline-spec](https://github.com/gowrishankar-infra/sabline-spec),
 the capability format published separately, is its corpus: from 4.1,
-456 JSON cases in velaris-spec's `tests/`, at three levels its
+456 JSON cases in sabline-spec's `tests/`, at three levels its
 CONFORMANCE.md defines, which an implementation in any language runs
 its own way. Until 4.1 it was six suites of this repository -
 `check_termination.py`, `check_sandbox.py`, `check_refusals.py`,
@@ -237,7 +237,7 @@ command line and library could run. The corpus is written by
 `check_sandbox.py` for level 2, `check_library.py` and
 `check_ratchet.py` for levels 1 and 3 - where each entry is asserted
 against this implementation, so a case says what its suite says.
-`velaris conformance` runs the corpus against this implementation, and
+`sabline conformance` runs the corpus against this implementation, and
 CI runs it and `build_conformance.py --check` on every leg. None of it
 needs the prover.
 
@@ -247,7 +247,7 @@ needs the prover.
    cannot be translated, abandon the proof; runtime checks still guard.
 2. **Native and interpreted must agree.** If they cannot, do not
    compile that case. `fuzz_native.py` checks this on every leg.
-3. **Every new example gets `velaris fmt`** before it ships.
+3. **Every new example gets `sabline fmt`** before it ships.
 4. **A moved or deleted file needs an explicit `git rm`** — release
    archives overlay, they do not delete.
 5. **Write the limitation down.** The changelog records mistakes on
@@ -255,10 +255,10 @@ needs the prover.
    anything else.
 
 6. **A worker pool must reset every mutable global between programs.**
-   `velaris.Pool` runs one program after another in one process, which
+   `sabline.Pool` runs one program after another in one process, which
    is exactly where one program's leftovers become the next program's
    starting state. Anything a running program can change lives in
-   `velaris/state.py`, and belongs in `MUTABLE_GLOBALS` and in
+   `sabline/state.py`, and belongs in `MUTABLE_GLOBALS` and in
    `reset_program_state`; `check_pool.py` reads the package's
    module-level assignments and fails if a mutable one is in neither
    that list nor its list of constants. Speed is never the reason to
@@ -274,7 +274,7 @@ needs the prover.
        python -m venv /tmp/bare && /tmp/bare/bin/pip install ".[test]"
        /tmp/bare/bin/python check_whatever.py
 
-   (`[test]` is what the suites need and Velaris does not; it brings no
+   (`[test]` is what the suites need and Sabline does not; it brings no
    solver.)
 
    Better than skipping the proof-dependent checks is asserting the
@@ -284,8 +284,8 @@ needs the prover.
 8. **A scenario in a suite's table is a conformance case.** An entry
    added to or changed in `ESCAPES`/`HONEST` (`check_sandbox.py`),
    `BUDGETS`/`AUDITS`/`malformed_budgets()` (`check_library.py`), or a
-   table of `check_ratchet.py` changes velaris-spec's corpus. Regenerate
-   it (`python build_conformance.py ../velaris-spec/tests`) and commit it
+   table of `check_ratchet.py` changes sabline-spec's corpus. Regenerate
+   it (`python build_conformance.py ../sabline-spec/tests`) and commit it
    there in step; CI's drift test fails until the two agree. A case
    that depends on Python itself says so in `not_in_corpus`, and is left
    out with the reason.
@@ -299,9 +299,9 @@ needs the prover.
     pip install -e ".[full,test]"
     python run_tests.py          # 97 examples, expected verdicts
     python run_unit_tests.py     # each stage on its own
-    velaris test examples/std_test.vel
+    sabline test examples/std_test.vel
     python fuzz_native.py 60     # both engines must agree
-    velaris fmt examples/*.vel stdlib/*.vel --check
+    sabline fmt examples/*.vel stdlib/*.vel --check
     python check_lint.py         # mypy --strict, ruff
 
 CI runs these and every suite above on Linux, Windows and macOS (x64 and

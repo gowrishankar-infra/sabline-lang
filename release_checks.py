@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every question the release workflow asks, answerable on any machine.
 
-A release of Velaris is made by .github/workflows/release.yml, and by
+A release of Sabline is made by .github/workflows/release.yml, and by
 nothing and nobody else (RELEASING.md). Each decision that workflow
 takes is made here rather than in its YAML, so that check_release.py can
 hold it to fixtures and a person can ask the same question before
@@ -43,10 +43,10 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Callable, cast
 
-REPOSITORY = "gowrishankar-infra/velaris-lang"
-PACKAGE = "velaris-lang"                         # on PyPI and on npm
-EXTENSION = "gowrishankar-infra.velaris"         # on the VS Code Marketplace
-SERVER = "io.github.gowrishankar-infra/velaris"  # in the MCP registry
+REPOSITORY = "gowrishankar-infra/sabline-lang"
+PACKAGE = "sabline-lang"                         # on PyPI and on npm
+EXTENSION = "gowrishankar-infra.sabline"         # on the VS Code Marketplace
+SERVER = "io.github.gowrishankar-infra/sabline"  # in the MCP registry
 MCP_NAME = "mcp-name: " + SERVER                 # README.md, as PyPI serves it
 
 # Where each target is asked. check_release.py points them at 127.0.0.1.
@@ -62,12 +62,12 @@ NAMES = {"pypi": "PyPI", "npm": "npm", "registry": "the MCP registry",
 RETRY_WAIT = 10          # seconds between attempts at a target that failed
 
 # The six files run_tests.py's check_versions holds to one version. The
-# first was velaris.py until 8.2 made the compiler a package; a repository
+# first was sabline.py until 8.2 made the compiler a package; a repository
 # of that shape - an older tag, a fixture - is still read.
-VERSION_FILES = ("velaris/version.py", "pyproject.toml", "npm/package.json",
+VERSION_FILES = ("sabline/version.py", "pyproject.toml", "npm/package.json",
                  "mcpb/manifest.json", "editor/vscode/package.json",
                  "integrations/mcp_registry/server.json")
-OLD_VERSION_FILE = "velaris.py"
+OLD_VERSION_FILE = "sabline.py"
 
 # A CHANGELOG entry heading: "## 7.1.2 - The proof cache could be lied to"
 ENTRY = re.compile(r"^## (\d+\.\d+(?:\.\d+)?) - (.+)$", re.M)
@@ -178,7 +178,7 @@ COVERED_CALLS = ("check", "audit", "run", "attest", "card")
 COVERED_CLASS = "Pool"
 FLAG = re.compile(r"--[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
 # the variables of the run state: what a run starts from when nobody says
-STATE_MODULE = "velaris/state.py"
+STATE_MODULE = "sabline/state.py"
 STATE_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
 CODE = re.compile(r"E\d{3}")
 PLACEHOLDER = re.compile(r"(?:todo|tbd|fixme|xxx|placeholder)\b", re.I)
@@ -187,15 +187,40 @@ API_LINE = "api:"
 API_GOLDEN = "tests/api/golden.json"
 
 
-def velaris_sources(root: Path, ref: str | None = None) -> dict[str, str]:
-    """{path: text} of Velaris's own Python - every module of the package,
-    in a sub-package too, or velaris.py before 8.2, and the MCP server - in
+# What the package and the MCP server were called before 8.6 renamed the
+# project. A tag before v8.6.0 holds sabline/ under the name velaris/, so
+# a gate that looked only for sabline/ would read the previous release as
+# having no compiler at all - and then report every error code, every flag
+# and every default as added. The paths are mapped back to the names this
+# version uses, so a rename shows as nothing and a real change still shows.
+# Delete this in 9.0, once no tag the gate compares against predates 8.6.
+RENAMED_IN_8_6 = {"velaris": "sabline", "velaris_mcp.py": "sabline_mcp.py",
+                  "velaris.py": OLD_VERSION_FILE}
+
+
+def _as_named_now(path: str) -> str:
+    """A path at an earlier tag, under the name this version gives it."""
+    for old, new in RENAMED_IN_8_6.items():
+        if path == old:
+            return new
+        if path.startswith(old + "/"):
+            return new + path[len(old):]
+    return path
+
+
+def sabline_sources(root: Path, ref: str | None = None) -> dict[str, str]:
+    """{path: text} of Sabline's own Python - every module of the package,
+    in a sub-package too, or sabline.py before 8.2, and the MCP server - in
     the working tree, or at a git ref. A file that cannot be read as UTF-8
-    text is a question the gate cannot answer, never an empty module."""
-    single = (OLD_VERSION_FILE, "velaris_mcp.py")
+    text is a question the gate cannot answer, never an empty module.
+
+    At a ref before v8.6.0 the package is velaris/, which is the same
+    modules under the name the project had; each is returned under the name
+    it has now, so that the rename itself is not read as a change."""
+    single = (OLD_VERSION_FILE, "sabline_mcp.py")
     if ref is None:
         paths = sorted(p.relative_to(root).as_posix()
-                       for p in (root / "velaris").rglob("*.py") if p.is_file())
+                       for p in (root / "sabline").rglob("*.py") if p.is_file())
         paths += [n for n in single if (root / n).is_file()]
         found: dict[str, str] = {}
         for p in paths:
@@ -204,11 +229,17 @@ def velaris_sources(root: Path, ref: str | None = None) -> dict[str, str]:
             except (OSError, UnicodeDecodeError) as e:
                 raise Unanswered(f"{p} cannot be read as UTF-8 text ({e})")
         return found
-    listed = git(root, "ls-tree", "-r", "--name-only", ref, "--", "velaris",
-                 *single)
+    listed = git(root, "ls-tree", "-r", "--name-only", ref, "--", "sabline",
+                 *single, *RENAMED_IN_8_6)
+    wanted = re.compile(r"(?:sabline|velaris)/.+\.py")
     paths = [p for p in listed.splitlines()
-             if p in single or re.fullmatch(r"velaris/.+\.py", p)]
-    return {p: git(root, "show", f"{ref}:{p}") for p in paths}
+             if p in single or p in RENAMED_IN_8_6 or wanted.fullmatch(p)]
+    # The shim package velaris/ that 8.6 adds is not the compiler; at a ref
+    # from 8.6 on, sabline/ is, and velaris/ is three lines of alias.
+    if any(p.startswith("sabline/") for p in paths):
+        paths = [p for p in paths if not p.startswith("velaris/")
+                 and p != "velaris.py" and p != "velaris_mcp.py"]
+    return {_as_named_now(p): git(root, "show", f"{ref}:{p}") for p in paths}
 
 
 def _trees(sources: dict[str, str]) -> list[Any]:
@@ -274,7 +305,7 @@ def _resolved(expr: Any, values: dict[str, list[Any]], depth: int = 0) -> str:
 
 
 def state_names(sources: dict[str, str]) -> set[str]:
-    """The run state's variables: velaris/state.py's module-level names."""
+    """The run state's variables: sabline/state.py's module-level names."""
     if STATE_MODULE not in sources:
         return set()
     return {name for name in _constants(_trees({STATE_MODULE:
@@ -332,7 +363,7 @@ def covered_changes(root: Path, since: str) -> list[str]:
     """What the commits after `since` change that STABILITY.md covers and a
     minor or patch release must explain: an error code added to the table,
     a flag no longer known, a default that is not what it was."""
-    before, after = velaris_sources(root, since), velaris_sources(root)
+    before, after = sabline_sources(root, since), sabline_sources(root)
     out = [f"adds the error code {c}"
            for c in sorted(error_codes(after) - error_codes(before))]
     out += [f"removes the flag {f}"
@@ -508,7 +539,7 @@ def _fetch(url: str, *, data: bytes | None = None,
            headers: dict[Any, Any] | None = None, attempts: int = 3) -> tuple[Any, ...]:
     """(status, body). An HTTP status is an answer, 404 included; a
     network failure or a 5xx on every attempt is not, and raises."""
-    head = {"User-Agent": "velaris-release-checks",
+    head = {"User-Agent": "sabline-release-checks",
             "Accept": "application/json"}
     head.update(headers or {})
     last = ""
@@ -627,21 +658,21 @@ def expected_assets(version: str) -> list[str]:
     three executables and the attestation - with their signatures and
     checksums; and from 8.1.0 a tenth, the signed receipt of one run of
     the program the attestation is of."""
-    signed = [f"velaris_lang-{version}-py3-none-any.whl",
-              f"velaris_lang-{version}.tar.gz",
-              f"velaris-lang-{version}.cdx.json",
-              f"velaris-mcp-tools-{version}.json"]
+    signed = [f"sabline_lang-{version}-py3-none-any.whl",
+              f"sabline_lang-{version}.tar.gz",
+              f"sabline-lang-{version}.cdx.json",
+              f"sabline-mcp-tools-{version}.json"]
     names = ["SHA256SUMS"] + signed + [f + ".sigstore.json" for f in signed]
-    for single in ("velaris-linux", "velaris-macos", "velaris-windows.exe",
-                   "velaris.mcpb"):
+    for single in ("sabline-linux", "sabline-macos", "sabline-windows.exe",
+                   "sabline.mcpb"):
         names += [single, single + ".sha256", single + ".sigstore.json"]
-    names += [f"velaris-attestation-{version}.intoto.json",
-              f"velaris-attestation-{version}.cosign.sigstore.json",
-              f"velaris-attestation-{version}.sigstore-python.sigstore.json"]
+    names += [f"sabline-attestation-{version}.intoto.json",
+              f"sabline-attestation-{version}.cosign.sigstore.json",
+              f"sabline-attestation-{version}.sigstore-python.sigstore.json"]
     if (parse_version(version) or (0, 0, 0)) >= RECEIPT_SINCE:
-        names += [f"velaris-receipt-{version}.intoto.json",
-                  f"velaris-receipt-{version}.cosign.sigstore.json",
-                  f"velaris-receipt-{version}.sigstore-python.sigstore.json"]
+        names += [f"sabline-receipt-{version}.intoto.json",
+                  f"sabline-receipt-{version}.cosign.sigstore.json",
+                  f"sabline-receipt-{version}.sigstore-python.sigstore.json"]
     return names
 
 
@@ -1006,14 +1037,14 @@ def cmd_consistent(args: Any) -> int:
 # ---- after the release: the Action pins (8.4) ---------------------------------
 
 PIN_DOCS = ("README.md", "EMBEDDING.md")
-_PIN = re.compile(r"(gowrishankar-infra/velaris-lang@)[0-9a-f]{40}"
+_PIN = re.compile(r"(gowrishankar-infra/sabline-lang@)[0-9a-f]{40}"
                   r"([ \t]+#[ \t]*)v\d+\.\d+\.\d+")
 # (a line may end \r\n: a Windows checkout's does, and `$` is before \n only)
 _INSTALLS = re.compile(
     r'^([ \t]*version:[ \t]*")\d+\.\d+\.\d+("[^\r\n]*)(?=\r?\n|\Z)', re.M)
 _OWN_VERSION = re.compile(r"(the Action's own version \()\d+\.\d+\.\d+(\))")
 _PRE_COMMIT = re.compile(
-    r"(repo:[ \t]*https://github\.com/gowrishankar-infra/velaris-lang[ \t]*\r?\n"
+    r"(repo:[ \t]*https://github\.com/gowrishankar-infra/sabline-lang[ \t]*\r?\n"
     r"[ \t]*rev:[ \t]*)v\d+\.\d+\.\d+")
 
 
@@ -1054,7 +1085,7 @@ def move_pins(root: Path, tag: str, commit: str) -> list[str]:
         if doc == "README.md" and not _PIN.search(before):
             raise Unanswered(
                 "README.md shows no Action pin of the form "
-                "gowrishankar-infra/velaris-lang@<commit>  # vX.Y.Z")
+                "gowrishankar-infra/sabline-lang@<commit>  # vX.Y.Z")
         after = moved_pins(before, tag, commit)
         left = [m.group(0) for m in _PIN.finditer(after)
                 if commit not in m.group(0) or not m.group(0).endswith(tag)]

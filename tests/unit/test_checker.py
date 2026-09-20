@@ -1,4 +1,4 @@
-"""Stage 5, the type checker, alone: velaris.checker.check_types(funcs,
+"""Stage 5, the type checker, alone: sabline.checker.check_types(funcs,
 records, errors) and check_main, on programs the lexer and parser build
 (and the loader, for the one case that needs a named import).
 
@@ -8,11 +8,11 @@ LLM.md's rules and error table, are what the cases hold it to.
 import unittest
 
 import _support
-from velaris.checker import check_main, check_types
-from velaris.errors import VelarisError
-from velaris.lexer import lex
-from velaris.loader import load_program
-from velaris.parser import Parser
+from sabline.checker import check_main, check_types
+from sabline.errors import SablineError
+from sabline.lexer import lex
+from sabline.loader import load_program
+from sabline.parser import Parser
 from typing import Any
 
 STAGE = "checker"
@@ -24,10 +24,10 @@ def parse(source: str) -> tuple[Any, ...]:
 
 
 def type_errors(funcs: Any, records: Any) -> list[Any]:
-    errors: list[VelarisError] = []
+    errors: list[SablineError] = []
     try:
         check_types(funcs, records, errors)
-    except VelarisError as e:
+    except SablineError as e:
         # a signature naming a type that does not exist stops the check
         # rather than being recorded; the command line reports it the same
         errors.append(e)
@@ -136,7 +136,7 @@ class Main(unittest.TestCase):
     cannot fail."""
 
     def main_errors(self, source: str, **kw: Any) -> list[Any]:
-        errors: list[VelarisError] = []
+        errors: list[SablineError] = []
         check_main(parse(source)[0], errors, **kw)
         return _support.codes_and_lines(errors)
 
@@ -161,7 +161,7 @@ class Main(unittest.TestCase):
 class WhatTheCheckerRecords(unittest.TestCase):
 
     def test_names_holding_a_secret_are_marked_for_redaction(self) -> None:
-        # SPEC.md 3.1: velaris trace and a broken promise print <secret>
+        # SPEC.md 3.1: sabline trace and a broken promise print <secret>
         funcs, records = parse(
             "fn f(k: Secret of Text, n: Int) -> Secret of Int {\n"
             "    return length(k)\n}\n"

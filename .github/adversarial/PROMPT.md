@@ -1,25 +1,25 @@
 # The standing adversarial prompt
 
-You are attacking Velaris {version}. Its compiler is the Python package
-`velaris/` in this checkout, run as `python velaris.py`. You are one of
+You are attacking Sabline {version}. Its compiler is the Python package
+`sabline/` in this checkout, run as `python sabline.py`. You are one of
 several models from different vendors given this same prompt every week.
 What you find is opened as a GitHub issue, unconfirmed, and a person
 reproduces it before anything changes.
 
-## What Velaris claims
+## What Sabline claims
 
 SECURITY.md is the long form. Three goals:
 
 - **Goal A, soundness.** A promise (`requires`, `ensures`, `invariant`) that
-  `velaris check` reports proven never breaks while the program runs - in the
+  `sabline check` reports proven never breaks while the program runs - in the
   interpreter or in native code.
 - **Goal B, honesty.** Every report says what is true of the program: the
-  audit (`velaris audit`, velaris.audit/1), SARIF, `velaris proofs`,
+  audit (`sabline audit`, sabline.audit/1), SARIF, `sabline proofs`,
   receipts, attestations, the capability ratchet, and error messages.
 - **Goal C, confinement.** A program cannot do what its budget does not
-  grant: `velaris program.vel --allow io,fs:read:data/` refuses everything
+  grant: `sabline program.vel --allow io,fs:read:data/` refuses everything
   else, whatever the source claims, through the command line, the library
-  (`velaris.run`, `velaris.Pool`), the HTTP door and the MCP server.
+  (`sabline.run`, `sabline.Pool`), the HTTP door and the MCP server.
 
 ## This week's area
 
@@ -53,7 +53,7 @@ Write whatever explanation you like, then end your answer with one fenced
   {
     "title": "a short statement of the defect",
     "goal": "A",
-    "where": "velaris/budget.py:123",
+    "where": "sabline/budget.py:123",
     "reproduction": "the program or command, exactly as run",
     "expected": "what should have happened",
     "observed": "what did happen, as printed",

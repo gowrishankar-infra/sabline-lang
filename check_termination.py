@@ -18,7 +18,7 @@ from typing import Any
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 # its own directory, so two runs at once do not collide
@@ -585,7 +585,7 @@ def verdicts_of(source: str) -> tuple[Any, ...]:
     with open(path, "w", encoding="utf-8") as f:
         f.write(source.lstrip())
     try:
-        report = velaris.inspect_source(path, source.lstrip())
+        report = sabline.inspect_source(path, source.lstrip())
     finally:
         try:
             os.unlink(path)

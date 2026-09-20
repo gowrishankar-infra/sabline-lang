@@ -8,8 +8,8 @@
 // platform's calling convention, and this project does not ship
 // what it cannot verify everywhere.
 //
-// velaris examples/native_build.vel --time
-// velaris examples/native_build.vel --no-native --time
+// sabline examples/native_build.vel --time
+// sabline examples/native_build.vel --no-native --time
 
 fn banner(word: Text) -> Text {
     return "[" + word + "]"
@@ -39,7 +39,7 @@ fn framed_length(word: Text, rounds: Int) -> Int
 }
 
 fn main() uses io {
-    print(banner("velaris"))
+    print(banner("sabline"))
     print(stretch("ab", 6))
     print(format("built and measured 20000 times: {}",
     framed_length("hello", 20000)))

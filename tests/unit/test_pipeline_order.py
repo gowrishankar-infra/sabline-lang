@@ -1,12 +1,12 @@
 """Release 8.2, item 32: the compiler's modules in pipeline order.
 
-velaris/__init__.py: "The compiler, one module per stage, in the order a
+sabline/__init__.py: "The compiler, one module per stage, in the order a
 program goes through them; _MODULES names them in that order. A module
 imports only from the modules before it, but for the names its
 __forward__ lists, which this file binds once all are loaded."
 
 These read each module's syntax tree for its imports, and the package
-after `import velaris` for what __forward__ binds.
+after `import sabline` for what __forward__ binds.
 """
 import ast
 import os
@@ -14,12 +14,12 @@ import sys
 import unittest
 
 import _support
-import velaris
-from velaris import cli
+import sabline
+from sabline import cli
 from typing import Any, Callable, cast
 
-PACKAGE = os.path.join(_support.REPO, "velaris")
-MODULES = velaris._MODULES
+PACKAGE = os.path.join(_support.REPO, "sabline")
+MODULES = sabline._MODULES
 POSITION = {name: i for i, name in enumerate(MODULES)}
 
 STAGES = ("lexer", "parser", "loader", "effects", "checker", "prover",
@@ -41,15 +41,15 @@ def is_type_checking(test: Any) -> bool:
 
 
 def import_targets(node: Any) -> list[Any]:
-    """[(velaris module, names imported from it)] for one import
-    statement; [] when it imports nothing of velaris. "velaris" stands for
+    """[(sabline module, names imported from it)] for one import
+    statement; [] when it imports nothing of sabline. "sabline" stands for
     the package itself, which loads every module."""
     if isinstance(node, ast.Import):
         out: list[tuple[str, list[str]]] = []
         for alias in node.names:
-            if alias.name == "velaris":
-                out.append(("velaris", []))
-            elif alias.name.startswith("velaris."):
+            if alias.name == "sabline":
+                out.append(("sabline", []))
+            elif alias.name.startswith("sabline."):
                 out.append((alias.name.split(".")[1], []))
         return out
     names = [alias.name for alias in node.names]
@@ -59,16 +59,16 @@ def import_targets(node: Any) -> list[Any]:
         return [(node.module.split(".")[0], names)]
     if node.level > 1:
         return [("<beyond the package>", names)]
-    if node.module == "velaris":
-        return [(n, []) if n in POSITION else ("velaris", [n]) for n in names]
-    if node.module and node.module.startswith("velaris."):
+    if node.module == "sabline":
+        return [(n, []) if n in POSITION else ("sabline", [n]) for n in names]
+    if node.module and node.module.startswith("sabline."):
         return [(node.module.split(".")[1], names)]
     return []
 
 
 def module_level_imports(tree: Any) -> list[Any]:
     """(module, names, line, under TYPE_CHECKING) for every import of a
-    velaris module outside a function body: what runs when the module is
+    sabline module outside a function body: what runs when the module is
     imported, and what a type checker reads under `if TYPE_CHECKING:`."""
     found: list[tuple[str, list[str], int, bool]] = []
 
@@ -104,7 +104,7 @@ def declared_forward(tree: Any) -> dict[Any, Any]:
 
 
 def position(module: str) -> int:
-    return len(MODULES) if module == "velaris" else POSITION[module]
+    return len(MODULES) if module == "sabline" else POSITION[module]
 
 
 class ModuleOrder(unittest.TestCase):
@@ -114,7 +114,7 @@ class ModuleOrder(unittest.TestCase):
         on_disk = {name[:-3] for name in os.listdir(PACKAGE)
                    if name.endswith(".py")} - {"__init__", "__main__"}
         self.assertEqual(sorted(set(MODULES) ^ on_disk), [],
-                         "in _MODULES or in velaris/, not both")
+                         "in _MODULES or in sabline/, not both")
 
     def test_the_stages_appear_in_pipeline_order(self) -> None:
         self.assertEqual([s for s in STAGES if s not in POSITION], [])
@@ -130,12 +130,12 @@ class ModuleOrder(unittest.TestCase):
                     module_level_imports(syntax_tree(name)):
                 if guarded:
                     continue
-                if module != "velaris" and module not in POSITION:
-                    problems.append(f"velaris/{name}.py:{line} imports from "
+                if module != "sabline" and module not in POSITION:
+                    problems.append(f"sabline/{name}.py:{line} imports from "
                                     f"{module}, which _MODULES does not list")
                 elif position(module) >= POSITION[name]:
                     what = ", ".join(names) or "the module"
-                    problems.append(f"velaris/{name}.py:{line} imports {what} "
+                    problems.append(f"sabline/{name}.py:{line} imports {what} "
                                     f"from {module}, which is not before it")
         self.assertEqual(problems, [])
 
@@ -150,22 +150,22 @@ class ModuleOrder(unittest.TestCase):
                     continue
                 seen += 1
                 if not names:
-                    problems.append(f"velaris/{name}.py:{line} imports the "
+                    problems.append(f"sabline/{name}.py:{line} imports the "
                                     f"module {module} under TYPE_CHECKING")
                 for n in names:
                     if forward.get(n) != module:
                         problems.append(
-                            f"velaris/{name}.py:{line} imports {n} from "
+                            f"sabline/{name}.py:{line} imports {n} from "
                             f"{module} under TYPE_CHECKING, and __forward__ "
                             f"says {forward.get(n)!r}")
         self.assertEqual(problems, [])
         self.assertGreater(seen, 0, "no import under TYPE_CHECKING was found; "
                                     "the rule this test reads is gone")
 
-    def test_forward_names_are_bound_after_import_velaris(self) -> None:
+    def test_forward_names_are_bound_after_import_sabline(self) -> None:
         bound = 0
         for name in MODULES:
-            module = sys.modules[f"velaris.{name}"]
+            module = sys.modules[f"sabline.{name}"]
             forward = getattr(module, "__forward__", {})
             self.assertEqual(forward, declared_forward(syntax_tree(name)))
             for used, owner in sorted(forward.items()):
@@ -174,7 +174,7 @@ class ModuleOrder(unittest.TestCase):
                     self.assertGreater(POSITION[owner], POSITION[name],
                                        "a forward name comes from a later "
                                        "module")
-                    source = sys.modules[f"velaris.{owner}"]
+                    source = sys.modules[f"sabline.{owner}"]
                     self.assertTrue(hasattr(module, used))
                     self.assertIs(getattr(module, used),
                                   getattr(source, used))
@@ -200,7 +200,7 @@ class ModuleOrder(unittest.TestCase):
         owners = []
         for stage in CLI_RUN_STAGES:
             defined_in = getattr(cli, stage).__module__
-            self.assertTrue(defined_in.startswith("velaris."), defined_in)
+            self.assertTrue(defined_in.startswith("sabline."), defined_in)
             owners.append(defined_in.split(".", 1)[1])
         at = [POSITION[m] for m in owners]
         self.assertEqual(at, sorted(set(at)),

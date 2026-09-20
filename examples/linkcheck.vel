@@ -1,7 +1,7 @@
 // A link checker you would actually run.
 //
-// velaris examples/linkcheck.vel --allow io,net https://example.com https://dead.invalid
-// velaris examples/linkcheck.vel --allow io,net < urls.txt
+// sabline examples/linkcheck.vel --allow io,net https://example.com https://dead.invalid
+// sabline examples/linkcheck.vel --allow io,net < urls.txt
 //
 // Reads URLs from the command line or standard input, asks each one
 // for its status, reports what it found, and exits non-zero if any

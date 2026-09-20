@@ -1,4 +1,4 @@
-"""Stage 6, the prover, alone: velaris.prover.check_proofs(funcs, records,
+"""Stage 6, the prover, alone: sabline.prover.check_proofs(funcs, records,
 errors, proven) on programs the lexer, parser, effect checker and type
 checker build (those two only to hold each fixture to being a well-formed
 program, which SPEC.md 11 says a proof assumes).
@@ -22,11 +22,11 @@ if importlib.util.find_spec("z3") is None:
     raise unittest.SkipTest("z3-solver is not installed: there is no prover "
                             "to test")
 
-from velaris.checker import check_types  # noqa: E402
-from velaris.effects import check_effects  # noqa: E402
-from velaris.lexer import lex  # noqa: E402
-from velaris.parser import Parser  # noqa: E402
-from velaris.prover import (  # noqa: E402
+from sabline.checker import check_types  # noqa: E402
+from sabline.effects import check_effects  # noqa: E402
+from sabline.lexer import lex  # noqa: E402
+from sabline.parser import Parser  # noqa: E402
+from sabline.prover import (  # noqa: E402
     FLOAT_PROOF_SECONDS, PROOF_SECONDS, PROOF_TIMEOUT_ENV, check_proofs,
     proof_timeout_seconds, set_proof_timeout,
 )
@@ -130,7 +130,7 @@ class Reports(unittest.TestCase):
 class Budgets(unittest.TestCase):
     """SPEC.md 9.3: 120 seconds for a function that mentions Float and 3
     otherwise, either replaced for one run by --proof-timeout or
-    VELARIS_PROOF_TIMEOUT."""
+    SABLINE_PROOF_TIMEOUT."""
 
     def setUp(self) -> None:
         set_proof_timeout(None)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate playground/index.html with the real compiler embedded.
 
-Run after any change to the velaris package:   python build_playground.py
+Run after any change to the sabline package:   python build_playground.py
 Open playground/index.html in a browser - no install, no server needed.
 """
 import json
@@ -10,7 +10,7 @@ from pathlib import Path
 HERE = Path(__file__).parent
 # every module of the package, by file name (8.2: until then one file)
 SRC = {p.name: p.read_text(encoding="utf-8")
-       for p in sorted((HERE / "velaris").glob("*.py"))}
+       for p in sorted((HERE / "sabline").glob("*.py"))}
 
 EXAMPLES = {
     "word frequency": """// Counting words: maps, lambdas, and a sorted report.
@@ -117,7 +117,7 @@ TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Velaris Playground</title>
+<title>Sabline Playground</title>
 <style>
   :root { --paper:#ffffff; --alt:#f6f7f8; --line:#e6e8eb;
           --ink:#0b1215; --mut:#57606a; --brand:#0a7d5a;
@@ -193,14 +193,14 @@ TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <a class="brand" href="index.html"><span class="dot"></span>Velaris
+  <a class="brand" href="index.html"><span class="dot"></span>Sabline
   Playground</a>
   <span class="tag">the real compiler, running in your browser</span>
   <select id="examples"></select>
   <button id="run" disabled>loading&hellip;</button>
   <button id="inspect" disabled>Inspect</button>
   <a class="gh"
-  href="https://github.com/gowrishankar-infra/velaris-lang">GitHub
+  href="https://github.com/gowrishankar-infra/sabline-lang">GitHub
   &rarr;</a>
 </header>
 <main>
@@ -211,11 +211,11 @@ takes a few seconds)&hellip;
 Note: in the browser, promises (requires/ensures/invariant) are checked
 while the program runs. The installed version also PROVES them before
 running, using the Z3 theorem prover, and compiles hot functions to
-native code with LLVM. github.com/gowrishankar-infra/velaris-lang</span></pre>
+native code with LLVM. github.com/gowrishankar-infra/sabline-lang</span></pre>
   <div id="cards" class="hidden"></div>
 </main>
 <script>
-const VELARIS_FILES = __SRC__;
+const SABLINE_FILES = __SRC__;
 const EXAMPLES = __EXAMPLES__;
 
 const sel = document.getElementById("examples");
@@ -235,9 +235,9 @@ let pyodide = null;
 async function boot() {
   pyodide = await loadPyodide();
   pyodide.setStdin({ stdin: () => window.prompt("the program asks:") });
-  pyodide.FS.mkdirTree("/velaris");
-  for (const [name, text] of Object.entries(VELARIS_FILES)) {
-    pyodide.FS.writeFile("/velaris/" + name, text);
+  pyodide.FS.mkdirTree("/sabline");
+  for (const [name, text] of Object.entries(SABLINE_FILES)) {
+    pyodide.FS.writeFile("/sabline/" + name, text);
   }
   runBtn.disabled = false;
   runBtn.textContent = "Run \\u25B6";
@@ -255,18 +255,18 @@ async function run() {
   const py = `
 import io, json, sys
 from contextlib import redirect_stdout, redirect_stderr
-# a Velaris imported anew for every run, as a new process would have
+# a Sabline imported anew for every run, as a new process would have
 # it, so nothing one run set is there for the next
 for _name in [n for n in sys.modules
-              if n == "velaris" or n.startswith("velaris.")]:
+              if n == "sabline" or n.startswith("sabline.")]:
     del sys.modules[_name]
 if "/" not in sys.path:
     sys.path.insert(0, "/")
-import velaris as mod
+import sabline as mod
 # io: what every example here needs, and all a page in a browser can
 # use. It is also the default from 5.0; saying it keeps the page from
 # depending on that.
-sys.argv = ["velaris.py", "/prog.vel", "--allow", "io", "--no-native"]
+sys.argv = ["sabline.py", "/prog.vel", "--allow", "io", "--no-native"]
 o, e = io.StringIO(), io.StringIO()
 try:
     with redirect_stdout(o), redirect_stderr(e):
@@ -313,11 +313,11 @@ async function inspect() {
   const py = `
 import json, sys
 for _name in [n for n in sys.modules
-              if n == "velaris" or n.startswith("velaris.")]:
+              if n == "sabline" or n.startswith("sabline.")]:
     del sys.modules[_name]
 if "/" not in sys.path:
     sys.path.insert(0, "/")
-import velaris as mod
+import sabline as mod
 json.dumps(mod.inspect_source("/prog.vel"))
 `;
   try {

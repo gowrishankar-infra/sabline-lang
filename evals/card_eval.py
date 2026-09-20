@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Does a model write correct Velaris from the card on the first attempt?
+"""Does a model write correct Sabline from the card on the first attempt?
 
     ANTHROPIC_API_KEY=... python evals/card_eval.py            # claude-opus-5
     OPENAI_API_KEY=... MODEL=<model> python evals/card_eval.py
     MODEL=claude-sonnet-5 python evals/card_eval.py
 
-The model is given LLM.md (`velaris card`) as its system prompt and the
+The model is given LLM.md (`sabline card`) as its system prompt and the
 five tasks in tasks.json, one at a time, with no retries and no hints.
-Each answer is checked (`velaris check`), audited (`velaris audit`) and
+Each answer is checked (`sabline check`), audited (`sabline audit`) and
 run under `--allow io` - plus `ffi:` modules only where a task needs
 them - with a 10 second timeout, and the outcome goes into RESULTS.md:
 compiled first try, ran correctly, proven promises.
@@ -29,7 +29,7 @@ from typing import Any
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 
 TIMEOUT = 10
 MEMORY_MB = 256
@@ -95,17 +95,17 @@ def judge(task: dict[Any, Any], source: str, path: str) -> dict[Any, Any]:
     """check, audit, run: one dict per task with the three verdicts."""
     out = {"id": task["id"], "compiled": False, "ran": False,
            "proven": 0, "promising": 0, "evidence": ""}
-    chk = velaris.check(source, path=path)
+    chk = sabline.check(source, path=path)
     if not chk.ok:
         p = chk.problems[0]
         out["evidence"] = f"check: {p.code} line {p.line}"
         return out
     out["compiled"] = True
-    aud = velaris.audit(source, path=path)
+    aud = sabline.audit(source, path=path)
     promising = [f for f in aud.functions if f["requires"] or f["ensures"]]
     out["promising"] = len(promising)
     out["proven"] = sum(1 for f in promising if f["status"] == "proven")
-    r = velaris.run(source, path=path, allow=set(task["needs"]),
+    r = sabline.run(source, path=path, allow=set(task["needs"]),
                     stdin=task["stdin"], timeout=TIMEOUT,
                     max_memory_mb=MEMORY_MB)
     want = task["expect"]

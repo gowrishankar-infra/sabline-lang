@@ -2,7 +2,7 @@
 """A pool must be faster than a fresh process AND leak nothing between
 programs.
 
-The speed is why velaris.Pool exists. The isolation is why it can be
+The speed is why sabline.Pool exists. The isolation is why it can be
 used at all: a worker that serves one program after another in one
 process is exactly the place where one program's leftovers become the
 next program's starting state. Every rule in Pool's docstring is
@@ -28,7 +28,7 @@ from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 # its own directory, so two runs at once do not collide
@@ -53,7 +53,7 @@ EATS_MEMORY = ('fn main() uses io {\n    let s = "xxxxxxxxxxxxxxxx"\n'
                '        i = i + 1\n    }\n    print(length(s))\n}\n')
 
 READS_A_FILE = ('fn main() uses io, fs {\n'
-                '    check read_file("velaris.py") {\n'
+                '    check read_file("sabline.py") {\n'
                 '        ok t { print("READ IT") }\n'
                 '        fail w { print("could not read") }\n    }\n}\n')
 
@@ -70,21 +70,21 @@ LEAKS_A_HANDLE = (
 # The ffi cliff, used deliberately: this program reaches into the
 # compiler and grants itself fs, then reads a file to show the widening
 # really took - a check that has to be here, because the first version
-# of this test named "velaris" instead of "__main__" and so mutated a
+# of this test named "sabline" instead of "__main__" and so mutated a
 # SECOND import of the module rather than the live budget. It passed,
-# and proved nothing. Until 8.2 a worker ran velaris.py as __main__;
-# from 8.2 the budget lives in velaris.state, the one module every part
+# and proved nothing. Until 8.2 a worker ran sabline.py as __main__;
+# from 8.2 the budget lives in sabline.state, the one module every part
 # of the package reads it from, so that is the name that reaches the
 # budget the interpreter is enforcing.
 # THREAT_MODEL.md says a granted module can do whatever that module can
 # do; the pool promises only that it cannot do it to the NEXT program.
 WIDENS_ITS_BUDGET = (
     'fn main() uses io, ffi, fs {\n'
-    '    check py("velaris.state", "EFFECT_BUDGET.add", ["fs"]) {\n'
+    '    check py("sabline.state", "EFFECT_BUDGET.add", ["fs"]) {\n'
     '        ok v { print("widened") }\n'
     '        fail w { print("failed " + w) }\n'
     '    }\n'
-    '    check read_file("velaris.py") {\n'
+    '    check read_file("sabline.py") {\n'
     '        ok t { print("READ IT") }\n'
     '        fail w { print("could not read") }\n    }\n}\n')
 
@@ -176,21 +176,21 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
                 print(f"           {detail}")
             failed += 1
 
-    box = Path(tempfile.mkdtemp(prefix="velaris-pool-"))
+    box = Path(tempfile.mkdtemp(prefix="sabline-pool-"))
     (box / "a.txt").write_text("inside", encoding="utf-8")
     readable = (box / "a.txt").as_posix()
 
     print("a pool runs programs")
     print("-" * 62)
 
-    with velaris.Pool(size=2, allow={"io"}, timeout=TIMEOUT,
+    with sabline.Pool(size=2, allow={"io"}, timeout=TIMEOUT,
                       max_memory_mb=MEMORY_MB) as pool:
         one = pool.run(PRINTS)
         ok("pool.run returns what run() returns",
            one.ok and one.output.strip() == "42" and one.exit_code == 0
            and not one.timed_out and not one.out_of_memory,
            str(one.as_dict())[:140])
-        loose = velaris.run(PRINTS, allow={"io"})
+        loose = sabline.run(PRINTS, allow={"io"})
         ok("and the same answer run() gives for the same program",
            one.as_dict() == loose.as_dict()
            or (one.ok == loose.ok and one.output == loose.output),
@@ -212,7 +212,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     print("what one program leaves for the next")
     print("-" * 62)
 
-    pool = velaris.Pool(size=1, allow={"io"}, timeout=5,
+    pool = sabline.Pool(size=1, allow={"io"}, timeout=5,
                         max_memory_mb=MEMORY_MB)
     pool.run(PRINTS)                      # so there is a worker to lose
     doomed = pool.worker_pids()[0]
@@ -230,7 +230,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
        pool.worker_pids() and pool.worker_pids() != [doomed],
        f"{doomed} -> {pool.worker_pids()}")
 
-    if velaris.memory_cap_is_enforced():
+    if sabline.memory_cap_is_enforced():
         doomed = pool.worker_pids()[0]
         fat = pool.run(EATS_MEMORY)
         ok("a program that fills memory is stopped",
@@ -269,7 +269,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     # in builtins) are reachable only under an unscoped ffi. The cliff
     # these three exercise - and the pool's reset of what it leaves - is
     # an unscoped-ffi property; scoped grants close the cliff outright.
-    with velaris.Pool(size=1, allow={"io", "ffi"},
+    with sabline.Pool(size=1, allow={"io", "ffi"},
                       timeout=TIMEOUT) as handles:
         one = handles.run(LEAKS_A_HANDLE)
         two = handles.run(LEAKS_A_HANDLE)
@@ -281,7 +281,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
         ok("...on the SAME worker, so the reset is what did it",
            handles.started == 1, f"started {handles.started}")
 
-    with velaris.Pool(size=1, allow={"io", "ffi"},
+    with sabline.Pool(size=1, allow={"io", "ffi"},
                       timeout=TIMEOUT) as ffi:
         before = ffi.run(SAYS_DIRECTORY)
         moved = ffi.run(MOVES_DIRECTORY)
@@ -304,11 +304,11 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     print("-" * 62)
 
     import inspect
-    params = set(inspect.signature(velaris.Pool.run).parameters)
+    params = set(inspect.signature(sabline.Pool.run).parameters)
     ok("pool.run takes no allow, deny, timeout or memory argument",
        not params & {"allow", "deny", "timeout", "max_memory_mb"},
        str(sorted(params)))
-    with velaris.Pool(size=1, allow={"io"}, timeout=TIMEOUT) as narrow:
+    with sabline.Pool(size=1, allow={"io"}, timeout=TIMEOUT) as narrow:
         try:
             narrow.run(PRINTS, allow={"fs"})  # type: ignore[call-arg]  # the TypeError is what is checked
             ok("asking a pool for a wider budget is a TypeError", False)
@@ -323,7 +323,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
            and "READ IT" not in one.output + two.output,
            str(one.as_dict())[:140])
 
-    with velaris.Pool(size=1, allow={"io", "ffi"},
+    with sabline.Pool(size=1, allow={"io", "ffi"},
                       timeout=TIMEOUT) as cliff:
         widened = cliff.run(WIDENS_ITS_BUDGET)
         ok("a program CAN widen its own budget through ffi - the cliff "
@@ -337,7 +337,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
            and cliff.started == 1,
            f"{then.as_dict()}, started {cliff.started}")
 
-    with velaris.Pool(size=1, allow={"io", f"fs:read:{box.as_posix()}@2"},
+    with sabline.Pool(size=1, allow={"io", f"fs:read:{box.as_posix()}@2"},
                       timeout=TIMEOUT) as counted:
         a = counted.run(reads(readable, 2))
         b = counted.run(reads(readable, 2))
@@ -347,8 +347,8 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
            and any(p.code == "E315" for p in c.problems),
            f"{a.ok} {b.ok} {c.as_dict()}"[:160])
 
-    outside = velaris.Pool(size=1, allow={"io"}, timeout=TIMEOUT)
-    inside = velaris.Pool(size=1, allow={"io", f"fs:read:{box.as_posix()}"},
+    outside = sabline.Pool(size=1, allow={"io"}, timeout=TIMEOUT)
+    inside = sabline.Pool(size=1, allow={"io", f"fs:read:{box.as_posix()}"},
                           timeout=TIMEOUT)
     try:
         prog = reads(readable, 1)
@@ -371,7 +371,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
         inside.close()
 
     try:
-        velaris.Pool(size=1, allow={"banana"})
+        sabline.Pool(size=1, allow={"banana"})
         ok("a budget that does not parse fails when the pool is made",
            False)
     except ValueError:
@@ -382,7 +382,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     print("workers, and what happens to them")
     print("-" * 62)
 
-    pool = velaris.Pool(size=1, allow={"io"}, timeout=TIMEOUT)
+    pool = sabline.Pool(size=1, allow={"io"}, timeout=TIMEOUT)
     try:
         pool.run(PRINTS)
         doomed = pool.worker_pids()[0]
@@ -403,7 +403,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     finally:
         pool.close()
 
-    pool = velaris.Pool(size=3, allow={"io"}, timeout=TIMEOUT)
+    pool = sabline.Pool(size=3, allow={"io"}, timeout=TIMEOUT)
     pool.run(PRINTS)
     pool.run(PRINTS)
     pool.run(PRINTS)
@@ -419,8 +419,8 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
         ok("running on a closed pool is refused", True)
     pool.close()                          # closing twice is not an error
 
-    racing = velaris.Pool(size=1, allow={"io"}, timeout=120)
-    caught: list[velaris.RunResult | RuntimeError]
+    racing = sabline.Pool(size=1, allow={"io"}, timeout=120)
+    caught: list[sabline.RunResult | RuntimeError]
     caught, busy_pids = [], []
 
     def keeps_going() -> None:
@@ -445,7 +445,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
        f"caught {caught}")
 
     def orphans() -> Any:
-        gone = velaris.Pool(size=1, allow={"io"}, timeout=TIMEOUT)
+        gone = sabline.Pool(size=1, allow={"io"}, timeout=TIMEOUT)
         gone.run(PRINTS)
         return gone.worker_pids()
 
@@ -459,8 +459,8 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     leaver.write_text(
         "import sys\n"
         f"sys.path.insert(0, {str(HERE)!r})\n"
-        "import velaris\n"
-        "pool = velaris.Pool(size=2, allow={'io'}, timeout=30)\n"
+        "import sabline\n"
+        "pool = sabline.Pool(size=2, allow={'io'}, timeout=30)\n"
         f"pool.run({PRINTS!r})\n"
         f"pool.run({PRINTS!r})\n"
         "print(' '.join(str(p) for p in pool.worker_pids()))\n"
@@ -480,7 +480,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     print("several callers at once")
     print("-" * 62)
 
-    with velaris.Pool(size=4, allow={"io"}, timeout=TIMEOUT) as busy:
+    with sabline.Pool(size=4, allow={"io"}, timeout=TIMEOUT) as busy:
         answers, blame = {}, []
 
         def asker(n: int) -> None:
@@ -530,7 +530,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     # module-level assignments and insist every mutable one is either
     # reset between programs or a constant nothing writes to.
     sources = [p.read_text(encoding="utf-8") for p in
-               sorted(Path(velaris.__file__).parent.glob("*.py"))]
+               sorted(Path(sabline.__file__).parent.glob("*.py"))]
     source = "\n".join(sources)
     CONSTANTS = {"KEYWORDS", "TOKEN_SPEC", "ESCAPES", "FALLIBLE_BUILTINS",
                  "BUILTINS", "KNOWN_TYPES", "FLIP", "BUILTIN_EFFECTS",
@@ -573,7 +573,7 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     # the budget's four are assigned None here and replaced through
     # globals() by Budget.install, so no literal names them
     found.update({"FFI_MODULES", "FS_GRANTS", "NET_GRANTS"})
-    unaccounted = sorted(found - set(velaris.MUTABLE_GLOBALS) - CONSTANTS)
+    unaccounted = sorted(found - set(sabline.MUTABLE_GLOBALS) - CONSTANTS)
     ok("every module-level mutable in the package is reset or a listed "
        "constant", not unaccounted,
        f"not accounted for: {unaccounted}")
@@ -589,23 +589,23 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     ok("...and every name on the constant list really is never written to",
        not written, str(written))
 
-    baseline = velaris.program_state_baseline()
-    velaris.PROGRAM_ARGS[:] = ["left", "behind"]
-    velaris.PY_OBJECTS[99] = object()
-    velaris.PY_NEXT[0] = 99
-    velaris.TRACE["on"] = True
-    velaris._NATIVE_KEEPALIVE.append(object())
-    velaris.Budget.parse("io,fs,net,ffi").install()
-    velaris.reset_program_state(velaris.Budget.parse("io"), baseline)
+    baseline = sabline.program_state_baseline()
+    sabline.PROGRAM_ARGS[:] = ["left", "behind"]
+    sabline.PY_OBJECTS[99] = object()
+    sabline.PY_NEXT[0] = 99
+    sabline.TRACE["on"] = True
+    sabline._NATIVE_KEEPALIVE.append(object())
+    sabline.Budget.parse("io,fs,net,ffi").install()
+    sabline.reset_program_state(sabline.Budget.parse("io"), baseline)
     ok("reset_program_state empties every one of them",
-       velaris.PROGRAM_ARGS == [] and not velaris.PY_OBJECTS
-       and velaris.PY_NEXT == [1] and not velaris.TRACE["on"]
-       and not velaris._NATIVE_KEEPALIVE
-       and velaris.EFFECT_BUDGET == {"io"}
-       and velaris.OP_COUNTS == {"fs": 0, "net": 0},
-       f"{velaris.PROGRAM_ARGS} {list(velaris.PY_OBJECTS)} "
-       f"{velaris.PY_NEXT} {sorted(velaris.EFFECT_BUDGET)}")
-    velaris.Budget.parse(",".join(velaris.ALL_EFFECTS)).install()
+       sabline.PROGRAM_ARGS == [] and not sabline.PY_OBJECTS
+       and sabline.PY_NEXT == [1] and not sabline.TRACE["on"]
+       and not sabline._NATIVE_KEEPALIVE
+       and sabline.EFFECT_BUDGET == {"io"}
+       and sabline.OP_COUNTS == {"fs": 0, "net": 0},
+       f"{sabline.PROGRAM_ARGS} {list(sabline.PY_OBJECTS)} "
+       f"{sabline.PY_NEXT} {sorted(sabline.EFFECT_BUDGET)}")
+    sabline.Budget.parse(",".join(sabline.ALL_EFFECTS)).install()
 
     print()
     print("and it has to be faster")
@@ -614,12 +614,12 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     rounds = 200
     t0 = time.perf_counter()
     for _ in range(rounds):
-        got = velaris.run(PRINTS, allow={"io"}, timeout=TIMEOUT,
+        got = sabline.run(PRINTS, allow={"io"}, timeout=TIMEOUT,
                           max_memory_mb=MEMORY_MB)
         assert got.ok, got.as_dict()
     alone = time.perf_counter() - t0
 
-    with velaris.Pool(size=1, allow={"io"}, timeout=TIMEOUT,
+    with sabline.Pool(size=1, allow={"io"}, timeout=TIMEOUT,
                       max_memory_mb=MEMORY_MB) as fast:
         fast.run(PRINTS)                  # start the worker, then measure
         t0 = time.perf_counter()

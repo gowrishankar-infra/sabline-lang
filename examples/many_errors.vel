@@ -1,4 +1,4 @@
-// v1.0: Velaris reports MULTIPLE problems in one run (one per function)
+// v1.0: Sabline reports MULTIPLE problems in one run (one per function)
 // instead of stopping at the first. Three broken functions, one compile,
 // three errors - each with its own location and fixes.
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""velaris eject: an ejected program builds and runs with nothing from this
+"""sabline eject: an ejected program builds and runs with nothing from this
 project, and its budget still holds.
 
 Every check here runs the ejected directory with an interpreter from a
-fresh virtual environment made for the purpose - no velaris-lang installed
+fresh virtual environment made for the purpose - no sabline-lang installed
 in it, no PYTHONPATH, run with -I from another directory - so what is
 tested is what a user who copied the directory elsewhere would have.
 
@@ -20,7 +20,7 @@ from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_eject")
@@ -39,20 +39,20 @@ def ok(label: Any, cond: Any, detail: object = "") -> None:
             print(f"          {str(detail)[:400]}")
 
 
-def velaris_cli(*words: Any, cwd: Any = None) -> Any:
-    return subprocess.run([sys.executable, str(HERE / "velaris.py"), *words],
+def sabline_cli(*words: Any, cwd: Any = None) -> Any:
+    return subprocess.run([sys.executable, str(HERE / "sabline.py"), *words],
                           capture_output=True, text=True, cwd=cwd,
                           timeout=600)
 
 
 def clean_env() -> dict[Any, Any]:
     env = {k: v for k, v in os.environ.items()
-           if not k.startswith("PYTHON") and not k.startswith("VELARIS_")}
+           if not k.startswith("PYTHON") and not k.startswith("SABLINE_")}
     return env
 
 
 def main() -> int:
-    print("velaris eject (8.1)")
+    print("sabline eject (8.1)")
     print("-" * 62)
 
     # a fresh environment with nothing in it
@@ -65,31 +65,31 @@ def main() -> int:
        made.returncode == 0 and py.exists(), made.stderr)
     elsewhere = WORK / "elsewhere"
     elsewhere.mkdir()
-    bare = subprocess.run([str(py), "-I", "-c", "import velaris"],
+    bare = subprocess.run([str(py), "-I", "-c", "import sabline"],
                           capture_output=True, text=True, cwd=elsewhere,
                           env=clean_env(), timeout=120)
-    ok("...in which velaris cannot be imported",
-       bare.returncode != 0 and "velaris" in bare.stderr, bare.stderr)
+    ok("...in which sabline cannot be imported",
+       bare.returncode != 0 and "sabline" in bare.stderr, bare.stderr)
 
     out = WORK / "ej" / "discount"
-    done = velaris_cli("eject", "examples/discount.vel", "-o", str(out),
+    done = sabline_cli("eject", "examples/discount.vel", "-o", str(out),
                        cwd=HERE)
-    ok("velaris eject examples/discount.vel writes the directory",
+    ok("sabline eject examples/discount.vel writes the directory",
        done.returncode == 0 and (out / "main.py").is_file()
-       and (out / "runtime" / "velaris" / "__init__.py").is_file()
+       and (out / "runtime" / "sabline" / "__init__.py").is_file()
        and (out / "program" / "discount.vel").is_file()
        and (out / "runtime" / "stdlib" / "money.vel").is_file(),
        done.stdout + done.stderr)
     for name in ("README.md", "requirements.txt", "proofs.json", "build.py",
                  "SHA256SUMS", "LICENSE"):
         ok(f"...with {name}", (out / name).is_file())
-    ok("...and the runtime is this Velaris, every module byte for byte",
-       sorted(p.name for p in (HERE / "velaris").glob("*.py"))
-       == sorted(p.name for p in (out / "runtime" / "velaris")
+    ok("...and the runtime is this Sabline, every module byte for byte",
+       sorted(p.name for p in (HERE / "sabline").glob("*.py"))
+       == sorted(p.name for p in (out / "runtime" / "sabline")
                  .glob("*.py"))
-       and all((out / "runtime" / "velaris" / p.name).read_bytes()
+       and all((out / "runtime" / "sabline" / p.name).read_bytes()
                == p.read_bytes()
-               for p in (HERE / "velaris").glob("*.py")))
+               for p in (HERE / "sabline").glob("*.py")))
 
     # it builds: every Python file compiles in the fresh environment, and
     # build.py names the PyInstaller command
@@ -119,22 +119,22 @@ def main() -> int:
                == line[:64] for line in sums)
     listed = {line[66:] for line in sums}
     ok("SHA256SUMS holds the sha256 of every other file, and each matches",
-       good and {"main.py", "runtime/velaris/budget.py",
-                 "runtime/velaris/__init__.py", "program/discount.vel",
+       good and {"main.py", "runtime/sabline/budget.py",
+                 "runtime/sabline/__init__.py", "program/discount.vel",
                  "README.md", "proofs.json"} <= listed, sums[:3])
 
     record = json.loads((out / "proofs.json").read_text(encoding="utf-8"))
     ok("proofs.json records the budget, the version, and what was proven",
-       record.get("schema") == "velaris.eject/1"
-       and record.get("velaris_version") == velaris.VERSION
+       record.get("schema") == "sabline.eject/1"
+       and record.get("sabline_version") == sabline.VERSION
        and record.get("budget") == "io"
-       and record.get("prover") is bool(velaris.HAVE_Z3)
+       and record.get("prover") is bool(sabline.HAVE_Z3)
        and any(f["name"] == "discount_for" for f in record["functions"]),
        str(record)[:300])
     statuses = {f["status"] for f in record["functions"]
                 if f["requires"] or f["ensures"]}
     ok("...proven with the prover, checked at run time without it",
-       ("proven" in statuses) if velaris.HAVE_Z3
+       ("proven" in statuses) if sabline.HAVE_Z3
        else ("proven" not in statuses), statuses)
 
     pins = (out / "requirements.txt").read_text(encoding="utf-8")
@@ -197,7 +197,7 @@ def main() -> int:
        anyway.stdout[-200:] + anyway.stderr[-300:])
     program.write_bytes(ejected)
 
-    runtime = out / "runtime" / "velaris" / "budget.py"
+    runtime = out / "runtime" / "sabline" / "budget.py"
     original = runtime.read_bytes()
     runtime.write_bytes(original + b"\n# changed after ejecting\n")
     tampered = subprocess.run([str(py), "-I", str(out / "main.py"),
@@ -207,7 +207,7 @@ def main() -> int:
     runtime.write_bytes(original)
     ok("a changed runtime is never run, --changed-ok or not: it is what "
        "enforces the budget", tampered.returncode == 2
-       and "runtime/velaris/budget.py" in tampered.stderr
+       and "runtime/sabline/budget.py" in tampered.stderr
        and "payable" not in tampered.stdout, tampered.stderr)
     into = subprocess.run([str(py), "-I", str(out / "main.py"), "--receipt",
                            str(out / "main.py")], capture_output=True,
@@ -230,20 +230,20 @@ def main() -> int:
        kept.stderr[-200:] + str(doc)[:200])
 
     # a budget that could let one run rewrite the next
-    inside = velaris_cli("eject", "examples/discount.vel", "-o",
+    inside = sabline_cli("eject", "examples/discount.vel", "-o",
                          str(WORK / "ej" / "writes"), "--allow",
                          f"io,fs:write:{(WORK / 'ej').as_posix()}", cwd=HERE)
     ok("eject refuses a budget that lets the program write into the "
        "ejected directory", inside.returncode == 2
        and "refused" in inside.stderr
        and not (WORK / "ej" / "writes").exists(), inside.stderr)
-    plain = velaris_cli("eject", "examples/discount.vel", "-o",
+    plain = sabline_cli("eject", "examples/discount.vel", "-o",
                         str(WORK / "ej" / "plain"), "--allow", "io,fs",
                         cwd=HERE)
     ok("...and plain fs, which writes anywhere", plain.returncode == 2
        and "plain fs" in plain.stderr, plain.stderr)
     rel = WORK / "ej" / "relative"
-    relative = velaris_cli("eject", "examples/discount.vel", "-o", str(rel),
+    relative = sabline_cli("eject", "examples/discount.vel", "-o", str(rel),
                            "--allow", "io,fs:write:./out", cwd=HERE)
     ok("a relative write grant is allowed at eject", relative.returncode == 0,
        relative.stderr)
@@ -262,7 +262,7 @@ def main() -> int:
     pylib = WORK / "pylib"
     pylib.mkdir()
     writes_code = WORK / "ej" / "pylib-writer"
-    made = velaris_cli("eject", "examples/discount.vel", "-o", str(writes_code),
+    made = sabline_cli("eject", "examples/discount.vel", "-o", str(writes_code),
                        "--allow", f"io,fs:write:{pylib.as_posix()}", cwd=HERE)
     on_path = dict(clean_env(), PYTHONPATH=str(pylib))
     launched = subprocess.run([str(py), str(writes_code / "main.py")],
@@ -280,14 +280,14 @@ def main() -> int:
        "without it", isolated.returncode == 2
        and "imports from" in isolated.stderr, isolated.stderr[-300:])
 
-    again = velaris_cli("eject", "examples/discount.vel", "-o", str(out),
+    again = sabline_cli("eject", "examples/discount.vel", "-o", str(out),
                         cwd=HERE)
-    forced = velaris_cli("eject", "examples/discount.vel", "-o", str(out),
+    forced = sabline_cli("eject", "examples/discount.vel", "-o", str(out),
                          "--force", cwd=HERE)
     stranger = WORK / "ej" / "not-ours"
     stranger.mkdir()
     (stranger / "notes.txt").write_text("mine\n", encoding="utf-8")
-    theirs = velaris_cli("eject", "examples/discount.vel", "-o",
+    theirs = sabline_cli("eject", "examples/discount.vel", "-o",
                          str(stranger), "--force", cwd=HERE)
     ok("eject does not overwrite a directory without --force, and never one "
        "it did not make",
@@ -299,7 +299,7 @@ def main() -> int:
     broken = WORK / "broken.vel"
     broken.write_text("fn main() uses io {\n    print(1 +)\n}\n",
                       encoding="utf-8")
-    nope = velaris_cli("eject", str(broken), "-o", str(WORK / "ej" / "no"))
+    nope = sabline_cli("eject", str(broken), "-o", str(WORK / "ej" / "no"))
     ok("a program that does not compile is not ejected",
        nope.returncode == 1 and not (WORK / "ej" / "no").exists(),
        nope.stderr)

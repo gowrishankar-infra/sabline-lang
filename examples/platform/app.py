@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A platform that lets its customers write Velaris.
+"""A platform that lets its customers write Sabline.
 
 A SaaS team wants its customers to write their own rules - a discount, a
 routing decision, a validation - and has to decide, before one of them
@@ -38,10 +38,10 @@ from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from typing import Any
 
-# so the example runs from a clone; pip install velaris-lang makes this
+# so the example runs from a clone; pip install sabline-lang makes this
 # line unnecessary
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 
 # ---- the platform's policy, in one place ------------------------------
 
@@ -60,7 +60,7 @@ def grants(spec: str) -> list[Any]:
     names follow it as bare items, which is how the grammar has them."""
     out: list[Any] = []
     for item in spec.split(","):
-        if out and ":" not in item and item not in velaris.ALL_EFFECTS:
+        if out and ":" not in item and item not in sabline.ALL_EFFECTS:
             out[-1] += "," + item
         else:
             out.append(item)
@@ -71,17 +71,17 @@ def grants(spec: str) -> list[Any]:
 # a script may TOUCH, not how much of it: an audit bounds operations only
 # where the text fixes them, and the count is the pool's to enforce at
 # run time either way.
-SURFACE = velaris.Budget.parse(re.sub(r"@\d+", "", PLATFORM_ALLOW))
+SURFACE = sabline.Budget.parse(re.sub(r"@\d+", "", PLATFORM_ALLOW))
 
 # One pool, one budget, for every customer's script. It is parsed here,
 # once; pool.run takes no allow argument, so there is nowhere for a
 # caller or a program to ask for more. Workers are closed at exit.
-POOL = velaris.Pool(size=2, allow=set(grants(PLATFORM_ALLOW)),
+POOL = sabline.Pool(size=2, allow=set(grants(PLATFORM_ALLOW)),
                     timeout=TIMEOUT_S, max_memory_mb=MEMORY_MB)
 
 SCRIPTS: dict[Any, Any] = {}          # an example: no database, no tenants
 
-app = FastAPI(title="Velaris scripts")
+app = FastAPI(title="Sabline scripts")
 
 
 # ---- what the platform reads off an audit -----------------------------
@@ -90,11 +90,11 @@ def would_need_granting(asked: str) -> list[Any]:
     """Every grant in `asked` this platform does not already cover - what
     an operator would have to add to PLATFORM_ALLOW to accept it."""
     return [g for g in grants(asked)
-            if SURFACE.covers(velaris.Budget.parse(g))]
+            if SURFACE.covers(sabline.Budget.parse(g))]
 
 
 def problems(items: list[Any]) -> list[Any]:
-    """A customer sent text, not a file, so the temporary path Velaris
+    """A customer sent text, not a file, so the temporary path Sabline
     gave it is noise."""
     return [{k: v for k, v in p.as_dict().items() if k != "file"}
             for p in items]
@@ -102,7 +102,7 @@ def problems(items: list[Any]) -> list[Any]:
 
 def declaration(report: Any) -> dict[str, Any]:
     """What a script says about itself, from the audit alone. Every field
-    here comes from velaris.audit/1, whose shape is stable."""
+    here comes from sabline.audit/1, whose shape is stable."""
     return {
         "effects": report.effects,
         "hosts": report.net_hosts,
@@ -119,7 +119,7 @@ def declaration(report: Any) -> dict[str, Any]:
                       if f["requires"] or f["ensures"]],
         "warnings": report.warnings,
         "audit_schema": report.schema,
-        "velaris_version": report.velaris_version,
+        "sabline_version": report.sabline_version,
     }
 
 
@@ -145,7 +145,7 @@ def policy() -> dict[str, Any]:
     """What this platform permits, and what it holds."""
     return {"platform_allows": PLATFORM_ALLOW,
             "limits": {"timeout_s": TIMEOUT_S, "memory_mb": MEMORY_MB},
-            "velaris_version": velaris.VERSION,
+            "sabline_version": sabline.VERSION,
             "scripts": [{"id": s["id"], "name": s["name"]}
                         for s in SCRIPTS.values()]}
 
@@ -154,7 +154,7 @@ def policy() -> dict[str, Any]:
 def submit(source: str = Body(..., media_type="text/plain"),
            name: str = "untitled") -> Any:
     """Audit it, decide, store it. This never runs the script."""
-    report = velaris.audit(source, timeout=AUDIT_TIMEOUT_S,
+    report = sabline.audit(source, timeout=AUDIT_TIMEOUT_S,
                            max_memory_mb=AUDIT_MEMORY_MB)
     stopped = [p for p in report.problems if p.code in ("E613", "E614")]
     if stopped:
@@ -169,11 +169,11 @@ def submit(source: str = Body(..., media_type="text/plain"),
             "error": "this does not compile, so it cannot be enabled",
             "problems": problems(report.problems)})
     asked = report.safe_command.split("--allow ", 1)[1]
-    refused = SURFACE.covers(velaris.Budget.parse(asked))
+    refused = SURFACE.covers(sabline.Budget.parse(asked))
     if refused:
         return JSONResponse(status_code=403, content={
             # covers() names the first thing that does not fit, in
-            # Velaris's own words
+            # Sabline's own words
             "error": refused,
             "declares": asked,
             "platform_allows": PLATFORM_ALLOW,
@@ -197,10 +197,10 @@ def run(sid: str) -> dict[str, Any]:
     worker reinstalls that budget before every program."""
     result = POOL.run(stored(sid)["source"])
     return {
-        "outcome": velaris.run_outcome(result),
+        "outcome": sabline.run_outcome(result),
         "output": result.output,
         "logs": result.logs,
-        "refused": velaris.run_refusals(result),
+        "refused": sabline.run_refusals(result),
         "stopped_by": (f"the {TIMEOUT_S}s time limit" if result.timed_out
                        else f"the {MEMORY_MB} MB memory limit"
                        if result.out_of_memory else None),
