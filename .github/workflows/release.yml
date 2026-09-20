@@ -292,6 +292,7 @@ jobs:
           --collect-submodules velaris
           --collect-all z3 --collect-all llvmlite
           --add-data "stdlib${{ matrix.sep }}stdlib"
+          --add-data "velaris/site.css${{ matrix.sep }}velaris"
           velaris.py
       - name: Smoke test the executable
         shell: bash
@@ -299,6 +300,8 @@ jobs:
           ./dist/velaris* --version
           ./dist/velaris* doctor
           ./dist/velaris* examples/hello.vel
+          # the demo starts two runs of this same executable (8.5)
+          ./dist/velaris* demo
           # check runs its work in a child under a ceiling; until 8.2 the
           # executable started velaris.py for it, which it does not hold,
           # and every check failed with E001 (found by velaris-canary)
