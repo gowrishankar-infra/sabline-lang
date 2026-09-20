@@ -14,7 +14,7 @@ import typing as _typing
 _MODULES = (
     "version", "predicates", "errors", "lexer", "nodes", "parser",
     "tables", "confine", "state", "recorder", "loader", "values",
-    "wrappers", "budget", "effects", "checker", "termination",
+    "wrappers", "budget", "tools", "effects", "checker", "termination",
     "prover", "native", "runtime", "witnesses", "editor", "formatter",
     "project", "session", "results", "library", "pool",
     "findings", "mcp_manifest", "doors", "migrate", "ratchet",
@@ -26,7 +26,7 @@ _MODULES = (
 
 from . import version, predicates, errors, lexer, nodes, parser  # noqa: E402,F401
 from . import tables, confine, state, recorder, loader, values  # noqa: E402,F401
-from . import wrappers, budget  # noqa: E402,F401
+from . import wrappers, budget, tools  # noqa: E402,F401
 from . import effects, checker, termination, prover, native, runtime  # noqa: E402,F401
 from . import witnesses  # noqa: E402,F401
 from . import editor, formatter, project, session, results, library  # noqa: E402,F401

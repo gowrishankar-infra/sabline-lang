@@ -33,6 +33,7 @@ from .tables import (
     BUILTINS,
     CURRENCIES,
     FALLIBLE_BUILTINS,
+    HMAC_BUILTINS,
     KNOWN_TYPES,
     MONEY_BUILTINS,
     ROUNDING,
@@ -128,8 +129,8 @@ def check_types(funcs: list[Function], records: list[Any], errors: list[Any]) ->
         system. declassify is the exception - taking a Secret is what it
         is for - and it says so in a signature and in the audit."""
         b = builtin_reached(name, table)
-        if b is None or b == "declassify":
-            return None
+        if b is None or b == "declassify" or b in HMAC_BUILTINS:
+            return None                   # hmac_*: its own rule, below
         return b if BUILTINS[b]["effects"] else None
 
     def secret_enters(name: str, seen: Any = None) -> Any:
@@ -917,6 +918,43 @@ def check_types(funcs: list[Function], records: list[Any], errors: list[Any]) ->
                         fixes=["say why this value is safe to let out; it "
                                "is what an operator reads in the audit"])
                 return secret_inner(t0)
+            if isinstance(node, Call) and \
+                    builtin_reached(node.name, table) in HMAC_BUILTINS:
+                # hmac_sha256(key, message) and hmac_sha256_chain(key,
+                # messages) (8.5): the key is a Secret of Text and nothing
+                # else, the message carries no secret - a MAC of a secret
+                # message under a key the program chose would be a digest of
+                # that message in the open - and what comes back is a Text.
+                # The `declassify` effect it needs is the effect checker's.
+                said = shown_name(node.name)
+                if len(node.args) != 2:
+                    raise VelarisError("E401",
+                        f"'{said}' expects 2 argument(s) but got "
+                        f"{len(node.args)}", node.line,
+                        fixes=["pass the key and what to sign: "
+                               f"{said}(key, message)"])
+                t0 = infer(node.args[0])
+                if t0 != wrap_secret("Text"):
+                    raise VelarisError("E561",
+                        f"'{said}' takes its key as a Secret of Text, but "
+                        f"this is {t0}", node.line,
+                        fixes=["read the key with env() or "
+                               "read_file_secret(), which give a Secret of "
+                               "Text; a key that is not a secret needs no "
+                               "protecting and cannot be given here"])
+                want = ("Text" if builtin_reached(node.name, table)
+                        == "hmac_sha256" else "List of Text")
+                t1 = infer(node.args[1])
+                if carries(t1):
+                    raise leak(f"argument 2 of '{said}'",
+                               f"the result of '{said}' is not a Secret, so "
+                               f"what it signs would leave as a digest",
+                               t1, origin_of(node.args[1]), node.line)
+                if t1 != want:
+                    raise VelarisError("E501",
+                        f"'{said}' needs {want} for argument 2, but this is "
+                        f"{t1}", node.line, fixes=[f"pass a {want} value"])
+                return "Text"
             if isinstance(node, Call) and \
                     builtin_reached(node.name, table) in MONEY_BUILTINS:
                 return money_call(cast(str, builtin_reached(node.name, table)),

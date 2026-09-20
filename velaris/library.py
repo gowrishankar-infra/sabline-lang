@@ -15,6 +15,8 @@ from .tables import (
     CHECK_MEMORY_MB_DEFAULT,
     CHECK_TIMEOUT_DEFAULT,
     DEFAULT_ALLOW,
+    HMAC_BUILTINS,
+    HMAC_REASON,
     SECRET_SOURCES,
     builtin_reached,
 )
@@ -243,6 +245,12 @@ def _secrets_named(path: str, source: str | None) -> dict[Any, Any] | None:
                     and isinstance(node.args[1], Str):
                 out.append({"reason": node.args[1].value,
                             "function": where, "line": node.line})
+            elif reached in HMAC_BUILTINS:
+                # the MAC is not a Secret, so the call lets something out:
+                # named like any declassification, with the reason every
+                # such call has and the builtin that made it (8.5)
+                out.append({"reason": HMAC_REASON, "function": where,
+                            "line": node.line, "builtin": reached})
         for f in _dc.fields(node):
             visit(getattr(node, f.name), where, line)
 
@@ -830,6 +838,8 @@ def _run_program(source: Any, *, path: Any, budget: Any, args: Any, stdin: Any, 
         code = 1
     finally:
         used = dict(_state.EFFECT_USES)           # this run's, before the old
+        if _state.RUN_RECORDER is not None:
+            _state.RUN_RECORDER.close()
         Budget.restore(saved)              # budget's come back
         _state.PROGRAM_ARGS[:] = saved_args
         # handles a program opened and never closed are this program's,

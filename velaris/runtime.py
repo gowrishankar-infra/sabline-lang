@@ -39,6 +39,10 @@ from .parser import expr_str, expr_vars, nice_name
 from .tables import (
     BUILTINS,
     CURRENCIES,
+    DIGEST_BUILTINS,
+    HMAC_BUILTINS,
+    HMAC_REASON,
+    TOOL_BUILTINS,
     INT_MAX,
     INT_MIN,
     MONEY_BUILTINS,
@@ -47,6 +51,7 @@ from .tables import (
     ROUNDING,
 )
 from .recorder import _note_redirect
+from .tools import run_tool
 from .loader import blame, unknown_function
 from .values import (
     log_line,
@@ -86,6 +91,82 @@ _R = TypeVar("_R")
 # effects per builtin, sorted once instead of on every call
 BUILTIN_EFFECTS = {n: tuple(sorted(d.get("effects", ())))
                    for n, d in BUILTINS.items() if d.get("effects")}
+
+
+def _utf8(text: Any) -> bytes:
+    """A Text as the bytes a digest or an encoder works on."""
+    return str(text).encode("utf-8", "surrogatepass")
+
+
+def key_fingerprint(key: bytes) -> str:
+    """What a receipt says of the key an hmac_sha256 call signed with: twelve
+    hex digits of a SHA-256 over a fixed label and the key. It tells two keys
+    apart and the same key from run to run; it is not the key, and for a key
+    of any real length it does not help find it (THREAT_MODEL.md)."""
+    import hashlib
+    return hashlib.sha256(b"velaris key fingerprint\0" + key).hexdigest()[:12]
+
+
+# how many keys one call site may name in a receipt before it says "many"
+FINGERPRINTS_PER_SITE = 16
+
+
+def run_digest(name: str, args: list[Any], line: int) -> Any:
+    """sha256, the encoders and the two HMACs (8.5). The HMACs' `declassify`
+    effect was spent before this ran."""
+    import base64
+    import binascii
+    import hashlib
+    if name == "sha256":
+        return hashlib.sha256(_utf8(args[0])).hexdigest()
+    if name == "hex_encode":
+        return _utf8(args[0]).hex()
+    if name == "base64_encode":
+        return base64.b64encode(_utf8(args[0])).decode("ascii")
+    if name == "url_encode":
+        import urllib.parse
+        return urllib.parse.quote(_utf8(args[0]), safe="-_.~")
+    if name in ("hex_decode", "base64_decode"):
+        text = str(args[0])
+        what = "hexadecimal" if name == "hex_decode" else "base64"
+        try:
+            if name == "hex_decode":
+                raw = bytes.fromhex(text) if text.isascii() and not any(
+                    c.isspace() for c in text) else None
+            else:
+                raw = base64.b64decode(text.encode("ascii"), validate=True)
+        except (ValueError, binascii.Error, UnicodeEncodeError):
+            raw = None
+        if raw is None:
+            raise FailSignal(f"that text is not {what}")
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError:
+            raise FailSignal(f"that {what} does not decode to text (UTF-8)")
+    import hmac
+    key = _utf8(args[0])
+    first = key
+    messages = [args[1]] if name == "hmac_sha256" else list(args[1])
+    if not messages:
+        raise VelarisError("E609", f"'{name}' was given nothing to sign", line,
+                           fixes=["pass at least one message"])
+    for i, message in enumerate(messages):
+        mac = hmac.new(key, _utf8(message), hashlib.sha256)
+        key = mac.digest()
+    rec = _state.RUN_RECORDER
+    if rec is not None:
+        # a receipt names the key by its fingerprint and never otherwise; a
+        # site that signs under many keys says "many", so that a loop over
+        # keys made from a secret writes nothing of them into the receipt
+        seen = rec.keys_at.setdefault(line, set())
+        print_ = key_fingerprint(first)
+        if print_ not in seen and len(seen) >= FINGERPRINTS_PER_SITE:
+            print_ = "many"
+        else:
+            seen.add(print_)
+        rec.note("declassify", reason=HMAC_REASON, line=line,
+                 key_fingerprint=print_)
+    return key.hex()
 
 
 def run_money(name: str, args: list[Any], line: int) -> Any:
@@ -630,6 +711,10 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
             return open(real, encoding="utf-8").read()
         except OSError:
             raise FailSignal(f"cannot read file '{args[0]}'")
+    if name in DIGEST_BUILTINS or name in HMAC_BUILTINS:
+        return run_digest(name, args, line)
+    if name in TOOL_BUILTINS:
+        return run_tool(name, args, line)
     if name == "declassify":
         # the effect was spent before this ran; a Secret is a compile-time
         # distinction, so at this point the value is simply itself. A

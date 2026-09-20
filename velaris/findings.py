@@ -40,7 +40,8 @@ _EFFECT_WORDS = {"io": "the console", "env": "environment variables",
                  "rand": "randomness",
                  "ffi": "Python, and so anything Python can do",
                  "declassify": "turning a Secret into an ordinary value, "
-                               "which anything may then emit"}
+                               "which anything may then emit",
+                 "tool": "the tools the host process offers"}
 
 # The findings that are not errors, as (rule id, level, meaning). The
 # E-codes come from ERROR_TABLE and are all errors: each one stops a

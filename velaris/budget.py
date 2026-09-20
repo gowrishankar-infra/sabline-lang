@@ -162,6 +162,12 @@ class Budget:
         net:...@100             at most 100 network operations
         ffi                     any Python module
         ffi:math,json           those top-level modules only
+        tool                    any tool the host offers (8.5)
+        tool:search             that tool
+        tool:search@20          ...and at most 20 calls of it
+        tool:send_email:to=*@corp.com
+                                that tool, its `to` held to the pattern
+        tool@50                 at most 50 tool calls in the run
 
     Grants are additive: two fs items grant both. A count is the
     smallest count given for that effect and applies to the whole run.
@@ -180,6 +186,12 @@ class Budget:
         self._fs_any = False               # a plain 'fs' was written
         self._net_any = False              # a plain 'net' was written
         self._ffi_any = False              # a plain 'ffi' was written
+        # tools (8.5): None = any tool; else {name: None = any arguments, or
+        # [(argument, pattern), ...]}. tool_limits: @N by tool, "" = the run
+        self.tools: dict[str, list[tuple[str, str]] | None] | None = {}
+        self.tool_limits: dict[str, int] = {}
+        self._tool_plain: set[str] = set()   # `tool:NAME`, nothing after it
+        self._tool_any = False             # a plain 'tool' was written
 
     # ---- parsing -------------------------------------------------------
     @classmethod
@@ -231,6 +243,9 @@ class Budget:
             elif item == "net" or item.startswith("net:") or \
                     item.startswith("net@"):
                 b._add_net(item)
+            elif item == "tool" or item.startswith("tool:") or \
+                    item.startswith("tool@"):
+                b._add_tool(item)
             elif item == "ffi":
                 b.effects.add("ffi")
                 b._ffi_any = True
@@ -252,6 +267,13 @@ class Budget:
                     f"'{item}' is not an effect. They are: "
                     f"{', '.join(ALL_EFFECTS)} (or ffi:module, fs:read:path, "
                     f"net:host:port, with @count)")
+        for name in b._tool_plain:         # the wider grant wins, as with
+            if b.tools is not None:        # fs and net
+                b.tools[name] = None
+        # a plain `tool` grants every tool, and so does `tool@N` written
+        # with no tool named: a cap on nothing would grant nothing
+        if b._tool_any or ("tool" in b.effects and not b.tools):
+            b.tools = None
         return b
 
     @staticmethod
@@ -336,6 +358,84 @@ class Budget:
             self.net = []
         self.net.append((host, port))
 
+    def _add_tool(self, item: str) -> None:
+        """One `tool` grant (8.5). A count is a trailing @N and nothing
+        else, because a pattern may hold an @ of its own
+        (`to=*@corp.com`); one that ends in @ and digits writes that @ as
+        %40. `,` and `%` in a pattern are written %2C and %25."""
+        self.effects.add("tool")
+        body, n = item, None
+        at = item.rfind("@")
+        if at > 0 and _ascii_digits(item[at + 1:]):
+            body, n = item[:at], int(item[at + 1:])
+        elif item.startswith("tool@"):
+            raise BudgetError(f"'{item}': what follows @ must be a whole "
+                              f"number of calls, written 0-9")
+        if body == "tool":
+            if n is None:
+                self._tool_any = True          # any tool, any arguments
+            else:
+                cur = self.tool_limits.get("")
+                self.tool_limits[""] = n if cur is None else min(cur, n)
+            return
+        name, sep, rest = body[5:].partition(":")
+        if not _tool_word(name):
+            raise BudgetError(f"'{item}': after tool: write a tool's name "
+                              f"(letters, digits, _ . -), as tool:search")
+        if n is not None:
+            if sep:
+                raise BudgetError(f"'{item}': a count goes on the tool, as "
+                                  f"tool:{name}@{n}, not on one argument; a "
+                                  f"pattern that ends in @ and digits writes "
+                                  f"that @ as %40")
+            cur = self.tool_limits.get(name)
+            self.tool_limits[name] = n if cur is None else min(cur, n)
+            if self.tools is not None:
+                self.tools.setdefault(name, None)
+            return
+        if not sep:
+            self._tool_plain.add(name)
+            if self.tools is not None:
+                self.tools[name] = None
+            return
+        arg, eq, pattern = rest.partition("=")
+        if not eq or not _tool_word(arg) or not pattern:
+            raise BudgetError(f"'{item}': after tool:{name}: write "
+                              f"argument=pattern, as tool:{name}:to=*@corp.com")
+        pattern = _pct_decode(pattern)
+        if "**" in pattern:
+            raise BudgetError(f"'{item}': a pattern holds single stars; each "
+                              f"stands for one run of characters")
+        if self.tools is None:
+            return                             # plain tool already covers it
+        held = self.tools.get(name, [])
+        if held is None:                       # seen with a count first
+            held = []
+        if (arg, pattern) not in held:
+            held.append((arg, pattern))
+        self.tools[name] = held
+
+    def _tool_items(self) -> list[str]:
+        out: list[str] = []
+        total = self.tool_limits.get("")
+        if self.tools is None:
+            out.append("tool" if total is None else f"tool@{total}")
+        elif total is not None:
+            out.append(f"tool@{total}")
+        for name in sorted(self.tools or {}):
+            held = (self.tools or {})[name]
+            limit = self.tool_limits.get(name)
+            if held is None and limit is None:
+                out.append(f"tool:{name}")
+            for arg, pattern in sorted(held or []):
+                out.append(f"tool:{name}:{arg}={_tool_pattern_text(pattern)}")
+            if limit is not None:
+                out.append(f"tool:{name}@{limit}")
+        if self.tools is None:
+            for name in sorted(n for n in self.tool_limits if n):
+                out.append(f"tool:{name}@{self.tool_limits[name]}")
+        return out
+
     # ---- the other direction: back to text, and to the runtime --------
     def spec(self) -> str:
         """The budget as the command line would write it, absolute paths
@@ -360,6 +460,8 @@ class Budget:
                 else:
                     for host, port in self.net:
                         out.append(_net_grant_text(host, port) + tail)
+            elif e == "tool":
+                out.extend(self._tool_items())
             else:
                 out.append(e)
         return ",".join(out)
@@ -375,6 +477,9 @@ class Budget:
                 self.limits["net"] = None
             elif name == "ffi":
                 self.modules = None
+            elif name == "tool":
+                self.tools, self.tool_limits = {}, {}
+                self._tool_plain, self._tool_any = set(), False
 
     def install(self) -> None:
         _state.EFFECT_BUDGET.clear()
@@ -386,6 +491,11 @@ class Budget:
         g["OP_LIMITS"] = dict(self.limits)
         g["OP_COUNTS"] = {"fs": 0, "net": 0}
         g["EFFECT_USES"] = {}
+        g["TOOL_GRANTS"] = None if self.tools is None else {
+            k: (None if v is None else list(v)) for k, v in self.tools.items()}
+        g["TOOL_LIMITS"] = dict(self.tool_limits)
+        g["TOOL_COUNTS"] = {}
+        g["GRANT_USES"] = {}
 
     @classmethod
     def current(cls) -> "Budget":
@@ -398,6 +508,10 @@ class Budget:
         b.fs = None if _state.FS_GRANTS is None else list(_state.FS_GRANTS)
         b.net = None if _state.NET_GRANTS is None else list(_state.NET_GRANTS)
         b.limits = dict(_state.OP_LIMITS)
+        b.tools = None if _state.TOOL_GRANTS is None else {
+            k: (None if v is None else list(v))
+            for k, v in _state.TOOL_GRANTS.items()}
+        b.tool_limits = dict(_state.TOOL_LIMITS)
         return b
 
     @staticmethod
@@ -405,7 +519,11 @@ class Budget:
         return {"effects": set(_state.EFFECT_BUDGET), "modules": _state.FFI_MODULES,
                 "fs": _state.FS_GRANTS, "net": _state.NET_GRANTS,
                 "limits": dict(_state.OP_LIMITS), "counts": dict(_state.OP_COUNTS),
-                "uses": dict(_state.EFFECT_USES)}
+                "uses": dict(_state.EFFECT_USES),
+                "tools": _state.TOOL_GRANTS,
+                "tool_limits": dict(_state.TOOL_LIMITS),
+                "tool_counts": dict(_state.TOOL_COUNTS),
+                "grant_uses": dict(_state.GRANT_USES)}
 
     @staticmethod
     def restore(saved: dict[Any, Any]) -> None:
@@ -418,6 +536,10 @@ class Budget:
         g["OP_LIMITS"] = saved["limits"]
         g["OP_COUNTS"] = saved["counts"]
         g["EFFECT_USES"] = saved.get("uses", {})
+        g["TOOL_GRANTS"] = saved.get("tools", {})
+        g["TOOL_LIMITS"] = saved.get("tool_limits", {})
+        g["TOOL_COUNTS"] = saved.get("tool_counts", {})
+        g["GRANT_USES"] = saved.get("grant_uses", {})
 
     # ---- one budget inside another (the HTTP door's ceiling) ----------
     def covers(self, asked: "Budget") -> str | None:
@@ -460,7 +582,73 @@ class Budget:
                                for sh, sp in self.net):
                         return (f"this server does not grant net:{host}"
                                 + (f":{port}" if port else ""))
+        if "tool" in asked.effects:
+            # grant by grant, as text: what is asked has to be written in
+            # the ceiling, or the ceiling has to grant every tool
+            mine = set(self._tool_items())
+            if self.tools is not None or self.tool_limits:
+                for g in asked._tool_items():
+                    if g not in mine:
+                        return f"this server does not grant {g}"
         return None
+
+
+def _tool_word(text: str) -> bool:
+    """A tool's name, or an argument's: ASCII letters, digits, `_`, `.` and
+    `-`, starting with a letter or `_`."""
+    return bool(text) and text.isascii() and (
+        text[0].isalpha() or text[0] == "_") and all(
+        c.isalnum() or c in "_.-" for c in text)
+
+
+def _tool_pattern_text(pattern: str) -> str:
+    """A pattern as a budget writes it: `%`, `,` and an @ that would read as
+    a count encoded."""
+    out = pattern.replace("%", "%25").replace(",", "%2C")
+    at = out.rfind("@")
+    if at >= 0 and _ascii_digits(out[at + 1:]):
+        out = out[:at] + "%40" + out[at + 1:]
+    return out
+
+
+_STAR_NEVER = frozenset(',;<>"\'\\')
+
+
+def _star_takes(ch: str, stop: str) -> bool:
+    """May a `*` in an argument pattern stand for this character? Never the
+    literal that follows the star in the pattern - so `*@corp.com` holds one
+    @ - never a separator a list of values is written with, and never white
+    space, a control or a format character (a line feed, a NUL, a
+    right-to-left override)."""
+    import unicodedata
+    return (ch != stop and ch not in _STAR_NEVER and not ch.isspace()
+            and unicodedata.category(ch)[0] not in "CZ")
+
+
+def tool_pattern_matches(pattern: str, value: str) -> bool:
+    """Does the whole of `value` match `pattern`? Every character but `*`
+    stands for itself, exactly; a `*` stands for one or more characters
+    _star_takes allows. Nothing is folded, trimmed or normalised first."""
+    if len(value) > 4096:
+        return False
+    if "*" in pattern and ".." in value and ".." not in pattern:
+        return False                       # no star climbs out of a path
+    # reach[j]: the pattern so far can end at value[:j]
+    reach = [True] + [False] * len(value)
+    for i, p in enumerate(pattern):
+        nxt = [False] * (len(value) + 1)
+        if p == "*":
+            stop = pattern[i + 1] if i + 1 < len(pattern) else ""
+            run = False                    # a star is open up to here
+            for j in range(1, len(value) + 1):
+                ok = _star_takes(value[j - 1], stop)
+                run = ok and (run or reach[j - 1])
+                nxt[j] = run
+        else:
+            for j in range(1, len(value) + 1):
+                nxt[j] = reach[j - 1] and value[j - 1] == p
+        reach = nxt
+    return reach[len(value)]
 
 
 def parse_host_port(text: str) -> tuple[Any, ...]:
@@ -665,14 +853,23 @@ def allow_path(kind: str, path: str, what: str, line: int) -> str:
                 f"explicitly; a broad grant does not include it", line,
                 fixes=[f"grant its exact path: --allow fs:read:{real}",
                        "or use a program that does not read credentials"])
+        for gkind, prefix in _state.FS_GRANTS or []:
+            if gkind in wants and prefix is not None and (
+                    real == prefix
+                    or real.startswith(prefix.rstrip(sep) + sep)):
+                _grant_used(f"fs:{gkind}:{_pct_encode(prefix)}")
+                break
         return real
     if _state.FS_GRANTS is None:
+        _grant_used("fs")
         return real
     wants = ("read", "write") if kind == "any" else (kind,)
     for gkind, prefix in _state.FS_GRANTS:
         if gkind in wants and (prefix is None or real == prefix
                                or real.startswith(prefix.rstrip(os.sep)
                                                   + os.sep)):
+            _grant_used(f"fs:{gkind}" + (f":{_pct_encode(prefix)}"
+                                         if prefix else ""))
             return real
     need = kind if kind != "any" else "read"
     raise VelarisError("E313",
@@ -688,8 +885,17 @@ class _RedirectRefused(Exception):
         super().__init__(why)
 
 
-def host_refusal(url: str) -> str | None:
-    """Why this URL's host is outside the run's net grants, or None."""
+def _grant_used(grant: str, count: bool = True) -> None:
+    """One more operation this grant let through (8.5): what a receipt's
+    `grants_used` counts. The key is the grant as the budget writes it - the
+    operator's text, never the path or host the program gave."""
+    if count:
+        _state.GRANT_USES[grant] = _state.GRANT_USES.get(grant, 0) + 1
+
+
+def host_refusal(url: str, count: bool = False) -> str | None:
+    """Why this URL's host is outside the run's net grants, or None. With
+    `count`, the grant that let it through is counted as used."""
     import urllib.parse
     parts = urllib.parse.urlsplit(url)
     if parts.scheme not in ("http", "https"):
@@ -702,9 +908,11 @@ def host_refusal(url: str) -> str | None:
     if not host:
         return "the address has no host"
     if _state.NET_GRANTS is None:
+        _grant_used("net", count)
         return None
     for ghost, gport in _state.NET_GRANTS:
         if _host_matches(ghost, host) and (gport is None or gport == port):
+            _grant_used(_net_grant_text(ghost, gport), count)
             return None
     return (f"host {host}:{port} is not in this run's net grants "
             f"(allow it: --allow net:{host}:{port})")
@@ -712,7 +920,7 @@ def host_refusal(url: str) -> str | None:
 
 def allow_host(url: str, what: str, line: int) -> None:
     """Refuse a request to a host this run did not grant (E314)."""
-    why = host_refusal(url)
+    why = host_refusal(url, count=True)
     if why is None:
         return
     import urllib.parse

@@ -1,0 +1,37 @@
+// A program that uses the tools its host offers: it looks something up and
+// mails what it found to a colleague.
+//
+// python examples/runner/host.py examples/runner/digest.vel
+//
+// The host starts it as
+//
+// velaris run examples/runner/digest.vel --tools examples/runner/tools.json
+// --allow io,tool:search@20,tool:send_email:to=*@corp.com
+//
+// and answers each call on the run's standard input. The address is inside
+// the grant, so the mail is sent. examples/runner/digest_outside.vel is this
+// file with one address changed.
+
+fn mail(to: Text, subject: Text, body: Text) -> Text uses tool or fail {
+    let arguments = json_of({"to": to, "subject": subject, "body": body})
+    return try tool("send_email", arguments)
+}
+
+fn main() uses io, tool {
+    check tool("search", json_of({"query": "release checklist"})) {
+        ok found {
+            print("found: " + found)
+            check mail("priya@corp.com", "The release checklist", found) {
+                ok receipt {
+                    print("sent: " + receipt)
+                }
+                fail why {
+                    print("not sent: " + why)
+                }
+            }
+        }
+        fail why {
+            print("search failed: " + why)
+        }
+    }
+}

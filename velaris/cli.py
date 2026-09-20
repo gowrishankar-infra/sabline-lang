@@ -1422,7 +1422,7 @@ def main() -> int:
     FLAGS = {"--json", "--no-native", "--time", "--check", "--no-confine"}
     VALUED = {"--allow", "--deny", "--timeout", "--max-memory-mb",
               "--max-read", "--seed", "--freeze-time", "--receipt",
-              "--record-responses"}
+              "--record-responses", "--tools", "--tool-timeout"}
     rest, skip = [], False
     for a in sys.argv[2:]:
         if skip:
@@ -1432,6 +1432,10 @@ def main() -> int:
         elif a not in FLAGS:
             rest.append(a)
     _state.PROGRAM_ARGS[:] = rest + program_words
+    if "--tools" in sys.argv:
+        # the runner (8.5): the host process that started this run offers it
+        # tools, over this process's standard input and output
+        return _cli_run_with_tools(filename, as_json, budget)
     if "--record-responses" in sys.argv:
         # code mode (8.3): what each py, py_int, py_float and py_json call
         # gave back, in order, written when the run ends - for velaris replay
@@ -1456,6 +1460,58 @@ def main() -> int:
                 print(f"velaris: the responses could not be written to "
                       f"{record_to}: {e.strerror or e}", file=sys.stderr)
     return _cli_run_receipt_or_not(filename, as_json, budget)
+
+
+def _cli_run_with_tools(filename: str, as_json: bool,
+                        budget: "Budget") -> int:
+    """`velaris run file.vel --tools MANIFEST` (8.5). The manifest is read
+    and the door opened before the program is: a manifest that is not one
+    is exit 2 and nothing runs. From there standard output carries the
+    door's events and nothing else - `ready`, the program's `output`, each
+    `call`, and `exit` last, whatever ended the run."""
+    from .tools import (TOOL_TIMEOUT_DEFAULT, TOOLS_PROTOCOL, ManifestError,
+                        open_session)
+    try:
+        manifest_path = cast(str, _flag_value(sys.argv, "--tools"))
+        wait = _flag_value(sys.argv, "--tool-timeout")
+    except BudgetError as e:
+        print(str(e), file=sys.stderr)
+        return 2
+    timeout = float(TOOL_TIMEOUT_DEFAULT)
+    if wait is not None:
+        if not _ascii_digits(wait) or int(wait) < 1:
+            print("--tool-timeout needs a whole number of seconds, as "
+                  "--tool-timeout 30", file=sys.stderr)
+            return 2
+        timeout = float(wait)
+    real_out = sys.stdout
+    try:
+        session = open_session(manifest_path, timeout)
+    except (OSError, ManifestError) as e:
+        print(f"velaris: the tool manifest {manifest_path} cannot be used: "
+              f"{getattr(e, 'strerror', None) or e}", file=sys.stderr)
+        return 2
+    vars(_state)["TOOLS"] = session
+    session.send({"event": "ready", "protocol": TOOLS_PROTOCOL,
+                  "velaris": VERSION, "budget": budget.spec(),
+                  "tools": sorted(session.manifest["tools"])})
+    status = 1
+    try:
+        try:
+            status = _cli_run_receipt_or_not(filename, as_json, budget)
+        except SystemExit as e:
+            status = e.code if isinstance(e.code, int) else \
+                (0 if e.code is None else 1)
+        return status
+    finally:
+        try:
+            sys.stdout.flush()
+        except (OSError, ValueError):
+            pass
+        session.send({"event": "exit", "status": status,
+                      **session.ceiling_record()})
+        sys.stdout = real_out
+        vars(_state)["TOOLS"] = None
 
 
 def _open_for_later(path: str) -> Any:
@@ -1523,6 +1579,7 @@ def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
         status = e.code if isinstance(e.code, int) else \
             (0 if e.code is None else 1)
     finally:
+        recorder.close()
         vars(_state)["RUN_RECORDER"] = None
     name = posixpath.normpath(filename.replace(os.sep, "/"))
     if loaded:
