@@ -1,0 +1,117 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "examples/ops/azure_groups.vel",
+      "digest": {
+        "sha256": "1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f"
+      }
+    },
+    {
+      "name": "<stdlib>/azure.vel",
+      "digest": {
+        "sha256": "2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e"
+      }
+    }
+  ],
+  "predicateType": "https://velaris-lang.dev/receipt/v1",
+  "predicate": {
+    "schema": "velaris.receipt/1",
+    "producer": {
+      "name": "velaris-lang",
+      "uri": "https://github.com/gowrishankar-infra/velaris-lang",
+      "version": "8.5.0"
+    },
+    "specification": "velaris-spec 0.13.0",
+    "startedAt": "2026-09-20T08:00:00.000Z",
+    "wall_time_ms": 412.5,
+    "budget": "declassify,env,fs:read:/srv/app/settings,fs:write:/srv/app/out,io,net:management.azure.com:443@20,tool:send_email:to=*@corp.com",
+    "run_parameters": {
+      "seed": null,
+      "freeze_time": null,
+      "timeout": 30,
+      "max_memory_mb": 512,
+      "max_read_bytes": 67108864,
+      "confinement": "full",
+      "confinement_reason": "every layer this system has was applied",
+      "confinement_layers": [
+        "landlock",
+        "seccomp"
+      ],
+      "os_policy_sha256": "3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d"
+    },
+    "effects_used": {
+      "declassify": 4,
+      "env": 1,
+      "fs": 3,
+      "io": 5,
+      "net": 4,
+      "tool": 1
+    },
+    "grants_used": [
+      {
+        "grant": "fs:read:/srv/app/settings",
+        "times": 2
+      },
+      {
+        "grant": "fs:write:/srv/app/out",
+        "times": 1
+      },
+      {
+        "grant": "net:management.azure.com:443",
+        "times": 3
+      },
+      {
+        "grant": "tool:send_email:to=*@corp.com",
+        "times": 1
+      }
+    ],
+    "refusals": [
+      {
+        "code": "E314",
+        "effect": "net",
+        "line": 41,
+        "stopped": true,
+        "times": 1
+      }
+    ],
+    "declassifications": [
+      {
+        "reason": "the bearer token is sent to management.azure.com as the Authorization header",
+        "line": 45,
+        "times": 3
+      },
+      {
+        "reason": "hmac signature",
+        "line": 60,
+        "times": 1,
+        "key_fingerprint": "0a1b2c3d4e5f"
+      }
+    ],
+    "tool_calls": [
+      {
+        "tool": "send_email",
+        "line": 52,
+        "times": 1,
+        "secret": false,
+        "held_to": [
+          "tool:send_email:to=*@corp.com"
+        ]
+      }
+    ],
+    "tool_ceiling": {
+      "calls": 25,
+      "cost": 40,
+      "unit": "credits",
+      "calls_used": 1,
+      "cost_used": 5.0,
+      "manifest_sha256": "4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c"
+    },
+    "exit": {
+      "status": 1,
+      "outcome": "refused",
+      "code": "E314"
+    },
+    "complete": true
+  }
+}

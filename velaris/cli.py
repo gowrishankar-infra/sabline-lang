@@ -493,7 +493,14 @@ def _check_ceiling(argv: list[Any]) -> int:
               f"Raise the cap with --check-memory-mb, or run it in a sandbox "
               f"you control.\n  reference: {REFERENCE_URL}", file=sys.stderr)
         return 2
-    sys.stdout.write(shown)
+    if "--html" in rest and getattr(sys.stdout, "buffer", None) is not None:
+        # a page is the same bytes on every system (8.5): line feeds, as the
+        # child wrote them, not the platform's line ends
+        sys.stdout.flush()
+        sys.stdout.buffer.write(shown.encode("utf-8"))
+        sys.stdout.buffer.flush()
+    else:
+        sys.stdout.write(shown)
     sys.stderr.write(said)
     if proc.returncode not in (0, 1, 2):
         # The child ended without an answer of its own - a crash, not a

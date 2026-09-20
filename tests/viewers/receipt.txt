@@ -1,0 +1,64 @@
+Receipt of one run of examples/ops/azure_groups.vel
+===================================================
+
+The run
+  stopped at a refusal; exit status 1, E314. Wall time 412.5 ms, started 2026-09-20T08:00:00.000Z. 
+
+Budget
+  declassify,env,fs:read:/srv/app/settings,fs:write:/srv/app/out,io,net:management.azure.com:443@20,tool:send_email:to=*@corp.com
+
+Read
+  under the grant    operations
+  /srv/app/settings  2 times
+
+Written
+  under the grant  operations
+  /srv/app/out     once
+
+Fetched
+  under the grant           operations
+  management.azure.com:443  3 times
+
+Effects used
+  effect      calls the budget let through
+  declassify  4
+  env         1
+  fs          3
+  io          5
+  net         4
+  tool        1
+
+Tool calls
+  tool        line  calls  arguments held to              result
+  send_email  52    once   tool:send_email:to=*@corp.com  text
+
+Tool ceiling
+  1 call(s) of 25; 5.0 of 40 credits. Manifest sha256 4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c.
+
+Secrets declassified
+  reason written in the program                                                 line  how often  key
+  the bearer token is sent to management.azure.com as the Authorization header  45    3 times
+  hmac signature                                                                60    once       0a1b2c3d4e5f
+
+Refused
+  code  effect  line  how often  the run
+  E314  net     41    once       stopped here
+
+Confinement
+  full: every layer this system has was applied Layers: landlock, seccomp. OS policy sha256 3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d.
+
+Limits and parameters
+  parameter       value
+  timeout         30
+  max_memory_mb   512
+  max_read_bytes  67108864
+  seed            none
+  freeze_time     none
+
+Subjects
+  file                           sha256
+  examples/ops/azure_groups.vel  1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f
+  <stdlib>/azure.vel             2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e
+
+Written by
+  velaris-lang 8.5.0, velaris-spec 0.13.0, schema velaris.receipt/1.
