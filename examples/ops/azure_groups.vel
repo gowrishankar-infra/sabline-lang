@@ -1,0 +1,80 @@
+// Resource groups and tag drift: every resource group of a subscription,
+// and which of the tags you require each one is missing.
+//
+// AZURE_TOKEN=$(az account get-access-token --resource https://management.azure.com --query accessToken -o tsv) \
+// velaris examples/ops/azure_groups.vel --allow io,env,declassify,net:management.azure.com:443@20 \
+// <subscription-id> owner,cost-center
+//
+// It exits 1 when any group has drifted, so a scheduler can act on it. It
+// calls no Python: `velaris audit` lists no ffi module, one host, and the one
+// place the token leaves - the Authorization header, in stdlib/azure.vel.
+
+import "azure.vel" as azure
+
+fn missing_tags(group: Text, required: List of Text) -> List of Text {
+    let missing: List of Text = []
+    for tag in required {
+        if tag != "" and not json_has(group, "tags." + tag) {
+            missing = push(missing, tag)
+        }
+    }
+    return missing
+}
+
+fn name_of(group: Text) -> Text {
+    check json_get(group, "name") {
+        ok name {
+            return name
+        }
+        fail why {
+            return "(a group with no name)"
+        }
+    }
+    return "(a group with no name)"
+}
+
+fn joined(items: List of Text) -> Text {
+    let out = ""
+    for item in items {
+        if out != "" {
+            out = out + ", "
+        }
+        out = out + item
+    }
+    return out
+}
+
+fn report(groups: List of Text, required: List of Text) -> Int uses io {
+    let drifted = 0
+    for group in groups {
+        let missing = missing_tags(group, required)
+        if length(missing) == 0 {
+            print(format("ok      {}", name_of(group)))
+        } else {
+            drifted = drifted + 1
+            print(format("drift   {}: missing {}", name_of(group), joined(missing)))
+        }
+    }
+    print(format("{} group(s), {} drifted", length(groups), drifted))
+    return drifted
+}
+
+fn main() uses io, env, net, declassify {
+    let given = args()
+    if length(given) < 2 {
+        print("usage: azure_groups.vel <subscription-id> <tag,tag,...>")
+        exit_with(2)
+    }
+    let token = env("AZURE_TOKEN", "")
+    check azure.resource_groups(token, get(given, 0)) {
+        ok groups {
+            if report(groups, split(get(given, 1), ",")) > 0 {
+                exit_with(1)
+            }
+        }
+        fail why {
+            print("could not list the resource groups: " + why)
+            exit_with(2)
+        }
+    }
+}

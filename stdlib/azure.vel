@@ -1,0 +1,232 @@
+// Azure Resource Manager over REST, with no Python: GET, PUT, PATCH and
+// DELETE on management.azure.com, paging, and the error shape ARM answers
+// with.
+//
+// import "azure.vel" as azure
+// let token = env("AZURE_TOKEN", "")            // a Secret of Text
+// check azure.list(token, "/subscriptions?api-version=2022-12-01", 10) {
+// ok subs { ... each is JSON text ... }  fail why { ... }
+// }
+//
+// The token is the caller's, as a Secret of Text: nothing here signs in.
+// Get one however your platform gives one - `az account get-access-token
+// --resource https://management.azure.com --query accessToken -o tsv`, a
+// managed identity, a federated workflow - and hand it over in the
+// environment or a file (read_file_secret).
+//
+// What an audit of a program that uses this says, and why:
+// - every request is written "https://management.azure.com:443/" + path,
+// so the audit names that host and no other, and the budget to grant is
+// net:management.azure.com:443 - a path cannot move the request, and a
+// next-page link that leaves the host fails rather than being followed;
+// - the token leaves the program in one place, `send`, through
+// declassify, with the reason the audit prints. A Secret cannot be
+// handed to `request` (E560), so the one way to send a token is to say
+// so; every function here therefore needs `net` and `declassify`, and
+// an operator who refuses `declassify` refuses this library.
+
+// (It imports nothing, not even http.vel: an audit reads every function a
+// program loads, and http.vel's take any URL.)
+
+record Reply {
+    status: Int
+    body: Text
+    // the next page's path, or "" when this is the last
+    next: Text
+}
+
+// One request. `path` is what follows the host, query included; a leading
+// '/' is optional. `body` is JSON text, or "" for none. `attempts` is how
+// many times to ask while the answer is 429, 502, 503 or 504 or does not
+// arrive (at most ten; 1 for a request that must not be repeated).
+fn send(token: Secret of Text, method: Text, path: Text, body: Text, attempts: Int) -> Reply
+uses net, declassify or fail
+{
+    let bearer = declassify("Bearer " + token, "the bearer token is sent to management.azure.com as the Authorization header")
+    let headers = json_of({ "Authorization": bearer, "Accept": "application/json", "Content-Type": "application/json" })
+    let rest = no_leading_slash(path)
+    let most = attempts
+    if most > 10 {
+        most = 10
+    }
+    let last = "no attempt was made"
+    let tried = 0
+    while tried < most {
+        tried = tried + 1
+        check request(method, "https://management.azure.com:443/" + rest, body, headers) {
+            ok raw {
+                let status = try json_int(raw, "status")
+                if not worth_retrying(status) or tried == most {
+                    let got = try json_get(raw, "body")
+                    return Reply(status: status, body: got, next: next_path(got))
+                }
+                last = format("status {}", status)
+            }
+            fail why {
+                last = why
+            }
+        }
+    }
+    fail format("management.azure.com: gave up after {} attempt(s): {}", tried, last)
+}
+
+// The path of the next page, from a reply's nextLink - or "" when there is
+// none, or when the link names any other host: that one is not followed.
+fn next_path(body: Text) -> Text {
+    if not json_has(body, "nextLink") {
+        return ""
+    }
+    check json_get(body, "nextLink") {
+        ok link {
+            check after_prefix(link, "https://management.azure.com/") {
+                ok rest {
+                    return rest
+                }
+                fail why {
+                    return ""
+                }
+            }
+        }
+        fail why {
+            return ""
+        }
+    }
+    return ""
+}
+
+// ARM's error shape is {"error": {"code": ..., "message": ...}}. A reply
+// that is not 2xx becomes a failure that says both.
+fn expect_ok(reply: Reply) -> Reply or fail {
+    if reply.status >= 200 and reply.status < 300 {
+        return reply
+    }
+    fail format("management.azure.com answered {}: {}", reply.status, error_of(reply))
+}
+
+fn error_of(reply: Reply) -> Text {
+    if json_has(reply.body, "error.code") and json_has(reply.body, "error.message") {
+        check json_get(reply.body, "error.code") {
+            ok code {
+                check json_get(reply.body, "error.message") {
+                    ok message {
+                        return code + ": " + message
+                    }
+                    fail why {
+                        return code
+                    }
+                }
+            }
+            fail why {
+                return "an error with no code"
+            }
+        }
+    }
+    return "no error body"
+}
+
+fn read(token: Secret of Text, path: Text) -> Reply uses net, declassify or fail {
+    return try expect_ok(try send(token, "GET", path, "", 3))
+}
+
+// Create or replace. PUT is idempotent in ARM, so it is asked again like a
+// GET.
+fn put_resource(token: Secret of Text, path: Text, body: Text) -> Reply
+uses net, declassify or fail
+{
+    return try expect_ok(try send(token, "PUT", path, body, 3))
+}
+
+fn patch_resource(token: Secret of Text, path: Text, body: Text) -> Reply
+uses net, declassify or fail
+{
+    return try expect_ok(try send(token, "PATCH", path, body, 1))
+}
+
+fn delete_resource(token: Secret of Text, path: Text) -> Reply
+uses net, declassify or fail
+{
+    return try expect_ok(try send(token, "DELETE", path, "", 1))
+}
+
+// Every item of a list, following nextLink for at most `most_pages` pages.
+// Each item is JSON text. Stopping at the page limit is a failure, not a
+// short list: a caller that acts on a list should know it is whole.
+fn list(token: Secret of Text, path: Text, most_pages: Int) -> List of Text
+uses net, declassify or fail
+{
+    let out: List of Text = []
+    let at = path
+    let pages = 0
+    while pages < most_pages {
+        pages = pages + 1
+        let reply = try read(token, at)
+        let page = try items(reply.body, "value")
+        let i = 0
+        while i < length(page) {
+            out = push(out, get(page, i))
+            i = i + 1
+        }
+        if reply.next == "" {
+            return out
+        }
+        at = reply.next
+    }
+    fail format("the list runs past {} page(s)", most_pages)
+}
+
+// The resource groups of a subscription.
+fn resource_groups(token: Secret of Text, subscription: Text) -> List of Text
+uses net, declassify or fail
+{
+    return try list(token, format("subscriptions/{}/resourcegroups?api-version=2021-04-01", url_encode(subscription)), 20)
+}
+
+// ---- text and JSON helpers, as in http.vel ---------------------------------
+
+fn worth_retrying(status: Int) -> Bool {
+    return status == 429 or status == 502 or status == 503 or status == 504
+}
+
+fn items(body: Text, path: Text) -> List of Text or fail {
+    let n = try json_len(body, path)
+    let out: List of Text = []
+    let i = 0
+    while i < n {
+        out = push(out, try json_get(body, format("{}[{}]", path, i)))
+        i = i + 1
+    }
+    return out
+}
+
+fn after_prefix(text: Text, prefix: Text) -> Text or fail {
+    let rest = ""
+    let i = 0
+    for piece in split(text, prefix) {
+        if i == 0 and piece != "" {
+            fail format("'{}' does not begin with '{}'", text, prefix)
+        }
+        if i == 1 {
+            rest = piece
+        }
+        if i > 1 {
+            rest = rest + prefix + piece
+        }
+        i = i + 1
+    }
+    if i < 2 {
+        fail format("'{}' does not begin with '{}'", text, prefix)
+    }
+    return rest
+}
+
+fn no_leading_slash(path: Text) -> Text {
+    check after_prefix(path, "/") {
+        ok rest {
+            return rest
+        }
+        fail why {
+            return path
+        }
+    }
+    return path
+}
