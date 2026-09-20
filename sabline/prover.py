@@ -204,7 +204,10 @@ def check_proofs(funcs: list[Function], records: list[Any],
 
     if (_state._proof_timeout is None and naming.env(PROOF_TIMEOUT_ENV)
             and proof_timeout_env() is None):
-        print(f"note: {PROOF_TIMEOUT_ENV}="
+        # named as the operator wrote it: VELARIS_PROOF_TIMEOUT is still
+        # read (8.6), and a note about SABLINE_PROOF_TIMEOUT would send
+        # somebody who set the old one to a variable they never set
+        print(f"note: {naming.env_name(PROOF_TIMEOUT_ENV)}="
               f"{naming.env(PROOF_TIMEOUT_ENV)!r} is not a number of "
               f"seconds greater than 0, so the default proof budgets "
               f"apply ({FLOAT_PROOF_SECONDS:.0f}s with Float, "

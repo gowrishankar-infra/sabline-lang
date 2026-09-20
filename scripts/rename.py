@@ -144,6 +144,9 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     "npm/package.json": ("velaris",),
     "npm/bin/velaris.js": ("velaris", "Velaris"),
     "sabline/cli.py": ("velaris", "Velaris"),
+    # the note about a bad proof budget names the variable the operator
+    # wrote, which may be the VELARIS_ spelling (naming.env_name)
+    "sabline/prover.py": ("VELARIS_",),
     # The Action reads the committed baseline and a permissions-ratchet
     # document under either name, so a repository that has not renamed its
     # file does not quietly lose its ratchet the day its pin moves here.

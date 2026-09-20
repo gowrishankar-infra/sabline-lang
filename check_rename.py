@@ -169,13 +169,24 @@ def the_environment(work: Path) -> None:
         for key in (name, old):
             os.environ.pop(key, None)
 
-    # end to end: the prover's timeout, under the old name, on a real run
-    r = run([SABLINE, "check", str(HERE / "examples" / "discount.vel")],
-            cwd=work, env={"VELARIS_PROOF_TIMEOUT": "not-a-number"})
-    ok("a bad VELARIS_PROOF_TIMEOUT is complained about by its own name",
-       "VELARIS_PROOF_TIMEOUT" in (r.stderr + r.stdout)
-       or "PROOF_TIMEOUT" in (r.stderr + r.stdout),
-       (r.stderr or r.stdout).strip()[:120])
+    # End to end: the prover's timeout, set under the old name, named back
+    # in the prover's own words. Only where there is a prover - without z3
+    # the notice about a proof budget returns before it can mention one, and
+    # there is no timeout for the old name to have set.
+    try:
+        import z3                                   # noqa: F401,PLC0415
+        prover = True
+    except ImportError:
+        prover = False
+    if prover:
+        r = run([SABLINE, "check", str(HERE / "examples" / "discount.vel")],
+                cwd=work, env={"VELARIS_PROOF_TIMEOUT": "not-a-number"})
+        ok("a bad VELARIS_PROOF_TIMEOUT is complained about by its own name",
+           "VELARIS_PROOF_TIMEOUT" in (r.stderr + r.stdout),
+           (r.stderr or r.stdout).strip()[:160])
+    else:
+        print("  skipped  a bad VELARIS_PROOF_TIMEOUT is named back: z3 is "
+              "not installed, so no proof has a budget to set")
 
 
 def _raises(fn: Any, *args: Any) -> bool:

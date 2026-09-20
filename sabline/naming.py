@@ -81,6 +81,19 @@ def env_is_set(name: str) -> bool:
     return env(name) is not None
 
 
+def env_name(name: str) -> str:
+    """Which spelling of `name` actually supplied the value - so a message
+    about a variable names the one the operator wrote. Telling somebody
+    SABLINE_PROOF_TIMEOUT is not a number, when what they set is
+    VELARIS_PROOF_TIMEOUT, sends them to look at a variable they never
+    set. The new name when neither is set, since that is the one to use."""
+    if os.environ.get(name) is not None:
+        return name
+    if os.environ.get(_old(name)) is not None:
+        return _old(name)
+    return name
+
+
 def pop_env(name: str) -> str | None:
     """env(), and both spellings taken out of os.environ - so that a value
     read once here does not reach a child process (doors.py's token)."""
