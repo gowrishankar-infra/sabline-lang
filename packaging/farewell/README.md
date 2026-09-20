@@ -19,6 +19,7 @@ on its page and on install that the project is now Sabline.
 | PyPI `velaris-lang` 8.6.0 | [pypi/velaris-lang](pypi/velaris-lang) - depends on `sabline-lang>=8.6.0`; its description is the rename notice |
 | npm `velaris-lang` 8.6.0 | [npm/velaris-lang](npm/velaris-lang) - depends on `sabline-lang`, re-exports it, and prints the notice on install. Then `npm deprecate` |
 | VS Code `gowrishankar-infra.velaris` 8.6.0 | [vscode](vscode) - a final version whose README says to install `gowrishankar-infra.sabline` |
+| MCP registry `io.github.gowrishankar-infra/velaris` | nothing is published to it again; it is marked deprecated, which is the registry's own way of saying a server has moved |
 
 The `velaris` command and `import velaris` are **not** here. Those are in
 sabline-lang itself, which installs both names for one major version
@@ -62,6 +63,18 @@ the extension:
 
     npx @vscode/vsce publish --pat "$VSCE_TOKEN"
 
+**The MCP registry.** The old server keeps every version it published;
+nothing is deleted. Mark it deprecated so a client that lists servers sees
+that it has moved (RELEASING.md, *Yank a release*):
+
+    mcp-publisher login github
+    mcp-publisher status --status deprecated \
+        io.github.gowrishankar-infra/velaris 8.5.0
+
+The new server, `io.github.gowrishankar-infra/sabline`, is published by the
+release workflow like any other version - by GitHub OIDC, with no token
+stored - as soon as PyPI and npm serve `sabline-lang` naming it.
+
 Nothing here is published by the release workflow. A release publishes the
-current names and nothing else; these three are run once, by hand, and then
+current names and nothing else; these four are run once, by hand, and then
 never again.
