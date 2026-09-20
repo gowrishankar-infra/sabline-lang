@@ -102,6 +102,14 @@ differential: `examples/sandbox.vel` - it tries to read the compiler's own launc
   decided - the environment, the document schemas, the file names, and the
   one-line notice each alias prints. One place to read, and one place to
   delete in 9.0.
+- **A conformance case compares `safe_command` by its grants**, not as a
+  whole string (sabline-spec 8.3, 0.14.0). What that section defines is
+  the grant list; what comes before `--allow ` is the producer's own
+  command name. Comparing the string had required every implementation to
+  be called what the reference was called, so 27 L1 cases read as a
+  changed verdict across the rename while nothing about the grants had
+  moved. A corpus published for an implementation in any language must
+  not ask it to be named a particular thing.
 - **`check_rename.py`**, which runs every promise above: the command, the
   import, the submodule import, the warning, `VelarisError`, both spellings
   of six schemas, a `velaris.capabilities` of `velaris.capabilities/1`

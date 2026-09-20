@@ -151,6 +151,14 @@ not renamed.</li>
 decided - the environment, the document schemas, the file names, and the
 one-line notice each alias prints. One place to read, and one place to
 delete in 9.0.</li>
+<li><strong>A conformance case compares <code>safe_command</code> by its grants</strong>, not as a
+whole string (sabline-spec 8.3, 0.14.0). What that section defines is
+the grant list; what comes before <code>--allow </code> is the producer's own
+command name. Comparing the string had required every implementation to
+be called what the reference was called, so 27 L1 cases read as a
+changed verdict across the rename while nothing about the grants had
+moved. A corpus published for an implementation in any language must
+not ask it to be named a particular thing.</li>
 <li><strong><code>check_rename.py</code></strong>, which runs every promise above: the command, the
 import, the submodule import, the warning, <code>VelarisError</code>, both spellings
 of six schemas, a <code>velaris.capabilities</code> of <code>velaris.capabilities/1</code>

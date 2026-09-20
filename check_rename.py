@@ -19,6 +19,7 @@ checked as names, which is what a predicate type is.
 """
 from __future__ import annotations
 
+import io
 import json
 import os
 import shutil
@@ -331,6 +332,76 @@ def the_predicate_types(work: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# the documents, against the release before the rename
+# ---------------------------------------------------------------------------
+
+def nothing_disappeared(work: Path) -> None:
+    head("no field disappeared from a document the rename touched")
+
+    # The rename's central claim is that no document lost anything. Four
+    # times it had, and each was found by running the PREVIOUS release
+    # against the new artefacts rather than by reading the diff: a field
+    # name is indistinguishable from any other occurrence of a word. So the
+    # previous release writes each document here, this one writes it, and
+    # every key the old one had must still be there.
+    previous = "v8.5.0"
+    got = subprocess.run(["git", "rev-parse", "--verify", previous + "^{commit}"],
+                         cwd=str(HERE), capture_output=True, text=True)
+    if got.returncode != 0:
+        print(f"  skipped  {previous} is not in this checkout, so the "
+              f"documents it wrote cannot be compared (a shallow clone; "
+              f"`git fetch --tags --depth=1 origin {previous}` gives it)")
+        return
+    old = work / "previous"
+    if old.exists():
+        shutil.rmtree(old)
+    old.mkdir(parents=True)
+    tar = subprocess.run(["git", "archive", previous], cwd=str(HERE),
+                         capture_output=True)
+    if tar.returncode != 0:
+        print(f"  skipped  {previous} could not be extracted")
+        return
+    import tarfile
+    with tarfile.open(fileobj=io.BytesIO(tar.stdout)) as archive:
+        archive.extractall(old)
+    entry = next((n for n in ("velaris.py", "sabline.py")
+                  if (old / n).is_file()), None)
+    if entry is None:
+        print(f"  skipped  {previous} holds no launcher this suite knows")
+        return
+
+    program = str(HERE / "examples" / "effects.vel")
+
+    def doc_of(root: Path, launcher: str, args: list[str]) -> Any:
+        r = run([str(root / launcher)] + args, cwd=str(root))
+        try:
+            return json.loads(r.stdout)
+        except ValueError:
+            return None
+
+    def keys(doc: Any, path: str = "") -> set[str]:
+        out: set[str] = set()
+        if isinstance(doc, dict):
+            for k, v in doc.items():
+                out.add(f"{path}.{k}")
+                out |= keys(v, f"{path}.{k}")
+        elif isinstance(doc, list) and doc:
+            out |= keys(doc[0], f"{path}[]")
+        return out
+
+    for what, args in (("the audit", ["audit", program, "--json"]),
+                       ("the capability Statement",
+                        ["attest", program, "--json"])):
+        before = doc_of(old, entry, args)
+        after = doc_of(HERE, "sabline.py", args)
+        if before is None or after is None:
+            print(f"  skipped  {what}: one of the two did not write JSON")
+            continue
+        lost = sorted(keys(before) - keys(after))
+        ok(f"{what} that {previous} wrote has no key {sabline.VERSION} "
+           f"has taken away", not lost, "gone: " + ", ".join(lost))
+
+# ---------------------------------------------------------------------------
 # the drift test
 # ---------------------------------------------------------------------------
 
@@ -376,6 +447,7 @@ def main() -> int:
     the_environment(work)
     the_documents(work)
     the_predicate_types(work)
+    nothing_disappeared(work)
     no_drift()
     print("-" * 62)
     print(f"{_ok} correct, {_wrong} wrong")

@@ -206,6 +206,15 @@ def _conf_budget(case: dict[Any, Any], ctx: dict[Any, Any]) -> str:
     return ""
 
 
+def _grants_of(safe_command: Any) -> Any:
+    """The grant list of a safe_command - what sabline-spec 8.3 defines.
+    What comes before `--allow` is the name of the producer's own command,
+    which the spec does not define and a corpus must not require."""
+    if not isinstance(safe_command, str):
+        return safe_command
+    return safe_command.split("--allow ", 1)[-1].strip()
+
+
 def _conf_audit(case: dict[Any, Any], ctx: dict[Any, Any]) -> str:
     given, want = case["input"], case["expect"]
     box = tempfile.mkdtemp(prefix="sabline-conformance-")
@@ -241,9 +250,22 @@ def _conf_audit(case: dict[Any, Any], ctx: dict[Any, Any]) -> str:
         # only where a case names it, so the cases written before it say
         # nothing about a field that did not exist (sabline-spec 8.6)
         for key in ("effects", "ffi_modules", "ffi_any", "fs_paths",
-                    "net_hosts", "safe_command", "secrets"):
+                    "net_hosts", "secrets"):
             if key in want and doc.get(key) != want[key]:
                 wrong.append(f"{key} is {doc.get(key)!r}, not {want[key]!r}")
+        # safe_command by what sabline-spec 8.3 defines, which is the grant
+        # list: the text before `--allow` is the producer's own command,
+        # and the corpus is published for an implementation in any language
+        # to run. Comparing the whole string made every case require the
+        # producer to be called `sabline` - which the reference itself was
+        # not until 8.6, so 27 cases read as a changed verdict across the
+        # rename when nothing about the grants had changed.
+        if "safe_command" in want:
+            if _grants_of(doc.get("safe_command")) != \
+                    _grants_of(want["safe_command"]):
+                wrong.append(f"safe_command is {doc.get('safe_command')!r}, "
+                             f"whose grants are not those of "
+                             f"{want['safe_command']!r}")
         fns = [{"name": f["name"], "effects": f["effects"],
                 "can_fail": f["can_fail"]} for f in doc["functions"]]
         if fns != want["functions"]:
