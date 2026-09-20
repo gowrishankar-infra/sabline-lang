@@ -28,7 +28,7 @@ write instead.
 | The operator | yes | Sets the budget (`--allow`, `--deny`, `timeout`, `max_memory_mb`) and decides what to do with the output; on the doors, sets the ceilings no caller may exceed (`--max-allow`, `--max-timeout`, `--max-memory-mb`). Everything below depends on the budget being narrower than "everything", and from 5.0 an operator who sets nothing gets `io` rather than everything - the widening is the deliberate act, not the narrowing. |
 | The program | no | Written by a model or a stranger. Its `uses` clauses, its contracts and its comments are claims the compiler checks; the runtime enforces the operator's budget regardless of them. |
 | The compiler and runtime (the `velaris` package) | yes | One package (one file, `velaris.py`, until 8.2), in the same process as the program it runs, or in a child process when a time or memory limit is set - a fresh one per run, or a pooled worker under one fixed budget (3.1). A defect here is a defect in the guard. The suites below exist because of that. |
-| The host Python and operating system | yes | The interpreter runs on CPython; the memory cap is the OS's address-space limit; the timeout kills a process. None of these are hardened by Velaris. |
+| The host Python and operating system | yes | The interpreter runs on CPython; the memory cap is the OS's address-space limit; the timeout kills a process. None of these are hardened by Velaris. From 8.4 the kernel is also what holds a run to its budget when the interpreter does not (**What the operating system enforces**, below), so a kernel defect is a defect in that second guard. |
 | Python modules granted through `ffi:` | yes, in full | A granted module can do whatever that module can do. Granting `ffi:subprocess` is granting a shell. |
 | A caller of the HTTP door (`velaris serve`) | only with the token (3.4), and only as far as the ceilings (4.0) | Anyone who presents the bearer token may send programs, up to the door's `--max-allow` (`io` unless the operator raised it), `--max-timeout` and `--max-memory-mb` (30 seconds and 512 MB unless raised); anyone who does not gets a 401 and nothing else. One token is one principal: the door cannot tell two holders apart. From 8.1 a request's imports stay inside the directory the door serves (`--root`), its checks and audits stop at the check ceiling, and all requests with the token together get at most `--rate-limit` a minute. |
 | A caller of the MCP server | as far as the ceilings (3.4, 4.0) | Whoever the MCP client lets drive the server - in practice the model - may ask for any budget up to the server's `--max-allow`, which is `io` unless the operator raised it, and for any time and memory up to `--max-timeout` and `--max-memory-mb`. |
@@ -64,7 +64,8 @@ on.
 | Source written to stall or bloat the checker - a promise the prover spends its whole budget on, an expression the checker takes minutes to read - sent to a platform that audits before it runs | From 8.1 `velaris.check`, `velaris.audit` and `velaris.attest`, the doors' check and audit, and `run(timeout=...)`'s compile all run in a child under a ceiling: 60 seconds and 2048 MB unless raised, as `velaris check` has had since 8.0 (whose memory cap took hold only on Windows until 8.1; on macOS a cap is best-effort, and the clock is what holds). Past it the answer is E613 or E614, and an audit that stopped says `ok: false` | `check_library.py` - an inflated expression and a crafted float contract stopped through the library, `Pool.check`, `run(timeout=)`, `attest`, the command line, the HTTP door and the MCP server; `check_platform.py` - the reference platform answers a stalled audit with 422 and stores nothing |
 | A program sent to a door, or to a platform's audit, reading a file on the host through an import | From 8.1 an error inside an imported file that is not `.vel` names the file and none of its content, everywhere; the HTTP door and the MCP server compile a request as a file in the directory they serve and refuse (E515), before opening it, an import that resolves outside that directory or to a file there that is not `.vel`; the library does the same with `import_root=`. Until 8.1 `import "/home/me/.env"` answered `found 'API_KEY'` (advisory-import-read.md) | `check_library.py` - a relative escape, an absolute path, a non-`.vel` file inside the root and a symbolic link out of it, each E515 with nothing of the file in the answer, through the door, the MCP server and the library; `check_adversarial.py` I1, I2 |
 | Not knowing what one run did, or who says so | `velaris.receipt/1` (8.1): the program and its imports by the digests `attest` uses, the budget, every refusal by code, effect and line, every declassification by reason and line, the run's parameters, how it ended and how long it took, as an in-toto Statement for a signature to bind. It holds no value the program handled. A run killed by its limit still has one, marked incomplete | `check_library.py` - receipts from `run`, a pool, the command line and both doors, validated against velaris-spec's schema, a declassified secret and a refused sink built from one kept out, a killed run's declassification kept; `check_adversarial.py` R1-R5, a forged receipt file among them; the release workflow signs one with cosign and sigstore-python and verifies both |
-| A run in an evaluation harness getting more than the harness meant, stopping without a record, or ignoring a stop | `velaris eval` (8.3): no net, ffi or env, and an fs grant only under a named path; a time and a memory limit always, each with a most; interpreted, so a stop asked for from outside (a signal, or a stop file) lands at the next call or loop turn as E615, and a worker that has not stopped is killed after a grace period; a receipt always, written outside every fs grant or sent to a URL, with the stop and the profile in it; the worker confined where the operating system offers it, the level named. Anything that would relax the profile is refused before the program is read | `check_eval.py` - every relaxation refused with no receipt, the receipt's budget, limits, profile and confinement, a stop file and a signal honoured, a stalled compile killed after the grace period, the stream, and the confinement probe finding each refusal its level claims held; `check_adversarial.py` EV1-EV4 |
+| A fault in Velaris itself - a defect in the interpreter, the budget's own checks, or a builtin - performing an effect the budget does not grant | Confinement (8.4): before a program's first statement runs, the process that runs it asks the operating system to hold the same budget - Landlock and seccomp-bpf on Linux, a sandbox profile on macOS, a job object, a token with its privileges removed and a low integrity level on Windows. One function derives the OS policy from the budget (`velaris/confine.py`, `os_policy`); the table under **What the operating system enforces** says what each system holds for each budget item, and the level a run got - full, partial or none, with the reason - is in its receipt, in the audit and in `velaris doctor`. On by default on the command line, in `run(timeout=...)`, in `Pool` and on both doors; `--no-confine` turns it off and says so on stderr, and nothing a program or a request can write reaches that flag | `check_confine.py` - a fault-injection hook makes the runtime itself, from Python, read a file, write one, connect, start a process and send a signal outside the budget: on every leg, what that system's row says is held is refused by the kernel and the run ends with E319 naming the layers, what it says is not held goes through, and with `--no-confine` every one goes through; every escape target of `check_sandbox.py` and the file and ffi targets of `check_adversarial.py` run on a Velaris whose budget checks are knocked out, recording which the kernel stops (`tests/confine/kernel-*.json`); a symbolic link and a bind mount inside a granted path, the network and a process through a granted module, a process asked to leave the job, `--no-confine` after `--` and in a door's request |
+| A run in an evaluation harness getting more than the harness meant, stopping without a record, or ignoring a stop | `velaris eval` (8.3): no net, ffi or env, and an fs grant only under a named path; a time and a memory limit always, each with a most; interpreted, so a stop asked for from outside (a signal, or a stop file) lands at the next call or loop turn as E615, and a worker that has not stopped is killed after a grace period; a receipt always, written outside every fs grant or sent to a URL, with the stop and the profile in it; the worker confined by the operating system, fully or partly, and from 8.4 a worker that got no confinement is not sent the program at all. Anything that would relax the profile is refused before the program is read | `check_eval.py` - every relaxation refused with no receipt, the receipt's budget, limits, profile and confinement, a stop file and a signal honoured, a stalled compile killed after the grace period, the stream, and the confinement probe finding each refusal its level claims held; `check_adversarial.py` EV1-EV4; `check_confine.py` - a worker at none is refused |
 | A run that did more than its program declares, or more than earlier runs of it did, going unnoticed | `velaris receipts diff` (8.3): an effect used or refused, a host, path or module granted, a declassification or a count past the audit's bound, that the program's audit does not have; or, against earlier receipts of the same bytes, a new host, path or module, a count above the earlier maximum, a first declassification | `check_receipts.py`; `check_adversarial.py` RD1-RD3 |
 | A run made again on other bytes, or one that cannot be made again | `velaris replay` (8.3): every subject held to its digest and copied before anything runs, imports held to that copy, the budget no wider than `--max-allow`, the recorded seed, clock, limits and read ceiling, and every difference from the recorded receipt named; tool responses recorded with `--record-responses` given back in order, a call not recorded stopping the run (E616) | `check_receipts.py`; `check_adversarial.py` RP1, RP2 |
 | A promise left to runtime that no run has yet met the input to break | `velaris test --from-contracts` (8.3): the prover's own witnesses for each `requires`, the least and the greatest values first, run interpreted with no effect granted, so each `ensures` is checked on them; a function with an effect is not run | `check_from_contracts.py`; `check_adversarial.py` WT1 |
@@ -316,7 +317,10 @@ What follows is what is still not defended.
   and nothing checks it. Velaris signs no receipt, and a signed one says
   its signer ran this Velaris on these bytes and saw this run - as strong
   as the machine it ran on, with `confinement: "none"` saying the budget
-  was the only boundary, and silent about any other run. A receipt marked
+  was the only boundary (and, from 8.4, `confinement_reason` saying why),
+  and silent about any other run. The level is what the run's own process
+  reported of itself: a process altered to lie about its budget can lie
+  about its confinement too. A receipt marked
   `complete: false` lists what the killed worker reported, and counts at
   least that. A receipt written by `--receipt` is written when the run
   ends; a process killed from outside writes none.
@@ -404,7 +408,11 @@ budget - is a different thing, and SECURITY.md says how it is handled.
 | A granted `ffi` module | Within a granted module, that module's full behaviour is granted; `ffi:os` is the operating system as the current user. The allow-list narrows which module a call reaches, not what it does. | Grant `ffi` only when the task needs it, name the modules, and treat the grant as trust in those modules. Never grant `ffi:os`, `ffi:subprocess` or plain `ffi` to code you have not read. |
 | Native code | A granted module may be or ship a compiled extension with no source and no runtime bound. `velaris.audit/1`'s `ffi_native` reports where it is found (8.0), and never claims a module is free of it. | Read `ffi_native`; grant a native module only when you would grant the machine. |
 | Secrets arriving another way | `Secret of T` marks the results of `env()` and `read_file_secret()` only. A value read through `read_line`, passed in through `args()`, fetched over `net`, returned by a granted `ffi` module, or hard-coded is an ordinary value with no protection. | Run agent-written programs with a clean environment; do not treat a secret from another source as protected. |
-| No OS confinement | The budget is enforced by an interpreter written in Python, in a process that also holds the compiler, on a host that trusts that process. It is not an OS sandbox, a network policy or a separate user account. From 8.3 `velaris eval` also holds its worker with what the operating system offers without privileges - Landlock on Linux, a one-process job object on Windows, sandbox-exec on macOS - and names the level in the receipt; a plain run, and a run on a system that offers none of these, are as this row says, and no level confines reads (docs/eval.md). | Put Velaris inside one of those when the stakes warrant it; the budget is a guard against a program doing what it was not asked to, not a substitute for a boundary the OS enforces. |
+| Confinement on Linux: what it leaves | Full confinement holds files, the network and processes to the budget. It does not hold: a host named in a `net:` grant (the kernel holds ports at most, with Landlock ABI 4 or later, and the level says partial); a credential location under a broad grant (E318 is the language's alone); `env`, which is the process's own memory; a hard link or a bind mount that was inside a granted path before the run, which is that path's content; a Unix socket the process was started holding, and any a granted Python module that widens the policy to any host then opens; the temporary directories of the same user's other confined command-line runs, which share one parent; files on a kernel older than 5.13, which has no Landlock; and sockets and processes on a machine seccomp has no table for (anything but x86_64 and aarch64) - the level says partial or none there, and why. It is the kernel's guarantee, and no better than the kernel. | Read `confinement` in the receipt, or `velaris doctor`; give every `net:` grant a port; run on a kernel with Landlock ABI 4 or later. |
+| Confinement on macOS: partial | Writes, the network and fork/exec are held by a sandbox profile. Reads are refused only under the home directory and /Volumes, not held to exactly the grants - and the names in the working directory and in each directory above it stay readable, since `getcwd` reads them - because a Python that must read its own installation cannot be started under a deny-all read rule that is also portable; a `net:` grant allows the whole network; signals are not held, and neither is input pushed at the terminal the run was started from (TIOCSTI), which the profile language has no rule for; and Apple has deprecated sandbox profiles (`sandbox-exec` and `sandbox_init` alike), so a later macOS may stop honouring them, at which point the level says none. | Treat macOS as partial; keep what must not be read outside the home directory's reach, or run on Linux. |
+| Confinement on Windows: partial | A job object refuses a second process, the clipboard and the desktop; every privilege is removed from the token; and a budget with no write grant runs at the low integrity level, which refuses a write to anything of the user's. Not held: any read; the network; input written to the console the run was started from, which a process attached to a console may always do; and every write once the budget holds a write grant, because lowering the integrity level would then need the granted directory relabelled. Reads and the network need an AppContainer, which is not used: a process cannot enter one after it has started, and a `python.exe` started in one cannot read its own installation unless that was installed readable by ALL APPLICATION PACKAGES, which python.org's, the Store's and a virtual environment's are not. | Treat Windows as partial; for code whose reads or network reach matter, run on Linux, or in a container or a virtual machine. |
+| Runs that are not confined | An in-process `velaris.run()` with no `timeout` and no `max_memory_mb` runs in the caller's process, which Velaris must not confine; the REPL, `velaris test` and `velaris bench` run many programs in one process; and a budget that grants `ffi:os`, `ffi:subprocess`, plain `ffi` or a module the table does not name widens the OS policy to nothing enforced. Each says `"confinement": "none"` and why. And a confined process is still a process of the user's: what the budget grants, it does with the user's own rights. | Give `run()` a timeout, or use a `Pool`, so the run has a process of its own; name `ffi` modules the table knows; run code you have not read as a different user, or in a container or a virtual machine, when the stakes warrant it. |
+| The fault-injection hook | `VELARIS_FAULT_INJECT`, read from the environment a run was started with, makes the runtime attempt one fixed effect (a read, a write, a connection, a process, a signal, a mount) so the honesty test can show the kernel refusing it. It performs nothing the person who set it could not do themselves, and a program cannot set it. | Do not start Velaris with an environment someone else controls - which was already true of `PATH` and `PYTHONPATH`. |
 | What a receipt shows that is not a value | A receipt (8.1) keeps out every value a program handled, but holds its exit status, where it stopped, its counts and its wall time - which a program that declassified something can choose from it. | Do not grant `declassify` to code whose receipts you will share. |
 | Writes to where Python imports from | A write grant to a directory on some Python's import path lets a program leave code the next Python process runs. Velaris does not look for this on a plain run; an ejected launcher refuses such a budget where it is launched. | Grant writes to data directories only; run Python with `-I` where you can. |
 | An ejected directory | It keeps the Velaris it was ejected with; no fix reaches it, and its launcher cannot check itself. | Eject again after an upgrade; check `SHA256SUMS` when the directory could have been written by someone else. |
@@ -432,17 +440,106 @@ budget - is a different thing, and SECURITY.md says how it is handled.
 | The MCP server's tools are changed after install | Run `velaris mcp-verify` against the signed manifest of the release you installed, after every install or upgrade and in the pipeline that builds the client's environment. |
 | Nobody reads the invocation log | Send it to a file (`--log-file`) that something keeps and watches; `outcome` values `unauthorized`, `ceiling` and `refused` are the ones that mean someone tried more than they were given. |
 | The model wrote something other than Velaris | Check the file extension and run `velaris check` first; refuse to run anything the checker refuses. |
-| A compiler defect | Pin a version, verify the signature of what you install, run the suites (`python run_tests.py`, `check_sandbox.py`, `check_library.py`, `check_refusals.py`, `check_fallible.py`, `check_termination.py`, `check_pool.py`, `check_ratchet.py`, `check_money.py`, `check_secret.py`, `check_platform.py`, `check_deps.py`, `check_adversarial.py`, `check_prover_lies.py`, `check_metamorphic.py`, `check_eject.py`, `check_policies.py`, `check_eval.py`, `check_receipts.py`, `check_from_contracts.py`, `check_impossible.py`, `check_permissions.py`, `fuzz_native.py`) and `velaris conformance` on the machine that will run untrusted code, and report anything that lies through the private channel in SECURITY.md. |
+| A compiler defect | Pin a version, verify the signature of what you install, run the suites (`python run_tests.py`, `check_sandbox.py`, `check_library.py`, `check_refusals.py`, `check_fallible.py`, `check_termination.py`, `check_pool.py`, `check_ratchet.py`, `check_money.py`, `check_secret.py`, `check_platform.py`, `check_deps.py`, `check_adversarial.py`, `check_prover_lies.py`, `check_metamorphic.py`, `check_eject.py`, `check_policies.py`, `check_eval.py`, `check_receipts.py`, `check_from_contracts.py`, `check_impossible.py`, `check_permissions.py`, `check_confine.py`, `fuzz_native.py`) and `velaris conformance` on the machine that will run untrusted code, and report anything that lies through the private channel in SECURITY.md. |
 | A single maintainer | Real, and stated in [SUPPORT.md](SUPPORT.md). Fixes to soundness and sandbox reports are promised within a week; nothing else is promised. |
+
+## What the operating system enforces
+
+From 8.4 the process that runs a program asks the operating system to
+hold the budget it was given, before the program's first statement runs,
+so that a fault in Velaris itself is a crash inside a box and not an
+escape. The derivation is one function, `os_policy` in
+`velaris/confine.py`: budget in, OS policy out, reading nothing of the
+machine. This table is that module's `ENFORCES`, and `check_confine.py`
+fails when the two differ.
+
+| Budget item | Linux (Landlock, seccomp-bpf) | macOS (a sandbox profile) | Windows (job object, token, integrity level) |
+|---|---|---|---|
+| no `fs` granted | Landlock: no file read, written, made or removed but what the interpreter itself needs (below) | writes refused everywhere but the private temporary directory; reads refused under the home directory and /Volumes, but for the names in the working directory and in each directory above it, which getcwd reads | low integrity level: no write to anything of the user's; reads not held |
+| `fs:read:DIR` | Landlock: reads beneath DIR (resolved), and nothing else of the user's | reads beneath DIR allowed; outside it, refused only under the home directory and /Volumes | not held: the low integrity level does not stop a read |
+| `fs:write:DIR` | Landlock: files written, made and truncated beneath DIR; when DIR does not exist yet, beneath the nearest directory that does, and the level is partial | writes beneath DIR, as Linux | not held: a write grant keeps the process at medium integrity, because lowering it would need the granted directory relabelled |
+| `fs`, `fs:read`, `fs:write` with no path | that direction is not restricted, as the budget says | as Linux | as Linux |
+| a credential location under a broad grant (E318) | not held: Landlock cannot take a path out of a hierarchy it allows | not held | not held |
+| no `net` granted | seccomp: socket, socketpair, connect, bind, listen and accept refused (EPERM); Landlock ABI 4 and later also refuses TCP | `(deny network*)` | not held: it needs an AppContainer, which this Python cannot start in (below) |
+| `net:HOST`, `net:HOST:PORT` | IPv4, IPv6 and netlink sockets allowed, and no Unix socket; with Landlock ABI 4 and later, and a port on every grant, TCP connections to those ports and 53 only. The host is held by the language alone, so the level is partial | the network allowed; the host is held by the language alone (partial) | not held |
+| `net` with no host | any host, as the budget says; still no Unix socket, unless a granted Python module widened the policy to any host | not restricted, as the budget says | as macOS |
+| `@N` counts | the language | the language | the language |
+| `io` | the descriptors the process was started with; not restricted | as Linux | as Linux |
+| `env` | not held: the environment is in the process's own memory | not held | not held |
+| `clock`, `rand`, `declassify` | not held: reading the clock or the kernel's randomness reaches nothing outside the process, and declassify is a rule of the type system | not held | not held |
+| starting a process (never a budget item) | seccomp: execve, execveat, fork, vfork, clone without CLONE_THREAD refused, clone3 answered ENOSYS; Landlock refuses execute | `(deny process-fork)` `(deny process-exec)` | job object: one active process; and the clipboard, the desktop, global atoms and other processes' USER handles |
+| the rest of the deny-list (never a budget item) | seccomp: ptrace, mount and its new calls, pivot_root, chroot, unshare, setns, kernel modules, kexec, bpf, perf_event_open, process_vm_readv and writev, keyrings, io_uring, userfaultfd, open_by_handle_at, setting the clock, reboot, swapon, acct, quotactl, personality; a signal, by kill, tgkill or sigqueue, to any process but this one; input pushed at the terminal (TIOCSTI, TIOCLINUX) | what `(deny process-fork)` and the denial of writes imply; no list of system calls | every privilege but SeChangeNotifyPrivilege removed from the token |
+| `ffi:MODULE` | widened to what FFI_WIDENS names for MODULE: nothing, any path, any host, or nothing enforced; a module not in the table, `ffi:os`, `ffi:subprocess` and plain `ffi` widen to nothing enforced, and the level is none | as Linux | as Linux |
+| time and memory limits | RLIMIT_AS, and the parent's clock (as before 8.4) | the parent's clock; RLIMIT_AS is best-effort | the job object's memory limit, and the parent's clock |
+
+What the interpreter itself must read is allowed beside the grants, on
+Linux by name: Python's own installation and every directory it imports
+from, the `velaris` package and the standard library beside it, the
+system's shared libraries, `/dev/null`, `/dev/urandom` and the `/proc` and
+`/sys` entries Python asks for, the time zone data, the files the program
+was read from, a private temporary directory - and, under a `net` grant
+only, the resolver's configuration and the TLS roots. `@N` counts stay in
+the language.
+
+A granted `ffi` module widens the OS policy to what that module needs,
+named per module (`FFI_WIDENS`). A module that is not in this table widens
+to nothing enforced - what it needs is not known, and a run that worked
+before 8.4 is not refused - and the audit's `confinement.widened_by` names
+every module that widened the policy and to what.
+
+| A granted module | widens the OS policy to |
+|---|---|
+| `abc`, `array`, `ast`, `base64`, `binascii`, `bisect`, `calendar`, `cmath`, `collections`, `colorsys`, `copy`, `csv`, `dataclasses`, `datetime`, `decimal`, `difflib`, `email`, `enum`, `fnmatch`, `fractions`, `functools`, `gc`, `hashlib`, `heapq`, `hmac`, `html`, `ipaddress`, `itertools`, `json`, `keyword`, `math`, `numbers`, `operator`, `pprint`, `random`, `re`, `reprlib`, `secrets`, `shlex`, `statistics`, `string`, `struct`, `textwrap`, `threading`, `time`, `tomllib`, `typing`, `unicodedata`, `uuid`, `zlib`, `zoneinfo` | nothing |
+| `bz2`, `codecs`, `configparser`, `dbm`, `fileinput`, `glob`, `gzip`, `io`, `lzma`, `pathlib`, `shutil`, `sqlite3`, `tarfile`, `tempfile`, `xml`, `zipfile` | any path |
+| `ftplib`, `http`, `imaplib`, `poplib`, `select`, `selectors`, `smtplib`, `socket`, `ssl`, `urllib`, `xmlrpc` | any host |
+| `aiohttp`, `httpx`, `logging`, `requests`, `urllib3` | any path and any host |
+| `asyncio`, `builtins`, `code`, `concurrent`, `ctypes`, `importlib`, `multiprocessing`, `nt`, `os`, `pdb`, `pickle`, `pkgutil`, `platform`, `posix`, `pty`, `runpy`, `shelve`, `signal`, `site`, `subprocess`, `sys`, `venv`, `webbrowser`, `winreg`, `zipimport` | nothing enforced |
+
+The level is what was applied and held, not what was asked for. **full**:
+every file, network and process limit of this run's budget is held by the
+kernel. **partial**: some are, and `confinement_reason` names each that is
+not. **none**: nothing is - `--no-confine`, a module that widens to nothing
+enforced, a system that offers nothing, or a run that is exempt:
+
+| Not confined | Why |
+|---|---|
+| `velaris.run()` with no `timeout` and no `max_memory_mb` | it runs in the caller's process, which Velaris must not confine: Landlock, seccomp, a sandbox profile and a lowered token cannot be taken off again. Pass a limit, or use a Pool. |
+| the REPL, `velaris test`, `velaris bench` | they run many programs in one process, each read after the last; a policy applied for the first would hold the rest |
+| a `Pool` made without `import_root`, on reads | its workers compile each program they are sent, and an import may name any .vel file the process can read, so reads are not held and the level is partial; writes, the network and processes are held |
+| compiling, proving and native code generation | done before the policy is applied in a single run, since imports are read from wherever they are and Z3 and LLVM load their libraries; the program's first statement runs after it |
 
 ## What "not a security boundary" means here
 
-The README says the effect budget is not a security boundary, and this
-document is the long form of that sentence. The budget is enforced by
-an interpreter written in Python, in a process that also holds the
-compiler, on a host that trusts that process. It is a strong guard
-against a program that does what it was not asked to - the situation
-you are in when a model hands you a script - and it is tested as such
-on every push. It is not a substitute for an OS-level sandbox, a
-network policy or a separate user account, and it should sit inside
-one of those when the stakes warrant it.
+Until 8.4 this section said the budget was enforced by an interpreter
+written in Python, in a process that also holds the compiler, on a host
+that trusts that process, and that it was not a substitute for an OS-level
+sandbox. The first half is still true. What is now true beside it:
+
+- **On Linux, with full confinement,** a fault in the interpreter cannot
+  read, write or make a file outside the run's `fs:` grants and what the
+  interpreter itself reads, cannot open a socket when no `net` is granted,
+  and cannot start a process, short of a defect in the kernel's Landlock
+  or seccomp. A run says full only when that is so; the known-open table
+  says what full still leaves.
+- **On macOS it is partial:** writes, the network and new processes are
+  held; reads are held only under the home directory and /Volumes; and the
+  mechanism is one Apple has deprecated.
+- **On Windows it is partial:** a second process is refused, every
+  privilege is gone from the token, and a budget with no write grant can
+  write nothing of the user's. Reads, the network, and writes under a
+  budget that grants any, are not held, because that needs an
+  AppContainer that a running Python cannot enter and a fresh one cannot
+  start in.
+- **Everywhere:** the process still runs as the user; a granted `ffi`
+  module still widens what is held, to nothing at all for `ffi:os`,
+  `ffi:subprocess`, plain `ffi` and any module the table does not name;
+  `env` is not held; timing still leaks; and an in-process `velaris.run()`
+  is not confined.
+
+So the README's sentence stands for macOS, for Windows, for any run whose
+receipt does not say `"confinement": "full"`, and for what full leaves. It
+is a strong guard against a program that does what it was not asked to,
+tested as such on every push, and on Linux a second guard the kernel keeps
+under it. It is still not a separate user account, a network policy or a
+virtual machine, and it should sit inside one of those when the stakes
+warrant it.

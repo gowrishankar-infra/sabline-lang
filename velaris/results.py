@@ -50,7 +50,7 @@ class AuditResult:
                  "functions", "proven_share", "safe_command", "warnings",
                  "ffi_modules", "loops_unshown", "contract_coverage",
                  "fs_paths", "net_hosts", "ffi_any", "counts", "prover",
-                 "secrets", "ffi_native")
+                 "secrets", "ffi_native", "confinement")
     # each is what its maker passed (None for one it did not pass)
     schema: str
     velaris_version: str
@@ -71,6 +71,7 @@ class AuditResult:
     prover: bool
     secrets: dict[str, Any] | None
     ffi_native: dict[str, str]
+    confinement: dict[str, Any] | None
 
     def __init__(self, **kw: Any) -> None:
         for k in self.__slots__:

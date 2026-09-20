@@ -14,9 +14,11 @@ A language where a function's signature declares what it may touch —
 and the runtime refuses anything you did not allow, whatever the code
 says about itself.
 
-Not a security boundary: an interpreter in the program's own process
-enforces the budget, not the operating system
-([THREAT_MODEL.md](THREAT_MODEL.md)).
+Not a security boundary by itself: an interpreter in the program's own
+process enforces the budget. From 8.4 the operating system is asked to hold
+the same budget under it - fully on Linux, partly on macOS and on Windows -
+and each run says which it got ([THREAT_MODEL.md](THREAT_MODEL.md),
+[docs/confinement.md](docs/confinement.md)).
 
 [![PyPI](https://img.shields.io/pypi/v/velaris-lang)](https://pypi.org/project/velaris-lang/)
 [![tests](https://github.com/gowrishankar-infra/velaris-lang/actions/workflows/test.yml/badge.svg)](https://github.com/gowrishankar-infra/velaris-lang/actions/workflows/test.yml)
@@ -463,12 +465,19 @@ velaris agent_output.vel --allow all --deny net,ffi  # everything but these
 
 The runtime refuses any effect outside the budget you grant, whatever
 the source claims — and a refusal cannot be caught and carried past.
-Not a security boundary (`ffi` grants everything Python can do), but a
-real guard for running a program you have not read.
+From 8.4 the operating system is asked to hold the same budget, so a fault
+in Velaris itself is refused by the kernel: Landlock and seccomp on Linux
+(full), a sandbox profile on macOS and a job object with a lowered token on
+Windows (both partial). `velaris doctor` says what your machine offers, a
+receipt says what a run got, and `--no-confine` turns it off
+([docs/confinement.md](docs/confinement.md)).
+Not a security boundary (`ffi` grants everything Python can do, and widens
+what the system is asked to hold), but a real guard for running a program
+you have not read.
 
 ## Checking everything at once
 
-<!-- illustrative lines 1-2,5-10: stress.vel reaches the network, and each suite runs on its own in CI -->
+<!-- illustrative lines 1-2,5-11: stress.vel reaches the network, and each suite runs on its own in CI -->
 ```sh
 velaris examples/stress.vel --allow clock,env,ffi:datetime,math,sqlite3,io,net:raw.githubusercontent.com
                                 # 33 checks across the whole language
@@ -476,6 +485,7 @@ velaris examples/edges.vel --allow ffi:datetime,io
                                 # 20 boundary, property and round-trip checks
 python check_refusals.py        # 25 wrong programs, each refused correctly
 python check_sandbox.py         # 39 escape attempts, each refused with its code
+python check_confine.py         # the operating system holds the budget too (8.4)
 python check_secret.py          # a Secret reaches nothing that emits it
 python check_pool.py            # a pool must leak nothing between programs
 python check_platform.py        # the reference platform refuses what it says it does
@@ -502,7 +512,7 @@ and only a dependency's declared budget widened between two versions.
 
 | | caught before running | caught while running | missed | false positives on the 10 controls |
 |---|---|---|---|---|
-| **Velaris 8.3** | 52 | 12 | 2 | 0 |
+| **Velaris 8.4** | 52 | 12 | 2 | 0 |
 | Deno 2.9 | 8 | 34 | 24 | 0 |
 | Python 3.13 | 0 | 31 | 35 | 0 |
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "velaris-lang"
-version = "8.3.1"
+version = "8.4.0"
 description = "The language where you can trust code you didn't write - signatures declare types, effects, and machine-checked promises."
 readme = "README.md"
 requires-python = ">=3.10"

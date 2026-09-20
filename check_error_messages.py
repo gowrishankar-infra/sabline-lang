@@ -92,6 +92,11 @@ UNREACHABLE: dict[str, str] = {
             "outside; check_eval.py stops one mid-loop and holds the receipt",
     "E616": "given only under velaris replay --responses, to a call its "
             "recording does not hold; check_receipts.py tampers with one",
+    # 8.4: a code no program can reach at all
+    "E319": "given only under the fault-injection hook (VELARIS_FAULT_INJECT), "
+            "when the operating system's confinement refuses what the "
+            "runtime itself attempted, and its message names this machine's "
+            "layers; check_confine.py holds it on every leg",
 }
 
 

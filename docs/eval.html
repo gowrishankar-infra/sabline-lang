@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>velaris eval - Velaris 8.3.1</title>
+<title>velaris eval - Velaris 8.4.0</title>
 <meta name="description" content="velaris eval runs one Velaris program the way an evaluation sandbox runs code it was handed: under a profile that its own command line cannot relax, with a ...">
-<meta name="velaris-version" content="8.3.1">
+<meta name="velaris-version" content="8.4.0">
 <link rel="canonical" href="https://velaris-lang.dev/eval.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
@@ -18,7 +18,7 @@
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
 <a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.3.1, all versions"><span>8.3.1</span></a>
+<a class="badge" href="versions.html" aria-label="Version 8.4.0, all versions"><span>8.4.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="eval.html" aria-current="page">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="eval.html" aria-current="page">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,7 +52,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-2.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-2.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -101,21 +101,25 @@ was honoured. A signal is taken only where eval runs on the main thread,
 which is CPython 3.11 and later; before that no handler is installed,
 <code>--json</code> says <code>signals: false</code>, and on Windows a console break ends the
 process outright. <code>--stop-file</code> works everywhere.</p></li>
-<li><p><strong>Confinement where the operating system offers it, and the level named.</strong>
-The worker is also held by what the OS offers without privileges:</p>
-<div class="table-wrap" tabindex="0"><table>
-<thead><tr><th>Level</th><th>Where</th><th>What it refuses</th></tr></thead>
-<tbody>
-<tr><td><code>landlock-net</code></td><td>Linux, Landlock ABI 4 or later</td><td>writing, removing or making a file outside the <code>fs:write</code> directories and the run's own temporary directory; starting a program; a TCP connection or listening socket</td></tr>
-<tr><td><code>landlock</code></td><td>Linux, Landlock ABI 1 to 3</td><td>the same, except TCP</td></tr>
-<tr><td><code>job-one-process</code></td><td>Windows, where the job object can be made</td><td>starting any process beyond the ones the worker took to start: its own, and a launcher's where <code>python.exe</code> is one (a virtual environment's)</td></tr>
-<tr><td><code>sandbox-exec</code></td><td>macOS, when a trial of the profile starts Python</td><td>the network; forking; writing outside the <code>fs:write</code> directories and the run's temporary directory</td></tr>
-<tr><td><code>none</code></td><td>anywhere else</td><td>nothing: the budget is the only boundary</td></tr>
-</tbody></table></div>
+<li><p><strong>Confinement by the operating system, fully or partly - or no run.</strong> The
+worker asks the operating system to hold the run's budget before it is
+sent anything, as every pool worker does from 8.4
+(<a href="confinement.html">Confinement</a>): on Linux, Landlock holds reads to the
+directory the program is served from and the <code>fs:read</code> grants, and writes
+to the <code>fs:write</code> grants and the run's own temporary directory, and
+seccomp-bpf refuses every socket and every new process; on macOS a sandbox
+profile holds writes, the network and fork/exec; on Windows a job object
+refuses a second process and, when the budget grants no write, a low
+integrity level refuses every write to the user's files. The receipt's
+<code>run_parameters</code> name the level (<code>confinement</code>: <code>full</code> or <code>partial</code>), why
+(<code>confinement_reason</code>), the layers applied (<code>confinement_layers</code>) and the
+sha256 of the OS policy the budget derives (<code>os_policy_sha256</code>). A worker
+that got <strong>none</strong> is not sent the program: eval refuses, exit 2, and says
+why. Until 8.4 such a run went ahead under the budget alone.</p>
 <p><code>velaris eval --confinement-probe</code> starts a worker confined as a run is,
-has it try a TCP connection, a write outside the granted directories and
-a process start, prints what was refused, and exits 1 if a refusal the
-level claims did not hold.</p></li>
+has it try a TCP connection, a write and a read outside the granted
+directories and a process start, prints what was refused, and exits 1 if a
+refusal the level claims did not hold.</p></li>
 <li><p><strong>Nothing it runs reads the proof cache.</strong> Velaris has kept no proofs
 between runs since 8.2, so there is no cache for <code>--no-cache</code> to turn off.</p></li>
 </ul>
@@ -126,19 +130,19 @@ eval does not have, and a flag given twice. Words after <code>--</code> are the
 program's <code>args()</code> and never eval's flags.</p>
 <h2 id="what-it-does-not-guarantee">What it does not guarantee <a class="anchor" href="#what-it-does-not-guarantee" aria-label="Link to this section">#</a></h2>
 <ul>
-<li><strong>That the OS confinement is there.</strong> The level is what was applied, not
-what was asked for: a kernel without Landlock, a job object that could not
-be made, or a sandbox profile that failed its trial is <code>none</code>, and the run
-goes ahead under the budget alone. Read <code>confinement</code> in the receipt, and
-refuse <code>none</code> in whatever consumes it if that matters to you.</li>
-<li><strong>Reads.</strong> No level confines reading. The budget holds a program's reads;
-the worker itself reads Python's own files as it runs.</li>
-<li><strong>More than it lists.</strong> <code>job-one-process</code> does not hold files or the
-network, and it counts the processes the worker was already using when it
-became ready rather than insisting on exactly one; <code>landlock</code> does not hold TCP, and no Landlock level holds UDP or
-a Unix socket. A write grant's directory is confined as the nearest
-directory that exists, so a grant naming a file not made yet lets the OS
-layer allow its siblings; the budget still refuses them.</li>
+<li><strong>More confinement than the level says.</strong> The level is what was applied,
+not what was asked for. <code>partial</code> is a run: on macOS reads are refused
+only under the home directory and /Volumes, and on Windows reads, the
+network, and writes under a budget that grants any, are not held. Read
+<code>confinement</code> and <code>confinement_reason</code> in the receipt, and refuse
+<code>partial</code> in whatever consumes it if that matters to you.</li>
+<li><strong>More than the table lists.</strong> <a href="confinement.html">Confinement</a> says what
+each system holds for each budget item and what it leaves: a write grant
+naming a file not made yet is held to the nearest directory that exists,
+and the level says partial; a hard link or a bind mount inside a granted
+path is that path's content; on Windows the worker's own job object holds
+one process while the memory job its parent made counts the launcher too,
+where <code>python.exe</code> is one.</li>
 <li><strong>A stop the worker cannot see, in less than the grace period.</strong> A stop
 lands at a call or a loop turn. A worker compiling the program, or inside
 one long builtin, sees no stop point until it finishes that, and is killed
@@ -161,11 +165,11 @@ container or a separate account when the stakes warrant it.</li>
 124 when the time limit stopped it; 2 when eval refused the command line; 3
 when the program ran and the receipt could not be written or sent.
 <code>--json</code> prints <code>velaris.eval/1</code> (provisional): the outcome, the code, the
-confinement, whether signals could be taken, the stop, whether the receipt
+confinement level with its layers and reason, whether signals could be taken, the stop, whether the receipt
 was delivered, and the program's output and logs.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/docs/eval.md">docs/eval.md</a> by build_docs.py, for Velaris 8.3.1. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/docs/eval.md">docs/eval.md</a> by build_docs.py, for Velaris 8.4.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#what-it-guarantees">What it guarantees</a></li><li><a href="#what-it-does-not-guarantee">What it does not guarantee</a></li><li><a href="#exit-status">Exit status</a></li></ul></nav>

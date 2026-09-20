@@ -66,6 +66,9 @@ ERROR_TABLE = {
             "grants do not cover (an ambient HTTP_PROXY / HTTPS_PROXY)",
     "E318": "read_file on a documented credential location; read a secret "
             "with read_file_secret, or grant its exact path",
+    "E319": "the operating system's confinement refused an effect the "
+            "runtime itself attempted outside the budget (8.4; given only "
+            "under the fault-injection hook, VELARIS_FAULT_INJECT)",
     "E400": "there is no 'main' function",
     "E401": "the wrong number of arguments, or parameters on 'main'",
     "E402": "an unknown variable, or break or continue, which the language "

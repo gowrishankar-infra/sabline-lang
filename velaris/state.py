@@ -98,6 +98,37 @@ PY_OBJECTS: dict[int, _typing.Any] = {}
 PY_NEXT = [1]
 
 
+# Whether a run asks the operating system to hold its budget too (8.4,
+# velaris/confine.py). True unless --no-confine, Pool(confine=False) or
+# run(confine=False) said otherwise - never anything a program can reach.
+CONFINE = True
+
+# What was applied to THIS process - {level, reason, layers, policy_sha256,
+# platform} - or None while nothing has been. It cannot be taken off again,
+# so it is not among the names a pool worker puts back between programs.
+CONFINEMENT: "dict[str, _typing.Any] | None" = None
+
+# What a run in this process does just before its program's first
+# statement, once everything has been read, proven and compiled: apply the
+# confinement. A callable taking the list of files the program was read
+# from, set by the command line and by a worker whose pool serves one run;
+# None elsewhere.
+BEFORE_FIRST_STATEMENT: _typing.Any = None
+
+
+# On Windows, the handle of the job object this process put itself in, kept
+# open for the life of the process.
+_CONFINEMENT_JOB: _typing.Any = None
+
+# The files the program now running was read from, for the confinement to
+# let the process keep reading them (an error names its line).
+PROGRAM_FILES: list[str] = []
+
+# In a pool worker: what the worker's hello said of its confinement, which
+# is "pending" in a pool of one run until the first statement.
+WORKER_CONFINEMENT: "dict[str, _typing.Any] | None" = None
+
+
 # True in a process that is itself the bounded child of a check, an audit
 # or a pool, so that a library call there does its work in place rather
 # than start another child under the one already bounded.

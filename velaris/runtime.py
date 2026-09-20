@@ -2,6 +2,7 @@
 """
 import functools
 import os
+import queue
 import sys
 import threading
 
@@ -1135,6 +1136,7 @@ def _run_on_big_stack(fn: Callable[[], _R]) -> _R:
     if not _needs_big_stack() or getattr(_BIG_STACK, "on", False):
         return fn()
     box: dict[Any, Any] = {}
+    on_main = threading.current_thread() is threading.main_thread()
 
     def worker() -> None:
         _BIG_STACK.on = True
@@ -1142,6 +1144,9 @@ def _run_on_big_stack(fn: Callable[[], _R]) -> _R:
             box["value"] = fn()
         except BaseException as e:          # VelarisError/FailSignal/SystemExit
             box["error"] = e
+        finally:
+            if on_main:
+                _MAIN_CALLS.put(None)       # the main thread may stop waiting
 
     # Windows CPython rejects very large thread stacks (256 MiB raises on
     # 3.10), so try descending sizes and take the first the platform accepts;
@@ -1159,6 +1164,10 @@ def _run_on_big_stack(fn: Callable[[], _R]) -> _R:
     started = False
     try:
         t = threading.Thread(target=worker)
+        # said before the thread starts, not after: under load the thread
+        # can reach its first statement, and ask, before this one runs again
+        if on_main:
+            _MAIN_SERVING.set()
         try:
             t.start()
             started = True
@@ -1168,7 +1177,25 @@ def _run_on_big_stack(fn: Callable[[], _R]) -> _R:
             # loaded. Run in place - the big stack is a best-effort guard,
             # never a requirement.
             started = False
-        if started:
+            _MAIN_SERVING.clear()
+        if started and on_main:
+            # the main thread waits here, and meanwhile does what the run
+            # asks of it by call_on_main_thread (8.4)
+            try:
+                while True:
+                    asked = _MAIN_CALLS.get()
+                    if asked is None:
+                        break
+                    call, answer, done = asked
+                    try:
+                        answer["value"] = call()
+                    except BaseException as e:
+                        answer["error"] = e
+                    done.set()
+            finally:
+                _MAIN_SERVING.clear()
+            t.join()
+        elif started:
             t.join()
     finally:
         try:
@@ -1180,6 +1207,29 @@ def _run_on_big_stack(fn: Callable[[], _R]) -> _R:
     if "error" in box:
         raise box["error"]
     return cast(_R, box.get("value"))
+
+
+_MAIN_CALLS: "queue.SimpleQueue[Any]" = queue.SimpleQueue()
+_MAIN_SERVING = threading.Event()      # set while the main thread is asking
+
+
+def call_on_main_thread(call: Callable[[], Any]) -> tuple[bool, Any]:
+    """Have the main thread make `call`, when it is waiting in
+    _run_on_big_stack for the thread this is called from: (True, what it
+    returned). (False, None) when the main thread is not there to ask - the
+    run was started from another thread of an embedding program. Landlock
+    holds one thread at a time, which is what needs this (8.4)."""
+    if threading.current_thread() is threading.main_thread():
+        return True, call()
+    if not _MAIN_SERVING.is_set() or not getattr(_BIG_STACK, "on", False):
+        return False, None
+    answer: dict[str, Any] = {}
+    done = threading.Event()
+    _MAIN_CALLS.put((call, answer, done))
+    done.wait()
+    if "error" in answer:
+        raise answer["error"]
+    return True, answer.get("value")
 
 
 def _on_big_stack(fn: Callable[_P, _R]) -> Callable[_P, _R]:
@@ -1199,5 +1249,9 @@ def interpret(funcs: list[Function], native: dict[Any, Any] | None = None) -> No
     if "main" not in rt["table"]:
         raise VelarisError("E400", "no 'main' function found", 1,
                           fixes=["add: fn main() uses io { ... }"])
+    # everything has been read, proven and compiled: from here the operating
+    # system is asked to hold the budget too, where a run set that up (8.4)
+    if _state.BEFORE_FIRST_STATEMENT is not None:
+        _state.BEFORE_FIRST_STATEMENT()
     _run_on_big_stack(
         lambda: rt["call"]("main", [], rt["table"]["main"].line))

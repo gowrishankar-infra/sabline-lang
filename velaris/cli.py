@@ -148,6 +148,10 @@ Usage:
   velaris <file> --allow all --deny net    every effect but these
   velaris <file> --receipt FILE            and write the run's receipt
                                            (velaris.receipt/1, in-toto)
+  velaris <file> --no-confine              do not ask the operating system to
+                                           hold the budget too (8.4; it is
+                                           asked by default, and stderr says
+                                           when it is not)
   velaris migrate --to 5.0 [path]          the budget each program needs, and
         [--write]                          the command to run it under 5.0
   velaris fmt program.vel                  format to the canonical style
@@ -194,6 +198,7 @@ Usage:
         [--bind ADDR]                      127.0.0.1 unless named; says so
         [--root DIR]                       imports only from DIR (E515)
         [--rate-limit N]                   N requests a minute a token (600)
+        [--no-confine]                     workers not confined by the OS
         [--check-timeout S]                checks and audits under 60 s
         [--check-memory-mb M]              and 2048 MB unless raised
   velaris capabilities init [path]         record the capability surface in
@@ -217,8 +222,8 @@ Usage:
         [--json]                           each file by its sha256 (unsigned)
   velaris eval program.vel --receipt FILE  a run as an evaluation sandbox runs
         [--receipt-url URL] [--allow G]    it: no net, ffi or env, time and
-        [--timeout S] [--max-memory-mb M]  memory limits, confined where the OS
-        [--stop-file F] [--grace S]        offers it, a stop honoured, and a
+        [--timeout S] [--max-memory-mb M]  memory limits, confined by the OS or
+        [--stop-file F] [--grace S]        not run, a stop honoured, and a
         [--seed N] [--freeze-time T]       receipt always (docs/eval.md)
         [--json] [--confinement-probe]
   velaris receipts diff <receipt>          what a run did that its audit does
@@ -345,6 +350,7 @@ import sys
 from . import state as _state
 from .version import REFERENCE_URL, VERSION, _INSTALL_DIR, _launch_command
 from .errors import VelarisError
+from . import confine as _confine
 from .tables import CHECK_MEMORY_MB_DEFAULT, CHECK_TIMEOUT_DEFAULT
 from .recorder import _RunRecorder, _note_error, _note_stop, _utc_now_ms
 from .loader import load_program
@@ -1052,6 +1058,34 @@ def main() -> int:
                 print("  From 8.0 a request through it is refused (E317) "
                       "unless the")
                 print("  proxy's host is itself in the net grants.")
+        # what the operating system would hold of that run, here (8.4):
+        # judged for the modules the program names, as the library's audit
+        # judges it, not for the plain ffi the line above prints
+        reached = sorted(_ffi_modules_named(target, None)) \
+            if "ffi" in outside else []
+        judged = ",".join(g for g in outside if g != "ffi" or not reached)
+        if reached:
+            judged = ",".join(filter(None, [judged] + [
+                f"ffi:{m}" for m in reached]))
+        try:
+            policy = _confine.os_policy(Budget.parse(judged))
+        except BudgetError:
+            policy = None
+        if policy is not None:
+            would = _confine.predict(policy)
+            print()
+            print(f"CONFINEMENT ON THIS MACHINE: {would['level']}")
+            for w in policy["widened_by"]:
+                named = "plain ffi" if w["module"] == "*" \
+                    else f"ffi:{w['module']}"
+                to = ("nothing enforced" if "all" in w["widens"] else
+                      " and ".join({"fs": "any path", "net": "any host"}[x]
+                                   for x in w["widens"]))
+                print(f"  {named} widens the OS policy to {to}"
+                      + ("" if w.get("known", True) else
+                         " (it is not in the table of modules)"))
+            if would["level"] != _confine.FULL:
+                print(f"  {would['reason']}")
         return 0
 
     if argv[:1] == ["clean"]:
@@ -1372,9 +1406,20 @@ def main() -> int:
         print(str(e), file=sys.stderr)
         return 2
     budget.install()
+    # From 8.4 the operating system is asked to hold the same budget, at the
+    # program's first statement (velaris/confine.py). --no-confine does not
+    # ask, and says so; it is a flag of this command line, before any `--`,
+    # and nothing a program can reach.
+    if "--no-confine" in sys.argv:
+        vars(_state)["CONFINE"] = False
+        print("velaris: --no-confine: the operating system is not asked to "
+              "hold this run; the budget is the only boundary",
+              file=sys.stderr)
+    vars(_state)["BEFORE_FIRST_STATEMENT"] = lambda: _confine.confine_this_run(
+        budget, files=list(_state.PROGRAM_FILES))
     # args() is the program's arguments - never the flags this command
     # took for itself. Until 2.62 `--allow io` leaked in as two words.
-    FLAGS = {"--json", "--no-native", "--time", "--check"}
+    FLAGS = {"--json", "--no-native", "--time", "--check", "--no-confine"}
     VALUED = {"--allow", "--deny", "--timeout", "--max-memory-mb",
               "--max-read", "--seed", "--freeze-time", "--receipt",
               "--record-responses"}
@@ -1397,19 +1442,42 @@ def main() -> int:
             return 2
         log = ResponseLog()
         vars(_state)["RESPONSES"] = log
+        # opened now: a confined run cannot open it once it has ended
+        record_fh = _open_for_later(record_to)
         try:
             return _cli_run_receipt_or_not(filename, as_json, budget)
         finally:
             vars(_state)["RESPONSES"] = None
             try:
-                with open(record_to, "w", encoding="utf-8",
-                          newline="\n") as fh:
-                    fh.write(json.dumps(log.document(), indent=2,
+                _write_later(record_fh, record_to,
+                             json.dumps(log.document(), indent=2,
                                         ensure_ascii=False) + "\n")
             except OSError as e:
                 print(f"velaris: the responses could not be written to "
                       f"{record_to}: {e.strerror or e}", file=sys.stderr)
     return _cli_run_receipt_or_not(filename, as_json, budget)
+
+
+def _open_for_later(path: str) -> Any:
+    """A file opened for writing without emptying it, or None when it cannot
+    be: what is there stays until _write_later replaces it."""
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT
+                     | getattr(os, "O_BINARY", 0), 0o666)
+    except OSError:
+        return None
+    return os.fdopen(fd, "wb")
+
+
+def _write_later(fh: Any, path: str, text: str) -> None:
+    """Replace the file's content with `text`. OSError as open() gives it
+    when the file could not be opened then and cannot be now."""
+    if fh is None:
+        fh = open(path, "wb")
+    with fh:
+        fh.seek(0)
+        fh.truncate()
+        fh.write(text.encode("utf-8"))
 
 
 def _cli_run_receipt_or_not(filename: str, as_json: bool,
@@ -1444,6 +1512,9 @@ def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
     loaded: list[Any] = []
     started_at, t0 = _utc_now_ms(), _t.monotonic()
     status, raised = 1, None
+    # opened now, written when the run has ended: a confined run cannot
+    # open a file outside its budget then (8.4)
+    receipt_fh = _open_for_later(receipt_to)
     vars(_state)["RUN_RECORDER"] = recorder
     try:
         status = _cli_run(filename, as_json, loaded=loaded)
@@ -1464,12 +1535,17 @@ def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
                        None, status, effects_used=dict(_state.EFFECT_USES))
     doc = receipt_statement(
         recorder, name=name, entry_bytes=entry_bytes, budget=budget.spec(),
-        parameters=_run_parameters(_state.SEED, _state.FROZEN_TIME, None, None),
+        parameters=_run_parameters(
+            _state.SEED, _state.FROZEN_TIME, None, None,
+            confinement=_confine.current() or _confine.unconfined(
+                _confine.os_policy(budget, confine=_state.CONFINE),
+                "the run stopped before its first statement, where the "
+                "confinement is applied")),
         result=result, started_at=started_at,
         wall_time_ms=(_t.monotonic() - t0) * 1000)
     try:
-        with open(receipt_to, "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
+        _write_later(receipt_fh, receipt_to,
+                     json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
     except OSError as e:
         print(f"velaris: the receipt could not be written to {receipt_to}: "
               f"{e.strerror or e}", file=sys.stderr)
@@ -1484,8 +1560,11 @@ def _cli_run(filename: str, as_json: bool, loaded: list[Any] | None = None) -> i
     """`velaris file.vel`: compile, prove, and run, under the budget main()
     installed. `loaded` gets the files read, for a receipt."""
     running = False
+    if loaded is None:
+        loaded = []
     try:
         funcs, records = load_program(filename, loaded=loaded)
+        _state.PROGRAM_FILES[:] = [filename] + [str(p) for p in loaded]
         errors: list[VelarisError] = []
         check_effects(funcs, errors)  # superpower 1: no hidden effects
         check_types(funcs, records, errors)  # superpower 2: no type surprises

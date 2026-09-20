@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # release.yml, once it has pushed the pin move (8.4): a push made with
+  # GITHUB_TOKEN starts nothing by itself
+  workflow_dispatch:
 
 # What runs where, and where to look when something is red: MAINTENANCE.md.
 
@@ -65,6 +68,8 @@ jobs:
         run: python run_tests.py
       - name: Each stage on its own (unit tests, and the modules' pipeline order)
         run: python run_unit_tests.py
+      - name: The operating system holds the budget too, and says truthfully how much (8.4)
+        run: python check_confine.py
       - name: Native and interpreted agree (random programs)
         run: python fuzz_native.py 60
       - name: The parsers, JSON, CSV, py_json and the contract translator, fuzzed (30 each)

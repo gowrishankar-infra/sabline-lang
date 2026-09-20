@@ -8,13 +8,13 @@
     "source": "github"
   },
   "websiteUrl": "https://velaris-lang.dev/",
-  "version": "8.3.1",
+  "version": "8.4.0",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "velaris-lang",
-      "version": "8.3.1",
+      "version": "8.4.0",
       "runtimeHint": "python",
       "runtimeArguments": [
         {
@@ -34,7 +34,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "velaris-lang",
-      "version": "8.3.1",
+      "version": "8.4.0",
       "transport": {
         "type": "stdio"
       },

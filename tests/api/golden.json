@@ -170,6 +170,7 @@
     "--max-allow",
     "--max-memory-mb",
     "--max-timeout",
+    "--no-confine",
     "--port",
     "--rate-limit",
     "--root",
@@ -223,6 +224,7 @@
    "--max-memory-mb",
    "--max-timeout",
    "--min",
+   "--no-confine",
    "--no-native",
    "--output",
    "--port",
@@ -254,6 +256,23 @@
   "answers": {
    "audit": {
     "shape": {
+     "confinement": {
+      "systems": {
+       "linux": {
+        "level": "str",
+        "reason": "str"
+       },
+       "macos": {
+        "level": "str",
+        "reason": "str"
+       },
+       "windows": {
+        "level": "str",
+        "reason": "str"
+       }
+      },
+      "widened_by": []
+     },
      "contract_coverage": [],
      "counts": {
       "fs": "int",
@@ -307,6 +326,23 @@
    },
    "audit, does not compile": {
     "shape": {
+     "confinement": {
+      "systems": {
+       "linux": {
+        "level": "str",
+        "reason": "str"
+       },
+       "macos": {
+        "level": "str",
+        "reason": "str"
+       },
+       "windows": {
+        "level": "str",
+        "reason": "str"
+       }
+      },
+      "widened_by": []
+     },
      "contract_coverage": [],
      "counts": "NoneType",
      "effects": [],
@@ -508,9 +544,14 @@
        "refusals": [],
        "run_parameters": {
         "confinement": "str",
+        "confinement_layers": [
+         "str"
+        ],
+        "confinement_reason": "str",
         "freeze_time": "str",
         "max_memory_mb": "int",
         "max_read_bytes": "int",
+        "os_policy_sha256": "str",
         "seed": "int",
         "timeout": "int"
        },
@@ -607,9 +648,14 @@
        ],
        "run_parameters": {
         "confinement": "str",
+        "confinement_layers": [
+         "str"
+        ],
+        "confinement_reason": "str",
         "freeze_time": "NoneType",
         "max_memory_mb": "int",
         "max_read_bytes": "int",
+        "os_policy_sha256": "str",
         "seed": "NoneType",
         "timeout": "int"
        },
@@ -883,6 +929,7 @@
    "E316",
    "E317",
    "E318",
+   "E319",
    "E400",
    "E401",
    "E402",
@@ -1006,12 +1053,17 @@
      "counts",
      "prover",
      "secrets",
-     "ffi_native"
+     "ffi_native",
+     "confinement"
     ]
    },
    "BAD": {
     "kind": "value",
     "type": "object"
+   },
+   "BEFORE_FIRST_STATEMENT": {
+    "kind": "value",
+    "type": "NoneType"
    },
    "BUILTINS": {
     "kind": "value",
@@ -1124,6 +1176,14 @@
    "CHECK_TIMEOUT_DEFAULT": {
     "kind": "value",
     "type": "int"
+   },
+   "CONFINE": {
+    "kind": "value",
+    "type": "bool"
+   },
+   "CONFINEMENT": {
+    "kind": "value",
+    "type": "NoneType"
    },
    "CONFORMANCE_LEVELS": {
     "kind": "value",
@@ -1686,6 +1746,10 @@
     "kind": "value",
     "type": "list"
    },
+   "PROGRAM_FILES": {
+    "kind": "value",
+    "type": "list"
+   },
    "PROOF_SECONDS": {
     "kind": "value",
     "type": "float"
@@ -1744,7 +1808,7 @@
     "methods": {
      "__enter__": "(self)",
      "__exit__": "(self, *_exc)",
-     "__init__": "(self, size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None)",
+     "__init__": "(self, size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None, confine=True)",
      "audit": "(self, source, *, path=None)",
      "check": "(self, source, *, path=None, prove=True)",
      "close": "(self)",
@@ -1752,7 +1816,7 @@
      "run": "(self, source, *, stdin='', args=None, path=None, seed=None, freeze_time=None, _name=None)",
      "worker_pids": "(self)"
     },
-    "signature": "(size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None)"
+    "signature": "(size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None, confine=True)"
    },
    "PoolRegistry": {
     "bases": [
@@ -1762,12 +1826,12 @@
     "methods": {
      "__enter__": "(self)",
      "__exit__": "(self, *_exc)",
-     "__init__": "(self, size=4, keep=8)",
+     "__init__": "(self, size=4, keep=8, confine=True)",
      "close": "(self)",
      "pool": "(self, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None)",
      "run": "(self, source, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, stdin='', args=None, path=None, seed=None, freeze_time=None, import_root=None, _name=None)"
     },
-    "signature": "(size=4, keep=8)"
+    "signature": "(size=4, keep=8, confine=True)"
    },
    "Problem": {
     "bases": [
@@ -2092,6 +2156,10 @@
      "machine": "(self, filename)"
     },
     "signature": "(code, message, line, fixes=None, file=None)"
+   },
+   "WORKER_CONFINEMENT": {
+    "kind": "value",
+    "type": "NoneType"
    },
    "While": {
     "bases": [
@@ -2558,7 +2626,7 @@
    "run": {
     "covered": true,
     "kind": "function",
-    "signature": "(source, *, path=None, allow=None, deny=None, args=None, stdin='', native=True, timeout=None, max_memory_mb=None, seed=None, freeze_time=None, import_root=None)"
+    "signature": "(source, *, path=None, allow=None, deny=None, args=None, stdin='', native=True, timeout=None, max_memory_mb=None, seed=None, freeze_time=None, import_root=None, confine=True)"
    },
    "run_builtin": {
     "kind": "function",
@@ -2888,6 +2956,23 @@
    "audit": {
     "is_error": false,
     "shape": {
+     "confinement": {
+      "systems": {
+       "linux": {
+        "level": "str",
+        "reason": "str"
+       },
+       "macos": {
+        "level": "str",
+        "reason": "str"
+       },
+       "windows": {
+        "level": "str",
+        "reason": "str"
+       }
+      },
+      "widened_by": []
+     },
      "contract_coverage": [],
      "counts": {
       "fs": "int",
@@ -3039,9 +3124,14 @@
        "refusals": [],
        "run_parameters": {
         "confinement": "str",
+        "confinement_layers": [
+         "str"
+        ],
+        "confinement_reason": "str",
         "freeze_time": "str",
         "max_memory_mb": "int",
         "max_read_bytes": "int",
+        "os_policy_sha256": "str",
         "seed": "int",
         "timeout": "int"
        },

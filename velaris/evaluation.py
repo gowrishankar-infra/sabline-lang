@@ -14,7 +14,8 @@ from .tables import ALL_EFFECTS, ALLOW_ALL
 from .budget import Budget, BudgetError, _ascii_digits
 from .results import Problem
 from .pool import Pool, _Worker
-from .confine import MAC_SANDBOX, NONE, WINDOWS_JOB, claims, mac_wrapper
+from . import confine as _confine
+from .receipts import _confinement_fields
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -52,7 +53,9 @@ EVAL_REFUSED_FLAGS = (
     ("--check-memory-mb", "the program is checked inside the run's worker, "
                           "under the run's own memory limit"),
     ("--max-read", "the profile keeps the 64 MiB read ceiling"),
-    ("--no-confine", "confinement is part of the profile and has no switch"),
+    ("--no-confine", "confinement is part of the profile and has no switch: "
+                     "a run under it is held by the operating system, fully "
+                     "or partly, or it does not start"),
     ("--no-receipt", "a run under the profile always has a receipt"),
 )
 _VALUED = ("--allow", "--deny", "--timeout", "--max-memory-mb", "--receipt",
@@ -134,14 +137,20 @@ class _EvalPool(Pool):
                          import_root=import_root)
         self.stop_file, self.writable = stop_file, writable
         self.on_event = on_event
-        self.confinement = NONE
-        self.wrapper = mac_wrapper(writable)
+        self.confinement: dict[str, Any] = {"level": _confine.NONE,
+                                            "layers": [], "reason":
+                                            "no worker has started",
+                                            "policy_sha256": None}
 
     def _worker_command(self) -> list[Any]:
-        cmd = super()._worker_command() + [
-            "--stop-file", self.stop_file, "--confine",
-            json.dumps(self.writable)]
-        return list(self.wrapper or []) + cmd
+        # the policy is the budget's, derived in the worker like any pool's
+        # (8.4); the profile adds nothing to it but the run's own temporary
+        # directory, which is the last of `writable`
+        return super()._worker_command() + [
+            "--stop-file", self.stop_file, "--confine-probe"]
+
+    def _worker_temp(self) -> str | None:
+        return str(self.writable[-1])
 
     def _worker_options(self) -> dict[str, Any]:
         import subprocess
@@ -157,16 +166,15 @@ class _EvalPool(Pool):
 
     def _started(self, worker: _Worker) -> None:
         worker.on_event = self.on_event
-        if os.name == "nt":
-            # the job holds the worker only once it has been told how many
-            # processes to hold; until then it caps memory alone (8.3)
-            self.confinement = (WINDOWS_JOB
-                                if worker.job is not None
-                                and worker.processes_held else NONE)
-        elif self.wrapper:
-            self.confinement = MAC_SANDBOX
-        else:
-            self.confinement = worker.confinement
+        self.confinement = dict(worker.confinement)
+        if self.confinement.get("level") == _confine.NONE:
+            # the profile requires full or partial (8.4): nothing of the
+            # program has been sent to this worker, and nothing will be
+            worker.dispose()
+            raise EvalRefused(
+                "the eval profile requires the operating system's "
+                "confinement, fully or partly, and this worker got none: "
+                + str(self.confinement.get("reason")))
 
     def kill_running(self) -> None:
         with self._lock:
@@ -457,7 +465,7 @@ def _eval(opts: dict[str, Any], program_words: list[str]) -> int:
     result = held["result"]
     receipt = result.receipt
     predicate = receipt["predicate"]
-    predicate["run_parameters"]["confinement"] = pool.confinement
+    predicate["run_parameters"].update(_confinement_fields(pool.confinement))
     predicate["run_parameters"]["profile"] = "eval"
     stop = None
     if stopper.asked is not None:
@@ -502,7 +510,10 @@ def _eval(opts: dict[str, Any], program_words: list[str]) -> int:
             "exit_code": result.exit_code, "exit": status,
             "outcome": predicate["exit"]["outcome"],
             "code": predicate["exit"]["code"],
-            "confinement": pool.confinement, "signals": took,
+            "confinement": pool.confinement.get("level"),
+            "confinement_layers": pool.confinement.get("layers"),
+            "confinement_reason": pool.confinement.get("reason"),
+            "signals": took,
             "receipt": receipt_file, "receipt_url": receipt_url,
             "delivered": delivered, "stream_failures": stream.failures,
             "stop": stop, "output": result.output, "logs": result.logs,
@@ -517,7 +528,7 @@ def _eval(opts: dict[str, Any], program_words: list[str]) -> int:
     print(f"velaris eval: {predicate['exit']['outcome']}"
           + (f" ({predicate['exit']['code']})" if predicate["exit"]["code"]
              else "")
-          + f", confinement {pool.confinement}, receipt "
+          + f", confinement {pool.confinement.get('level')}, receipt "
           + ("NOT delivered" if not delivered else " and ".join(
               ([f"written to {receipt_file}"] if receipt_file else [])
               + ([f"sent to {receipt_url}"] if receipt_url else []))),
@@ -540,34 +551,48 @@ def confinement_probe(as_json: bool) -> int:
     listener.listen(8)
     port = listener.getsockname()[1]
     outside = os.path.join(home, "outside.txt")
+    secret = os.path.join(home, "outside-read.txt")
+    with open(secret, "w", encoding="utf-8") as fh:
+        fh.write("a file outside every grant")
     pool = _EvalPool(allow="io", timeout=120,
-                     max_memory_mb=EVAL_MEMORY_MB_DEFAULT, import_root=home,
+                     max_memory_mb=EVAL_MEMORY_MB_DEFAULT, import_root=work,
                      stop_file=os.path.join(home, "stop"), writable=[work])
+    answer = None
     try:
         answer, _events, _worker, _seconds = pool._use(
-            {"op": "probe", "port": port, "write": outside}, lambda a: False)
+            {"op": "probe", "port": port, "write": outside, "read": secret},
+            lambda a: False)
+    except EvalRefused as e:
+        print(f"velaris eval: {e}", file=sys.stderr)
     finally:
         pool.close()
         listener.close()
         shutil.rmtree(home, ignore_errors=True)
     tried = (answer or {}).get("probe")
-    level = pool.confinement
+    level = str(pool.confinement.get("level"))
     if not isinstance(tried, dict):
         print(f"velaris eval: the confined worker gave no answer "
               f"({answer!r})", file=sys.stderr)
         return 2
-    claimed = claims(level)
+    claimed = _confine.claims(pool.confinement, _confine.os_policy(
+        Budget.parse("io")))
     broken = [k for k in claimed if not str(tried.get(k, "")).startswith(
         "refused")]
     what = (("connect", "a TCP connection to 127.0.0.1"),
             ("write", "a file written outside the granted directories"),
+            ("read", "a file read outside the granted directories"),
             ("spawn", "a process started"))
     if as_json:
         print(json.dumps({"schema": EVAL_SCHEMA, "confinement": level,
+                          "confinement_layers": pool.confinement.get("layers"),
+                          "confinement_reason": pool.confinement.get("reason"),
                           "claims": list(claimed), "tried": tried,
                           "held": not broken}, indent=2))
     else:
-        print(f"confinement: {level}")
+        print(f"confinement: {level} "
+              f"({', '.join(pool.confinement.get('layers') or []) or 'no layer'})"
+              + (f"\n  why: {pool.confinement.get('reason')}"
+                 if level != _confine.FULL else ""))
         for key, label in what:
             said = str(tried.get(key, ""))
             print(f"  {'refused ' if said.startswith('refused') else 'allowed '}"

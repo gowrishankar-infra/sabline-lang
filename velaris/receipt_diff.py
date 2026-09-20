@@ -321,6 +321,30 @@ def against_receipts(receipt: dict[str, Any],
             diffs.append({"kind": "count_above_maximum", "what": effect,
                           "detail": f"{used[effect]} {effect} operation(s); "
                                     f"the most in an earlier run was {most}"})
+    # the confinement level (8.4): what the operating system held of this
+    # run, against what it held of the earlier ones. A receipt from before
+    # 8.4 names a mechanism or `none`, not a level, and is not compared.
+    def level_of(statement: dict[str, Any]) -> str | None:
+        params = statement["predicate"].get("run_parameters") or {}
+        if "os_policy_sha256" not in params:
+            return None
+        return str(params.get("confinement"))
+
+    level = level_of(receipt)
+    levels = sorted({lv for lv in (level_of(r) for _f, r in same)
+                     if lv is not None})
+    if level is not None and levels and level not in levels:
+        order = {"none": 0, "partial": 1, "full": 2}
+        weaker = order.get(level, -1) < min(order.get(lv, -1)
+                                            for lv in levels)
+        why = str((receipt["predicate"].get("run_parameters") or {})
+                  .get("confinement_reason") or "")
+        diffs.append({"kind": "confinement_changed", "what": level,
+                      "detail": f"earlier runs of these subjects were "
+                                f"confined {' and '.join(levels)}; this one "
+                                f"is {level}"
+                                + (", which is weaker" if weaker else "")
+                                + (f" ({why})" if why and weaker else "")})
     reasons = {d.get("reason") for _f, r in same
                for d in r["predicate"]["declassifications"]}
     mine = receipt["predicate"]["declassifications"]

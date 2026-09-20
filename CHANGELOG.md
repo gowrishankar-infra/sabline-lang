@@ -1,5 +1,282 @@
 # Velaris changelog
 
+## 8.4 - The kernel holds the line
+
+A minor version, and the last before 9.0. Until now the budget was enforced
+by the interpreter alone, in the process that runs the program, and
+THREAT_MODEL.md said so under "No OS confinement". From 8.4 the process that
+runs a program also asks the operating system to hold the same budget, before
+the program's first statement runs, so that a fault in Velaris itself - in the
+interpreter, a builtin, the budget's own checks - is a crash inside a box and
+not an escape. On Linux that is Landlock and seccomp-bpf, and a run under the
+default budget is fully held. On macOS and on Windows it is partial, and
+every run says which it got and why. Beside it: the release workflow now
+moves its own Action pins, so main does not go red after a release.
+
+Nothing that compiles and runs under 8.3.1 inside its budget is refused: what
+the system is asked to refuse is what the budget already refused, and
+`--no-confine` restores 8.3.1 exactly.
+
+compatibility: confinement is on by default for a run in a process of its own - the command line, `run(timeout=...)`, `Pool`, both doors, `velaris eval` and `velaris replay` - and asks the operating system to refuse only what the run's budget already refuses, so a program that stays inside its budget runs as it did under 8.3.1, with the same output and exit status; a granted `ffi` module widens what is asked to what that module needs, and a module the table does not name, `ffi:os`, `ffi:subprocess` and plain `ffi` widen it to nothing enforced rather than risk refusing what worked. `--no-confine` on the command line, on `velaris serve` and on the MCP server, and `confine=False` in the library, do not ask, and say so on stderr. Against v8.3.1 no example's output and no conformance verdict changes.
+compatibility: E319 is given only under the fault-injection hook (`VELARIS_FAULT_INJECT`, new in 8.4), when the operating system refuses an effect the runtime itself attempted; no program and no run of 8.3.1 or earlier can meet it.
+compatibility: `--confine` was never a documented flag: 8.3's `velaris eval` passed it to the pool worker it started, with the directories the worker might write. From 8.4 every pool worker derives its OS policy from its own budget, and the worker's flags are `--confine-at`, `--confine-temp` and `--no-confine`; nothing a person or a script typed is removed.
+compatibility: `velaris doctor` prints one more line, the confinement level a run under `--allow io` gets on this machine, and a `why:` line under it when the level is not full; its exit status and every other line are as they were.
+compatibility: `velaris.audit/1` gains `confinement` within version 1 - the level and reason on Linux, macOS and Windows for a run under `safe_command`, and the granted modules that widen the OS policy - derived from the budget alone, so an audit is still the same bytes on every system; the command line's audit prints a CONFINEMENT ON THIS MACHINE section after the lines it printed before.
+compatibility: a receipt's `run_parameters.confinement`, which 8.3 wrote as `"none"` for every run but `velaris eval`'s and as the name of a mechanism (`landlock-net`, `landlock`, `job-one-process`, `sandbox-exec`) there, is now the level - `full`, `partial` or `none` - with `confinement_reason`, `confinement_layers` (where the mechanism names now are) and `os_policy_sha256` added beside it, all within `velaris.receipt/1`; a receipt written before 8.4 still verifies, and `velaris replay` and `velaris receipts diff` compare the level only between receipts that have the new fields.
+compatibility: `velaris eval` refuses to run (exit 2, before the program is sent to the worker) where the operating system holds none of the budget; 8.3 ran such a program under the budget alone and wrote `"confinement": "none"`. On Linux 5.13 and later, on macOS while it honours sandbox profiles, and on Windows, the level is full or partial and eval runs as before. `velaris eval` is documented as provisional.
+api: `run()`, `Pool()` and `PoolRegistry()` take `confine=True`; `AuditResult` gains the `confinement` slot; the run state gains `CONFINE`, `CONFINEMENT`, `WORKER_CONFINEMENT`, `BEFORE_FIRST_STATEMENT` and `PROGRAM_FILES`; `velaris serve` and the MCP server take `--no-confine`; the audit and the receipt the HTTP door and the MCP server return carry the new fields. Nothing is removed and no default argument changes.
+
+### The release workflow moves its own pins
+
+README.md and EMBEDDING.md pin the Action by commit, and `run_tests.py` fails
+unless that commit is the one the newest tag names. A release commit cannot
+name its own hash, so from the moment a release was tagged main's first test
+step failed until somebody pushed the pin move - twenty of twenty-one jobs,
+after 8.3.1.
+
+- **`release.yml`'s `move_pins` job** runs once the tag exists, whatever the
+  publishes after it did. It checks out main, runs `release_checks.py
+  move-pins vX.Y.Z --commit <sha>` - the pins in both documents, the
+  `version:` example beside them, the pre-commit `rev:` - rebuilds the pages,
+  fails if anything outside README.md, EMBEDDING.md and docs/ changed, commits
+  `Move the Action pins to vX.Y.Z`, asks the gate about that commit and pushes
+  only when the gate says it is not a release, and does it again on top of
+  main if main moved. A push made with GITHUB_TOKEN starts no workflow, so it
+  then starts `tests` on main by name; `test.yml` takes `workflow_dispatch`
+  for that, and the `release` run that follows those tests stops at its gate,
+  which takes only a push's tests.
+- **`check_release.py`** runs the job's own steps in bash on a throwaway copy
+  of this repository with a simulated tag, and holds the result to be that
+  commit and nothing else: one commit past the tagged one, five lines in the
+  two documents, pages under docs/, no tag made or moved, the tests started
+  once; nothing pushed when it is run again; the pins moved on top of a commit
+  that landed meanwhile; and a red job, with main where it was, when the tag
+  does not name the released commit.
+
+### The operating system holds the budget
+
+`velaris/confine.py`'s `os_policy(budget)` is the one derivation: budget in, OS
+policy out, reading nothing of the machine. THREAT_MODEL.md's new section,
+**What the operating system enforces**, prints the module's table - every
+budget item, and what each system enforces for it - and `check_confine.py`
+fails when the document and the module differ by a word.
+
+- **Linux: Landlock and seccomp-bpf.** Landlock holds reads to the `fs:read`
+  grants and what the interpreter itself reads - Python's installation and
+  import path, the package and the standard library, shared libraries, the
+  devices and `/proc` entries Python asks for, time zone data, the program's
+  own files, and the resolver's files and the TLS roots under a `net` grant
+  only - and writes to the `fs:write` grants and a private temporary
+  directory. seccomp-bpf answers EPERM to every socket call when no `net` is
+  granted; to execve, execveat, fork, vfork and a clone without CLONE_THREAD,
+  and ENOSYS to clone3; and always to ptrace, mount and its newer calls,
+  pivot_root, chroot, unshare, setns, kernel modules, kexec, bpf,
+  perf_event_open, process_vm_readv and writev, keyrings, io_uring,
+  userfaultfd, open_by_handle_at, setting the clock, and a signal to any
+  process but this one. The filter is installed on every thread; Landlock,
+  which holds one thread, is applied to the main thread as well on Python
+  3.10, where a run is on a thread of its own, and a thread it could not
+  reach makes the level partial and is named.
+- **macOS: a sandbox profile**, derived from the same policy and applied with
+  `sandbox_init`, the call `sandbox-exec` makes: writes, the network and
+  fork/exec held, reads refused under the home directory and /Volumes. Apple
+  has deprecated both, and THREAT_MODEL.md says so.
+- **Windows: a job object** holding one process, the clipboard and the
+  desktop; **every privilege removed** from the token but
+  SeChangeNotifyPrivilege; and **the low integrity level** for a budget that
+  grants no write, under which the kernel refuses a write to anything of the
+  user's. Reads and the network are not held: that needs an AppContainer,
+  which a running process cannot enter and which a `python.exe` from
+  python.org, the Store or a virtual environment cannot start in, since it
+  could not read its own installation there.
+- **A granted `ffi` module widens the policy** to what that module needs,
+  named per module in `FFI_WIDENS` and in THREAT_MODEL.md: nothing, any path,
+  any host, or - for `ffi:os`, `ffi:subprocess`, plain `ffi` and any module
+  the table does not name - nothing enforced. The audit's
+  `confinement.widened_by` says which.
+- **The level** a run reports - full, partial or none - is what was applied
+  and held, with the reason: in the receipt, in the audit, in `velaris
+  doctor`. `velaris receipts diff` names a run whose level no earlier run of
+  the same program had, and says when it is weaker. `velaris eval` requires
+  full or partial.
+- **When it is applied.** A single run - the command line, `run(timeout=...)`,
+  `velaris replay` - reads, proves and compiles its program first, from
+  wherever its imports are, and is confined at the program's first statement.
+  A pool worker is confined when it starts, before it is sent anything; it
+  holds reads only when the pool has an `import_root`, as both doors' pools
+  do, and says partial otherwise. A receipt and `--record-responses` are
+  opened before the run and written after it, since a confined process cannot
+  open them then.
+
+### The honesty test
+
+`check_confine.py`, on every leg. A fault-injection hook
+(`VELARIS_FAULT_INJECT`) makes the runtime itself, from Python and not from
+Velaris, read a file, write one, connect, start a process and - except on
+Windows, which has no signal to send - send a signal outside the budget.
+Under confinement, what that system's row says is held is
+refused by the kernel and the run ends with E319 naming the layers; what the
+row says is not held goes through; with `--no-confine` every one goes
+through. All three are asserted, through the command line, `run(timeout=)`,
+a pool and the HTTP door, so the table is held true in both directions. The
+seccomp filter is also run instruction by instruction inside the suite, for
+x86_64 and aarch64, over thirty system calls each, so it is held on the
+Windows and macOS legs too.
+
+Every escape target of `check_sandbox.py`, and the file and `ffi` targets of
+`check_adversarial.py`, were run again on a Velaris whose budget checks are
+knocked out (`tests/confine/faulty_runtime.py`), confined and not. Of the 44
+targets, 5 are not applicable - refused before running, or not an effect. Of
+the rest, **on Linux 19 of 39 now fail at the kernel as well as at the
+language** - every read, write and network reach outside the budget, the
+symbolic link, `..`, and a process through `py_json` or a handle - and 20 at
+the language alone: a host, port or wildcard inside a `net` grant on a kernel
+without Landlock's TCP rules, the `@N` counts, `env`, `declassify`, and the
+`ffi` reach cases, where the target is a Python object in the same process.
+**On Windows 8 of 38**: the writes under a budget with no write grant, and the
+processes. They are recorded in `tests/confine/kernel-linux.json` and
+`kernel-windows.json`, and the suite fails if a target recorded as stopped at
+the kernel gets through it.
+
+Nothing legitimate broke: the 97 examples, every suite, velaris-spec's 456
+conformance cases, the quick benchmark, both doors, the pool, a name resolved
+and a request made under a `net` grant, a temporary file under
+`ffi:tempfile`, and a proof and native code made inside a worker that was
+already confined, all run under confinement by default.
+
+### The adversarial pass
+
+Against the confinement itself, kept in `check_confine.py`. It found three
+things to fix before release, all on Linux:
+
+- **Input pushed at the terminal.** A confined process could still make the
+  TIOCSTI ioctl on the terminal it was started from, and what it pushed would
+  be typed at the shell once it ended. The filter now refuses TIOCSTI and
+  TIOCLINUX.
+- **A Unix socket under a `net` grant.** With any `net` grant the filter
+  allowed every socket, and Landlock does not hold a connection to a Unix
+  socket - which is how a process reaches a container runtime or the session
+  bus. Under a `net` grant only IPv4, IPv6 and the resolver's netlink socket
+  are allowed now; a granted Python module that widens the policy to any host
+  keeps every family.
+- **`rt_sigqueueinfo`.** kill and tgkill to another process were refused;
+  sigqueue was not.
+
+Tried and refused: a symbolic link inside a granted path to a file outside
+it; `/proc/self/root`; the network and a process through a granted module
+that needs neither (`ffi:json`, `ffi:shutil`); a bind mount made by the
+confined run, even as root of its own user namespace; a process asked to
+leave the Windows job (CREATE_BREAKAWAY_FROM_JOB); a program that exhausts
+the job's memory (E611); confinement applied from a thread with no way to the
+main thread, which says partial and names the thread; and `--no-confine`
+after `--`, in a door's request in three spellings, and in a program's own
+arguments, none of which reaches the flag. `velaris eval` and `velaris
+replay` take no such flag.
+
+Tried and not refused, and written down as such: a bind mount that was inside
+a granted path before the run is that path's content, to Landlock and to the
+language alike.
+
+### What the first runs on CI found
+
+It was built on Windows and on Linux under WSL, with no Mac. The pull
+request's twenty-one legs found four faults before it was merged:
+
+- **macOS: an allow that never took effect.** The profile denied
+  `file-read-data` under the home directory and then allowed `file-read*`
+  again for Python's installation. A rule for the one operation beats a rule
+  for the family, whichever comes last, so the allow did nothing - and
+  nothing showed it on the runners' Python 3.12, which is in
+  /Library/Frameworks. Their 3.10 is under /Users/runner, and there a
+  confined run could not import `datetime`. The denial is now one rule that
+  names what it leaves out.
+- **macOS: `getcwd` under the profile.** A pool worker asked for its working
+  directory after it was confined, and `getcwd` opens that directory. The
+  worker takes its baseline first, and the profile leaves the names in the
+  working directory and in each directory above it readable, which the table
+  says.
+- **Windows: `os.kill(pid, 0)` is CTRL_C_EVENT.** The hook's signal attempt
+  interrupted the suite that asked for it. No signal is attempted on Windows.
+  And `release_checks.py move-pins` left the `version:` example alone in a
+  checkout whose lines end `\r\n`; the fixture test caught it on every
+  Windows leg.
+- **Linux, Python 3.10: a race in applying Landlock to the main thread.** The
+  main thread said it was there to be asked only after it had started the
+  run's thread, so about one run in forty on a loaded runner reported
+  partial, correctly. It says so first now.
+
+`check_confine.py` runs straight after the unit tests, and on macOS prints
+where Python is and the profile a run gets, for whoever reads a failed leg
+without a Mac.
+
+### Known open
+
+- **macOS and Windows are partial**, for the reasons THREAT_MODEL.md's known
+  open table gives per system, and macOS confinement is verified only on CI:
+  on Intel and on Apple silicon runners, with Python inside the home
+  directory and outside it.
+- **Input written to the console on Windows, and TIOCSTI on macOS,** are not
+  held: a process attached to a console may write its input buffer, and the
+  sandbox profile language has no rule for an ioctl.
+- **A host in a `net:` grant is held by the language alone** on every system;
+  Linux holds the ports, with Landlock ABI 4 or later.
+- **An in-process `velaris.run()`, the REPL, `velaris test` and `velaris
+  bench` are not confined**, and say so.
+- **The command line's private temporary directory on Linux** has a parent
+  the same user's other confined runs share, because Landlock lets a
+  directory be removed only by a right on the directory above it.
+- **`velaris review` still has no check ceiling**, `db.vel` still builds SQL
+  from text, and `csv.vel`'s quoted path is still quadratic (8.3's entry);
+  all three are 9.0.
+
+### Housekeeping
+
+- **docs/confinement.md** is a page of the site; `docs/eval.md`,
+  `docs/crosswalk.md`, EMBEDDING.md, STABILITY.md, RELEASING.md, README.md and
+  ARCHITECTURE.md say what is now true. The crosswalk's sandboxing rows
+  (ASI05, ASI10, B006, B008, D003, F001, MEASURE 2.7) say what each system
+  holds; their status stays partial, because no row of that page is enforced
+  by a guard that a granted `ffi:os` takes away.
+- **THREAT_MODEL.md's known-open table** drops "No OS confinement" and gains
+  one row per system, "Runs that are not confined" and "The fault-injection
+  hook". "What 'not a security boundary' means here" is rewritten to say what
+  is true on each system.
+- **Issues #21 and #22** are left open: they close when the next monthly run
+  is green.
+- **velaris-spec 0.12.0** records the receipt's level and its three new
+  fields, the audit's `confinement`, and E319.
+
+### Measured
+
+Measured by `perf_gates.py --against v8.3.1` on Windows 11 (10.0.26200,
+AMD64, 16 CPUs, 6% busy when it began), Python 3.13.13, z3-solver 5.1.0 and
+llvmlite 0.49.0: medians of 5 runs after one warm-up.
+Wall-clock figures; another machine will differ.
+
+| Measure | 8.4.0 |
+|---|---|
+| Cold start, `velaris --version` | 202 ms |
+| Cold start, `velaris check` of a one-line file | 403 ms |
+| Check, per 1,000 lines (a 1,013- and a 10,013-line program) | 1.02 s and 1.29 s; 0.05 s and 0.07 s without proofs |
+| Proof time per example with contracts, p50 / p95 | 24 ms / 435 ms, over 56 files |
+| Native code on `examples/bench.vel`: compile, and llvmlite's import | 74 ms, and 64 ms; `burn` compiled |
+| `examples/bench.vel`, native / `--no-native` | 4.88 s / 12.37 s, 2.54 times faster, 7.49 s saved |
+| `--lite` build | there is none |
+| Pool worker's memory, after 1 run and after 1,000 more | 26.1 MB, 27.1 MB |
+| z3 or llvmlite imported by `velaris --version`, or by `check` of a program with no promise | neither |
+| Importing z3 when a command needs it | +139 ms at cold start |
+| Importing llvmlite when a command needs it | +156 ms at cold start |
+| Pure numeric against v8.3.1, native (`bench.vel` and an integer loop) | 4.88 s against 4.98 s, -1.9% (the gate allows +25%) |
+| Pure numeric against v8.3.1, interpreted | 15.31 s against 15.92 s, -3.8% |
+| `velaris examples/hello.vel`, confined and with `--no-confine` (median of 10) | Windows: 358 ms and 368 ms, no difference outside the noise; Linux (WSL 2, kernel 6.6, Landlock ABI 3): 130 ms and 122 ms, about 8 ms for the ruleset and the filter |
+
+`check_differential.py` against v8.3.1: none of the 97 examples' outputs
+differs, velaris-spec's 456 conformance cases give the same verdicts, and
+the quick benchmark's 15 programs the same verdicts. The full benchmark, run
+at 8.4.0 with every bounded Velaris run confined, gives every one of its 76
+programs the verdict it had at 8.3.0 (Velaris 52/12/2/0, Deno 8/34/24,
+Python 0/31/35); `benchmark/results.json` changes in its version line alone.
+
 ## 8.3.1 - The documentation, as a site
 
 A patch release that adds no code. 8.3 moved the documentation to

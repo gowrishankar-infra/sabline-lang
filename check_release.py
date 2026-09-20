@@ -376,6 +376,7 @@ class Release:
         self.made: Counter[str] = Counter()
         self.fail: set[Any] = set()
         self.tagged = False
+        self.pins_moved = False
         server = "/v0.1/servers/" + urllib.parse.quote(SERVER, safe="")
         self.full = all_at(version)
         self.server = server
@@ -459,6 +460,10 @@ def run_job(name: str, job: dict[Any, Any], release: Release) -> None:
             raise Injected("consistency")
     elif name == "advisory":
         pass
+    elif name == "move_pins":
+        if not release.pins_moved:           # else: nothing to push
+            release.pins_moved = True
+            release.made["pins"] += 1
     else:
         raise Unreadable(f"no simulation for the job {name}")
 
@@ -488,7 +493,7 @@ def fresh_results(paused: str = "false") -> tuple[dict[Any, Any], dict[Any, Any]
 
 
 PUBLISHES = ("tag", "pypi", "npm", "vscode", "github", "registry",
-             "attestation")
+             "attestation", "pins")
 
 
 # ---- the vscode job's own steps, in bash, with stand-ins for vsce and npm ----
@@ -647,6 +652,161 @@ def run_vscode_job(job: dict[Any, Any], bash: str, base: str, answers: str,
             "summary": summary.read_text(encoding="utf-8"),
             "sleeps": words("sleeps"),
             "attempts": int((words("attempts") or ["0"])[0])}
+
+
+# ---- the move_pins job's own steps, in bash, on a throwaway repository (8.4) ----
+
+FAKE_GH = '#!/usr/bin/env bash\necho "$*" >> "$FAKE/gh.log"\n'
+
+
+def tracked_files() -> list[str] | None:
+    """Every file of this repository git tracks or would (not the ignored
+    ones), or None where this is not a git checkout."""
+    try:
+        done = subprocess.run(
+            ["git", "ls-files", "-z", "--cached", "--others",
+             "--exclude-standard"], cwd=HERE, capture_output=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if done.returncode != 0:
+        return None
+    return [n for n in done.stdout.decode("utf-8").split("\0")
+            if n and (HERE / n).is_file()]
+
+
+class PinFixture:
+    """A copy of this repository as a release commit on main of a bare
+    origin, tagged as release.yml's tag job tags it, and a checkout of main
+    as the move_pins job's checkout step leaves one."""
+
+    def __init__(self, names: list[str]) -> None:
+        self.home = Path(tempfile.mkdtemp(prefix="move-pins-", dir=SCRATCH))
+        self.origin = self.home / "origin.git"
+        self.work = self.home / "work"
+        self.fake = self.home / "bin"
+        self.fake.mkdir()
+        subprocess.run(["git", "init", "-q", "--bare", "-b", "main",
+                        str(self.origin)], check=True, capture_output=True)
+        subprocess.run(["git", "init", "-q", "-b", "main", str(self.work)],
+                       check=True, capture_output=True)
+        for key, value in (("user.name", "fixture"),
+                           ("user.email", "fixture@example.invalid"),
+                           ("core.autocrlf", "false"),
+                           ("commit.gpgsign", "false"),
+                           ("tag.gpgsign", "false")):
+            git(self.work, "config", key, value)
+        for name in names:
+            target = self.work / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(HERE / name, target)
+        # a release commit's documents pin the release before it, whichever
+        # this tree's happen to pin
+        for doc in release_checks.PIN_DOCS:
+            with open(self.work / doc, encoding="utf-8", newline="") as fh:
+                text = fh.read()
+            with open(self.work / doc, "w", encoding="utf-8",
+                      newline="") as fh:
+                fh.write(release_checks.moved_pins(text, "v0.0.1", "0" * 40))
+        git(self.work, "remote", "add", "origin", str(self.origin))
+        git(self.work, "add", "-A")
+        git(self.work, "commit", "-q", "-m", "the release commit")
+        self.sha = git(self.work, "rev-parse", "HEAD")
+        claims = dict(release_checks.version_claims(self.work))
+        self.version = str(claims[release_checks.VERSION_FILES[0]])
+        self.tag = f"v{self.version}"
+        git(self.work, "push", "-q", "origin", "main")
+        git(self.work, "tag", "-a", self.tag, "-m", self.tag, self.sha)
+        git(self.work, "push", "-q", "origin", f"refs/tags/{self.tag}")
+
+    def main(self) -> str:
+        return git(self.origin, "rev-parse", "refs/heads/main")
+
+    def tags(self) -> str:
+        return git(self.origin, "show-ref", "--tags", "-d")
+
+    def gh_log(self) -> list[str]:
+        log = self.fake / "gh.log"
+        return log.read_text(encoding="utf-8").splitlines() \
+            if log.exists() else []
+
+    def someone_pushes(self) -> str:
+        """A commit lands on main after the release commit, from elsewhere."""
+        other = self.home / "other"
+        subprocess.run(["git", "clone", "-q", str(self.origin), str(other)],
+                       check=True, capture_output=True)
+        for key, value in (("user.name", "someone"),
+                           ("user.email", "someone@example.invalid"),
+                           ("core.autocrlf", "false"),
+                           ("commit.gpgsign", "false")):
+            git(other, "config", key, value)
+        (other / "NOTES.txt").write_text("pushed while the release ran\n",
+                                         encoding="utf-8")
+        git(other, "add", "NOTES.txt")
+        git(other, "commit", "-q", "-m", "a commit after the release commit")
+        git(other, "push", "-q", "origin", "main")
+        return git(other, "rev-parse", "HEAD")
+
+
+def run_move_pins_job(job: dict[Any, Any], bash: str,
+                      fixture: PinFixture) -> dict[str, Any]:
+    """The move_pins job's steps in order, in the fixture's checkout, with
+    gh stood in for and python3 this Python. A `uses:` step succeeds; an
+    `if:` is a steps.<id>.outputs.<key> == '<value>' test; a failed step
+    fails the job and stops the steps after it."""
+    fake = fixture.fake
+    python3 = (f'#!/usr/bin/env bash\nexec '
+               f'"{_slashed(Path(sys.executable))}" "$@"\n')
+    for name, text in (("gh", FAKE_GH), ("python3", python3)):
+        (fake / name).write_bytes(text.encode("utf-8"))
+        (fake / name).chmod(0o755)
+    outputs: dict[str, dict[str, str]] = {}
+    steps: dict[str, str] = {}
+    log: list[str] = []
+    failed = False
+    for i, step in enumerate(job.get("steps", [])):
+        name = str(step.get("id") or step.get("name") or step.get("uses"))
+        cond = str(step.get("if") or "").strip()
+        runs = not failed
+        if cond:
+            m = re.fullmatch(r"steps\.([\w-]+)\.outputs\.([\w-]+) == '([^']*)'",
+                             cond)
+            if not m:
+                raise Unreadable(f"cannot decide {cond!r} in the move_pins job")
+            runs = runs and outputs.get(m.group(1), {}).get(
+                m.group(2)) == m.group(3)
+        if not runs:
+            steps[name] = "skipped"
+            continue
+        if "uses" in step:
+            steps[name] = "success"
+            continue
+        (fixture.home / f"step-{i}.sh").write_bytes(
+            str(step["run"]).encode("utf-8"))
+        runner = fixture.home / f"run-{i}.sh"
+        runner.write_bytes((
+            'fakebin=$FAKE\n'
+            'if command -v cygpath > /dev/null; then '
+            'fakebin=$(cygpath -u "$FAKE"); fi\n'
+            'export PATH="$fakebin:$PATH"\n'
+            f'. "{_slashed(fixture.home / f"step-{i}.sh")}"\n').encode("utf-8"))
+        out_file = fixture.home / f"output-{i}"
+        out_file.write_text("", encoding="utf-8")
+        env = dict(os.environ, TAG=fixture.tag, SHA=fixture.sha,
+                   FAKE=_slashed(fake), GITHUB_OUTPUT=_slashed(out_file))
+        done = subprocess.run(
+            [bash, "--noprofile", "--norc", "-eo", "pipefail", _slashed(runner)],
+            cwd=str(fixture.work), env=env, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=600)
+        log.append(f"--- {name}: exit {done.returncode}\n"
+                   + done.stdout + done.stderr)
+        outputs[name] = dict(
+            line.split("=", 1) for line in
+            out_file.read_text(encoding="utf-8").splitlines() if "=" in line)
+        steps[name] = "success" if done.returncode == 0 else "failure"
+        if done.returncode != 0:
+            failed = True
+    return {"result": "failure" if failed else "success", "steps": steps,
+            "outputs": outputs, "log": "\n".join(log)}
 
 
 # ---- the cases -----------------------------------------------------------------
@@ -1461,6 +1621,110 @@ def main() -> int:
                    r["result"] == "success" and r["attempts"] == 0
                    and r["steps"].get("publish") == "skipped"
                    and listed in r["summary"], told(r))
+            print()
+            print("the move_pins job's own steps, in bash, on a throwaway "
+                  "repository with a simulated tag")
+            print("-" * 62)
+            pins_job = jobs["move_pins"]
+            ok("the move_pins job runs once the tag is made, whatever the "
+               "publishes after it did, and may write only contents and "
+               "start only a workflow",
+               "tag" in needs_of(pins_job)
+               and "needs.tag.result == 'success'" in str(pins_job.get("if"))
+               and "!cancelled()" in str(pins_job.get("if"))
+               and pins_job.get("permissions") == {"contents": "write",
+                                                   "actions": "write"},
+               f"{pins_job.get('if')} {pins_job.get('permissions')}")
+            names = tracked_files()
+            pins_bash = posix_bash()
+            if names is None or pins_bash is None:
+                print("  skip     the move_pins job's steps (no git checkout, "
+                      "or no POSIX bash here)")
+            else:
+                fx = PinFixture(names)
+                tags_before = fx.tags()
+                r = run_move_pins_job(pins_job, pins_bash, fx)
+                tail = f"{r['steps']} {r['outputs']} log={r['log'][-1500:]}"
+                head = fx.main()
+                ok("a simulated tag: the job is green and main is one commit "
+                   "past the tagged commit",
+                   r["result"] == "success" and head != fx.sha
+                   and git(fx.origin, "rev-parse", f"{head}^") == fx.sha
+                   and git(fx.origin, "rev-list", "--count",
+                           f"{fx.sha}..{head}") == "1", tail)
+                message = git(fx.origin, "log", "-1", "--format=%B", head)
+                ok("...whose message names the tag and says it is not a "
+                   "release",
+                   message.splitlines()[0]
+                   == f"Move the Action pins to {fx.tag}"
+                   and fx.sha in message and "not a release" in message,
+                   message)
+                touched = git(fx.origin, "diff", "--name-only", fx.sha,
+                              head).splitlines()
+                ok("...which changes README.md, EMBEDDING.md and pages under "
+                   "docs/, and nothing else",
+                   {"README.md", "EMBEDDING.md", "docs/embedding.html"}
+                   <= set(touched)
+                   and all(n in ("README.md", "EMBEDDING.md")
+                           or n.startswith("docs/") for n in touched), touched)
+                lines = [ln for ln in git(
+                    fx.origin, "diff", "-U0", fx.sha, head, "--", "README.md",
+                    "EMBEDDING.md").splitlines()
+                    if ln[:1] in "+-" and ln[:3] not in ("+++", "---")]
+                added = [ln[1:] for ln in lines if ln.startswith("+")]
+                ok("...in those two documents exactly five lines: three pins, "
+                   "the version: example and the pre-commit rev:",
+                   len(lines) == 10 and len(added) == 5
+                   and sum(f"velaris-lang@{fx.sha}  # {fx.tag}" in ln
+                           for ln in added) == 3
+                   and sum(f'version: "{fx.version}"' in ln
+                           and f"({fx.version})" in ln for ln in added) == 1
+                   and sum(ln.strip() == f"rev: {fx.tag}"
+                           for ln in added) == 1, lines)
+                ok("...no tag made or moved", fx.tags() == tags_before,
+                   fx.tags())
+                ok("...the tests started on main by name, once, because a "
+                   "push made with GITHUB_TOKEN starts nothing",
+                   fx.gh_log() == ["workflow run test.yml --ref main"],
+                   fx.gh_log())
+                git(fx.work, "fetch", "-q", "origin", "main")
+                git(fx.work, "checkout", "-q", "--detach", "origin/main")
+                answer = release_checks.gate(fx.work)
+                ok("...and the gate says that commit is not a release",
+                   not answer["release"] and not answer["refused"],
+                   answer["line"])
+                r = run_move_pins_job(pins_job, pins_bash, fx)
+                ok("the job run again: nothing is pushed and no tests are "
+                   "started again",
+                   r["result"] == "success" and fx.main() == head
+                   and r["outputs"].get("move", {}).get("pushed") == "false"
+                   and len(fx.gh_log()) == 1,
+                   f"{r['steps']} {r['outputs']} {fx.gh_log()} "
+                   f"log={r['log'][-1500:]}")
+
+                fx = PinFixture(names)
+                later = fx.someone_pushes()
+                r = run_move_pins_job(pins_job, pins_bash, fx)
+                head = fx.main()
+                ok("main moved on before the job ran: the pins are moved on "
+                   "top of it, in one commit, naming the tagged commit",
+                   r["result"] == "success"
+                   and git(fx.origin, "rev-parse", f"{head}^") == later
+                   and f"velaris-lang@{fx.sha}  # {fx.tag}" in git(
+                       fx.origin, "show", f"{head}:README.md"),
+                   f"{r['steps']} log={r['log'][-1500:]}")
+
+                fx = PinFixture(names)
+                git(fx.work, "tag", "-f", "-a", fx.tag, "-m", "moved",
+                    git(fx.work, "commit-tree", "-m", "elsewhere",
+                        f"{fx.sha}^{{tree}}"))
+                git(fx.work, "push", "-q", "-f", "origin",
+                    f"refs/tags/{fx.tag}")
+                r = run_move_pins_job(pins_job, pins_bash, fx)
+                ok("a tag that does not name the released commit: the job is "
+                   "red and main is where it was",
+                   r["result"] == "failure" and fx.main() == fx.sha
+                   and not fx.gh_log(), f"{r['steps']} {fx.gh_log()}")
         except Unreadable as e:
             ok("release.yml is one this simulation can read", False, str(e))
     finally:
