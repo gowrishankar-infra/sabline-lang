@@ -210,9 +210,14 @@ def _grants_of(safe_command: Any) -> Any:
     """The grant list of a safe_command - what sabline-spec 8.3 defines.
     What comes before `--allow` is the name of the producer's own command,
     which the spec does not define and a corpus must not require."""
-    if not isinstance(safe_command, str):
-        return safe_command
-    return safe_command.split("--allow ", 1)[-1].strip()
+    if not isinstance(safe_command, str) or "--allow " not in safe_command:
+        # There are no grants to compare. The case does not pass on that:
+        # a safe_command without `--allow ` is already reported above as
+        # one that does not parse, which is the check that catches it.
+        # Returning the whole string instead would compare command names,
+        # which is what this function exists to avoid doing.
+        return None
+    return safe_command.split("--allow ", 1)[1].strip()
 
 
 def _conf_audit(case: dict[Any, Any], ctx: dict[Any, Any]) -> str:
