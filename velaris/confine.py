@@ -101,7 +101,9 @@ ENFORCES: tuple[tuple[str, str, str, str], ...] = (
      "held"),
     ("`fs:read:DIR`",
      "Landlock: reads beneath DIR (resolved), and nothing else of the "
-     "user's",
+     "user's; when DIR does not exist yet - a file the program writes and "
+     "reads back - beneath the nearest directory that does, and the level "
+     "is partial",
      "reads beneath DIR allowed; outside it, refused only under the home "
      "directory and /Volumes",
      "not held: the low integrity level does not stop a read"),
@@ -478,12 +480,24 @@ def _landlock_plan(policy: dict[str, Any], abi: int, reads: list[str],
     handled = 0 if policy["spawn"] else _FS_EXECUTE
     rules: list[tuple[str, int]] = []
     wider: list[str] = []
+    wider_reads: list[str] = []
     hold_reads = policy["fs_read"] is not None and not read_any
     if hold_reads:
         handled |= read_all
         for place in interpreter_reads(policy["net"] != "none") + _existing(
-                list(policy["fs_read"]) + reads):
+                reads):
             rules.append((place, read_all))
+        for grant in policy["fs_read"]:
+            # a program may read back what it has just written: a granted
+            # path that is not there yet is held to the nearest directory
+            # that is, as a write grant is, and the level says so
+            nearest, widened = _nearest_directory(grant)
+            if nearest is None:
+                continue
+            if widened:
+                wider_reads.append(f"{grant} does not exist yet, so reads "
+                                   f"are held to {nearest}")
+            rules.append((nearest, read_all))
     if policy["fs_write"] is not None:
         handled |= write_all
         for grant in policy["fs_write"]:
@@ -508,7 +522,7 @@ def _landlock_plan(policy: dict[str, Any], abi: int, reads: list[str],
         net_handled = _NET_BIND_TCP | _NET_CONNECT_TCP
         net_rules = ports
     return {"handled": handled, "rules": rules, "wider": wider,
-            "hold_reads": hold_reads, "net_handled": net_handled,
+            "wider_reads": wider_reads, "hold_reads": hold_reads, "net_handled": net_handled,
             "net_rules": net_rules,
             # Landlock ABI 6's scopes (abstract Unix sockets, signals) are
             # not asked for: the seccomp filter already refuses both, and
@@ -786,6 +800,8 @@ def _apply_linux(policy: dict[str, Any], reads: list[str], writes: list[str],
             held["fs_read"] = "yes" if plan["hold_reads"] else \
                 ("no: this pool has no import_root, and an import may name "
                  "any .vel file, so reads are not held")
+            if plan["wider_reads"]:
+                held["fs_read"] = "partly: " + "; ".join(plan["wider_reads"])
         if policy["fs_write"] is not None:
             held["fs_write"] = "yes"
             if abi < 3:
@@ -854,8 +870,11 @@ def mac_profile(policy: dict[str, Any], reads: list[str], writes: list[str],
                   "(allow file-write* " + " ".join(places) + ")"]
     if policy["fs_read"] is not None and not read_any:
         home = os.path.realpath(os.path.expanduser("~"))
+        # a read grant is named whether or not it is there yet: a program
+        # may read back what it has just written
         allowed = interpreter_reads(policy["net"] != "none") + _existing(
-            list(policy["fs_read"]) + reads + ([temp] if temp else []))
+            reads + ([temp] if temp else [])) + [
+                os.path.realpath(g) for g in policy["fs_read"]]
         # a directory is allowed with what is beneath it, a file as itself
         # getcwd() opens the working directory, and failing that reads each
         # directory above it, so those directories themselves - the names in
@@ -870,7 +889,7 @@ def mac_profile(policy: dict[str, Any], reads: list[str], writes: list[str],
         # for the one operation beats the rule for the family, whichever
         # comes last - which a Python installed under the home directory,
         # as a runner's 3.10 is, was the first to meet.
-        kept = [f"(require-not ({'subpath' if os.path.isdir(p) else 'literal'}"
+        kept = [f"(require-not ({'literal' if os.path.isfile(p) else 'subpath'}"
                 f" {_sbpl_text(p)}))" for p in allowed] + [
                     f"(require-not (literal {_sbpl_text(p)}))" for p in above]
         lines += ["(deny file-read-data (require-all (require-any "
@@ -1237,9 +1256,12 @@ def predict(policy: dict[str, Any], *, read_any: bool = False,
         no_landlock = "no: this kernel has no Landlock"
         no_seccomp = "no: seccomp has no system call table for this machine"
         if policy["fs_read"] is not None:
+            later = not_yet(policy["fs_read"])
             held["fs_read"] = no_landlock if not abi else (
                 "no: this pool has no import_root, so reads are not held"
-                if read_any else "yes")
+                if read_any else f"partly: {later[0]} does not exist yet, so "
+                f"reads are held to the nearest directory that does"
+                if later else "yes")
         if policy["fs_write"] is not None:
             wider = not_yet(policy["fs_write"])
             held["fs_write"] = no_landlock if not abi else (

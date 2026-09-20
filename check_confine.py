@@ -481,6 +481,25 @@ fn main() uses io, fs {{
        and (out_dir / "made.txt").read_text(encoding="utf-8")
        == "written under the grant", err[-500:] + out)
 
+    back = (WORK / "readback")
+    back.mkdir(exist_ok=True)
+    (back / "kept.txt").unlink(missing_ok=True)
+    k = (back / "kept.txt").as_posix()
+    prog = program("readback.vel", f'''
+fn main() uses io, fs {{
+    write_file("{k}", "saved")
+    check read_file("{k}") {{
+        ok body {{ print("read back: " + body) }}
+        fail why {{ print("could not read it back: " + why) }}
+    }}
+}}
+''')
+    code, out, err = cli(prog, "--allow", f"io,fs:read:{k},fs:write:{k}")
+    ok("a program reads back a file it has just written, under grants that "
+       "name a file not there when the run began (8.3.1 ran it; "
+       "examples/ledger.vel is one)",
+       code == 0 and "read back: saved" in out, err[-500:] + out)
+
     srv, port = http_server()
     try:
         prog = program("net.vel", f'''
