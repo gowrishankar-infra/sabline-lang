@@ -112,8 +112,9 @@ fails when the document and the module differ by a word.
 
 `check_confine.py`, on every leg. A fault-injection hook
 (`VELARIS_FAULT_INJECT`) makes the runtime itself, from Python and not from
-Velaris, read a file, write one, connect, start a process and send a signal
-outside the budget. Under confinement, what that system's row says is held is
+Velaris, read a file, write one, connect, start a process and - except on
+Windows, which has no signal to send - send a signal outside the budget.
+Under confinement, what that system's row says is held is
 refused by the kernel and the run ends with E319 naming the layers; what the
 row says is not held goes through; with `--no-confine` every one goes
 through. All three are asserted, through the command line, `run(timeout=)`,
@@ -176,10 +177,44 @@ Tried and not refused, and written down as such: a bind mount that was inside
 a granted path before the run is that path's content, to Landlock and to the
 language alike.
 
+### What the first runs on CI found
+
+It was built on Windows and on Linux under WSL, with no Mac. The pull
+request's twenty-one legs found four faults before it was merged:
+
+- **macOS: an allow that never took effect.** The profile denied
+  `file-read-data` under the home directory and then allowed `file-read*`
+  again for Python's installation. A rule for the one operation beats a rule
+  for the family, whichever comes last, so the allow did nothing - and
+  nothing showed it on the runners' Python 3.12, which is in
+  /Library/Frameworks. Their 3.10 is under /Users/runner, and there a
+  confined run could not import `datetime`. The denial is now one rule that
+  names what it leaves out.
+- **macOS: `getcwd` under the profile.** A pool worker asked for its working
+  directory after it was confined, and `getcwd` opens that directory. The
+  worker takes its baseline first, and the profile leaves the names in the
+  working directory and in each directory above it readable, which the table
+  says.
+- **Windows: `os.kill(pid, 0)` is CTRL_C_EVENT.** The hook's signal attempt
+  interrupted the suite that asked for it. No signal is attempted on Windows.
+  And `release_checks.py move-pins` left the `version:` example alone in a
+  checkout whose lines end `\r\n`; the fixture test caught it on every
+  Windows leg.
+- **Linux, Python 3.10: a race in applying Landlock to the main thread.** The
+  main thread said it was there to be asked only after it had started the
+  run's thread, so about one run in forty on a loaded runner reported
+  partial, correctly. It says so first now.
+
+`check_confine.py` runs straight after the unit tests, and on macOS prints
+where Python is and the profile a run gets, for whoever reads a failed leg
+without a Mac.
+
 ### Known open
 
 - **macOS and Windows are partial**, for the reasons THREAT_MODEL.md's known
-  open table gives per system, and macOS confinement is verified only on CI.
+  open table gives per system, and macOS confinement is verified only on CI:
+  on Intel and on Apple silicon runners, with Python inside the home
+  directory and outside it.
 - **Input written to the console on Windows, and TIOCSTI on macOS,** are not
   held: a process attached to a console may write its input buffer, and the
   sandbox profile language has no rule for an ioctl.
