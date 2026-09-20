@@ -475,7 +475,8 @@
      "max_timeout": "int",
      "prover": "bool",
      "rate_limit": "int",
-     "sabline": "str"
+     "sabline": "str",
+     "velaris": "str"
     },
     "status": 200
    },
@@ -483,7 +484,8 @@
     "shape": {
      "auth": "str",
      "prover": "bool",
-     "sabline": "str"
+     "sabline": "str",
+     "velaris": "str"
     },
     "status": 200
    },
@@ -502,7 +504,8 @@
      "max_timeout": "int",
      "prover": "bool",
      "rate_limit": "int",
-     "sabline": "str"
+     "sabline": "str",
+     "velaris": "str"
     },
     "status": 200
    },

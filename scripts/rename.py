@@ -178,7 +178,8 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     "sabline/ratchet.py": ("velaris_version", "velaris.capabilities",
                            "velaris"),
     "sabline/__init__.py": ("velaris.VelarisError", "VelarisError"),
-    "tests/api/golden.json": ("VelarisError", "velaris_version"),
+    "tests/api/golden.json": ("VelarisError", "velaris_version",
+                              '"velaris": "str"'),
     # Where every old name that is still read is decided: the VELARIS_*
     # environment variables, the velaris.* document formats, the velaris.*
     # file names.
