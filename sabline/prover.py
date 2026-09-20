@@ -1,7 +1,6 @@
 """Stage 6, the prover: contracts translated to Z3 and proven before the
 program runs, modularly across calls.
 """
-import os
 import sys
 
 from . import state as _state

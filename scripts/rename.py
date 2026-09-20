@@ -45,7 +45,6 @@ Anything else is drift, and it names the file and line.
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import subprocess
 import sys

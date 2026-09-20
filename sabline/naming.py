@@ -28,6 +28,7 @@ signed rather than names that were typed (sabline/predicates.py).
 from __future__ import annotations
 
 import os
+from typing import overload
 
 OLD_NAME, NEW_NAME = "velaris", "sabline"
 OLD_ENV_PREFIX, NEW_ENV_PREFIX = "VELARIS_", "SABLINE_"
@@ -46,8 +47,17 @@ def _old(name: str) -> str:
     return OLD_ENV_PREFIX + name[len(NEW_ENV_PREFIX):]
 
 
+@overload
+def env(name: str) -> str | None: ...
+@overload
+def env(name: str, default: str) -> str: ...
+
+
 def env(name: str, default: str | None = None) -> str | None:
     """`name`, or its VELARIS_ spelling if the SABLINE_ one is not set.
+
+    With a default it answers a str, as os.environ.get(name, default) did,
+    so a caller can go on treating the answer as text.
 
     Both set to the same text is one name written twice, and is fine. Both
     set to different text is a half-migrated environment, and raises: there

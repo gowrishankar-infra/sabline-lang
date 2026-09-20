@@ -13,8 +13,10 @@ from .version import _INSTALL_DIR
 from .values import log_line
 from .predicates import (CAPABILITY_PREDICATE_TYPE, EARLIER_SITES,
                          RECEIPT_PREDICATE_TYPE, predicate_kind)
-
-
+from .attestation import INTOTO_STATEMENT_TYPE
+from .recorder import RECEIPT_SCHEMA
+from .mcp_manifest import OIDC_ISSUER
+from typing import Any
 # Which release last wrote a predicate type at each address the project has
 # used, so that `sabline verify` can say when a Statement's type was current
 # rather than only that it is not the newest spelling.
@@ -27,10 +29,6 @@ def _named_until(predicate_type: object) -> str:
         if isinstance(predicate_type, str) and predicate_type.startswith(site):
             return release
     return "an earlier release"
-from .attestation import INTOTO_STATEMENT_TYPE
-from .recorder import RECEIPT_SCHEMA
-from .mcp_manifest import OIDC_ISSUER
-from typing import Any
 
 # ---------------------------------------------------------------------------
 # 19c. STATEMENTS - what a reader of an attestation or a receipt checks
