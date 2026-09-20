@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>The Velaris language reference - Velaris 8.4.0</title>
+<title>The Velaris language reference - Velaris 8.5.0</title>
 <meta name="description" content="This is the specification: what Velaris means, precisely. It is not a tutorial (TUTORIAL.md is), and it does not teach programming. It exists so that anyone ...">
-<meta name="velaris-version" content="8.4.0">
+<meta name="velaris-version" content="8.5.0">
 <link rel="canonical" href="https://velaris-lang.dev/spec.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
@@ -18,7 +18,7 @@
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
 <a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.4.0, all versions"><span>8.4.0</span></a>
+<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,7 +52,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-2.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -63,7 +63,7 @@ tutorial (<a href="tutorial.html">TUTORIAL.md</a> is), and it does not teach
 programming. It exists so that anyone deciding whether to depend on
 this language can find out exactly what it promises — and what it
 does not.</p>
-<p>Version 8.4.0. Where this document and the implementation disagree,
+<p>Version 8.5.0. Where this document and the implementation disagree,
 that is a bug in one of them; please report it.</p>
 <h2 id="1-programs">1. Programs <a class="anchor" href="#1-programs" aria-label="Link to this section">#</a></h2>
 <p>A program is one or more files of UTF-8 text with the extension
@@ -112,12 +112,13 @@ constraints or bounds.</p>
 what it printed was the secret. <code>Secret of T</code> is the other half: a
 value the compiler tracks so that it cannot reach anything that emits
 it.</p>
-<p><strong>Where one comes from.</strong> Two builtins, and nothing else:</p>
+<p><strong>Where one comes from.</strong> Three builtins, and nothing else:</p>
 <div class="table-wrap" tabindex="0"><table>
 <thead><tr><th>Builtin</th><th>Returns</th></tr></thead>
 <tbody>
 <tr><td><code>env(name, fallback)</code></td><td><code>Secret of Text</code></td></tr>
 <tr><td><code>read_file_secret(path)</code></td><td><code>Secret of Text</code>, and can fail</td></tr>
+<tr><td><code>tool_secret(name, arguments)</code></td><td><code>Secret of Text</code>, and can fail (8.5, §7.2)</td></tr>
 </tbody></table></div>
 <p>A program cannot make a Secret out of a value it already holds. Nothing
 else is secret by default, and a secret that arrives some other way -
@@ -246,6 +247,21 @@ at the moment it happens (E310, §7.1), like any other effect.</li>
 names every place it does and the reason given (velaris-spec §8.6, the
 <code>secrets</code> field); and an operator can run the program without letting
 it.</p>
+<p><strong>A MAC under a secret key (8.5).</strong> <code>hmac_sha256(key, message)</code> and
+<code>hmac_sha256_chain(key, messages)</code> take a <code>Secret of Text</code> key and give
+an ordinary <code>Text</code>: the HMAC-SHA256, as 64 hexadecimal digits, of the
+message's UTF-8 bytes under the key's. The chain applies HMAC once for
+each message in order, each result - its 32 raw bytes - the key of the
+next, and gives the last; an empty list is E609. A signature is sent in
+the clear, which is why the result is not a Secret, and that makes
+these the second way out, held as <code>declassify</code> is: the function needs
+<code>uses declassify</code> (E300), the run needs the grant (E310), and the audit
+lists each call under <code>secrets.declassifications</code> with the reason <code>hmac signature</code> and the builtin's name. The key is a <code>Secret of Text</code> and
+nothing else (E561); the message carries no secret (E560), since its MAC
+under a key the program chose would be its digest in the open.
+THREAT_MODEL.md says why a MAC does not give the key away, what somebody
+holding one can do, and what a program with the <code>declassify</code> grant could
+do with these that it could already do without them.</p>
 <p><strong>What a Secret is while running.</strong> Nothing. It is a compile-time
 distinction with no runtime representation, so it costs nothing, and
 <code>declassify</code> evaluates to the value itself. Two places print values a
@@ -355,8 +371,9 @@ value, raises a language error with a code, or fails in the sense of
 <p>The effects are <code>io</code> (the console: <code>print</code>, <code>read_line</code>, <code>args</code>),
 <code>env</code> (environment variables, through <code>env()</code>), <code>fs</code> (files), <code>net</code>
 (network), <code>clock</code> (the time), <code>rand</code> (randomness), <code>ffi</code> (calling the
-host language, §12) and <code>declassify</code> (turning a <code>Secret</code> into an
-ordinary value, §3.1). <code>env</code> became its own effect in 3.0; before that
+host language, §12), <code>declassify</code> (turning a <code>Secret</code> into an
+ordinary value, §3.1) and, from 8.5, <code>tool</code> (calling a tool the host
+process offers, §7.2). <code>env</code> became its own effect in 3.0; before that
 it was part of <code>io</code>, which meant an io-only budget could read every
 secret in the environment. <code>declassify</code> became the eighth in 6.0: it
 reaches nothing outside the program, but it is the one way a value the
@@ -400,6 +417,10 @@ is recorded.</p>
 <tr><td><code>net:*.D</code></td><td>hosts with exactly one label in place of the star</td></tr>
 <tr><td><code>ffi</code></td><td>any Python module</td></tr>
 <tr><td><code>ffi:a,b</code></td><td>those top-level modules</td></tr>
+<tr><td><code>tool</code></td><td>any tool the host offers (8.5, §7.2)</td></tr>
+<tr><td><code>tool:NAME</code></td><td>that tool</td></tr>
+<tr><td><code>tool:NAME:ARG=PATTERN</code></td><td>that tool, with its argument <code>ARG</code> held to the pattern</td></tr>
+<tr><td><code>tool:NAME@N</code>, <code>tool@N</code></td><td>at most N calls of that tool, or of tools, in the run</td></tr>
 <tr><td><code>...@N</code></td><td>and at most N operations of that effect in the run</td></tr>
 </tbody></table></div>
 <p>Grants are additive. Paths are resolved with <code>realpath</code> when the budget
@@ -421,6 +442,44 @@ not choose where it was sent.</p>
 directory is that directory's content; a file system changed by another
 process between the check and the open is outside the model; where a
 granted host name resolves is DNS's business.</p>
+<h3 id="72-tools-85">7.2 Tools (8.5) <a class="anchor" href="#72-tools-85" aria-label="Link to this section">#</a></h3>
+<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> mail(to: Text) -&gt; Text <span class="k">uses</span> tool <span class="k">or</span> <span class="k">fail</span> {
+    <span class="k">return</span> <span class="k">try</span> tool(<span class="s">"send_email"</span>, json_of({<span class="s">"to"</span>: to, <span class="s">"body"</span>: <span class="s">"hello"</span>}))
+}</code></pre></div>
+<p><code>tool(name, arguments)</code> calls a tool the host process offers and gives
+back its result as <code>Text</code>; <code>tool_secret</code> is the same call and gives a
+<code>Secret of Text</code>. <code>arguments</code> is a JSON object as text. Both need the
+<code>tool</code> effect and can fail: a tool that reports an error is a failure the
+caller handles, like a request that does not get through.</p>
+<p>Which tools exist is not the language's to say. A run started with
+<code>--tools</code> is given a manifest (<code>velaris.tools/1</code>,
+velaris-spec §8.10) naming each tool, a JSON Schema for its arguments,
+whether its result is secret, what a call costs, and the most calls and
+cost one run may spend; with no manifest there is no tool, and a call is
+E320. A call is made only when all of these hold, and is otherwise a
+refusal that stops the run and cannot be caught:</p>
+<ul>
+<li>the manifest offers the tool (E320);</li>
+<li>the budget grants it, and so do the manifest's own grants, if it has
+any; and every argument a grant holds to a pattern is there and matches
+(E321). A pattern is matched against the whole value: every character
+stands for itself, and <code>*</code> for one or more characters that are not the
+literal following the star, not one of <code>, ; &lt; &gt; " ' \</code>, not white space
+and not a control or format character; a value holding <code>..</code> matches
+only a pattern that holds it. A list matches when every item does.
+Several patterns for one argument are alternatives; a <code>tool:NAME</code> with
+no pattern, written anywhere in the budget, grants every argument;</li>
+<li>no count is passed: <code>tool:NAME@N</code>, <code>tool@N</code>, or the manifest's ceiling
+on calls or on cost (E322). A call's cost is the manifest's unless the
+host's answer gives one;</li>
+<li>the arguments are a JSON object the tool's schema accepts - an object
+takes no property its schema does not name - and a tool whose result is
+secret is called through <code>tool_secret</code> (E323).</li>
+</ul>
+<p>The host answers each call on the run's standard input, and an answer
+that is not one - E324 - stops the run. A result is a value like any
+other: nothing yet marks it as the host's words rather than the
+program's own. That mark, <code>Untrusted of T</code>, is 9.0's.</p>
 <h2 id="8-failure">8. Failure <a class="anchor" href="#8-failure" aria-label="Link to this section">#</a></h2>
 <p>A function that can fail says so:</p>
 <div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> parse(t: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> { ... }</code></pre></div>
@@ -437,7 +496,8 @@ fail.</p>
 <code>mod_or_fail</code>, <code>divide_or_fail</code>, <code>parse_money</code>, <code>py</code>, <code>py_int</code>,
 <code>py_float</code>, <code>py_json</code>, <code>py_new</code>, <code>py_do</code>, <code>py_field</code>, <code>json_get</code>,
 <code>json_int</code>, <code>json_float</code> and <code>json_len</code> - every <code>py_*</code> builtin but
-<code>py_close</code>. <code>get</code> on a <strong>list</strong> is not fallible: list bounds are the
+<code>py_close</code> - and from 8.5 <code>hex_decode</code>, <code>base64_decode</code>, <code>tool</code> and
+<code>tool_secret</code>. <code>get</code> on a <strong>list</strong> is not fallible: list bounds are the
 prover's domain (§9.4), and <code>get_or(m, k, default)</code> gives a total map
 lookup.</p>
 <h2 id="9-contracts-and-proof">9. Contracts and proof <a class="anchor" href="#9-contracts-and-proof" aria-label="Link to this section">#</a></h2>
@@ -570,14 +630,27 @@ shows nothing of its content, with or without an import root.</p>
 <p>A builtin added in <strong>4.3 or later</strong> gives way to a function of the same
 name that the program defines: <code>money</code>, <code>units_of</code>, <code>with_units</code>,
 <code>percent_of</code>, <code>divide_or_fail</code>, <code>text_of</code> and <code>parse_money</code> are the
-program's own wherever it declares one. A program written before a
+program's own wherever it declares one, and so are 6.0's
+<code>read_file_secret</code> and <code>declassify</code> and 8.5's <code>sha256</code>, <code>hex_encode</code>,
+<code>hex_decode</code>, <code>base64_encode</code>, <code>base64_decode</code>, <code>url_encode</code>,
+<code>hmac_sha256</code>, <code>hmac_sha256_chain</code>, <code>tool</code> and <code>tool_secret</code>. A program written before a
 builtin existed therefore keeps meaning exactly what it meant, which is
 what lets a minor version add one at all. Inside a library imported
 <strong>with a name</strong>, such a call always reaches the builtin: the library's
 own functions carry its prefix, and it was not written against the
 program importing it.</p>
 <p>The builtins that existed before 4.3 keep the precedence they have
-always had: a function named like one of those is never reached.</p>
+always had: a function named like one of those is never reached. That
+holds inside a library imported with a name too: <code>get(xs, i)</code> written in
+<code>http.vel</code> reaches the builtin, though <code>http.vel</code> has a <code>get</code> of its own
+(8.5; until then the library's own function took the call, so such a
+library could not index a list or use a <code>for</code> loop).</p>
+<p><strong>Digests and encoders (8.5)</strong>, all pure, over a Text's UTF-8 bytes:
+<code>sha256(text)</code> gives 64 hexadecimal digits; <code>hex_encode</code> and
+<code>base64_encode</code> (RFC 4648, padded) encode; <code>hex_decode</code> and
+<code>base64_decode</code> decode, and fail on text that is not the encoding or
+whose bytes are not UTF-8; <code>url_encode</code> percent-encodes every byte but
+the unreserved characters of RFC 3986 (<code>A-Z a-z 0-9 - . _ ~</code>).</p>
 <h2 id="11-compilation-and-execution">11. Compilation and execution <a class="anchor" href="#11-compilation-and-execution" aria-label="Link to this section">#</a></h2>
 <p>A program is lexed, parsed, effect-checked, type-checked,
 proof-checked, then run. Pure functions over <code>Int</code>, <code>Float</code>, <code>Bool</code>,
@@ -710,10 +783,10 @@ in Python, which is clear to read and slower than a production
 compiler.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/SPEC.md">SPEC.md</a> by build_docs.py, for Velaris 8.4.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/SPEC.md">SPEC.md</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#1-programs">1. Programs</a></li><li><a href="#2-lexical-structure">2. Lexical structure</a></li><li><a href="#3-types">3. Types</a><ul><li><a href="#31-secret-of-t">3.1 Secret of T</a></li></ul></li><li><a href="#4-numbers">4. Numbers</a><ul><li><a href="#41-whole-numbers">4.1 Whole numbers</a></li><li><a href="#42-decimals">4.2 Decimals</a></li><li><a href="#43-money">4.3 Money</a></li><li><a href="#44-which-currencies">4.4 Which currencies</a></li><li><a href="#45-text">4.5 Text</a></li></ul></li><li><a href="#5-values-and-mutation">5. Values and mutation</a></li><li><a href="#6-evaluation">6. Evaluation</a></li><li><a href="#7-effects">7. Effects</a><ul><li><a href="#71-the-budget">7.1 The budget</a></li></ul></li><li><a href="#8-failure">8. Failure</a></li><li><a href="#9-contracts-and-proof">9. Contracts and proof</a><ul><li><a href="#91-what-you-write">9.1 What you write</a></li><li><a href="#92-what-proven-means">9.2 What &quot;proven&quot; means</a></li><li><a href="#93-what-is-proven-and-what-is-not">9.3 What is proven, and what is not</a></li><li><a href="#94-calls-and-the-soundness-rule">9.4 Calls, and the soundness rule</a></li><li><a href="#95-which-loops-are-shown-to-end">9.5 Which loops are shown to end</a></li></ul></li><li><a href="#10-modules">10. Modules</a><ul><li><a href="#101-your-names-and-the-builtins">10.1 Your names and the builtins</a></li></ul></li><li><a href="#11-compilation-and-execution">11. Compilation and execution</a></li><li><a href="#12-the-host-language">12. The host language</a></li><li><a href="#13-concurrency">13. Concurrency</a></li><li><a href="#12a-function-values-and-capture">12a. Function values and capture</a></li><li><a href="#13a-early-loop-exit-considered-and-answered">13a. Early loop exit: considered, and answered</a></li><li><a href="#14-errors">14. Errors</a></li><li><a href="#15-versioning-and-stability">15. Versioning and stability</a></li><li><a href="#16-what-this-language-does-not-have">16. What this language does not have</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#1-programs">1. Programs</a></li><li><a href="#2-lexical-structure">2. Lexical structure</a></li><li><a href="#3-types">3. Types</a><ul><li><a href="#31-secret-of-t">3.1 Secret of T</a></li></ul></li><li><a href="#4-numbers">4. Numbers</a><ul><li><a href="#41-whole-numbers">4.1 Whole numbers</a></li><li><a href="#42-decimals">4.2 Decimals</a></li><li><a href="#43-money">4.3 Money</a></li><li><a href="#44-which-currencies">4.4 Which currencies</a></li><li><a href="#45-text">4.5 Text</a></li></ul></li><li><a href="#5-values-and-mutation">5. Values and mutation</a></li><li><a href="#6-evaluation">6. Evaluation</a></li><li><a href="#7-effects">7. Effects</a><ul><li><a href="#71-the-budget">7.1 The budget</a></li><li><a href="#72-tools-85">7.2 Tools (8.5)</a></li></ul></li><li><a href="#8-failure">8. Failure</a></li><li><a href="#9-contracts-and-proof">9. Contracts and proof</a><ul><li><a href="#91-what-you-write">9.1 What you write</a></li><li><a href="#92-what-proven-means">9.2 What &quot;proven&quot; means</a></li><li><a href="#93-what-is-proven-and-what-is-not">9.3 What is proven, and what is not</a></li><li><a href="#94-calls-and-the-soundness-rule">9.4 Calls, and the soundness rule</a></li><li><a href="#95-which-loops-are-shown-to-end">9.5 Which loops are shown to end</a></li></ul></li><li><a href="#10-modules">10. Modules</a><ul><li><a href="#101-your-names-and-the-builtins">10.1 Your names and the builtins</a></li></ul></li><li><a href="#11-compilation-and-execution">11. Compilation and execution</a></li><li><a href="#12-the-host-language">12. The host language</a></li><li><a href="#13-concurrency">13. Concurrency</a></li><li><a href="#12a-function-values-and-capture">12a. Function values and capture</a></li><li><a href="#13a-early-loop-exit-considered-and-answered">13a. Early loop exit: considered, and answered</a></li><li><a href="#14-errors">14. Errors</a></li><li><a href="#15-versioning-and-stability">15. Versioning and stability</a></li><li><a href="#16-what-this-language-does-not-have">16. What this language does not have</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

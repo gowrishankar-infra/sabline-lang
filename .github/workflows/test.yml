@@ -108,6 +108,16 @@ jobs:
         run: python check_eval.py
       - name: receipts diff names each difference; replay runs the same bytes or refuses
         run: python check_receipts.py
+      - name: velaris demo, end to end, and that it reads nobody's .env (8.5)
+        run: python check_demo.py
+      - name: azure.vel, github.vel, k8s.vel and aws.vel, each against a stand-in for its service (8.5)
+        run: python check_batteries.py
+      - name: sha256, the encoders, and an HMAC whose key is a Secret and whose MAC is all that leaves (8.5)
+        run: python check_digests.py
+      - name: A tool call passes the manifest, the budget and the ceiling, or the host never hears of it (8.5)
+        run: python check_runner.py
+      - name: A receipt and an audit as a page, the same bytes for the same input (8.5)
+        run: python check_viewers.py
       - name: A false promise the prover left to runtime is caught by a witness; effects are refused
         run: python check_from_contracts.py
       - name: What docs/structurally-impossible.md says cannot occur, tried

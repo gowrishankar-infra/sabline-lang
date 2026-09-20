@@ -34,11 +34,11 @@ from typing import Any
 
 RECEIPT_SCHEMA = "velaris.receipt/1"
 # the type is velaris/predicates.py's, at velaris-lang.dev from 8.3
-RECEIPT_SPEC = "velaris-spec 0.12.0"
+RECEIPT_SPEC = "velaris-spec 0.13.0"
 # the refusals a receipt lists and the doors log: the budget's, and the
 # read ceiling's
 REFUSAL_CODES = ("E310", "E311", "E313", "E314", "E315", "E316", "E317",
-                 "E318")
+                 "E318", "E320", "E321", "E322", "E323")
 
 
 def _utc_now_ms() -> str:
@@ -74,6 +74,8 @@ def _refusal_effect(code: str, message: str) -> str | None:
         return "fs"
     if code in ("E314", "E317"):
         return "net"
+    if code in ("E320", "E321", "E322", "E323"):
+        return "tool"
     return None
 
 
@@ -95,6 +97,19 @@ class _RunRecorder:
         self.sites: dict[Any, Any] = {}
         self.stop: dict[str, Any] | None = None
         self.compiled = False
+        # line -> the key fingerprints an hmac call there has named (8.5)
+        self.keys_at: dict[int, set[str]] = {}
+        # what each grant let through, and a tool session's ceiling record,
+        # put here when the run ends (8.5)
+        self.grant_uses: dict[str, int] | None = None
+        self.tools: dict[str, Any] | None = None
+
+    def close(self) -> None:
+        """The run has ended: keep what the budget counted, before the
+        budget that was there before is put back."""
+        self.grant_uses = dict(_state.GRANT_USES)
+        if _state.TOOL_SESSION is not None:
+            self.tools = _state.TOOL_SESSION.ceiling_record()
 
     def _send(self, event: dict[Any, Any]) -> None:
         if self.emit is None:
@@ -124,7 +139,7 @@ class _RunRecorder:
             if isinstance(event.get("subjects"), list):
                 self.subjects = event["subjects"]
             return
-        if kind not in ("refusal", "declassify"):
+        if kind not in ("refusal", "declassify", "tool"):
             return
         fields = {k: v for k, v in event.items()
                   if k not in ("kind", "times")}

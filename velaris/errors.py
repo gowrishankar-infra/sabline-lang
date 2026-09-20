@@ -69,6 +69,19 @@ ERROR_TABLE = {
     "E319": "the operating system's confinement refused an effect the "
             "runtime itself attempted outside the budget (8.4; given only "
             "under the fault-injection hook, VELARIS_FAULT_INJECT)",
+    "E320": "a tool call with no tool to reach: the run was given no "
+            "manifest (--tools), or the manifest does not offer that tool",
+    "E321": "a tool call outside the run's tool grants: a tool that is not "
+            "granted, or an argument that does not match the pattern a "
+            "grant holds it to",
+    "E322": "a tool call past a ceiling: the run's tool@N, a tool's @N, or "
+            "the manifest's calls or cost",
+    "E323": "a tool call whose arguments are not what the manifest's schema "
+            "says, or a tool marked secret called through tool rather than "
+            "tool_secret",
+    "E324": "the host did not keep the tools protocol: no answer in time, a "
+            "closed door, a line that is not JSON, another call's id, or a "
+            "cost that is not a number",
     "E400": "there is no 'main' function",
     "E401": "the wrong number of arguments, or parameters on 'main'",
     "E402": "an unknown variable, or break or continue, which the language "

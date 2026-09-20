@@ -18,7 +18,9 @@
       "fs:write",
       "io",
       "net",
-      "rand"
+      "rand",
+      "tool:search",
+      "tool:send_email"
     ],
     "counts": {"fs": null, "net": null}
   },

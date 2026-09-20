@@ -1,0 +1,61 @@
+// Who these AWS credentials are, the buckets they can see, and the first
+// keys of one of them.
+//
+// AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... velaris examples/ops/aws_buckets.vel \
+// --allow io,env,clock,declassify,net:sts.us-east-1.amazonaws.com:443,net:s3.us-east-1.amazonaws.com:443 \
+// us-east-1 my-bucket logs/
+//
+// Every request is signed with Signature Version 4 in Velaris itself
+// (stdlib/aws.vel): it calls no Python. The secret key is never anything but
+// a Secret; `velaris audit` lists the signature as a declassification with
+// the reason "hmac signature", and the access key id and the session token
+// with reasons of their own.
+
+import "aws.vel" as aws
+
+fn main() uses io, env, clock, net, declassify {
+    let given = args()
+    if length(given) < 1 {
+        print("usage: aws_buckets.vel <region> [bucket [prefix]]")
+        exit_with(2)
+    }
+    let creds = aws.credentials_from_env(get(given, 0))
+    check aws.sts_caller_identity(creds) {
+        ok arn {
+            print("signed in as " + arn)
+        }
+        fail why {
+            print("could not ask who this is: " + why)
+            exit_with(1)
+        }
+    }
+    check aws.s3_list_buckets(creds) {
+        ok names {
+            for name in names {
+                print("bucket  " + name)
+            }
+        }
+        fail why {
+            print("could not list the buckets: " + why)
+            exit_with(1)
+        }
+    }
+    if length(given) >= 2 {
+        let prefix = ""
+        if length(given) >= 3 {
+            prefix = get(given, 2)
+        }
+        check aws.s3_list_objects(creds, get(given, 1), prefix, 5) {
+            ok keys {
+                for key in keys {
+                    print("key     " + key)
+                }
+                print(format("{} key(s)", length(keys)))
+            }
+            fail why {
+                print("could not list the keys: " + why)
+                exit_with(1)
+            }
+        }
+    }
+}

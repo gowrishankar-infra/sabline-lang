@@ -8,14 +8,17 @@ from typing import TYPE_CHECKING, Any
 from . import state as _state
 from .version import VERSION, _INSTALL_DIR
 from .errors import VelarisError
-from .nodes import Call, Str
+from .nodes import BinOp, Call, Str
 from .tables import (
     ALLOW_ALL,
     ALL_EFFECTS,
     CHECK_MEMORY_MB_DEFAULT,
     CHECK_TIMEOUT_DEFAULT,
     DEFAULT_ALLOW,
+    HMAC_BUILTINS,
+    HMAC_REASON,
     SECRET_SOURCES,
+    TOOL_BUILTINS,
     builtin_reached,
 )
 from .recorder import (
@@ -171,7 +174,6 @@ def _fs_net_named(path: str, source: str | None) -> tuple[Any, ...]:
     except Exception:
         return paths, hosts
     import dataclasses as _dc
-    host_of = _host_entry
 
     def visit(node: Any) -> None:
         if isinstance(node, (list, tuple)):
@@ -192,8 +194,8 @@ def _fs_net_named(path: str, source: str | None) -> tuple[Any, ...]:
             at = {"fetch": 0, "post": 0, "fetch_status": 0,
                   "request": 1}.get(node.name)
             if at is not None and len(node.args) > at:
-                arg = node.args[at]
-                h = host_of(arg.value) if isinstance(arg, Str) else None
+                h = _url_host(node.args[at], lambda x: x.value
+                              if isinstance(x, Str) else None)
                 if h:
                     hosts["hosts"].add(h)
                 else:
@@ -243,6 +245,12 @@ def _secrets_named(path: str, source: str | None) -> dict[Any, Any] | None:
                     and isinstance(node.args[1], Str):
                 out.append({"reason": node.args[1].value,
                             "function": where, "line": node.line})
+            elif reached in HMAC_BUILTINS:
+                # the MAC is not a Secret, so the call lets something out:
+                # named like any declassification, with the reason every
+                # such call has and the builtin that made it (8.5)
+                out.append({"reason": HMAC_REASON, "function": where,
+                            "line": node.line, "builtin": reached})
         for f in _dc.fields(node):
             visit(getattr(node, f.name), where, line)
 
@@ -330,7 +338,78 @@ def _host_entry(url: str) -> str | None:
         return None
 
 
-def _safe_grants(effects: Any, modules_named: Any, paths: Any, hosts: Any) -> list[Any]:
+def _url_host(e: Any, text_of: Any) -> str | None:
+    """The `net_hosts` entry of a URL argument, or None when the text does
+    not fix its host. A whole URL the program fixes names its host, as it
+    always has. From 8.5 so does one that only begins fixed - `"https://
+    api.example.com/" + path`, or `format("https://api.example.com/{}", id)`
+    - when the fixed part holds the scheme, the host and the `/` that ends
+    the host: whatever is joined after that `/` is path, query or fragment,
+    and cannot move the request. Without the `/` it could - `"https://
+    api.example.com" + "@evil.example/"` - so without it the host is not
+    named. `text_of` gives the text an expression always is, or None."""
+    whole = text_of(e)
+    if whole is not None:
+        return _host_entry(whole)
+    fixed = None
+    if isinstance(e, Call) and e.name == "format" and e.args \
+            and isinstance(e.args[0], Str):
+        fixed = e.args[0].value.split("{}", 1)[0]
+    elif isinstance(e, BinOp) and e.op == "+":
+        parts: list[Any] = []
+        at: Any = e
+        while isinstance(at, BinOp) and at.op == "+":
+            parts.append(at.right)
+            at = at.left
+        parts.append(at)
+        fixed = ""
+        for part in reversed(parts):       # left to right, while it is fixed
+            text = text_of(part)
+            if text is None:
+                break
+            fixed += text
+    if not fixed:
+        return None
+    m = re.match(r"https?://[^/?#\\\s]+/", fixed)
+    return _host_entry(m.group(0)) if m else None
+
+
+def _tools_named(path: str, source: str | None) -> dict[str, Any] | None:
+    """velaris.audit/1's `tools` (8.5): the tools a program's calls name as
+    text, and whether any call names one with a value built while running.
+    None when the program cannot be loaded."""
+    try:
+        funcs, _ = load_program(path, source)
+    except Exception:
+        return None
+    import dataclasses as _dc
+    table = {f.name: f for f in funcs}
+    names: set[str] = set()
+    found = {"any": False}
+
+    def visit(node: Any) -> None:
+        if isinstance(node, (list, tuple)):
+            for x in node:
+                visit(x)
+            return
+        if not _dc.is_dataclass(node):
+            return
+        if isinstance(node, Call) and \
+                builtin_reached(node.name, table) in TOOL_BUILTINS:
+            if node.args and isinstance(node.args[0], Str):
+                names.add(node.args[0].value)
+            else:
+                found["any"] = True
+        for f in _dc.fields(node):
+            visit(getattr(node, f.name))
+
+    for fn in funcs:
+        visit(fn.body)
+    return {"names": sorted(names), "any": found["any"]}
+
+
+def _safe_grants(effects: Any, modules_named: Any, paths: Any, hosts: Any,
+                 tools: Any = None) -> list[Any]:
     """The narrowest budget the audit can write from what it read."""
     out = []
     for e in effects:
@@ -351,6 +430,14 @@ def _safe_grants(effects: Any, modules_named: Any, paths: Any, hosts: Any) -> li
                 out.append("net")
             else:
                 out.extend(f"net:{h}" for h in sorted(hosts["hosts"]))
+        elif e == "tool":
+            from .budget import _tool_word
+            named = (tools or {}).get("names") or []
+            if (tools or {}).get("any", True) or not named or not all(
+                    _tool_word(n) for n in named):
+                out.append("tool")
+            else:
+                out.extend(f"tool:{n}" for n in named)
         else:
             out.append(e)
     return out
@@ -483,7 +570,8 @@ def _unfinished_audit(problem: "Problem") -> AuditResult:
         fs_paths={"read": [], "write": [], "read_any": False,
                   "write_any": False},
         net_hosts={"hosts": [], "any": False}, ffi_any=False, counts=None,
-        prover=False, secrets=None, ffi_native={}, confinement=None)
+        prover=False, secrets=None, ffi_native={}, confinement=None,
+        tools=None)
 
 
 def _audit_confinement(safe_budget: str) -> dict[str, Any] | None:
@@ -554,6 +642,7 @@ def _audit_here(source: str, *, path: str | None = None) -> AuditResult:
         paths_named, hosts_named = _fs_net_named(where, source if path
                                                  else None)
         secrets = _secrets_named(where, source if path else None)
+        tools_named = _tools_named(where, source if path else None)
         # counts (4.2): the most fs and net operations one call to any of
         # the audited file's functions can perform, by velaris-spec 9.4's
         # fixed rules - 0 for an effect none of them declares, None where
@@ -625,7 +714,7 @@ def _audit_here(source: str, *, path: str | None = None) -> AuditResult:
             proven_share=share,
             safe_command=("velaris <file> --allow " + (
                 ",".join(_safe_grants(effects, modules_named,
-                                      paths_named, hosts_named))
+                                      paths_named, hosts_named, tools_named))
                 or "''")),
             ffi_modules=modules_named,
             fs_paths={"read": sorted(paths_named["read"]),
@@ -639,7 +728,9 @@ def _audit_here(source: str, *, path: str | None = None) -> AuditResult:
             secrets=secrets,
             ffi_native=_ffi_native(modules_named) if modules_named else {},
             confinement=_audit_confinement(",".join(_safe_grants(
-                effects, modules_named, paths_named, hosts_named)) or "''"),
+                effects, modules_named, paths_named, hosts_named,
+                tools_named)) or "''"),
+            tools=tools_named,
             prover=bool(compiled and report.get("proofs")),
             warnings=warnings)
     finally:
@@ -830,6 +921,8 @@ def _run_program(source: Any, *, path: Any, budget: Any, args: Any, stdin: Any, 
         code = 1
     finally:
         used = dict(_state.EFFECT_USES)           # this run's, before the old
+        if _state.RUN_RECORDER is not None:
+            _state.RUN_RECORDER.close()
         Budget.restore(saved)              # budget's come back
         _state.PROGRAM_ARGS[:] = saved_args
         # handles a program opened and never closed are this program's,

@@ -32,7 +32,7 @@ run = velaris.run(source, allow={"io"})
 print(run.ok, run.output, run.refused_effect)
 ```
 
-`velaris.card()` returns the language in about <!-- count:card-words -->4,600<!-- /count --> words - paste it
+`velaris.card()` returns the language in about <!-- count:card-words -->5,100<!-- /count --> words - paste it
 into a model before asking for Velaris.
 
 ## Limits: time and memory
@@ -303,10 +303,14 @@ Field meanings, all stable within `velaris.audit/1`:
 | `prover` | true when a prover checked the promises; false without one, when no status is `proven` and a `proven_share` of 0 says nothing about what could be proven - and false when the file does not compile (added in 4.2) |
 | `secrets` | `{"sources": [...], "declassifies": bool, "declassifications": [{"reason", "function", "line"}]}` - which builtins handed the program a `Secret` (`env`, `read_file_secret`), whether it ever declassifies one, and with what reason. `declassifies: false` with `ok: true` is the answer to "does this program ever let a secret out"; `null` when the file could not be loaded, and not null merely because `ok` is false (added in 6.0) |
 
+| `tools` | `{"names": [...], "any": bool}`: the tools its calls name (8.5) |
+
+From 8.5 `net_hosts` names the host of a URL that only *begins* fixed.
+
 A new field may be added within version 1; a field will not change
 meaning or disappear without the schema name changing. `effects` and
-each function's `effects` hold only real effect names - the seven, and
-`declassify` from 6.0 - even in the audit of a program that does not
+each function's `effects` hold only real effect names - the seven,
+`declassify` from 6.0 and `tool` from 8.5 - even in the audit of a program that does not
 compile because it names another in a `uses` clause (from 4.1; until
 then that name was listed, and made `safe_command` a budget that does
 not parse).
@@ -1232,7 +1236,9 @@ it did. It is an in-toto Statement of the predicate type
 | `run_parameters` | `seed` and `freeze_time`; `timeout` and `max_memory_mb`, null when there were none; `max_read_bytes`; and, from 8.4, what the operating system held of the run: `confinement` - `"full"`, `"partial"`, or `"none"` when the budget was the only boundary - `confinement_reason`, `confinement_layers` and `os_policy_sha256` ([docs/confinement.md](docs/confinement.md)). Until 8.4 `confinement` was `"none"` everywhere but under `velaris eval`, where it named a mechanism |
 | `effects_used` | each effect and how many operations the budget let through; null when the run was killed before it could say |
 | `refusals` | `{"code", "effect", "line", "stopped", "times"}` for each place the budget refused - `stopped` is false for a refused redirect, which the program is told about and may carry on from |
-| `declassifications` | `{"reason", "line", "times"}` for each place the program declassified |
+| `grants_used` | `{"grant", "times"}`: what each grant let through, by the grant's own text (8.5; `velaris receipt show` reads it as a page) |
+| `declassifications` | `{"reason", "line", "times"}` for each place the program declassified; an hmac call is one, with the reason `hmac signature` and a `key_fingerprint` (8.5) |
+| `tool_calls`, `tool_ceiling` | under `--tools`: each call site, and the ceiling (8.5) |
 | `exit` | `status`, `outcome` - `ok`, `refused`, `failed`, `did_not_compile`, `timeout` or `out_of_memory` - and the `code` that ended the run |
 | `complete` | false when the run was stopped from outside: what is listed happened, and each `times` is at least that |
 
@@ -1276,6 +1282,11 @@ signed both ways and verified in the release workflow before it is attached
 A signed receipt says its signer ran this Velaris on these bytes, under
 this budget, and saw this run. It is no stronger than the machine it ran
 on, and it says nothing about any other run.
+
+## Hosting a run that calls tools (8.5)
+
+`velaris run` with `--tools` lets a host offer a program tools, held by the
+budget: [docs/runner.md](docs/runner.md). Provisional.
 
 ## The operating system holds the budget too (8.4)
 

@@ -207,6 +207,7 @@ NOT_COUNTS = [
      "speed-ups measured once, not counts"),
     (r"\b200 sequential bounded runs", "a measurement on one machine"),
     (r"\b64-bit", "the size of a whole number"),
+    (r"Signature Version 4", "the name of AWS's signing scheme"),
     (r"held as 1250", "an example amount"),
     (r"September 2025", "a date"),
     (r"category 12\b", "a category's number"),

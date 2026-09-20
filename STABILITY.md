@@ -73,6 +73,13 @@ major version.
   `velaris.from-contracts/1`, `velaris.verify/1` and
   `velaris.permissions-ratchet/1`. `velaris.receipt/1` gains `stop` and
   `run_parameters.profile` within version 1 (velaris-spec section 8.7).
+  From 8.5 the same holds for the runner's first cut: the tool manifest
+  `velaris.tools/1`, the JSON lines of `velaris.tools-door/1`, and
+  `velaris.skill-verify/1`. The `tool` effect, its grants in the budget
+  grammar, the `tool` and `tool_secret` builtins and the commands are
+  covered like any other; what a manifest may say and what travels on the
+  door may change in a minor release, named in the CHANGELOG, until 9.0
+  brings `Untrusted` and says they are covered.
 
 ## The rules
 
@@ -337,6 +344,26 @@ eval` the mechanism names 8.3 wrote there (`landlock-net`, `landlock`,
 `velaris eval`, which 8.3 ran under the budget alone where the system
 offered nothing, now refuses to run there, which is the one refusal 8.4
 adds and is of a command documented as provisional.
+
+**8.5 (minor): a ninth effect, and nothing that ran is refused.** 8.5 adds
+the `tool` effect, ten builtins (`sha256`, five encoders, `hmac_sha256`,
+`hmac_sha256_chain`, `tool`, `tool_secret`), five error codes (E320 to
+E324), and fields in the audit (`tools`) and the receipt (`grants_used`;
+`tool_calls` and `tool_ceiling` under `--tools`; `key_fingerprint` on an
+hmac's declassification). It is recorded here because 6.0's eighth effect
+arrived in a major version and a reader should find why the ninth did not:
+6.0 was a major for what it refused - `env()` became a Secret - not for the
+effect. A program that compiles and runs under 8.4.0 inside its budget does
+the same under 8.5.0: every new builtin gives way to a function of the
+program's own name (SPEC.md 10.1), `uses tool` did not compile before, a
+budget that named `tool` did not parse before, and with no `--tools` there
+is no tool to reach. Two things a reader of documents can see: `effects`
+lists may hold `tool`, and `--allow all` now writes nine effects where it
+wrote eight; and an audit names the host of a URL that only begins fixed
+(`"https://api.example.com/" + path`), where it said "any host", so
+`safe_command` and a capability baseline derived from such a program are
+narrower than 8.4's - a narrowing the ratchet passes. The CHANGELOG entry
+argues each on a `compatibility:` line.
 
 **8.1 (minor), and two refusals it adds.** Both are listed in its CHANGELOG
 under "What 8.1 refuses that 8.0 did not", and are recorded here so the

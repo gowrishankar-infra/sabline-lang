@@ -1,0 +1,30 @@
+{
+  "schema": "velaris.tools/1",
+  "description": "The two tools examples/runner/host.py offers.",
+  "tools": {
+    "search": {
+      "description": "Look a phrase up in the host's notes.",
+      "arguments": {
+        "type": "object",
+        "properties": {"query": {"type": "string", "minLength": 1, "maxLength": 200}},
+        "required": ["query"]
+      },
+      "cost": 1
+    },
+    "send_email": {
+      "description": "Send one email.",
+      "arguments": {
+        "type": "object",
+        "properties": {
+          "to": {"type": "string", "maxLength": 254},
+          "subject": {"type": "string", "maxLength": 200},
+          "body": {"type": "string", "maxLength": 4000}
+        },
+        "required": ["to", "subject", "body"]
+      },
+      "cost": 5
+    }
+  },
+  "allow": ["tool:search@20", "tool:send_email:to=*@corp.com"],
+  "ceiling": {"calls": 25, "cost": 40, "unit": "credits"}
+}

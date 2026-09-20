@@ -1,0 +1,295 @@
+// AWS over REST, with no Python: requests signed with Signature Version 4,
+// to S3 and to STS.
+//
+// import "aws.vel" as aws
+// let creds = aws.credentials_from_env("us-east-1")
+// check aws.s3_list_buckets(creds) { ok names { ... } fail why { ... } }
+//
+// The secret key is a Secret of Text and never becomes anything else. What
+// SigV4 sends is an HMAC-SHA256 under a key derived from it, and that is
+// what hmac_sha256_chain is for: the derivation - date, region, service,
+// "aws4_request" - and the signature are one call, so the derived keys,
+// which are credentials themselves for a day, are never values of this
+// program. The signature is not a Secret (it is sent in the clear), so the
+// call needs `declassify`, and the audit lists it with the reason "hmac
+// signature"; THREAT_MODEL.md says why that is sound and what somebody
+// holding a signature can do with it.
+//
+// Hosts are s3.REGION.amazonaws.com (path-style) and sts.REGION.amazonaws.com.
+// The region is the caller's, so an audit cannot name the host from this
+// file's text; grant, for example, net:s3.us-east-1.amazonaws.com:443.
+// Functions that change something say so: s3_put_object, s3_delete_object.
+// S3 and STS answer in XML; the few values a program needs are read out of
+// it by tag (xml_values), which is enough for these replies and is not an
+// XML parser.
+
+record AwsCredentials {
+    key_id: Text
+    secret: Secret of Text
+    // "" when the credentials are long-lived; else the session token
+    session: Secret of Text
+    region: Text
+}
+
+record AwsReply {
+    status: Int
+    body: Text
+}
+
+// AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_SESSION_TOKEN. The key id
+// is declassified: it names the key and is sent in the clear in every
+// request. The secret key stays a Secret.
+fn credentials_from_env(region: Text) -> AwsCredentials uses env, declassify {
+    let key_id = declassify(env("AWS_ACCESS_KEY_ID", ""), "an access key id names a key and is sent in the clear in every signed request")
+    return AwsCredentials(key_id: key_id, secret: env("AWS_SECRET_ACCESS_KEY", ""), session: env("AWS_SESSION_TOKEN", ""), region: region)
+}
+
+// ---- Signature Version 4 -------------------------------------------------------
+
+// The signature of one request: 64 hexadecimal digits. `headers` are the
+// signed headers as "name:value", names in lower case, in name order, host
+// among them; `query` the parameters as "name=value", each side already
+// url_encode'd, in name order; `amz_date` is 20150830T123600Z.
+fn signature(creds: AwsCredentials, service: Text, amz_date: Text, method: Text, path: Text, query: List of Text, headers: List of Text, payload_hash: Text) -> Text
+uses declassify
+{
+    let day = take(amz_date, 8)
+    let scope = day + "/" + creds.region + "/" + service + "/aws4_request"
+    let canonical = method + "\n" + canonical_path(path) + "\n" + joined(query, "&") + "\n" + joined(headers, "\n") + "\n\n" + header_names(headers) + "\n" + payload_hash
+    let to_sign = "AWS4-HMAC-SHA256\n" + amz_date + "\n" + scope + "\n" + sha256(canonical)
+    return hmac_sha256_chain("AWS4" + creds.secret, [day, creds.region, service, "aws4_request", to_sign])
+}
+
+// The Authorization header for that signature.
+fn authorization(creds: AwsCredentials, service: Text, amz_date: Text, signed: Text, headers: List of Text) -> Text {
+    let scope = take(amz_date, 8) + "/" + creds.region + "/" + service + "/aws4_request"
+    return "AWS4-HMAC-SHA256 Credential=" + creds.key_id + "/" + scope + ", SignedHeaders=" + header_names(headers) + ", Signature=" + signed
+}
+
+// One signed request to `service` at `host`. `query` as `signature` takes
+// it. The time is the clock's, which a signature is only good near.
+fn send(creds: AwsCredentials, service: Text, host: Text, method: Text, path: Text, query: List of Text, body: Text, content_type: Text) -> AwsReply
+uses net, clock, declassify or fail
+{
+    let amz_date = amz_date_of(now())
+    let payload_hash = sha256(body)
+    let signed_headers = ["host:" + host, "x-amz-content-sha256:" + payload_hash, "x-amz-date:" + amz_date]
+    let sent = { "x-amz-content-sha256": payload_hash, "x-amz-date": amz_date, "Content-Type": content_type }
+    let session = declassify(creds.session, "a session token is sent to AWS as the x-amz-security-token header")
+    if session != "" {
+        signed_headers = push(signed_headers, "x-amz-security-token:" + session)
+        sent = put(sent, "x-amz-security-token", session)
+    }
+    let signed = signature(creds, service, amz_date, method, path, query, signed_headers, payload_hash)
+    sent = put(sent, "Authorization", authorization(creds, service, amz_date, signed, signed_headers))
+    let url = "https://" + host + canonical_path(path)
+    if length(query) > 0 {
+        url = url + "?" + joined(query, "&")
+    }
+    let raw = try request(method, url, body, json_of(sent))
+    return AwsReply(status: try json_int(raw, "status"), body: try json_get(raw, "body"))
+}
+
+// AWS's error shape is <Error><Code>..</Code><Message>..</Message>.
+fn expect_ok(reply: AwsReply) -> AwsReply or fail {
+    if reply.status >= 200 and reply.status < 300 {
+        return reply
+    }
+    fail format("AWS answered {}: {} {}", reply.status, first_value(reply.body, "Code"), first_value(reply.body, "Message"))
+}
+
+// ---- S3 --------------------------------------------------------------------------
+
+fn s3_host(creds: AwsCredentials) -> Text {
+    return "s3." + creds.region + ".amazonaws.com"
+}
+
+fn s3_list_buckets(creds: AwsCredentials) -> List of Text
+uses net, clock, declassify or fail
+{
+    let reply = try expect_ok(try send(creds, "s3", s3_host(creds), "GET", "/", no_query(), "", "application/xml"))
+    return xml_values(reply.body, "Name")
+}
+
+// The keys under `prefix`, a thousand at a time, for at most `most_pages`
+// pages. Running past the limit is a failure, not a short list.
+fn s3_list_objects(creds: AwsCredentials, bucket: Text, prefix: Text, most_pages: Int) -> List of Text
+uses net, clock, declassify or fail
+{
+    let out: List of Text = []
+    let token = ""
+    let pages = 0
+    while pages < most_pages {
+        pages = pages + 1
+        let query: List of Text = []
+        if token != "" {
+            query = push(query, "continuation-token=" + url_encode(token))
+        }
+        query = push(query, "list-type=2")
+        query = push(query, "prefix=" + url_encode(prefix))
+        let reply = try expect_ok(try send(creds, "s3", s3_host(creds), "GET", "/" + bucket, query, "", "application/xml"))
+        for key in xml_values(reply.body, "Key") {
+            out = push(out, key)
+        }
+        if first_value(reply.body, "IsTruncated") != "true" {
+            return out
+        }
+        token = first_value(reply.body, "NextContinuationToken")
+    }
+    fail format("the listing runs past {} page(s)", most_pages)
+}
+
+fn s3_get_object(creds: AwsCredentials, bucket: Text, key: Text) -> Text
+uses net, clock, declassify or fail
+{
+    let reply = try expect_ok(try send(creds, "s3", s3_host(creds), "GET", "/" + bucket + "/" + key, no_query(), "", "application/octet-stream"))
+    return reply.body
+}
+
+fn s3_put_object(creds: AwsCredentials, bucket: Text, key: Text, text: Text) -> Int
+uses net, clock, declassify or fail
+{
+    let reply = try expect_ok(try send(creds, "s3", s3_host(creds), "PUT", "/" + bucket + "/" + key, no_query(), text, "text/plain; charset=utf-8"))
+    return reply.status
+}
+
+fn s3_delete_object(creds: AwsCredentials, bucket: Text, key: Text) -> Int
+uses net, clock, declassify or fail
+{
+    let reply = try expect_ok(try send(creds, "s3", s3_host(creds), "DELETE", "/" + bucket + "/" + key, no_query(), "", "application/octet-stream"))
+    return reply.status
+}
+
+// ---- STS -------------------------------------------------------------------------
+
+// Who these credentials are: the ARN.
+fn sts_caller_identity(creds: AwsCredentials) -> Text
+uses net, clock, declassify or fail
+{
+    let reply = try expect_ok(try send(creds, "sts", "sts." + creds.region + ".amazonaws.com", "POST", "/", no_query(), "Action=GetCallerIdentity&Version=2011-06-15", "application/x-www-form-urlencoded; charset=utf-8"))
+    return first_value(reply.body, "Arn")
+}
+
+// ---- the pieces ----------------------------------------------------------------
+
+fn no_query() -> List of Text {
+    let none: List of Text = []
+    return none
+}
+
+// A path as SigV4 and S3 want it: each segment url_encode'd once, the '/'
+// kept.
+fn canonical_path(path: Text) -> Text {
+    let out = ""
+    let first = true
+    for segment in split(path, "/") {
+        if not first {
+            out = out + "/"
+        }
+        out = out + url_encode(segment)
+        first = false
+    }
+    if out == "" {
+        return "/"
+    }
+    return out
+}
+
+fn header_names(headers: List of Text) -> Text {
+    let out = ""
+    for header in headers {
+        if out != "" {
+            out = out + ";"
+        }
+        out = out + get(split(header, ":"), 0)
+    }
+    return out
+}
+
+fn joined(parts: List of Text, with: Text) -> Text {
+    let out = ""
+    let first = true
+    for part in parts {
+        if not first {
+            out = out + with
+        }
+        out = out + part
+        first = false
+    }
+    return out
+}
+
+fn take(text: Text, n: Int) -> Text {
+    let out = ""
+    let i = 0
+    for c in chars(text) {
+        if i < n {
+            out = out + c
+        }
+        i = i + 1
+    }
+    return out
+}
+
+fn two(n: Int) -> Text {
+    if n < 10 {
+        return "0" + to_text(n)
+    }
+    return to_text(n)
+}
+
+// Epoch seconds as 20150830T123600Z, in whole-number arithmetic (the civil
+// calendar from a day count, as in Howard Hinnant's date algorithms).
+fn amz_date_of(epoch: Int) -> Text {
+    let days = epoch / 86400
+    let secs = epoch % 86400
+    let z = days + 719468
+    let era = z / 146097
+    let doe = z - era * 146097
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    let mp = (5 * doy + 2) / 153
+    let day = doy - (153 * mp + 2) / 5 + 1
+    let month = mp + 3
+    if mp >= 10 {
+        month = mp - 9
+    }
+    let year = yoe + era * 400
+    if month <= 2 {
+        year = year + 1
+    }
+    return to_text(year) + two(month) + two(day) + "T" + two(secs / 3600) + two(secs % 3600 / 60) + two(secs % 60) + "Z"
+}
+
+// The text of every <tag>...</tag> in a reply, in order, with the five XML
+// entities read back.
+fn xml_values(body: Text, tag: Text) -> List of Text {
+    let out: List of Text = []
+    let first = true
+    for piece in split(body, "<" + tag + ">") {
+        if not first {
+            out = push(out, unescaped(get(split(piece, "</" + tag + ">"), 0)))
+        }
+        first = false
+    }
+    return out
+}
+
+fn first_value(body: Text, tag: Text) -> Text {
+    for value in xml_values(body, tag) {
+        return value
+    }
+    return ""
+}
+
+fn swapped(text: Text, old: Text, new: Text) -> Text {
+    return joined(split(text, old), new)
+}
+
+fn unescaped(text: Text) -> Text {
+    let a = swapped(text, "&lt;", "<")
+    let b = swapped(a, "&gt;", ">")
+    let c = swapped(b, "&quot;", "\"")
+    let d = swapped(c, "&apos;", "'")
+    return swapped(d, "&amp;", "&")
+}

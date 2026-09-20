@@ -393,6 +393,94 @@ What follows is what is still not defended.
   settle them beforehand. These are limits of the current prover,
   listed in RESULTS.md rather than worked around.
 
+## Signing with a secret key: `hmac_sha256` (8.5)
+
+A request to AWS is signed with an HMAC-SHA256 under a key derived from the
+secret key. The signature is sent in the clear; the key must never be. So 8.5
+has two builtins that take a `Secret of Text` and give back an ordinary
+`Text`: `hmac_sha256(key, message)` and `hmac_sha256_chain(key, messages)`,
+which applies HMAC again and again, each result the next key as raw bytes.
+They are the second way out of `Secret`, after `declassify`, and are held the
+same way: the function needs `uses declassify`, the run needs the
+`declassify` grant, the audit lists the call under `secrets` with the fixed
+reason `hmac signature` and the builtin's name, and a receipt records each
+call site with that reason and the key's fingerprint.
+
+**Why this is sound.** HMAC-SHA256 is a pseudorandom function of the message
+under the key: a MAC, or any number of them over messages an attacker chose,
+does not reveal the key or help forge a MAC over another message, for a key
+with the entropy of a real credential. Every service that accepts a signed request relies on exactly that.
+The message may not carry a secret (E560): a MAC of a secret message under a
+key the program chose would be a digest of that message, in the open. The
+chain exists because Signature Version 4's derived keys - for a date, a
+region, a service - are credentials themselves for as long as they are valid;
+with the chain they are never values of the program, and only the last MAC,
+the signature, comes out.
+
+**What somebody holding the MAC can do.** Replay it, for as long as the
+service accepts it: a SigV4 signature is good for the one request it covers,
+for about fifteen minutes around its timestamp, and a program that prints
+one, or a log that keeps one, has given that request away for that long. It
+cannot be turned into another request, and it does not shorten the search
+for the key.
+
+**What this does not hold, and why it is not worse than before.** Every pure
+operation over a secret gives a secret, so a program can build a *weak* key
+out of a strong one - one character of it, or `length(key)` as text - and a
+MAC under a weak key can be matched against guesses offline. A program that
+does this in a loop reads the key out through its MACs. Nothing in the type
+system stops that, and nothing needs to: it requires the `declassify` effect
+and grant, and a program that holds those can already write
+`declassify(key, "...")`. `hmac_sha256` lets out no more than the effect it
+needs already allowed. What it changes is what an audit says: a program that
+only signs shows `hmac signature` and nothing else under
+`secrets.declassifications`, and a reviewer who sees a key argument that is
+not the credential itself, or an hmac call in a loop over pieces of one,
+should read it as a declassification of the key, because it is one.
+
+**The fingerprint** a receipt carries is twelve hexadecimal digits of a
+SHA-256 over a fixed label and the key. It tells two keys apart and the same
+key from run to run. It is a function of the key, so for a guessable key it confirms a
+guess, as a MAC does; for a real credential it does not help find it. One
+call site names at most sixteen fingerprints and then says `many`, so a loop
+over derived keys cannot use the receipt as a second channel.
+`check_digests.py` holds RFC 4231's vectors, the refusals, and sixteen
+routes for a key other than as a MAC, none of which compiles.
+
+**Bearer tokens.** `azure.vel`, `github.vel` and `k8s.vel` send a token in
+an `Authorization` header. A `Secret` cannot be handed to `request` (E560),
+and 8.5 adds no builtin that would let one be: that would make `net` a
+second `declassify` no audit names. The libraries call `declassify` once,
+where the header is built, with a reason that names the host; what holds the
+token to that host is the library's text - the URL begins with a literal
+`https://host:443/` - and the operator's `net:` grant.
+
+## Tools a host offers: the runner's first cut (8.5)
+
+A run started with `--tools` may call tools its host process offers. The
+host is trusted and the program is not: a call has to pass the manifest, the
+tool's schema, the operator's grants - which may hold an argument to a
+pattern matched against the whole value - and the ceilings before the host
+hears of it, and each failure is a refusal in the receipt. A host that lies
+about a result cannot be detected and is the operator's own process; what a
+reply can do is bounded - it is never a grant, and a cost cannot win budget
+back. **What this release does not close** is a result that steers: a
+result is a `Text` like any other, so it cannot take a program outside its
+budget (a host outside `net:` is still E314) and can direct it inside. The
+mark that tells the host's words from the program's, `Untrusted of T`,
+arrives in 9.0. [docs/runner.md](docs/runner.md) has the whole of it, and
+`check_runner.py` the attempts.
+
+## `velaris demo` (8.5)
+
+The demo runs a script that reads `./.env` and posts it, so it must be
+impossible to turn on a real one. It takes no argument but `--keep`; works
+in a directory it has just made, whose `.env` it wrote and whose one value
+is made up; gives the first run no `--allow`, so the read is refused (E310)
+before the post is reached; and posts to a host under `.invalid`.
+`check_demo.py` runs it beside a `.env` holding a value only the suite
+knows: the value appears nowhere and nothing connects anywhere.
+
 ## Known open
 
 The gaps this model does not close, kept as a table so the list is one
@@ -467,6 +555,7 @@ fails when the two differ.
 | `io` | the descriptors the process was started with; not restricted | as Linux | as Linux |
 | `env` | not held: the environment is in the process's own memory | not held | not held |
 | `clock`, `rand`, `declassify` | not held: reading the clock or the kernel's randomness reaches nothing outside the process, and declassify is a rule of the type system | not held | not held |
+| `tool` | not held: a tool call is a line written to the standard output the process was started with and an answer read from its standard input; what the tool then does happens in the host's process, which this policy does not reach | not held | not held |
 | starting a process (never a budget item) | seccomp: execve, execveat, fork, vfork, clone without CLONE_THREAD refused, clone3 answered ENOSYS; Landlock refuses execute | `(deny process-fork)` `(deny process-exec)` | job object: one active process; and the clipboard, the desktop, global atoms and other processes' USER handles |
 | the rest of the deny-list (never a budget item) | seccomp: ptrace, mount and its new calls, pivot_root, chroot, unshare, setns, kernel modules, kexec, bpf, perf_event_open, process_vm_readv and writev, keyrings, io_uring, userfaultfd, open_by_handle_at, setting the clock, reboot, swapon, acct, quotactl, personality; a signal, by kill, tgkill or sigqueue, to any process but this one; input pushed at the terminal (TIOCSTI, TIOCLINUX) | what `(deny process-fork)` and the denial of writes imply; no list of system calls | every privilege but SeChangeNotifyPrivilege removed from the token |
 | `ffi:MODULE` | widened to what FFI_WIDENS names for MODULE: nothing, any path, any host, or nothing enforced; a module not in the table, `ffi:os`, `ffi:subprocess` and plain `ffi` widen to nothing enforced, and the level is none | as Linux | as Linux |

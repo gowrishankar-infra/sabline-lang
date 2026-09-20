@@ -102,7 +102,8 @@ These are the mistakes that actually happen. Read them twice.
    `add_or_fail`, `sub_or_fail`, `mul_or_fail`, `div_or_fail`,
    `mod_or_fail`, `divide_or_fail`, `parse_money`, `py`, `py_int`,
    `py_float`, `py_json`, `py_new`, `py_do`, `py_field`, `json_get`,
-   `json_int`, `json_float`, `json_len`.
+   `json_int`, `json_float`, `json_len`, `hex_decode`, `base64_decode`,
+   `tool`, `tool_secret`.
    Handle with `check`, or pass up with `try` **only inside a function
    whose signature says `or fail`**.
 
@@ -418,6 +419,40 @@ log  (uses io)
   field(name: Text, value: Text) -> Text      pure
   die(message: Text)                          logs and STOPS, exit 1
 
+azure, github, k8s, aws  (8.5; all uses net, declassify, CAN FAIL; none
+calls Python - prefer them to py() for these services. The token is a
+Secret of Text: pass env("NAME", "") straight in, never declassify it
+yourself. Items of a list come back as JSON text: read with json_get.)
+  azure.resource_groups(token, subscription) -> List of Text
+  azure.list(token, path, most_pages) / azure.read(token, path)
+  azure.put_resource / patch_resource(token, path, body_json)
+  azure.delete_resource(token, path)    grant net:management.azure.com:443
+  github.issues / pulls(token, owner, repo, "open") -> List of Text
+  github.repo / latest_release(token, owner, repo) -> Text
+  github.releases / repos_of / check_runs(token, owner, repo, ref)
+  github.file_text(token, owner, repo, path, ref) -> Text
+  github.create_issue(token, owner, repo, title, body)
+  github.create_comment(token, owner, repo, number, body)
+                                        grant net:api.github.com:443
+  k8s.cluster(server_url, token) / k8s.in_cluster() (uses fs) -> K8sCluster
+  k8s.pods / services / deployments / configmaps / events(c, namespace)
+  k8s.nodes(c) / namespaces(c) / pod(c, ns, name) / read(c, path)
+  k8s.watch_once(c, path, resource_version, seconds) -> List of Text
+  k8s.write_create / write_patch / write_delete / write_scale change the
+    cluster; everything else only reads     grant net:<your API server>
+  aws.credentials_from_env(region) (uses env, declassify) -> AwsCredentials
+  aws.s3_list_buckets(creds) / s3_list_objects(creds, bucket, prefix, pages)
+  aws.s3_get_object / s3_put_object / s3_delete_object(creds, bucket, key..)
+  aws.sts_caller_identity(creds) -> Text     (aws also uses clock)
+                                        grant net:s3.REGION.amazonaws.com:443
+
+rest  (8.5; import "rest.vel" as rest; uses net, CAN FAIL)
+  call_json(method, url, body_json, extra_headers_map) -> RestAnswer
+  call_retrying(method, url, body, headers_json, attempts) -> RestAnswer
+    (.status .body; at most ten attempts, on 429/502/503/504 or no answer)
+  header_map(map) -> Text   items(body, path) -> List of Text   CAN FAIL
+  succeeded(answer) -> Bool
+
 env_tools  (uses io)
   setting(name, fallback) -> Secret of Text   (uses env)
   public_setting(name, fallback) -> Text      (uses env, declassify)
@@ -461,6 +496,21 @@ text_of(m) -> "INR 12.50"      parse_money(t, "INR") CAN FAIL
 to_int(t) CAN FAIL   to_text(x)   to_float(x)   round(f)
 upper(t) lower(t) split(t, sep) contains(t, s) chars(t) code_at(t, i)
 format(template, ...)
+
+sha256(t) -> 64 hex digits     url_encode(t)      (8.5, all pure, UTF-8)
+hex_encode(t)  base64_encode(t)  hex_decode(t) CAN FAIL  base64_decode(t)
+                                                          CAN FAIL
+hmac_sha256(key, message) uses declassify   key MUST be a Secret of Text
+hmac_sha256_chain(key, [m1, m2, ...]) uses declassify   HMAC again and
+  again, each result the next key (AWS SigV4). The result is a plain
+  Text; the message may not hold a secret. The audit lists the call as a
+  declassification with the reason "hmac signature".
+
+tool(name, arguments_json) CAN FAIL uses tool     a tool the host offers
+tool_secret(name, arguments_json) CAN FAIL uses tool -> Secret of Text
+  arguments: json_of({"query": text}). Only under velaris run --tools
+  manifest.json; the budget grants tool:NAME and may hold an argument to
+  a pattern (tool:send_email:to=*@corp.com). Outside the grant: E321.
 
 read_file(p) CAN FAIL uses fs
 read_file_secret(p) CAN FAIL uses fs   -> Secret of Text (rule 17)
@@ -544,6 +594,10 @@ ffi:math,json               those top-level modules only
 fs:read:./data@50           ...and at most 50 file operations in the run
 net:api.example.com@100     ...and at most 100 network operations
 clock  rand                 as before
+declassify                  letting a Secret out, and signing with one
+tool                        any tool the host offers (velaris run --tools)
+tool:search                 that tool       tool:search@20   at most 20 calls
+tool:send_email:to=*@corp.com   that tool, its `to` held to the pattern
 ```
 
 Examples: `--allow io,fs:read:./data,net:api.example.com:443@20`;
@@ -561,6 +615,10 @@ and was sent to another); every other refusal stops the program:
 | E313 | a path outside the `fs:` grants, named in the message |
 | E314 | a host or port outside the `net:` grants |
 | E315 | the operation count for `fs` or `net` was reached |
+| E320 | a tool call with no tool to reach: no `--tools`, or not offered |
+| E321 | a tool, or an argument, outside the `tool:` grants |
+| E322 | a tool count or the manifest's ceiling was reached |
+| E323 | arguments the tool's schema does not take |
 
 A budget with no count is a budget on what, not on how much.
 

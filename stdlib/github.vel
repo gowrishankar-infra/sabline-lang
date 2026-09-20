@@ -1,0 +1,324 @@
+// The GitHub REST API, with no Python: repositories, issues, pull requests,
+// check runs, releases and file contents, with paging and the rate limit
+// brought to the surface.
+//
+// import "github.vel" as github
+// let token = env("GITHUB_TOKEN", "")          // a Secret of Text
+// check github.issues(token, "octo-org", "octo-repo", "open") {
+// ok found { ... each is JSON text ... }  fail why { ... }
+// }
+//
+// Every request is written "https://api.github.com:443/" + path, so an audit
+// names that host and no other and the grant is net:api.github.com:443; a
+// next page is followed only on that host. The token leaves in one place,
+// `send`, through declassify with the reason the audit prints - a Secret
+// cannot be handed to `request` (E560) - so every function here needs `net`
+// and `declassify`. Functions that change something say so in their names:
+// create_issue, create_comment. (It imports nothing: an audit reads every
+// function a program loads, and http.vel's take any URL.)
+
+record GithubReply {
+    status: Int
+    body: Text
+    // the next page's path, or "" when this is the last
+    next: Text
+    // requests left in this window and when it resets (epoch seconds), or
+    // -1 where the reply did not say
+    remaining: Int
+    reset: Int
+}
+
+// One request. `path` is what follows the host; a leading '/' is optional.
+// `body` is JSON text or "". `attempts`: how many times to ask while the
+// answer is 502, 503 or 504 or does not arrive (at most ten). A rate limit
+// is never asked again: it is a failure that says when the window resets.
+fn send(token: Secret of Text, method: Text, path: Text, body: Text, attempts: Int) -> GithubReply
+uses net, declassify or fail
+{
+    let bearer = declassify("Bearer " + token, "the token is sent to api.github.com as the Authorization header")
+    let headers = json_of({ "Authorization": bearer, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json" })
+    let rest = no_leading_slash(path)
+    let most = attempts
+    if most > 10 {
+        most = 10
+    }
+    let last = "no attempt was made"
+    let tried = 0
+    while tried < most {
+        tried = tried + 1
+        check request(method, "https://api.github.com:443/" + rest, body, headers) {
+            ok raw {
+                let status = try json_int(raw, "status")
+                let busy = status == 502 or status == 503 or status == 504
+                if not busy or tried == most {
+                    let got = try json_get(raw, "body")
+                    return GithubReply(status: status, body: got, next: next_path(raw), remaining: header_int(raw, "X-RateLimit-Remaining", "x-ratelimit-remaining"), reset: header_int(raw, "X-RateLimit-Reset", "x-ratelimit-reset"))
+                }
+                last = format("status {}", status)
+            }
+            fail why {
+                last = why
+            }
+        }
+    }
+    fail format("api.github.com: gave up after {} attempt(s): {}", tried, last)
+}
+
+// A reply that is not 2xx becomes a failure: the rate limit by name, with
+// when it resets; anything else with GitHub's own message.
+fn expect_ok(reply: GithubReply) -> GithubReply or fail {
+    if reply.status >= 200 and reply.status < 300 {
+        return reply
+    }
+    if (reply.status == 403 or reply.status == 429) and reply.remaining == 0 {
+        fail format("api.github.com: the rate limit is reached; it resets at {} (epoch seconds)", reply.reset)
+    }
+    fail format("api.github.com answered {}: {}", reply.status, message_of(reply))
+}
+
+fn message_of(reply: GithubReply) -> Text {
+    check json_get(reply.body, "message") {
+        ok message {
+            return message
+        }
+        fail why {
+            return "no message"
+        }
+    }
+    return "no message"
+}
+
+fn read(token: Secret of Text, path: Text) -> GithubReply uses net, declassify or fail {
+    return try expect_ok(try send(token, "GET", path, "", 3))
+}
+
+// Every item of a list endpoint, following the Link header's next page for
+// at most `most_pages` pages. Running past the limit is a failure, not a
+// short list.
+fn list(token: Secret of Text, path: Text, most_pages: Int) -> List of Text
+uses net, declassify or fail
+{
+    let out: List of Text = []
+    let at = path
+    let pages = 0
+    while pages < most_pages {
+        pages = pages + 1
+        let reply = try read(token, at)
+        let page = try items(reply.body, "")
+        let i = 0
+        while i < length(page) {
+            out = push(out, get(page, i))
+            i = i + 1
+        }
+        if reply.next == "" {
+            return out
+        }
+        at = reply.next
+    }
+    fail format("the list runs past {} page(s)", most_pages)
+}
+
+// ---- repositories ------------------------------------------------------------
+
+fn repo(token: Secret of Text, owner: Text, name: Text) -> Text
+uses net, declassify or fail
+{
+    let reply = try read(token, format("repos/{}/{}", url_encode(owner), url_encode(name)))
+    return reply.body
+}
+
+fn repos_of(token: Secret of Text, owner: Text) -> List of Text
+uses net, declassify or fail
+{
+    return try list(token, format("users/{}/repos?per_page=100", url_encode(owner)), 20)
+}
+
+// ---- issues ------------------------------------------------------------------
+
+// `state` is open, closed or all. GitHub lists pull requests here too; an
+// item with a "pull_request" key is one.
+fn issues(token: Secret of Text, owner: Text, name: Text, state: Text) -> List of Text
+uses net, declassify or fail
+{
+    return try list(token, format("repos/{}/{}/issues?state={}&per_page=100", url_encode(owner), url_encode(name), url_encode(state)), 20)
+}
+
+fn create_issue(token: Secret of Text, owner: Text, name: Text, title: Text, body: Text) -> Text
+uses net, declassify or fail
+{
+    let sent = json_of({ "title": title, "body": body })
+    let reply = try expect_ok(try send(token, "POST", format("repos/{}/{}/issues", url_encode(owner), url_encode(name)), sent, 1))
+    return reply.body
+}
+
+fn create_comment(token: Secret of Text, owner: Text, name: Text, number: Int, body: Text) -> Text
+uses net, declassify or fail
+{
+    let sent = json_of({ "body": body })
+    let reply = try expect_ok(try send(token, "POST", format("repos/{}/{}/issues/{}/comments", url_encode(owner), url_encode(name), number), sent, 1))
+    return reply.body
+}
+
+// ---- pull requests -----------------------------------------------------------
+
+fn pulls(token: Secret of Text, owner: Text, name: Text, state: Text) -> List of Text
+uses net, declassify or fail
+{
+    return try list(token, format("repos/{}/{}/pulls?state={}&per_page=100", url_encode(owner), url_encode(name), url_encode(state)), 20)
+}
+
+fn pull(token: Secret of Text, owner: Text, name: Text, number: Int) -> Text
+uses net, declassify or fail
+{
+    let reply = try read(token, format("repos/{}/{}/pulls/{}", url_encode(owner), url_encode(name), number))
+    return reply.body
+}
+
+// ---- checks ------------------------------------------------------------------
+
+// The check runs of a commit, branch or tag (the first hundred).
+fn check_runs(token: Secret of Text, owner: Text, name: Text, ref: Text) -> List of Text
+uses net, declassify or fail
+{
+    let reply = try read(token, format("repos/{}/{}/commits/{}/check-runs?per_page=100", url_encode(owner), url_encode(name), url_encode(ref)))
+    return try items(reply.body, "check_runs")
+}
+
+// ---- releases ----------------------------------------------------------------
+
+fn releases(token: Secret of Text, owner: Text, name: Text) -> List of Text
+uses net, declassify or fail
+{
+    return try list(token, format("repos/{}/{}/releases?per_page=100", url_encode(owner), url_encode(name)), 20)
+}
+
+fn latest_release(token: Secret of Text, owner: Text, name: Text) -> Text
+uses net, declassify or fail
+{
+    let reply = try read(token, format("repos/{}/{}/releases/latest", url_encode(owner), url_encode(name)))
+    return reply.body
+}
+
+// ---- contents ----------------------------------------------------------------
+
+// A file's text at a ref. `path` keeps its '/'; GitHub sends the content in
+// base64, broken into lines, and a file that is not UTF-8 text is a failure.
+fn file_text(token: Secret of Text, owner: Text, name: Text, path: Text, ref: Text) -> Text
+uses net, declassify or fail
+{
+    let where = ""
+    for part in split(path, "/") {
+        if part != "" {
+            if where != "" {
+                where = where + "/"
+            }
+            where = where + url_encode(part)
+        }
+    }
+    let reply = try read(token, format("repos/{}/{}/contents/{}?ref={}", url_encode(owner), url_encode(name), where, url_encode(ref)))
+    let encoded = try json_get(reply.body, "content")
+    let joined = ""
+    for line in split(encoded, "\n") {
+        joined = joined + line
+    }
+    return try base64_decode(joined)
+}
+
+// ---- headers, paging and text ------------------------------------------------
+
+// A reply header as a whole number, under either spelling of its name, or
+// -1 when it is not there.
+fn header_int(raw: Text, name: Text, lowered: Text) -> Int {
+    for spelling in [name, lowered] {
+        if json_has(raw, "headers." + spelling) {
+            check json_int(raw, "headers." + spelling) {
+                ok n {
+                    return n
+                }
+                fail why {
+                    return -1
+                }
+            }
+        }
+    }
+    return -1
+}
+
+// The path of the page the Link header calls rel="next", or "" when there
+// is none or it is on any other host.
+fn next_path(raw: Text) -> Text {
+    let link = ""
+    for spelling in ["Link", "link"] {
+        if link == "" and json_has(raw, "headers." + spelling) {
+            check json_get(raw, "headers." + spelling) {
+                ok found {
+                    link = found
+                }
+                fail why {
+                    link = ""
+                }
+            }
+        }
+    }
+    for part in split(link, ",") {
+        if contains(part, "rel=\"next\"") {
+            let opened = split(part, "<")
+            if length(opened) == 2 {
+                let closed = split(get(opened, 1), ">")
+                check after_prefix(get(closed, 0), "https://api.github.com/") {
+                    ok rest {
+                        return rest
+                    }
+                    fail why {
+                        return ""
+                    }
+                }
+            }
+        }
+    }
+    return ""
+}
+
+fn items(body: Text, path: Text) -> List of Text or fail {
+    let n = try json_len(body, path)
+    let out: List of Text = []
+    let i = 0
+    while i < n {
+        out = push(out, try json_get(body, format("{}[{}]", path, i)))
+        i = i + 1
+    }
+    return out
+}
+
+fn after_prefix(text: Text, prefix: Text) -> Text or fail {
+    let rest = ""
+    let i = 0
+    for piece in split(text, prefix) {
+        if i == 0 and piece != "" {
+            fail format("'{}' does not begin with '{}'", text, prefix)
+        }
+        if i == 1 {
+            rest = piece
+        }
+        if i > 1 {
+            rest = rest + prefix + piece
+        }
+        i = i + 1
+    }
+    if i < 2 {
+        fail format("'{}' does not begin with '{}'", text, prefix)
+    }
+    return rest
+}
+
+fn no_leading_slash(path: Text) -> Text {
+    check after_prefix(path, "/") {
+        ok rest {
+            return rest
+        }
+        fail why {
+            return path
+        }
+    }
+    return path
+}

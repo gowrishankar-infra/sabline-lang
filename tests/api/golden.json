@@ -59,6 +59,7 @@
     "--output"
    ],
    "audit": [
+    "--html",
     "--sarif"
    ],
    "build": [],
@@ -82,6 +83,9 @@
     "--corpus",
     "--json",
     "--level"
+   ],
+   "demo": [
+    "--keep"
    ],
    "deps": [
     "--verify"
@@ -142,6 +146,9 @@
     "--min",
     "--sarif"
    ],
+   "receipt": [
+    "--text"
+   ],
    "receipts": [
     "--against",
     "--audit",
@@ -160,7 +167,10 @@
     "--against",
     "--json"
    ],
-   "run": [],
+   "run": [
+    "--tool-timeout",
+    "--tools"
+   ],
    "serve": [
     "--bind",
     "--check-memory-mb",
@@ -175,6 +185,10 @@
     "--rate-limit",
     "--root",
     "--token-file"
+   ],
+   "skill": [
+    "--json",
+    "--tools"
    ],
    "stats": [
     "--ffi",
@@ -215,8 +229,10 @@
    "--from-contracts",
    "--grace",
    "--help",
+   "--html",
    "--identity",
    "--json",
+   "--keep",
    "--level",
    "--log",
    "--log-file",
@@ -242,10 +258,13 @@
    "--stdin",
    "--stop-file",
    "--strict",
+   "--text",
    "--time",
    "--timeout",
    "--to",
    "--token-file",
+   "--tool-timeout",
+   "--tools",
    "--verify",
    "--version",
    "--witness-seconds",
@@ -319,6 +338,10 @@
       "declassifies": "bool",
       "sources": []
      },
+     "tools": {
+      "any": "bool",
+      "names": []
+     },
      "velaris_version": "str",
      "warnings": []
     },
@@ -391,6 +414,10 @@
       "declassifications": [],
       "declassifies": "bool",
       "sources": []
+     },
+     "tools": {
+      "any": "bool",
+      "names": []
      },
      "velaris_version": "str",
      "warnings": []
@@ -536,6 +563,7 @@
         "outcome": "str",
         "status": "int"
        },
+       "grants_used": [],
        "producer": {
         "name": "str",
         "uri": "str",
@@ -632,6 +660,7 @@
         "outcome": "str",
         "status": "int"
        },
+       "grants_used": [],
        "producer": {
         "name": "str",
         "uri": "str",
@@ -930,6 +959,11 @@
    "E317",
    "E318",
    "E319",
+   "E320",
+   "E321",
+   "E322",
+   "E323",
+   "E324",
    "E400",
    "E401",
    "E402",
@@ -1054,7 +1088,8 @@
      "prover",
      "secrets",
      "ffi_native",
-     "confinement"
+     "confinement",
+     "tools"
     ]
    },
    "BAD": {
@@ -1461,6 +1496,10 @@
      "__init__": "(self, name, params, return_type, effects, requires, ensures, body, line, src_file='', can_fail=False, type_vars=<factory>, is_lambda=False, captures=<factory>)"
     },
     "signature": "(name, params, return_type, effects, requires, ensures, body, line, src_file='', can_fail=False, type_vars=<factory>, is_lambda=False, captures=<factory>)"
+   },
+   "GRANT_USES": {
+    "kind": "value",
+    "type": "dict"
    },
    "HAVE_Z3": {
     "kind": "value",
@@ -2086,6 +2125,22 @@
     "kind": "value",
     "type": "list"
    },
+   "TOOL_COUNTS": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "TOOL_GRANTS": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "TOOL_LIMITS": {
+    "kind": "value",
+    "type": "dict"
+   },
+   "TOOL_SESSION": {
+    "kind": "value",
+    "type": "NoneType"
+   },
    "TRACE": {
     "kind": "value",
     "type": "dict"
@@ -2417,7 +2472,7 @@
    },
    "host_refusal": {
     "kind": "function",
-    "signature": "(url)"
+    "signature": "(url, count=False)"
    },
    "inspect_source": {
     "kind": "function",
@@ -3019,6 +3074,10 @@
       "declassifies": "bool",
       "sources": []
      },
+     "tools": {
+      "any": "bool",
+      "names": []
+     },
      "velaris_version": "str",
      "warnings": []
     }
@@ -3116,6 +3175,7 @@
         "outcome": "str",
         "status": "int"
        },
+       "grants_used": [],
        "producer": {
         "name": "str",
         "uri": "str",

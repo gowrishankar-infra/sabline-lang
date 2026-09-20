@@ -57,6 +57,46 @@
       "type": ["object", "null"],
       "additionalProperties": {"type": "integer", "minimum": 0}
     },
+    "grants_used": {
+      "description": "From velaris-spec 0.13.0. Each grant of the budget that let at least one operation through, as canonical text without a count, with how many. The operator's text: never the path, host, module or argument the program gave.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["grant", "times"],
+        "properties": {
+          "grant": {"type": "string", "minLength": 1},
+          "times": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "tool_calls": {
+      "description": "From velaris-spec 0.13.0, for a run given a manifest of tools. Each place a tool was called; never its arguments or its result.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tool", "line", "times", "secret", "held_to"],
+        "properties": {
+          "tool": {"type": "string"},
+          "line": {"type": ["integer", "null"], "minimum": 0},
+          "times": {"type": "integer", "minimum": 1},
+          "secret": {"type": "boolean"},
+          "held_to": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "tool_ceiling": {
+      "description": "From velaris-spec 0.13.0, with tool_calls: the manifest's ceiling, what the run spent of it, and the sha256 of the manifest.",
+      "type": "object",
+      "required": ["calls", "cost", "unit", "calls_used", "cost_used", "manifest_sha256"],
+      "properties": {
+        "calls": {"type": ["integer", "null"], "minimum": 0},
+        "cost": {"type": ["number", "null"], "minimum": 0},
+        "unit": {"type": "string"},
+        "calls_used": {"type": "integer", "minimum": 0},
+        "cost_used": {"type": "number", "minimum": 0},
+        "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
     "refusals": {
       "description": "Each place the budget refused the run, once per code, effect, line and whether it stopped the run, with how many times. The path, host or module the program named is not recorded.",
       "type": "array",
@@ -65,7 +105,7 @@
         "required": ["code", "effect", "line", "stopped", "times"],
         "properties": {
           "code": {"type": ["string", "null"], "pattern": "^E[0-9]{3}$"},
-          "effect": {"enum": ["io", "env", "fs", "net", "clock", "rand", "ffi", "declassify", null]},
+          "effect": {"enum": ["io", "env", "fs", "net", "clock", "rand", "ffi", "declassify", "tool", null]},
           "line": {"type": ["integer", "null"], "minimum": 0},
           "stopped": {"type": "boolean"},
           "times": {"type": "integer", "minimum": 1}
@@ -79,6 +119,7 @@
         "type": "object",
         "required": ["reason", "line", "times"],
         "properties": {
+          "key_fingerprint": {"description": "From velaris-spec 0.13.0, on a MAC under a secret key (reason \"hmac signature\"): twelve lowercase hexadecimal digits that tell one key from another, or \"many\". Never the key or the MAC.", "type": "string", "pattern": "^([0-9a-f]{12}|many)$"},
           "reason": {"type": "string"},
           "line": {"type": ["integer", "null"], "minimum": 0},
           "times": {"type": "integer", "minimum": 1}

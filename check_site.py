@@ -558,7 +558,7 @@ def check_search(out: Path, built: build_docs.Built, parsed: dict[str, Strict]) 
 
 def check_landing(out: Path, built: build_docs.Built, parsed: dict[str, Strict]) -> None:
     section("the landing page, and llms.txt")
-    card = (HERE / "LLM.md").read_bytes()
+    card = build_docs.lf_bytes(HERE / "LLM.md")   # as the build copies it
     for tree in built.trees:
         rel = tree.prefix + "index.html"
         text = (out / rel).read_text(encoding="utf-8")

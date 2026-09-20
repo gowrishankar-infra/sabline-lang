@@ -35,7 +35,7 @@ from typing import Any
 INTOTO_STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
 # the type is velaris/predicates.py's: at velaris-lang.dev from 8.3, and the
 # version of velaris-spec that names it there
-CAPABILITY_SPEC = "velaris-spec 0.12.0"
+CAPABILITY_SPEC = "velaris-spec 0.13.0"
 
 
 def _attested_at() -> str:

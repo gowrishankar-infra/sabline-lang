@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Standard library - Velaris 8.4.0</title>
+<title>Standard library - Velaris 8.5.0</title>
 <meta name="description" content="Every function below is written in Velaris, in stdlib/, and read onto this page by the compiler itself, contracts included. A violated requires is a compile ...">
-<meta name="velaris-version" content="8.4.0">
+<meta name="velaris-version" content="8.5.0">
 <link rel="canonical" href="https://velaris-lang.dev/library.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
@@ -18,7 +18,7 @@
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
 <a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.4.0, all versions"><span>8.4.0</span></a>
+<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,13 +52,54 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-2.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc wide" tabindex="-1">
 <h1 id="standard-library">Standard library</h1>
 <p class="lead">Every function below is written in Velaris, in stdlib/, and read onto this page by the compiler itself, contracts included. A violated <code>requires</code> is a compile error at your call site.</p>
+<h2 id="awsvel">aws.vel <a class="anchor" href="#awsvel" aria-label="Link to this section">#</a></h2>
+<p>Requests signed with Signature Version 4, in Velaris, to S3 and STS. The secret key stays a Secret: the signature is one <code>hmac_sha256_chain</code> call, which the audit lists as a declassification with the reason "hmac signature". Grant the region's hosts, <code>clock</code> and <code>declassify</code>; example: <code>examples/ops/aws_buckets.vel</code>.</p>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.credentials_from_env(region: Text) -&gt; AwsCredentials <span class="k">uses</span> declassify, env</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.signature(creds: AwsCredentials, service: Text, amz_date: Text, method: Text, path: Text, query: List of Text, headers: List of Text, payload_hash: Text) -&gt; Text <span class="k">uses</span> declassify</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.authorization(creds: AwsCredentials, service: Text, amz_date: Text, signed: Text, headers: List of Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.send(creds: AwsCredentials, service: Text, host: Text, method: Text, path: Text, query: List of Text, body: Text, content_type: Text) -&gt; AwsReply <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> clock, declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.expect_ok(reply: AwsReply) -&gt; AwsReply <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.s3_host(creds: AwsCredentials) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.s3_list_buckets(creds: AwsCredentials) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> clock, declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.s3_list_objects(creds: AwsCredentials, bucket: Text, prefix: Text, most_pages: Int) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> clock, declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.s3_get_object(creds: AwsCredentials, bucket: Text, key: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> clock, declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.s3_put_object(creds: AwsCredentials, bucket: Text, key: Text, text: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> clock, declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.s3_delete_object(creds: AwsCredentials, bucket: Text, key: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> clock, declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.sts_caller_identity(creds: AwsCredentials) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> clock, declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.no_query() -&gt; List of Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.canonical_path(path: Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.header_names(headers: List of Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.joined(parts: List of Text, with: Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.take(text: Text, n: Int) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.two(n: Int) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.amz_date_of(epoch: Int) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.xml_values(body: Text, tag: Text) -&gt; List of Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.first_value(body: Text, tag: Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.swapped(text: Text, old: Text, new: Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> aws.unescaped(text: Text) -&gt; Text</p></div>
+<h2 id="azurevel">azure.vel <a class="anchor" href="#azurevel" aria-label="Link to this section">#</a></h2>
+<p>Azure Resource Manager over REST: GET, PUT, PATCH and DELETE on management.azure.com, paging, ARM's error shape. The bearer token is the caller's, a Secret of Text. Grant <code>net:management.azure.com:443</code> and <code>declassify</code>; example: <code>examples/ops/azure_groups.vel</code>.</p>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.send(token: Secret of Text, method: Text, path: Text, body: Text, attempts: Int) -&gt; AzureReply <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.next_path(body: Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.expect_ok(reply: AzureReply) -&gt; AzureReply <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.error_of(reply: AzureReply) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.read(token: Secret of Text, path: Text) -&gt; AzureReply <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.put_resource(token: Secret of Text, path: Text, body: Text) -&gt; AzureReply <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.patch_resource(token: Secret of Text, path: Text, body: Text) -&gt; AzureReply <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.delete_resource(token: Secret of Text, path: Text) -&gt; AzureReply <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.list(token: Secret of Text, path: Text, most_pages: Int) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.resource_groups(token: Secret of Text, subscription: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.worth_retrying(status: Int) -&gt; Bool</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.items(body: Text, path: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.after_prefix(text: Text, prefix: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> azure.no_leading_slash(path: Text) -&gt; Text</p></div>
 <h2 id="csvvel">csv.vel <a class="anchor" href="#csvvel" aria-label="Link to this section">#</a></h2>
 <div class="fn"><p class="sig"><span class="k">fn</span> csv.fields(line: Text) -&gt; List of Text</p><p class="contract"><span class="k">ensures</span> length(result) &gt;= <span class="n">1</span></p></div>
 <div class="fn"><p class="sig"><span class="k">fn</span> csv.quoted_field(value: Text) -&gt; Text</p></div>
@@ -88,6 +129,29 @@
 <div class="fn"><p class="sig"><span class="k">fn</span> env_tools.number_setting(name: Text, fallback: Int) -&gt; Int <span class="k">uses</span> declassify, env</p></div>
 <div class="fn"><p class="sig"><span class="k">fn</span> env_tools.succeed() <span class="k">uses</span> io</p></div>
 <div class="fn"><p class="sig"><span class="k">fn</span> env_tools.give_up(why: Text) <span class="k">uses</span> io</p></div>
+<h2 id="githubvel">github.vel <a class="anchor" href="#githubvel" aria-label="Link to this section">#</a></h2>
+<p>The GitHub REST API: repositories, issues, pull requests, check runs, releases and file contents, with paging, and the rate limit as a failure that says when it resets. Grant <code>net:api.github.com:443</code> and <code>declassify</code>; example: <code>examples/ops/github_issues.vel</code>.</p>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.send(token: Secret of Text, method: Text, path: Text, body: Text, attempts: Int) -&gt; GithubReply <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.expect_ok(reply: GithubReply) -&gt; GithubReply <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.message_of(reply: GithubReply) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.read(token: Secret of Text, path: Text) -&gt; GithubReply <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.list(token: Secret of Text, path: Text, most_pages: Int) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.repo(token: Secret of Text, owner: Text, name: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.repos_of(token: Secret of Text, owner: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.issues(token: Secret of Text, owner: Text, name: Text, state: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.create_issue(token: Secret of Text, owner: Text, name: Text, title: Text, body: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.create_comment(token: Secret of Text, owner: Text, name: Text, number: Int, body: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.pulls(token: Secret of Text, owner: Text, name: Text, state: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.pull(token: Secret of Text, owner: Text, name: Text, number: Int) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.check_runs(token: Secret of Text, owner: Text, name: Text, ref: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.releases(token: Secret of Text, owner: Text, name: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.latest_release(token: Secret of Text, owner: Text, name: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.file_text(token: Secret of Text, owner: Text, name: Text, path: Text, ref: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.header_int(raw: Text, name: Text, lowered: Text) -&gt; Int</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.next_path(raw: Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.items(body: Text, path: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.after_prefix(text: Text, prefix: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> github.no_leading_slash(path: Text) -&gt; Text</p></div>
 <h2 id="httpvel">http.vel <a class="anchor" href="#httpvel" aria-label="Link to this section">#</a></h2>
 <div class="fn"><p class="sig"><span class="k">fn</span> http.get(url: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
 <div class="fn"><p class="sig"><span class="k">fn</span> http.status(url: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p><p class="contract"><span class="k">ensures</span> result &gt;= <span class="n">0</span></p></div>
@@ -100,6 +164,31 @@
 <div class="fn"><p class="sig"><span class="k">fn</span> http.header_of(answer: Answer, name: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span></p></div>
 <div class="fn"><p class="sig"><span class="k">fn</span> http.get_with(url: Text, headers: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
 <div class="fn"><p class="sig"><span class="k">fn</span> http.post_json(url: Text, body: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<h2 id="k8svel">k8s.vel <a class="anchor" href="#k8svel" aria-label="Link to this section">#</a></h2>
+<p>The Kubernetes API over REST: list, get and watch-once for the core resources, the in-cluster service-account token read as a Secret. It reads; every function that changes the cluster begins <code>write_</code>. Grant your API server's host and <code>declassify</code>; example: <code>examples/ops/k8s_pods.vel</code>.</p>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.cluster(server: Text, token: Secret of Text) -&gt; K8sCluster</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.in_cluster() -&gt; K8sCluster <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> fs</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.in_cluster_namespace() -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> fs</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.first_line(text: Secret of Text) -&gt; Secret of Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.send(c: K8sCluster, method: Text, path: Text, body: Text, content_type: Text, attempts: Int) -&gt; K8sReply <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.expect_ok(reply: K8sReply) -&gt; K8sReply <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.status_of(reply: K8sReply) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.read(c: K8sCluster, path: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.list(c: K8sCluster, path: Text, most_pages: Int) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.namespaces(c: K8sCluster) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.nodes(c: K8sCluster) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.pods(c: K8sCluster, namespace: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.pod(c: K8sCluster, namespace: Text, name: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.services(c: K8sCluster, namespace: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.configmaps(c: K8sCluster, namespace: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.events(c: K8sCluster, namespace: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.deployments(c: K8sCluster, namespace: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.deployment(c: K8sCluster, namespace: Text, name: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.watch_once(c: K8sCluster, path: Text, resource_version: Text, seconds: Int) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.write_create(c: K8sCluster, path: Text, body: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.write_patch(c: K8sCluster, path: Text, merge_patch: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.write_delete(c: K8sCluster, path: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> k8s.write_scale(c: K8sCluster, namespace: Text, name: Text, replicas: Int) -&gt; Text <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> declassify, net</p></div>
 <h2 id="logvel">log.vel <a class="anchor" href="#logvel" aria-label="Link to this section">#</a></h2>
 <div class="fn"><p class="sig"><span class="k">fn</span> log.info(message: Text) <span class="k">uses</span> io</p></div>
 <div class="fn"><p class="sig"><span class="k">fn</span> log.warn(message: Text) <span class="k">uses</span> io</p></div>
@@ -112,6 +201,18 @@
 <div class="fn"><p class="sig"><span class="k">fn</span> money.not_negative(m: Money of C) -&gt; Bool <span class="k">for</span> any C</p></div>
 <div class="fn"><p class="sig"><span class="k">fn</span> money.not_positive(m: Money of C) -&gt; Bool <span class="k">for</span> any C</p></div>
 <div class="fn"><p class="sig"><span class="k">fn</span> money.split(amount: Money of C, ways: Int) -&gt; List of Money of C <span class="k">for</span> any C</p><p class="contract"><span class="k">requires</span> ways &gt; <span class="n">0</span></p><p class="contract"><span class="k">ensures</span> length(result) == ways</p><p class="contract"><span class="k">ensures</span> units_of(result) == units_of(amount)</p><p class="contract"><span class="k">ensures</span> units_of(amount) &lt; <span class="n">0</span> <span class="k">or</span> all_of(result, not_negative)</p><p class="contract"><span class="k">ensures</span> units_of(amount) &gt; <span class="n">0</span> <span class="k">or</span> all_of(result, not_positive)</p></div>
+<h2 id="restvel">rest.vel <a class="anchor" href="#restvel" aria-label="Link to this section">#</a></h2>
+<p>What a program that talks to a REST API needs beside <code>http.vel</code>: a request asked again within a bound, JSON bodies, headers from a map, the items of a JSON list (8.5).</p>
+<div class="fn"><p class="sig"><span class="k">fn</span> rest.call(method: Text, url: Text, body: Text, headers: Text) -&gt; RestAnswer <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> rest.header_of(answer: RestAnswer, name: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> rest.header_map(of: Map of Text to Text) -&gt; Text</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> rest.call_json(method: Text, url: Text, body: Text, extra: Map of Text to Text) -&gt; RestAnswer <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> rest.worth_retrying(code: Int) -&gt; Bool</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> rest.succeeded(answer: RestAnswer) -&gt; Bool</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> rest.call_retrying(method: Text, url: Text, body: Text, headers: Text, attempts: Int) -&gt; RestAnswer <span class="k">or</span> <span class="k">fail</span> <span class="k">uses</span> net</p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> rest.items(body: Text, path: Text) -&gt; List of Text <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> rest.after_prefix(text: Text, prefix: Text) -&gt; Text <span class="k">or</span> <span class="k">fail</span></p></div>
+<div class="fn"><p class="sig"><span class="k">fn</span> rest.no_leading_slash(path: Text) -&gt; Text</p></div>
 <h2 id="stdvel">std.vel <a class="anchor" href="#stdvel" aria-label="Link to this section">#</a></h2>
 <div class="fn"><p class="sig"><span class="k">fn</span> first(xs: List of T) -&gt; T <span class="k">for</span> any T</p><p class="contract"><span class="k">requires</span> length(xs) &gt; <span class="n">0</span></p></div>
 <div class="fn"><p class="sig"><span class="k">fn</span> last(xs: List of T) -&gt; T <span class="k">for</span> any T</p><p class="contract"><span class="k">requires</span> length(xs) &gt; <span class="n">0</span></p></div>
@@ -149,6 +250,8 @@
 <tr><td><code>any_of</code></td><td>pure</td><td>Any, Any</td><td>Bool</td></tr>
 <tr><td><code>args</code></td><td>io</td><td></td><td>List of Text</td></tr>
 <tr><td><code>ask</code></td><td>io</td><td>Text</td><td>Text</td></tr>
+<tr><td><code>base64_decode</code> <span class="ecode">or fail</span></td><td>pure</td><td>Text</td><td>Text</td></tr>
+<tr><td><code>base64_encode</code></td><td>pure</td><td>Text</td><td>Text</td></tr>
 <tr><td><code>chars</code></td><td>pure</td><td>Text</td><td>List of Text</td></tr>
 <tr><td><code>code_at</code></td><td>pure</td><td>Text, Int</td><td>Int</td></tr>
 <tr><td><code>contains</code></td><td>pure</td><td>Text, Text</td><td>Bool</td></tr>
@@ -164,6 +267,10 @@
 <tr><td><code>get</code></td><td>pure</td><td>Any, Any</td><td>Any</td></tr>
 <tr><td><code>get_or</code></td><td>pure</td><td>Any, Any, Any</td><td>Any</td></tr>
 <tr><td><code>has</code></td><td>pure</td><td>Any, Any</td><td>Bool</td></tr>
+<tr><td><code>hex_decode</code> <span class="ecode">or fail</span></td><td>pure</td><td>Text</td><td>Text</td></tr>
+<tr><td><code>hex_encode</code></td><td>pure</td><td>Text</td><td>Text</td></tr>
+<tr><td><code>hmac_sha256</code></td><td>declassify</td><td>Secret of Text, Text</td><td>Text</td></tr>
+<tr><td><code>hmac_sha256_chain</code></td><td>declassify</td><td>Secret of Text, List of Text</td><td>Text</td></tr>
 <tr><td><code>json_float</code> <span class="ecode">or fail</span></td><td>pure</td><td>Text, Text</td><td>Float</td></tr>
 <tr><td><code>json_get</code> <span class="ecode">or fail</span></td><td>pure</td><td>Text, Text</td><td>Text</td></tr>
 <tr><td><code>json_has</code></td><td>pure</td><td>Text, Text</td><td>Bool</td></tr>
@@ -200,6 +307,7 @@
 <tr><td><code>request</code> <span class="ecode">or fail</span></td><td>net</td><td>Text, Text, Text, Text</td><td>Text</td></tr>
 <tr><td><code>round</code></td><td>pure</td><td>Float</td><td>Int</td></tr>
 <tr><td><code>set_at</code> <span class="ecode">or fail</span></td><td>pure</td><td>Any, Int, Any</td><td>Any</td></tr>
+<tr><td><code>sha256</code></td><td>pure</td><td>Text</td><td>Text</td></tr>
 <tr><td><code>slice</code> <span class="ecode">or fail</span></td><td>pure</td><td>Any, Int, Int</td><td>Any</td></tr>
 <tr><td><code>split</code></td><td>pure</td><td>Text, Text</td><td>List of Text</td></tr>
 <tr><td><code>sub_or_fail</code> <span class="ecode">or fail</span></td><td>pure</td><td>Int, Int</td><td>Int</td></tr>
@@ -207,18 +315,21 @@
 <tr><td><code>to_float</code></td><td>pure</td><td>Int</td><td>Float</td></tr>
 <tr><td><code>to_int</code> <span class="ecode">or fail</span></td><td>pure</td><td>Text</td><td>Int</td></tr>
 <tr><td><code>to_text</code></td><td>pure</td><td>Any</td><td>Text</td></tr>
+<tr><td><code>tool</code> <span class="ecode">or fail</span></td><td>tool</td><td>Text, Text</td><td>Text</td></tr>
+<tr><td><code>tool_secret</code> <span class="ecode">or fail</span></td><td>tool</td><td>Text, Text</td><td>Secret of Text</td></tr>
 <tr><td><code>units_of</code></td><td>pure</td><td>Money of C, or List of Money of C</td><td>Int</td></tr>
 <tr><td><code>upper</code></td><td>pure</td><td>Text</td><td>Text</td></tr>
+<tr><td><code>url_encode</code></td><td>pure</td><td>Text</td><td>Text</td></tr>
 <tr><td><code>with_units</code></td><td>pure</td><td>Money of C, Int</td><td>Money of C</td></tr>
 <tr><td><code>write_file</code></td><td>fs</td><td>Text, Any</td><td>Unit</td></tr>
 </tbody></table></div>
 <p>get on a map can also fail (missing key); get_or never fails.</p>
 </main>
 <footer class="foot wide">
-<p>Generated from stdlib/ by build_docs.py, for Velaris 8.4.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from stdlib/ by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#csvvel">csv.vel</a></li><li><a href="#datesvel">dates.vel</a></li><li><a href="#dbvel">db.vel</a></li><li><a href="#env_toolsvel">env_tools.vel</a></li><li><a href="#httpvel">http.vel</a></li><li><a href="#logvel">log.vel</a></li><li><a href="#moneyvel">money.vel</a></li><li><a href="#stdvel">std.vel</a></li><li><a href="#timevel">time.vel</a></li><li><a href="#built-in-functions">Built-in functions</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#awsvel">aws.vel</a></li><li><a href="#azurevel">azure.vel</a></li><li><a href="#csvvel">csv.vel</a></li><li><a href="#datesvel">dates.vel</a></li><li><a href="#dbvel">db.vel</a></li><li><a href="#env_toolsvel">env_tools.vel</a></li><li><a href="#githubvel">github.vel</a></li><li><a href="#httpvel">http.vel</a></li><li><a href="#k8svel">k8s.vel</a></li><li><a href="#logvel">log.vel</a></li><li><a href="#moneyvel">money.vel</a></li><li><a href="#restvel">rest.vel</a></li><li><a href="#stdvel">std.vel</a></li><li><a href="#timevel">time.vel</a></li><li><a href="#built-in-functions">Built-in functions</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

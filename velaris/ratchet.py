@@ -44,7 +44,7 @@ from .termination import (
     _steps_along_paths,
 )
 from .editor import inspect_source
-from .library import _FFI_CALLS, _host_entry
+from .library import _FFI_CALLS, _url_host
 from .findings import _SarifRun, print_sarif_summary
 from typing import Any, cast
 
@@ -97,6 +97,14 @@ def _grant_parts(g: str) -> tuple[Any, ...]:
                          f"go in 'counts'")
     if g in _PLAIN_EFFECTS:
         return (g,)
+    if g == "tool":                        # 8.5
+        return ("tool", None)
+    if g.startswith("tool:"):
+        from .budget import _tool_word
+        if not _tool_word(g[5:]):
+            raise ValueError(f"'{g}': tool: names one tool; a baseline "
+                             f"records which tools, not their arguments")
+        return ("tool", g[5:])
     if g == "ffi":
         return ("ffi", None)
     if g.startswith("ffi:"):
@@ -187,7 +195,7 @@ def _covers(b: tuple[Any, ...], c: tuple[Any, ...]) -> bool:
         return False
     if b[0] in _PLAIN_EFFECTS:
         return True
-    if b[0] == "ffi":
+    if b[0] in ("ffi", "tool"):
         return b[1] is None or b[1] == c[1]
     if b[1] is None:                       # plain fs or net: everything
         return True
@@ -344,7 +352,8 @@ def _literals_named(funcs: list[Any]) -> dict[Any, Any]:
         at = url_at.get(call.name)
         if at is not None and len(call.args) > at:
             value = _text_value(call.args[at], consts)
-            entry = _host_entry(value) if value is not None else None
+            entry = _url_host(call.args[at],
+                              lambda x: _text_value(x, consts))
             if entry:
                 lits["hosts"].setdefault(entry, []).append(
                     _site(fn, call, value))
@@ -380,6 +389,13 @@ def _needs(effects: Any, lits: dict[Any, Any], funcs: list[Any], own: list[Any])
     while running, makes the grant unscoped: wider, so a scoped baseline
     does not cover it and someone has to look."""
     out: dict[Any, Any] = {}
+    consts_memo: dict[str, Any] = {}
+
+    def consts_by_fn(fn: Any) -> dict[Any, Any]:
+        if fn.name not in consts_memo:
+            consts_memo[fn.name] = _text_constants(fn)
+        return cast(dict[Any, Any], consts_memo[fn.name])
+
     for e in sorted(effects):
         if e in _PLAIN_EFFECTS:
             out[e] = _effect_sites(e, funcs, own)
@@ -423,6 +439,28 @@ def _needs(effects: Any, lits: dict[Any, Any], funcs: list[Any], own: list[Any])
             else:
                 for h, sites in hosts.items():
                     out[f"net:{h}"] = sites
+        elif e == "tool":
+            # the tools its calls name as text, each a grant; one named
+            # with a value built while running makes the grant unscoped
+            named: dict[str, list[Any]] = {}
+            unnamed: list[Any] = []
+            for fn, call in _call_sites(funcs):
+                if call.name.lstrip("@") not in ("tool", "tool_secret"):
+                    continue
+                value = _text_value(call.args[0], consts_by_fn(fn)) \
+                    if call.args else None
+                if value is not None:
+                    named.setdefault(value, []).append(
+                        _site(fn, call, value))
+                else:
+                    unnamed.append(_site(fn, call))
+            if unnamed or not named:
+                out["tool"] = unnamed + [s for ss in named.values()
+                                         for s in ss] or \
+                    _effect_sites("tool", funcs, own)
+            else:
+                for name, sites in named.items():
+                    out[f"tool:{name}"] = sites
     # a grant the baseline grammar cannot hold falls back to its effect
     safe: dict[Any, Any] = {}
     for g, sites in out.items():

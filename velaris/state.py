@@ -51,6 +51,21 @@ OP_COUNTS: dict[str, int] = {"fs": 0, "net": 0}
 EFFECT_USES: dict[str, int] = {}     # effect -> how many builtin calls the
                            # budget let through this run; what the doors log (3.4)
 
+# Tools (8.5). TOOL_GRANTS is None for any tool (a plain `tool` grant), else
+# {name: None for any arguments, or [(argument, pattern), ...]}; an empty
+# dict is what a budget without `tool` leaves. TOOL_LIMITS holds the @N
+# caps, by tool name and under "" for the whole run; TOOL_COUNTS what has
+# been spent of them. GRANT_USES counts what each grant let through, by the
+# grant's own text - the operator's words, never the program's - which is
+# what a receipt's `grants_used` is made from. TOOL_SESSION is the session `velaris
+# run --tools` opened (velaris/tools.py), or None: then there is no tool to
+# reach and a call is E320.
+TOOL_GRANTS: "dict[str, list[tuple[str, str]] | None] | None" = {}
+TOOL_LIMITS: dict[str, int] = {}
+TOOL_COUNTS: dict[str, int] = {}
+GRANT_USES: dict[str, int] = {}
+TOOL_SESSION: _typing.Any = None
+
 # Determinism knobs (8.0). --seed makes random() reproducible; --freeze-time
 # makes now() a fixed instant. Neither is a grant: a program still needs
 # `rand` for random() and `clock` for now(), and the budget still refuses

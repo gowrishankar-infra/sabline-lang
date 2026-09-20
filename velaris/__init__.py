@@ -14,11 +14,12 @@ import typing as _typing
 _MODULES = (
     "version", "predicates", "errors", "lexer", "nodes", "parser",
     "tables", "confine", "state", "recorder", "loader", "values",
-    "wrappers", "budget", "effects", "checker", "termination",
+    "wrappers", "budget", "tools", "effects", "checker", "termination",
     "prover", "native", "runtime", "witnesses", "editor", "formatter",
     "project", "session", "results", "library", "pool",
     "findings", "mcp_manifest", "doors", "migrate", "ratchet",
     "conform", "attestation", "receipts", "statements", "receipt_diff",
+    "viewer", "demo", "skill",
     "evaluation", "replay",
     "upgrades", "stats",
     "eject", "permissions", "cli",
@@ -26,13 +27,14 @@ _MODULES = (
 
 from . import version, predicates, errors, lexer, nodes, parser  # noqa: E402,F401
 from . import tables, confine, state, recorder, loader, values  # noqa: E402,F401
-from . import wrappers, budget  # noqa: E402,F401
+from . import wrappers, budget, tools  # noqa: E402,F401
 from . import effects, checker, termination, prover, native, runtime  # noqa: E402,F401
 from . import witnesses  # noqa: E402,F401
 from . import editor, formatter, project, session, results, library  # noqa: E402,F401
 from . import pool, findings, mcp_manifest, doors, migrate, ratchet  # noqa: E402,F401
 from . import conform, attestation, receipts, statements  # noqa: E402,F401
-from . import receipt_diff, evaluation, replay  # noqa: E402,F401
+from . import receipt_diff, viewer, demo, skill  # noqa: E402,F401
+from . import evaluation, replay  # noqa: E402,F401
 from . import upgrades  # noqa: E402,F401
 from . import stats, eject  # noqa: E402,F401
 from . import permissions  # noqa: E402,F401

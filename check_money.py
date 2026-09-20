@@ -577,9 +577,10 @@ ok("velaris.audit/1 is unchanged in shape",
    doc["schema"] == "velaris.audit/1" and "counts" in doc
    and "prover" in doc, sorted(doc))
 # Money added no effect of its own. The list is the seven of 3.0 plus
-# declassify, which 6.0 added for Secret - nothing here is Money's.
+# declassify, which 6.0 added for Secret, and tool, which 8.5 added for the
+# runner - nothing here is Money's.
 ok("Money added no effect", velaris.ALL_EFFECTS == (
-    "io", "env", "fs", "net", "clock", "rand", "ffi", "declassify"),
+    "io", "env", "fs", "net", "clock", "rand", "ffi", "declassify", "tool"),
    str(velaris.ALL_EFFECTS))
 ok("no Money builtin has an effect",
    all(not velaris.BUILTINS[n]["effects"] for n in velaris.MONEY_BUILTINS),

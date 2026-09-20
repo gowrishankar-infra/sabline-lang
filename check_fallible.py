@@ -63,6 +63,11 @@ CALLS = {
     "json_int":    'json_int("{}", "missing")',
     "json_float":  'json_float("{}", "missing")',
     "json_len":    'json_len("{}", "missing")',
+    # 8.5
+    "hex_decode":  'hex_decode("zz")',
+    "base64_decode": 'base64_decode("!!!!")',
+    "tool":        'tool("search", "{}")',
+    "tool_secret": 'tool_secret("vault", "{}")',
 }
 
 # effects each call needs declared, and setup lines
@@ -72,6 +77,7 @@ NEEDS = {
     "fetch_status": "net", "request": "net",
     "py": "ffi", "py_int": "ffi", "py_float": "ffi", "py_json": "ffi",
     "py_new": "ffi", "py_do": "ffi", "py_field": "ffi",
+    "tool": "tool", "tool_secret": "tool",
 }
 SETUP = {
     "pop": "    let xs: List of Int = []\n",
@@ -86,7 +92,10 @@ SETUP = {
 NO_RUNTIME = {"py_do", "py_field",
               # network calls depend on the machine; the checker case is
               # what matters here, the sandbox suite covers runtime
-              "fetch", "post", "fetch_status", "request"}
+              "fetch", "post", "fetch_status", "request",
+              # a tool's failure is the host's to report, and there is no
+              # host here: check_runner.py is one, and catches it (8.5)
+              "tool", "tool_secret"}
 # map get is fallible but spelled the same as list get; covered by its
 # own path in the example suite
 SKIP = {"get"}

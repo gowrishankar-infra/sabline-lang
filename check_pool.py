@@ -539,6 +539,8 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
                  # the currency table: written once here, never by a
                  # program, so two runs cannot disagree about a currency
                  "CURRENCIES",
+                 # the receipt page's words for each outcome (8.5)
+                 "OUTCOMES",
                  # deps-diff's table of lockfile names (7.1), read only
                  "_LOCKFILES",
                  # confinement's tables (8.4): what a granted module widens

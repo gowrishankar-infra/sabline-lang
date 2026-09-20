@@ -86,7 +86,7 @@
       "via": "check"
     },
     "line": 1,
-    "message": "function 'main' declares 'teleport', which is not an effect; the effects are io, env, fs, net, clock, rand, ffi, declassify"
+    "message": "function 'main' declares 'teleport', which is not an effect; the effects are io, env, fs, net, clock, rand, ffi, declassify, tool"
   },
   "E310_effect_outside_budget": {
     "code": "E310",
@@ -214,6 +214,18 @@
     },
     "line": 2,
     "message": "'read_file' reaches 'x.pem' (resolved: <dir>/x.pem), a documented credential location; a plain read returns ordinary text that can be printed or sent"
+  },
+  "E320_no_tool_to_reach": {
+    "code": "E320",
+    "how": {
+      "allow": [
+        "io",
+        "tool"
+      ],
+      "via": "run"
+    },
+    "line": 2,
+    "message": "'tool' calls tool 'search', and this run has no tools: none was offered to it"
   },
   "E400_no_main": {
     "code": "E400",
@@ -497,14 +509,6 @@
     "line": 3,
     "message": "'fail' is used, but 'checked' does not declare it can fail"
   },
-  "E524_main_or_fail_checked": {
-    "code": "E524",
-    "how": {
-      "via": "check"
-    },
-    "line": 1,
-    "message": "'main' cannot fail - there is nobody above it to catch"
-  },
   "E524_main_or_fail": {
     "code": "E524",
     "how": {
@@ -516,6 +520,14 @@
     },
     "line": 1,
     "message": "'main' cannot be 'or fail' - there is no one above it to handle the failure"
+  },
+  "E524_main_or_fail_checked": {
+    "code": "E524",
+    "how": {
+      "via": "check"
+    },
+    "line": 1,
+    "message": "'main' cannot fail - there is nobody above it to catch"
   },
   "E525_check_result_unnamed": {
     "code": "E525",
@@ -763,8 +775,8 @@
     "code": "E614",
     "how": {
       "max_memory_mb": 150,
-      "source": "fn spread(x: T) -> fn(T, T, T, T) -> T for any T {\n    return x\n}\n\nfn main() uses io {\n    let y = spread(spread(spread(spread(spread(spread(spread(spread(spread(spread(spread(spread(1))))))))))))\n    print(\"built\")\n}\n",
       "needs": "memory cap",
+      "source": "fn spread(x: T) -> fn(T, T, T, T) -> T for any T {\n    return x\n}\n\nfn main() uses io {\n    let y = spread(spread(spread(spread(spread(spread(spread(spread(spread(spread(spread(spread(1))))))))))))\n    print(\"built\")\n}\n",
       "timeout": 60,
       "via": "check"
     },

@@ -12,7 +12,9 @@ FALLIBLE_BUILTINS = {"to_int", "read_file", "read_file_secret",
                      "fetch_status", "request", "py", "py_int", "py_float",
                      "py_json", "json_get", "json_int", "json_float",
                      "json_len", "py_new", "py_do", "py_field",
-                     "divide_or_fail", "parse_money"}   # + get on maps
+                     "divide_or_fail", "parse_money",
+                     "hex_decode", "base64_decode",          # 8.5
+                     "tool", "tool_secret"}   # + get on maps
 
 
 # The eight. `declassify` joined the seven in 6.0: it is not a way to
@@ -22,7 +24,13 @@ FALLIBLE_BUILTINS = {"to_int", "read_file", "read_file_secret",
 # rule is transitive across the call graph, and an operator can refuse
 # to grant it.
 ALL_EFFECTS = ("io", "env", "fs", "net", "clock", "rand", "ffi",
-               "declassify")
+               "declassify", "tool")
+# `tool` joined in 8.5: a call to a tool the host process offers, through
+# the manifest `velaris run --tools` was given (velaris/tools.py). It is an
+# effect for the reason the others are - a signature says a function does
+# it, the rule is transitive, an operator grants it by name and may narrow
+# it - and with no manifest there is no tool to reach, so a program that
+# ran under 8.4 meets nothing new.
 
 # The default budget, since 5.0: the console and nothing else. A run
 # given no budget used to get all seven effects, which made the one
@@ -144,6 +152,37 @@ BUILTINS = {
                          "ret": "Secret of Text"},
     "declassify": {"effects": {"declassify"},
                    "types": ["Secret of T", "Text"], "ret": "T"},
+    # Digests and encoders (8.5), all pure: what stdlib/aws.vel needs to
+    # sign a request, and what a reply in base64 needs to be read. Text in,
+    # Text out, as UTF-8; a decoder fails on what is not the encoding, or
+    # does not decode to UTF-8.
+    "sha256":        {"effects": set(), "types": ["Text"], "ret": "Text"},
+    "hex_encode":    {"effects": set(), "types": ["Text"], "ret": "Text"},
+    "hex_decode":    {"effects": set(), "types": ["Text"], "ret": "Text"},
+    "base64_encode": {"effects": set(), "types": ["Text"], "ret": "Text"},
+    "base64_decode": {"effects": set(), "types": ["Text"], "ret": "Text"},
+    "url_encode":    {"effects": set(), "types": ["Text"], "ret": "Text"},
+    # HMAC-SHA256 under a Secret key (8.5). The result is NOT a Secret: a
+    # MAC is what a signed request shows the world. That makes each of these
+    # a way out of Secret, so each needs the `declassify` effect, is checked
+    # by its own rule in check_types, and is named in the audit's secrets
+    # with the fixed reason "hmac signature" (THREAT_MODEL.md says why this
+    # is sound, and what it leaves). The chain is HMAC applied again and
+    # again, each result the next key, as raw bytes: SigV4's derived keys
+    # are credentials themselves and never become values of the program.
+    "hmac_sha256": {"effects": {"declassify"},
+                    "types": ["Secret of Text", "Text"], "ret": "Text"},
+    "hmac_sha256_chain": {"effects": {"declassify"},
+                          "types": ["Secret of Text", "List of Text"],
+                          "ret": "Text"},
+    # Tools (8.5): a call to a tool the host process offers. The arguments
+    # are a JSON object as Text; what comes back is the tool's result as
+    # Text - or a Secret of Text, from tool_secret, which a tool the
+    # manifest marks secret has to be called through.
+    "tool":        {"effects": {"tool"}, "types": ["Text", "Text"],
+                    "ret": "Text"},
+    "tool_secret": {"effects": {"tool"}, "types": ["Text", "Text"],
+                    "ret": "Secret of Text"},
 }
 
 KNOWN_TYPES = {"Int", "Text", "Bool", "Float", "Handle"}
@@ -184,9 +223,19 @@ SECRET_BUILTINS = frozenset({"read_file_secret", "declassify"})
 
 # Builtins that hand back a Secret. The audit's secrets.sources lists
 # the ones a program reaches (velaris-spec 8.6).
-SECRET_SOURCES = ("env", "read_file_secret")
+SECRET_SOURCES = ("env", "read_file_secret", "tool_secret")
 
-NEW_BUILTINS = MONEY_BUILTINS | SECRET_BUILTINS
+# 8.5. HMAC_REASON is the reason the audit and a receipt give for an
+# hmac_sha256 or hmac_sha256_chain call: fixed, because the call has no
+# reason of its own to write.
+DIGEST_BUILTINS = frozenset({"sha256", "hex_encode", "hex_decode",
+                             "base64_encode", "base64_decode", "url_encode"})
+HMAC_BUILTINS = frozenset({"hmac_sha256", "hmac_sha256_chain"})
+HMAC_REASON = "hmac signature"
+TOOL_BUILTINS = frozenset({"tool", "tool_secret"})
+
+NEW_BUILTINS = (MONEY_BUILTINS | SECRET_BUILTINS | DIGEST_BUILTINS
+                | HMAC_BUILTINS | TOOL_BUILTINS)
 
 
 def builtin_reached(name: str, table: Any) -> str | None:
