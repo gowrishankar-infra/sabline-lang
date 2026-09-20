@@ -147,7 +147,7 @@ Usage:
                                            it writes what it runs
   velaris run f.vel --tools MANIFEST       offer the program the manifest's
         [--tool-timeout S]                 tools, over stdin and stdout as
-                                           JSON lines (EMBEDDING.md)
+                                           JSON lines (docs/runner.md)
   velaris <command> --help                 how to use one command
   velaris <file> --allow io,fs:read:./data grant exactly this, nothing else
   velaris <file> --allow all               every effect; says so on stderr

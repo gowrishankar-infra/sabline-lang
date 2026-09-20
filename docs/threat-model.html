@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Threat model - Velaris 8.4.0</title>
+<title>Threat model - Velaris 8.5.0</title>
 <meta name="description" content="What Velaris defends against when it runs a program somebody - or something - else wrote, what it does not, and what to do about the gap. Written for the ...">
-<meta name="velaris-version" content="8.4.0">
+<meta name="velaris-version" content="8.5.0">
 <link rel="canonical" href="https://velaris-lang.dev/threat-model.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
@@ -18,7 +18,7 @@
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
 <a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.4.0, all versions"><span>8.4.0</span></a>
+<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html" aria-current="page">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
@@ -52,7 +52,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-2.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -439,6 +439,83 @@ paths, a remainder inside a loop, a read at <code>i + 1</code> in a loop over
 settle them beforehand. These are limits of the current prover,
 listed in RESULTS.md rather than worked around.</p></li>
 </ul>
+<h2 id="signing-with-a-secret-key-hmac_sha256-85">Signing with a secret key: <code>hmac_sha256</code> (8.5) <a class="anchor" href="#signing-with-a-secret-key-hmac_sha256-85" aria-label="Link to this section">#</a></h2>
+<p>A request to AWS is signed with an HMAC-SHA256 under a key derived from the
+secret key. The signature is sent in the clear; the key must never be. So 8.5
+has two builtins that take a <code>Secret of Text</code> and give back an ordinary
+<code>Text</code>: <code>hmac_sha256(key, message)</code> and <code>hmac_sha256_chain(key, messages)</code>,
+which applies HMAC again and again, each result the next key as raw bytes.
+They are the second way out of <code>Secret</code>, after <code>declassify</code>, and are held the
+same way: the function needs <code>uses declassify</code>, the run needs the
+<code>declassify</code> grant, the audit lists the call under <code>secrets</code> with the fixed
+reason <code>hmac signature</code> and the builtin's name, and a receipt records each
+call site with that reason and the key's fingerprint.</p>
+<p><strong>Why this is sound.</strong> HMAC-SHA256 is a pseudorandom function of the message
+under the key: a MAC, or any number of them over messages an attacker chose,
+does not reveal the key or help forge a MAC over another message, for a key
+with the entropy of a real credential. Every service that accepts a signed request relies on exactly that.
+The message may not carry a secret (E560): a MAC of a secret message under a
+key the program chose would be a digest of that message, in the open. The
+chain exists because Signature Version 4's derived keys - for a date, a
+region, a service - are credentials themselves for as long as they are valid;
+with the chain they are never values of the program, and only the last MAC,
+the signature, comes out.</p>
+<p><strong>What somebody holding the MAC can do.</strong> Replay it, for as long as the
+service accepts it: a SigV4 signature is good for the one request it covers,
+for about fifteen minutes around its timestamp, and a program that prints
+one, or a log that keeps one, has given that request away for that long. It
+cannot be turned into another request, and it does not shorten the search
+for the key.</p>
+<p><strong>What this does not hold, and why it is not worse than before.</strong> Every pure
+operation over a secret gives a secret, so a program can build a <em>weak</em> key
+out of a strong one - one character of it, or <code>length(key)</code> as text - and a
+MAC under a weak key can be matched against guesses offline. A program that
+does this in a loop reads the key out through its MACs. Nothing in the type
+system stops that, and nothing needs to: it requires the <code>declassify</code> effect
+and grant, and a program that holds those can already write
+<code>declassify(key, "...")</code>. <code>hmac_sha256</code> lets out no more than the effect it
+needs already allowed. What it changes is what an audit says: a program that
+only signs shows <code>hmac signature</code> and nothing else under
+<code>secrets.declassifications</code>, and a reviewer who sees a key argument that is
+not the credential itself, or an hmac call in a loop over pieces of one,
+should read it as a declassification of the key, because it is one.</p>
+<p><strong>The fingerprint</strong> a receipt carries is twelve hexadecimal digits of a
+SHA-256 over a fixed label and the key. It tells two keys apart and the same
+key from run to run. It is a function of the key, so for a guessable key it confirms a
+guess, as a MAC does; for a real credential it does not help find it. One
+call site names at most sixteen fingerprints and then says <code>many</code>, so a loop
+over derived keys cannot use the receipt as a second channel.
+<code>check_digests.py</code> holds RFC 4231's vectors, the refusals, and sixteen
+routes for a key other than as a MAC, none of which compiles.</p>
+<p><strong>Bearer tokens.</strong> <code>azure.vel</code>, <code>github.vel</code> and <code>k8s.vel</code> send a token in
+an <code>Authorization</code> header. A <code>Secret</code> cannot be handed to <code>request</code> (E560),
+and 8.5 adds no builtin that would let one be: that would make <code>net</code> a
+second <code>declassify</code> no audit names. The libraries call <code>declassify</code> once,
+where the header is built, with a reason that names the host; what holds the
+token to that host is the library's text - the URL begins with a literal
+<code>https://host:443/</code> - and the operator's <code>net:</code> grant.</p>
+<h2 id="tools-a-host-offers-the-runners-first-cut-85">Tools a host offers: the runner's first cut (8.5) <a class="anchor" href="#tools-a-host-offers-the-runners-first-cut-85" aria-label="Link to this section">#</a></h2>
+<p>A run started with <code>--tools</code> may call tools its host process offers. The
+host is trusted and the program is not: a call has to pass the manifest, the
+tool's schema, the operator's grants - which may hold an argument to a
+pattern matched against the whole value - and the ceilings before the host
+hears of it, and each failure is a refusal in the receipt. A host that lies
+about a result cannot be detected and is the operator's own process; what a
+reply can do is bounded - it is never a grant, and a cost cannot win budget
+back. <strong>What this release does not close</strong> is a result that steers: a
+result is a <code>Text</code> like any other, so it cannot take a program outside its
+budget (a host outside <code>net:</code> is still E314) and can direct it inside. The
+mark that tells the host's words from the program's, <code>Untrusted of T</code>,
+arrives in 9.0. <a href="runner.html">docs/runner.md</a> has the whole of it, and
+<code>check_runner.py</code> the attempts.</p>
+<h2 id="velaris-demo-85"><code>velaris demo</code> (8.5) <a class="anchor" href="#velaris-demo-85" aria-label="Link to this section">#</a></h2>
+<p>The demo runs a script that reads <code>./.env</code> and posts it, so it must be
+impossible to turn on a real one. It takes no argument but <code>--keep</code>; works
+in a directory it has just made, whose <code>.env</code> it wrote and whose one value
+is made up; gives the first run no <code>--allow</code>, so the read is refused (E310)
+before the post is reached; and posts to a host under <code>.invalid</code>.
+<code>check_demo.py</code> runs it beside a <code>.env</code> holding a value only the suite
+knows: the value appears nowhere and nothing connects anywhere.</p>
 <h2 id="known-open">Known open <a class="anchor" href="#known-open" aria-label="Link to this section">#</a></h2>
 <p>The gaps this model does not close, kept as a table so the list is one
 place and stays current. None is a defect to be reported under
@@ -511,6 +588,7 @@ fails when the two differ.</p>
 <tr><td><code>io</code></td><td>the descriptors the process was started with; not restricted</td><td>as Linux</td><td>as Linux</td></tr>
 <tr><td><code>env</code></td><td>not held: the environment is in the process's own memory</td><td>not held</td><td>not held</td></tr>
 <tr><td><code>clock</code>, <code>rand</code>, <code>declassify</code></td><td>not held: reading the clock or the kernel's randomness reaches nothing outside the process, and declassify is a rule of the type system</td><td>not held</td><td>not held</td></tr>
+<tr><td><code>tool</code></td><td>not held: a tool call is a line written to the standard output the process was started with and an answer read from its standard input; what the tool then does happens in the host's process, which this policy does not reach</td><td>not held</td><td>not held</td></tr>
 <tr><td>starting a process (never a budget item)</td><td>seccomp: execve, execveat, fork, vfork, clone without CLONE_THREAD refused, clone3 answered ENOSYS; Landlock refuses execute</td><td><code>(deny process-fork)</code> <code>(deny process-exec)</code></td><td>job object: one active process; and the clipboard, the desktop, global atoms and other processes' USER handles</td></tr>
 <tr><td>the rest of the deny-list (never a budget item)</td><td>seccomp: ptrace, mount and its new calls, pivot_root, chroot, unshare, setns, kernel modules, kexec, bpf, perf_event_open, process_vm_readv and writev, keyrings, io_uring, userfaultfd, open_by_handle_at, setting the clock, reboot, swapon, acct, quotactl, personality; a signal, by kill, tgkill or sigqueue, to any process but this one; input pushed at the terminal (TIOCSTI, TIOCLINUX)</td><td>what <code>(deny process-fork)</code> and the denial of writes imply; no list of system calls</td><td>every privilege but SeChangeNotifyPrivilege removed from the token</td></tr>
 <tr><td><code>ffi:MODULE</code></td><td>widened to what FFI_WIDENS names for MODULE: nothing, any path, any host, or nothing enforced; a module not in the table, <code>ffi:os</code>, <code>ffi:subprocess</code> and plain <code>ffi</code> widen to nothing enforced, and the level is none</td><td>as Linux</td><td>as Linux</td></tr>
@@ -587,10 +665,10 @@ virtual machine, and it should sit inside one of those when the stakes
 warrant it.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/THREAT_MODEL.md">THREAT_MODEL.md</a> by build_docs.py, for Velaris 8.4.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/THREAT_MODEL.md">THREAT_MODEL.md</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#what-velaris-is-for">What Velaris is for</a></li><li><a href="#the-trust-boundary">The trust boundary</a></li><li><a href="#what-it-defends-against">What it defends against</a></li><li><a href="#what-it-explicitly-does-not-defend-against">What it explicitly does NOT defend against</a></li><li><a href="#known-open">Known open</a></li><li><a href="#residual-risks-and-what-to-do-about-each">Residual risks, and what to do about each</a></li><li><a href="#what-the-operating-system-enforces">What the operating system enforces</a></li><li><a href="#what-not-a-security-boundary-means-here">What &quot;not a security boundary&quot; means here</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#what-velaris-is-for">What Velaris is for</a></li><li><a href="#the-trust-boundary">The trust boundary</a></li><li><a href="#what-it-defends-against">What it defends against</a></li><li><a href="#what-it-explicitly-does-not-defend-against">What it explicitly does NOT defend against</a></li><li><a href="#signing-with-a-secret-key-hmac_sha256-85">Signing with a secret key: hmac_sha256 (8.5)</a></li><li><a href="#tools-a-host-offers-the-runners-first-cut-85">Tools a host offers: the runner&#x27;s first cut (8.5)</a></li><li><a href="#velaris-demo-85">velaris demo (8.5)</a></li><li><a href="#known-open">Known open</a></li><li><a href="#residual-risks-and-what-to-do-about-each">Residual risks, and what to do about each</a></li><li><a href="#what-the-operating-system-enforces">What the operating system enforces</a></li><li><a href="#what-not-a-security-boundary-means-here">What &quot;not a security boundary&quot; means here</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

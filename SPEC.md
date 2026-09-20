@@ -6,7 +6,7 @@ programming. It exists so that anyone deciding whether to depend on
 this language can find out exactly what it promises — and what it
 does not.
 
-Version 8.4.0. Where this document and the implementation disagree,
+Version 8.5.0. Where this document and the implementation disagree,
 that is a bug in one of them; please report it.
 
 ## 1. Programs
@@ -477,8 +477,8 @@ back its result as `Text`; `tool_secret` is the same call and gives a
 `tool` effect and can fail: a tool that reports an error is a failure the
 caller handles, like a request that does not get through.
 
-Which tools exist is not the language's to say. `velaris run program.vel
---tools manifest.json` is given a manifest (`velaris.tools/1`,
+Which tools exist is not the language's to say. A run started with
+`--tools` is given a manifest (`velaris.tools/1`,
 velaris-spec §8.10) naming each tool, a JSON Schema for its arguments,
 whether its result is secret, what a call costs, and the most calls and
 cost one run may spend; with no manifest there is no tool, and a call is

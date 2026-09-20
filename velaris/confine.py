@@ -148,6 +148,11 @@ ENFORCES: tuple[tuple[str, str, str, str], ...] = (
      "not held: reading the clock or the kernel's randomness reaches "
      "nothing outside the process, and declassify is a rule of the type "
      "system", "not held", "not held"),
+    ("`tool`",
+     "not held: a tool call is a line written to the standard output the "
+     "process was started with and an answer read from its standard input; "
+     "what the tool then does happens in the host's process, which this "
+     "policy does not reach", "not held", "not held"),
     ("starting a process (never a budget item)",
      "seccomp: execve, execveat, fork, vfork, clone without CLONE_THREAD "
      "refused, clone3 answered ENOSYS; Landlock refuses execute",

@@ -10,7 +10,7 @@ of its own. The budget is the operator's, as for every other effect:
 A call has to pass both.
 
 The door is this process's standard input and output, one JSON object to a
-line (EMBEDDING.md, "Hosting a run that calls tools"). A call is written,
+line (docs/runner.md). A call is written,
 the run waits, and the host's answer is what the call evaluates to. While a
 session is open the program's own output travels the same way, as `output`
 events, so a line the program prints can never be read as a line of the

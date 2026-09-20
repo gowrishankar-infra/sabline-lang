@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Velaris from inside your program - Velaris 8.4.0</title>
+<title>Velaris from inside your program - Velaris 8.5.0</title>
 <meta name="description" content="Velaris is a library as well as a command. An agent framework, an MCP server, a CI dashboard or an internal tool can check, audit and run Velaris without ...">
-<meta name="velaris-version" content="8.4.0">
+<meta name="velaris-version" content="8.5.0">
 <link rel="canonical" href="https://velaris-lang.dev/embedding.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
@@ -18,7 +18,7 @@
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
 <a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.4.0, all versions"><span>8.4.0</span></a>
+<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,7 +44,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html" aria-current="page">Embedding</a>
 </li>
@@ -52,7 +52,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-2.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -81,7 +81,7 @@ print(report.warnings)       # ffi cannot be contained by a budget
 
 run = velaris.run(source, allow={"io"})
 print(run.ok, run.output, run.refused_effect)</code></pre></div>
-<p><code>velaris.card()</code> returns the language in about 4,600 words - paste it
+<p><code>velaris.card()</code> returns the language in about 5,100 words - paste it
 into a model before asking for Velaris.</p>
 <h2 id="limits-time-and-memory">Limits: time and memory <a class="anchor" href="#limits-time-and-memory" aria-label="Link to this section">#</a></h2>
 <div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>run = velaris.run(source, allow={"io"}, timeout=30, max_memory_mb=512)
@@ -296,10 +296,12 @@ it; the <code>schema</code> field names the version.</p>
 <tr><td><code>prover</code></td><td>true when a prover checked the promises; false without one, when no status is <code>proven</code> and a <code>proven_share</code> of 0 says nothing about what could be proven - and false when the file does not compile (added in 4.2)</td></tr>
 <tr><td><code>secrets</code></td><td><code>{"sources": [...], "declassifies": bool, "declassifications": [{"reason", "function", "line"}]}</code> - which builtins handed the program a <code>Secret</code> (<code>env</code>, <code>read_file_secret</code>), whether it ever declassifies one, and with what reason. <code>declassifies: false</code> with <code>ok: true</code> is the answer to "does this program ever let a secret out"; <code>null</code> when the file could not be loaded, and not null merely because <code>ok</code> is false (added in 6.0)</td></tr>
 </tbody></table></div>
+<p>| <code>tools</code> | <code>{"names": [...], "any": bool}</code>: the tools its calls name (8.5) |</p>
+<p>From 8.5 <code>net_hosts</code> names the host of a URL that only <em>begins</em> fixed.</p>
 <p>A new field may be added within version 1; a field will not change
 meaning or disappear without the schema name changing. <code>effects</code> and
-each function's <code>effects</code> hold only real effect names - the seven, and
-<code>declassify</code> from 6.0 - even in the audit of a program that does not
+each function's <code>effects</code> hold only real effect names - the seven,
+<code>declassify</code> from 6.0 and <code>tool</code> from 8.5 - even in the audit of a program that does not
 compile because it names another in a <code>uses</code> clause (from 4.1; until
 then that name was listed, and made <code>safe_command</code> a budget that does
 not parse).</p>
@@ -1010,7 +1012,9 @@ it did. It is an in-toto Statement of the predicate type
 <tr><td><code>run_parameters</code></td><td><code>seed</code> and <code>freeze_time</code>; <code>timeout</code> and <code>max_memory_mb</code>, null when there were none; <code>max_read_bytes</code>; and, from 8.4, what the operating system held of the run: <code>confinement</code> - <code>"full"</code>, <code>"partial"</code>, or <code>"none"</code> when the budget was the only boundary - <code>confinement_reason</code>, <code>confinement_layers</code> and <code>os_policy_sha256</code> (<a href="confinement.html">docs/confinement.md</a>). Until 8.4 <code>confinement</code> was <code>"none"</code> everywhere but under <code>velaris eval</code>, where it named a mechanism</td></tr>
 <tr><td><code>effects_used</code></td><td>each effect and how many operations the budget let through; null when the run was killed before it could say</td></tr>
 <tr><td><code>refusals</code></td><td><code>{"code", "effect", "line", "stopped", "times"}</code> for each place the budget refused - <code>stopped</code> is false for a refused redirect, which the program is told about and may carry on from</td></tr>
-<tr><td><code>declassifications</code></td><td><code>{"reason", "line", "times"}</code> for each place the program declassified</td></tr>
+<tr><td><code>grants_used</code></td><td><code>{"grant", "times"}</code>: what each grant let through, by the grant's own text (8.5; <code>velaris receipt show</code> reads it as a page)</td></tr>
+<tr><td><code>declassifications</code></td><td><code>{"reason", "line", "times"}</code> for each place the program declassified; an hmac call is one, with the reason <code>hmac signature</code> and a <code>key_fingerprint</code> (8.5)</td></tr>
+<tr><td><code>tool_calls</code>, <code>tool_ceiling</code></td><td>under <code>--tools</code>: each call site, and the ceiling (8.5)</td></tr>
 <tr><td><code>exit</code></td><td><code>status</code>, <code>outcome</code> - <code>ok</code>, <code>refused</code>, <code>failed</code>, <code>did_not_compile</code>, <code>timeout</code> or <code>out_of_memory</code> - and the <code>code</code> that ended the run</td></tr>
 <tr><td><code>complete</code></td><td>false when the run was stopped from outside: what is listed happened, and each <code>times</code> is at least that</td></tr>
 </tbody></table></div>
@@ -1046,6 +1050,9 @@ signed both ways and verified in the release workflow before it is attached
 <p>A signed receipt says its signer ran this Velaris on these bytes, under
 this budget, and saw this run. It is no stronger than the machine it ran
 on, and it says nothing about any other run.</p>
+<h2 id="hosting-a-run-that-calls-tools-85">Hosting a run that calls tools (8.5) <a class="anchor" href="#hosting-a-run-that-calls-tools-85" aria-label="Link to this section">#</a></h2>
+<p><code>velaris run</code> with <code>--tools</code> lets a host offer a program tools, held by the
+budget: <a href="runner.html">docs/runner.md</a>. Provisional.</p>
 <h2 id="the-operating-system-holds-the-budget-too-84">The operating system holds the budget too (8.4) <a class="anchor" href="#the-operating-system-holds-the-budget-too-84" aria-label="Link to this section">#</a></h2>
 <p>A run with a <code>timeout</code> or a <code>max_memory_mb</code>, every <code>Pool</code> worker and every
 run on either door asks the operating system to hold its budget before the
@@ -1192,10 +1199,10 @@ again to take a later one.</li>
 the real compiler, in a browser, nothing to install.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/EMBEDDING.md">EMBEDDING.md</a> by build_docs.py, for Velaris 8.4.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/EMBEDDING.md">EMBEDDING.md</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#three-calls">Three calls</a></li><li><a href="#limits-time-and-memory">Limits: time and memory</a><ul><li><a href="#checking-and-auditing-source-someone-else-wrote-81">Checking and auditing source someone else wrote (8.1)</a></li></ul></li><li><a href="#many-runs-a-pool">Many runs: a pool</a></li><li><a href="#a-platform-whose-customers-write-velaris">A platform whose customers write Velaris</a></li><li><a href="#what-run-guarantees">What run guarantees</a></li><li><a href="#the-audit-format">The audit format</a></li><li><a href="#setting-it-up-in-your-assistant">Setting it up in your assistant</a></li><li><a href="#as-an-mcp-server">As an MCP server</a><ul><li><a href="#what-can-connect-and-what-runs">What can connect, and what runs</a></li><li><a href="#checking-the-tools-against-the-signed-manifest">Checking the tools against the signed manifest</a></li></ul></li><li><a href="#vendored-libraries-and-velarislock">Vendored libraries, and velaris.lock</a></li><li><a href="#the-embedding-limit">The embedding limit</a></li><li><a href="#from-a-language-that-is-not-python">From a language that is not Python</a></li><li><a href="#the-invocation-log">The invocation log</a></li><li><a href="#from-javascript">From JavaScript</a></li><li><a href="#in-a-notebook">In a notebook</a></li><li><a href="#as-a-github-action">As a GitHub Action</a></li><li><a href="#holding-a-repository-to-its-capability-surface">Holding a repository to its capability surface</a></li><li><a href="#moving-a-4x-project-to-50">Moving a 4.x project to 5.0</a></li><li><a href="#running-velaris-specs-conformance-corpus">Running velaris-spec&#x27;s conformance corpus</a></li><li><a href="#an-in-toto-statement-of-what-a-program-may-do">An in-toto Statement of what a program may do</a></li><li><a href="#a-receipt-of-what-one-run-did-81">A receipt of what one run did (8.1)</a></li><li><a href="#the-operating-system-holds-the-budget-too-84">The operating system holds the budget too (8.4)</a></li><li><a href="#a-run-as-an-evaluation-harness-runs-it-83">A run as an evaluation harness runs it (8.3)</a></li><li><a href="#a-receipt-compared-and-a-run-made-again-83">A receipt compared, and a run made again (8.3)</a></li><li><a href="#promises-exercised-on-the-inputs-they-allow-83">Promises exercised on the inputs they allow (8.3)</a></li><li><a href="#what-a-policy-asks-of-it-81">What a policy asks of it (8.1)</a></li><li><a href="#ejecting-a-program-81">Ejecting a program (8.1)</a></li><li><a href="#as-a-commit-hook">As a commit hook</a></li><li><a href="#trying-it-with-nothing-installed">Trying it with nothing installed</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#three-calls">Three calls</a></li><li><a href="#limits-time-and-memory">Limits: time and memory</a><ul><li><a href="#checking-and-auditing-source-someone-else-wrote-81">Checking and auditing source someone else wrote (8.1)</a></li></ul></li><li><a href="#many-runs-a-pool">Many runs: a pool</a></li><li><a href="#a-platform-whose-customers-write-velaris">A platform whose customers write Velaris</a></li><li><a href="#what-run-guarantees">What run guarantees</a></li><li><a href="#the-audit-format">The audit format</a></li><li><a href="#setting-it-up-in-your-assistant">Setting it up in your assistant</a></li><li><a href="#as-an-mcp-server">As an MCP server</a><ul><li><a href="#what-can-connect-and-what-runs">What can connect, and what runs</a></li><li><a href="#checking-the-tools-against-the-signed-manifest">Checking the tools against the signed manifest</a></li></ul></li><li><a href="#vendored-libraries-and-velarislock">Vendored libraries, and velaris.lock</a></li><li><a href="#the-embedding-limit">The embedding limit</a></li><li><a href="#from-a-language-that-is-not-python">From a language that is not Python</a></li><li><a href="#the-invocation-log">The invocation log</a></li><li><a href="#from-javascript">From JavaScript</a></li><li><a href="#in-a-notebook">In a notebook</a></li><li><a href="#as-a-github-action">As a GitHub Action</a></li><li><a href="#holding-a-repository-to-its-capability-surface">Holding a repository to its capability surface</a></li><li><a href="#moving-a-4x-project-to-50">Moving a 4.x project to 5.0</a></li><li><a href="#running-velaris-specs-conformance-corpus">Running velaris-spec&#x27;s conformance corpus</a></li><li><a href="#an-in-toto-statement-of-what-a-program-may-do">An in-toto Statement of what a program may do</a></li><li><a href="#a-receipt-of-what-one-run-did-81">A receipt of what one run did (8.1)</a></li><li><a href="#hosting-a-run-that-calls-tools-85">Hosting a run that calls tools (8.5)</a></li><li><a href="#the-operating-system-holds-the-budget-too-84">The operating system holds the budget too (8.4)</a></li><li><a href="#a-run-as-an-evaluation-harness-runs-it-83">A run as an evaluation harness runs it (8.3)</a></li><li><a href="#a-receipt-compared-and-a-run-made-again-83">A receipt compared, and a run made again (8.3)</a></li><li><a href="#promises-exercised-on-the-inputs-they-allow-83">Promises exercised on the inputs they allow (8.3)</a></li><li><a href="#what-a-policy-asks-of-it-81">What a policy asks of it (8.1)</a></li><li><a href="#ejecting-a-program-81">Ejecting a program (8.1)</a></li><li><a href="#as-a-commit-hook">As a commit hook</a></li><li><a href="#trying-it-with-nothing-installed">Trying it with nothing installed</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

@@ -80,7 +80,7 @@ webhook - runs it with no budget given, and shows the refusal, its line and
 the run's receipt; then the same task inside a budget, and what differs
 between the two receipts. No arguments, no network, under a minute; it
 writes what it runs and reads nothing of yours. `--keep` leaves the files,
-and `velaris receipt show refused.receipt.json` renders a receipt as a page.
+and `velaris receipt show` renders either receipt as a page.
 
 ## The other half: promises, proven
 
@@ -262,7 +262,7 @@ request into a restricted subset of Python and tags every value with its
 provenance and permitted readers, checking a policy at each tool call;
 [WASI](https://wasi.dev) gives a WebAssembly module only the resources
 its host hands it. Velaris is a small language a model learns from a
-card of about <!-- count:card-words -->4,600<!-- /count --> words, in which functions declare their effects, the runtime
+card of about <!-- count:card-words -->5,100<!-- /count --> words, in which functions declare their effects, the runtime
 enforces the operator's budget at each operation, and contracts are
 checked by the Z3 theorem prover. From 6.0 it also tracks one kind of
 data: `Secret of T`, which `env()` and `read_file_secret()` produce and
@@ -452,16 +452,16 @@ ceiling. [`examples/runner/host.py`](examples/runner/host.py) is a whole
 host in Python: it offers `search` and `send_email`, and the second example
 program is refused when it tries to mail outside `corp.com`. The protocol
 is JSON lines on standard input and output
-([EMBEDDING.md](EMBEDDING.md#hosting-a-run-that-calls-tools-85)); there is
+([docs/runner.md](docs/runner.md)); there is
 no framework adapter yet, and a tool's result is not yet marked as the
 host's words rather than the program's - that is `Untrusted`, in 9.0.
-`velaris skill verify <dir>` reports the tools and the budget a skill's
+`velaris skill verify` reports the tools and the budget a skill's
 programs would need, without running them.
 
 ## Written by a model, audited by you, run in a box
 
 ```sh
-velaris card > card.md          # ~4,600 words: paste into any model
+velaris card > card.md          # ~5,100 words: paste into any model
 velaris audit script.vel        # what it can touch, before you run it
 velaris attest script.vel --output script.intoto.json   # the same, bound to its bytes
 velaris script.vel              # io, and nothing else, unless you say more

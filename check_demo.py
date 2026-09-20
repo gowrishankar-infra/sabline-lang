@@ -102,10 +102,10 @@ def main() -> int:
            and "refusals: E310 (fs) at line 6, x1 -> none" in out
            and "exit.outcome: refused -> ok" in out, out)
     import build_docs
-    shown = [line.strip() for line in
-             build_docs.START_DEMO_OUTPUT.split("\n") if line.strip()]
+    excerpt = [line.strip() for line in
+               build_docs.START_DEMO_OUTPUT.split("\n") if line.strip()]
     wrote = [line.strip() for line in lines]
-    missing = [line for line in shown
+    missing = [line for line in excerpt
                if not any(w.startswith(line) for w in wrote)]
     expect("every line the documentation's first page shows of it is the "
            "beginning of a line it writes", not missing, missing)

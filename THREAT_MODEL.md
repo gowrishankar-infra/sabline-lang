@@ -409,8 +409,7 @@ call site with that reason and the key's fingerprint.
 **Why this is sound.** HMAC-SHA256 is a pseudorandom function of the message
 under the key: a MAC, or any number of them over messages an attacker chose,
 does not reveal the key or help forge a MAC over another message, for a key
-with the entropy of a real credential. That is the property every service
-that accepts a signed request already relies on, since it sees exactly this.
+with the entropy of a real credential. Every service that accepts a signed request relies on exactly that.
 The message may not carry a secret (E560): a MAC of a secret message under a
 key the program chose would be a digest of that message, in the open. The
 chain exists because Signature Version 4's derived keys - for a date, a
@@ -441,89 +440,46 @@ should read it as a declassification of the key, because it is one.
 
 **The fingerprint** a receipt carries is twelve hexadecimal digits of a
 SHA-256 over a fixed label and the key. It tells two keys apart and the same
-key from run to run, which is what an operator wants from a receipt after a
-rotation. It is a function of the key, so for a guessable key it confirms a
+key from run to run. It is a function of the key, so for a guessable key it confirms a
 guess, as a MAC does; for a real credential it does not help find it. One
 call site names at most sixteen fingerprints and then says `many`, so a loop
 over derived keys cannot use the receipt as a second channel.
-`check_digests.py` holds the vectors (RFC 4231, and AWS's own published
-request in `check_batteries.py`), the four refusals, and fifteen routes by
-which a key might reach output other than as a MAC, none of which compiles.
+`check_digests.py` holds RFC 4231's vectors, the refusals, and sixteen
+routes for a key other than as a MAC, none of which compiles.
 
-**Bearer tokens.** `stdlib/azure.vel`, `github.vel` and `k8s.vel` send a
-token in an `Authorization` header. A `Secret` cannot be handed to `request`
-(E560), and 8.5 adds no builtin that would let one be: a builtin that sends
-a secret anywhere the `net` grant reaches would turn `net` into a second
-`declassify` that no audit names. The libraries call `declassify` instead,
-once, where the header is built, with a reason that names the host, so the
-audit of a program that uses one says in words that a token leaves and
-where to. From there the token is a `Text` inside that function, and what
-holds it to the named host is the library's text - the request's URL begins
-with a literal `https://host:443/` - and the operator's `net:` grant.
+**Bearer tokens.** `azure.vel`, `github.vel` and `k8s.vel` send a token in
+an `Authorization` header. A `Secret` cannot be handed to `request` (E560),
+and 8.5 adds no builtin that would let one be: that would make `net` a
+second `declassify` no audit names. The libraries call `declassify` once,
+where the header is built, with a reason that names the host; what holds the
+token to that host is the library's text - the URL begins with a literal
+`https://host:443/` - and the operator's `net:` grant.
 
 ## Tools a host offers: the runner's first cut (8.5)
 
-`velaris run program.vel --tools manifest.json` lets a program call tools
-the process that started it offers (EMBEDDING.md has the protocol). Who
-trusts whom:
-
-- **The host is trusted; the program is not.** The manifest is the host's
-  and the budget is the operator's, and a call has to pass both before the
-  host hears of it: the tool is one the manifest offers (E320), the budget
-  and the manifest's own `allow` grant it and every argument they hold to a
-  pattern matches (E321), no `@N`, call ceiling or cost ceiling is passed
-  (E322), and the arguments are what the tool's JSON Schema says, with no
-  property it does not name (E323). Each is a refusal: it stops the run,
-  cannot be caught, and is in the receipt.
-- **An argument pattern is a whole-value match.** Every character stands for
-  itself and `*` for one or more characters, never the literal that follows
-  the star in the pattern (so `*@corp.com` holds exactly one `@`), never
-  `, ; < > " ' \`, white space, a control or a format character, and never
-  across `..`. Nothing is trimmed, case-folded or normalised first. A list
-  matches when every item does; a map, a null, or an argument that is left
-  out does not match. `check_runner.py` tries fourteen ways past
-  `to=*@corp.com`.
-- **A host that lies** about a result cannot be detected, and is not the
-  threat: the host is the operator's own process. What a reply can do is
-  bounded. It is one line of JSON carrying the open call's id and either a
-  result or an error, or the run stops (E324); a cost that is negative, not a
-  number or NaN is E324, so a reply cannot win budget back; any other field
-  it adds is ignored; and a result is a `Text`, or a `Secret of Text` from
-  `tool_secret` - it is never a grant. A reply may mark its result secret,
-  which a call through `tool` then refuses (E323); it cannot unmark one the
-  manifest marks.
-- **A result that steers** is the case this release does not close. A result
-  is a `Text` like any other, so a program may use it as a URL, a path or
-  another tool's argument, and the budget holds it exactly as it holds any
-  value: a host outside `net:` is E314, an address outside `to=*@corp.com`
-  is E321. *Inside* the budget, a hostile document that a `search` tool
-  returns can still direct what the program does with what it was granted.
-  The mark that would let a program, a signature and an audit tell the
-  host's words from the program's own is `Untrusted of T`, and it arrives in
-  9.0. Until then: grant a program that reads tool results the narrowest
-  budget its task needs, and hold the arguments that matter to patterns.
-- **What the receipt holds.** Each call site - the tool, the line, how
-  often, whether its result was secret - and the grants whose patterns held
-  its arguments, as the operator wrote them; the ceiling, what was spent of
-  it, and the sha256 of the manifest. Not the arguments and not the results:
-  a receipt holds no value the program handled, and that rule has no
-  exception here.
+A run started with `--tools` may call tools its host process offers. The
+host is trusted and the program is not: a call has to pass the manifest, the
+tool's schema, the operator's grants - which may hold an argument to a
+pattern matched against the whole value - and the ceilings before the host
+hears of it, and each failure is a refusal in the receipt. A host that lies
+about a result cannot be detected and is the operator's own process; what a
+reply can do is bounded - it is never a grant, and a cost cannot win budget
+back. **What this release does not close** is a result that steers: a
+result is a `Text` like any other, so it cannot take a program outside its
+budget (a host outside `net:` is still E314) and can direct it inside. The
+mark that tells the host's words from the program's, `Untrusted of T`,
+arrives in 9.0. [docs/runner.md](docs/runner.md) has the whole of it, and
+`check_runner.py` the attempts.
 
 ## `velaris demo` (8.5)
 
-The demo writes and runs a script that reads `./.env` and posts it, so it has
-to be impossible to turn on a real one. It takes no argument but `--keep`
-(anything else is exit 2): no path, address, budget or program comes from
-the command line, the environment or the directory it was started in. It
-works in a directory it has just made with `mkdtemp`, and the runs start
-there, so `./.env` is the file it wrote, whose one value is made up and says
-so. The first run is given no `--allow`, so the read is refused (E310)
-before the post is reached, whatever is on the disk; and the webhook's host
-is under `.invalid`, which no resolver answers for. `check_demo.py` runs it
-from a directory holding a `.env` with a value only the suite knows, with a
-proxy in the environment and the temporary directory pointed at that
-directory, and holds that the value appears nowhere, nothing connects
-anywhere, and the directory is as it was.
+The demo runs a script that reads `./.env` and posts it, so it must be
+impossible to turn on a real one. It takes no argument but `--keep`; works
+in a directory it has just made, whose `.env` it wrote and whose one value
+is made up; gives the first run no `--allow`, so the read is refused (E310)
+before the post is reached; and posts to a host under `.invalid`.
+`check_demo.py` runs it beside a `.env` holding a value only the suite
+knows: the value appears nowhere and nothing connects anywhere.
 
 ## Known open
 
@@ -599,6 +555,7 @@ fails when the two differ.
 | `io` | the descriptors the process was started with; not restricted | as Linux | as Linux |
 | `env` | not held: the environment is in the process's own memory | not held | not held |
 | `clock`, `rand`, `declassify` | not held: reading the clock or the kernel's randomness reaches nothing outside the process, and declassify is a rule of the type system | not held | not held |
+| `tool` | not held: a tool call is a line written to the standard output the process was started with and an answer read from its standard input; what the tool then does happens in the host's process, which this policy does not reach | not held | not held |
 | starting a process (never a budget item) | seccomp: execve, execveat, fork, vfork, clone without CLONE_THREAD refused, clone3 answered ENOSYS; Landlock refuses execute | `(deny process-fork)` `(deny process-exec)` | job object: one active process; and the clipboard, the desktop, global atoms and other processes' USER handles |
 | the rest of the deny-list (never a budget item) | seccomp: ptrace, mount and its new calls, pivot_root, chroot, unshare, setns, kernel modules, kexec, bpf, perf_event_open, process_vm_readv and writev, keyrings, io_uring, userfaultfd, open_by_handle_at, setting the clock, reboot, swapon, acct, quotactl, personality; a signal, by kill, tgkill or sigqueue, to any process but this one; input pushed at the terminal (TIOCSTI, TIOCLINUX) | what `(deny process-fork)` and the denial of writes imply; no list of system calls | every privilege but SeChangeNotifyPrivilege removed from the token |
 | `ffi:MODULE` | widened to what FFI_WIDENS names for MODULE: nothing, any path, any host, or nothing enforced; a module not in the table, `ffi:os`, `ffi:subprocess` and plain `ffi` widen to nothing enforced, and the level is none | as Linux | as Linux |

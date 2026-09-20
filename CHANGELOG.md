@@ -149,7 +149,7 @@ in Python offering `search` and `send_email`, and a program that is refused
 (E321) when it mails outside the allowed domain, before the host hears of
 it. `velaris skill verify <dir>` reads a skill's programs and manifest and
 reports the tools and the budget it would need. There is no framework
-adapter; EMBEDDING.md's new section is the whole protocol.
+adapter; docs/runner.md is the whole protocol, and who trusts whom.
 
 ### The adversarial pass
 
@@ -177,7 +177,7 @@ Kept as tests, so that each stays tried.
   the budget it can. That is the 9.0 `Untrusted` case and is written down as
   open in THREAT_MODEL.md, not fixed.
 - **`hmac_sha256`: a key that reaches output other than as a MAC**
-  (`check_digests.py`). Fifteen routes - printed, logged, written, as a URL,
+  (`check_digests.py`). Sixteen routes - printed, logged, written, as a URL,
   as a tool's arguments, encoded first, through a list, a map, `format`,
   `json_of`, a loop over `chars`, as the *message* of another MAC - none
   compiles. One thing was changed for it: a call site that signs under many
@@ -207,6 +207,10 @@ Kept as tests, so that each stays tried.
 - A named import still renames a library's *parameters* that share a name
   with one of its functions; `http.vel` avoids the names. 9.0.
 - S3 and STS answer in XML, and `aws.vel` reads values out by tag.
+- `embedding.html` and `threat-model.html` are within a few hundred bytes of
+  the site's 100,000-byte page budget. The runner's protocol and the viewers
+  moved to `docs/runner.md` for that reason; the next addition to either
+  document has to move text out as well.
 
 ### Housekeeping
 
@@ -226,7 +230,36 @@ Kept as tests, so that each stays tried.
 
 ### Measured
 
-PERF_BLOCK
+Measured by `perf_gates.py --against v8.4.0` on Windows 11 (10.0.26200,
+AMD64, 16 CPUs), Python 3.13.13, z3-solver 5.1.0 and llvmlite 0.49.0: medians
+of 5 runs after one warm-up. **The machine was not idle**: 17% busy when it
+began, and this release's other suites ran beside the later measurements, so
+every figure here is higher than 8.4.0's table for that reason and not for a
+change in the code it measures. The comparison against v8.4.0 runs both
+versions in alternation under the same load, and is the figure to read; the
+release workflow repeats it on a runner that does nothing else, and fails
+the release past +25%.
+
+| Measure | 8.5.0 |
+|---|---|
+| Cold start, `velaris --version` | 257 ms |
+| Cold start, `velaris check` of a one-line file | 531 ms |
+| Check, per 1,000 lines (a 1,013- and a 10,013-line program) | 1.11 s and 1.33 s; 0.07 s and 0.07 s without proofs |
+| Proof time per example with contracts, p50 / p95 | 23 ms / 488 ms, over 56 files |
+| Native code on `examples/bench.vel`: compile, and llvmlite's import | 90 ms, and 78 ms; `burn` compiled |
+| `examples/bench.vel`, native / `--no-native` | 6.76 s / 16.46 s, 2.44 times faster, 9.71 s saved |
+| `--lite` build | there is none |
+| Pool worker's memory, after 1 run and after 1,000 more | 26.6 MB, 27.6 MB |
+| z3 or llvmlite imported by `velaris --version`, or by `check` of a program with no promise | neither |
+| Importing z3 when a command needs it | +170 ms at cold start |
+| Importing llvmlite when a command needs it | +173 ms at cold start |
+| Pure numeric against v8.4.0, native (`bench.vel` and an integer loop) | 6.76 s against 6.75 s, +0.2% (the gate allows +25%) |
+| Pure numeric against v8.4.0, interpreted | 20.01 s against 18.64 s, +7.3%, measured under the load described above |
+| `velaris demo`, start to finish | about 1 s: two runs of the command line and nothing else |
+
+`check_differential.py` against v8.4.0: none of the 97 examples' outputs
+differs, velaris-spec's 456 conformance cases give the same verdicts, and
+the quick benchmark's 15 programs the same verdicts.
 
 ## 8.4 - The kernel holds the line
 

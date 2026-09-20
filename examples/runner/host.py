@@ -10,7 +10,7 @@ on the run's standard input. It sends no mail: `send_email` appends to the
 list this prints at the end, which is how you can see that the second
 program's mail was refused before this host ever heard of it.
 
-The door is one JSON object to a line (EMBEDDING.md, "Hosting a run that
+The door is one JSON object to a line (docs/runner.md, "Hosting a run that
 calls tools"). From the run: `ready`, `output` for what the program
 printed, `call` for a tool call, `exit` last. To the run: one answer for
 each call, carrying its id and a `result` or an `error`.
