@@ -162,23 +162,16 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # The playground holds the sabline package's source, VelarisError and
     # naming.py among it (build_playground.py).
     "playground/index.html": ("velaris", "Velaris", "VELARIS"),
-    "docs/playground.html": ("velaris", "Velaris", "VELARIS"),
-    "docs/latest/playground.html": ("velaris", "Velaris", "VELARIS"),
 
     # ---- the documents that say what is still accepted -------------------
     "STABILITY.md": ("velaris", "Velaris", "VELARIS_"),
     "README.md": ("velaris", "Velaris", "VELARIS_"),
-    "EMBEDDING.md": ("velaris", "Velaris", "VELARIS_"),
-    "SECURITY.md": ("velaris", "Velaris"),
-    "PROVENANCE.md": ("velaris", "Velaris"),
-    "RELEASING.md": ("velaris", "Velaris"),
     "docs/renamed.md": ("velaris", "Velaris", "VELARIS_"),
-    "docs/crosswalk.md": ("velaris", "Velaris"),
-    # A policy admits a Statement, and an audit, written before the rename.
+    # A policy admits an audit written before the rename.
     "policies/kyverno/require-capability-attestation.yaml":
         ("velaris.audit/1",),
-    "policies/opa/capability.rego": ("velaris",),
-    "policies/opa/capability_test.rego": ("velaris",),
+    # The paper's submission log records builds made under the old name.
+    "paper/arxiv/README-for-me.txt": ("Velaris", "velaris"),
     "check_policies.py": ("velaris.audit/1",),
     # The gate reads the compiler at a tag from before the rename, where the
     # package is velaris/; the differential runs such a tree.
@@ -194,14 +187,6 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     "packaging/farewell/**": ("velaris", "Velaris", "VELARIS_"),
     ".github/workflows/farewell.yml": ("velaris", "Velaris"),
     "packaging/placeholders/**": ("velaris", "Velaris"),
-    # The paper measured releases that carried the old name, and its
-    # submission notes record builds made under it.
-    "paper/sabline.md": ("Velaris", "velaris"),
-    "paper/SUBMITTING.md": ("Velaris", "velaris"),
-    "paper/arxiv/README-for-me.txt": ("Velaris", "velaris"),
-    "paper/arxiv/sabline.tex": ("Velaris", "velaris"),
-    "paper/arxiv/sabline.bbl": ("Velaris", "velaris"),
-    "paper/references.bib": ("Velaris", "velaris"),
 }
 
 # Files the script never reads: build outputs, images, caches.

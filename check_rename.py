@@ -306,6 +306,26 @@ def no_drift() -> None:
     ok("...and --stat still reads every tracked file", r.returncode == 0,
        (r.stdout + r.stderr).strip()[-200:])
 
+    # An allowance nothing uses is a hole: it would let a new occurrence of
+    # the old name into that file unseen. Every entry must still be the
+    # reason some occurrence is there - and when the last one goes, so does
+    # the entry.
+    sys.path.insert(0, str(HERE / "scripts"))
+    import rename as rules                            # noqa: PLC0415
+    paths = rules.tracked()
+    every = dict(rules.ALLOWED)
+    idle = []
+    try:
+        for key in every:
+            rules.ALLOWED = {k: v for k, v in every.items() if k != key}
+            if not rules.drift(paths):
+                idle.append(key)
+    finally:
+        rules.ALLOWED = every
+    ok(f"every one of the {len(every)} ALLOWED entries is still the reason "
+       f"an old name is where it is", not idle,
+       "nothing needs: " + ", ".join(idle))
+
 
 def main() -> int:
     work = Path(isolate("check_rename"))
