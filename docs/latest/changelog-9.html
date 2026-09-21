@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Changelog: 9.x - Sabline 8.6.0</title>
+<meta name="description" content="Every release of this major version, newest first, as CHANGELOG.md records it.">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/changelog-9.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-9.html" aria-current="page">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="changelog">Changelog: 9.x</h1>
+<p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice <a class="anchor" href="#900-alpha1---the-parser-twice" aria-label="Link to this section">#</a></h2>
+<p>The first alpha of 9.0. <code>decisions/0002-runtime-in-rust.md</code> says why there
+is a second runtime and <code>plan/9.0.md</code> is the ladder; this is its first
+rung. <strong>sabline-rt reads a Sabline program and builds the same tree the
+Python parser builds.</strong> That is all it does.</p>
+<p>This is a <strong>pre-release</strong>. It publishes the <code>sabline-rt</code> crate to
+crates.io and a GitHub release marked pre-release, and nothing else.
+8.6.0 is still what <code>pip install sabline-lang</code> gives, what npm gives, what
+the Marketplace lists and what the MCP registry serves; the Action pins
+still name 8.6.0's commit; <code>sabline --version</code> still says 8.6.0. The
+Python package's version files were not touched, and the release gate
+refuses a pre-release whose commit moved one.</p>
+<h3 id="what-exists">What exists <a class="anchor" href="#what-exists" aria-label="Link to this section">#</a></h3>
+<p><strong><code>rt/</code>, a Cargo workspace holding one crate, <code>sabline-rt</code>.</strong> Edition
+2021, minimum Rust 1.82, <strong>no dependencies at all</strong>. A lexer, a parser and
+a canonical dump of the tree, in fourteen files. <code>#![forbid(unsafe_code)]</code>
+at the workspace root, so there is none; <code>rt/README.md</code> states the rule
+for the day a later alpha needs some - a <code>// SAFETY:</code> comment naming the
+invariant and a test that would fail if it broke - and <code>check_rt.py</code>
+enforces it, against fixtures of its own so the scan is known to catch
+each way of getting it wrong rather than only to run.</p>
+<p><strong>One canonical AST dump, written the same way by both.</strong> <code>sabline ast --json &lt;file&gt;</code> from the Python package, <code>sabline-rt ast &lt;file&gt;</code> from the
+crate: keys sorted, no whitespace, ASCII only, bytes rather than text; a
+whole number as decimal text, because the reference's integer literals are
+arbitrary precision; a float as the shortest decimal that reads back as the
+same double, written <code>d[.ddd]eE</code>, because neither language's default
+printing is the other's. <code>rt/README.md</code> states the format. It is not a
+stable interface, it is not in <code>tests/api/golden.json</code>, and nothing but the
+gate reads it; <code>sabline ast</code> is not in <code>sabline --help</code>, and answers
+<code>--help</code> for itself.</p>
+<p>The absence of indentation is a decision rather than a default, and it was
+made from a measurement: two spaces a level makes a document O(depth
+squared), and the dump of the deepest program the parser accepts - 40 KB of
+source, which the adversarial corpus holds on purpose - was <strong>352 MB</strong> of
+mostly spaces, which the gate would have written twice on every leg of CI.
+Compact, the same document is 316 KB and the gate takes 10 seconds instead
+of 16.</p>
+<p><strong>The agreement gate, <code>check_agreement.py</code></strong>, over every Sabline source
+this project has:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Corpus</th><th class="al-right">Programs</th></tr></thead>
+<tbody>
+<tr><td><code>examples/</code>, including <code>lib</code>, <code>ops</code> and <code>runner</code></td><td class="al-right">112</td></tr>
+<tr><td><code>stdlib/</code></td><td class="al-right">14</td></tr>
+<tr><td><code>benchmark/corpus/</code></td><td class="al-right">85</td></tr>
+<tr><td><code>tests/error_messages/</code></td><td class="al-right">84</td></tr>
+<tr><td>sabline-spec's conformance corpus</td><td class="al-right">216</td></tr>
+<tr><td>the lie corpus (<code>check_prover_lies.py</code>)</td><td class="al-right">146</td></tr>
+<tr><td><code>check_sandbox.py</code>'s escapes and honest programs</td><td class="al-right">58</td></tr>
+<tr><td><code>check_refusals.py</code>'s wrong programs</td><td class="al-right">24</td></tr>
+<tr><td>every example cut at fifteen points</td><td class="al-right">1,680</td></tr>
+<tr><td>the adversarial corpus (<code>agreement_edges.py</code>)</td><td class="al-right">113</td></tr>
+<tr><td>paths that are not files</td><td class="al-right">2</td></tr>
+<tr><td><strong>total</strong></td><td class="al-right"><strong>2,534</strong></td></tr>
+</tbody></table></div>
+<p><strong>2,534 programs, 2,534 agreements, 0 differences.</strong> 1,395 of them parse
+and 1,139 are refused, between them reaching every code the lexer and the
+parser give: E000 (158), E001 (2), E002 (4), E100 (409), E101 (539), E102
+(11), E407 (3), E511 (3), E512 (6), E562 (4). The six corpora
+<code>plan/9.0.md</code> names hold <strong>no program the lexer or the parser refuses</strong> -
+every one of them parses and is refused later or not at all - so the other
+five are there because a gate that only ever compared trees would say
+nothing about the codes, the messages, the fixes and the lines, which is
+half of what this alpha claims.</p>
+<p><strong>The gate cannot be turned off, and it is proven to go red.</strong>
+<code>check_gate.py</code> reads the gate's syntax tree and fails on <code>os.environ</code>,
+<code>getenv</code>, a configuration file or any use of the command line beyond the
+corpus paths; runs it with eight plausible disabling variables set and
+requires the number of compared programs to be unchanged; and builds
+sabline-rt three times with one difference injected each time - an error
+code, an error message, a field of the tree - and requires the gate to go
+red for each, over the same number of programs, so that it found a
+difference rather than stopped early. <code>check_workflows.py</code> holds the
+<code>agreement</code> job to having no <code>if:</code>, no <code>continue-on-error</code>, no matrix and
+no environment.</p>
+<p><strong>Fuzzing.</strong> <code>cargo fuzz</code> has two targets, <code>parse</code> and <code>dump</code>, on
+arbitrary bytes; <code>fuzz_parsers.py --target agreement</code> feeds the same
+generated input to both parsers and requires the same answer, coverage-
+guided as the rest of that file is. Both run briefly on every push and
+longer in <code>monthly.yml</code>. No input may make sabline-rt panic, abort,
+overflow its stack or hang: the library publishes <code>PARSE_STACK</code> and
+<code>on_parse_stack</code>, every entry point that parses runs the parse there, and
+<code>tests/limits.rs</code> holds the deepest program the parser accepts against
+that number. A stack overflow is not a panic - it is the process going
+away with no message - so it is held by a measurement and not by hope.</p>
+<p><strong>CI.</strong> <code>cargo build</code>, <code>cargo test</code>, <code>cargo clippy -D warnings</code> and
+<code>cargo fmt --check</code> on every leg of the matrix, arm64 and Windows
+included, with <code>Swatinem/rust-cache</code>; and four legs of their own:
+<code>agreement</code> (the gate, its own test, and two minutes of the differential
+fuzzer), <code>msrv</code> (a build on 1.82, the version <code>rt/Cargo.toml</code> states),
+<code>supply_chain</code> (<code>cargo deny check</code> - advisories, licenses, bans and
+sources, with a committed <code>rt/deny.toml</code> naming all five target triples a
+release builds for), and <code>rt_fuzz</code> (a minute of each <code>cargo fuzz</code> target).</p>
+<h3 id="what-does-not-exist">What does not exist <a class="anchor" href="#what-does-not-exist" aria-label="Link to this section">#</a></h3>
+<p>sabline-rt does not check types, does not check effects, does not check
+termination, does not prove anything, does not run a program, does not
+hold a budget, does not ask the operating system for anything and does not
+write a receipt. <strong>It cannot tell you whether a program is safe to run.</strong>
+The Python package is what does that and is the reference: where the two
+disagree, the Python package is right and sabline-rt has a defect, until
+the demotion criteria in <code>plan/9.0.md</code> are met, and they are not.
+<code>plan/9.0.md</code>'s alphas 2 to 8 are the rest, and none of them has started.</p>
+<p>Nothing calls sabline-rt. <code>sabline run</code>, <code>sabline.run</code> and <code>sabline.Pool</code>
+are the Python interpreter, exactly as in 8.6.0. There is no C ABI and no
+binding. The crate is published so that the alpha is a shippable tag with
+a version anyone can point at, which is what <code>plan/9.0.md</code> asks an alpha
+to be.</p>
+<h3 id="what-the-reference-was-found-to-do-that-the-spec-does-not-say">What the reference was found to do that the spec does not say <a class="anchor" href="#what-the-reference-was-found-to-do-that-the-spec-does-not-say" aria-label="Link to this section">#</a></h3>
+<p>Writing the parser twice is what finds these, and four are worth the
+record. Three are copied into sabline-rt as they are, because the Python
+package is the reference and a second implementation that fixed things
+quietly would be a second specification. One was changed, in Python.</p>
+<ul>
+<li><p><strong><code>\d</code> is every Unicode decimal digit.</strong> The NUMBER and FLOAT patterns
+are <code>\d+</code> and <code>\d+\.\d+</code>, and <code>\d</code> in a <code>str</code> pattern is category Nd,
+not the ten ASCII digits - so <code>let x = ١٢</code> is <code>Num(12)</code>, because <code>int()</code>
+reads each character by its decimal value, and <code>let x = ١.٢</code> is
+<code>FloatNum(1.2)</code>. <code>[A-Za-z_]</code> is ASCII in the same regular expression, so
+a non-ASCII letter is E000 and not an identifier: the two rules
+disagree about what a character is. SPEC.md says nothing about either.
+<code>rt/crates/sabline-rt/src/unicode_nd.rs</code> carries the set, generated from
+CPython's own <code>\d</code> by <code>scripts/gen_unicode_nd.py</code>, and it follows the
+Unicode version of the CPython that generated it - so two CPythons this
+project supports can disagree with each other about whether a recently
+assigned code point is a digit. No program in any corpus is affected.</p></li>
+<li><p><strong><code>open(path, encoding="utf-8")</code> in the loader decides three things the
+lexer then depends on</strong>, and none of them is written anywhere: strict
+UTF-8, so bytes that are not UTF-8 are E512 - with a message that says
+"cannot import" about a file nobody imported, because the entry file
+goes through that branch; universal newlines, so <code>\r\n</code> and a lone <code>\r</code>
+are both <code>\n</code> before the lexer sees one, which means the lexer's own
+<code>[ \t\r]+</code> never sees a <code>\r</code> from a file; and a byte-order mark left
+in place, because <code>utf-8</code> is not <code>utf-8-sig</code>, so a file that begins with
+one is E000 on line 1.</p></li>
+<li><p><strong><code>Parser.lambda_n</code> is a class attribute the parser never resets</strong>, so
+the generated name of a lifted function value - <code>fn#N</code>, <code>for#N</code> -
+depends on how many the <em>process</em> has parsed before, not on the file.
+<code>sabline ast --json</code> sets it to zero for each file so that a dump is a
+function of that file alone; nothing else in the package does.</p></li>
+<li><p><strong>E000's message was not stable across the Pythons this project
+supports, and that one was fixed.</strong> It was
+<code>f"unexpected character {source[pos]!r}"</code>, and <code>repr</code> writes a character
+raw when the Unicode database calls it printable - so the same program
+gave one message on a CPython with one Unicode version and another on a
+CPython with another, and a second implementation could match at most
+one of them. It is <code>!a</code> now, which escapes every character outside ASCII
+and asks the database nothing. The gate found it: <code>unexpected character 'é'</code> against <code>unexpected character '\xe9'</code>, on the first run that had
+a corpus with a non-ASCII character in it. Message text is prose, which
+STABILITY.md does not cover, and nothing that was a code, a line or a
+refusal changed.</p></li>
+</ul>
+<h3 id="the-release-and-what-a-pre-release-may-do">The release, and what a pre-release may do <a class="anchor" href="#the-release-and-what-a-pre-release-may-do" aria-label="Link to this section">#</a></h3>
+<p><code>release_checks.py</code> and <code>release.yml</code> learned what a pre-release is. A
+version of the form <code>X.Y.Z-alpha.N</code> (or <code>beta</code>, or <code>rc</code>) in
+<code>rt/Cargo.toml</code> is a pre-release; it needs a CHANGELOG entry of its own,
+it must be newer than every tag, and <strong>the Python package's six version
+files must still say what the newest ordinary release said</strong> - the gate
+refuses the commit if one moved, because a pre-release that changed what
+PyPI would serve is not a pre-release of the crate.</p>
+<p>A pre-release run tags the commit, builds and packages the crate from the
+committed lockfile, publishes it to crates.io by trusted publishing
+(OIDC - no token is stored, and MAINTENANCE.md's secrets table gains no
+row), and makes a GitHub release marked pre-release. It does not publish
+to PyPI, npm, the VS Code Marketplace or the MCP registry; it does not
+move the Action pins; it does not move any "latest" anywhere. A last step
+asks each of those afterwards and fails if one moved, because reading the
+workflow and believing it is not the same as checking.</p>
+<p><code>check_release.py</code> holds both halves to fixtures: an alpha publishes the
+crate, the tag and the pre-release GitHub release and nothing else, with
+every other job skipped rather than failed; RELEASE_PAUSED stops a
+pre-release too; a crates.io publish that fails leaves no GitHub release
+behind it, and re-running the failed jobs finishes it with each publish
+made once; and an ordinary release is unchanged, with no crate job run.</p>
+<p>perf: the numbers this entry would carry are not measured for a
+pre-release: it publishes no Python artefact, so there is nothing whose
+time changed. <code>plan/9.0.md</code>'s alpha.8 is where sabline-rt gets a
+performance floor of its own.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

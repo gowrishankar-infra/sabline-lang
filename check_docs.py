@@ -1306,6 +1306,10 @@ OLD_HOST_ALLOWED = {
     "packaging/farewell/README.md": "the last release under the old name",
     "playground/index.html": "it holds the sabline package's source, "
                              "predicates.py among it (build_playground.py)",
+    # 9.0's decisions, which argue about the names that were signed
+    "decisions/0005-breaking-set.md": "why the earlier predicate type names "
+                                      "are the one deprecation 9.0 does not "
+                                      "remove: they were signed",
 }
 # A page built from one of those documents names it for the same reason the
 # document does. build_docs.py writes each page three times - at the top of

@@ -5,6 +5,208 @@ below 8.6 uses the name it had at the time, which is what the
 record is for. [docs/renamed.md](docs/renamed.md) says what
 moved where.
 
+## 9.0.0-alpha.1 - The parser, twice
+
+The first alpha of 9.0. `decisions/0002-runtime-in-rust.md` says why there
+is a second runtime and `plan/9.0.md` is the ladder; this is its first
+rung. **sabline-rt reads a Sabline program and builds the same tree the
+Python parser builds.** That is all it does.
+
+This is a **pre-release**. It publishes the `sabline-rt` crate to
+crates.io and a GitHub release marked pre-release, and nothing else.
+8.6.0 is still what `pip install sabline-lang` gives, what npm gives, what
+the Marketplace lists and what the MCP registry serves; the Action pins
+still name 8.6.0's commit; `sabline --version` still says 8.6.0. The
+Python package's version files were not touched, and the release gate
+refuses a pre-release whose commit moved one.
+
+### What exists
+
+**`rt/`, a Cargo workspace holding one crate, `sabline-rt`.** Edition
+2021, minimum Rust 1.82, **no dependencies at all**. A lexer, a parser and
+a canonical dump of the tree, in fourteen files. `#![forbid(unsafe_code)]`
+at the workspace root, so there is none; `rt/README.md` states the rule
+for the day a later alpha needs some - a `// SAFETY:` comment naming the
+invariant and a test that would fail if it broke - and `check_rt.py`
+enforces it, against fixtures of its own so the scan is known to catch
+each way of getting it wrong rather than only to run.
+
+**One canonical AST dump, written the same way by both.** `sabline ast
+--json <file>` from the Python package, `sabline-rt ast <file>` from the
+crate: keys sorted, no whitespace, ASCII only, bytes rather than text; a
+whole number as decimal text, because the reference's integer literals are
+arbitrary precision; a float as the shortest decimal that reads back as the
+same double, written `d[.ddd]eE`, because neither language's default
+printing is the other's. `rt/README.md` states the format. It is not a
+stable interface, it is not in `tests/api/golden.json`, and nothing but the
+gate reads it; `sabline ast` is not in `sabline --help`, and answers
+`--help` for itself.
+
+The absence of indentation is a decision rather than a default, and it was
+made from a measurement: two spaces a level makes a document O(depth
+squared), and the dump of the deepest program the parser accepts - 40 KB of
+source, which the adversarial corpus holds on purpose - was **352 MB** of
+mostly spaces, which the gate would have written twice on every leg of CI.
+Compact, the same document is 316 KB and the gate takes 10 seconds instead
+of 16.
+
+**The agreement gate, `check_agreement.py`**, over every Sabline source
+this project has:
+
+| Corpus | Programs |
+|---|---:|
+| `examples/`, including `lib`, `ops` and `runner` | 112 |
+| `stdlib/` | 14 |
+| `benchmark/corpus/` | 85 |
+| `tests/error_messages/` | 84 |
+| sabline-spec's conformance corpus | 216 |
+| the lie corpus (`check_prover_lies.py`) | 146 |
+| `check_sandbox.py`'s escapes and honest programs | 58 |
+| `check_refusals.py`'s wrong programs | 24 |
+| every example cut at fifteen points | 1,680 |
+| the adversarial corpus (`agreement_edges.py`) | 113 |
+| paths that are not files | 2 |
+| **total** | **2,534** |
+
+**2,534 programs, 2,534 agreements, 0 differences.** 1,395 of them parse
+and 1,139 are refused, between them reaching every code the lexer and the
+parser give: E000 (158), E001 (2), E002 (4), E100 (409), E101 (539), E102
+(11), E407 (3), E511 (3), E512 (6), E562 (4). The six corpora
+`plan/9.0.md` names hold **no program the lexer or the parser refuses** -
+every one of them parses and is refused later or not at all - so the other
+five are there because a gate that only ever compared trees would say
+nothing about the codes, the messages, the fixes and the lines, which is
+half of what this alpha claims.
+
+**The gate cannot be turned off, and it is proven to go red.**
+`check_gate.py` reads the gate's syntax tree and fails on `os.environ`,
+`getenv`, a configuration file or any use of the command line beyond the
+corpus paths; runs it with eight plausible disabling variables set and
+requires the number of compared programs to be unchanged; and builds
+sabline-rt three times with one difference injected each time - an error
+code, an error message, a field of the tree - and requires the gate to go
+red for each, over the same number of programs, so that it found a
+difference rather than stopped early. `check_workflows.py` holds the
+`agreement` job to having no `if:`, no `continue-on-error`, no matrix and
+no environment.
+
+**Fuzzing.** `cargo fuzz` has two targets, `parse` and `dump`, on
+arbitrary bytes; `fuzz_parsers.py --target agreement` feeds the same
+generated input to both parsers and requires the same answer, coverage-
+guided as the rest of that file is. Both run briefly on every push and
+longer in `monthly.yml`. No input may make sabline-rt panic, abort,
+overflow its stack or hang: the library publishes `PARSE_STACK` and
+`on_parse_stack`, every entry point that parses runs the parse there, and
+`tests/limits.rs` holds the deepest program the parser accepts against
+that number. A stack overflow is not a panic - it is the process going
+away with no message - so it is held by a measurement and not by hope.
+
+**CI.** `cargo build`, `cargo test`, `cargo clippy -D warnings` and
+`cargo fmt --check` on every leg of the matrix, arm64 and Windows
+included, with `Swatinem/rust-cache`; and four legs of their own:
+`agreement` (the gate, its own test, and two minutes of the differential
+fuzzer), `msrv` (a build on 1.82, the version `rt/Cargo.toml` states),
+`supply_chain` (`cargo deny check` - advisories, licenses, bans and
+sources, with a committed `rt/deny.toml` naming all five target triples a
+release builds for), and `rt_fuzz` (a minute of each `cargo fuzz` target).
+
+### What does not exist
+
+sabline-rt does not check types, does not check effects, does not check
+termination, does not prove anything, does not run a program, does not
+hold a budget, does not ask the operating system for anything and does not
+write a receipt. **It cannot tell you whether a program is safe to run.**
+The Python package is what does that and is the reference: where the two
+disagree, the Python package is right and sabline-rt has a defect, until
+the demotion criteria in `plan/9.0.md` are met, and they are not.
+`plan/9.0.md`'s alphas 2 to 8 are the rest, and none of them has started.
+
+Nothing calls sabline-rt. `sabline run`, `sabline.run` and `sabline.Pool`
+are the Python interpreter, exactly as in 8.6.0. There is no C ABI and no
+binding. The crate is published so that the alpha is a shippable tag with
+a version anyone can point at, which is what `plan/9.0.md` asks an alpha
+to be.
+
+### What the reference was found to do that the spec does not say
+
+Writing the parser twice is what finds these, and four are worth the
+record. Three are copied into sabline-rt as they are, because the Python
+package is the reference and a second implementation that fixed things
+quietly would be a second specification. One was changed, in Python.
+
+- **`\d` is every Unicode decimal digit.** The NUMBER and FLOAT patterns
+  are `\d+` and `\d+\.\d+`, and `\d` in a `str` pattern is category Nd,
+  not the ten ASCII digits - so `let x = ١٢` is `Num(12)`, because `int()`
+  reads each character by its decimal value, and `let x = ١.٢` is
+  `FloatNum(1.2)`. `[A-Za-z_]` is ASCII in the same regular expression, so
+  a non-ASCII letter is E000 and not an identifier: the two rules
+  disagree about what a character is. SPEC.md says nothing about either.
+  `rt/crates/sabline-rt/src/unicode_nd.rs` carries the set, generated from
+  CPython's own `\d` by `scripts/gen_unicode_nd.py`, and it follows the
+  Unicode version of the CPython that generated it - so two CPythons this
+  project supports can disagree with each other about whether a recently
+  assigned code point is a digit. No program in any corpus is affected.
+
+- **`open(path, encoding="utf-8")` in the loader decides three things the
+  lexer then depends on**, and none of them is written anywhere: strict
+  UTF-8, so bytes that are not UTF-8 are E512 - with a message that says
+  "cannot import" about a file nobody imported, because the entry file
+  goes through that branch; universal newlines, so `\r\n` and a lone `\r`
+  are both `\n` before the lexer sees one, which means the lexer's own
+  `[ \t\r]+` never sees a `\r` from a file; and a byte-order mark left
+  in place, because `utf-8` is not `utf-8-sig`, so a file that begins with
+  one is E000 on line 1.
+
+- **`Parser.lambda_n` is a class attribute the parser never resets**, so
+  the generated name of a lifted function value - `fn#N`, `for#N` -
+  depends on how many the *process* has parsed before, not on the file.
+  `sabline ast --json` sets it to zero for each file so that a dump is a
+  function of that file alone; nothing else in the package does.
+
+- **E000's message was not stable across the Pythons this project
+  supports, and that one was fixed.** It was
+  `f"unexpected character {source[pos]!r}"`, and `repr` writes a character
+  raw when the Unicode database calls it printable - so the same program
+  gave one message on a CPython with one Unicode version and another on a
+  CPython with another, and a second implementation could match at most
+  one of them. It is `!a` now, which escapes every character outside ASCII
+  and asks the database nothing. The gate found it: `unexpected character
+  'é'` against `unexpected character '\xe9'`, on the first run that had
+  a corpus with a non-ASCII character in it. Message text is prose, which
+  STABILITY.md does not cover, and nothing that was a code, a line or a
+  refusal changed.
+
+### The release, and what a pre-release may do
+
+`release_checks.py` and `release.yml` learned what a pre-release is. A
+version of the form `X.Y.Z-alpha.N` (or `beta`, or `rc`) in
+`rt/Cargo.toml` is a pre-release; it needs a CHANGELOG entry of its own,
+it must be newer than every tag, and **the Python package's six version
+files must still say what the newest ordinary release said** - the gate
+refuses the commit if one moved, because a pre-release that changed what
+PyPI would serve is not a pre-release of the crate.
+
+A pre-release run tags the commit, builds and packages the crate from the
+committed lockfile, publishes it to crates.io by trusted publishing
+(OIDC - no token is stored, and MAINTENANCE.md's secrets table gains no
+row), and makes a GitHub release marked pre-release. It does not publish
+to PyPI, npm, the VS Code Marketplace or the MCP registry; it does not
+move the Action pins; it does not move any "latest" anywhere. A last step
+asks each of those afterwards and fails if one moved, because reading the
+workflow and believing it is not the same as checking.
+
+`check_release.py` holds both halves to fixtures: an alpha publishes the
+crate, the tag and the pre-release GitHub release and nothing else, with
+every other job skipped rather than failed; RELEASE_PAUSED stops a
+pre-release too; a crates.io publish that fails leaves no GitHub release
+behind it, and re-running the failed jobs finishes it with each publish
+made once; and an ordinary release is unchanged, with no crate job run.
+
+perf: the numbers this entry would carry are not measured for a
+pre-release: it publishes no Python artefact, so there is nothing whose
+time changed. `plan/9.0.md`'s alpha.8 is where sabline-rt gets a
+performance floor of its own.
+
 ## 8.6 - The name
 
 The project is renamed. Velaris is **Sabline** from this release. Nothing

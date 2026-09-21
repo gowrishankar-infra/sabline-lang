@@ -30,6 +30,7 @@ imports one after it.
 | `lexer` | text to tokens |
 | `nodes` | the AST dataclasses (`Function`, `Call`, `Let`, `Closure`, ...) |
 | `parser` | tokens to the AST; `for` becomes `while`, inline functions are lifted |
+| `ast_dump` | the canonical AST dump, the one document both runtimes write for one file (9.0.0-alpha.1); `sabline ast --json` writes it, `check_agreement.py` compares it, nothing else reads it |
 | `tables` | `BUILTINS`, `FALLIBLE_BUILTINS`, `NEW_BUILTINS`, `builtin_reached`, the check ceilings |
 | `confine` | `os_policy`, the one derivation of an OS policy from a budget; `ENFORCES` and `FFI_WIDENS`, the tables THREAT_MODEL.md prints; Landlock, seccomp-bpf, the macOS profile and the Windows job, token and integrity level; the fault-injection hook and `probe` (8.4) |
 | `state` | everything a run can change: the budget, the program's arguments, Python handles, the import root |
@@ -204,6 +205,9 @@ run has a function to compile (`check_cli.py` measures it).
 | `check_install.py` | does every artefact, installed as a user installs it, run discount.vel and refuse the network (nightly) |
 | `check_nightly.py` | does every probe nightly.yml runs pass against a local install, and is a program that is not there one BROKEN line rather than a traceback |
 | `check_urls.py` | does every URL the documents name still answer (monthly) |
+| `check_agreement.py` | do the Python parser and sabline-rt answer the same about every Sabline source this project has - the same tree, or the same code, message, fixes and line |
+| `check_gate.py` | can the agreement gate be turned off, and does it go red - three differences injected into sabline-rt, one per comparison class |
+| `check_rt.py` | does the Rust crate hold its own rules: no `unsafe` without a reason and a test, the minimum Rust version stated and pinned, a committed `deny.toml`, the dependency count under the cap |
 | `check_lint.py` | mypy --strict and ruff over the package and every script, and the complexity report |
 | `check_platform.py` | does the reference platform refuse at submission, at run time and at its audit limit what it says it refuses |
 | `check_eject.py` | does an ejected program run from a fresh virtual environment with nothing from here, and hold its budget |
@@ -240,6 +244,27 @@ against this implementation, so a case says what its suite says.
 `sabline conformance` runs the corpus against this implementation, and
 CI runs it and `build_conformance.py --check` on every leg. None of it
 needs the prover.
+
+## The second runtime
+
+From 9.0.0-alpha.1 there is a second implementation, `rt/`: a Cargo
+workspace holding the crate **sabline-rt**, written in Rust.
+`decisions/0002-runtime-in-rust.md` says why, and `plan/9.0.md` is the
+ladder it climbs. In alpha.1 it holds a lexer and a parser and nothing
+else - it does not check, does not run, does not hold a budget - and
+`rt/README.md` is its map.
+
+`sabline/` remains the reference. Where the two disagree, the Python
+package is right and sabline-rt has a defect, until `plan/9.0.md`'s
+demotion criteria are met. What says they agree is `check_agreement.py`,
+on every commit, over every Sabline source here: it compares one canonical
+document per program, which holds the whole tree when the program parses
+and the code, message, fixes and line when it does not. It reads nothing
+that could disable it, and `check_gate.py` proves it goes red by injecting
+a difference and requiring it.
+
+    text -> lexer -> parser            sabline/ and rt/, held equal
+         -> loader -> effects -> ...   sabline/ alone, so far
 
 ## The rules this project holds
 
@@ -294,6 +319,17 @@ needs the prover.
    workflows open issues and never commit; the nightly closes the ones it
    opened once a run passes in full (MAINTENANCE.md, `check_workflows.py`).
 
+10. **A change to a stage both runtimes hold is made in both, in one
+    commit.** From 9.0.0-alpha.1 the lexer and the parser exist twice, and
+    `check_agreement.py` fails on the commit that changes one and not the
+    other rather than six months later. Where the reference does something
+    the SPEC does not say, sabline-rt copies the behaviour and the
+    behaviour is written down - in `rt/README.md` and in the release entry
+    - because a second implementation that quietly fixed things would be a
+    second specification. Changing the reference to remove the ambiguity is
+    allowed and is a change to the reference: argue it in the pull request,
+    and say so in the CHANGELOG.
+
 ## Working on it
 
     pip install -e ".[full,test]"
@@ -303,6 +339,10 @@ needs the prover.
     python fuzz_native.py 60     # both engines must agree
     sabline fmt examples/*.vel stdlib/*.vel --check
     python check_lint.py         # mypy --strict, ruff
+
+    cargo build --release --manifest-path rt/Cargo.toml
+    cargo test --manifest-path rt/Cargo.toml
+    python check_agreement.py ../sabline-spec/tests   # both parsers agree
 
 CI runs these and every suite above on Linux, Windows and macOS (x64 and
 arm64), with and without the optional solver: test.yml, and RELEASING.md
