@@ -1821,6 +1821,38 @@ def main() -> int:
                all(release.made[p] == 1 for p in PRERELEASE_PUBLISHES),
                f"{dict(release.made)} {results}")
 
+            # The alpha's own version, already on crates.io because
+            # somebody published it by hand. crates.io has no way to
+            # reserve a name for a publisher that has never published, so
+            # the FIRST publish of any crate is a person's and the trusted
+            # publisher can only be configured afterwards - which makes
+            # "already there" the ordinary path for a crate's first
+            # release, not an error. Every publish step in this workflow
+            # asks before it publishes; this is the fixture that says the
+            # crate's does too.
+            release = Release("9.0.0-alpha.1")
+            StandIn.routes[("GET", "/api/v1/crates/sabline-rt/9.0.0-alpha.1")] = (
+                200, {"version": {"num": "9.0.0-alpha.1"}})
+            results, outputs = prerelease_results()
+            attempt(jobs, release, results, outputs)
+            ok("a pre-release whose crate is already on crates.io uploads "
+               "nothing there and is still a success",
+               results.get("crates_io") == "success"
+               and release.made["crates"] == 0,
+               f"{results} {dict(release.made)}")
+            ok("...and the GitHub release marked pre-release is made all "
+               "the same, so the tag is not left without one",
+               results.get("prerelease_github") == "success"
+               and release.made["prerelease-github"] == 1
+               and release.made["tag"] == 1,
+               f"{results} {dict(release.made)}")
+            ok("...and it still publishes nothing to PyPI, npm, the "
+               "Marketplace or the MCP registry, and moves no pin",
+               all(release.made[p] == 0 for p in
+                   ("pypi", "npm", "vscode", "registry", "github",
+                    "attestation", "pins")),
+               dict(release.made))
+
             # and the ordinary path, run again after all that, is what it
             # was: this is the other half of the fixture the alpha needs
             release = Release("7.2.0")
