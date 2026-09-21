@@ -1,7 +1,7 @@
 # The comparison benchmark
 
 Seventy-six small programs, each written three times with the same behaviour -
-in Velaris, in JavaScript for Deno, and in Python - and one harness that
+in Sabline, in JavaScript for Deno, and in Python - and one harness that
 runs every program through every tool and records what was caught before
 running, what was caught while running, and what was missed. The result
 is `RESULTS.md` and `results.json`, regenerated with one command:
@@ -17,7 +17,7 @@ command that produced it are all here; change one and rerun.
 
 | Tool | Before running | While running |
 |---|---|---|
-| Velaris 7.1 | `velaris check` (types, effects, unhandled failures, and the prover's E705/E706) and `velaris audit` (which effects, Python modules, paths and hosts the program names, and which loops the termination rule cannot show to end - `loops_unshown`, E612 under `--strict`); in category 12, also `velaris deps-diff` on the dependency's two versions; in category 15, `velaris check` reports an import of a file that is not vendored (E512) on the import line | `velaris.run(source, allow=needs, timeout=5, max_memory_mb=256)` - the budget refuses anything the task does not need: an effect (E310), a module (E311), a path outside the granted directory (E313), a host or port outside the grant (E314), a documented credential location (E318); the limits stop a runaway (E610/E611) |
+| Sabline 7.1 | `sabline check` (types, effects, unhandled failures, and the prover's E705/E706) and `sabline audit` (which effects, Python modules, paths and hosts the program names, and which loops the termination rule cannot show to end - `loops_unshown`, E612 under `--strict`); in category 12, also `sabline deps-diff` on the dependency's two versions; in category 15, `sabline check` reports an import of a file that is not vendored (E512) on the import line | `sabline.run(source, allow=needs, timeout=5, max_memory_mb=256)` - the budget refuses anything the task does not need: an effect (E310), a module (E311), a path outside the granted directory (E313), a host or port outside the grant (E314), a documented credential location (E318); the limits stop a runaway (E610/E611) |
 | Deno 2.x | `deno check` (given the run's `--allow-import` in category 15, so it can fetch the remote module graph) and `deno lint --json` | `deno run --no-prompt --v8-flags=--max-old-space-size=256 file.js` with no `--allow-*` flag, except where the task needs one: `--allow-read=<dir>` in 11a, 12c, 12d, 13a and category 14, `--allow-net=<host:port>` in 11b, 12a and 12b, and `--allow-import=127.0.0.1:<port>` for the package host in category 15 |
 | Plain Python | nothing, by construction | `python file.py` in a subprocess with the same 5 second timeout and, where the platform allows, the same 256 MB cap |
 
@@ -29,15 +29,15 @@ four skills of category 14, and
 `io, net:127.0.0.1:<the listener's port>` for 11b, 12a and 12b; the
 harness fills the placeholders. `env` is never a need, so a program that reads the
 environment is outside its budget. That is the
-Velaris budget for the run; it is also the standard the audit is held to
+Sabline budget for the run; it is also the standard the audit is held to
 (see the rules below).
 
 The timeout for Deno and Python is the harness's own `subprocess`
-timeout. Velaris's is the `timeout=` argument of `velaris.run`, which
+timeout. Sabline's is the `timeout=` argument of `sabline.run`, which
 runs the program in a child process it can kill. The difference is who
 owns the limit, not whether it fires; the results say which.
 
-Memory caps: Velaris `max_memory_mb` uses the OS address-space limit
+Memory caps: Sabline `max_memory_mb` uses the OS address-space limit
 (`RLIMIT_AS`) on POSIX and a job object with
 `JOB_OBJECT_LIMIT_PROCESS_MEMORY` on Windows: enforced on Linux and on
 Windows, best-effort on macOS. Deno gets `--max-old-space-size` on
@@ -49,7 +49,7 @@ every platform. Python's child gets `RLIMIT_AS` on Linux and macOS
 
 Fifteen categories: ten of six programs each, category 11 of three
 (added with the scoped budgets of 3.0), category 12 of four (added
-with `velaris deps-diff` in 7.1), category 13 of one (the TrapDoor,
+with `sabline deps-diff` in 7.1), category 13 of one (the TrapDoor,
 8.2), and categories 14 and 15 of four each (the skill supply chain
 and the hallucinated dependency, 8.3). In the first ten, programs `a`
 to `c` were written first; `d` to `f` were written afterwards, against
@@ -79,7 +79,7 @@ they do.
 | 14 | skill supply chain: an agent skill whose helper reads a credential and posts it (8.3) | `a_weather_telemetry` (a "telemetry" helper posts the `.env` it reads), `b_notes_update` (an "update check" two helpers down reads a `.pem` key and posts it), `c_setup_env` (a "setup" step reads an environment variable and sends it in the body); `d_folder_summary` (reads one non-credential file and prints a summary - a control) |
 | 15 | hallucinated dependency: a program imports a package that does not exist at the index its project names (8.3) | `a_slug_import` (`fastslug`), `b_flatten_config` (`jsonflatten`), `c_retry_fetch` (`retrywrap`) - three invented names no index serves; `d_titlecase` (`textcase`, which does exist - a control) |
 
-Two programs are there because Velaris cannot catch them, so that the
+Two programs are there because Sabline cannot catch them, so that the
 table is not a list of things the language was built to do:
 
 - `04c c_skips_last` - the loop stops one item early. No read is out of
@@ -95,7 +95,7 @@ table is not a list of things the language was built to do:
 
 A third, `07c c_slow_but_finite`, was a miss in the first version of
 this benchmark: two nested loops where one multiplication would do,
-finishing under the deadline. Velaris 2.62 shows before running that
+finishing under the deadline. Sabline 2.62 shows before running that
 every loop in it ends (SPEC.md section 9.5), so it is now recorded as a
 control row inside category 7 - slow, not dangerous - and a tool that
 flags it scores a false positive.
@@ -128,20 +128,20 @@ the same string literal in all three languages - and places the caller
 beside the new version in a scratch directory, where each language's
 import finds it. The run uses the new version.
 
-In Velaris the compiler alone does not flag these programs: a caller
+In Sabline the compiler alone does not flag these programs: a caller
 that declares `net` may call a function that declares `net`, whatever
 hosts that function names. What the upgrade changed is the dependency's
 declared surface, and the static step that compares two of them is
-`velaris deps-diff`. Deno and Python have no declared surface per module
+`sabline deps-diff`. Deno and Python have no declared surface per module
 to compare, so their static steps are the same as in every other
-category; `velaris deps-diff` on a JavaScript or Python dependency
+category; `sabline deps-diff` on a JavaScript or Python dependency
 reports its surface as unknown.
 
 Category 13 is a TrapDoor (8.2): a "secret scanner" whose stated purpose
 is to read a file and report how many secret-looking lines it holds, and
 whose behaviour is to post the file's contents to a URL. The file it is
 pointed at is a credential (a `.pem`), and the path and URL arrive on
-stdin. Velaris catches it before running - the audit shows `net` beside
+stdin. Sabline catches it before running - the audit shows `net` beside
 `fs`, which a scanner that only reports does not need - and at run time
 `read_file` of the `.pem` is refused (E318, 8.0). Deno stops it while
 running; Python runs it, and the harness sees the request reach the
@@ -156,7 +156,7 @@ we could not read). Each dangerous program's stated task needs only `io`
 and a read of the granted directory; a helper reads a credential - the
 `.env` in the granted folder (`a`), a `.pem` key two helpers down (`b`),
 or the environment variable `BENCH_SECRET` (`c`) - and posts it to a
-second endpoint that no task needs. Velaris flags all three before
+second endpoint that no task needs. Sabline flags all three before
 running, because the audit lists `net` (and, for `c`, `env`) beyond the
 task's needs. For `a` and `b` the run then refuses the credential read
 (E318) before the post; for `c` the environment value is a Secret, so
@@ -176,16 +176,16 @@ LLMs", USENIX Security 2025). Three dangerous programs import a name no
 index serves (`fastslug`, `jsonflatten`, `retrywrap`); the control
 imports one that does (`textcase`). No run touches the real network: the
 granted listener serves a one-library index at `/pkg/`, where
-`textcase.js` exists and the invented names return 404. In Velaris a
-library is vendored into `lib/` by `velaris add <url>` and imported as
+`textcase.js` exists and the invented names return 404. In Sabline a
+library is vendored into `lib/` by `sabline add <url>` and imported as
 `import "lib/NAME.vel"`; an invented name was never vendored, so
-`velaris check` reports E512 on the import line - the `DANGER` line -
+`sabline check` reports E512 on the import line - the `DANGER` line -
 before anything runs, and the control's `lib/textcase.vel` resolves. For
 Deno the import is a remote URL, and `deno check` (given the run's
 `--allow-import`) cannot resolve the 404 and reports it on the import
 line; the control downloads and runs. Python has no static step, so the
 missing module is a `ModuleNotFoundError` while running, and the control
-imports a `textcase.py` vendored beside it. So Velaris catches the three
+imports a `textcase.py` vendored beside it. So Sabline catches the three
 before running, Deno catches them before running too, and Python catches
 them while running; nothing flags the control. Because the invented name
 resolves to nothing, no attacker code runs in the benchmark - the danger
@@ -195,7 +195,7 @@ The inputs are chosen to trigger the defect: `0` for the divisors, `1`
 where the divisor is `n - 1`, `12a` for the parse, a document without
 the field, a key that is not in the map, `4000000001` for the square.
 Python's crashes in categories 3 and 6 depend on that choice; with
-ordinary input those programs run clean. Velaris's E520/E705/E706 are
+ordinary input those programs run clean. Sabline's E520/E705/E706 are
 independent of the input, which is the point of the comparison, and the
 results paragraph says so.
 
@@ -224,11 +224,11 @@ score against anything.
 
 ### Exact rules
 
-**Velaris, before running.** `velaris.check(source)` is called with the
+**Sabline, before running.** `sabline.check(source)` is called with the
 prover on. A problem on the dangerous line counts. A problem on any
 other line is a corpus error and the harness exits 2 - a program that
 does not compile for an unrelated reason is a bug in this benchmark,
-not a data point. Then `velaris.audit(source)`: if it lists an effect
+not a data point. Then `sabline.audit(source)`: if it lists an effect
 that `needs` does not include, or (when `needs` grants `ffi:` for named
 modules) a module outside that list, or reports `loops_unshown > 0` (a
 loop the termination rule cannot show to end; E612 under `check
@@ -236,7 +236,7 @@ loop the termination rule cannot show to end; E612 under `check
 program, any problem, any effect beyond its needs, or any loop not
 shown to end is a false positive - so a control program with a loop
 must write it in the one shape the rule accepts, and 07c and 10f do.
-In category 12, `velaris.deps_diff("dir:<the two versions>", old, new)`
+In category 12, `sabline.deps_diff("dir:<the two versions>", old, new)`
 as well: anything it reports gained - a grant, a count, or a function
 that declares an effect it did not - counts as flagging the program,
 and for the control it is a false positive. In category 15 the import
@@ -246,8 +246,8 @@ none. Category 14 needs no special rule: the exfil helper's `net` (and,
 in `c`, `env`) is an effect the audit lists beyond the task's needs
 before anything runs, exactly as in category 13.
 
-**Velaris, while running.** Only when check passed:
-`velaris.run(source, allow=needs, stdin=..., timeout=5, max_memory_mb=256)`.
+**Sabline, while running.** Only when check passed:
+`sabline.run(source, allow=needs, stdin=..., timeout=5, max_memory_mb=256)`.
 `ok=False` for any reason - a refused effect (E310/E311), a timeout
 (E610), the memory cap (E611), a runtime error such as E403 or E407 -
 counts as stopped.
@@ -297,13 +297,13 @@ dependency writes exists. Category 14 adds one: whether the second
 listener - the endpoint no task needs - received the request that names
 the program and the tool, which is the credential leaving. Category 15
 has nothing to observe: the import never resolves, so no code from the
-named package runs, and the verdict comes from the static step (Velaris
+named package runs, and the verdict comes from the static step (Sabline
 and Deno) or the import crash (Python). If it happened, the
 verdict is `missed` whatever the exit status. If it did not happen and
 the process exited 0 anyway, the verdict is `caught-during-run` with the
 evidence saying the denial was swallowed - this is what happens in Deno
 when a program wraps `fetch` in `try/catch`, because a permission error
-there is an ordinary exception. A Velaris refusal cannot be caught by
+there is an ordinary exception. A Sabline refusal cannot be caught by
 the program.
 
 **Precedence.** A program caught before running is recorded as
@@ -318,8 +318,8 @@ evidence column shows both where both happened.
     python benchmark/run.py --check       # exit 1 if any verdict differs from results.json
     python benchmark/run.py --deno /path/to/deno
 
-It needs the checkout (it imports `velaris.py` from the repository
-root), Python 3.10 or newer, and for the Velaris column to mean what
+It needs the checkout (it imports `sabline.py` from the repository
+root), Python 3.10 or newer, and for the Sabline column to mean what
 the results say, the prover: `pip install ".[full]"`. Without `z3`
 the E705/E706 rows become runtime checks and the header of `RESULTS.md`
 says the prover was absent.
@@ -348,19 +348,19 @@ on the legs that install the prover, with Deno absent there.
 The harness uses the library calls; these are the command-line
 equivalents.
 
-    velaris check benchmark/corpus/03_div_zero/a_share_per_person.vel --json
-    velaris audit benchmark/corpus/01_file_write/a_save_report.vel
-    echo /tmp/out.txt | velaris benchmark/corpus/01_file_write/a_save_report.vel --allow io
+    sabline check benchmark/corpus/03_div_zero/a_share_per_person.vel --json
+    sabline audit benchmark/corpus/01_file_write/a_save_report.vel
+    echo /tmp/out.txt | sabline benchmark/corpus/01_file_write/a_save_report.vel --allow io
     echo /tmp/out.txt | deno run --no-prompt benchmark/corpus/01_file_write/a_save_report.js
     echo /tmp/out.txt | python benchmark/corpus/01_file_write/a_save_report.py
 
 The command line has no `--timeout`; for that use the library:
 
-    python -c "import velaris; print(velaris.run(open('benchmark/corpus/07_infinite_loop/a_never_advances.vel').read(), allow={'io'}, timeout=5).as_dict())"
+    python -c "import sabline; print(sabline.run(open('benchmark/corpus/07_infinite_loop/a_never_advances.vel').read(), allow={'io'}, timeout=5).as_dict())"
 
-    velaris check benchmark/corpus/07_infinite_loop/a_never_advances.vel --strict   # E612
+    sabline check benchmark/corpus/07_infinite_loop/a_never_advances.vel --strict   # E612
 
-    velaris deps-diff dir:benchmark/corpus/12_indirect_authority/b_new_host 1.4.0 1.5.0
+    sabline deps-diff dir:benchmark/corpus/12_indirect_authority/b_new_host 1.4.0 1.5.0
 
 On the corpus as committed that reports `net:{other_url}` gained, the
 placeholder standing where the harness writes the second listener's
@@ -370,7 +370,7 @@ beside the `.vel` one; the harness gives each tool a directory holding
 its own language alone.
 
 The programs read their input from stdin rather than from `args()`;
-stdin behaves the same in all three languages. (Until 2.62 the Velaris
+stdin behaves the same in all three languages. (Until 2.62 the Sabline
 command line also handed the budget words to `args()`; that is fixed,
 and 10e reads its arguments to show it.)
 
@@ -393,5 +393,5 @@ One thing had to be normalised for that to hold: in category 8 the
 256 MB cap and the 5 second deadline race, and for Deno and Python
 which one fires first changes with the machine's load. The verdict is
 the same either way, so those cells record that the program was
-stopped and not by which limit. The Velaris cell keeps its code (E610
+stopped and not by which limit. The Sabline cell keeps its code (E610
 or E611), which is stable because its child process reports it.

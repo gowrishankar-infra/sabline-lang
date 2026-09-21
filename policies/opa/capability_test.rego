@@ -1,24 +1,24 @@
 # opa test policies/opa   (or: conftest verify -p policies/opa)
-package velaris.capability_test
+package sabline.capability_test
 
 import rego.v1
 
-import data.velaris.capability
+import data.sabline.capability
 
 platform := {"effects": ["io", "net"], "hosts": ["api.example.com", "*.cdn.example.net:443"]}
 
 statement(ok, effects, hosts, any) := {
 	"_type": "https://in-toto.io/Statement/v1",
 	"subject": [{"name": "app.vel", "digest": {"sha256": "0000000000000000000000000000000000000000000000000000000000000000"}}],
-	"predicateType": "https://velaris-lang.dev/capability/v1",
+	"predicateType": "https://sabline.dev/capability/v1",
 	"predicate": {
-		"producer": {"name": "velaris-lang"},
+		"producer": {"name": "sabline-lang"},
 		"audit": {
-			"schema": "velaris.audit/1",
+			"schema": "sabline.audit/1",
 			"ok": ok,
 			"effects": effects,
 			"net_hosts": {"hosts": hosts, "any": any},
-			"safe_command": "velaris <file> --allow io,net",
+			"safe_command": "sabline <file> --allow io,net",
 		},
 	},
 }
@@ -69,16 +69,30 @@ test_refuses_another_predicate_type if {
 	startswith(msg, "the predicate type is")
 }
 
-# a Statement written by Velaris 4.2 to 8.2.1 names the type at the project's
-# earlier documentation address: the same type
+# a Statement written by Sabline 4.2 to 8.2.1 names the type at the project's
+# GitHub Pages address: the same type
 test_admits_the_type_as_written_before_8_3 if {
 	count(capability.deny) == 0 with input as object.union(statement(true, ["io"], [], false), {"predicateType": "https://gowrishankar-infra.github.io/velaris-lang/capability/v1"})
 		with data.platform as platform
 }
 
-# velaris.dev was never this project's domain: a type under it is another type
-test_refuses_the_type_under_a_domain_velaris_does_not_hold if {
+# and one written by 8.3 to 8.5 names it at velaris-lang.dev, the domain the
+# project held before it was renamed Sabline in 8.6: also the same type
+test_admits_the_type_as_written_before_8_6 if {
+	count(capability.deny) == 0 with input as object.union(statement(true, ["io"], [], false), {"predicateType": "https://velaris-lang.dev/capability/v1"})
+		with data.platform as platform
+}
+
+# velaris.dev was never this project's domain, and neither is velaris.io, the
+# company whose name it gave up: a type under either is another type
+test_refuses_the_type_under_a_domain_sabline_does_not_hold if {
 	some msg in capability.deny with input as object.union(statement(true, ["io"], [], false), {"predicateType": "https://velaris.dev/capability/v1"})
+		with data.platform as platform
+	startswith(msg, "the predicate type is")
+}
+
+test_refuses_the_type_under_the_company_it_was_named_after if {
+	some msg in capability.deny with input as object.union(statement(true, ["io"], [], false), {"predicateType": "https://velaris.io/capability/v1"})
 		with data.platform as platform
 	startswith(msg, "the predicate type is")
 }

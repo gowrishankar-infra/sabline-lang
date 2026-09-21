@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""`velaris receipt show` and `velaris audit --html`: a page a person can read.
+"""`sabline receipt show` and `sabline audit --html`: a page a person can read.
 
     python check_viewers.py
 
@@ -23,7 +23,7 @@ from suite_dirs import isolate  # noqa: E402
 HERE = Path(__file__).parent
 GOLDEN = HERE / "tests" / "viewers"
 WORK = isolate("check_viewers")
-VELARIS = [sys.executable, str(HERE / "velaris.py")]
+SABLINE = [sys.executable, str(HERE / "sabline.py")]
 FAILED: list[str] = []
 PASSED = [0]
 
@@ -36,8 +36,8 @@ def expect(what: str, ok: bool, detail: Any = "") -> None:
         print(f"  FAILED: {what}" + (f"\n    {detail}" if detail != "" else ""))
 
 
-def velaris(*args: str) -> tuple[int, bytes, bytes]:
-    done = subprocess.run(VELARIS + list(args), capture_output=True,
+def sabline(*args: str) -> tuple[int, bytes, bytes]:
+    done = subprocess.run(SABLINE + list(args), capture_output=True,
                           stdin=subprocess.DEVNULL, timeout=300)
     return done.returncode, done.stdout, done.stderr
 
@@ -83,7 +83,7 @@ def inert(reader: Reader) -> bool:
         if key.startswith("on") or key in ("src", "srcset", "action"):
             return False
         if key == "href" and not (value or "").startswith(
-                "https://velaris-lang.dev/"):
+                "https://sabline.dev/"):
             return False
     return True
 
@@ -92,11 +92,11 @@ HOSTILE = {
     "_type": "https://in-toto.io/Statement/v1",
     "subject": [{"name": "<script>alert(1)</script>.vel",
                  "digest": {"sha256": "0" * 64}}],
-    "predicateType": "https://velaris-lang.dev/receipt/v1",
+    "predicateType": "https://sabline.dev/receipt/v1",
     "predicate": {
-        "schema": "velaris.receipt/1",
-        "producer": {"name": "velaris-lang", "uri": "x", "version": "8.5.0"},
-        "specification": "velaris-spec 0.13.0",
+        "schema": "sabline.receipt/1",
+        "producer": {"name": "sabline-lang", "uri": "x", "version": "8.5.0"},
+        "specification": "sabline-spec 0.13.0",
         "startedAt": "2026-01-01T00:00:00.000Z", "wall_time_ms": 1.0,
         "budget": 'io,fs:read:"><img src=x onerror=alert(1)>',
         "run_parameters": {"seed": None, "freeze_time": None, "timeout": None,
@@ -132,19 +132,19 @@ def golden(name: str, page: bytes, update: bool) -> None:
 def main() -> int:
     update = "--update" in sys.argv
     expect("the stylesheet in the package is the documentation site's",
-           (HERE / "velaris" / "site.css").read_bytes().replace(b"\r\n", b"\n")
+           (HERE / "sabline" / "site.css").read_bytes().replace(b"\r\n", b"\n")
            == (HERE / "site" / "site.css").read_bytes().replace(b"\r\n", b"\n"))
     print("a receipt")
     receipt = GOLDEN / "receipt.json"
-    code, page, err = velaris("receipt", "show", str(receipt))
-    code2, again, _ = velaris("receipt", "show", str(receipt))
+    code, page, err = sabline("receipt", "show", str(receipt))
+    code2, again, _ = sabline("receipt", "show", str(receipt))
     expect("the same receipt gives the same bytes", code == 0 == code2
            and page == again and page.startswith(b"<!DOCTYPE html>"), err)
     expect("no carriage return: the page is the same on Windows",
            b"\r" not in page)
     golden("receipt.html", page, update)
     out = WORK / "page.html"
-    code, _, err = velaris("receipt", "show", str(receipt), "-o", str(out))
+    code, _, err = sabline("receipt", "show", str(receipt), "-o", str(out))
     expect("-o writes the same bytes to a file",
            code == 0 and out.read_bytes() == page, err)
     reader = read(page)
@@ -159,24 +159,24 @@ def main() -> int:
                  "examples/ops/azure_groups.vel", "Tool calls",
                  "tool:send_email:to=*@corp.com"):
         expect(f"a reader finds: {what}", what in seen)
-    code, text, err = velaris("receipt", "show", str(receipt), "--text")
+    code, text, err = sabline("receipt", "show", str(receipt), "--text")
     golden("receipt.txt", text, update)
     expect("--text says the same in the terminal", code == 0
            and b"management.azure.com:443  3 times" in text
            and b"<" not in text.replace(b"<stdlib>", b""), err)
-    code, shown, _ = velaris("receipts", "show", str(receipt))
+    code, shown, _ = sabline("receipts", "show", str(receipt))
     expect("`receipts show` is the same page", code == 0 and shown == page)
     print("a receipt somebody else wrote")
     hostile = WORK / "hostile.json"
     hostile.write_text(json.dumps(HOSTILE), encoding="utf-8")
-    code, page, err = velaris("receipt", "show", str(hostile))
+    code, page, err = sabline("receipt", "show", str(hostile))
     reader = read(page)
     expect("markup in a receipt's values is text on the page, not markup",
            code == 0 and inert(reader)
            and "<script>alert(1)</script>.vel" in "".join(reader.text)
            and b"<script" not in page and b"<img" not in page
            and b"<svg" not in page, err)
-    code, text, _ = velaris("receipt", "show", str(hostile), "--text")
+    code, text, _ = sabline("receipt", "show", str(hostile), "--text")
     expect("an escape sequence in one is written out, not sent to the "
            "terminal", code == 0 and b"\x1b" not in text
            and b"\\x1b[2J" in text)
@@ -184,24 +184,24 @@ def main() -> int:
     del old["predicate"]["grants_used"]
     old["predicate"]["effects_used"] = {"net": 4}
     (WORK / "old.json").write_text(json.dumps(old), encoding="utf-8")
-    code, text, _ = velaris("receipt", "show", str(WORK / "old.json"),
+    code, text, _ = sabline("receipt", "show", str(WORK / "old.json"),
                             "--text")
     expect("a receipt from before 8.5 says what it can, and that it cannot "
            "say under which grant", code == 0 and b"4 operation(s)" in text
            and b"before 8.5" in text)
     for name, content in (("missing.json", None), ("not.json", "{"),
-                          ("audit.json", '{"schema": "velaris.audit/1"}')):
+                          ("audit.json", '{"schema": "sabline.audit/1"}')):
         if content is not None:
             (WORK / name).write_text(content, encoding="utf-8")
-        code, page, err = velaris("receipt", "show", str(WORK / name))
+        code, page, err = sabline("receipt", "show", str(WORK / name))
         expect(f"{name} is exit 2 and one line, not a page or a traceback",
                code == 2 and not page and b"Traceback" not in err
                and err.count(b"\n") == 1, err)
     print("an audit")
     program = "examples/ops/aws_buckets.vel"
-    done = subprocess.run(VELARIS + ["audit", program, "--html"], cwd=HERE,
+    done = subprocess.run(SABLINE + ["audit", program, "--html"], cwd=HERE,
                           capture_output=True, timeout=300)
-    again2 = subprocess.run(VELARIS + ["audit", program, "--html"], cwd=HERE,
+    again2 = subprocess.run(SABLINE + ["audit", program, "--html"], cwd=HERE,
                             capture_output=True, timeout=300)
     expect("the same program gives the same bytes", done.returncode == 0
            and done.stdout == again2.stdout and b"\r" not in done.stdout,

@@ -1,4 +1,4 @@
-# A platform that lets its customers write Velaris
+# A platform that lets its customers write Sabline
 
 Your customers want to write their own rules — a discount, a routing
 decision, a validation — and run them on your machines. Before one runs
@@ -7,7 +7,7 @@ to know its arithmetic holds, and no sandbox can answer that.
 
 `app.py` is the whole pattern in one file: audit at submission, refuse a
 surface wider than the platform permits, and run what is left on a
-`velaris.Pool` whose budget is yours.
+`sabline.Pool` whose budget is yours.
 
 ## The demo: a rule proven never to return a negative total
 
@@ -79,7 +79,7 @@ curl -s http://127.0.0.1:8000/scripts/<id>
 curl -s -X POST http://127.0.0.1:8000/scripts/<id>/run
 ```
 
-The declaration is read off `velaris.audit/1` and holds the effects the
+The declaration is read off `sabline.audit/1` and holds the effects the
 script may perform transitively, the hosts and paths it names, the
 Python modules it reaches, the most file and network operations one run
 can make, its proven share, its contracts function by function, and the
@@ -146,14 +146,14 @@ the clock and the memory regardless.
 
 Storage here is a dict in one process, so scripts vanish on restart and
 there is nothing to migrate: a real one persists the source, the audit
-it was accepted on and the Velaris version that produced it, so a
+it was accepted on and the Sabline version that produced it, so a
 compiler upgrade can re-audit what is already enabled rather than
 trusting a verdict from an older prover. It authenticates the submitter
 and scopes every script to a tenant, since `PLATFORM_ALLOW` here is one
 global constant where a real one is per-tenant or per-plan policy —
-which means a `velaris.PoolRegistry`, one pool per distinct budget,
+which means a `sabline.PoolRegistry`, one pool per distinct budget,
 rather than the single pool in this file. It would keep a
-`velaris.InvocationLog` of every run, rate-limit runs per tenant, pass
+`sabline.InvocationLog` of every run, rate-limit runs per tenant, pass
 input through `pool.run(stdin=, args=)`, and re-run the gate when the
 policy tightens, because a script accepted under a wider budget is still
 in the store. None of that changes the shape of what is here. This file
@@ -174,4 +174,4 @@ limit. Two of them depend on z3-solver: without it one is skipped and
 the other asserts that the declaration says no prover ran, rather than
 a proven share that would mean nothing. The suite skips cleanly when
 fastapi is not installed — fastapi is a dependency of this example,
-never of Velaris.
+never of Sabline.

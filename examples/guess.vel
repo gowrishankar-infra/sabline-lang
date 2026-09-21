@@ -1,6 +1,6 @@
-// v0.12: a real, playable game written in Velaris.
+// v0.12: a real, playable game written in Sabline.
 //
-// velaris examples/guess.vel --allow io,rand
+// sabline examples/guess.vel --allow io,rand
 //
 // 'ask' reads your keyboard (an io effect - it's in the signature),
 // 'to_int' turns the answer into a number (typing "banana" gives a

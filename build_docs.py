@@ -6,15 +6,15 @@
 Every page is made from this repository. The Markdown documents -
 TUTORIAL.md, SPEC.md, THREAT_MODEL.md, EMBEDDING.md, STABILITY.md,
 SECURITY.md, CHANGELOG.md and every docs/*.md - are rendered by
-docs_markdown.py, with Velaris code highlighted by the lexer's own token
+docs_markdown.py, with Sabline code highlighted by the lexer's own token
 classes. The standard library page is read from stdlib/ by the compiler,
-contracts included; the errors page is velaris.ERROR_TABLE; the two
-predicate-type pages name the types velaris writes. llms.txt is LLM.md
+contracts included; the errors page is sabline.ERROR_TABLE; the two
+predicate-type pages name the types sabline writes. llms.txt is LLM.md
 byte for byte, and playground.html is build_playground.py's page. Every
 page links site/site.css and site/site.js, copied beside it, and nothing
 else. check_site.py holds what this writes; run build_playground.py first.
 
-CALLOUTS. A document marks a note, something Velaris refuses, or a problem
+CALLOUTS. A document marks a note, something Sabline refuses, or a problem
 known and not yet closed with a block quote whose first line is [!NOTE],
 [!REFUSES] or [!KNOWN-OPEN], or which starts **Note.**, **Refuses.** or
 **Known open.**; docs_markdown.py's docstring gives the syntax in full.
@@ -50,53 +50,57 @@ from typing import Any, Callable, cast
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from docs_markdown import Slugger, render  # noqa: E402
-from velaris.lexer import KEYWORDS, MASTER_RE  # noqa: E402
+from sabline.lexer import KEYWORDS, MASTER_RE  # noqa: E402
 
 OUT = HERE / "docs"
 ASSETS = HERE / "site"
-REPO = "https://github.com/gowrishankar-infra/velaris-lang"
-SPEC_REPO = "https://github.com/gowrishankar-infra/velaris-spec"
+REPO = "https://github.com/gowrishankar-infra/sabline-lang"
+SPEC_REPO = "https://github.com/gowrishankar-infra/sabline-spec"
 PAGE_BUDGET = 100_000             # bytes of HTML a page may have (check_site)
 CHANGELOG_BODY = 78_000           # bytes of changelog text on one page
 
-# The site's origin, as the package names it (velaris.SITE, from 8.3.0).
-SITE: str = velaris.SITE.rstrip("/")
-VERSION: str = velaris.VERSION
+# The site's origin, as the package names it (sabline.SITE, from 8.3.0).
+SITE: str = sabline.SITE.rstrip("/")
+VERSION: str = sabline.VERSION
 VERSION_DIR = ".".join(VERSION.split(".")[:2])
 VERSION_NAME = re.compile(r"^\d+\.\d+$")
 
 # a link written for the site's own address, kept in a page until the tree
 # it is written into says where that is; see resolve_links()
-INTERNAL = "velaris-docs-internal:"
+INTERNAL = "sabline-docs-internal:"
 ROOT_ONLY = {"playground.html", "versions.html", "capability/v1/index.html",
              "capability/v1/schema.json", "receipt/v1/index.html",
              "receipt/v1/schema.json"}
 
 
 def earlier_sites() -> tuple[str, ...]:
-    """Where the site was before velaris-lang.dev, as velaris names it: a
-    link a document still writes to one of these is a link into this site,
-    and is made relative like any other."""
+    """Where the site was before sabline.dev, as sabline names it - the
+    project's GitHub Pages address until 8.3, and velaris-lang.dev until the
+    rename in 8.6. A link a document still writes to one of these is a link
+    into this site, and is made relative like any other."""
     found: set[str] = set()
-    predicates = getattr(velaris, "predicates", None)
-    earlier = getattr(predicates, "EARLIER_SITE", None)
-    if isinstance(earlier, str):
-        found.add(earlier.rstrip("/"))
-    card_site = velaris.REFERENCE_URL.rsplit("/", 1)[0]
+    predicates = getattr(sabline, "predicates", None)
+    earlier = getattr(predicates, "EARLIER_SITES", None)
+    if isinstance(earlier, str):          # one address, until 8.6
+        earlier = (earlier,)
+    for site in earlier or ():
+        if isinstance(site, str):
+            found.add(site.rstrip("/"))
+    card_site = sabline.REFERENCE_URL.rsplit("/", 1)[0]
     if card_site != SITE:
         found.add(card_site)
     return tuple(sorted(found))
 
 
 def predicate_types(kind: str) -> tuple[str, ...]:
-    """The predicate type velaris writes for `kind` (CAPABILITY or RECEIPT),
+    """The predicate type sabline writes for `kind` (CAPABILITY or RECEIPT),
     then every earlier spelling it still reads as that type (8.3.0)."""
-    spellings = getattr(velaris, f"{kind}_PREDICATE_TYPES", None)
+    spellings = getattr(sabline, f"{kind}_PREDICATE_TYPES", None)
     if spellings:
         return tuple(str(s) for s in spellings)
-    return (str(getattr(velaris, f"{kind}_PREDICATE_TYPE")),)
+    return (str(getattr(sabline, f"{kind}_PREDICATE_TYPE")),)
 
 
 def internal(path: str, fragment: str = "") -> str:
@@ -104,9 +108,9 @@ def internal(path: str, fragment: str = "") -> str:
 
 
 # ---------------------------------------------------------------------------
-# code: Velaris by the lexer's own token classes, anything else as text
+# code: Sabline by the lexer's own token classes, anything else as text
 
-LABELS = {"vel": "Velaris", "velaris": "Velaris", "sh": "Shell",
+LABELS = {"vel": "Sabline", "sabline": "Sabline", "sh": "Shell",
           "bash": "Shell", "shell": "Shell", "console": "Console",
           "python": "Python", "py": "Python", "json": "JSON", "yaml": "YAML",
           "yml": "YAML", "toml": "TOML", "javascript": "JavaScript",
@@ -118,9 +122,9 @@ TOKEN_CLASSES = {"COMMENT": "c", "STRING": "s", "NUMBER": "n", "FLOAT": "n",
                  "KEYWORD": "k"}
 
 
-def velaris_tokens(code: str) -> list[tuple[str, str]]:
+def sabline_tokens(code: str) -> list[tuple[str, str]]:
     """(the lexer's class for it, the text) for every piece of `code`, in
-    order, whitespace included. MASTER_RE and KEYWORDS are velaris/lexer.py's
+    order, whitespace included. MASTER_RE and KEYWORDS are sabline/lexer.py's
     own, so a keyword added there is highlighted here. A character the lexer
     refuses is a piece of class "" - an illustrative block may hold `...`."""
     out: list[tuple[str, str]] = []
@@ -139,17 +143,17 @@ def velaris_tokens(code: str) -> list[tuple[str, str]]:
     return out
 
 
-def reads_as_velaris(code: str) -> bool:
-    """An unlabelled block is shown as Velaris when the lexer reads all of it
+def reads_as_sabline(code: str) -> bool:
+    """An unlabelled block is shown as Sabline when the lexer reads all of it
     and it holds a keyword (SPEC.md's indented examples)."""
-    tokens = velaris_tokens(code)
+    tokens = sabline_tokens(code)
     return (all(kind for kind, _ in tokens)
             and any(kind == "KEYWORD" for kind, _ in tokens))
 
 
-def highlight_velaris(code: str) -> str:
+def highlight_sabline(code: str) -> str:
     parts = []
-    for kind, text in velaris_tokens(code):
+    for kind, text in sabline_tokens(code):
         cls = TOKEN_CLASSES.get(kind)
         escaped = html.escape(text, quote=False)
         parts.append(f'<span class="{cls}">{escaped}</span>' if cls else escaped)
@@ -158,8 +162,8 @@ def highlight_velaris(code: str) -> str:
 
 def highlight(info: str, code: str) -> tuple[str, str]:
     word = info.lower()
-    if word in ("vel", "velaris") or (not word and reads_as_velaris(code)):
-        return "Velaris", highlight_velaris(code)
+    if word in ("vel", "sabline") or (not word and reads_as_sabline(code)):
+        return "Sabline", highlight_sabline(code)
     return LABELS.get(word, info or "Text"), html.escape(code, quote=False)
 
 
@@ -275,7 +279,7 @@ DOCUMENTS = [("TUTORIAL.md", "tutorial.html"), ("SPEC.md", "spec.html"),
              ("SECURITY.md", "security.html")]
 # a docs/*.md page's section; one not named here goes under Threat model,
 # those in DOCS_ORDER first and in that order, the rest by name
-DOCS_SECTION = {"floats.md": "Floats"}
+DOCS_SECTION = {"floats.md": "Floats", "renamed.md": "Spec"}
 DOCS_ORDER = ["confinement.md", "runner.md", "eval.md",
               "structurally-impossible.md", "crosswalk.md"]
 MISSING: list[str] = []         # links to a repository file that is not here
@@ -418,7 +422,7 @@ def changelog_pages(known: set[str]) -> tuple[list[Page], dict[str, str]]:
 
     slug = Slugger()
     body = [heading(1, "Changelog", slug),
-            '<p class="lead">Every release of Velaris, newest first, one page '
+            '<p class="lead">Every release of Sabline, newest first, one page '
             "for each major version. The text is CHANGELOG.md's.</p>"]
     body.append(re.sub(r"<h1[^>]*>.*?</h1>", "", head.html, flags=re.S))
     for path, label, part in index_parts:
@@ -467,7 +471,7 @@ LIBRARY_NOTES = {
         "net:api.github.com:443</code> and <code>declassify</code>; example: "
         "<code>examples/ops/github_issues.vel</code>."),
     "aws.vel": (
-        "Requests signed with Signature Version 4, in Velaris, to S3 and "
+        "Requests signed with Signature Version 4, in Sabline, to S3 and "
         "STS. The secret key stays a Secret: the signature is one <code>"
         "hmac_sha256_chain</code> call, which the audit lists as a "
         "declassification with the reason \"hmac signature\". Grant the "
@@ -483,13 +487,13 @@ LIBRARY_NOTES = {
 def library_page() -> Page:
     slug = Slugger()
     body = [heading(1, "Standard library", slug),
-            '<p class="lead">Every function below is written in Velaris, in '
+            '<p class="lead">Every function below is written in Sabline, in '
             "stdlib/, and read onto this page by the compiler itself, "
             "contracts included. A violated <code>requires</code> is a "
             "compile error at your call site.</p>"]
     for mod in sorted((HERE / "stdlib").glob("*.vel")):
         try:
-            got, _ = velaris.load_program(str(mod))
+            got, _ = sabline.load_program(str(mod))
         except Exception:
             continue
         rows = []
@@ -499,12 +503,12 @@ def library_page() -> Page:
             if mod.name != "std.vel":
                 f.name = f"{mod.stem}.{f.name}"
             row = [f'<div class="fn"><p class="sig">'
-                   f"{highlight_velaris(fn_signature(f))}</p>"]
+                   f"{highlight_sabline(fn_signature(f))}</p>"]
             for word, promises in (("requires", f.requires),
                                    ("ensures", f.ensures)):
                 for expr, _ in promises:
-                    row.append('<p class="contract">' + highlight_velaris(
-                        f"{word} {velaris.expr_str(expr)}") + "</p>")
+                    row.append('<p class="contract">' + highlight_sabline(
+                        f"{word} {sabline.expr_str(expr)}") + "</p>")
             rows.append("".join(row) + "</div>")
         if rows:
             body.append(heading(2, mod.name, slug))
@@ -513,10 +517,10 @@ def library_page() -> Page:
             body.extend(rows)
     body.append(heading(2, "Built-in functions", slug))
     rows = []
-    for name, info in sorted(velaris.BUILTINS.items()):
+    for name, info in sorted(sabline.BUILTINS.items()):
         eff = ", ".join(sorted(info["effects"])) or "pure"
         fall = (' <span class="ecode">or fail</span>'
-                if name in velaris.FALLIBLE_BUILTINS else "")
+                if name in sabline.FALLIBLE_BUILTINS else "")
         rows.append(f"<tr><td><code>{name}</code>{fall}</td><td>{eff}</td>"
                     f"<td>{html.escape(', '.join(info['types']))}</td>"
                     f"<td>{html.escape(cast(str, info['ret']))}</td></tr>")
@@ -528,15 +532,15 @@ def library_page() -> Page:
 
 
 def errors_page() -> Page:
-    # The rows are velaris.ERROR_TABLE, the one list of codes, which
-    # check_library.py holds against every code Velaris can give; the
+    # The rows are sabline.ERROR_TABLE, the one list of codes, which
+    # check_library.py holds against every code Sabline can give; the
     # message templates are scraped from the source beside it. Each row
-    # has an id, because `velaris check --sarif` points a help URI at it.
+    # has an id, because `sabline check --sarif` points a help URI at it.
     src = "\n".join(p.read_text(encoding="utf-8")
-                    for p in sorted((HERE / "velaris").glob("*.py")))
+                    for p in sorted((HERE / "sabline").glob("*.py")))
     found: dict[str, str] = {}
     for m in re.finditer(
-            r'(?:VelarisError|Problem)\(\s*"(E\d+)",\s*'
+            r'(?:SablineError|Problem)\(\s*"(E\d+)",\s*'
             r'((?:f?"(?:[^"\\\\]|\\\\.)*"\s*)+)', src):
         code = m.group(1)
         msg = " ".join(re.findall(r'f?"((?:[^"\\\\]|\\\\.)*)"', m.group(2)))
@@ -545,7 +549,7 @@ def errors_page() -> Page:
             found[code] = msg
     slug = Slugger()
     body = [heading(1, "Error reference", slug),
-            '<p class="lead">Every error Velaris can give, from the error table '
+            '<p class="lead">Every error Sabline can give, from the error table '
             "in the compiler source, which the test suite holds against every "
             "code the compiler can raise, so this page cannot go stale. In the "
             "message templates, braces are filled with your program&rsquo;s "
@@ -555,52 +559,52 @@ def errors_page() -> Page:
         f'<tr id="{code}"><td class="ecode">{code}</td>'
         f"<td>{html.escape(meaning)}</td>"
         f"<td>{html.escape(found.get(code, ''))}</td></tr>"
-        for code, meaning in sorted(velaris.ERROR_TABLE.items())]))
+        for code, meaning in sorted(sabline.ERROR_TABLE.items())]))
     body.append(heading(2, "Findings that are not compile errors", slug))
-    body.append("<p>What <code>velaris check --sarif</code>, <code>proofs "
+    body.append("<p>What <code>sabline check --sarif</code>, <code>proofs "
                 "--sarif</code>, <code>audit --sarif</code> and "
                 "<code>capabilities check --sarif</code> report besides the "
                 "codes above, at the level SARIF reports each at.</p>")
     body.append(table(["Rule", "Level", "What it means"], [
         f'<tr id="{rule}"><td class="ecode">{rule}</td><td>{level}</td>'
         f"<td>{html.escape(meaning)}</td></tr>"
-        for rule, level, meaning in velaris.SARIF_FINDINGS]))
+        for rule, level, meaning in sabline.SARIF_FINDINGS]))
     # STABILITY.md rule 3: a code is never reused, and one that is no
     # longer given stays listed here with what it meant
     body.append(heading(2, "Removed codes", slug))
-    if velaris.REMOVED_ERRORS:
+    if sabline.REMOVED_ERRORS:
         body.append(table(["Code", "What it meant", "Removed in"], [
             f'<tr id="{code}"><td class="ecode">{code}</td>'
             f"<td>{html.escape(meaning)}</td><td>{gone}</td></tr>"
-            for code, meaning, gone in velaris.REMOVED_ERRORS]))
+            for code, meaning, gone in sabline.REMOVED_ERRORS]))
     else:
         body.append("<p>None. A code that stops being given is listed here, "
                     "and is never given again for anything else "
                     '(<a href="' + internal("stability.html") + '">'
                     "STABILITY.md</a>).</p>")
     return Page("errors.html", "Error reference", "\n".join(body),
-                "velaris.ERROR_TABLE", wide=True)
+                "sabline.ERROR_TABLE", wide=True)
 
 
-START_INSTALL = """pip install velaris-lang
-velaris doctor
-velaris new hello && cd hello && velaris main.vel"""
+START_INSTALL = """pip install sabline-lang
+sabline doctor
+sabline new hello && cd hello && sabline main.vel"""
 
-START_DEMO = """pip install velaris-lang
-velaris demo"""
+START_DEMO = """pip install sabline-lang
+sabline demo"""
 
-# what `velaris demo` prints, shortened; check_demo.py holds each line here to
+# what `sabline demo` prints, shortened; check_demo.py holds each line here to
 # be the beginning of a line the command writes
 START_DEMO_OUTPUT = """1. A script that reads ./.env and posts it to a webhook. No budget is given, so it gets io:
 
-   $ velaris agent_script.vel --receipt refused.receipt.json
+   $ sabline agent_script.vel --receipt refused.receipt.json
    line 6: check read_file("./.env") {
    error[E310] 'read_file' needs the 'fs' effect, which this run does not allow (it allows: io)
    exit 1. receipt: refused; E310 (fs) at line 6; grants used: none
 
 2. The same task inside a budget: one file to read, one directory to write, no network:
 
-   $ velaris inside_budget.vel --allow io,fs:read:settings.txt,fs:write:out --receipt allowed.receipt.json
+   $ sabline inside_budget.vel --allow io,fs:read:settings.txt,fs:write:out --receipt allowed.receipt.json
    3 setting(s); the report is in out/report.txt
    exit 0. receipt: ok; grants used: fs:read:./settings.txt x1, fs:write:./out x1"""
 
@@ -629,7 +633,7 @@ def start_page() -> Page:
                 f'<p class="route-links">{anchors}</p></section>')
 
     body = [
-        heading(1, "Velaris", slug),
+        heading(1, "Sabline", slug),
         '<p class="lead">Start here: one command, no arguments, no network, '
         "under a minute. It writes the kind of script an agent writes - read "
         "<code>./.env</code>, post it to a webhook - runs it, and shows the "
@@ -660,14 +664,14 @@ def start_page() -> Page:
                (internal("playground.html"), "The playground")]),
         route("review-it", "Review it before running agent code",
               "For a person about to run a program a model wrote. The threat "
-              "model says what Velaris defends against and what it does not; "
-              "<code>velaris audit</code> says what one program can touch, "
+              "model says what Sabline defends against and what it does not; "
+              "<code>sabline audit</code> says what one program can touch, "
               "before it runs.",
               [(internal("threat-model.html"), "The threat model"),
                (internal("embedding.html", "the-audit-format"), "The audit")]),
         route("for-a-model", "For a model",
               "The whole language as one plain-text page, written to be given "
-              "to a model before it writes Velaris. Every compiler error "
+              "to a model before it writes Sabline. Every compiler error "
               "names it.",
               [(internal("llms.txt"), "llms.txt")]),
         "</div>",
@@ -689,14 +693,14 @@ def start_page() -> Page:
         "compiler.</li>",
         f'<li><a href="{internal("floats.html")}">Floats</a>: why the prover '
         "works in IEEE-754 and not in real numbers.</li>",
-        f'<li><a href="{internal("embedding.html")}">Embedding</a>: Velaris as '
+        f'<li><a href="{internal("embedding.html")}">Embedding</a>: Sabline as '
         "a library, a door, an MCP server and a GitHub Action.</li>",
         f'<li><a href="{internal("stability.html")}">Stability</a> and the '
         f'<a href="{internal("changelog.html")}">changelog</a>: what may '
         "change, and what did.</li>",
         "</ul>",
     ]
-    return Page("index.html", "Velaris documentation", "\n".join(body),
+    return Page("index.html", "Sabline documentation", "\n".join(body),
                 "build_docs.py", wide=True)
 
 
@@ -705,17 +709,17 @@ def type_note(types: tuple[str, ...], what: str, since: str) -> str:
         return ""
     return ("<p><strong>Also read as this type:</strong> "
             + ", ".join(f"<code>{html.escape(t)}</code>" for t in types[1:])
-            + f", the name {what} written by velaris-lang {since} to 8.2.1 "
+            + f", the name {what} written by sabline-lang {since} to 8.2.1 "
             "carry; that address redirects here.</p>")
 
 
 def capability_page() -> Page:
     """The page an in-toto predicate type URL resolves to. The definition
-    is velaris-spec SPEC.md section 8.5; the schema beside this page is
-    velaris-spec's schemas/capability-predicate.v1.schema.json, byte for
-    byte, and velaris-spec's tools/check_sync.py fails if they differ."""
+    is sabline-spec SPEC.md section 8.5; the schema beside this page is
+    sabline-spec's schemas/capability-predicate.v1.schema.json, byte for
+    byte, and sabline-spec's tools/check_sync.py fails if they differ."""
     types = predicate_types("CAPABILITY")
-    spec = str(velaris.CAPABILITY_SPEC)
+    spec = str(sabline.CAPABILITY_SPEC)
     example = """{
   "_type": "https://in-toto.io/Statement/v1",
   "subject": [
@@ -724,13 +728,13 @@ def capability_page() -> Page:
   ],
   "predicateType": "%s",
   "predicate": {
-    "producer": {"name": "velaris-lang",
-                 "uri": "https://github.com/gowrishankar-infra/velaris-lang"},
+    "producer": {"name": "sabline-lang",
+                 "uri": "https://github.com/gowrishankar-infra/sabline-lang"},
     "specification": "%s",
     "auditedAt": "2026-09-11T00:00:00Z",
-    "audit": {"schema": "velaris.audit/1", "velaris_version": "%s",
+    "audit": {"schema": "sabline.audit/1", "sabline_version": "%s",
               "ok": true, "effects": ["clock", "fs", "io", "rand"],
-              "safe_command": "velaris <file> --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand",
+              "safe_command": "sabline <file> --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand",
               "counts": {"fs": 2, "net": 0}, "prover": true,
               "...": "the rest of the audit"}
   }
@@ -741,23 +745,23 @@ def capability_page() -> Page:
          "its path as the producer was given it, <code>/</code>-separated; "
          "<code>digest.sha256</code> of its bytes. The files it imports should "
          "follow, one subject each."),
-        ("<code>predicate.audit</code>", "yes", "a <code>velaris.audit/1</code> "
+        ("<code>predicate.audit</code>", "yes", "a <code>sabline.audit/1</code> "
          "document produced from exactly the bytes the subjects name"),
         ("<code>predicate.producer</code>", "yes", "<code>name</code> of the "
          "implementation that wrote the audit, and optionally <code>uri</code>; "
-         "its version is the audit's <code>velaris_version</code>"),
-        ("<code>predicate.specification</code>", "no", "the velaris-spec "
+         "its version is the audit's <code>sabline_version</code>"),
+        ("<code>predicate.specification</code>", "no", "the sabline-spec "
          f"version followed, as <code>{html.escape(spec)}</code>"),
         ("<code>predicate.auditedAt</code>", "no", "when the audit was made, "
          "RFC 3339 in UTC, by the producer's clock"),
         ("<code>predicate.conformance</code>", "no", "the conformance levels "
-         "the producer claims (velaris-spec CONFORMANCE.md) and the corpus it "
+         "the producer claims (sabline-spec CONFORMANCE.md) and the corpus it "
          "ran - a claim, not evidence"),
     ]
     body = [
         '<p class="lead">An in-toto predicate type.</p>',
         heading(1, "capability/v1", slug),
-        "<p>A signed statement that a named tool read these Velaris source "
+        "<p>A signed statement that a named tool read these Sabline source "
         "files, byte for byte, and reports this capability surface: the effects "
         "the program declares, the paths, hosts and modules it names, and the "
         "narrowest budget to run it under.</p>",
@@ -767,10 +771,10 @@ def capability_page() -> Page:
         f'<p><strong>Schema:</strong> <a href="{internal("capability/v1/schema.json")}">'
         "schema.json</a>, JSON Schema draft 2020-12, for the predicate. "
         f'<strong>Definition:</strong> <a href="{SPEC_REPO}/blob/main/SPEC.md'
-        '#85-the-audit-as-an-in-toto-predicate">velaris-spec SPEC.md section '
+        '#85-the-audit-as-an-in-toto-predicate">sabline-spec SPEC.md section '
         "8.5</a>, dedicated to the public domain under CC0.</p>",
         heading(2, "What it is", slug),
-        "<p>A <code>velaris.audit/1</code> document (velaris-spec section 8) "
+        "<p>A <code>sabline.audit/1</code> document (sabline-spec section 8) "
         "names no file and carries no signature. This predicate type puts one "
         'inside an <a href="https://github.com/in-toto/attestation">in-toto '
         "Statement v1</a>, whose subjects are the files audited, identified by "
@@ -794,16 +798,16 @@ def capability_page() -> Page:
         "may do. It says that the signer ran the producer on these bytes and "
         "got this audit.</p>",
         heading(2, "A producer", slug),
-        "<p>velaris-lang writes Statements of this type, from 4.2:</p>",
-        code_block("sh", "velaris attest program.vel --output "
+        "<p>sabline-lang writes Statements of this type, from 4.2:</p>",
+        code_block("sh", "sabline attest program.vel --output "
                    "program.intoto.json"),
         "<p>It signs none; cosign (<code>cosign attest-blob --statement</code>) "
         "and sigstore-python sign them, as "
         f'<a href="{internal("embedding.html")}">EMBEDDING.md</a> shows. Every '
-        "release of velaris-lang carries one for an example program, signed by "
+        "release of sabline-lang carries one for an example program, signed by "
         "its release workflow and verified there; "
         f'<a href="{SPEC_REPO}/blob/main/examples/capability-statement.json">'
-        "velaris-spec's example</a> was written by <code>velaris attest</code>."
+        "sabline-spec's example</a> was written by <code>sabline attest</code>."
         "</p>",
     ]
     return Page("capability/v1/index.html", "capability/v1 predicate type",
@@ -813,9 +817,9 @@ def capability_page() -> Page:
 
 def receipt_page() -> Page:
     """The page the receipt/v1 predicate type URL resolves to. The definition
-    is velaris-spec SPEC.md section 8.7; the schema beside this page is
-    velaris-spec's schemas/receipt-predicate.v1.schema.json, byte for byte,
-    and velaris-spec's tools/check_sync.py fails if they differ."""
+    is sabline-spec SPEC.md section 8.7; the schema beside this page is
+    sabline-spec's schemas/receipt-predicate.v1.schema.json, byte for byte,
+    and sabline-spec's tools/check_sync.py fails if they differ."""
     import hashlib
     types = predicate_types("RECEIPT")
     digest = hashlib.sha256(
@@ -828,9 +832,9 @@ def receipt_page() -> Page:
   ],
   "predicateType": "%s",
   "predicate": {
-    "schema": "velaris.receipt/1",
-    "producer": {"name": "velaris-lang", "version": "%s",
-                 "uri": "https://github.com/gowrishankar-infra/velaris-lang"},
+    "schema": "sabline.receipt/1",
+    "producer": {"name": "sabline-lang", "version": "%s",
+                 "uri": "https://github.com/gowrishankar-infra/sabline-lang"},
     "specification": "%s",
     "startedAt": "2026-09-14T00:00:00.000Z",
     "wall_time_ms": 41.7,
@@ -847,12 +851,12 @@ def receipt_page() -> Page:
     "exit": {"status": 0, "outcome": "ok", "code": null},
     "complete": true
   }
-}""" % (digest, types[0], VERSION, velaris.RECEIPT_SPEC)
+}""" % (digest, types[0], VERSION, sabline.RECEIPT_SPEC)
     slug = Slugger()
     rows = [
         ("<code>subject</code>", "the program that ran, by the sha256 of its "
          "text, then each file it imported, by the sha256 of its bytes - the "
-         "subjects <code>velaris attest</code> writes for the same files"),
+         "subjects <code>sabline attest</code> writes for the same files"),
         ("<code>budget</code>", "the budget the run was given, in the budget "
          "grammar"),
         ("<code>run_parameters</code>", "<code>seed</code>, "
@@ -881,13 +885,13 @@ def receipt_page() -> Page:
         ("<code>complete</code>", "false when the run was stopped from outside: "
          "what is listed happened, and a count is at least that"),
     ]
-    commands = ('velaris program.vel --allow io --receipt program.receipt.json\n'
-                'velaris.run(source, allow={"io"}).receipt\n'
+    commands = ('sabline program.vel --allow io --receipt program.receipt.json\n'
+                'sabline.run(source, allow={"io"}).receipt\n'
                 'POST /run  {"source": "...", "allow": ["io"], "receipt": true}')
     body = [
         '<p class="lead">An in-toto predicate type.</p>',
         heading(1, "receipt/v1", slug),
-        "<p>A signed record of one run of a Velaris program: the budget it was "
+        "<p>A signed record of one run of a Sabline program: the budget it was "
         "given, every refusal and every declassification, the parameters it ran "
         "under, how it ended and how long it took - bound, by sha256, to the "
         "same source files a "
@@ -900,7 +904,7 @@ def receipt_page() -> Page:
         f'<p><strong>Schema:</strong> <a href="{internal("receipt/v1/schema.json")}">'
         "schema.json</a>, JSON Schema draft 2020-12, for the predicate. "
         f'<strong>Definition:</strong> <a href="{SPEC_REPO}/blob/main/SPEC.md'
-        '#87-velarisreceipt1-a-record-of-one-run">velaris-spec SPEC.md section '
+        '#87-sablinereceipt1-a-record-of-one-run">sabline-spec SPEC.md section '
         "8.7</a>, dedicated to the public domain under CC0.</p>",
         code_block("json", example),
         heading(2, "Fields", slug),
@@ -916,13 +920,13 @@ def receipt_page() -> Page:
         "producer on these bytes and saw this run; it is no stronger than the "
         "machine it was made on, and it says nothing about any other run.</p>",
         heading(2, "A producer", slug),
-        "<p>velaris-lang writes receipts from 8.1:</p>",
+        "<p>sabline-lang writes receipts from 8.1:</p>",
         code_block("text", commands),
         "<p>It signs none; they are signed as an attestation is - "
         "<code>cosign attest-blob --statement</code>, or sigstore-python's "
         "<code>sign_dsse</code> - and <code>cosign verify-blob-attestation "
         f"--type {html.escape(types[0])}</code> checks one against the "
-        "program's own bytes. Every release of velaris-lang carries one for an "
+        "program's own bytes. Every release of sabline-lang carries one for an "
         "example program, signed by its release workflow and verified there.</p>",
     ]
     return Page("receipt/v1/index.html", "receipt/v1 predicate type",
@@ -940,7 +944,7 @@ def built_versions(out: Path) -> list[tuple[str, str]]:
                     and d.name != VERSION_DIR and (d / "index.html").is_file()):
                 page = (d / "index.html").read_text(encoding="utf-8",
                                                     errors="replace")
-                m = re.search(r'<meta name="velaris-version" content="([^"]+)"',
+                m = re.search(r'<meta name="sabline-version" content="([^"]+)"',
                               page)
                 found[d.name] = m.group(1) if m else d.name
     return sorted(found.items(),
@@ -1003,6 +1007,7 @@ def collect(out: Path) -> tuple[list[Page], list[Section], dict[str, str]]:
          threat + [("security.html", by_path["security.html"].title)]),
         ("Embedding", "embedding.html", []),
         ("Spec", None, [("stability.html", "Stability"),
+                        ("renamed.html", "Renamed from Velaris"),
                         ("capability/v1/index.html", "capability/v1"),
                         ("receipt/v1/index.html", "receipt/v1")]),
         ("Changelog", "changelog.html",
@@ -1019,7 +1024,7 @@ FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'"
            " viewBox='0 0 32 32'%3E%3Crect width='32' height='32'"
            " rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22'"
            " font-family='Arial' font-size='18' font-weight='700'"
-           " fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E")
+           " fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E")
 CSP = ("default-src 'none'; style-src 'self'; script-src 'self'; "
        "img-src 'self' data:; connect-src 'self'; base-uri 'none'; "
        "form-action 'none'")
@@ -1092,9 +1097,9 @@ def shell(page: Page, sections: list[Section], found: Outline) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="{CSP}">
-<title>{html.escape(page.title)} - Velaris {VERSION}</title>
+<title>{html.escape(page.title)} - Sabline {VERSION}</title>
 <meta name="description" content="{html.escape(description(found))}">
-<meta name="velaris-version" content="{VERSION}">
+<meta name="sabline-version" content="{VERSION}">
 <link rel="canonical" href="{canonical(page.path)}">
 <link rel="icon" href="{FAVICON}">
 <link rel="stylesheet" href="{internal('assets/site.css')}">
@@ -1105,7 +1110,7 @@ def shell(page: Page, sections: list[Section], found: Outline) -> str:
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="{internal('index.html')}">Velaris</a>
+<a class="brand" href="{internal('index.html')}">Sabline</a>
 <a class="badge" href="{internal('versions.html')}" aria-label="Version {VERSION}, all versions"><span>{VERSION}</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
@@ -1122,7 +1127,7 @@ def shell(page: Page, sections: list[Section], found: Outline) -> str:
 {page.body}
 </main>
 <footer class="foot{wide}">
-<p>Generated from {source} by build_docs.py, for Velaris {VERSION}. <a href="{REPO}">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from {source} by build_docs.py, for Sabline {VERSION}. <a href="{REPO}">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 {toc(page, found)}
@@ -1269,7 +1274,7 @@ def main() -> int:
         print(f"  a link to a file that is not in this repository: {line}")
     print(f"docs/ written: {len(built.trees[1].pages)} pages at the top, in "
           f"latest/ and in {VERSION_DIR}/, and {len(top.pages) - len(built.trees[1].pages)} "
-          f"kept at the top alone; {len(velaris.ERROR_TABLE)} error codes "
+          f"kept at the top alone; {len(sabline.ERROR_TABLE)} error codes "
           f"documented; versions {', '.join(v for v, _ in built.versions)}; "
           f"the largest page is {where}, {most} bytes")
     return 1 if built.missing else 0

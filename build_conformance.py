@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Write velaris-spec's conformance corpus from this repository's suites.
+"""Write sabline-spec's conformance corpus from this repository's suites.
 
-The corpus is velaris-spec's tests/ directory: one JSON file per case,
+The corpus is sabline-spec's tests/ directory: one JSON file per case,
 for an implementation of the capability format that has never seen
-velaris.py. Every case is transcribed from a table in one of three
+sabline.py. Every case is transcribed from a table in one of three
 suites - check_sandbox.py (level 2), check_library.py and
 check_ratchet.py (levels 1 and 3) - where the same entry is asserted
-against this implementation. Nothing here runs Velaris or computes an
+against this implementation. Nothing here runs Sabline or computes an
 expectation: what the corpus expects is what the suite expects, so the
 two cannot say different things.
 
-    python build_conformance.py ../velaris-spec/tests          # write it
-    python build_conformance.py --check ../velaris-spec/tests  # drift test
+    python build_conformance.py ../sabline-spec/tests          # write it
+    python build_conformance.py --check ../sabline-spec/tests  # drift test
 
 --check writes nothing. It fails (exit 1) when the corpus on disk is not
 what this would write - a file changed, missing or left over - which is
@@ -23,6 +23,9 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sabline import conform  # noqa: E402
+
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
@@ -30,7 +33,10 @@ import check_library  # noqa: E402
 import check_ratchet  # noqa: E402
 import check_sandbox  # noqa: E402
 
-FORMAT = "velaris.conformance-corpus/1"
+# The corpus keeps the name every published implementation reads, because
+# every one of them reads it strictly and none of them can be changed;
+# sabline/conform.py says the whole of it, and reads both names.
+FORMAT = conform.CORPUS_FORMAT
 LEVELS = {1: "Declaration", 2: "Enforcement", 3: "Ratchet"}
 
 
@@ -38,6 +44,19 @@ def short(*parts: Any) -> str:
     """A stable ten-character name for a case that has no id of its own."""
     text = json.dumps(parts, ensure_ascii=False)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:10]
+
+
+def _as_published(expect: Any) -> Any:
+    """An expectation as the published corpus carries it: its
+    safe_command written with the command a runner from before
+    sabline-spec 0.14.0 writes, since those compare the whole string
+    (sabline/conform.py, CORPUS_SAFE_COMMAND). This runner compares the
+    grants, so it reads either."""
+    said = expect.get("safe_command") if isinstance(expect, dict) else None
+    if not isinstance(said, str) or "--allow " not in said:
+        return expect
+    grants = said.split("--allow ", 1)[1]
+    return dict(expect, safe_command=conform.CORPUS_SAFE_COMMAND + grants)
 
 
 def case(id: Any, level: Any, kind: Any, description: Any, source: Any, input: Any, expect: Any, *, spec: Any = (),
@@ -51,12 +70,12 @@ def case(id: Any, level: Any, kind: Any, description: Any, source: Any, input: A
 # ---- level 1: the budget grammar and the effect surface ---------------------
 
 # A denial with no grants narrows whatever budget the runtime gives a
-# run that asked for none, and velaris-spec 4.6 leaves that to the
+# run that asked for none, and sabline-spec 4.6 leaves that to the
 # runtime - it is io for this one from 5.0, and was all seven before.
 # So such a case says something about this implementation, not about
 # the format, and the corpus leaves it out.
 DENY_WITHOUT_GRANTS = ("a denial with no grants narrows the runtime's "
-                       "default budget, which velaris-spec 4.6 leaves "
+                       "default budget, which sabline-spec 4.6 leaves "
                        "to the runtime")
 
 
@@ -90,8 +109,8 @@ def level1() -> tuple[Any, ...]:
         out.append(case(
             f"L1-audit-{a['id']}", 1, "audit", a["description"],
             f"check_library.py AUDITS {a['id']}",
-            {"files": files, "entry": next(iter(files))}, a["expect"],
-            spec=["3.2", "8"]))
+            {"files": files, "entry": next(iter(files))},
+            _as_published(a["expect"]), spec=["3.2", "8"]))
     return out, excluded
 
 
@@ -205,7 +224,7 @@ def corpus() -> dict[Any, Any]:
         files[f"L{c['level']}/{c['id']}.json"] = dump(c)
     index = {
         "format": FORMAT,
-        "generated_by": "velaris-lang build_conformance.py, from "
+        "generated_by": "sabline-lang build_conformance.py, from "
                         "check_sandbox.py, check_library.py and "
                         "check_ratchet.py",
         "levels": {str(n): {"name": name,
@@ -231,7 +250,7 @@ def main(argv: list[Any]) -> int:
     places = [a for a in argv if not a.startswith("-")]
     if len(places) != 1:
         print("usage: python build_conformance.py [--check] "
-              "<velaris-spec>/tests", file=sys.stderr)
+              "<sabline-spec>/tests", file=sys.stderr)
         return 2
     out = Path(places[0])
     want = corpus()
@@ -259,7 +278,7 @@ def main(argv: list[Any]) -> int:
             if len(wrong) > 40:
                 print(f"  and {len(wrong) - 40} more")
             print("regenerate it with: python build_conformance.py "
-                  f"{out}, and commit it in velaris-spec")
+                  f"{out}, and commit it in sabline-spec")
             return 1
         print(f"the corpus in {out} matches the suites: {n} cases")
         return 0

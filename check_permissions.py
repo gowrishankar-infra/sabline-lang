@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""velaris permissions-ratchet: a workflow permission that widens fails,
+"""sabline permissions-ratchet: a workflow permission that widens fails,
 and nothing else does.
 
-`velaris permissions-ratchet --against REF` compares the permissions:
+`sabline permissions-ratchet --against REF` compares the permissions:
 blocks of every workflow in .github/workflows with the ones REF has, job
-by job; velaris/permissions.py says exactly how. This suite holds it in
+by job; sabline/permissions.py says exactly how. This suite holds it in
 five parts:
 
 1. tests/permissions/: each directory a base/ and a head/ copy of
    .github/workflows, with the findings expected of the pair written
    below - widenings, narrowings, reformatting that must change nothing,
    and files that cannot be read - compared by
-   velaris.permissions_compare, with no git.
-2. The reader against PyYAML. Velaris reads these files without a YAML
+   sabline.permissions_compare, with no git.
+2. The reader against PyYAML. Sabline reads these files without a YAML
    library, so every fixture and every workflow of this repository is
    also read with PyYAML, and the blocks, their levels and the line of
    every job, permissions: and scope key must agree. A file the reader
@@ -21,9 +21,9 @@ five parts:
 3. Shapes of YAML one at a time, each read both ways.
 4. The command line against real git repositories with two commits: exit
    0, 1 and 2, the file and line of each widening, and --json against the
-   shape of velaris.permissions-ratchet/1.
+   shape of sabline.permissions-ratchet/1.
 5. The Action's step: its input, where it runs and on what condition, and
-   its bash run as a runner runs it - `velaris` and `python` stood in for
+   its bash run as a runner runs it - `sabline` and `python` stood in for
    on PATH, GITHUB_OUTPUT and RUNNER_TEMP set - in a shallow clone whose
    base commit has to be fetched from its origin.
 
@@ -44,11 +44,11 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).resolve().parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 FIXTURES = HERE / "tests" / "permissions"
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
-from velaris import permissions  # noqa: E402
+import sabline  # noqa: E402
+from sabline import permissions  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_permissions")      # its own directory
@@ -249,7 +249,7 @@ RESULT_SCHEMA = {
     "type": "object", "additionalProperties": False,
     "required": ["schema", "against", "widened", "narrowed", "unreadable"],
     "properties": {
-        "schema": {"const": "velaris.permissions-ratchet/1"},
+        "schema": {"const": "sabline.permissions-ratchet/1"},
         "against": {"type": "string"},
         "widened": {"type": "array", "items": FINDING_SCHEMA},
         "narrowed": {"type": "array", "items": FINDING_SCHEMA},
@@ -264,7 +264,7 @@ RESULT_SCHEMA = {
 
 
 def shape_problems(doc: Any) -> list[str]:
-    """What is wrong with a velaris.permissions-ratchet/1 document: its keys
+    """What is wrong with a sabline.permissions-ratchet/1 document: its keys
     by hand, the rest against RESULT_SCHEMA when jsonschema is here."""
     want = {"schema", "against", "widened", "narrowed", "unreadable"}
     if not isinstance(doc, dict) or set(doc) != want:
@@ -312,7 +312,7 @@ def fixture_cases() -> None:
        on_disk == named, sorted(set(on_disk) ^ set(named)))
     if Draft7Validator is None:
         skip("each result against the JSON Schema of "
-             "velaris.permissions-ratchet/1 (its keys are still checked)",
+             "sabline.permissions-ratchet/1 (its keys are still checked)",
              "jsonschema is not installed")
     misprinted: list[Any] = []
     for c in CASES:
@@ -695,7 +695,7 @@ def two_commits(base: dict[str, str | None],
 def cli(*words: str, cwd: Path,
         env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(VELARIS), "permissions-ratchet", *words],
+        [sys.executable, str(SABLINE), "permissions-ratchet", *words],
         cwd=str(cwd), capture_output=True, text=True, encoding="utf-8",
         errors="replace", env=dict(os.environ, **(env or {})), timeout=300)
 
@@ -714,10 +714,10 @@ def cli_cases() -> None:
     print()
     print("the command line, against git repositories")
     print("-" * 62)
-    ok("permissions-ratchet is a command of the command line: velaris/cli.py "
+    ok("permissions-ratchet is a command of the command line: sabline/cli.py "
        "dispatches it and its usage list names it",
-       "permissions-ratchet" in velaris.usage_lines(),
-       sorted(velaris.usage_lines()))
+       "permissions-ratchet" in sabline.usage_lines(),
+       sorted(sabline.usage_lines()))
     if not HAVE_GIT:
         skip("the command line against git repositories", "git is not "
              "installed")
@@ -748,7 +748,7 @@ def cli_cases() -> None:
        and doc["against"] == "HEAD~1" and doc["narrowed"] == []
        and "nested" not in done.stdout and "notes" not in done.stdout,
        (done.returncode, doc, done.stderr[-400:]))
-    ok("...and the document has the shape of velaris.permissions-ratchet/1",
+    ok("...and the document has the shape of sabline.permissions-ratchet/1",
        not shape_problems(doc), shape_problems(doc))
 
     done = cli("--against", "HEAD~1", cwd=repo)
@@ -824,7 +824,7 @@ def cli_cases() -> None:
                        (("--against", "HEAD", "extra"), "a stray word")):
         done = cli(*words, cwd=repo)
         ok(f"{why}: exit 2 and the usage", done.returncode == 2
-           and "usage: velaris permissions-ratchet" in done.stderr,
+           and "usage: sabline permissions-ratchet" in done.stderr,
            done.stdout + done.stderr)
 
 
@@ -853,9 +853,9 @@ def slashed(path: Path | str) -> str:
 
 
 def run_step(script: str, bash: str, clone: Path, base_sha: str,
-             velaris_shim: str | None = None) -> tuple[int, str]:
+             sabline_shim: str | None = None) -> tuple[int, str]:
     """The step's script as a runner runs it: bash -eo pipefail in the
-    clone, `velaris` and `python` on PATH standing for the installed ones
+    clone, `sabline` and `python` on PATH standing for the installed ones
     (this checkout, and this Python), BASE_SHA as the event gives it, and
     GITHUB_OUTPUT and RUNNER_TEMP set. (exit status, the log)"""
     work = Path(tempfile.mkdtemp(prefix="step-", dir=WORK))
@@ -863,8 +863,8 @@ def run_step(script: str, bash: str, clone: Path, base_sha: str,
     fake.mkdir()
     python = slashed(sys.executable)
     shims = {"python": f'#!/usr/bin/env bash\nexec "{python}" "$@"\n',
-             "velaris": velaris_shim or (f'#!/usr/bin/env bash\nexec '
-                                         f'"{python}" "{slashed(VELARIS)}" '
+             "sabline": sabline_shim or (f'#!/usr/bin/env bash\nexec '
+                                         f'"{python}" "{slashed(SABLINE)}" '
                                          f'"$@"\n')}
     for name, body in shims.items():
         (fake / name).write_bytes(body.encode("utf-8"))
@@ -936,7 +936,7 @@ def action_cases() -> None:
        and "${{" not in script, step.get("env"))
     ok("it fetches the base and runs the command against it",
        'git fetch --no-tags --depth=1 origin "$BASE_SHA"' in script
-       and 'velaris permissions-ratchet --against "$BASE_SHA"' in script)
+       and 'sabline permissions-ratchet --against "$BASE_SHA"' in script)
 
     bash = posix_bash()
     if bash is None:
@@ -960,7 +960,7 @@ def action_cases() -> None:
            "contents: read -> write. " in log
        and "WIDENED .github/workflows/ci.yml:7" in log, log[-1500:])
 
-    code, log = run_step(script, bash, clone, base_sha, velaris_shim=(
+    code, log = run_step(script, bash, clone, base_sha, sabline_shim=(
         '#!/usr/bin/env bash\necho "Traceback: something broke" >&2\n'
         'exit 1\n'))
     ok("a command that stops without a result: exit 2 and an error, never "

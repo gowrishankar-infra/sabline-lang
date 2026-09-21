@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""velaris.Pool, soaked: thousands of runs, and nothing grows or leaks.
+"""sabline.Pool, soaked: thousands of runs, and nothing grows or leaks.
 
 check_pool.py asserts each rule once. This runs them at volume, as a
-platform running Velaris for a month would (item 15 of 8.2; the monthly
+platform running Sabline for a month would (item 15 of 8.2; the monthly
 workflow runs it with --runs 5000):
 
 - **Flat memory.** One worker runs the same small program --runs times;
@@ -34,7 +34,7 @@ from typing import cast
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_pool_soak")
@@ -47,7 +47,7 @@ FOREVER = ('fn main() uses io {\n    let i = 0\n    while i >= 0 {\n'
 LEAVES = ('fn main() uses io, ffi, env {\n'
           '    check py_new("io", "StringIO", "[\\"left behind\\"]") {\n'
           '        ok h { print("handle") }\n        fail w { print(w) }\n    }\n'
-          '    check py("os", "putenv", ["VELARIS_SOAK_LEFT", "yes"]) {\n'
+          '    check py("os", "putenv", ["SABLINE_SOAK_LEFT", "yes"]) {\n'
           '        ok v { print("env") }\n        fail w { print(w) }\n    }\n'
           '    check py("os", "chdir", [".."]) {\n'
           '        ok v { print("moved") }\n        fail w { print(w) }\n    }\n'
@@ -150,7 +150,7 @@ def main(argv: list[str]) -> int:
     # ---- flat memory, with kills along the way ----------------------------
     samples: list[tuple[int, float]] = []
     wrong, killed, survivors = 0, 0, []
-    with velaris.Pool(size=1, allow={"io"}, timeout=5) as pool:
+    with sabline.Pool(size=1, allow={"io"}, timeout=5) as pool:
         for n in range(1, runs + 1):
             if n % 250 == 0:
                 victim: list[int] = []
@@ -200,7 +200,7 @@ def main(argv: list[str]) -> int:
     mixed: list[tuple[int, str]] = []
     errors: list[str] = []
     each = max(20, runs // 50)
-    with velaris.Pool(size=4, allow={"io"}, timeout=60) as busy:
+    with sabline.Pool(size=4, allow={"io"}, timeout=60) as busy:
         def caller(k: int) -> None:
             for _ in range(each):
                 try:
@@ -225,7 +225,7 @@ def main(argv: list[str]) -> int:
     leaks: list[str] = []
     rounds = max(10, runs // 20)
     baseline_cwd = None
-    with velaris.Pool(size=1, allow={"io", "ffi", "env"},
+    with sabline.Pool(size=1, allow={"io", "ffi", "env"},
                       timeout=60) as reuse:
         for i in range(rounds):
             reuse.run(LEAVES, args=["one", "two", "three"])
@@ -249,7 +249,7 @@ def main(argv: list[str]) -> int:
            "were left open", handles.ok and "#2" in handles.output,
            handles.output)
     ok("the environment variable a program set through ffi is not in the "
-       "parent either", "VELARIS_SOAK_LEFT" not in os.environ)
+       "parent either", "SABLINE_SOAK_LEFT" not in os.environ)
 
     print("-" * 62)
     print(f"{PASS} correct, {FAIL} wrong in "

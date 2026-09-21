@@ -1,6 +1,6 @@
 # Security policy
 
-Velaris takes "you can trust code you didn't write" seriously - that
+Sabline takes "you can trust code you didn't write" seriously - that
 includes trusting the compiler itself. [THREAT_MODEL.md](THREAT_MODEL.md)
 says what is and is not defended against; this file says how to
 report, what is promised in return, and how to check that what you
@@ -9,32 +9,32 @@ downloaded is what was released.
 ## Reporting a vulnerability
 
 Please do NOT open a public issue for security problems. Instead, write
-to **security@velaris-lang.dev**, or use GitHub's private reporting:
+to **security@sabline.dev**, or use GitHub's private reporting:
 **Security tab -> Report a vulnerability** on this repository. **You will get a response within 48 hours** - an
 acknowledgement that the report arrived and is being looked at, not
 necessarily a fix. This is a single-maintainer project (SUPPORT.md); the
 48-hour promise is for the first reply, and a fix to a soundness or
 sandbox report is promised within a week (below).
 
-In scope: anything that makes Velaris's guarantees lie - an effect the
+In scope: anything that makes Sabline's guarantees lie - an effect the
 checker misses, a "proven" promise that can actually break at runtime,
 a way past `--allow`, a sandbox escape through the playground, or
 unsafe behavior in `fetch` / `read_file` / `write_file`. From 3.4 also:
 a way into the HTTP door without its token, a way past either door's
 `--max-allow`, the token appearing in a log, an error message, a
 process argument or a program's environment, and a changed MCP tool
-description that `velaris mcp-verify` passes. From 4.0 also: a run
+description that `sabline mcp-verify` passes. From 4.0 also: a run
 through either door that gets more time or memory than its operator's
 `--max-timeout` or `--max-memory-mb`, and a change to a repository's
-code that needs more than its `velaris.capabilities` declares while
-`velaris capabilities check` passes it.
+code that needs more than its `sabline.capabilities` declares while
+`sabline capabilities check` passes it.
 
 ## The three guarantees, and which findings get a CVE
 
-Velaris makes three promises a person relies on to run code they have
+Sabline makes three promises a person relies on to run code they have
 not read. A report that breaks one is a security report.
 
-- **Goal A - Soundness.** A promise Velaris reports "proven" never
+- **Goal A - Soundness.** A promise Sabline reports "proven" never
   breaks at run time. If `check`, `proofs`, `explain`, `audit` or the
   library marks a `requires`/`ensures`/`invariant` proven and a run then
   violates it, Goal A is broken.
@@ -79,17 +79,17 @@ Anyone who does either of these is credited by name in
 [CHANGELOG.md](CHANGELOG.md) and in [HALL_OF_FAME.md](HALL_OF_FAME.md),
 and the report is treated as a security issue and fixed within a week:
 
-1. **Make Velaris report "proven"** (in `velaris check`, `velaris
-   proofs`, `velaris explain`, `velaris audit` or the library) **for a
+1. **Make Sabline report "proven"** (in `sabline check`, `sabline
+   proofs`, `sabline explain`, `sabline audit` or the library) **for a
    promise that is false at runtime.** A `requires`, `ensures` or
    `invariant` that the compiler marks proven and that a run under
    `--no-native` or with native code then violates, or a division or
    list read the compiler passed that then fails with E403 or E602
    without a runtime-check warning having been issued.
 
-2. **Escape `io`.** A program run with `velaris program.vel` (which
+2. **Escape `io`.** A program run with `sabline program.vel` (which
    grants `io` and nothing else from 5.0), with `--allow io`, or with
-   `velaris.run(source, allow={"io"})` or `allow=None`, that reads or
+   `sabline.run(source, allow={"io"})` or `allow=None`, that reads or
    writes a file, reaches the network, reads the environment, or calls
    a Python module - including one outside a named `ffi:` list - and
    carries on. `args()` and `read_line()` do not count: `io` is the
@@ -121,10 +121,10 @@ fix ships before the details do; the credit is public either way.
   value that broke it. Unary minus, and the smallest number divided by -1,
   now stop with E407 in both engines. Found by the 8.2 corpus of false
   promises. See [advisory-int-negation.md](advisory-int-negation.md).
-- **Words after `--` were read as Velaris's own flags** (Goal C), affecting
-  5.0.0 through 8.1.1, fixed in 8.2.0: `velaris program.vel -- --allow all`
+- **Words after `--` were read as Sabline's own flags** (Goal C), affecting
+  5.0.0 through 8.1.1, fixed in 8.2.0: `sabline program.vel -- --allow all`
   granted every effect to a run whose operator named no budget, and
-  `-- --receipt x` wrote a file. On a run, `--` now ends Velaris's flags and
+  `-- --receipt x` wrote a file. On a run, `--` now ends Sabline's flags and
   everything after it is the program's `args()`. Found by the 8.2
   self-budget suite. See [advisory-cli-double-dash.md](advisory-cli-double-dash.md).
 - **A program given to the library as text imported from the temp
@@ -152,22 +152,22 @@ fix ships before the details do; the credit is public either way.
   [advisory-prover-names.md](advisory-prover-names.md).
 - **An import that read a file and quoted it** (Goal C), affecting 0.16
   through 8.0.0, fixed in 8.1.0: a program sent to the HTTP door, the MCP
-  server or a platform's `velaris.audit` could import any readable file, and
+  server or a platform's `sabline.audit` could import any readable file, and
   the error named its first token. Such an error now shows nothing of the
   file, and the doors refuse an import outside the directory they serve
   (E515). See [advisory-import-read.md](advisory-import-read.md).
 - **Proof cache poisoning** (challenge #1), affecting 2.29 through 7.1.1,
-  fixed in 7.1.2: a `./.velaris/proofs.json` shipped with an untrusted
+  fixed in 7.1.2: a `./.sabline/proofs.json` shipped with an untrusted
   program could make a false `ensures` report "proven" and go unenforced
   at run time. The proof cache now lives only in a per-user directory and
-  a project-local `./.velaris/` is ignored. See
+  a project-local `./.sabline/` is ignored. See
   [advisory-proof-cache.md](advisory-proof-cache.md) and THREAT_MODEL.md.
 
 What is not in scope of the challenge, because it is documented as not
 defended: anything a granted `ffi` module does, resource use below a
 limit, the meaning of printed text, the memory cap on macOS (where
 RLIMIT_AS is best-effort; it is enforced on Linux and, since 3.1, on
-Windows through a job object), and programs not written in Velaris.
+Windows through a job object), and programs not written in Sabline.
 
 ## Verifying a download
 
@@ -179,13 +179,13 @@ repository. Which run of it the certificate names changed at 7.2.0:
 - **Up to 7.1.2** pushing a tag started a release, and the identity is
   the tag's. For a release `vX.Y`:
 
-      https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/vX.Y
+      https://github.com/gowrishankar-infra/sabline-lang/.github/workflows/release.yml@refs/tags/vX.Y
 
 - **From 7.2.0** no tag starts a release. The workflow runs on main
   once the tests pass there, tags the commit itself and signs in that
   same run ([RELEASING.md](RELEASING.md)), so the identity names main:
 
-      https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main
+      https://github.com/gowrishankar-infra/sabline-lang/.github/workflows/release.yml@refs/heads/main
 
   That identity says "the release workflow, on main", not which
   release. The certificate also records the commit the run was on and
@@ -194,11 +194,11 @@ repository. Which run of it the certificate names changed at 7.2.0:
   `workflow_run`; a dry run by hand is `workflow_dispatch`):
 
       sigstore verify github \
-        --bundle velaris_lang-7.2.0-py3-none-any.whl.sigstore.json \
-        --cert-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main \
+        --bundle sabline_lang-7.2.0-py3-none-any.whl.sigstore.json \
+        --cert-identity https://github.com/gowrishankar-infra/sabline-lang/.github/workflows/release.yml@refs/heads/main \
         --trigger workflow_run \
         --sha "$(git rev-parse 'v7.2.0^{commit}')" \
-        velaris_lang-7.2.0-py3-none-any.whl
+        sabline_lang-7.2.0-py3-none-any.whl
 
   With cosign, add `--certificate-github-workflow-trigger workflow_run`
   and `--certificate-github-workflow-sha <that commit>`.
@@ -212,96 +212,96 @@ the main identity instead, with the trigger and the commit.
 together). With `pip install sigstore`:
 
     sigstore verify identity \
-      --bundle velaris_lang-2.63.0-py3-none-any.whl.sigstore.json \
-      --cert-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/v2.63 \
+      --bundle sabline_lang-2.63.0-py3-none-any.whl.sigstore.json \
+      --cert-identity https://github.com/gowrishankar-infra/sabline-lang/.github/workflows/release.yml@refs/tags/v2.63 \
       --cert-oidc-issuer https://token.actions.githubusercontent.com \
-      velaris_lang-2.63.0-py3-none-any.whl
+      sabline_lang-2.63.0-py3-none-any.whl
 
-**The three executables and `velaris.mcpb`** carry a detached
+**The three executables and `sabline.mcpb`** carry a detached
 signature (`.sig`), the certificate (`.pem`) and the same bundle
 (`.sigstore.json`). With [cosign](https://github.com/sigstore/cosign):
 
-    cosign verify-blob velaris-linux \
-      --bundle velaris-linux.sigstore.json \
-      --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/v2.63 \
+    cosign verify-blob sabline-linux \
+      --bundle sabline-linux.sigstore.json \
+      --certificate-identity https://github.com/gowrishankar-infra/sabline-lang/.github/workflows/release.yml@refs/tags/v2.63 \
       --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
 or, with the detached files:
 
-    cosign verify-blob velaris-linux \
-      --signature velaris-linux.sig \
-      --certificate velaris-linux.pem \
-      --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/tags/v2.63 \
+    cosign verify-blob sabline-linux \
+      --signature sabline-linux.sig \
+      --certificate sabline-linux.pem \
+      --certificate-identity https://github.com/gowrishankar-infra/sabline-lang/.github/workflows/release.yml@refs/tags/v2.63 \
       --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
-**The MCP tool manifest** (from 3.4). `velaris-mcp-tools-X.Y.Z.json`
+**The MCP tool manifest** (from 3.4). `sabline-mcp-tools-X.Y.Z.json`
 lists every tool the MCP server in the wheel offers, with the sha256 of
 its description and of its input schema, and is signed like the wheel
-(`velaris-mcp-tools-X.Y.Z.json.sigstore.json`). `velaris mcp-verify`
+(`sabline-mcp-tools-X.Y.Z.json.sigstore.json`). `sabline mcp-verify`
 checks that signature against the identity above and then the server
 your MCP client runs against the manifest, and names every tool whose
 description or schema differs:
 
     pip install sigstore
-    velaris mcp-verify velaris-mcp-tools-3.4.0.json -- python -m velaris_mcp
+    sabline mcp-verify sabline-mcp-tools-3.4.0.json -- python -m sabline_mcp
 
 EMBEDDING.md says what it does and does not tell you. The signature can
 also be checked on its own with the `sigstore verify identity` command
 above, naming the manifest and its bundle.
 
 **An attestation of one example program** (from 4.2).
-`velaris-attestation-X.Y.Z.intoto.json` is the in-toto Statement
-`velaris attest examples/effects.vel` writes at the tagged commit, and
+`sabline-attestation-X.Y.Z.intoto.json` is the in-toto Statement
+`sabline attest examples/effects.vel` writes at the tagged commit, and
 the release workflow signs it twice as a DSSE envelope, keylessly: with
-cosign (`velaris-attestation-X.Y.Z.cosign.sigstore.json`) and with
-sigstore-python (`velaris-attestation-X.Y.Z.sigstore-python.sigstore.json`),
+cosign (`sabline-attestation-X.Y.Z.cosign.sigstore.json`) and with
+sigstore-python (`sabline-attestation-X.Y.Z.sigstore-python.sigstore.json`),
 verifying both before it attaches them. With `examples/effects.vel`
 from the tagged source:
 
     cosign verify-blob-attestation \
-      --bundle velaris-attestation-8.3.0.cosign.sigstore.json \
+      --bundle sabline-attestation-8.3.0.cosign.sigstore.json \
       --type https://velaris-lang.dev/capability/v1 \
-      --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main \
+      --certificate-identity https://github.com/gowrishankar-infra/sabline-lang/.github/workflows/release.yml@refs/heads/main \
       --certificate-oidc-issuer https://token.actions.githubusercontent.com \
       examples/effects.vel
 
 It fails when the file is not the one the Statement names, by digest.
 What the Statement says, and what it does not, is in EMBEDDING.md.
 
-**A receipt of one run of it** (from 8.1). `velaris-receipt-X.Y.Z.intoto.json`
-is the `velaris.receipt/1` Statement `velaris examples/effects.vel --receipt`
+**A receipt of one run of it** (from 8.1). `sabline-receipt-X.Y.Z.intoto.json`
+is the `sabline.receipt/1` Statement `sabline examples/effects.vel --receipt`
 writes in the release workflow, for a run under the budget the example's
 audit names, with the same subjects as the attestation. It is signed the same
 two ways and verified before it is attached. With the same
 `examples/effects.vel`:
 
     cosign verify-blob-attestation \
-      --bundle velaris-receipt-8.3.0.cosign.sigstore.json \
+      --bundle sabline-receipt-8.3.0.cosign.sigstore.json \
       --type https://velaris-lang.dev/receipt/v1 \
-      --certificate-identity https://github.com/gowrishankar-infra/velaris-lang/.github/workflows/release.yml@refs/heads/main \
+      --certificate-identity https://github.com/gowrishankar-infra/sabline-lang/.github/workflows/release.yml@refs/heads/main \
       --certificate-oidc-issuer https://token.actions.githubusercontent.com \
       examples/effects.vel
 
 **Which predicate type a Statement names** (8.3). From 8.3.0 the attestation
-and the receipt name their types on velaris-lang.dev, a domain this project
+and the receipt name their types on sabline.dev, a domain this project
 holds: `https://velaris-lang.dev/capability/v1` and
 `https://velaris-lang.dev/receipt/v1`. Those made by 4.2.0 to 8.2.1 name the
 same types at the project's earlier documentation address, which now
-redirects to velaris-lang.dev, and `velaris verify` reads both spellings as
+redirects to sabline.dev, and `sabline verify` reads both spellings as
 the same type. For an earlier Statement, give cosign's `--type` the type the
-Statement names, which `velaris verify` prints. `velaris.dev` was never this
-project's domain: it is registered to someone else, no Velaris ever wrote a
-type under it, and `velaris verify` refuses a Statement that names one, as
-it refuses every type Velaris does not define.
+Statement names, which `sabline verify` prints. `velaris.dev` was never this
+project's domain: it is registered to someone else, no Sabline ever wrote a
+type under it, and `sabline verify` refuses a Statement that names one, as
+it refuses every type Sabline does not define.
 
 **Checksums.** `SHA256SUMS` (for the wheel, sdist, SBOM and tool manifest) and
 `<asset>.sha256` (for each binary and the bundle) are attached too;
 `sha256sum -c` checks them. A checksum proves the file is intact, not
 who built it - the signature does that.
 
-**The SBOM.** `velaris-lang-X.Y.Z.cdx.json` is a CycloneDX bill of
+**The SBOM.** `sabline-lang-X.Y.Z.cdx.json` is a CycloneDX bill of
 materials of an environment holding the wheel and its optional
-dependencies (`z3-solver`, `llvmlite`), signed like the wheel. Velaris
+dependencies (`z3-solver`, `llvmlite`), signed like the wheel. Sabline
 itself has no required dependencies.
 
 **Reproducibility.** The release workflow builds the wheel twice with

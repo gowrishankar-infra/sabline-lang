@@ -2,7 +2,7 @@
 """Metamorphic tests for the audit: transforms that must not change what
 a program is allowed to do, and one that must change it in exactly one way.
 
-`velaris.audit/1` describes a program's capability surface. Four
+`sabline.audit/1` describes a program's capability surface. Four
 transforms leave that surface untouched - renaming its functions,
 reordering them, adding dead (pure, uncalled) code, and splitting it
 across files - because none of them changes what the program can do to
@@ -26,7 +26,7 @@ from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 isolate("check_metamorphic")          # its own directory
@@ -46,7 +46,7 @@ def ok(label: Any, cond: Any, detail: str = "") -> None:
 
 def surface(src: Any, path: Any = None) -> dict[str, Any]:
     """The security-relevant surface of an audit, as a comparable dict."""
-    a = velaris.audit(src, path=path)
+    a = sabline.audit(src, path=path)
     return {
         "effects": tuple(a.effects),
         "safe_command": a.safe_command,
@@ -117,7 +117,7 @@ fn main() uses io, fs, net, clock {
 
 def split_across_files() -> Any:
     """BASE with store and pull moved into an imported library."""
-    d = tempfile.mkdtemp(prefix="velaris-metamorphic-")
+    d = tempfile.mkdtemp(prefix="sabline-metamorphic-")
     lib = os.path.join(d, "lib.vel")
     with open(lib, "w", encoding="utf-8", newline="\n") as f:
         f.write('fn store(path: Text, body: Text) uses fs '

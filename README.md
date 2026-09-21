@@ -1,12 +1,12 @@
-<!-- mcp-name: io.github.gowrishankar-infra/velaris -->
+<!-- mcp-name: io.github.gowrishankar-infra/sabline -->
 <!-- The line above proves to the MCP registry that this package and the
-     server io.github.gowrishankar-infra/velaris have the same owner. It is
+     server io.github.gowrishankar-infra/sabline have the same owner. It is
      read from this file as published to PyPI; removing it breaks publishing
      to the registry. See integrations/mcp_registry/server.json. -->
 
 <div align="center">
 
-# Velaris
+# Sabline
 
 **An AI wrote you a script. Run it anyway.**
 
@@ -20,23 +20,35 @@ the same budget under it - fully on Linux, partly on macOS and on Windows -
 and each run says which it got ([THREAT_MODEL.md](THREAT_MODEL.md),
 [docs/confinement.md](docs/confinement.md)).
 
-[![PyPI](https://img.shields.io/pypi/v/velaris-lang)](https://pypi.org/project/velaris-lang/)
-[![tests](https://github.com/gowrishankar-infra/velaris-lang/actions/workflows/test.yml/badge.svg)](https://github.com/gowrishankar-infra/velaris-lang/actions/workflows/test.yml)
-[![release](https://img.shields.io/github/v/release/gowrishankar-infra/velaris-lang)](https://github.com/gowrishankar-infra/velaris-lang/releases)
+[![PyPI](https://img.shields.io/pypi/v/sabline-lang)](https://pypi.org/project/sabline-lang/)
+[![tests](https://github.com/gowrishankar-infra/sabline-lang/actions/workflows/test.yml/badge.svg)](https://github.com/gowrishankar-infra/sabline-lang/actions/workflows/test.yml)
+[![release](https://img.shields.io/github/v/release/gowrishankar-infra/sabline-lang)](https://github.com/gowrishankar-infra/sabline-lang/releases)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-[**Playground**](https://velaris-lang.dev/playground.html) · [**Documentation**](https://velaris-lang.dev/) · [**Reference**](SPEC.md) · [**Library**](https://velaris-lang.dev/library.html) · [**Errors**](https://velaris-lang.dev/errors.html)
+[**Playground**](https://sabline.dev/playground.html) · [**Documentation**](https://sabline.dev/) · [**Reference**](SPEC.md) · [**Library**](https://sabline.dev/library.html) · [**Errors**](https://sabline.dev/errors.html)
 
 </div>
 
-<img src="docs/hero.png" alt="Velaris refusing a network call because the run only allowed io" width="100%">
+<img src="docs/hero.png" alt="Sabline refusing a network call because the run only allowed io" width="100%">
+
+---
+
+**This project was called Velaris until 8.6.0.** The name belongs to an
+unrelated company in the same market (velaris.io), so it was given up
+rather than contested. Everything else is unchanged, and nothing written
+against the old name stops working in 8.x: the `velaris` command, `import
+velaris`, the `VELARIS_*` environment variables, a committed
+`velaris.capabilities`, and a `velaris.audit/1` or `velaris.receipt/1`
+document are all still read, each saying once that the name has changed.
+[docs/renamed.md](docs/renamed.md) lists every published address and where
+it now points; [STABILITY.md](STABILITY.md) says what goes in 9.0.
 
 ---
 
 <!-- illustrative lines 1: installs from PyPI -->
 ```sh
-pip install velaris-lang
-velaris agent_output.vel
+pip install sabline-lang
+sabline agent_output.vel
 ```
 
 That program cannot open a socket, read a file, call Python, or ask the
@@ -72,7 +84,7 @@ now in — running a program someone, or something, else wrote.
 
 <!-- illustrative: writes and runs its own files in a temporary directory -->
 ```sh
-velaris demo
+sabline demo
 ```
 
 It writes the kind of script an agent writes - read `./.env`, post it to a
@@ -80,7 +92,7 @@ webhook - runs it with no budget given, and shows the refusal, its line and
 the run's receipt; then the same task inside a budget, and what differs
 between the two receipts. No arguments, no network, under a minute; it
 writes what it runs and reads nothing of yours. `--keep` leaves the files,
-and `velaris receipt show` renders either receipt as a page.
+and `sabline receipt show` renders either receipt as a page.
 
 ## The other half: promises, proven
 
@@ -155,7 +167,7 @@ rule with the last `if` deleted. The cap still holds the discount to a
 fixed ceiling; nothing holds it to what the basket is worth:
 
 ```console
-$ velaris check examples/discount_bad.vel
+$ sabline check examples/discount_bad.vel
 examples/discount_bad.vel:54: [E700] promise cannot be kept: 'discount_for' ensures total - result >= money(0, "INR") - proven without running the program: rule = Rule(percent: 0, above: 0, flat: 2, cap: 1), total = 0 gives result = 1
 ```
 
@@ -190,7 +202,7 @@ the request that would carry it, and prints a summary of that request.
 program with one more line:
 
 ```console
-$ velaris examples/secret_bad.vel --allow env,io
+$ sabline examples/secret_bad.vel --allow env,io
 error[E560] argument 1 of 'print' is Secret of Text, and 'print' performs io - a Secret cannot be printed, written, sent or passed to Python. It came from env(), line 27, through 'key', which returns Secret of Text (line 58)
   --> examples/secret_bad.vel, line 58
 ```
@@ -229,7 +241,7 @@ so a consumer can ask whether a program ever lets a secret out without
 running it:
 
 ```console
-$ velaris audit examples/secret.vel --json | jq .secrets
+$ sabline audit examples/secret.vel --json | jq .secrets
 {
   "sources": ["env"],
   "declassifies": false,
@@ -261,7 +273,7 @@ capabilities as values in the type system;
 request into a restricted subset of Python and tags every value with its
 provenance and permitted readers, checking a policy at each tool call;
 [WASI](https://wasi.dev) gives a WebAssembly module only the resources
-its host hands it. Velaris is a small language a model learns from a
+its host hands it. Sabline is a small language a model learns from a
 card of about <!-- count:card-words -->5,100<!-- /count --> words, in which functions declare their effects, the runtime
 enforces the operator's budget at each operation, and contracts are
 checked by the Z3 theorem prover. From 6.0 it also tracks one kind of
@@ -270,23 +282,23 @@ which cannot reach anything that emits, cannot be branched on, and
 leaves only through `declassify` — an effect of its own. That is
 narrower than what CaMeL and TACIT do: they tag every value with its
 provenance and permitted readers, and TACIT follows capabilities
-through polymorphism, where Velaris marks two builtins' results and
+through polymorphism, where Sabline marks two builtins' results and
 refuses generic code over them unless a signature says so.
 Until 5.0 its command line also granted every effect when no budget was
 given, where a WASI module given nothing reaches nothing; from 5.0 a
 run with no budget gets `io` alone.
 The capability
 format is published separately, under CC0, as
-[velaris-spec](https://github.com/gowrishankar-infra/velaris-spec),
-whose [PRIOR_ART.md](https://github.com/gowrishankar-infra/velaris-spec/blob/main/PRIOR_ART.md)
+[sabline-spec](https://github.com/gowrishankar-infra/sabline-spec),
+whose [PRIOR_ART.md](https://github.com/gowrishankar-infra/sabline-spec/blob/main/PRIOR_ART.md)
 sets out these differences and the older work in full. From 4.1 it
 holds a conformance corpus an implementation in any language can run -
 <!-- count:conformance-cases -->456<!-- /count --> JSON cases at three levels, declaration, enforcement and the
 ratchet, none needing a prover - written from this repository's suites
-and held to them by a drift test; `velaris conformance` runs it against
+and held to them by a drift test; `sabline conformance` runs it against
 this implementation, and CI does so on every leg.
 
-## Why Velaris
+## Why Sabline
 
 | Guarantee | What it means |
 |---|---|
@@ -314,30 +326,30 @@ reports are treated as [security issues](SECURITY.md).
 
 <!-- illustrative lines 1: installs from PyPI -->
 ```sh
-pip install velaris-lang
-velaris doctor
-velaris new hello && cd hello && velaris main.vel
+pip install sabline-lang
+sabline doctor
+sabline new hello && cd hello && sabline main.vel
 ```
 
 **Standalone executable** (no Python required) — download for
 Windows / Linux / macOS from the
-[latest release](https://github.com/gowrishankar-infra/velaris-lang/releases),
+[latest release](https://github.com/gowrishankar-infra/sabline-lang/releases),
 then:
 
 ```sh
-velaris doctor
+sabline doctor
 ```
 
 **With Python 3.10+:**
 
 <!-- illustrative lines 1: installs from PyPI -->
 ```sh
-pip install velaris-lang
-velaris new hello && cd hello && velaris main.vel
+pip install sabline-lang
+sabline new hello && cd hello && sabline main.vel
 ```
 
 **Zero install** — the
-[playground](https://velaris-lang.dev/playground.html)
+[playground](https://sabline.dev/playground.html)
 runs the real compiler in your browser.
 
 Optional extras for source installs: `pip install ".[full]"` adds
@@ -369,42 +381,42 @@ it runs.
 
 <!-- illustrative: a list of the ways in, not commands to run -->
 ```text
-velaris script.vel                    the command (io unless you say more)
-velaris script.vel --receipt r.json   and a signable record of what that run did
-velaris eject script.vel              a directory that runs with nothing from here
-import velaris                        a Python library
-velaris mcp-install                   tools inside your assistant
-velaris.mcpb                          double-click install for Claude Desktop
-uses: gowrishankar-infra/velaris-lang a GitHub Action, findings in the Security tab
-velaris capabilities check            CI fails when the capability surface widens
-velaris serve                         an HTTP door for any language, token required
-npx velaris-lang script.vel           npm, for the JavaScript world
-%%velaris --audit --allow io          a Jupyter cell
-- repo: velaris-lang (pre-commit)     a commit hook
-docker run ... velaris check          a container
-velaris build --for-everyone          standalone executables
+sabline script.vel                    the command (io unless you say more)
+sabline script.vel --receipt r.json   and a signable record of what that run did
+sabline eject script.vel              a directory that runs with nothing from here
+import sabline                        a Python library
+sabline mcp-install                   tools inside your assistant
+sabline.mcpb                          double-click install for Claude Desktop
+uses: gowrishankar-infra/sabline-lang a GitHub Action, findings in the Security tab
+sabline capabilities check            CI fails when the capability surface widens
+sabline serve                         an HTTP door for any language, token required
+npx sabline-lang script.vel           npm, for the JavaScript world
+%%sabline --audit --allow io          a Jupyter cell
+- repo: sabline-lang (pre-commit)     a commit hook
+docker run ... sabline check          a container
+sabline build --for-everyone          standalone executables
 ```
 
 ## Use it from your own program
 
 ```python
-import velaris
+import sabline
 
-report = velaris.audit(source)      # what it touches, what's proven
-run = velaris.run(source, allow={"io"})   # it cannot touch anything else
+report = sabline.audit(source)      # what it touches, what's proven
+run = sabline.run(source, allow={"io"})   # it cannot touch anything else
 print(run.output, run.refused_effect)
 ```
 
 The budget is enforced the same way it is on the command line. There is
 an MCP server too, so an assistant can write, audit and sandbox-run
-Velaris without leaving the conversation — see
-[EMBEDDING.md](EMBEDDING.md) and the versioned `velaris.audit/1` format.
+Sabline without leaving the conversation — see
+[EMBEDDING.md](EMBEDDING.md) and the versioned `sabline.audit/1` format.
 
 Calling `run` with a timeout or a memory cap starts a fresh interpreter
 every time. A pool keeps workers alive under one fixed budget:
 
 ```python
-pool = velaris.Pool(size=4, allow={"io"}, timeout=30, max_memory_mb=512)
+pool = sabline.Pool(size=4, allow={"io"}, timeout=30, max_memory_mb=512)
 result = pool.run(source)             # the same RunResult run() returns
 pool.close()
 ```
@@ -420,13 +432,13 @@ one. The rules are stated in full in [EMBEDDING.md](EMBEDDING.md).
 ## A platform whose customers write the rules
 
 [`examples/platform/`](examples/platform/) is that pattern as a small
-FastAPI service, in one file. A customer submits Velaris source; the
+FastAPI service, in one file. A customer submits Sabline source; the
 service audits it, stores it with its capability surface, and answers
 with what it declares — effects, hosts, paths, modules, the proven
 share, its contracts function by function, and the narrowest budget that
 would run it. It does not run it. A surface wider than the platform
 permits is refused there, naming the grants that would have to be added.
-Running happens on a `velaris.Pool` whose budget is the platform's.
+Running happens on a `sabline.Pool` whose budget is the platform's.
 
 Submit [`examples/discount.vel`](examples/discount.vel) and the answer
 says `"proven_share": 100.0` with `"status": "proven"` on every promise,
@@ -439,7 +451,7 @@ a rule, and it is not one a sandbox can produce.
 
 <!-- illustrative: needs a host on the other end of the pipe -->
 ```sh
-velaris run agent.vel --tools tools.json \
+sabline run agent.vel --tools tools.json \
     --allow io,tool:search@20,tool:send_email:to=*@corp.com
 ```
 
@@ -455,57 +467,57 @@ is JSON lines on standard input and output
 ([docs/runner.md](docs/runner.md)); there is
 no framework adapter yet, and a tool's result is not yet marked as the
 host's words rather than the program's - that is `Untrusted`, in 9.0.
-`velaris skill verify` reports the tools and the budget a skill's
+`sabline skill verify` reports the tools and the budget a skill's
 programs would need, without running them.
 
 ## Written by a model, audited by you, run in a box
 
 ```sh
-velaris card > card.md          # ~5,100 words: paste into any model
-velaris audit script.vel        # what it can touch, before you run it
-velaris attest script.vel --output script.intoto.json   # the same, bound to its bytes
-velaris script.vel              # io, and nothing else, unless you say more
+sabline card > card.md          # ~5,100 words: paste into any model
+sabline audit script.vel        # what it can touch, before you run it
+sabline attest script.vel --output script.intoto.json   # the same, bound to its bytes
+sabline script.vel              # io, and nothing else, unless you say more
 ```
 
-`velaris audit` is written for the reviewer: what the program reaches,
+`sabline audit` is written for the reviewer: what the program reaches,
 what it promises, how much of that is *proven* rather than checked
 while running, what can fail, and the exact command to run it safely.
-`velaris attest` (4.2) puts that audit in an in-toto Statement whose
+`sabline attest` (4.2) puts that audit in an in-toto Statement whose
 subjects are the program's files by sha256, ready to sign with cosign
 or sigstore-python; [EMBEDDING.md](EMBEDDING.md) shows both, and every
 release carries one, signed, for an example program.
-`agent_loop.py` closes the circle — a model writes it, `velaris check
+`agent_loop.py` closes the circle — a model writes it, `sabline check
 --json` hands back errors with fixes, and it iterates until the program
 compiles and its promises prove.
 
-From 8.3, the rest of a run's life: `velaris eval` runs a program as an
+From 8.3, the rest of a run's life: `sabline eval` runs a program as an
 evaluation harness does, under a profile its command line cannot relax (no
 net, ffi or env, time and memory limits, a stop honoured, the worker
 confined where the operating system offers it, and a receipt always -
-[docs/eval.md](docs/eval.md)); `velaris receipts diff` names what a run did
-that its audit, or its earlier runs, did not; `velaris replay` makes a run
-again from its receipt on the same bytes, or refuses; `velaris test
+[docs/eval.md](docs/eval.md)); `sabline receipts diff` names what a run did
+that its audit, or its earlier runs, did not; `sabline replay` makes a run
+again from its receipt on the same bytes, or refuses; `sabline test
 --from-contracts` runs each promise on the inputs the prover finds its
-`requires` allows; and `velaris verify` holds an attestation or a receipt to
+`requires` allows; and `sabline verify` holds an attestation or a receipt to
 its type and its bytes. [docs/structurally-impossible.md](docs/structurally-impossible.md)
-lists what cannot occur in a Velaris program, each with a test, and
+lists what cannot occur in a Sabline program, each with a test, and
 [docs/crosswalk.md](docs/crosswalk.md) maps each guarantee and each known
 gap onto the OWASP, AIUC-1 and NIST frameworks.
 
 ## Running code you did not write
 
 ```sh
-velaris agent_output.vel                 # io: it may print, nothing else
-velaris agent_output.vel --allow io,fs:read:./data   # and read that folder
-velaris agent_output.vel --allow all --deny net,ffi  # everything but these
+sabline agent_output.vel                 # io: it may print, nothing else
+sabline agent_output.vel --allow io,fs:read:./data   # and read that folder
+sabline agent_output.vel --allow all --deny net,ffi  # everything but these
 ```
 
 The runtime refuses any effect outside the budget you grant, whatever
 the source claims — and a refusal cannot be caught and carried past.
 From 8.4 the operating system is asked to hold the same budget, so a fault
-in Velaris itself is refused by the kernel: Landlock and seccomp on Linux
+in Sabline itself is refused by the kernel: Landlock and seccomp on Linux
 (full), a sandbox profile on macOS and a job object with a lowered token on
-Windows (both partial). `velaris doctor` says what your machine offers, a
+Windows (both partial). `sabline doctor` says what your machine offers, a
 receipt says what a run got, and `--no-confine` turns it off
 ([docs/confinement.md](docs/confinement.md)).
 Not a security boundary (`ffi` grants everything Python can do, and widens
@@ -516,9 +528,9 @@ you have not read.
 
 <!-- illustrative lines 1-2,5-11: stress.vel reaches the network, and each suite runs on its own in CI -->
 ```sh
-velaris examples/stress.vel --allow clock,env,ffi:datetime,math,sqlite3,io,net:raw.githubusercontent.com
+sabline examples/stress.vel --allow clock,env,ffi:datetime,math,sqlite3,io,net:raw.githubusercontent.com
                                 # 33 checks across the whole language
-velaris examples/edges.vel --allow ffi:datetime,io
+sabline examples/edges.vel --allow ffi:datetime,io
                                 # 20 boundary, property and round-trip checks
 python check_refusals.py        # 25 wrong programs, each refused correctly
 python check_sandbox.py         # 39 escape attempts, each refused with its code
@@ -527,7 +539,7 @@ python check_secret.py          # a Secret reaches nothing that emits it
 python check_pool.py            # a pool must leak nothing between programs
 python check_platform.py        # the reference platform refuses what it says it does
 python check_ratchet.py         # every widening fails, nothing else does
-velaris conformance             # velaris-spec's 456-case corpus, L1 to L3
+sabline conformance             # sabline-spec's 456-case corpus, L1 to L3
 ```
 
 One command that exercises the language, the standard library, the
@@ -538,7 +550,7 @@ network.
 
 <!-- count:benchmark-programs -->76<!-- /count --> small programs — <!-- count:benchmark-dangerous -->66<!-- /count --> with one deliberate defect,
 <!-- count:benchmark-controls -->10<!-- /count --> correct controls —
-each written three times with the same behaviour, in Velaris, in
+each written three times with the same behaviour, in Sabline, in
 JavaScript for Deno, and in Python. One harness runs every program
 through every tool and records what was caught before running, what was
 caught while running, and what was missed. The twelfth category (7.1)
@@ -549,13 +561,13 @@ and only a dependency's declared budget widened between two versions.
 
 | | caught before running | caught while running | missed | false positives on the 10 controls |
 |---|---|---|---|---|
-| **Velaris 8.4** | 52 | 12 | 2 | 0 |
+| **Sabline 8.4** | 52 | 12 | 2 | 0 |
 | Deno 2.9 | 8 | 34 | 24 | 0 |
 | Python 3.13 | 0 | 31 | 35 | 0 |
 
 <!-- /generated -->
 
-The <!-- count:benchmark-velaris-missed:word -->two<!-- /count --> Velaris misses are in the table by design: a loop that stops
+The <!-- count:benchmark-sabline-missed:word -->two<!-- /count --> Sabline misses are in the table by design: a loop that stops
 one item early with no contract to contradict, and a program that
 prints `rm -rf build` for its caller and touches nothing. Both are
 named, with the reason each is not catchable, in
@@ -568,10 +580,10 @@ prover settles only while running.
 `examples/ledger.vel` — an expense tracker: records, integer cents,
 file persistence, sorted reports.
 `examples/wordcount.vel` — text analysis:
-`velaris examples/wordcount.vel --allow fs:read,io <file> [n]` counts
+`sabline examples/wordcount.vel --allow fs:read,io <file> [n]` counts
 word frequencies and prints a ranked histogram.
 `examples/linkcheck.vel` — a link checker you would actually run:
-`velaris examples/linkcheck.vel --allow io,net <url> ...`, non-zero exit
+`sabline examples/linkcheck.vel --allow io,net <url> ...`, non-zero exit
 when something is broken.
 `examples/fetcher.vel` — an HTTP tool: checks a status, then summarises
 a page, with every network call declared and every failure handled.
@@ -614,7 +626,7 @@ check http.get(url) { ok body { ... } fail why { ... } }
 check db.count(conn, "notes") { ok n { ... } fail why { ... } }
 ```
 
-Written in Velaris, so they carry their effects — a program using
+Written in Sabline, so they carry their effects — a program using
 `http` shows `net`, one using `db` shows `ffi`, and a pure function
 can call neither.
 
@@ -627,7 +639,7 @@ and none calls Python, so the audit of a program that uses one shows no
 | [`azure.vel`](stdlib/azure.vel) | Azure Resource Manager: GET, PUT, PATCH, DELETE, paging, ARM's errors. `net:management.azure.com:443` | [`azure_groups.vel`](examples/ops/azure_groups.vel): resource groups and tag drift |
 | [`github.vel`](stdlib/github.vel) | the GitHub REST API: repos, issues, pulls, checks, releases, contents, the rate limit. `net:api.github.com:443` | [`github_issues.vel`](examples/ops/github_issues.vel) |
 | [`k8s.vel`](stdlib/k8s.vel) | the Kubernetes API: list, get, watch-once; every function that changes the cluster begins `write_` | [`k8s_pods.vel`](examples/ops/k8s_pods.vel): the pods that are not running |
-| [`aws.vel`](stdlib/aws.vel) | S3 and STS, signed with Signature Version 4 in Velaris | [`aws_buckets.vel`](examples/ops/aws_buckets.vel) |
+| [`aws.vel`](stdlib/aws.vel) | S3 and STS, signed with Signature Version 4 in Sabline | [`aws_buckets.vel`](examples/ops/aws_buckets.vel) |
 
 A token or a key goes in as a `Secret of Text` and the library says, in the
 audit, the one place it leaves: a bearer token through `declassify` with a
@@ -635,25 +647,25 @@ reason that names the host, an AWS signature through `hmac_sha256_chain`,
 listed as `hmac signature` - the key itself never stops being a Secret
 ([THREAT_MODEL.md](THREAT_MODEL.md) says why that is sound).
 `check_batteries.py` runs each against a stand-in for its service on every
-CI leg. [velaris-kit](https://github.com/gowrishankar-infra/velaris-kit) is
+CI leg. [sabline-kit](https://github.com/gowrishankar-infra/sabline-kit) is
 a template repository that starts from the Azure script.
 
 ## Libraries
 
 <!-- illustrative lines 1: fetches a library over the network -->
 ```sh
-velaris add https://example.com/geo.vel as geo   # vendored into lib/
-velaris deps                                     # what you depend on
-velaris deps --verify                            # unchanged since?
+sabline add https://example.com/geo.vel as geo   # vendored into lib/
+sabline deps                                     # what you depend on
+sabline deps --verify                            # unchanged since?
 ```
 
 A library is compiled before it is accepted and kept in your
 repository where you can read it. No registry, no resolver, nothing
 fetched at build time.
 
-`velaris add` writes `velaris.lock` beside `velaris.toml`: every
+`sabline add` writes `sabline.lock` beside `sabline.toml`: every
 vendored library with its source, the sha256 of the exact bytes that
-arrived, and the version of Velaris that added it. `velaris deps
+arrived, and the version of Sabline that added it. `sabline deps
 --verify` fails if a file's hash differs from the lock or a locked
 library is not on disk — a line worth having in CI. Adding a library
 that is already vendored, with different bytes, is refused with both
@@ -677,11 +689,11 @@ other import is refused (E515) before the file is read (8.1).
 
 <!-- illustrative: builds with PyInstaller, which takes minutes -->
 ```sh
-velaris build myprogram.vel      # one executable, ~90 MB
+sabline build myprogram.vel      # one executable, ~90 MB
 ./myprogram alpha beta           # runs anywhere, nothing installed;
                                  # it takes --allow like the compiler
 
-velaris build myprogram.vel --for-everyone   # a workflow that builds
+sabline build myprogram.vel --for-everyone   # a workflow that builds
                                              # Windows, Linux and macOS
 ```
 
@@ -689,11 +701,11 @@ Your program, its imports, the standard library and the compiler, in
 one file. It is compiled and proof-checked before it is built.
 
 ```sh
-velaris eject myprogram.vel      # a directory that runs with nothing
+sabline eject myprogram.vel      # a directory that runs with nothing
 python -I myprogram-ejected/main.py   # installed from this project
 ```
 
-`velaris eject` (8.1) writes the program, its imports and a copy of the
+`sabline eject` (8.1) writes the program, its imports and a copy of the
 runtime into a directory whose `main.py` fixes the budget, checks every
 file's digest and refuses a budget that could let one run rewrite the next,
 with a pinned `requirements.txt`, the PyInstaller command, and a README
@@ -702,27 +714,27 @@ proofs are a record of eject time, and no later fix reaches it.
 
 ## Tooling
 
-`velaris trace program.vel` (watch every call as it happens) ·
-`velaris test program.vel` (runs every `test_*` function written in
-Velaris) ·
-`velaris check program.vel` (compile without running; several files at
+`sabline trace program.vel` (watch every call as it happens) ·
+`sabline test program.vel` (runs every `test_*` function written in
+Sabline) ·
+`sabline check program.vel` (compile without running; several files at
 once, `--json` for tools) ·
-`velaris explain program.vel` (a walkthrough of every function: effects,
+`sabline explain program.vel` (a walkthrough of every function: effects,
 promises, and whether they are proven — `explain <folder>` maps a whole
 project) ·
-`velaris repl` (definitions are proof-checked as you type them) ·
-`velaris fmt` (canonical style, `--check` for CI) · `velaris lsp`
+`sabline repl` (definitions are proof-checked as you type them) ·
+`sabline fmt` (canonical style, `--check` for CI) · `sabline lsp`
 (errors as you type in any LSP editor; a VS Code extension lives in
 [`editor/vscode`](editor/vscode)) ·
-`velaris doctor` · `velaris new` · `--json` errors for automation.
+`sabline doctor` · `sabline new` · `--json` errors for automation.
 
 ## Standard library
 
-Written in Velaris, in [`stdlib/std.vel`](stdlib/std.vel) — and it
+Written in Sabline, in [`stdlib/std.vel`](stdlib/std.vel) — and it
 keeps its own promises: `sort` carries `ensures is_sorted(result)`,
 `max_of` requires a nonempty list, and violating a library `requires`
 is a compile error at *your* call site. Full
-[reference](https://velaris-lang.dev/library.html),
+[reference](https://sabline.dev/library.html),
 generated from the real compiler.
 
 ## Numbers
@@ -745,49 +757,49 @@ gives parts that **provably** add up to the payout. See
 
 [SPEC.md](SPEC.md) states precisely what the language means: semantics,
 evaluation order, effect propagation, what "proven" covers today, and
-what Velaris deliberately does not have — including
+what Sabline deliberately does not have — including
 [why it has no concurrency model](SPEC.md#13-concurrency).
 
 ## Stability
 
 Semantic versioning: breaking changes **only at major versions**.
 [STABILITY.md](STABILITY.md) says what that covers - the language, the
-error codes, `velaris.audit/1`, the library API, the budget grammar and
+error codes, `sabline.audit/1`, the library API, the budget grammar and
 the command line - what it does not, the rules for deprecating and
 removing, and every time this project has broken the rule, 3.3 and 3.4
 among them. CI tests every push on Linux, Windows and macOS, Python
 3.10 and 3.12, with and without the optional dependencies. Errors are
 stable, numbered, and
-[fully documented](https://velaris-lang.dev/errors.html).
+[fully documented](https://sabline.dev/errors.html).
 
 ## How much is proven
 
 ```sh
-velaris proofs .            # how many promises are proven, file by file
-velaris proofs . --min 80   # fails the build below 80%
+sabline proofs .            # how many promises are proven, file by file
+sabline proofs . --min 80   # fails the build below 80%
 ```
 
-Over this repository's examples and standard library, `velaris proofs
+Over this repository's examples and standard library, `sabline proofs
 examples stdlib` proves the promises of <!-- count:proven -->70<!-- /count --> of the
 <!-- count:promised -->99<!-- /count --> functions that make one before they run, a proven share of
 <!-- count:proven-share -->70.7<!-- /count -->%; the others are checked while they run. Some of those
 examples are built to be refused, and their promises are false on purpose.
 
-## Using Velaris in CI
+## Using Sabline in CI
 
-The GitHub Action audits the **Velaris programs** in a repository - its
+The GitHub Action audits the **Sabline programs** in a repository - its
 `.vel` files - and reports what they may touch to GitHub code scanning.
 It does not read Python, JavaScript, Go or anything else: a repository
 with no `.vel` file prints `no .vel files found` and the job is green.
 The case it serves is narrow, and it is the one this language exists
-for - an agent wrote a script, the script is in Velaris, and the
+for - an agent wrote a script, the script is in Sabline, and the
 effects it declared and the promises it did not prove should land in
 the Security tab rather than in a reviewer's head.
 
-Copy this into `.github/workflows/velaris.yml`:
+Copy this into `.github/workflows/sabline.yml`:
 
 ```yaml
-name: velaris
+name: sabline
 on: [push, pull_request]
 
 permissions:
@@ -795,20 +807,20 @@ permissions:
   security-events: write     # so the findings reach code scanning
 
 jobs:
-  velaris:
+  sabline:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: gowrishankar-infra/velaris-lang@6fa46df01cd2dd14998a3557c6c75da0f11654a9  # v8.5.0
+      - uses: gowrishankar-infra/sabline-lang@6fa46df01cd2dd14998a3557c6c75da0f11654a9  # v8.5.0
 ```
 
 The Action is pinned to a commit, with its tag in the comment beside it:
 a tag can be moved to other code after you copied it, and a commit cannot.
-Pinned that way it installs the Velaris of that commit, as it does at a
+Pinned that way it installs the Sabline of that commit, as it does at a
 tag.
 
 That is the whole workflow. With no `with:` block the Action installs
-Velaris and the prover, checks every `.vel` file in the repository,
+Sabline and the prover, checks every `.vel` file in the repository,
 fails the job if one does not compile or carries a promise the prover
 refutes, and uploads its findings as SARIF 2.1.0 with
 `github/codeql-action/upload-sarif`, pinned to a commit. A private
@@ -822,7 +834,7 @@ print to the job log either way.
 
 One alert per finding, on the line that caused it, with a link to its
 row on the
-[errors page](https://velaris-lang.dev/errors.html).
+[errors page](https://sabline.dev/errors.html).
 These are the rule IDs, and a real message from each:
 
 | rule | level | what an alert says |
@@ -833,15 +845,15 @@ These are the rule IDs, and a real message from each:
 | `E701` | error | `this call can break a promise: 'discount' requires price >= 0, but 'main' can call it with price = -3 - proven without running the program` |
 | `unproven-promise` | warning | `'count_rows': ensures result >= 0 - not proven before running; checked while the program runs` |
 | `contract-coverage` | note | `'total' takes or returns data and promises nothing about it` |
-| `capability-widened` | error | `net is needed by sync.vel, not in the surface of velaris.capabilities (a new effect, net)` |
-| `capability-effect-gained` | error | `'main' now declares net, which it did not in velaris.capabilities: net: calls pull at line 6, which declares net` |
+| `capability-widened` | error | `net is needed by sync.vel, not in the surface of sabline.capabilities (a new effect, net)` |
+| `capability-effect-gained` | error | `'main' now declares net, which it did not in sabline.capabilities: net: calls pull at line 6, which declares net` |
 | `capability-narrowed` | note | `surface: "net" is no longer needed` - the baseline gives more than the code needs; `capabilities init --force` records the narrower surface |
 | `dependency-capability-widened` | error | `npm:mixed 0.1.0 -> 0.2.0: net:telemetry.example.net is needed by lib/report.vel (a new effect, net)` |
 | `dependency-effect-gained` | error | `npm:mixed 0.1.0 -> 0.2.0: 'render' now declares net: net: calls post at line 3` |
 | `dependency-install-script` | error | `npm:textkit 1.0.0 -> 1.1.0: an install-time script was added: npm postinstall: node setup.js [registry manifest, tarball package.json]; what it does is not derived` |
 | `dependency-surface-unknown` | note | `npm:textkit 1.0.0 -> 1.1.0: capability surface unknown. Neither 1.0.0 nor 1.1.0 holds a .vel file, so there is no declared capability surface to compare. ...` |
 | `dependency-added` | note | `npm:textkit 1.0.0 -> 1.1.0: now declares helper ^2.0.0 (dependencies); its own surface was not examined` |
-| `dependency-narrowed` | note | `velaris.lock:mailer 6ed598a1e2bf -> 3f7a9875d0de: surface: "net:collector.example.net" is no longer needed` |
+| `dependency-narrowed` | note | `sabline.lock:mailer 6ed598a1e2bf -> 3f7a9875d0de: surface: "net:collector.example.net" is no longer needed` |
 
 Every code in the compiler's error table is a rule of its own, so a
 parse error (`E1xx`), an unknown function (`E200`) or a type error
@@ -849,23 +861,23 @@ parse error (`E1xx`), an unknown function (`E200`) or a type error
 the prover's. Under `check --strict` an unproven promise is an `error`
 rather than a warning, and a loop not shown to end is `E612`. The
 `uses-io`, `uses-fs` and `loop-not-shown-to-end` notes come from
-`velaris audit --sarif`, which the Action does not run; `pr-comment`
+`sabline audit --sarif`, which the Action does not run; `pr-comment`
 below is where the Action reports those. The `dependency-*` rows come
 from `deps-diff`, below, and only when that input is on; each lands on
 the line of the lockfile that pins the upgraded version.
 
-Velaris's suggested fixes are sentences, while a SARIF `fix` must hold
+Sabline's suggested fixes are sentences, while a SARIF `fix` must hold
 the exact bytes to change, so they travel in each result's
 `properties.fixes` rather than as SARIF fixes with an edit made up to
 fill the slot.
 
 ### The budget a repository declares
 
-`velaris capabilities init` records the capability surface a
+`sabline capabilities init` records the capability surface a
 repository's `.vel` files need - effects, paths, hosts, Python modules,
 how many file and network operations a run can perform, and each
-function's effects - in `velaris.capabilities`; commit it. From then on
-the Action runs `velaris capabilities check` on every push and fails
+function's effects - in `sabline.capabilities`; commit it. From then on
+the Action runs `sabline capabilities check` on every push and fails
 any change that needs more, naming what widened, the file, function and
 line that introduced it, and the edit to the baseline that would accept
 it. Those are the `capability-*` rows above, and they go to code
@@ -875,7 +887,7 @@ The comparison is always with that file, never with the previous
 commit: capability added across many small commits, none alarming by
 itself, fails at every one of them until someone widens the file, where
 the change shows in review. A pull request that deletes
-`velaris.capabilities` fails too, since that would turn the ratchet
+`sabline.capabilities` fails too, since that would turn the ratchet
 off; `capabilities: "off"` in the workflow is the way to turn it off,
 where the change is visible. Without the file the ratchet is simply
 off. [EMBEDDING.md](EMBEDDING.md) has the rules; `check_ratchet.py`
@@ -892,19 +904,19 @@ tool, and that 1.0.16 added a blind copy of every outgoing message to
 an outside address. A signature from the same publisher verifies both
 versions; an SBOM lists the same dependencies for both.
 
-`velaris deps-diff` compares two versions of one dependency:
+`sabline deps-diff` compares two versions of one dependency:
 
 <!-- illustrative lines 2-5: they read git, npm and PyPI, or need a git remote -->
 <!-- expect lines 1: exit 1, since 1.5.0 gained something -->
 ```sh
-velaris deps-diff dir:vendor/mailer 1.4.0 1.5.0          # a directory per version
-velaris deps-diff git:https://github.com/o/mailer v1.4.0 v1.5.0
-velaris deps-diff npm:some-package 1.0.15 1.0.16
-velaris deps-diff pypi:some-package 2.31.0 2.32.0 --json
-velaris deps-diff --against origin/main                  # every upgrade in the changed lockfiles
+sabline deps-diff dir:vendor/mailer 1.4.0 1.5.0          # a directory per version
+sabline deps-diff git:https://github.com/o/mailer v1.4.0 v1.5.0
+sabline deps-diff npm:some-package 1.0.15 1.0.16
+sabline deps-diff pypi:some-package 2.31.0 2.32.0 --json
+sabline deps-diff --against origin/main                  # every upgrade in the changed lockfiles
 ```
 
-For a **Velaris library** it computes each version's capability surface
+For a **Sabline library** it computes each version's capability surface
 from its `.vel` files, as `capabilities init` would, holds the newer
 one to the older one as `capabilities check` holds a tree to its
 baseline, and reports what the newer one gained - effects, hosts,
@@ -946,17 +958,17 @@ that neither version can be read.)
 Exit codes: 0 when both surfaces were derived and nothing was gained; 1
 when something was gained; 3 when nothing visible was gained and the
 surface was not derived; 2 when a version could not be read. `--json`
-is `velaris.deps-diff/1`; `--sarif` writes the `dependency-*` results
+is `sabline.deps-diff/1`; `--sarif` writes the `dependency-*` results
 above. A package argument names where to read it - `pypi:`, `npm:`,
 `git:` or `dir:` - and a bare name is refused, so an npm package is
 never compared with a PyPI package of the same name.
-`VELARIS_NPM_REGISTRY` and `VELARIS_PYPI_URL` point it at a mirror.
+`SABLINE_NPM_REGISTRY` and `SABLINE_PYPI_URL` point it at a mirror.
 
 With `deps-diff: "true"`, on a pull request the Action runs
-`velaris deps-diff --against` the base: it reads the lockfiles the pull
+`sabline deps-diff --against` the base: it reads the lockfiles the pull
 request changed - `package-lock.json`, `npm-shrinkwrap.json`,
 `requirements*.txt` pins, `Pipfile.lock`, `poetry.lock`, `uv.lock`,
-`pdm.lock` and `velaris.lock`, whose vendored libraries it compares
+`pdm.lock` and `sabline.lock`, whose vendored libraries it compares
 file against file - compares every upgraded dependency, up to <!-- count:deps-max-upgrades -->30<!-- /count -->, and
 posts one comment saying what each gained, editing that comment on
 later runs rather than adding another. A lockfile it does not read
@@ -971,7 +983,7 @@ findings go to code scanning when `sarif` is on. It needs
 ### The permissions a pull request gives its workflows
 
 With `permissions-ratchet: "true"` (8.3), on a `pull_request` event the
-Action runs `velaris permissions-ratchet --against` the pull request's base
+Action runs `sabline permissions-ratchet --against` the pull request's base
 commit. It compares the `permissions:` blocks of every workflow file in
 `.github/workflows` at the head with the base, job by job, and fails the job
 on any widening, with an error on the file and line. A widening is a scope
@@ -988,12 +1000,12 @@ fetch. It compares files, not what GitHub runs, so it does not see the
 permissions of a reusable workflow a job calls, which that workflow's own
 block governs; the repository's default token setting; or the base branch's
 copy of a `pull_request_target` workflow, which is what runs. `--json` writes
-`velaris.permissions-ratchet/1`, which is provisional.
+`sabline.permissions-ratchet/1`, which is provisional.
 
 ### Everything else the Action takes
 
 ```yaml
-  - uses: gowrishankar-infra/velaris-lang@6fa46df01cd2dd14998a3557c6c75da0f11654a9  # v8.5.0
+  - uses: gowrishankar-infra/sabline-lang@6fa46df01cd2dd14998a3557c6c75da0f11654a9  # v8.5.0
     with:
       files: "src/*.vel"     # default: every .vel file in the repository
       version: "8.5.0"       # default: the Action's own version (8.5.0)
@@ -1002,16 +1014,16 @@ copy of a `pull_request_target` workflow, which is what runs. `--json` writes
       min-proven: "80"       # fail below this percent of promises proven
       pr-comment: "true"     # audit every changed .vel on the pull request
       sarif: "true"          # the default; findings to code scanning
-      capabilities: "check"  # the default once velaris.capabilities exists
+      capabilities: "check"  # the default once sabline.capabilities exists
       deps-diff: "true"      # comment on what each upgraded dependency gained
 ```
 
 With `pr-comment: "true"` on a `pull_request` event the Action posts one
-comment holding the `velaris audit` of every `.vel` file the pull
+comment holding the `sabline audit` of every `.vel` file the pull
 request changes - effects and Python modules reached, proven share, the
 safe command, and warnings such as a loop not shown to end - and edits
 that same comment on later runs instead of adding another. The comment
-also carries the ratchet's result and a `velaris review` of the branch
+also carries the ratchet's result and a `sabline review` of the branch
 against its base: surface, proven share, new fallible functions, new
 hosts and paths, and a one-word risk computed from those facts alone.
 It uses the REST API with the job's own `GITHUB_TOKEN`, so the job needs
@@ -1022,24 +1034,24 @@ The same SARIF without the Action, for SonarQube
 (`sonar.sarifReportPaths`), Azure DevOps or anything else that reads it:
 
 ```sh
-velaris check src/*.vel --sarif > velaris.sarif   # exit 1 as the plain check
-velaris proofs src --sarif > proofs.sarif         # promises left to runtime
-velaris audit src --sarif > audit.sarif           # what each function may touch
-velaris capabilities check --sarif > caps.sarif   # what widened past the baseline
+sabline check src/*.vel --sarif > sabline.sarif   # exit 1 as the plain check
+sabline proofs src --sarif > proofs.sarif         # promises left to runtime
+sabline audit src --sarif > audit.sarif           # what each function may touch
+sabline capabilities check --sarif > caps.sarif   # what widened past the baseline
 ```
 
-One run, driver `Velaris` with its version, and a rule for every code in
+One run, driver `Sabline` with its version, and a rule for every code in
 the error table plus the findings that are not errors. Each result has
-the file, the line and Velaris's message.
+the file, the line and Sabline's message.
 
 Or without installing anything:
 
-<!-- illustrative: needs Docker and a velaris image -->
+<!-- illustrative: needs Docker and a sabline image -->
 ```sh
-docker run --rm -v "$PWD:/work" velaris check /work/main.vel
+docker run --rm -v "$PWD:/work" sabline check /work/main.vel
 ```
 
-What a reviewer should read before allowing agent-written Velaris to
+What a reviewer should read before allowing agent-written Sabline to
 run: [THREAT_MODEL.md](THREAT_MODEL.md), [COMPLIANCE.md](COMPLIANCE.md)
 and the verification steps in [SECURITY.md](SECURITY.md).
 
@@ -1058,22 +1070,22 @@ in [SUPPORT.md](SUPPORT.md).
 The author is Palakurthi Gowri Shankar (family name Palakurthi).
 [CITATION.cff](CITATION.cff) holds the citation, and GitHub offers it as
 "Cite this repository" beside the file list. A preprint describing
-Velaris is forthcoming; until it is published, cite the repository. The
+Sabline is forthcoming; until it is published, cite the repository. The
 capability format is cited separately, from
-[velaris-spec](https://github.com/gowrishankar-infra/velaris-spec)'s own
+[sabline-spec](https://github.com/gowrishankar-infra/sabline-spec)'s own
 CITATION.cff. [PROVENANCE.md](PROVENANCE.md) records the dates and the
 archive identifiers.
 
 ## Contributing
 
-The implementation is the package [`velaris/`](velaris), one readable
-module per stage, in pipeline order — lexer to command line; `velaris.py`
+The implementation is the package [`sabline/`](sabline), one readable
+module per stage, in pipeline order — lexer to command line; `sabline.py`
 starts it. Start with
 [ARCHITECTURE.md](ARCHITECTURE.md) for how it fits together, and
 [MAINTAINERS.md](MAINTAINERS.md) for what review looks like.
 
 **Looking for somewhere to start?** See the
-[good first issues](https://github.com/gowrishankar-infra/velaris-lang/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+[good first issues](https://github.com/gowrishankar-infra/sabline-lang/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 — small, self-contained tasks, each with the file to open and what
 "done" means.
 
@@ -1084,9 +1096,9 @@ each rejection demonstrates a guarantee. Before any change ships:
 <!-- illustrative lines 1,3: suites of their own, run by CI -->
 ```sh
 python run_tests.py                 # every example, expected verdicts
-velaris test examples/std_test.vel  # the library's own tests
+sabline test examples/std_test.vel  # the library's own tests
 python fuzz_native.py 60            # both engines must agree
-velaris fmt examples/*.vel stdlib/*.vel --check
+sabline fmt examples/*.vel stdlib/*.vel --check
 ```
 
 ## License

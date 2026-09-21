@@ -7,8 +7,8 @@ build/
 ledger.txt
 
 # remembered proofs - safe to delete, rebuilt on demand
-.velaris/
-velaris.mcpb
+.sabline/
+sabline.mcpb
 _mcpb_build/
 
 # scratch folders check_library.py makes and removes, left behind only
@@ -23,7 +23,7 @@ _sarif_box/
 # card eval: the answers a model gave, per run
 evals/answers/
 
-# the arXiv upload: paper/arxiv/velaris.tex and velaris.bbl, zipped
+# the arXiv upload: paper/arxiv/sabline.tex and sabline.bbl, zipped
 paper/arxiv-submission.zip
 
 # advisory bodies `release_checks.py advisory-body` writes from advisory-*.md

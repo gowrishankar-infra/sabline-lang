@@ -1,7 +1,7 @@
 # Hosting a run that calls tools
 
 The runner's first cut, new in 8.5. A host process - an agent framework, a
-service, a script - starts a Velaris program and offers it tools. The
+service, a script - starts a Sabline program and offers it tools. The
 program calls them with `tool(name, arguments)`; the operator's budget says
 which may be called and holds arguments to patterns; and the host's manifest
 says what each tool takes, what it costs, and the most one run may spend.
@@ -12,15 +12,15 @@ There is no adapter for any framework yet: the protocol below is all of it.
 
 <!-- illustrative: needs a host on the other end of the pipe -->
 ```sh
-velaris run program.vel --tools tools.json \
+sabline run program.vel --tools tools.json \
     --allow io,tool:search@20,tool:send_email:to=*@corp.com \
     --receipt run.receipt.json
 ```
 
-**The manifest** (`velaris.tools/1`) is the host's:
+**The manifest** (`sabline.tools/1`) is the host's:
 
 ```json
-{"schema": "velaris.tools/1",
+{"schema": "sabline.tools/1",
  "tools": {
    "search": {"description": "Look a phrase up.",
               "arguments": {"type": "object",
@@ -32,7 +32,7 @@ velaris run program.vel --tools tools.json \
  "ceiling": {"calls": 25, "cost": 40, "unit": "credits"}}
 ```
 
-`arguments` is a JSON Schema, of the keywords Velaris checks and no others
+`arguments` is a JSON Schema, of the keywords Sabline checks and no others
 (`type`, `properties`, `required`, `additionalProperties`, `items`, `enum`,
 `const`, `minLength`, `maxLength`, `minimum`, `maximum`, `minItems`,
 `maxItems`; a manifest that uses another is refused, because a constraint
@@ -54,7 +54,7 @@ line, UTF-8. From the run:
 
 | Event | Fields |
 |---|---|
-| `ready` | first: `protocol` (`velaris.tools-door/1`), `velaris`, `budget`, `tools` |
+| `ready` | first: `protocol` (`sabline.tools-door/1`), `sabline`, `budget`, `tools` |
 | `output` | `text`: one line the program printed. Its standard error is still standard error |
 | `call` | `id`, `tool`, `arguments` (a JSON object, already held to the schema, the grants and the ceilings) |
 | `exit` | last, whatever ended the run: `status`, and the ceiling record - `calls`, `cost`, `unit`, `calls_used`, `cost_used`, `manifest_sha256` |
@@ -77,35 +77,35 @@ does not come within `--tool-timeout` seconds (120) stops the run with
 E324. The program reads nothing from standard input while it is hosted:
 `read_line` gives an empty line.
 
-`velaris skill verify`, given a directory `DIR`, reads a skill before any of it runs: the
+`sabline skill verify`, given a directory `DIR`, reads a skill before any of it runs: the
 programs under `DIR`, and the manifest in `DIR/tools.json` (or `--tools
 FILE`). It reports the tools the programs name and whether the manifest
 offers each, the budget that covers every program, what they declassify
 and which Python modules they call, and the manifest's own grants and
 ceiling; it exits 1 when a program does not compile, names a tool the
 manifest lacks or one built while running, or would take a secret result
-as `Text`. `--json` writes `velaris.skill-verify/1`.
+as `Text`. `--json` writes `sabline.skill-verify/1`.
 
 **What is not here yet.** A result is a `Text` like any other; nothing
 marks it as the host's words rather than the program's, so what a tool
 returns can steer a program anywhere inside its budget, though nowhere
 outside it. That mark, `Untrusted`, arrives in 9.0, with the HTTP door for
-tools and the first framework adapters. `velaris.tools/1`,
-`velaris.tools-door/1` and `velaris.skill-verify/1` are provisional until
+tools and the first framework adapters. `sabline.tools/1`,
+`sabline.tools-door/1` and `sabline.skill-verify/1` are provisional until
 then (STABILITY.md).
 
 ## Reading a receipt, or an audit, as a page
 
-`velaris receipt show RECEIPT` writes a receipt as a page: what was read,
+`sabline receipt show RECEIPT` writes a receipt as a page: what was read,
 written and fetched - by grant, with counts, from `grants_used` - which
 secrets were declassified and why, each tool call, what was refused and
-where, the confinement level, the wall time and the subjects. `velaris audit
+where, the confinement level, the wall time and the subjects. `sabline audit
 program.vel --html` does the same for an audit. Both write to standard
 output or `-o FILE`: plain HTML with this site's stylesheet inside it, no
 script, nothing fetched, every value escaped, and the same bytes for the
 same input on every system. `--text` writes a receipt for a terminal, with
 control characters written as escapes. Neither verifies anything; that is
-`velaris verify`.
+`sabline verify`.
 
 ## Who trusts whom
 

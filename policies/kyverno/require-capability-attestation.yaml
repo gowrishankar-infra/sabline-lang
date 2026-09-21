@@ -1,17 +1,18 @@
-# Refuse a Pod whose image lacks a verified Velaris capability attestation.
+# Refuse a Pod whose image lacks a verified Sabline capability attestation.
 #
-# The attestation is the audit `velaris attest` writes, attached to the
+# The attestation is the audit `sabline attest` writes, attached to the
 # image as an in-toto attestation of the capability/v1 predicate type and
 # signed keylessly by the workflow that built the image:
 #
-#   velaris attest app.vel --json | jq .predicate > capability.json
+#   sabline attest app.vel --json | jq .predicate > capability.json
 #   cosign attest --yes --type \
-#       https://velaris-lang.dev/capability/v1 \
+#       https://sabline.dev/capability/v1 \
 #       --predicate capability.json registry.example.com/agents/app@sha256:...
 #
 # Kyverno's image verification fetches the attestation, checks its
 # signature against the attestor below and its predicate against the
-# conditions: the audit is velaris.audit/1 and its program compiled. A Pod
+# conditions: the audit is sabline.audit/1 (or velaris.audit/1, the same
+# format under the name it had before 8.6) and its program compiled. A Pod
 # with an image that has no such attestation, or one signed by anyone else,
 # is refused. Which effects and hosts a program may have is the question
 # policies/opa/capability.rego asks; this one asks that the image carries a
@@ -19,11 +20,15 @@
 #
 # Replace imageReferences, the subject and the issuer with your own.
 #
-# The predicate type is the one Velaris writes from 8.3. An image attested
-# with the audit of an earlier Velaris carries the same type at the
-# project's earlier documentation address; Kyverno matches one type per
-# attestation entry, so attest such an image again with this type (the
-# OPA policy admits both spellings).
+# The predicate type is the one Sabline writes from 8.6. An image attested
+# with the audit of an earlier Sabline carries the same type at one of the
+# project's earlier documentation addresses - the GitHub Pages one until
+# 8.3, velaris-lang.dev until the rename in 8.6. Kyverno matches one type
+# per attestation entry, so either attest such an image again with this
+# type, or add an entry of your own for the earlier one (the OPA policy
+# admits all three spellings in one rule). The audit's schema is matched
+# with AnyIn for the same reason: an audit written before 8.6 says
+# velaris.audit/1, and Sabline reads the two as one format.
 #
 # This is Kyverno's established image verification, a kyverno.io/v1
 # ClusterPolicy with verifyImages. Kyverno 1.19 loads it and warns that the
@@ -32,23 +37,23 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: require-velaris-capability-attestation
+  name: require-sabline-capability-attestation
   annotations:
-    policies.kyverno.io/title: Require a Velaris capability attestation
+    policies.kyverno.io/title: Require a Sabline capability attestation
     policies.kyverno.io/category: Software Supply Chain Security
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: Pod
     policies.kyverno.io/description: >-
       Refuses a Pod whose image does not carry an in-toto attestation of the
-      Velaris capability/v1 predicate, signed by the named workflow, whose
-      audit is velaris.audit/1 and compiled.
+      Sabline capability/v1 predicate, signed by the named workflow, whose
+      audit is sabline.audit/1 (or velaris.audit/1) and compiled.
 spec:
   background: false
   webhookConfiguration:
     failurePolicy: Fail
     timeoutSeconds: 30
   rules:
-    - name: velaris-capability-attestation
+    - name: sabline-capability-attestation
       match:
         any:
           - resources:
@@ -62,7 +67,7 @@ spec:
           mutateDigest: true
           verifyDigest: true
           attestations:
-            - predicateType: https://velaris-lang.dev/capability/v1
+            - predicateType: https://sabline.dev/capability/v1
               attestors:
                 - count: 1
                   entries:
@@ -74,8 +79,10 @@ spec:
               conditions:
                 - all:
                     - key: "{{ audit.schema }}"
-                      operator: Equals
-                      value: velaris.audit/1
+                      operator: AnyIn
+                      value:
+                        - sabline.audit/1
+                        - velaris.audit/1
                     - key: "{{ audit.ok }}"
                       operator: Equals
                       value: true

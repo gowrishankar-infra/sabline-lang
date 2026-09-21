@@ -1,0 +1,22 @@
+{
+  "name": "sabline",
+  "version": "0.1.0",
+  "description": "Sabline is published as sabline-lang; installing this installs it.",
+  "license": "MIT",
+  "author": "Palakurthi Gowri Shankar <gowrishankar@gowrishankar.dev>",
+  "homepage": "https://github.com/gowrishankar-infra/sabline-lang",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gowrishankar-infra/sabline-lang.git",
+    "directory": "packaging/placeholders/npm/sabline"
+  },
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "sabline-lang": ">=8.1.0"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ]
+}

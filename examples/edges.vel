@@ -1,6 +1,6 @@
 // The second stress test: the places languages actually break.
 //
-// velaris examples/edges.vel --allow ffi:datetime,io
+// sabline examples/edges.vel --allow ffi:datetime,io
 //
 // Boundaries (empty, zero, one, negative, the integer limits),
 // properties checked over many generated values rather than one
@@ -58,7 +58,7 @@ fn main() uses io, ffi {
     let passed = 0
     let failed = 0
 
-    print("Velaris edge and property tests")
+    print("Sabline edge and property tests")
     print("===============================")
 
     // ---------------------------------------------------- boundaries
@@ -323,7 +323,7 @@ fn main() uses io, ffi {
     if length(split(join(words, ","), ",")) != 3 {
         text_ok = false
     }
-    if lower(upper("Velaris")) != "velaris" {
+    if lower(upper("Sabline")) != "sabline" {
         text_ok = false
     }
     if text_ok {

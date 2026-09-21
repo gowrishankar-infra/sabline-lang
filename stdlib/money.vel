@@ -4,7 +4,7 @@
 // let shares = money.split(payout, 3)
 //
 // The amount type, its arithmetic, units_of, percent_of and
-// divide_or_fail are built in (SPEC.md 4.3). split is here, in Velaris,
+// divide_or_fail are built in (SPEC.md 4.3). split is here, in Sabline,
 // so that its promises are proven with your program instead of taken on
 // trust: the parts add up to the amount, exactly, and none has a sign
 // the amount does not have.

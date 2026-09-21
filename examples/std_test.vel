@@ -1,8 +1,8 @@
-// v2.17: tests written in Velaris itself. Every function whose name
+// v2.17: tests written in Sabline itself. Every function whose name
 // starts with test_ and takes no arguments is a test; returning true
 // means it passed.
 //
-// velaris test examples/std_test.vel
+// sabline test examples/std_test.vel
 
 import "std.vel"
 

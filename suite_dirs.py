@@ -9,7 +9,7 @@ directory is removed when the suite exits.
     from suite_dirs import isolate
     WORK = isolate("check_money")
 
-It is not part of Velaris: the wheel includes only what pyproject.toml
+It is not part of Sabline: the wheel includes only what pyproject.toml
 names.
 """
 import atexit
@@ -20,6 +20,6 @@ from pathlib import Path
 
 def isolate(name: str) -> Path:
     """A fresh directory for the suite `name`, removed when it exits."""
-    work = Path(tempfile.mkdtemp(prefix=f"velaris-{name}-"))
+    work = Path(tempfile.mkdtemp(prefix=f"sabline-{name}-"))
     atexit.register(shutil.rmtree, work, ignore_errors=True)
     return work

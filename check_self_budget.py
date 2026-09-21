@@ -15,15 +15,15 @@ and each run's end (exit status, refusal code, refused effect, output) are
 held to it:
 
   A  the working directory
-  B  args(): words after the program that look like Velaris flags
-  C  the environment: every variable velaris/*.py reads by name, PYTHONPATH
-     naming a planted velaris.py, and what the standard library reads on
-     Velaris's behalf (the proxy variables, TEMP, HOME)
-  D  velaris.toml, in the program's directory and in the working directory
-  E  a tampered velaris.lock
-  F  a library replaced with velaris add --force
+  B  args(): words after the program that look like Sabline flags
+  C  the environment: every variable sabline/*.py reads by name, PYTHONPATH
+     naming a planted sabline.py, and what the standard library reads on
+     Sabline's behalf (the proxy variables, TEMP, HOME)
+  D  sabline.toml, in the program's directory and in the working directory
+  E  a tampered sabline.lock
+  F  a library replaced with sabline add --force
   G  hidden directories: imports, and the directory scans
-  H  a planted velaris.capabilities and .velaris/ beside the program
+  H  a planted sabline.capabilities and .sabline/ beside the program
 
 Where a variation should change nothing, that is the assertion. Where it is
 meant to matter, a comment says why and the case asserts what it does. A
@@ -56,17 +56,17 @@ from typing import Any, Callable, cast
 
 T0 = time.perf_counter()
 HERE = Path(__file__).resolve().parent
-VELARIS = str(HERE / "velaris.py")
+SABLINE = str(HERE / "sabline.py")
 sys.path.insert(0, str(HERE))
 
 
 def _scrub(env: Any) -> Any:
-    """The environment without what this suite varies: Velaris's own
+    """The environment without what this suite varies: Sabline's own
     variables, the proxy variables, and what points Python at other code."""
     out = {}
     for k, v in env.items():
         u = k.upper()
-        if u.startswith("VELARIS_") or u.endswith("_PROXY") or u in (
+        if u.startswith("SABLINE_") or u.endswith("_PROXY") or u in (
                 "PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP",
                 "SOURCE_DATE_EPOCH"):
             continue
@@ -77,7 +77,7 @@ def _scrub(env: Any) -> Any:
 for _name in [k for k in os.environ if k not in _scrub({k: ""})]:
     os.environ.pop(_name, None)
 
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = Path(os.path.realpath(isolate("check_self_budget")))
@@ -132,7 +132,7 @@ CAP_FIELDS = ("ok", "effects", "fs_paths", "net_hosts", "ffi_modules",
 
 
 def caps(doc):
-    """What a velaris.audit/1 document says a program can touch: its
+    """What a sabline.audit/1 document says a program can touch: its
     capability fields, each function's effects, the problems' codes."""
     out = {k: doc.get(k) for k in CAP_FIELDS}
     out["functions"] = sorted([f["name"], sorted(f["effects"])]
@@ -160,20 +160,20 @@ import sys
 
 spec = json.load(open(sys.argv[1], encoding="utf-8"))
 sys.path.insert(0, spec["here"])
-import velaris
+import sabline
 ''' + _SHARED + r'''
 
-out = {"in_child": bool(velaris.state._IN_CHILD), "programs": {}}
+out = {"in_child": bool(sabline.state._IN_CHILD), "programs": {}}
 for name, path, allow in spec["programs"]:
     with open(path, encoding="utf-8") as fh:
         src = fh.read()
-    doc = velaris.audit(src, path=path, timeout=None,
+    doc = sabline.audit(src, path=path, timeout=None,
                         max_memory_mb=None).as_dict()
-    run = velaris.run(src, path=path, allow=set(allow.split(",")))
+    run = sabline.run(src, path=path, allow=set(allow.split(",")))
     out["programs"][name] = {"lib_audit": caps(doc),
                              "lib_run": lib_outcome(run)}
 if spec.get("pool"):
-    with velaris.Pool(size=1, timeout=300) as pool:
+    with sabline.Pool(size=1, timeout=300) as pool:
         for name, path, allow in spec["programs"]:
             with open(path, encoding="utf-8") as fh:
                 src = fh.read()
@@ -190,16 +190,16 @@ import sys
 spec = json.load(open(sys.argv[1], encoding="utf-8"))
 sys.path.insert(0, spec["here"])
 import tempfile
-import velaris
+import sabline
 ''' + _SHARED + r'''
 
 src = spec["source"]
 out = {"tempdir": tempfile.gettempdir(),
-       "audit": caps(velaris.audit(src, timeout=None,
+       "audit": caps(sabline.audit(src, timeout=None,
                                    max_memory_mb=None).as_dict()),
-       "pool_audit": caps(velaris.audit(src).as_dict()),
-       "run": lib_outcome(velaris.run(src, allow={"io"})),
-       "bounded_run": lib_outcome(velaris.run(src, allow={"io"},
+       "pool_audit": caps(sabline.audit(src).as_dict()),
+       "run": lib_outcome(sabline.run(src, allow={"io"})),
+       "bounded_run": lib_outcome(sabline.run(src, allow={"io"},
                                               timeout=300))}
 with open(spec["out"], "w", encoding="utf-8") as fh:
     json.dump(out, fh)
@@ -222,8 +222,8 @@ def sh(args: Any, cwd: Any, env: Any = None, timeout: int = 300) -> tuple[Any, .
 
 
 def vel(args: Any, cwd: Any, env: Any = None, timeout: int = 300) -> Any:
-    """python velaris.py <args>, the command line from a checkout."""
-    return sh([sys.executable, VELARIS] + list(args), cwd, env, timeout)
+    """python sabline.py <args>, the command line from a checkout."""
+    return sh([sys.executable, SABLINE] + list(args), cwd, env, timeout)
 
 
 def parallel(jobs: Any) -> dict[Any, Any]:
@@ -244,7 +244,7 @@ def cli_outcome(result: Any) -> list[Any]:
     m = _ERROR.search(err)
     if not m:
         return [code, None, None, out]
-    return [code, m.group(1), velaris._refused_from(m.group(1), m.group(2)),
+    return [code, m.group(1), sabline._refused_from(m.group(1), m.group(2)),
             out]
 
 
@@ -325,7 +325,7 @@ PLANTED = WORK / "planted"
 PROBE_FILE = WORK / "probe" / "probe.py"
 PATHLESS_FILE = WORK / "probe" / "pathless.py"
 UNRELATED = Path(os.path.realpath(tempfile.mkdtemp(
-    prefix="velaris-sb-elsewhere-")))
+    prefix="sabline-sb-elsewhere-")))
 atexit.register(shutil.rmtree, UNRELATED, ignore_errors=True)
 
 SOURCES = {
@@ -458,17 +458,17 @@ EVIL = ('fn main() uses io, env, fs, net, ffi {\n'
         '}\n')
 
 PLANTED_LOCK = json.dumps({
-    "lockfile": "velaris.lock/1",
+    "lockfile": "sabline.lock/1",
     "libraries": [{"name": "std", "file": "std.vel", "sha256": "0" * 64,
                    "source": "https://planted.example.invalid/std.vel",
                    "added_by": "99.0", "effects": ["io", "env", "fs", "net",
                                                    "ffi", "declassify"],
                    "capabilities": {"safe_command":
-                                    "velaris <file> --allow all"}}]},
+                                    "sabline <file> --allow all"}}]},
     indent=2)
 
 PLANTED_CAPABILITIES = json.dumps({
-    "schema": "velaris.capabilities/1", "velaris_version": "99.0",
+    "schema": "sabline.capabilities/1", "sabline_version": "99.0",
     "date": "2026-01-01",
     "surface": {"grants": ["clock", "declassify", "env", "ffi", "fs", "io",
                            "net", "rand"],
@@ -481,13 +481,13 @@ PLANTED_CAPABILITIES = json.dumps({
     indent=2)
 
 
-def plant_dotvelaris(where: Any) -> None:
-    """A .velaris/ of everything a Velaris ever kept there or could be told
+def plant_dotsabline(where: Any) -> None:
+    """A .sabline/ of everything a Sabline ever kept there or could be told
     to look for: proofs claimed, a budget, a standard library, a program."""
-    d = Path(where) / ".velaris"
+    d = Path(where) / ".sabline"
     write(d / "proofs.json", json.dumps(
         {"0" * 64: {"proven": True, "errors": []},
-         "schema": "velaris.proofcache/1"}))
+         "schema": "sabline.proofcache/1"}))
     write(d / "budget.json", json.dumps({"allow": "all", "deny": []}))
     write(d / "allow", "all\n")
     write(d / "std.vel", PLANTED_STD)
@@ -502,12 +502,12 @@ def fixtures() -> None:
     write(PROBE_FILE, PROBE)
     write(PATHLESS_FILE, PATHLESS)
     # a directory holding every planted file, to run from
-    write(PLANTED / "velaris.toml", TOML)
+    write(PLANTED / "sabline.toml", TOML)
     write(PLANTED / "evil.vel", EVIL)
-    write(PLANTED / "velaris.lock", PLANTED_LOCK)
-    write(PLANTED / "velaris.capabilities", PLANTED_CAPABILITIES)
-    plant_dotvelaris(PLANTED)
-    write(PLANTED / "velaris.py",
+    write(PLANTED / "sabline.lock", PLANTED_LOCK)
+    write(PLANTED / "sabline.capabilities", PLANTED_CAPABILITIES)
+    plant_dotsabline(PLANTED)
+    write(PLANTED / "sabline.py",
           f"open(r'{PLANTED / 'IMPORTED'}', 'w').write('imported')\n")
     write(PLANTED / "std.vel", PLANTED_STD)
     write(PLANTED / "lib.vel", PLANTED_STD)
@@ -600,9 +600,9 @@ def baseline() -> None:
     for n in NAMES:
         p = PROG / (n + ".vel")
         src = p.read_text(encoding="utf-8")
-        BASE_CAPS[n] = caps(velaris.audit(src, path=str(p), timeout=None,
+        BASE_CAPS[n] = caps(sabline.audit(src, path=str(p), timeout=None,
                                           max_memory_mb=None).as_dict())
-        r = velaris.run(src, path=str(p), allow=set(BUDGETS[n].split(",")))
+        r = sabline.run(src, path=str(p), allow=set(BUDGETS[n].split(",")))
         BASE_RUN[n] = lib_outcome(r)
         if n == "print":
             BASE_PARAMS.update(
@@ -660,7 +660,7 @@ def cwd_cases() -> None:
                 bad.append(n)
         except ValueError:
             bad.append(f"{n}: {docs[n][2][-160:]}")
-    ok("A1 ...and `velaris audit <file> --json` is the document "
+    ok("A1 ...and `sabline audit <file> --json` is the document "
        "`audit --sarif` carries, for each program", not bad, bad)
 
     res, _ = observe(WORK, form="rel")
@@ -668,11 +668,11 @@ def cwd_cases() -> None:
     res, _ = observe(UNRELATED)
     report("A3 cwd = an unrelated temporary directory, by absolute path", res)
     res, _ = observe(PLANTED, pool=True)
-    report("A4 cwd = a directory of planted files (velaris.toml, "
-           "velaris.lock, velaris.capabilities, .velaris/, velaris.py, "
+    report("A4 cwd = a directory of planted files (sabline.toml, "
+           "sabline.lock, sabline.capabilities, .sabline/, sabline.py, "
            "std.vel, lib.vel, .hidden/, data/, a planted <name>.vel for each)",
            res)
-    ok("A4 ...nothing imported the velaris.py planted there, and no planted "
+    ok("A4 ...nothing imported the sabline.py planted there, and no planted "
        "file was changed",
        not (PLANTED / "IMPORTED").exists()
        and files_under(PLANTED) == before,
@@ -734,14 +734,14 @@ def printed(words: Any) -> str:
 
 
 def args_cases() -> None:
-    section("B. args(): words after the program that look like Velaris flags")
+    section("B. args(): words after the program that look like Sabline flags")
     path = PROG / "print.vel"
     src = path.read_text(encoding="utf-8")
     for words in WORDS:
-        r = velaris.run(src, path=str(path), allow={"io"}, args=list(words))
+        r = sabline.run(src, path=str(path), allow={"io"}, args=list(words))
         pred = cast(dict[str, Any], r.receipt)["predicate"]
         got = lib_outcome(r)
-        ok(f"B1 velaris.run(args=[{' '.join(words)}]): args() holds exactly "
+        ok(f"B1 sabline.run(args=[{' '.join(words)}]): args() holds exactly "
            f"those words, and the run is still io, refused env",
            got == [1, "E310", "env", printed(words)]
            and pred["budget"] == "io"
@@ -752,7 +752,7 @@ def args_cases() -> None:
         if n == "print":
             continue
         p = PROG / (n + ".vel")
-        r = velaris.run(p.read_text(encoding="utf-8"), path=str(p),
+        r = sabline.run(p.read_text(encoding="utf-8"), path=str(p),
                         allow=set(BUDGETS[n].split(",")), args=ALL_WORDS)
         if lib_outcome(r) != BASE_RUN[n]:
             bad.append(f"{n}: {lib_outcome(r)}")
@@ -760,7 +760,7 @@ def args_cases() -> None:
        "baseline", not bad, bad)
 
     bad = []
-    with velaris.Pool(size=1, allow={"io"}, timeout=300) as pool:
+    with sabline.Pool(size=1, allow={"io"}, timeout=300) as pool:
         for words in WORDS:
             r = pool.run(src, path=str(path), args=list(words))
             pred = (r.receipt or {}).get("predicate") or {}
@@ -770,10 +770,10 @@ def args_cases() -> None:
     ok("B2 Pool.run(args=...), each of the nine: args() holds exactly those "
        "words, and the pool's budget is untouched", not bad, bad)
 
-    r = velaris.run(src, path=str(path), allow={"io"}, args=ALL_WORDS,
+    r = sabline.run(src, path=str(path), allow={"io"}, args=ALL_WORDS,
                     timeout=300)
     pred = (r.receipt or {}).get("predicate") or {}
-    ok("B3 velaris.run(args=all nine, timeout=300): the bounded run's child "
+    ok("B3 sabline.run(args=all nine, timeout=300): the bounded run's child "
        "gets them as arguments, and nothing more",
        lib_outcome(r) == [1, "E310", "env", printed(ALL_WORDS)]
        and pred.get("budget") == "io"
@@ -819,7 +819,7 @@ def args_cases() -> None:
             changed.append(f"the run ended {got}")
         if (d / "x").exists():
             changed.append("a file x was written")
-        ok(f"B4 velaris print.vel --allow io --receipt R -- "
+        ok(f"B4 sabline print.vel --allow io --receipt R -- "
            f"{' '.join(words)}: the run's budget, parameters and end are the "
            f"operator's", not changed, "; ".join(changed))
         seen = re.search(r"^args: (.*)$", got[3], re.M)
@@ -838,11 +838,11 @@ def args_cases() -> None:
         "all": (vel, [path, "--", "--allow", "all"], bare),
         "receipt": (vel, [path, "--", "--receipt", "x"], bare)})
     got = cli_outcome(done["all"])
-    ok("B5 velaris print.vel -- --allow all, the operator naming no budget: "
+    ok("B5 sabline print.vel -- --allow all, the operator naming no budget: "
        "the run has the default io and is refused env (E310)",
        got[:3] == [1, "E310", "env"],
        f"the run ended {got}; stderr {done['all'][2][:140]!r}")
-    ok("B5 velaris print.vel -- --receipt x: the run writes no file the "
+    ok("B5 sabline print.vel -- --receipt x: the run writes no file the "
        "operator did not name", not (bare / "x").exists(),
        f"{bare / 'x'} was written: {cli_outcome(done['receipt'])}")
 
@@ -850,72 +850,78 @@ def args_cases() -> None:
 # ---------------------------------------------------------------------------
 # C. The environment
 # ---------------------------------------------------------------------------
-# Every variable velaris/*.py reads by name (grep os.environ). The standard
-# library also reads some on Velaris's behalf: urllib's getproxies and
-# proxy_bypass (HTTP_PROXY, HTTPS_PROXY, NO_PROXY - C9, C10), tempfile (TEMP,
-# TMP, TMPDIR - C12 and G5) and os.path.expanduser (HOME, USERPROFILE - C13).
+# Every variable sabline/*.py reads by name, whether it reads it straight
+# from os.environ or through naming.env()/naming.pop_env(), which read the
+# SABLINE_ name and fall back to the VELARIS_ one (8.6; sabline/naming.py).
+# A VELARIS_ name is not listed separately: naming.env() derives it from the
+# SABLINE_ one, so varying the new name varies the pair, and check_rename.py
+# is where the fallback itself is run. The standard library also reads some
+# on Sabline's behalf: urllib's getproxies and proxy_bypass (HTTP_PROXY,
+# HTTPS_PROXY, NO_PROXY - C9, C10), tempfile (TEMP, TMP, TMPDIR - C12 and
+# G5) and os.path.expanduser (HOME, USERPROFILE - C13).
 KNOWN_ENV = {
-    "VELARIS_PROOF_TIMEOUT", "VELARIS_PROVER_SEED", "VELARIS_CHECK_CHILD",
-    "VELARIS_CHECK_MEMORY_MB", "VELARIS_TOKEN", "VELARIS_DEBUG_INV",
-    "VELARIS_CONFORMANCE_CORPUS", "VELARIS_PYPI_URL", "VELARIS_NPM_REGISTRY",
+    "SABLINE_PROOF_TIMEOUT", "SABLINE_PROVER_SEED", "SABLINE_CHECK_CHILD",
+    "SABLINE_CHECK_MEMORY_MB", "SABLINE_TOKEN", "SABLINE_DEBUG_INV",
+    "SABLINE_CONFORMANCE_CORPUS", "SABLINE_PYPI_URL", "SABLINE_NPM_REGISTRY",
     "HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "PYTHONPATH",
     "SOURCE_DATE_EPOCH", "GITHUB_TOKEN", "GITHUB_REPOSITORY",
-    "GITHUB_API_URL", "VELARIS_FAULT_INJECT"}
+    "GITHUB_API_URL", "SABLINE_FAULT_INJECT"}
 
 
 def env_names_read() -> Any:
     texts = [p.read_text(encoding="utf-8")
-             for p in sorted((HERE / "velaris").glob("*.py"))]
+             for p in sorted((HERE / "sabline").glob("*.py"))]
     consts: dict[str, str] = {}
     for text in texts:
         consts.update(re.findall(r'^(\w+_ENV)\s*=\s*"(\w+)"', text, re.M))
     names = set()
+    reader = r'(?:os\.environ(?:\.get|\.pop)?[\(\[]|naming\.(?:env|pop_env)\()'
     for text in texts:
-        names.update(re.findall(
-            r'os\.environ(?:\.get|\.pop)?[\(\[]\s*"(\w+)"', text))
-        for const in re.findall(
-                r'os\.environ(?:\.get|\.pop)?[\(\[]\s*(\w+_ENV)\b', text):
+        names.update(re.findall(reader + r'\s*"(\w+)"', text))
+        for const in re.findall(reader + r'\s*(\w+_ENV)\b', text):
             names.add(consts.get(const, const))
+    # naming.py's own OLD_ENV_PREFIX/NEW_ENV_PREFIX are not variables it
+    # reads; the names it reads are the ones its callers pass, found above.
     return names
 
 
 def env_cases() -> None:
     section("C. The environment")
     found = env_names_read()
-    ok("C0 the variables velaris/*.py reads by name are the ones this "
+    ok("C0 the variables sabline/*.py reads by name are the ones this "
        "section varies", found == KNOWN_ENV,
        f"read and not varied here: {sorted(found - KNOWN_ENV)}; "
        f"no longer read: {sorted(KNOWN_ENV - found)}")
 
     cache = WORK / "cachedir"
-    write(cache / "velaris" / "proofs" / ("0" * 64 + ".json"), json.dumps(
-        {"schema": "velaris.proofcache/1", "proofs": {}}))
+    write(cache / "sabline" / "proofs" / ("0" * 64 + ".json"), json.dumps(
+        {"schema": "sabline.proofcache/1", "proofs": {}}))
     variations = [
-        ("C1 VELARIS_PROOF_TIMEOUT=0.001, too short for any proof",
-         {"VELARIS_PROOF_TIMEOUT": "0.001"}, False),
-        ("C2 VELARIS_PROOF_TIMEOUT=not-a-number",
-         {"VELARIS_PROOF_TIMEOUT": "not-a-number"}, False),
-        ("C3 VELARIS_PROVER_SEED=7", {"VELARIS_PROVER_SEED": "7"}, False),
-        ("C4 VELARIS_CHECK_CHILD=1", {"VELARIS_CHECK_CHILD": "1"}, True),
-        ("C5 VELARIS_CHECK_MEMORY_MB=1, without VELARIS_CHECK_CHILD",
-         {"VELARIS_CHECK_MEMORY_MB": "1"}, False),
-        ("C6 VELARIS_TOKEN set",
-         {"VELARIS_TOKEN": "self-budget-token-" + "a" * 24}, False),
+        ("C1 SABLINE_PROOF_TIMEOUT=0.001, too short for any proof",
+         {"SABLINE_PROOF_TIMEOUT": "0.001"}, False),
+        ("C2 SABLINE_PROOF_TIMEOUT=not-a-number",
+         {"SABLINE_PROOF_TIMEOUT": "not-a-number"}, False),
+        ("C3 SABLINE_PROVER_SEED=7", {"SABLINE_PROVER_SEED": "7"}, False),
+        ("C4 SABLINE_CHECK_CHILD=1", {"SABLINE_CHECK_CHILD": "1"}, True),
+        ("C5 SABLINE_CHECK_MEMORY_MB=1, without SABLINE_CHECK_CHILD",
+         {"SABLINE_CHECK_MEMORY_MB": "1"}, False),
+        ("C6 SABLINE_TOKEN set",
+         {"SABLINE_TOKEN": "self-budget-token-" + "a" * 24}, False),
         # the fault-injection hook (8.4) grants a program nothing: a value
         # that names no fault leaves every audit and every run as they were.
         # What a value that does name one makes the RUNTIME attempt, and
         # that the kernel refuses it, is check_confine.py's on every leg
-        ("C14 VELARIS_FAULT_INJECT naming no fault",
-         {"VELARIS_FAULT_INJECT": "widen-the-budget"}, False),
-        ("C7 VELARIS_CACHE_DIR naming a directory of planted proof files",
-         {"VELARIS_CACHE_DIR": str(cache)}, False),
-        ("C11 every other variable velaris/*.py reads, set "
-         "(VELARIS_CONFORMANCE_CORPUS, VELARIS_PYPI_URL, VELARIS_NPM_REGISTRY, "
-         "VELARIS_DEBUG_INV, SOURCE_DATE_EPOCH, GITHUB_*)",
-         {"VELARIS_CONFORMANCE_CORPUS": str(PLANTED),
-          "VELARIS_PYPI_URL": "http://127.0.0.1:9/",
-          "VELARIS_NPM_REGISTRY": "http://127.0.0.1:9/",
-          "VELARIS_DEBUG_INV": "1", "SOURCE_DATE_EPOCH": "0",
+        ("C14 SABLINE_FAULT_INJECT naming no fault",
+         {"SABLINE_FAULT_INJECT": "widen-the-budget"}, False),
+        ("C7 SABLINE_CACHE_DIR naming a directory of planted proof files",
+         {"SABLINE_CACHE_DIR": str(cache)}, False),
+        ("C11 every other variable sabline/*.py reads, set "
+         "(SABLINE_CONFORMANCE_CORPUS, SABLINE_PYPI_URL, SABLINE_NPM_REGISTRY, "
+         "SABLINE_DEBUG_INV, SOURCE_DATE_EPOCH, GITHUB_*)",
+         {"SABLINE_CONFORMANCE_CORPUS": str(PLANTED),
+          "SABLINE_PYPI_URL": "http://127.0.0.1:9/",
+          "SABLINE_NPM_REGISTRY": "http://127.0.0.1:9/",
+          "SABLINE_DEBUG_INV": "1", "SOURCE_DATE_EPOCH": "0",
           "GITHUB_TOKEN": "planted", "GITHUB_REPOSITORY": "planted/planted",
           "GITHUB_API_URL": "http://127.0.0.1:9/"}, False),
     ]
@@ -927,7 +933,7 @@ def env_cases() -> None:
         probes[label[:3]] = probe
 
     # The check ceiling is the operator's: a child it starts carries
-    # VELARIS_CHECK_CHILD=1 so as not to start another. Set in the
+    # SABLINE_CHECK_CHILD=1 so as not to start another. Set in the
     # environment the command line is given, the ceiling is not applied at
     # all. That widens no effect; it is a question of what the operator's
     # environment may say. Seen here through --check-timeout 0, which the
@@ -936,12 +942,12 @@ def env_cases() -> None:
     done = parallel({
         "plain": (vel, argv, UNRELATED),
         "child": (vel, argv, UNRELATED,
-                  dict(BASE_ENV, VELARIS_CHECK_CHILD="1"))})
+                  dict(BASE_ENV, SABLINE_CHECK_CHILD="1"))})
     try:
         child_caps = caps(json.loads(done["child"][1]))
     except ValueError:
         child_caps = {}
-    ok("C4b VELARIS_CHECK_CHILD=1 in the environment turns off the command "
+    ok("C4b SABLINE_CHECK_CHILD=1 in the environment turns off the command "
        "line's check ceiling (an operator-environment question: the audit "
        "is the same), while the library in that environment keeps its own",
        done["plain"][0] == 2 and done["child"][0] == 0
@@ -950,21 +956,21 @@ def env_cases() -> None:
        f"exit {done['plain'][0]} without, {done['child'][0]} with; "
        f"library in_child={probes['C4 '].get('in_child')}")
 
-    # A velaris.py on PYTHONPATH, and in the directory velaris starts in.
-    # Velaris's launchers - velaris.py by path, the check ceiling's child and
-    # a pool worker by the path of velaris/__main__.py - put the directory
+    # A sabline.py on PYTHONPATH, and in the directory sabline starts in.
+    # Sabline's launchers - sabline.py by path, the check ceiling's child and
+    # a pool worker by the path of sabline/__main__.py - put the directory
     # holding the package first, so it is never imported. (`python -m
-    # velaris` from such a directory would run it: that is Python's -m,
+    # sabline` from such a directory would run it: that is Python's -m,
     # which puts the working directory first, and none of them use it.)
     drop = WORK / "pydrop"
     marker = drop / "IMPORTED"
-    write(drop / "velaris.py",
+    write(drop / "sabline.py",
           f"open(r'{marker}', 'w').write('imported')\n")
     res, _ = observe(drop, env=dict(BASE_ENV, PYTHONPATH=str(drop)),
                      pool=True)
-    report("C8 PYTHONPATH naming a directory holding a planted velaris.py, "
+    report("C8 PYTHONPATH naming a directory holding a planted sabline.py, "
            "started in that directory", res)
-    ok("C8 ...and the planted velaris.py was never imported",
+    ok("C8 ...and the planted sabline.py was never imported",
        not marker.exists())
 
     # Meant to matter (8.0): a net grant bounds the socket's peer, so an
@@ -1032,45 +1038,48 @@ def env_cases() -> None:
 
 
 # ---------------------------------------------------------------------------
-# D. velaris.toml
+# D. sabline.toml
 # ---------------------------------------------------------------------------
 def toml_cases() -> None:
-    section("D. velaris.toml")
+    section("D. sabline.toml")
     beside = WORK / "prog-toml"
     shutil.copytree(PROG, beside)
-    write(beside / "velaris.toml", TOML)
+    write(beside / "sabline.toml", TOML)
     write(beside / "evil.vel", EVIL)
     res, _ = observe(beside, prog_dir=beside, form="bare")
-    report("D1 a velaris.toml beside the program claiming another entry, "
+    report("D1 a sabline.toml beside the program claiming another entry, "
            "every effect, a read ceiling and arguments; started there", res)
 
     cwd = WORK / "cwd-toml"
-    write(cwd / "velaris.toml", TOML)
+    write(cwd / "sabline.toml", TOML)
     write(cwd / "evil.vel", EVIL)
     res, _ = observe(cwd)
-    report("D2 the same velaris.toml in the working directory only", res)
+    report("D2 the same sabline.toml in the working directory only", res)
 
     # What reads it: `deps`, `verify` and `add`, as the manifest of the
     # directory they are run in - the one place it is meant to matter.
     code, out, _ = vel(["deps"], cwd)
-    ok("D3 velaris deps run there reads it as that directory's manifest (the "
+    ok("D3 sabline deps run there reads it as that directory's manifest (the "
        "planted geo is listed, missing) - and nothing that audits or runs "
        "reads it",
        code == 0 and "geo" in out and "MISSING" in out, out[-200:])
-    named = sorted(p.name for p in (HERE / "velaris").glob("*.py")
-                   if "velaris.toml" in p.read_text(encoding="utf-8"))
+    # naming.py names it too, and must: it is where the velaris.toml
+    # spelling that project.py still reads is decided (8.6).
+    named = sorted(p.name for p in (HERE / "sabline").glob("*.py")
+                   if "sabline.toml" in p.read_text(encoding="utf-8")
+                   and p.name != "naming.py")
     fresh = WORK / "new"
     fresh.mkdir()
     code, out, _ = vel(["new", "demo"], fresh)
     made = sorted(os.listdir(fresh / "demo")) if code == 0 else out
-    ok("D4 velaris.toml is named only in velaris/project.py (deps, verify, "
-       "add), and velaris new writes none",
+    ok("D4 sabline.toml is named only in sabline/project.py (deps, verify, "
+       "add), and sabline new writes none",
        named == ["project.py"] and made == ["README.md", "main.vel"],
        f"{named} {made}")
 
 
 # ---------------------------------------------------------------------------
-# E. velaris.lock, and F. velaris add --force
+# E. sabline.lock, and F. sabline add --force
 # ---------------------------------------------------------------------------
 GEO_V1 = ('fn where_am_i() -> Text uses net {\n'
           '    let place = "unreachable"\n'
@@ -1110,13 +1119,13 @@ def project_view(proj: Any, name: Any, budget: Any) -> dict[str, Any]:
         cli = caps(json.loads(done["audit"][1]))
     except ValueError:
         cli = {"unreadable": done["audit"][2][-200:]}
-    lib = caps(velaris.audit(path.read_text(encoding="utf-8"), path=str(path),
+    lib = caps(sabline.audit(path.read_text(encoding="utf-8"), path=str(path),
                              timeout=None, max_memory_mb=None).as_dict())
     return {"cli": cli, "lib": lib, "run": cli_outcome(done["run"])}
 
 
 def lock_and_add_cases() -> None:
-    section("E. velaris.lock, and F. velaris add --force")
+    section("E. sabline.lock, and F. sabline add --force")
     proj = WORK / "lockproj"
     v1, v2 = fill(GEO_V1).encode("utf-8"), fill(GEO_V2).encode("utf-8")
     write(proj / "src" / "geo_v1.vel", v1.decode("utf-8"))
@@ -1125,18 +1134,18 @@ def lock_and_add_cases() -> None:
     write(proj / "app_narrow.vel", APP_NARROW)
     budget = f"io,net:127.0.0.1:{PORT}"
     lib = proj / "lib" / "geo.vel"
-    lock = proj / "velaris.lock"
+    lock = proj / "sabline.lock"
     v1_host, v2_host = f"127.0.0.1:{PORT}", "refused.example.invalid"
 
     def narrow_caps() -> Any:
         p = proj / "app_narrow.vel"
-        return caps(velaris.audit(p.read_text(encoding="utf-8"), path=str(p),
+        return caps(sabline.audit(p.read_text(encoding="utf-8"), path=str(p),
                                   timeout=None, max_memory_mb=None).as_dict())
 
     code, out, err = vel(["add", "src/geo_v1.vel", "as", "geo"], proj)
     first = project_view(proj, "app.vel", budget)
     vcode, vout, _ = vel(["deps", "--verify"], proj)
-    ok("E0 velaris add vendors geo v1: the importer's audit names v1's host "
+    ok("E0 sabline add vendors geo v1: the importer's audit names v1's host "
        "and no path, its run prints what it fetched, deps --verify passes",
        code == 0 and first["cli"] == first["lib"]
        and first["cli"].get("net_hosts", {}).get("hosts") == [v1_host]
@@ -1151,14 +1160,14 @@ def lock_and_add_cases() -> None:
     entry.update(sha256=sha(v2), added_by="99.0", effects=[],
                  capabilities={"effects": [], "net_hosts": [],
                                "fs_paths": [], "safe_command":
-                               "velaris <file> --allow ''"})
+                               "sabline <file> --allow ''"})
     write(lock, json.dumps(doc, indent=2))
     lied = project_view(proj, "app.vel", budget)
     vcode, vout, _ = vel(["deps", "--verify"], proj)
-    ok("E1 a velaris.lock claiming geo has v2's bytes and no capabilities: "
+    ok("E1 a sabline.lock claiming geo has v2's bytes and no capabilities: "
        "the importer's audit and run are those of the v1 on disk",
        lied == first, _delta(lied, first))
-    ok("E1 ...and velaris deps --verify reports the mismatch (CHANGED, "
+    ok("E1 ...and sabline deps --verify reports the mismatch (CHANGED, "
        "exit 1)", vcode == 1 and "CHANGED" in vout and "geo" in vout,
        vout[-240:])
     write(lock, original)
@@ -1186,7 +1195,7 @@ def lock_and_add_cases() -> None:
 
     code, out, err = vel(["add", "src/geo_v2.vel", "as", "geo"], proj)
     kept = project_view(proj, "app.vel", budget)
-    ok("F1 velaris add of v2 without --force is refused, and geo stays v1: "
+    ok("F1 sabline add of v2 without --force is refused, and geo stays v1: "
        "on disk, in the lock and in the importer's audit",
        code == 1 and sha(lib.read_bytes()) == sha(v1)
        and json.loads(lock.read_text(encoding="utf-8"))["libraries"][0][
@@ -1197,12 +1206,12 @@ def lock_and_add_cases() -> None:
                          proj)
     forced = project_view(proj, "app.vel", budget)
     app_src = (proj / "app.vel").read_text(encoding="utf-8")
-    pooled = caps(velaris.audit(app_src, path=str(proj / "app.vel"))
+    pooled = caps(sabline.audit(app_src, path=str(proj / "app.vel"))
                   .as_dict())
     narrow = narrow_caps()
     vcode, vout, _ = vel(["deps", "--verify"], proj)
     locked = json.loads(lock.read_text(encoding="utf-8"))["libraries"][0]
-    ok("F2 velaris add --force replaces geo with v2: the file and the lock "
+    ok("F2 sabline add --force replaces geo with v2: the file and the lock "
        "are v2's, and deps --verify passes",
        code == 0 and lib.read_bytes() == v2 and locked["sha256"] == sha(v2)
        and vcode == 0, f"exit {code} {err[-120:]}; verify {vcode}")
@@ -1245,8 +1254,8 @@ SCAN_PROGRAM = ('fn main() uses io, ffi {\n'
                 '    }\n'
                 '}\n')
 SCAN_FILES = {"top.vel": "json", "sub/s.vel": "math",
-              ".hidden/h.vel": "string", ".velaris/v.vel": "textwrap",
-              "cfg.velaris.d/w.vel": "keyword"}
+              ".hidden/h.vel": "string", ".sabline/v.vel": "textwrap",
+              "cfg.sabline.d/w.vel": "keyword"}
 
 
 def import_view(proj: Any, name: Any, cwd: Any, form: Any) -> tuple[Any, ...]:
@@ -1258,7 +1267,7 @@ def import_view(proj: Any, name: Any, cwd: Any, form: Any) -> tuple[Any, ...]:
         cli = caps(json.loads(done["audit"][1]))
     except ValueError:
         cli = {"unreadable": done["audit"][2][-200:]}
-    lib = caps(velaris.audit(path.read_text(encoding="utf-8"), path=str(path),
+    lib = caps(sabline.audit(path.read_text(encoding="utf-8"), path=str(path),
                              timeout=None, max_memory_mb=None).as_dict())
     return cli, lib, cli_outcome(done["run"])
 
@@ -1307,14 +1316,14 @@ def hidden_cases() -> None:
     # temporary file, and its imports resolve beside that file - in the
     # system temp directory, which on a POSIX machine every local user can
     # write - before the shipped standard library. So a std.vel left there
-    # changes what the audit of `velaris.audit(source)` says and what
-    # `velaris.run(source)` computes. Nothing of the program or its budget
+    # changes what the audit of `sabline.audit(source)` says and what
+    # `sabline.run(source)` computes. Nothing of the program or its budget
     # names that directory.
     src = fill(SOURCES["promise"])
     tmp = WORK / "tmpstd"
     write(tmp / "std.vel", PLANTED_STD)
     for label, env in (
-            ("G5 velaris.audit(source) and velaris.run(source) with no path",
+            ("G5 sabline.audit(source) and sabline.run(source) with no path",
              BASE_ENV),
             ("G5 ...the same, the system temp directory (TEMP, TMP, TMPDIR) "
              "holding a planted std.vel",
@@ -1370,7 +1379,7 @@ def hidden_cases() -> None:
     seen = {}
     try:
         seen["capabilities init"] = {rel_of(p["file"]) for p in json.loads(
-            (tree / "velaris.capabilities").read_text(encoding="utf-8"))[
+            (tree / "sabline.capabilities").read_text(encoding="utf-8"))[
                 "programs"]}
     except (OSError, ValueError, KeyError):
         seen["capabilities init"] = {f"<exit {init[0]}: {init[2][-80:]}>"}
@@ -1403,39 +1412,39 @@ def hidden_cases() -> None:
        "check, stats --ffi, explain, attest) reads sub/ and .hidden/",
        all({"top.vel", "sub/s.vel", ".hidden/h.vel"} <= v
            for v in seen.values()), table)
-    left = sorted(k for k, v in seen.items() if ".velaris/v.vel" not in v)
-    ok("G6 ...and treats .velaris/ as it treats every other hidden directory",
+    left = sorted(k for k, v in seen.items() if ".sabline/v.vel" not in v)
+    ok("G6 ...and treats .sabline/ as it treats every other hidden directory",
        not left, f"left out by {left}; {table}")
     left = sorted(k for k, v in seen.items()
-                  if "cfg.velaris.d/w.vel" not in v)
-    ok("G6 ...and reads cfg.velaris.d/, a directory whose name merely "
-       "contains .velaris", not left, f"left out by {left}")
+                  if "cfg.sabline.d/w.vel" not in v)
+    ok("G6 ...and reads cfg.sabline.d/, a directory whose name merely "
+       "contains .sabline", not left, f"left out by {left}")
     extra = sorted(k for k, v in seen.items() if not v <= every)
     ok("G6 ...and reads nothing but the .vel files there (not "
-       "velaris.capabilities, which init wrote)", not extra,
+       "sabline.capabilities, which init wrote)", not extra,
        f"{extra}; {table}")
 
 
 # ---------------------------------------------------------------------------
-# H. A planted velaris.capabilities and .velaris/ beside the program
+# H. A planted sabline.capabilities and .sabline/ beside the program
 # ---------------------------------------------------------------------------
 def planted_cases() -> None:
-    section("H. velaris.capabilities and .velaris/ beside the program")
+    section("H. sabline.capabilities and .sabline/ beside the program")
     capdir = WORK / "prog-capabilities"
     shutil.copytree(PROG, capdir)
-    write(capdir / "velaris.capabilities", PLANTED_CAPABILITIES)
+    write(capdir / "sabline.capabilities", PLANTED_CAPABILITIES)
     before = files_under(capdir)
     res, _ = observe(capdir, prog_dir=capdir, form="bare")
-    report("H1 a velaris.capabilities beside the programs declaring every "
+    report("H1 a sabline.capabilities beside the programs declaring every "
            "grant", res)
     ok("H1 ...and nothing rewrote it", files_under(capdir) == before)
 
-    dotdir = WORK / "prog-dotvelaris"
+    dotdir = WORK / "prog-dotsabline"
     shutil.copytree(PROG, dotdir)
-    plant_dotvelaris(dotdir)
+    plant_dotsabline(dotdir)
     before = files_under(dotdir)
     res, _ = observe(dotdir, prog_dir=dotdir, form="bare", pool=True)
-    report("H2 a .velaris/ beside the programs (proofs claimed, a budget of "
+    report("H2 a .sabline/ beside the programs (proofs claimed, a budget of "
            "all, a std.vel, a read.vel)", res)
     res, _ = observe(UNRELATED, prog_dir=dotdir)
     report("H2 ...the same programs named by path from an unrelated "

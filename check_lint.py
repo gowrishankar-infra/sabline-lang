@@ -7,7 +7,7 @@ most complex functions.
 
 The files are every .py file git knows of - tracked, or new and not
 ignored (`git ls-files --cached --others --exclude-standard`) - except a
-checkout of velaris-spec/ and what a build writes. Without git the same
+checkout of sabline-spec/ and what a build writes. Without git the same
 files are found by walking the tree.
 
 mypy runs as `python -m mypy --strict` with pyproject.toml's [tool.mypy]
@@ -18,14 +18,14 @@ exit status is 1 if either reports anything, and 0 if neither does.
 mypy knows a file by its module name, so two files with one name cannot
 be checked in one run: the files are split into as few runs as keep each
 name once (the benchmark's dependencies come in two versions, a
-pricing.py in each). velaris.py, the launcher, has the name of the
+pricing.py in each). sabline.py, the launcher, has the name of the
 package it starts, and is checked as program text (`mypy -c`), where its
 imports reach the package; what mypy finds there is shown against
-velaris.py.
+sabline.py.
 
 Complexity
 ----------
-The table ranks the 20 functions in velaris/ with the highest cyclomatic
+The table ranks the 20 functions in sabline/ with the highest cyclomatic
 complexity, counted from the syntax tree as 1 plus one for each decision
 point in the function's body:
 
@@ -61,7 +61,7 @@ TOP = 20
 
 # directories that are not this repository's source: a checkout of the
 # spec beside it, and what builds and tools write
-SKIP_DIRS = frozenset({"velaris-spec", "_mcpb_build", "build", "dist",
+SKIP_DIRS = frozenset({"sabline-spec", "_mcpb_build", "build", "dist",
                        "node_modules", "__pycache__"})
 
 FINDING = re.compile(r"^.+?:\d+(?::\d+)?: (?:error|warning):")
@@ -271,10 +271,10 @@ class _Functions(ast.NodeVisitor):
 
 
 def most_complex(top: int = TOP) -> list[tuple[int, str, str, int]]:
-    """The `top` most complex functions in velaris/: (complexity, name,
+    """The `top` most complex functions in sabline/: (complexity, name,
     module path, line)."""
     rows: list[tuple[int, str, str, int]] = []
-    for path in sorted((HERE / "velaris").glob("*.py")):
+    for path in sorted((HERE / "sabline").glob("*.py")):
         where = path.relative_to(HERE).as_posix()
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=where)
         functions = _Functions()
@@ -314,7 +314,7 @@ def main(argv: list[str]) -> int:
         say(f"  {line}")
     say(f"ruff: {len(ruff_lines)} finding(s)")
     say()
-    say(f"The {TOP} most complex functions in velaris/")
+    say(f"The {TOP} most complex functions in sabline/")
     say()
     say(complexity_table())
     failed = (bool(mypy_lines) or bool(ruff_lines) or mypy_broke

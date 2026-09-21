@@ -1,13 +1,13 @@
 // Running a program you have not read.
 //
 // io alone, which is what a run with no --allow gets from 5.0:
-// velaris examples/sandbox.vel
+// sabline examples/sandbox.vel
 // exactly what it needs, and nothing more:
-// velaris examples/sandbox.vel --allow ffi:builtins,fs:read,io,net
+// sabline examples/sandbox.vel --allow ffi:builtins,fs:read,io,net
 // everything, which is what a run used to get with no budget:
-// velaris examples/sandbox.vel --allow all
+// sabline examples/sandbox.vel --allow all
 // everything but those two:
-// velaris examples/sandbox.vel --allow all --deny net,ffi
+// sabline examples/sandbox.vel --allow all --deny net,ffi
 //
 // The compiler checks that a function declares what it does. The
 // runtime refuses anything outside the budget you granted on the
@@ -54,7 +54,7 @@ fn main() uses io, fs, net, ffi {
             print(format("  ffi failed: {}", why))
         }
     }
-    check touches_the_disk("velaris.py") {
+    check touches_the_disk("sabline.py") {
         ok body {
             print(format("  fs allowed: read {} characters", length(body)))
         }

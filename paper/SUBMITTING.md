@@ -1,4 +1,4 @@
-# Submitting velaris.md to arXiv: a checklist
+# Submitting sabline.md to arXiv: a checklist
 
 A draft for the author. Nothing has been submitted. The rules below were
 read from arXiv's own pages on 2026-09-11; each section names the page.
@@ -98,7 +98,7 @@ Moderators may reclassify either way
 ## 3. What to upload: the LaTeX source, not a PDF
 
 **Superseded by the package.** `paper/arxiv/` holds the upload as built
-on 2026-09-11 - `velaris.tex` with its bibliography as a BibTeX `.bbl`
+on 2026-09-11 - `sabline.tex` with its bibliography as a BibTeX `.bbl`
 (apalike), zipped as `paper/arxiv-submission.zip` - and
 `paper/arxiv/README-for-me.txt` gives the form fields and how it was
 built and checked with TeX Live 2025's pdflatex. The citeproc route
@@ -118,9 +118,9 @@ MiKTeX.MiKTeX`), or Tectonic (<https://tectonic-typesetting.github.io/>).
 
 From `paper/`, after editing the date:
 
-    pandoc velaris.md --citeproc --standalone -V geometry:margin=1in -o velaris.tex
-    pdflatex velaris.tex
-    pdflatex velaris.tex
+    pandoc sabline.md --citeproc --standalone -V geometry:margin=1in -o sabline.tex
+    pdflatex sabline.tex
+    pdflatex sabline.tex
 
 - `--citeproc` writes the references into the `.tex` (pandoc's
   default style, Chicago author-date), so no `.bib` or `.bbl` is
@@ -131,10 +131,10 @@ From `paper/`, after editing the date:
   the reproducibility section). The default body size is 10 pt, inside
   arXiv's 10 to 14.
 - Figure 1 is text in a code block, so there are no image files.
-- Upload `velaris.tex` alone, then read the PDF arXiv builds from it
+- Upload `sabline.tex` alone, then read the PDF arXiv builds from it
   before you confirm.
 
-Tested here: pandoc 3.11 wrote `velaris.tex` from the paper as of this
+Tested here: pandoc 3.11 wrote `sabline.tex` from the paper as of this
 commit, and Tectonic 0.17.0 (XeTeX engine) compiled it to 11 pages at
 1-inch margins with no overfull lines. pdflatex, which is arXiv's
 default, has been run on the package since - with TeX Live 2025 on
@@ -151,10 +151,10 @@ arXiv's metadata fields take ASCII only
 
 | Field | Enter |
 |---|---|
-| Title | Velaris: effects in signatures, budgets at run time, and a baseline for a repository's capability surface |
+| Title | Sabline: effects in signatures, budgets at run time, and a baseline for a repository's capability surface |
 | Authors | Gowri Shankar Palakurthi |
 | Abstract | the text in section 6 below |
-| Comments | 12 pages, 1 figure, 2 tables. Code: https://github.com/gowrishankar-infra/velaris-lang ; format and conformance corpus: https://github.com/gowrishankar-infra/velaris-spec |
+| Comments | 12 pages, 1 figure, 2 tables. Code: https://github.com/gowrishankar-infra/sabline-lang ; format and conformance corpus: https://github.com/gowrishankar-infra/sabline-spec |
 | Primary category | cs.PL |
 | Cross-list | cs.CR |
 | ACM-class | D.3.3; D.4.6; D.2.4 |
@@ -198,7 +198,7 @@ the paper's abstract as it stands, on one line; paste it as one
 paragraph.
 
 ```text
-Code written by language models is increasingly run by people who have not read it. Velaris is a small programming language for that situation. A function's signature declares which of seven effects it may perform, and the compiler checks the declaration across the whole call graph. A runtime refuses any operation outside a budget the operator writes - before the operation happens, and in a way the program cannot catch. Contracts are checked by the Z3 prover where it can settle them, and at run time where it cannot. A repository can commit a baseline of the capability surface its programs need, and a check fails any change that needs more. The central claim is about that surface. Suppose a repository's Velaris programs are held to a committed baseline by a required check. If a change makes a program need an effect, path, host, module or operation count the baseline does not grant, the check fails. It goes on failing at every later commit at which the program still compiles and still needs it, until a person edits the baseline. The claim is not about which function an effect is attributed to: a function renamed in the change that gives it an effect its program already had escapes the function-level rule. On a benchmark of 63 programs, 56 with one defect and 7 correct, each written in Velaris, in JavaScript for Deno and in Python, Velaris caught 54 of the 56 defects, 42 of them before running; Deno caught 32 and Python 28; none of the three flagged a correct program. One of Velaris's two misses is a logic error with no contract; the other no tool should catch. The capability format is published separately, under CC0, with a conformance corpus of 444 cases that an implementation in any language can run.
+Code written by language models is increasingly run by people who have not read it. Sabline is a small programming language for that situation. A function's signature declares which of seven effects it may perform, and the compiler checks the declaration across the whole call graph. A runtime refuses any operation outside a budget the operator writes - before the operation happens, and in a way the program cannot catch. Contracts are checked by the Z3 prover where it can settle them, and at run time where it cannot. A repository can commit a baseline of the capability surface its programs need, and a check fails any change that needs more. The central claim is about that surface. Suppose a repository's Sabline programs are held to a committed baseline by a required check. If a change makes a program need an effect, path, host, module or operation count the baseline does not grant, the check fails. It goes on failing at every later commit at which the program still compiles and still needs it, until a person edits the baseline. The claim is not about which function an effect is attributed to: a function renamed in the change that gives it an effect its program already had escapes the function-level rule. On a benchmark of 63 programs, 56 with one defect and 7 correct, each written in Sabline, in JavaScript for Deno and in Python, Sabline caught 54 of the 56 defects, 42 of them before running; Deno caught 32 and Python 28; none of the three flagged a correct program. One of Sabline's two misses is a logic error with no contract; the other no tool should catch. The capability format is published separately, under CC0, with a conformance corpus of 444 cases that an implementation in any language can run.
 ```
 
 If the paper's abstract changes, count it again: this count is of the
@@ -212,7 +212,7 @@ by single spaces.
    date line (section 3).
 2. Find one endorser who knows the work; register; start the
    submission in cs.PL and send them the endorsement link.
-3. Once endorsed: upload `velaris.tex` and `velaris.bbl` from
+3. Once endorsed: upload `sabline.tex` and `sabline.bbl` from
    `paper/arxiv/` (zipped locally as `paper/arxiv-submission.zip`, which
    is not committed), enter the metadata (section 4), choose the
    licence (section 5), read arXiv's build, submit.

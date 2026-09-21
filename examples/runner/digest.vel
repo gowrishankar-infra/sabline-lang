@@ -5,7 +5,7 @@
 //
 // The host starts it as
 //
-// velaris run examples/runner/digest.vel --tools examples/runner/tools.json
+// sabline run examples/runner/digest.vel --tools examples/runner/tools.json
 // --allow io,tool:search@20,tool:send_email:to=*@corp.com
 //
 // and answers each call on the run's standard input. The address is inside

@@ -5,8 +5,8 @@
 // would have got interpreted.
 //
 // Compare for yourself:
-// velaris examples/native_list.vel --time
-// velaris examples/native_list.vel --no-native --time
+// sabline examples/native_list.vel --time
+// sabline examples/native_list.vel --no-native --time
 
 fn build(n: Int) -> List of Int
     requires n >= 0

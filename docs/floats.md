@@ -15,7 +15,7 @@ teacher you have ever had agrees. Most program verifiers agree too.
 
 They are wrong, and so is the promise.
 
-Velaris refuses to prove it, and hands back the number that breaks it:
+Sabline refuses to prove it, and hands back the number that breaks it:
 
 ```
 error[E700] promise cannot be kept: 'add_twice' ensures result == x + 0.2
@@ -56,7 +56,7 @@ theorem is about the wrong object.
 ## What honesty costs
 
 Z3 has a floating-point theory that implements IEEE-754 exactly:
-rounding modes, subnormals, infinities, NaN, signed zero. Velaris
+rounding modes, subnormals, infinities, NaN, signed zero. Sabline
 translates `Float` into that theory rather than into `Real`.
 
 The bill arrives immediately.
@@ -65,14 +65,14 @@ The bill arrives immediately.
 64-bit values into circuits of individual bits and handing the result
 to a SAT solver. The refutation above takes about fifteen seconds on an
 idle machine and several times that on a busy one. Integer proofs in
-the same compiler finish in milliseconds. Velaris gives float queries a
+the same compiler finish in milliseconds. Sabline gives float queries a
 **120 second** budget and everything else three seconds, and only pays
 the larger cost for functions that actually mention floats. Either
 budget can be replaced for one run:
 
 ```
-velaris check f.vel --proof-timeout 300
-VELARIS_PROOF_TIMEOUT=300 velaris check f.vel
+sabline check f.vel --proof-timeout 300
+SABLINE_PROOF_TIMEOUT=300 sabline check f.vel
 ```
 
 **A budget that runs out says so.** If the solver spends its whole
@@ -86,8 +86,8 @@ are checked while running instead. This is not 'the prover found
 nothing wrong'.
 ```
 
-`velaris check` marks the file `1 proof(s) abandoned: out of time,
-nothing settled`, `velaris proofs --detail` marks the function
+`sabline check` marks the file `1 proof(s) abandoned: out of time,
+nothing settled`, `sabline proofs --detail` marks the function
 `[timeout]` rather than `[runtime]`, and `--strict` fails and says the
 proof was abandoned rather than unprovable. The next run spends the
 budget again: no proof is kept between runs. A slow machine must never be able to make a lost refutation look like a
@@ -100,7 +100,7 @@ expensive to establish. A verifier that pretends floats are reals has a
 much better success rate on paper. It is winning a game nobody should
 want to play.
 
-**Equality gets strange, correctly.** Velaris compares floats with
+**Equality gets strange, correctly.** Sabline compares floats with
 `fpEQ`, not structural equality, which means NaN is not equal to itself
 and positive zero equals negative zero. Both are IEEE behaviour, and
 both surprise people. Using structural equality would have been faster
@@ -115,7 +115,7 @@ sometimes becomes provable for free.
 
 ## The rule underneath
 
-Velaris has one commitment it will not trade away: **it never claims
+Sabline has one commitment it will not trade away: **it never claims
 something is proven unless the claim is literally true.**
 
 That single rule decided the float design by itself. If you model
@@ -135,7 +135,7 @@ than being waved through.
 None of these make the demo look better. All of them are the reason the
 demo can be believed.
 
-## Money is not a float, and Velaris will not let you pretend
+## Money is not a float, and Sabline will not let you pretend
 
 Everything above is about being honest when a program genuinely needs
 IEEE-754. Currency is the case where it does not.
@@ -148,7 +148,7 @@ worse, not better. `ensures total >= 0.0` about floats is provable and
 almost worthless, because the number it is proving things about is
 already not the amount you meant.
 
-So an amount in Velaris is not a `Float` at all. `Money of INR` (SPEC.md
+So an amount in Sabline is not a `Float` at all. `Money of INR` (SPEC.md
 §4.3) is a whole number of minor units - paise, cents, fils - with the
 currency in its type:
 
@@ -167,7 +167,7 @@ before your program runs, by the prover you already have.
 
 Three things are compile errors rather than surprises: a `Float`
 anywhere near an amount, two currencies in one sum, and `/` on an
-amount - because dividing 100 paise three ways has to round, and Velaris
+amount - because dividing 100 paise three ways has to round, and Sabline
 will not pick the rounding for you. You write `"half_up"`,
 `"half_even"` or `"down"` in the call, or you use `money.split`, which
 does not round at all.
@@ -179,14 +179,14 @@ use them".
 ## Try it
 
 The compiler runs in your browser, no install:
-<https://velaris-lang.dev/playground.html>
+<https://sabline.dev/playground.html>
 
 Paste the function at the top of this page and watch it refuse. Then
 change `ensures result == x + 0.2` to something IEEE actually
 guarantees — say `ensures result >= x` — and watch it go through.
 
-If you can make Velaris say "proven" about something that is false at
+If you can make Sabline say "proven" about something that is false at
 runtime, that is a soundness bug, and this project treats those as
 security reports.
 
-<https://github.com/gowrishankar-infra/velaris-lang>
+<https://github.com/gowrishankar-infra/sabline-lang>

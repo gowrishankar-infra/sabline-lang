@@ -14,15 +14,15 @@
       }
     }
   ],
-  "predicateType": "https://velaris-lang.dev/receipt/v1",
+  "predicateType": "https://sabline.dev/receipt/v1",
   "predicate": {
-    "schema": "velaris.receipt/1",
+    "schema": "sabline.receipt/1",
     "producer": {
-      "name": "velaris-lang",
-      "uri": "https://github.com/gowrishankar-infra/velaris-lang",
+      "name": "sabline-lang",
+      "uri": "https://github.com/gowrishankar-infra/sabline-lang",
       "version": "8.5.0"
     },
-    "specification": "velaris-spec 0.13.0",
+    "specification": "sabline-spec 0.13.0",
     "startedAt": "2026-09-20T08:00:00.000Z",
     "wall_time_ms": 412.5,
     "budget": "declassify,env,fs:read:/srv/app/settings,fs:write:/srv/app/out,io,net:management.azure.com:443@20,tool:send_email:to=*@corp.com",

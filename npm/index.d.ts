@@ -25,8 +25,8 @@ export interface AuditFunction {
 }
 
 export interface AuditResult {
-  schema: "velaris.audit/1";
-  velaris_version: string;
+  schema: "sabline.audit/1";
+  sabline_version: string;
   ok: boolean;
   problems: Problem[];
   effects: Effect[];

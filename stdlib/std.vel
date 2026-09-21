@@ -1,4 +1,4 @@
-// The Velaris standard library - written in Velaris itself.
+// The Sabline standard library - written in Sabline itself.
 // Generic, pure, and contracted; misusing a requires here is caught
 // at YOUR call site, at compile time. Import with: import "std.vel"
 

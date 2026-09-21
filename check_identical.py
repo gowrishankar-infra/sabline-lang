@@ -2,8 +2,8 @@
 """The audit and the SARIF are the same bytes on every system (8.2).
 
 `--write DIR` writes, for a fixed set of example programs, the documents
-`velaris audit --json` and `velaris audit --sarif` print, and one
-`velaris proofs --sarif` log over them - built by the functions those
+`sabline audit --json` and `sabline audit --sarif` print, and one
+`sabline proofs --sarif` log over them - built by the functions those
 commands call and serialized as they serialize them, so what is compared is
 the document and not the console's line ends. `--compare A B C` holds the
 directories to be byte for byte the same and names each file that differs.
@@ -47,18 +47,18 @@ ROOT_PLACEHOLDER = "file:///SRCROOT/"
 def documents() -> dict[str, bytes]:
     """{file name: bytes} of every document, built with this checkout as the
     working directory and the programs named relative to it, as CI runs."""
-    import velaris
+    import sabline
     os.chdir(HERE)
     out: dict[str, bytes] = {}
     for rel in PROGRAMS:
         stem = Path(rel).stem
         with open(rel, encoding="utf-8") as fh:
             source = fh.read()
-        audit = velaris._audit_here(source, path=rel).as_dict()
+        audit = sabline._audit_here(source, path=rel).as_dict()
         out[f"{stem}.audit.json"] = json.dumps(audit, indent=2).encode()
-        sarif = velaris.sarif_audit([rel])
+        sarif = sabline.sarif_audit([rel])
         out[f"{stem}.audit.sarif"] = json.dumps(sarif, indent=2).encode()
-    reports = {rel: velaris.inspect_source(rel) for rel in PROGRAMS}
+    reports = {rel: sabline.inspect_source(rel) for rel in PROGRAMS}
     totals = {"proven": 0, "runtime": 0, "plain": 0, "errors": 0}
     for rel, report in reports.items():
         for f in report["functions"]:
@@ -70,7 +70,7 @@ def documents() -> dict[str, bytes]:
         totals["errors"] += len(report["errors"])
     promising = totals["proven"] + totals["runtime"]
     share = 100.0 * totals["proven"] / promising if promising else 0.0
-    log = velaris.sarif_proofs(reports, totals, share, None)
+    log = sabline.sarif_proofs(reports, totals, share, None)
     out["proofs.sarif"] = json.dumps(log, indent=2).encode()
     return out
 

@@ -1,30 +1,30 @@
-# winget manifest, for `winget install Velaris.Velaris`.
+# winget manifest, for `winget install Sabline.Sabline`.
 #
 # Publishing means opening a pull request against
 # microsoft/winget-pkgs with these three files under
-# manifests/g/Gowrishankar/Velaris/<version>/. The installer URL points
+# manifests/g/Gowrishankar/Sabline/<version>/. The installer URL points
 # at the Windows executable attached to each GitHub release, and the
 # sha256 must match it:
 #
-#   Get-FileHash velaris-windows.exe -Algorithm SHA256
+#   Get-FileHash sabline-windows.exe -Algorithm SHA256
 
-PackageIdentifier: Gowrishankar.Velaris
+PackageIdentifier: Gowrishankar.Sabline
 PackageVersion: 2.55.0
 PackageLocale: en-US
 Publisher: Palakurthi Gowri Shankar
 PublisherUrl: https://github.com/gowrishankar-infra
-PackageName: Velaris
-PackageUrl: https://velaris-lang.dev/
+PackageName: Sabline
+PackageUrl: https://sabline.dev/
 License: MIT
-LicenseUrl: https://github.com/gowrishankar-infra/velaris-lang/blob/main/LICENSE
+LicenseUrl: https://github.com/gowrishankar-infra/sabline-lang/blob/main/LICENSE
 ShortDescription: A language where a signature declares its effects and machine-checked promises.
 Description: |-
-  Velaris is a language where a function's signature declares its types,
+  Sabline is a language where a function's signature declares its types,
   the effects it may perform, whether it can fail, and promises that a
   theorem prover checks before the program runs. The runtime enforces an
   effect budget you grant on the command line, whatever the source claims
   about itself, so a program you have not read can still be run safely.
-Moniker: velaris
+Moniker: sabline
 Tags:
   - programming-language
   - compiler
@@ -34,9 +34,9 @@ Tags:
 Installers:
   - Architecture: x64
     InstallerType: portable
-    InstallerUrl: https://github.com/gowrishankar-infra/velaris-lang/releases/download/v2.55/velaris-windows.exe
+    InstallerUrl: https://github.com/gowrishankar-infra/sabline-lang/releases/download/v2.55/sabline-windows.exe
     InstallerSha256: REPLACE_WITH_THE_EXE_SHA256
     Commands:
-      - velaris
+      - sabline
 ManifestType: singleton
 ManifestVersion: 1.6.0

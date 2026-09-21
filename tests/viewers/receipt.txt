@@ -61,4 +61,4 @@ Subjects
   <stdlib>/azure.vel             2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e
 
 Written by
-  velaris-lang 8.5.0, velaris-spec 0.13.0, schema velaris.receipt/1.
+  sabline-lang 8.5.0, sabline-spec 0.13.0, schema sabline.receipt/1.

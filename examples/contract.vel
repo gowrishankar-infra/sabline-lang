@@ -1,5 +1,5 @@
 // v0.5: contracts. A function's signature now states PROMISES,
-// and Velaris enforces every one of them.
+// and Sabline enforces every one of them.
 
 fn discount(price: Int) -> Int
     requires price >= 0

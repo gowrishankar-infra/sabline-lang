@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>receipt/v1 predicate type - Velaris 8.5.0</title>
+<title>receipt/v1 predicate type - Sabline 8.6.0</title>
 <meta name="description" content="An in-toto predicate type.">
-<meta name="velaris-version" content="8.5.0">
-<link rel="canonical" href="https://velaris-lang.dev/receipt/v1/">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/receipt/v1/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="../../assets/site.css">
 <script src="../../assets/site.js"></script>
 </head>
@@ -17,8 +17,8 @@
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="../../index.html">Velaris</a>
-<a class="badge" href="../../versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
+<a class="brand" href="../../index.html">Sabline</a>
+<a class="badge" href="../../versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,37 +44,37 @@
 <li><a href="../../floats.html">Floats</a>
 </li>
 <li><a href="../../threat-model.html">Threat model</a>
-<ul><li><a href="../../confinement.html">Confinement</a></li><li><a href="../../runner.html">Hosting a run that calls tools</a></li><li><a href="../../eval.html">velaris eval</a></li><li><a href="../../structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="../../crosswalk.html">Crosswalk</a></li><li><a href="../../security.html">Security policy</a></li></ul>
+<ul><li><a href="../../confinement.html">Confinement</a></li><li><a href="../../runner.html">Hosting a run that calls tools</a></li><li><a href="../../eval.html">sabline eval</a></li><li><a href="../../structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="../../crosswalk.html">Crosswalk</a></li><li><a href="../../security.html">Security policy</a></li></ul>
 </li>
 <li><a href="../../embedding.html">Embedding</a>
 </li>
 <li><span class="sec-label">Spec</span>
-<ul><li><a href="../../stability.html">Stability</a></li><li><a href="../../capability/v1/index.html">capability/v1</a></li><li><a href="index.html" aria-current="page">receipt/v1</a></li></ul>
+<ul><li><a href="../../stability.html">Stability</a></li><li><a href="../../renamed.html">Renamed from Velaris</a></li><li><a href="../../capability/v1/index.html">capability/v1</a></li><li><a href="index.html" aria-current="page">receipt/v1</a></li></ul>
 </li>
 <li><a href="../../changelog.html">Changelog</a>
-<ul><li><a href="../../changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="../../changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="../../changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="../../changelog-7.html">7.x</a></li><li><a href="../../changelog-6.html">6.x</a></li><li><a href="../../changelog-5.html">5.x</a></li><li><a href="../../changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="../../changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="../../changelog-3.html">3.x</a></li><li><a href="../../changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="../../changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="../../changelog-1.html">1.x</a></li><li><a href="../../changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="../../changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="../../changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="../../changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="../../changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="../../changelog-7.html">7.x</a></li><li><a href="../../changelog-6.html">6.x</a></li><li><a href="../../changelog-5.html">5.x</a></li><li><a href="../../changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="../../changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="../../changelog-3.html">3.x</a></li><li><a href="../../changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="../../changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="../../changelog-1.html">1.x</a></li><li><a href="../../changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
 <p class="lead">An in-toto predicate type.</p>
 <h1 id="receiptv1">receipt/v1</h1>
-<p>A signed record of one run of a Velaris program: the budget it was given, every refusal and every declassification, the parameters it ran under, how it ended and how long it took - bound, by sha256, to the same source files a <a href="../../capability/v1/index.html">capability/v1</a> attestation names. The attestation is what the program may do; the receipt is what one run of it did.</p>
-<p><strong>Predicate type:</strong> <code>https://velaris-lang.dev/receipt/v1</code> - this page.</p>
-<p><strong>Also read as this type:</strong> <code>https://gowrishankar-infra.github.io/velaris-lang/receipt/v1</code>, the name receipts written by velaris-lang 8.1 to 8.2.1 carry; that address redirects here.</p>
-<p><strong>Schema:</strong> <a href="schema.json">schema.json</a>, JSON Schema draft 2020-12, for the predicate. <strong>Definition:</strong> <a href="https://github.com/gowrishankar-infra/velaris-spec/blob/main/SPEC.md#87-velarisreceipt1-a-record-of-one-run">velaris-spec SPEC.md section 8.7</a>, dedicated to the public domain under CC0.</p>
+<p>A signed record of one run of a Sabline program: the budget it was given, every refusal and every declassification, the parameters it ran under, how it ended and how long it took - bound, by sha256, to the same source files a <a href="../../capability/v1/index.html">capability/v1</a> attestation names. The attestation is what the program may do; the receipt is what one run of it did.</p>
+<p><strong>Predicate type:</strong> <code>https://sabline.dev/receipt/v1</code> - this page.</p>
+<p><strong>Also read as this type:</strong> <code>https://velaris-lang.dev/receipt/v1</code>, <code>https://gowrishankar-infra.github.io/velaris-lang/receipt/v1</code>, the name receipts written by sabline-lang 8.1 to 8.2.1 carry; that address redirects here.</p>
+<p><strong>Schema:</strong> <a href="schema.json">schema.json</a>, JSON Schema draft 2020-12, for the predicate. <strong>Definition:</strong> <a href="https://github.com/gowrishankar-infra/sabline-spec/blob/main/SPEC.md#87-sablinereceipt1-a-record-of-one-run">sabline-spec SPEC.md section 8.7</a>, dedicated to the public domain under CC0.</p>
 <div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{
   "_type": "https://in-toto.io/Statement/v1",
   "subject": [
     {"name": "examples/effects.vel",
-     "digest": {"sha256": "51411dd586cf374e03d89e27d52465052c5240807c3e9027cb08c2ab5b100463"}}
+     "digest": {"sha256": "4c8efda9e686a0b35f73275991387472d1d35569ccb21ab8391aa5b3f92026e1"}}
   ],
-  "predicateType": "https://velaris-lang.dev/receipt/v1",
+  "predicateType": "https://sabline.dev/receipt/v1",
   "predicate": {
-    "schema": "velaris.receipt/1",
-    "producer": {"name": "velaris-lang", "version": "8.5.0",
-                 "uri": "https://github.com/gowrishankar-infra/velaris-lang"},
-    "specification": "velaris-spec 0.13.0",
+    "schema": "sabline.receipt/1",
+    "producer": {"name": "sabline-lang", "version": "8.6.0",
+                 "uri": "https://github.com/gowrishankar-infra/sabline-lang"},
+    "specification": "sabline-spec 0.13.0",
     "startedAt": "2026-09-14T00:00:00.000Z",
     "wall_time_ms": 41.7,
     "budget": "clock,fs:read:/work/report.txt,fs:write:/work/report.txt,io,rand",
@@ -95,7 +95,7 @@
 <div class="table-wrap" tabindex="0"><table>
 <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
 <tbody>
-<tr><td><code>subject</code></td><td>the program that ran, by the sha256 of its text, then each file it imported, by the sha256 of its bytes - the subjects <code>velaris attest</code> writes for the same files</td></tr>
+<tr><td><code>subject</code></td><td>the program that ran, by the sha256 of its text, then each file it imported, by the sha256 of its bytes - the subjects <code>sabline attest</code> writes for the same files</td></tr>
 <tr><td><code>budget</code></td><td>the budget the run was given, in the budget grammar</td></tr>
 <tr><td><code>run_parameters</code></td><td><code>seed</code>, <code>freeze_time</code>, <code>timeout</code>, <code>max_memory_mb</code>, <code>max_read_bytes</code>, and what the operating system held of the run (8.4): <code>confinement</code> - <code>full</code>, <code>partial</code>, or <code>none</code> when the budget was the only boundary - with <code>confinement_reason</code>, <code>confinement_layers</code> and <code>os_policy_sha256</code>, the digest of the OS policy the budget derives</td></tr>
 <tr><td><code>effects_used</code></td><td>each effect and how many operations of it the budget let through; null when the run was stopped from outside before it could say</td></tr>
@@ -108,14 +108,14 @@
 <h2 id="what-it-does-not-say">What it does not say <a class="anchor" href="#what-it-does-not-say" aria-label="Link to this section">#</a></h2>
 <p>It holds no value the program handled, and nothing of its output, input or arguments. It does not hide what a program controls that is not a value: its exit status, which lines it reached and how long it ran are in it, and a program that has declassified a value can choose those. A declassification's reason is text its author wrote, and nothing checks it. A signed receipt says that its signer ran this producer on these bytes and saw this run; it is no stronger than the machine it was made on, and it says nothing about any other run.</p>
 <h2 id="a-producer">A producer <a class="anchor" href="#a-producer" aria-label="Link to this section">#</a></h2>
-<p>velaris-lang writes receipts from 8.1:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>velaris program.vel --allow io --receipt program.receipt.json
-velaris.run(source, allow={"io"}).receipt
+<p>sabline-lang writes receipts from 8.1:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>sabline program.vel --allow io --receipt program.receipt.json
+sabline.run(source, allow={"io"}).receipt
 POST /run  {"source": "...", "allow": ["io"], "receipt": true}</code></pre></div>
-<p>It signs none; they are signed as an attestation is - <code>cosign attest-blob --statement</code>, or sigstore-python's <code>sign_dsse</code> - and <code>cosign verify-blob-attestation --type https://velaris-lang.dev/receipt/v1</code> checks one against the program's own bytes. Every release of velaris-lang carries one for an example program, signed by its release workflow and verified there.</p>
+<p>It signs none; they are signed as an attestation is - <code>cosign attest-blob --statement</code>, or sigstore-python's <code>sign_dsse</code> - and <code>cosign verify-blob-attestation --type https://sabline.dev/receipt/v1</code> checks one against the program's own bytes. Every release of sabline-lang carries one for an example program, signed by its release workflow and verified there.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/build_docs.py">build_docs.py</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/build_docs.py">build_docs.py</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#fields">Fields</a></li><li><a href="#what-it-does-not-say">What it does not say</a></li><li><a href="#a-producer">A producer</a></li></ul></nav>

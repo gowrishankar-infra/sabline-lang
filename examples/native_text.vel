@@ -3,8 +3,8 @@
 // characters, not bytes, and non-English text behaves identically.
 // code_at(t, i) gives the code point at a position, no allocation.
 //
-// velaris examples/native_text.vel --time
-// velaris examples/native_text.vel --no-native --time
+// sabline examples/native_text.vel --time
+// sabline examples/native_text.vel --no-native --time
 
 fn count_letters(word: Text) -> Int
     ensures result >= 0

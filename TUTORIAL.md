@@ -1,20 +1,20 @@
-# Velaris in an hour
+# Sabline in an hour
 
-Velaris is a language where a function's first line tells you
+Sabline is a language where a function's first line tells you
 everything: what it takes, what it gives back, what it is allowed to
 touch, whether it can fail, and what it promises about its answer.
 Those promises are checked by a theorem prover before your program
 runs.
 
 You can follow along in the browser — the
-[playground](https://velaris-lang.dev/playground.html)
+[playground](https://sabline.dev/playground.html)
 runs the real compiler — or install it:
 
 <!-- illustrative lines 1: installs from PyPI -->
 ```sh
-pip install velaris-lang
-velaris doctor
-velaris new hello && cd hello && velaris main.vel
+pip install sabline-lang
+sabline doctor
+sabline new hello && cd hello && sabline main.vel
 ```
 
 ## 1. Hello
@@ -29,7 +29,7 @@ fn main() uses io {
 function is allowed to talk to the outside world. Remove it and the
 program will not compile, because `print` needs it.
 
-That is the whole idea of Velaris in one line — **abilities are
+That is the whole idea of Sabline in one line — **abilities are
 declared, not assumed**.
 
 ## 2. Values and types
@@ -116,7 +116,7 @@ fn discount(price: Int) -> Int
 }
 ```
 
-Now it compiles, and `velaris explain` will say `[proven]`.
+Now it compiles, and `sabline explain` will say `[proven]`.
 
 Promises can talk about lists, maps, records and floats too:
 
@@ -128,7 +128,7 @@ fn bump(counts: Map of Text to Int, word: Text) -> Map of Text to Int
 }
 ```
 
-Floats are proven in real IEEE-754, which means Velaris will *refuse*
+Floats are proven in real IEEE-754, which means Sabline will *refuse*
 to prove `x + 0.1 + 0.1 == x + 0.2` — because on a real machine it is
 false. See [docs/floats.md](docs/floats.md) for why that matters.
 
@@ -164,7 +164,7 @@ something richer — "this total stays positive" — write it:
 
 ## 6. Failure
 
-Some things genuinely fail. In Velaris that is part of the signature,
+Some things genuinely fail. In Sabline that is part of the signature,
 and ignoring it does not compile:
 
 ```vel
@@ -236,31 +236,31 @@ import "lib/geo.vel" as geo         // geo.distance(a, b)
 
 A named import keeps a library's functions behind its own name, so two
 libraries that both define `distance` can be used in one file. The
-standard library is written in Velaris and keeps its own promises:
+standard library is written in Sabline and keeps its own promises:
 `sort` carries `ensures is_sorted(result)`.
 
 ## 10. The tools
 
 <!-- illustrative lines 9,13-14: repl waits for what you type, build needs PyInstaller, and add names a library of your own -->
 ```sh
-velaris program.vel                              # run it, with io and nothing else
-velaris program.vel --allow io,fs:read:./data    # grant exactly that
-velaris program.vel --allow all                  # every effect (it says so)
-velaris migrate --to 5.0 .                       # the budget each program here needs
-velaris check program.vel                        # compile it without running
-velaris explain program.vel                      # what each function does, needs and promises
-velaris explain .                                # the same for a whole project
-velaris trace program.vel                        # watch every call as it happens
-velaris repl                                     # try things, proofs and all
-velaris fmt program.vel                          # canonical formatting
-velaris doctor                                   # check your setup
-velaris new myproject                            # start something
-velaris build program.vel                        # one executable you can give to anyone
-velaris add <url or path>                        # vendor a library into lib/
-velaris verify                                   # check your libraries are unchanged
+sabline program.vel                              # run it, with io and nothing else
+sabline program.vel --allow io,fs:read:./data    # grant exactly that
+sabline program.vel --allow all                  # every effect (it says so)
+sabline migrate --to 5.0 .                       # the budget each program here needs
+sabline check program.vel                        # compile it without running
+sabline explain program.vel                      # what each function does, needs and promises
+sabline explain .                                # the same for a whole project
+sabline trace program.vel                        # watch every call as it happens
+sabline repl                                     # try things, proofs and all
+sabline fmt program.vel                          # canonical formatting
+sabline doctor                                   # check your setup
+sabline new myproject                            # start something
+sabline build program.vel                        # one executable you can give to anyone
+sabline add <url or path>                        # vendor a library into lib/
+sabline verify                                   # check your libraries are unchanged
 ```
 
-`velaris explain` is the one to reach for when you meet unfamiliar
+`sabline explain` is the one to reach for when you meet unfamiliar
 code: it lists every function with its effects, its promises, and
 whether those promises were **proven** or are being checked while
 running.
@@ -272,8 +272,8 @@ running.
 - `examples/ledger.vel` — an expense tracker: records, files, reports.
 - `examples/wordcount.vel` — text analysis: maps, lambdas, failure.
 - `examples/fetcher.vel` — an HTTP tool: the network, honestly declared.
-- [The error index](https://velaris-lang.dev/errors.html)
-  — every message Velaris can give, scraped from the compiler itself.
+- [The error index](https://sabline.dev/errors.html)
+  — every message Sabline can give, scraped from the compiler itself.
 
 If you can make the prover claim something is proven when it is false,
 that is a security bug and the project wants to hear about it.

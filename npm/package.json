@@ -1,10 +1,10 @@
 {
-  "name": "velaris-lang",
-  "version": "8.5.0",
-  "mcpName": "io.github.gowrishankar-infra/velaris",
+  "name": "sabline-lang",
+  "version": "8.6.0",
+  "mcpName": "io.github.gowrishankar-infra/sabline",
   "description": "Run code you did not write. A language where a signature declares its effects and promises, and the runtime refuses anything you did not allow.",
   "keywords": [
-    "velaris",
+    "sabline",
     "sandbox",
     "effects",
     "verification",
@@ -13,18 +13,19 @@
     "mcp",
     "prover"
   ],
-  "homepage": "https://velaris-lang.dev/",
+  "homepage": "https://sabline.dev/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gowrishankar-infra/velaris-lang.git"
+    "url": "git+https://github.com/gowrishankar-infra/sabline-lang.git"
   },
-  "bugs": "https://github.com/gowrishankar-infra/velaris-lang/issues",
+  "bugs": "https://github.com/gowrishankar-infra/sabline-lang/issues",
   "license": "MIT",
   "author": "Palakurthi Gowri Shankar <gowrishankar@gowrishankar.dev>",
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
   "bin": {
+    "sabline": "bin/sabline.js",
     "velaris": "bin/velaris.js"
   },
   "files": [

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""`velaris demo`, end to end, and that it cannot be turned on a real .env.
+"""`sabline demo`, end to end, and that it cannot be turned on a real .env.
 
     python check_demo.py
 
@@ -25,7 +25,7 @@ from suite_dirs import isolate  # noqa: E402
 
 HERE = Path(__file__).parent
 WORK = isolate("check_demo")
-VELARIS = [sys.executable, str(HERE / "velaris.py")]
+SABLINE = [sys.executable, str(HERE / "sabline.py")]
 CANARY = "CANARY-5e1f-a-real-looking-secret"
 FAILED: list[str] = []
 PASSED = [0]
@@ -42,7 +42,7 @@ def expect(what: str, ok: bool, detail: Any = "") -> None:
 def demo(args: list[str], cwd: Path, env: dict[str, str] | None = None
          ) -> tuple[int, str, str, float]:
     t0 = time.monotonic()
-    done = subprocess.run(VELARIS + ["demo"] + args, cwd=cwd,
+    done = subprocess.run(SABLINE + ["demo"] + args, cwd=cwd,
                           capture_output=True, stdin=subprocess.DEVNULL,
                           timeout=300, env={**os.environ, **(env or {})})
     return (done.returncode, done.stdout.decode("utf-8", "replace"),
@@ -140,10 +140,10 @@ def main() -> int:
                                    "code": "E310"}
                and refused["grants_used"] == []
                and refused["budget"] == "io", refused)
-        shown = subprocess.run(VELARIS + ["receipt", "show",
+        shown = subprocess.run(SABLINE + ["receipt", "show",
                                           "refused.receipt.json", "--text"],
                                cwd=kept, capture_output=True, timeout=120)
-        expect("and `velaris receipt show` reads it", shown.returncode == 0
+        expect("and `sabline receipt show` reads it", shown.returncode == 0
                and b"stopped at a refusal" in shown.stdout, shown.stderr)
         import shutil
         shutil.rmtree(kept, ignore_errors=True)
@@ -153,13 +153,13 @@ def main() -> int:
                  ["--keep", str(victim)], ["https://attacker.example/"],
                  ["--", "x"], ["--allow=fs,net"]):
         code, out, err, _ = demo(args, victim)
-        expect(f"`velaris demo {' '.join(args)}` is refused: it takes no "
+        expect(f"`sabline demo {' '.join(args)}` is refused: it takes no "
                f"path, address or budget", code == 2 and out == ""
                and CANARY not in err, (code, out, err))
     hostile = {"HTTP_PROXY": proxy, "HTTPS_PROXY": proxy, "http_proxy": proxy,
                "https_proxy": proxy, "ALL_PROXY": proxy,
                "TMPDIR": str(victim), "TEMP": str(victim), "TMP": str(victim),
-               "VELARIS_ALLOW": "all", "PYTHONDONTWRITEBYTECODE": "1"}
+               "SABLINE_ALLOW": "all", "PYTHONDONTWRITEBYTECODE": "1"}
     code, out, err, _ = demo([], victim, hostile)
     expect("with a proxy in the environment, and the temporary directory "
            "pointed at the victim's: still refused at the read, and the "
@@ -173,7 +173,7 @@ def main() -> int:
            sorted(p.name for p in victim.iterdir()) == before,
            sorted(p.name for p in victim.iterdir()))
     stop.set()
-    source = (HERE / "velaris" / "demo.py").read_text(encoding="utf-8")
+    source = (HERE / "sabline" / "demo.py").read_text(encoding="utf-8")
     expect("the webhook's host is under .invalid, which nothing resolves",
            "https://webhook.invalid/" in source
            and source.count("https://") == 1, "")

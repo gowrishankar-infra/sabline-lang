@@ -1,6 +1,6 @@
 // The pods of a namespace that are not running, and why.
 //
-// K8S_TOKEN=... velaris examples/ops/k8s_pods.vel \
+// K8S_TOKEN=... sabline examples/ops/k8s_pods.vel \
 // --allow io,env,declassify,net:my-cluster.example.com:6443@10 \
 // https://my-cluster.example.com:6443 default
 //

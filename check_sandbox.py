@@ -9,8 +9,8 @@ run a program they have not read.
 Needs no theorem prover: every case here is about the runtime, so this
 behaves identically with and without z3.
 
-Every case is data, and velaris-spec's conformance corpus is written
-from it (build_conformance.py writes velaris-spec tests/L2): the
+Every case is data, and sabline-spec's conformance corpus is written
+from it (build_conformance.py writes sabline-spec tests/L2): the
 budget, the program, the code the refusal must carry, and what must
 not happen. A case this implementation passes, another implementation
 can run from the corpus without reading this file - except the ones
@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 sys.path.insert(0, str(HERE))
 from suite_dirs import isolate  # noqa: E402
 
@@ -52,10 +52,10 @@ MARKERS = ("READ IT", "WROTE IT", "REACHED IT", "CALLED IT", "OPENED IT",
 # Why the attribute-chain cases are not in the corpus: each one depends
 # on Python's object model - which module owns codecs.encode, that
 # os.system lives in nt or posix, what __globals__ holds. The rule they
-# test (velaris-spec 5.3) binds every implementation, but the cases can
+# test (sabline-spec 5.3) binds every implementation, but the cases can
 # only be written against one host language.
 PYTHON_REACH = ("depends on Python's object model (which module a Python "
-                "attribute belongs to); velaris-spec 5.3 binds every "
+                "attribute belongs to); sabline-spec 5.3 binds every "
                 "implementation, but this case is written against Python")
 PYTHON_HOST = ("needs a Python host to run the granted call; the corpus "
                "runs no host code")
@@ -234,7 +234,7 @@ fn main() uses io, fs {
 }
 ''', refused="E310", creates="{ROOT}/wrote.txt",
         not_in_corpus="a run given no budget is outside the format "
-                      "(velaris-spec 4.6); what it grants is the "
+                      "(sabline-spec 4.6); what it grants is the "
                       "reference's choice, which from 5.0 is io"),
     escape("default-refusal-names-the-effect-and-the-flag", "the refusal "
            "under the default says which effect and how to grant it", '''
@@ -262,7 +262,7 @@ fn main() uses io, net {
 }
 ''', refused="E310",
         not_in_corpus="a run given no budget is outside the format "
-                      "(velaris-spec 4.6); what it grants is the "
+                      "(sabline-spec 4.6); what it grants is the "
                       "reference's choice, which from 5.0 is io"),
     escape("deny-one", "denying one effect while allowing the rest", '''
 fn main() uses io, fs {
@@ -279,7 +279,7 @@ fn main() uses io, fs {
 }
 ''', deny="net", refused="E310", creates="{ROOT}/wrote.txt",
         not_in_corpus="a denial with no grants narrows the runtime's "
-                      "default budget (velaris-spec 4.4, 4.6), which "
+                      "default budget (sabline-spec 4.4, 4.6), which "
                       "the format leaves to the runtime"),
     escape("ffi-module-outside-list",
            "reaching a module outside the ffi allow-list", '''
@@ -495,7 +495,7 @@ fn main() uses io, env, declassify {
     escape("fs-symlink-escape", "escaping the prefix through a symlink",
            _read("{DATA}/link.txt"), allow="io,fs:read:{DATA}",
            refused="E313", requires=["symlink"], spec=["5.1"]),
-    # 4.1: three rules velaris-spec 0.3 listed as untested (Q9)
+    # 4.1: three rules sabline-spec 0.3 listed as untested (Q9)
     escape("fs-count-zero", "@0 grants the effect and permits no operation",
            '''
 fn main() uses io, fs {
@@ -568,7 +568,7 @@ fn main() uses io, clock {
     honest("secret-kept-under-env", "a secret read and held, never let out",
            '''
 fn main() uses io, env {
-    let key = env("VELARIS_NOT_SET", "")
+    let key = env("SABLINE_NOT_SET", "")
     print("a key was read, and this program could not print it")
 }
 ''', allow="io,env",
@@ -577,7 +577,7 @@ fn main() uses io, env {
     honest("declassify-granted", "declassify when declassify is allowed",
            '''
 fn main() uses io, env, declassify {
-    let key = env("VELARIS_NOT_SET", "opened")
+    let key = env("SABLINE_NOT_SET", "opened")
     print(declassify(key, "this demo shows what declassify does"))
 }
 ''', allow="io,env,declassify", stdout=["opened"], spec=["3.1"]),
@@ -603,7 +603,7 @@ fn main() uses io {
 }
 ''', stdout=["all fine"],
         not_in_corpus="a run given no budget is outside the format "
-                      "(velaris-spec 4.6); what it grants is the "
+                      "(sabline-spec 4.6); what it grants is the "
                       "reference's choice, which from 5.0 is io"),
     honest("allow-all-still-grants-everything", "--allow all grants what "
            "a run with no budget used to get", '''
@@ -657,7 +657,7 @@ fn main() uses io, ffi {
     }
 }
 ''', allow="io,ffi,ffi:math", stdout=["wider ffi wins"],
-        not_in_corpus=PYTHON_HOST + "; velaris-spec tests/L1 holds the "
+        not_in_corpus=PYTHON_HOST + "; sabline-spec tests/L1 holds the "
                       "parse of io,ffi,ffi:math"),
     # until 2.62 `--allow io` leaked into args() as two extra words
     honest("args-not-budget", "args() carries the program's arguments, not "
@@ -760,7 +760,7 @@ fn main() uses io, net {
 }
 ''', allow="io,net:127.0.0.1:{PORT_A},net:localhost:{PORT_B}",
         stdout=["net additive ok"], spec=["4.3"]),
-    # 4.1: velaris-spec 0.3 Q9 - untested until now
+    # 4.1: sabline-spec 0.3 Q9 - untested until now
     honest("fs-exists-under-write-grant",
            "an existence check is permitted by a write grant alone", '''
 fn main() uses io, fs {
@@ -844,7 +844,7 @@ def run(case: dict[Any, Any], values: dict[Any, Any], root: Path) -> tuple[Any, 
     if case["deny"] is not None:
         flags += ["--deny", fill(case["deny"], values)]
     done = subprocess.run(
-        [sys.executable, str(VELARIS), str(prog)] + flags
+        [sys.executable, str(SABLINE), str(prog)] + flags
         + [fill(a, values) for a in case["args"]],
         capture_output=True, text=True, timeout=300, cwd=root)
     return done.returncode, done.stdout or "", done.stderr or ""
@@ -858,7 +858,7 @@ def refusal_code(stderr: str) -> Any:
 
 def main() -> int:
     passed = failed = 0
-    root = Path(tempfile.mkdtemp(prefix="velaris-sandbox-"))
+    root = Path(tempfile.mkdtemp(prefix="sabline-sandbox-"))
     srv_a, srv_b, port_a, port_b = local_servers()
     values = fixture(root, (port_a, port_b), symlink=True)
     cases = [c for c in ESCAPES

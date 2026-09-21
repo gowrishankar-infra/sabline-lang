@@ -3,8 +3,8 @@
 
 The first scheduled nightly run (34943901949, 2026-09-15) failed nine jobs,
 and not one because an install was broken. check_install.py made the word
-`velaris` absolute in `python -m velaris` and `velaris lsp`, since the
-checkout it ran from holds velaris/, and it stopped with a traceback when
+`sabline` absolute in `python -m sabline` and `sabline lsp`, since the
+checkout it ran from holds sabline/, and it stopped with a traceback when
 the pre-commit job's glob found nothing. Nothing ran a probe before a night
 went by. This runs every line of nightly.yml that calls check_install.py:
 
@@ -14,9 +14,9 @@ went by. This runs every line of nightly.yml that calls check_install.py:
   build backend; nothing else here uses the network;
 - each line runs in bash, as its job runs it, from a directory shaped like
   a checkout: a placeholder for every name at this checkout's top level,
-  with check_install.py, examples/discount.vel and velaris/version.py
+  with check_install.py, examples/discount.vel and sabline/version.py
   copied in. What a job's earlier steps leave behind stands in: venv/ for
-  $BIN, dist/velaris for the standalone executable, artefacts/ and bundle/
+  $BIN, dist/sabline for the standalone executable, artefacts/ and bundle/
   from build_mcpb.py, an npm root holding npm/ for `npm root -g`, two hook
   environments under $RUNNER_TEMP/pre-commit, and on PATH a docker that
   runs the install in place of the image;
@@ -67,7 +67,7 @@ NO_PROBE = {"build": "builds what the other jobs install",
 # what a probe line may name that its job provides and this stands in for
 VARIABLES = {"BIN", "EXE", "RUNNER_TEMP", "GITHUB_WORKSPACE"}
 COMMANDS = {"npm"}
-NOWHERE = "velaris-is-installed-nowhere"
+NOWHERE = "sabline-is-installed-nowhere"
 # docker run --rm -v HOST:INSIDE IMAGE WORDS..., as check_install.py sends
 # it: the install runs WORDS, with INSIDE read as HOST
 FAKE_DOCKER = """
@@ -78,7 +78,7 @@ if args[:3] != ["run", "--rm", "-v"] or len(args) < 5:
 host, _, inside = args[3].rpartition(":")
 words = [host + w[len(inside):] if w.startswith(inside + "/") else w
          for w in args[5:]]
-sys.exit(subprocess.run([VELARIS, *words]).returncode)
+sys.exit(subprocess.run([SABLINE, *words]).returncode)
 """
 PASS = FAIL = 0
 
@@ -157,7 +157,7 @@ def unknown(line: str) -> list[str]:
 
 
 def shaped(root: Path) -> Path:
-    """A directory shaped like this checkout's top level - velaris/ among
+    """A directory shaped like this checkout's top level - sabline/ among
     it, which is what nightly #1 tripped over - holding the files
     check_install.py reads."""
     checkout = root / "checkout"
@@ -169,14 +169,14 @@ def shaped(root: Path) -> Path:
             (checkout / entry.name).mkdir()
         else:
             (checkout / entry.name).touch()
-    for rel in ("check_install.py", "examples/discount.vel", "velaris/version.py"):
+    for rel in ("check_install.py", "examples/discount.vel", "sabline/version.py"):
         shutil.copy2(HERE / rel, checkout / rel)
     return checkout
 
 
 def install(checkout: Path) -> Path:
     """This checkout, installed into checkout/venv as pip installs it: the
-    directory holding the environment's python and velaris."""
+    directory holding the environment's python and sabline."""
     venv = checkout / "venv"
     subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)],
                    check=True, capture_output=True, text=True)
@@ -205,29 +205,29 @@ def stand_ins(checkout: Path, bin_dir: Path) -> dict[str, str]:
     """What the jobs' earlier steps leave behind, and the environment a
     probe line runs in."""
     exe = ".exe" if WINDOWS else ""
-    velaris = bin_dir / f"velaris{exe}"
+    sabline = bin_dir / f"sabline{exe}"
     # the standalone executable, where pyinstaller leaves one
     (checkout / "dist").mkdir(exist_ok=True)
-    shutil.copy2(velaris, checkout / "dist" / f"velaris{exe}")
+    shutil.copy2(sabline, checkout / "dist" / f"sabline{exe}")
     # the MCP bundle, built as the build job builds it and unpacked as the
     # bundle's job unpacks it
-    build_mcpb.OUT = checkout / "artefacts" / "velaris.mcpb"
+    build_mcpb.OUT = checkout / "artefacts" / "sabline.mcpb"
     build_mcpb.STAGE = WORK / "_mcpb_build"
     build_mcpb.OUT.parent.mkdir(exist_ok=True)
     with contextlib.redirect_stdout(io.StringIO()):
         build_mcpb.main()
     with zipfile.ZipFile(build_mcpb.OUT) as bundle:
         bundle.extractall(checkout / "bundle")
-    # npm install -g velaris-lang: the package as npm/ holds it
+    # npm install -g sabline-lang: the package as npm/ holds it
     npm_root = WORK / "npm-root"
-    shutil.copytree(HERE / "npm", npm_root / "velaris-lang")
-    # the two hook environments pre-commit makes, velaris-check's and
-    # velaris-fmt's
+    shutil.copytree(HERE / "npm", npm_root / "sabline-lang")
+    # the two hook environments pre-commit makes, sabline-check's and
+    # sabline-fmt's
     runner_temp = WORK / "runner-temp"
     for repo in ("repo1check", "repo2fmt"):
         hook_bin = runner_temp / "pre-commit" / repo / "py_env-python3" / "bin"
         hook_bin.mkdir(parents=True)
-        shutil.copy2(velaris, hook_bin / "velaris")
+        shutil.copy2(sabline, hook_bin / "sabline")
     fake = WORK / "fake-bin"
     fake.mkdir()
     (fake / "npm").write_bytes((
@@ -235,7 +235,7 @@ def stand_ins(checkout: Path, bin_dir: Path) -> dict[str, str]:
         f'if [ "$*" = "root -g" ]; then echo "{slashed(npm_root)}"; exit 0; fi\n'
         'echo "the stand-in npm answers root -g, not: $*" >&2\n'
         'exit 2\n').encode("utf-8"))
-    (fake / "docker.py").write_text(f"VELARIS = {str(velaris)!r}\n" + FAKE_DOCKER,
+    (fake / "docker.py").write_text(f"SABLINE = {str(sabline)!r}\n" + FAKE_DOCKER,
                                     encoding="utf-8")
     (fake / "docker").write_bytes((
         f'#!/usr/bin/env bash\nexec "{slashed(Path(sys.executable))}" '
@@ -305,8 +305,8 @@ def main() -> int:
         ok("this checkout installs into a new virtual environment, and the "
            "stand-ins are made", False, f"{e}\n{getattr(e, 'stderr', '') or ''}")
         return finish()
-    ok("the directory the lines run from holds velaris/, as the checkout "
-       "nightly #1 ran them from did", (checkout / "velaris").is_dir())
+    ok("the directory the lines run from holds sabline/, as the checkout "
+       "nightly #1 ran them from did", (checkout / "sabline").is_dir())
     seen: set[tuple[str, str, str]] = set()
     elsewhere: dict[str, int] = {}
     ran = 0
@@ -340,13 +340,13 @@ def main() -> int:
     for label, words, said in (
             ("a program not on PATH", ["--command", NOWHERE],
              [f"{NOWHERE} is not on PATH, which is these"]),
-            ("a path that is not a file", ["--command", "venv/nowhere/python -m velaris"],
+            ("a path that is not a file", ["--command", "venv/nowhere/python -m sabline"],
              ["venv/nowhere/python is not there: no file", "pyvenv.cfg"]),
             ("a glob that matches nothing",
              ["--find", f"{hooks}/repo*/py_env-*/bin/{NOWHERE}"],
-             ["no file matches", NOWHERE, "holds velaris"]),
+             ["no file matches", NOWHERE, "holds sabline"]),
             ("a glob whose first directory is not there",
-             ["--find", f"{env['RUNNER_TEMP']}/pre-commit-nowhere/repo*/bin/velaris"],
+             ["--find", f"{env['RUNNER_TEMP']}/pre-commit-nowhere/repo*/bin/sabline"],
              ["no file matches", "holds pre-commit"]),
             ("a file that is not a program", ["--command", "examples/discount.vel"],
              ["could not be started"]),

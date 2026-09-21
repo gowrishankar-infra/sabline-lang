@@ -1,5 +1,5 @@
 // v1.7: generics - one function, every type. Everything below main
-// comes from std.vel: the first standard library, written in Velaris.
+// comes from std.vel: the first standard library, written in Sabline.
 
 import "std.vel"
 

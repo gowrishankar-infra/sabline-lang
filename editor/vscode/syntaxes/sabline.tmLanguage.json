@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Sabline",
+  "scopeName": "source.sabline",
+  "patterns": [
+    { "name": "comment.line.double-slash.sabline", "match": "//.*$" },
+    { "name": "string.quoted.double.sabline",
+      "begin": "\"", "end": "\"",
+      "patterns": [{ "name": "constant.character.escape.sabline", "match": "\\\\[nt\"\\\\]" }] },
+    { "name": "keyword.control.sabline",
+      "match": "\\b(if|else|while|return|import|check|try|fail)\\b" },
+    { "name": "keyword.declaration.sabline",
+      "match": "\\b(fn|let|record)\\b" },
+    { "name": "keyword.other.contract.sabline",
+      "match": "\\b(requires|ensures|invariant|uses|for|any)\\b" },
+    { "name": "keyword.operator.logical.sabline",
+      "match": "\\b(and|or|not)\\b" },
+    { "name": "constant.language.sabline",
+      "match": "\\b(true|false|result)\\b" },
+    { "name": "support.type.sabline",
+      "match": "\\b(Int|Text|Bool|List|of)\\b" },
+    { "name": "support.function.builtin.sabline",
+      "match": "\\b(print|ask|read_file|write_file|fetch|now|random|length|push|get|to_int|to_text|contains|split|upper|lower)\\b(?=\\s*\\()" },
+    { "name": "entity.name.function.sabline",
+      "match": "(?<=\\bfn\\s)[A-Za-z_][A-Za-z0-9_]*" },
+    { "name": "entity.name.type.record.sabline",
+      "match": "(?<=\\brecord\\s)[A-Za-z_][A-Za-z0-9_]*" },
+    { "name": "constant.numeric.sabline", "match": "\\b[0-9]+\\b" },
+    { "name": "keyword.operator.sabline",
+      "match": "==|!=|<=|>=|->|[+\\-*/%<>=]" }
+  ]
+}

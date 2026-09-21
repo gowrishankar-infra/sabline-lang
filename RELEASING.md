@@ -1,4 +1,4 @@
-# Releasing Velaris
+# Releasing Sabline
 
 **Nobody tags a release by hand** - not a maintainer, not an agent, not
 to help one along. A release is made by
@@ -13,8 +13,8 @@ that is already tagged. If one is pushed by mistake, delete it
 
 Everything a person does happens before the push:
 
-1. Put the new version in all six version files: `velaris/version.py`
-   (`VERSION`; it was `velaris.py` until 8.2), `pyproject.toml`,
+1. Put the new version in all six version files: `sabline/version.py`
+   (`VERSION`; it was `sabline.py` until 8.2), `pyproject.toml`,
    `npm/package.json`, `mcpb/manifest.json`, `editor/vscode/package.json`
    and `integrations/mcp_registry/server.json` (three times: its own, and
    the PyPI and npm packages'). `python run_tests.py` holds all of them to
@@ -63,7 +63,7 @@ GitHub does the rest:
      - a `--flag` the command line or the MCP server no longer knows;
      - a default that is not what it was: a module-level constant named
        `DEFAULT_*` or `*_DEFAULT`, the few in `KNOWN_DEFAULTS`, every
-       variable of the run state (`velaris/state.py`, `EFFECT_BUDGET`
+       variable of the run state (`sabline/state.py`, `EFFECT_BUDGET`
        among them), and each parameter default of the library STABILITY.md
        covers, read through any constant it names; and a parameter that
        loses its default.
@@ -237,7 +237,7 @@ What is signed is every file the release publishes.
 From 7.2.0 those signatures name `release.yml@refs/heads/main`, not the
 tag, because a `workflow_run` runs on main. The certificate also names
 the commit and the `workflow_run` trigger; [SECURITY.md](SECURITY.md)
-shows how to check both, and `velaris mcp-verify` expects the main
+shows how to check both, and `sabline mcp-verify` expects the main
 identity for 7.2.0 and later.
 
 ## When a step fails
@@ -274,7 +274,7 @@ push. Do not delete or move a tag that has published anything.
 
 Every release's CHANGELOG entry carries the numbers `perf_gates.py`
 measures on the machine the release was built on (MAINTENANCE.md says
-which): the cold start of `velaris --version` and of `velaris check` on a
+which): the cold start of `sabline --version` and of `sabline check` on a
 one-line file, a check per 1,000 lines, proof time p50 and p95 over the
 examples, the native compiler's compile time against what it saves on
 `examples/bench.vel`, and a pool's memory after 1,000 runs. The release
@@ -285,7 +285,7 @@ than the previous tag on the same runner.
 ## Differences from the previous release
 
 Before tagging, the `differential` job runs `check_differential.py`: the
-examples, velaris-spec's conformance corpus and the quick benchmark, each
+examples, sabline-spec's conformance corpus and the quick benchmark, each
 run under this commit and under the previous tag, compared once what is not
 output (paths, the version string, timings) is taken out. A difference the
 CHANGELOG entry does not name stops the release. Name one on a line of the
@@ -306,7 +306,7 @@ release, logged in to gh as an administrator or security manager of the
 repository:
 
     python release_checks.py advisory-body advisory-<name>.md -o advisory-<name>.json
-    gh api --method POST "repos/gowrishankar-infra/velaris-lang/security-advisories/$(gh api --method POST repos/gowrishankar-infra/velaris-lang/security-advisories --input advisory-<name>.json --jq .ghsa_id)/cve"
+    gh api --method POST "repos/gowrishankar-infra/sabline-lang/security-advisories/$(gh api --method POST repos/gowrishankar-infra/sabline-lang/security-advisories --input advisory-<name>.json --jq .ghsa_id)/cve"
 
 Both lines work in bash and in PowerShell. The inner POST creates a
 **draft** advisory; the outer one requests a CVE for it, which GitHub
@@ -318,7 +318,7 @@ Write the file as [advisory-proof-cache.md](advisory-proof-cache.md) is
 written: a `# ` title (the summary; a leading "Security advisory:" is
 dropped), the description from its first `## ` section on, a `##
 Affected versions` section that says `A through B` and `Fixed in C`
-(the package is `velaris-lang` on pip), and, if there are any, a CVSS
+(the package is `sabline-lang` on pip), and, if there are any, a CVSS
 vector string and a `## CWE` section naming CWE ids.
 `python release_checks.py advisory-body` refuses a file that lacks what
 it needs, and says what.
@@ -328,15 +328,15 @@ it needs, and says what.
 A published version is never deleted or re-published; it is marked, and
 a fixed version follows by the normal path.
 
-- **PyPI:** at https://pypi.org/manage/project/velaris-lang/releases/,
+- **PyPI:** at https://pypi.org/manage/project/sabline-lang/releases/,
   **Options** beside the release, then **Yank**. PyPI offers this on the
   web only.
-- **npm:** `npm deprecate velaris-lang@X.Y.Z "<what is wrong, and which
+- **npm:** `npm deprecate sabline-lang@X.Y.Z "<what is wrong, and which
   version to use>"`, as the package owner. An empty message, `""`,
   lifts it.
 - **The MCP registry:** `mcp-publisher login github`, then
   `mcp-publisher status --status deprecated
-  io.github.gowrishankar-infra/velaris X.Y.Z`.
+  io.github.gowrishankar-infra/sabline X.Y.Z`.
 - **The GitHub release:** edit its notes to say it is yanked and which
   version replaces it. Leave the tag and the files where they are.
 - **The VS Code Marketplace:** publish the fixed version.

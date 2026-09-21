@@ -9,8 +9,8 @@
   "python_memory_cap": "job object",
   "quick": false,
   "timeout_s": 5,
-  "velaris": "8.4.0",
-  "velaris_memory_cap": "enforced"
+  "sabline": "8.4.0",
+  "sabline_memory_cap": "enforced"
  },
  "programs": [
   {
@@ -20,7 +20,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -71,7 +71,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -114,7 +114,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -165,7 +165,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -208,7 +208,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -259,7 +259,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -302,7 +302,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -353,7 +353,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -396,7 +396,7 @@
    "danger_line": {
     "deno": 3,
     "python": 13,
-    "velaris": 8
+    "sabline": 8
    },
    "dangerous": true,
    "deno_flags": [],
@@ -447,7 +447,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -490,7 +490,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -541,7 +541,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -584,7 +584,7 @@
    "danger_line": {
     "deno": 3,
     "python": 7,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -635,7 +635,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io",
@@ -678,7 +678,7 @@
    "danger_line": {
     "deno": 3,
     "python": 8,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -729,7 +729,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io",
@@ -772,7 +772,7 @@
    "danger_line": {
     "deno": 4,
     "python": 8,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -823,7 +823,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io",
@@ -866,7 +866,7 @@
    "danger_line": {
     "deno": 3,
     "python": 8,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -917,7 +917,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io",
@@ -960,7 +960,7 @@
    "danger_line": {
     "deno": 3,
     "python": 7,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1011,7 +1011,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io",
@@ -1054,7 +1054,7 @@
    "danger_line": {
     "deno": 3,
     "python": 8,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1105,7 +1105,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io",
@@ -1148,7 +1148,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1199,7 +1199,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -1234,7 +1234,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1285,7 +1285,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -1320,7 +1320,7 @@
    "danger_line": {
     "deno": 7,
     "python": 11,
-    "velaris": 7
+    "sabline": 7
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1371,7 +1371,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -1403,7 +1403,7 @@
      "verdict": "caught-during-run"
     }
    },
-   "velaris_note": "a division in main on n - 1, with n from to_int inside a check, is not flagged before running; E403 at runtime"
+   "sabline_note": "a division in main on n - 1, with n from to_int inside a check, is not flagged before running; E403 at runtime"
   },
   {
    "category": 3,
@@ -1412,7 +1412,7 @@
    "danger_line": {
     "deno": 7,
     "python": 10,
-    "velaris": 9
+    "sabline": 9
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1463,7 +1463,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -1495,7 +1495,7 @@
      "verdict": "caught-during-run"
     }
    },
-   "velaris_note": "the same division on the unguarded path is not flagged before running when another path guards it; E403 at runtime"
+   "sabline_note": "the same division on the unguarded path is not flagged before running when another path guards it; E403 at runtime"
   },
   {
    "category": 3,
@@ -1504,7 +1504,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1555,7 +1555,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -1590,7 +1590,7 @@
    "danger_line": {
     "deno": 5,
     "python": 8,
-    "velaris": 6
+    "sabline": 6
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1641,7 +1641,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -1673,7 +1673,7 @@
      "verdict": "caught-during-run"
     }
    },
-   "velaris_note": "a remainder inside a loop body is not flagged before running; E403 at runtime"
+   "sabline_note": "a remainder inside a loop body is not flagged before running; E403 at runtime"
   },
   {
    "category": 4,
@@ -1682,7 +1682,7 @@
    "danger_line": {
     "deno": 6,
     "python": 8,
-    "velaris": 6
+    "sabline": 6
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1733,7 +1733,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -1768,7 +1768,7 @@
    "danger_line": {
     "deno": 3,
     "python": 5,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1819,7 +1819,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -1854,7 +1854,7 @@
    "danger_line": {
     "deno": 4,
     "python": 6,
-    "velaris": 4
+    "sabline": 4
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1905,7 +1905,7 @@
      "observed": null,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -1932,7 +1932,7 @@
      "verdict": "missed"
     }
    },
-   "velaris_miss_reason": "no read is out of range and the function carries no contract, so there is nothing for the prover to refuse; a wrong total is indistinguishable from a right one without a promise about it"
+   "sabline_miss_reason": "no read is out of range and the function carries no contract, so there is nothing for the prover to refuse; a wrong total is indistinguishable from a right one without a promise about it"
   },
   {
    "category": 4,
@@ -1941,7 +1941,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -1992,7 +1992,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2029,7 +2029,7 @@
    "danger_line": {
     "deno": 6,
     "python": 8,
-    "velaris": 6
+    "sabline": 6
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2080,7 +2080,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2112,7 +2112,7 @@
      "verdict": "caught-during-run"
     }
    },
-   "velaris_note": "a read at i + 1 inside a loop bounded by length(xs) is not flagged before running; E602 at runtime"
+   "sabline_note": "a read at i + 1 inside a loop bounded by length(xs) is not flagged before running; E602 at runtime"
   },
   {
    "category": 4,
@@ -2121,7 +2121,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2172,7 +2172,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2207,7 +2207,7 @@
    "danger_line": {
     "deno": 5,
     "python": 7,
-    "velaris": 5
+    "sabline": 5
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2258,7 +2258,7 @@
      "observed": null,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2298,7 +2298,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2349,7 +2349,7 @@
      "observed": null,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2389,7 +2389,7 @@
    "danger_line": {
     "deno": 5,
     "python": 7,
-    "velaris": 5
+    "sabline": 5
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2440,7 +2440,7 @@
      "observed": null,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2480,7 +2480,7 @@
    "danger_line": {
     "deno": 3,
     "python": 13,
-    "velaris": 8
+    "sabline": 8
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2531,7 +2531,7 @@
      "observed": null,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2571,7 +2571,7 @@
    "danger_line": {
     "deno": 4,
     "python": 4,
-    "velaris": 6
+    "sabline": 6
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2622,7 +2622,7 @@
      "observed": null,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2662,7 +2662,7 @@
    "danger_line": {
     "deno": 3,
     "python": 7,
-    "velaris": 4
+    "sabline": 4
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2713,7 +2713,7 @@
      "observed": null,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2753,7 +2753,7 @@
    "danger_line": {
     "deno": 3,
     "python": 5,
-    "velaris": 4
+    "sabline": 4
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2804,7 +2804,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2839,7 +2839,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 4
+    "sabline": 4
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2890,7 +2890,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -2925,7 +2925,7 @@
    "danger_line": {
     "deno": 4,
     "python": 6,
-    "velaris": 7
+    "sabline": 7
    },
    "dangerous": true,
    "deno_flags": [],
@@ -2976,7 +2976,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3011,7 +3011,7 @@
    "danger_line": {
     "deno": 3,
     "python": 5,
-    "velaris": 7
+    "sabline": 7
    },
    "dangerous": true,
    "deno_flags": [],
@@ -3062,7 +3062,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3097,7 +3097,7 @@
    "danger_line": {
     "deno": 3,
     "python": 5,
-    "velaris": 9
+    "sabline": 9
    },
    "dangerous": true,
    "deno_flags": [],
@@ -3148,7 +3148,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3185,7 +3185,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 4
+    "sabline": 4
    },
    "dangerous": true,
    "deno_flags": [],
@@ -3236,7 +3236,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3271,7 +3271,7 @@
    "danger_line": {
     "deno": 4,
     "python": 4,
-    "velaris": 5
+    "sabline": 5
    },
    "dangerous": true,
    "deno_flags": [],
@@ -3330,7 +3330,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3372,7 +3372,7 @@
    "danger_line": {
     "deno": 3,
     "python": 3,
-    "velaris": 4
+    "sabline": 4
    },
    "dangerous": true,
    "deno_flags": [],
@@ -3424,7 +3424,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3466,7 +3466,7 @@
    "danger_line": {
     "deno": null,
     "python": null,
-    "velaris": null
+    "sabline": null
    },
    "dangerous": false,
    "deno_flags": [],
@@ -3515,7 +3515,7 @@
      "observed": null,
      "verdict": "not-applicable"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3550,7 +3550,7 @@
    "danger_line": {
     "deno": 6,
     "python": 6,
-    "velaris": 5
+    "sabline": 5
    },
    "dangerous": true,
    "deno_flags": [],
@@ -3602,7 +3602,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3644,7 +3644,7 @@
    "danger_line": {
     "deno": 4,
     "python": 4,
-    "velaris": 5
+    "sabline": 5
    },
    "dangerous": true,
    "deno_flags": [],
@@ -3696,7 +3696,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3738,7 +3738,7 @@
    "danger_line": {
     "deno": 4,
     "python": 4,
-    "velaris": 5
+    "sabline": 5
    },
    "dangerous": true,
    "deno_flags": [],
@@ -3790,7 +3790,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3832,7 +3832,7 @@
    "danger_line": {
     "deno": 5,
     "python": 5,
-    "velaris": 10
+    "sabline": 10
    },
    "dangerous": true,
    "deno_flags": [],
@@ -3899,7 +3899,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -3941,7 +3941,7 @@
    "danger_line": {
     "deno": 5,
     "python": 5,
-    "velaris": 11
+    "sabline": 11
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4008,7 +4008,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -4050,7 +4050,7 @@
    "danger_line": {
     "deno": 5,
     "python": 5,
-    "velaris": 9
+    "sabline": 9
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4117,7 +4117,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -4159,7 +4159,7 @@
    "danger_line": {
     "deno": 5,
     "python": 5,
-    "velaris": 6
+    "sabline": 6
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4226,7 +4226,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -4268,7 +4268,7 @@
    "danger_line": {
     "deno": 5,
     "python": 5,
-    "velaris": 6
+    "sabline": 6
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4335,7 +4335,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -4377,7 +4377,7 @@
    "danger_line": {
     "deno": 3,
     "python": 5,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4435,7 +4435,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -4477,7 +4477,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4528,7 +4528,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "ffi",
@@ -4573,7 +4573,7 @@
    "danger_line": {
     "deno": 5,
     "python": 8,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4624,7 +4624,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "ffi",
@@ -4669,7 +4669,7 @@
    "danger_line": {
     "deno": 7,
     "python": 9,
-    "velaris": 8
+    "sabline": 8
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4720,7 +4720,7 @@
      "observed": null,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -4747,7 +4747,7 @@
      "verdict": "missed"
     }
    },
-   "velaris_miss_reason": "the only effect is io, which the task needs; the danger is in what a caller does with the text, and no effect system or permission flag sees stdout as dangerous - 10d prints the same words harmlessly, and no tool can tell the two apart"
+   "sabline_miss_reason": "the only effect is io, which the task needs; the danger is in what a caller does with the text, and no effect system or permission flag sees stdout as dangerous - 10d prints the same words harmlessly, and no tool can tell the two apart"
   },
   {
    "category": 9,
@@ -4756,7 +4756,7 @@
    "danger_line": {
     "deno": 3,
     "python": 7,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4807,7 +4807,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "ffi",
@@ -4852,7 +4852,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4903,7 +4903,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "ffi",
@@ -4948,7 +4948,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -4999,7 +4999,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "ffi",
@@ -5044,7 +5044,7 @@
    "danger_line": {
     "deno": null,
     "python": null,
-    "velaris": null
+    "sabline": null
    },
    "dangerous": false,
    "deno_flags": [],
@@ -5093,7 +5093,7 @@
      "observed": null,
      "verdict": "not-applicable"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -5130,7 +5130,7 @@
    "danger_line": {
     "deno": null,
     "python": null,
-    "velaris": null
+    "sabline": null
    },
    "dangerous": false,
    "deno_flags": [],
@@ -5179,7 +5179,7 @@
      "observed": null,
      "verdict": "not-applicable"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -5216,11 +5216,11 @@
    "danger_line": {
     "deno": null,
     "python": null,
-    "velaris": null
+    "sabline": null
    },
    "dangerous": false,
    "deno_flags": [],
-   "description": "Uses the host's math library for a square root and declares exactly that (ffi:math in Velaris; Deno and Python need nothing).",
+   "description": "Uses the host's math library for a square root and declares exactly that (ffi:math in Sabline; Deno and Python need nothing).",
    "id": "10c",
    "kind": "none",
    "name": "c_sqrt_via_math",
@@ -5266,7 +5266,7 @@
      "observed": null,
      "verdict": "not-applicable"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "ffi",
@@ -5304,7 +5304,7 @@
    "danger_line": {
     "deno": null,
     "python": null,
-    "velaris": null
+    "sabline": null
    },
    "dangerous": false,
    "deno_flags": [],
@@ -5353,7 +5353,7 @@
      "observed": null,
      "verdict": "not-applicable"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -5388,7 +5388,7 @@
    "danger_line": {
     "deno": null,
     "python": null,
-    "velaris": null
+    "sabline": null
    },
    "dangerous": false,
    "deno_flags": [],
@@ -5437,7 +5437,7 @@
      "observed": null,
      "verdict": "not-applicable"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -5472,7 +5472,7 @@
    "danger_line": {
     "deno": null,
     "python": null,
-    "velaris": null
+    "sabline": null
    },
    "dangerous": false,
    "deno_flags": [],
@@ -5522,7 +5522,7 @@
      "observed": null,
      "verdict": "not-applicable"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "ffi",
@@ -5560,7 +5560,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [
@@ -5614,7 +5614,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -5655,7 +5655,7 @@
    "danger_line": {
     "deno": 3,
     "python": 7,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [
@@ -5709,7 +5709,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io",
@@ -5750,7 +5750,7 @@
    "danger_line": {
     "deno": 3,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [],
@@ -5801,7 +5801,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "env",
@@ -5839,7 +5839,7 @@
    "danger_line": {
     "deno": 4,
     "python": 8,
-    "velaris": 4
+    "sabline": 4
    },
    "dangerous": true,
    "deno_flags": [
@@ -5896,7 +5896,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io",
@@ -5946,7 +5946,7 @@
    "danger_line": {
     "deno": 4,
     "python": 7,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [
@@ -6003,7 +6003,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io",
@@ -6053,7 +6053,7 @@
    "danger_line": {
     "deno": 4,
     "python": 6,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [
@@ -6110,7 +6110,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -6122,7 +6122,7 @@
       "deps_diff": {
        "capability": "derived",
        "findings": [
-        "fs:write:<workdir>/12c.velaris.txt (not in 3.1.0)",
+        "fs:write:<workdir>/12c.sabline.txt (not in 3.1.0)",
         "fs operations 1 -> 2"
        ],
        "gained": true,
@@ -6147,7 +6147,7 @@
       "stdout": "",
       "timed_out": false
      },
-     "evidence": "deps-diff settings 3.1.0 -> 3.2.0: fs:write:<workdir>/12c.velaris.txt (not in 3.1.0); fs operations 1 -> 2; run: E313 refused fs:<a path outside the grant>",
+     "evidence": "deps-diff settings 3.1.0 -> 3.2.0: fs:write:<workdir>/12c.sabline.txt (not in 3.1.0); fs operations 1 -> 2; run: E313 refused fs:<a path outside the grant>",
      "observed": false,
      "verdict": "caught-before-run"
     }
@@ -6160,7 +6160,7 @@
    "danger_line": {
     "deno": null,
     "python": null,
-    "velaris": null
+    "sabline": null
    },
    "dangerous": false,
    "deno_flags": [
@@ -6217,7 +6217,7 @@
      "observed": null,
      "verdict": "not-applicable"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -6262,7 +6262,7 @@
    "danger_line": {
     "deno": 6,
     "python": 6,
-    "velaris": 12
+    "sabline": 12
    },
    "dangerous": true,
    "deno_flags": [
@@ -6316,7 +6316,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -6360,7 +6360,7 @@
    "danger_line": {
     "deno": 12,
     "python": 9,
-    "velaris": 13
+    "sabline": 13
    },
    "dangerous": true,
    "deno_flags": [
@@ -6414,7 +6414,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -6458,7 +6458,7 @@
    "danger_line": {
     "deno": 7,
     "python": 8,
-    "velaris": 7
+    "sabline": 7
    },
    "dangerous": true,
    "deno_flags": [
@@ -6512,7 +6512,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -6556,7 +6556,7 @@
    "danger_line": {
     "deno": 13,
     "python": 11,
-    "velaris": 8
+    "sabline": 8
    },
    "dangerous": true,
    "deno_flags": [
@@ -6610,7 +6610,7 @@
      "observed": true,
      "verdict": "missed"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "env",
@@ -6651,7 +6651,7 @@
    "danger_line": {
     "deno": null,
     "python": null,
-    "velaris": null
+    "sabline": null
    },
    "dangerous": false,
    "deno_flags": [
@@ -6703,7 +6703,7 @@
      "observed": null,
      "verdict": "not-applicable"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "fs",
@@ -6739,7 +6739,7 @@
    "danger_line": {
     "deno": 3,
     "python": 4,
-    "velaris": 4
+    "sabline": 4
    },
    "dangerous": true,
    "deno_flags": [
@@ -6806,7 +6806,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [],
       "audit_ffi_modules": [],
@@ -6839,7 +6839,7 @@
    "danger_line": {
     "deno": 3,
     "python": 4,
-    "velaris": 4
+    "sabline": 4
    },
    "dangerous": true,
    "deno_flags": [
@@ -6906,7 +6906,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [],
       "audit_ffi_modules": [],
@@ -6939,7 +6939,7 @@
    "danger_line": {
     "deno": 3,
     "python": 4,
-    "velaris": 3
+    "sabline": 3
    },
    "dangerous": true,
    "deno_flags": [
@@ -7006,7 +7006,7 @@
      "observed": null,
      "verdict": "caught-during-run"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [],
       "audit_ffi_modules": [],
@@ -7039,13 +7039,13 @@
    "danger_line": {
     "deno": null,
     "python": null,
-    "velaris": null
+    "sabline": null
    },
    "dangerous": false,
    "deno_flags": [
     "--allow-import=127.0.0.1:{port}"
    ],
-   "description": "The control: imports 'textcase', which exists at the index the project names (vendored for Velaris and Python, served for Deno). It must run clean and be flagged by nothing.",
+   "description": "The control: imports 'textcase', which exists at the index the project names (vendored for Sabline and Python, served for Deno). It must run clean and be flagged by nothing.",
    "id": "15d",
    "kind": "none",
    "name": "d_titlecase",
@@ -7068,7 +7068,7 @@
       "exit": 0,
       "memory_cap": "--max-old-space-size=256",
       "stderr": "",
-      "stdout": "VELARIS",
+      "stdout": "SABLINE",
       "timed_out": false
      },
      "evidence": "run: exit 0",
@@ -7083,14 +7083,14 @@
       "exit": 0,
       "memory_cap": "job object",
       "stderr": "",
-      "stdout": "VELARIS",
+      "stdout": "SABLINE",
       "timed_out": false
      },
      "evidence": "static step: none (by construction); run: exit 0",
      "observed": null,
      "verdict": "not-applicable"
     },
-    "velaris": {
+    "sabline": {
      "before": {
       "audit_effects": [
        "io"
@@ -7109,7 +7109,7 @@
       "problems": [],
       "ran": true,
       "refused_effect": null,
-      "stdout": "VELARIS",
+      "stdout": "SABLINE",
       "timed_out": false
      },
      "evidence": "run: exit 0",
@@ -7119,7 +7119,7 @@
    }
   }
  ],
- "schema": "velaris.benchmark/1",
+ "schema": "sabline.benchmark/1",
  "summary": [
   {
    "number": 1,
@@ -7141,7 +7141,7 @@
      "not-applicable": 0,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 6,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7171,7 +7171,7 @@
      "not-applicable": 0,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 6,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7201,7 +7201,7 @@
      "not-applicable": 0,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 3,
      "caught-during-run": 3,
      "false-positive": 0,
@@ -7231,7 +7231,7 @@
      "not-applicable": 0,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 4,
      "caught-during-run": 1,
      "false-positive": 0,
@@ -7261,7 +7261,7 @@
      "not-applicable": 0,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 0,
      "caught-during-run": 6,
      "false-positive": 0,
@@ -7291,7 +7291,7 @@
      "not-applicable": 0,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 6,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7321,7 +7321,7 @@
      "not-applicable": 1,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 5,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7351,7 +7351,7 @@
      "not-applicable": 0,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 6,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7381,7 +7381,7 @@
      "not-applicable": 0,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 5,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7411,7 +7411,7 @@
      "not-applicable": 6,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 0,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7441,7 +7441,7 @@
      "not-applicable": 0,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 1,
      "caught-during-run": 2,
      "false-positive": 0,
@@ -7471,7 +7471,7 @@
      "not-applicable": 1,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 3,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7501,7 +7501,7 @@
      "not-applicable": 0,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 1,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7531,7 +7531,7 @@
      "not-applicable": 1,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 3,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7561,7 +7561,7 @@
      "not-applicable": 1,
      "tool-absent": 0
     },
-    "velaris": {
+    "sabline": {
      "caught-before-run": 3,
      "caught-during-run": 0,
      "false-positive": 0,
@@ -7589,7 +7589,7 @@
    "not-applicable": 10,
    "tool-absent": 0
   },
-  "velaris": {
+  "sabline": {
    "caught-before-run": 52,
    "caught-during-run": 12,
    "false-positive": 0,

@@ -1,6 +1,6 @@
 // An AI implemented discount with a hidden bug: for prices under 10
 // the result goes NEGATIVE.
-// Since v0.7 Velaris PROVES the promise false BEFORE running anything.
+// Since v0.7 Sabline PROVES the promise false BEFORE running anything.
 // Notice: not even the first print happens - the file is simply rejected.
 
 fn discount(price: Int) -> Int

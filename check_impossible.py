@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""What cannot occur in a Velaris program, each claim held by a program that
+"""What cannot occur in a Sabline program, each claim held by a program that
 tries it (8.3). docs/structurally-impossible.md is held to this file: a
 class with no test here is not on that page, and the page lists no class
 that is not tested here.
@@ -15,7 +15,7 @@ from typing import Any, Callable
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_impossible")
@@ -36,7 +36,7 @@ def ok(label: str, good: bool, detail: Any = "") -> None:
 
 
 def compiles(source: str) -> Any:
-    return velaris.check(source, prove=False, timeout=None,
+    return sabline.check(source, prove=False, timeout=None,
                          max_memory_mb=None)
 
 
@@ -60,12 +60,12 @@ def cwe_78() -> None:
     words = ("system", "shell", "exec", "spawn", "popen", "run_command",
              "subprocess", "command", "execute", "sh")
     ok("no builtin is named for starting a process",
-       not set(words) & set(velaris.BUILTINS), set(words) & set(velaris.BUILTINS))
+       not set(words) & set(sabline.BUILTINS), set(words) & set(sabline.BUILTINS))
     for word in ("system", "shell", "exec", "spawn", "popen"):
         refused_before_running(
             f"{word}(\"rm -rf /tmp/x\") does not compile: there is no such "
             f"function", main_of(f'    {word}("rm -rf /tmp/x")'))
-    run = velaris.run(main_of('    check py("subprocess", "run", ["whoami"]) '
+    run = sabline.run(main_of('    check py("subprocess", "run", ["whoami"]) '
                               '{\n        ok r {\n            print(r)\n'
                               '        }\n        fail w {\n'
                               '            print(w)\n        }\n    }',
@@ -73,7 +73,7 @@ def cwe_78() -> None:
     ok("reaching subprocess through py is refused without an ffi grant "
        "(E310), and nothing is started", not run.ok
        and [p.code for p in run.problems] == ["E310"], run.problems)
-    run = velaris.run(main_of('    check py("os", "system", ["whoami"]) {\n'
+    run = sabline.run(main_of('    check py("os", "system", ["whoami"]) {\n'
                               '        ok r {\n            print(r)\n'
                               '        }\n        fail w {\n'
                               '            print(w)\n        }\n    }',
@@ -91,8 +91,8 @@ def cwe_95() -> None:
     print("-" * 62)
     words = ("eval", "compile", "load", "run_source", "exec", "import_text",
              "parse", "interpret")
-    ok("no builtin evaluates text", not set(words) & set(velaris.BUILTINS),
-       set(words) & set(velaris.BUILTINS))
+    ok("no builtin evaluates text", not set(words) & set(sabline.BUILTINS),
+       set(words) & set(sabline.BUILTINS))
     for word in ("eval", "compile", "load"):
         refused_before_running(
             f"{word}(\"print(1)\") does not compile",
@@ -104,7 +104,7 @@ def cwe_95() -> None:
     refused_before_running(
         "...nor an expression",
         'import "li" + "b.vel" as lib\n' + main_of('    print("x")'))
-    run = velaris.run(main_of('    let text = format("{}", "fn main() uses io { print(1) }")\n'
+    run = sabline.run(main_of('    let text = format("{}", "fn main() uses io { print(1) }")\n'
                               '    print(text)'), allow="io")
     ok("text that holds a program is printed as text, not run",
        run.ok and "fn main()" in run.output and run.output.count("\n") == 1,
@@ -118,7 +118,7 @@ def cwe_502() -> None:
     print("CWE-502: reading data gives data, never code or an object")
     print("-" * 62)
     doc = '{\\"__class__\\": \\"os.system\\", \\"py/object\\": \\"subprocess.Popen\\"}'
-    run = velaris.run(main_of(
+    run = sabline.run(main_of(
         f'    check json_get("{doc}", "__class__") {{\n'
         '        ok v {\n            print(v)\n        }\n'
         '        fail w {\n            print(w)\n        }\n    }'),
@@ -127,12 +127,12 @@ def cwe_502() -> None:
        "constructed", run.ok and run.output.strip() == "os.system",
        (run.output, run.problems))
     ok("every JSON builtin returns Text, Int, Float or Bool",
-       all(velaris.BUILTINS[n]["ret"] in ("Text", "Int", "Float", "Bool")
+       all(sabline.BUILTINS[n]["ret"] in ("Text", "Int", "Float", "Bool")
            for n in ("json_get", "json_int", "json_float", "json_len",
                      "json_has", "json_of")),
-       {n: velaris.BUILTINS[n]["ret"] for n in velaris.BUILTINS
+       {n: sabline.BUILTINS[n]["ret"] for n in sabline.BUILTINS
         if n.startswith("json_")})
-    run = velaris.run(main_of(
+    run = sabline.run(main_of(
         '    check py_json("pickle", "loads", "[]") {\n'
         '        ok r {\n            print(r)\n        }\n'
         '        fail w {\n            print(w)\n        }\n    }',
@@ -184,7 +184,7 @@ def cwe_117() -> None:
     stdlib = HERE / "stdlib" / "log.vel"
     (WORK / "log.vel").write_text(stdlib.read_text(encoding="utf-8"),
                                   encoding="utf-8")
-    # Velaris text writes a line feed as \n and has no escape for the other
+    # Sabline text writes a line feed as \n and has no escape for the other
     # three, so those arrive on standard input, the way a value from outside
     # would
     for char, shown, typed in (("LF", "\\n", None), ("CR", "\\r", "\r"),
@@ -200,7 +200,7 @@ def cwe_117() -> None:
                 make + "\n    " + call)
             path = WORK / "logs.vel"
             path.write_text(source, encoding="utf-8")
-            run = velaris.run(source, path=str(path), allow="io", stdin=stdin)
+            run = sabline.run(source, path=str(path), allow="io", stdin=stdin)
             lines = [x for x in run.logs.split("\n") if x]
             ok(f"{name} of a value holding {char} writes one line, the "
                f"character escaped", len(lines) == 1 and shown in lines[0]
@@ -208,7 +208,7 @@ def cwe_117() -> None:
                (run.logs, run.problems))
 
 
-# a way to make a text holding any character, in Velaris as it is
+# a way to make a text holding any character, in Sabline as it is
 CHARS_OF = """fn chars_of(code: Int) -> Text {
     check py("builtins", "chr", [to_text(code)]) {
         ok c {

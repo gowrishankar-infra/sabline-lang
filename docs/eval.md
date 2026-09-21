@@ -1,15 +1,15 @@
-# velaris eval
+# sabline eval
 
-`velaris eval` runs one Velaris program the way an evaluation sandbox runs
+`sabline eval` runs one Sabline program the way an evaluation sandbox runs
 code it was handed: under a profile that its own command line cannot relax,
 with a receipt of the run every time. It is new in 8.3.
 
 ```sh
-velaris eval task.vel --receipt task.receipt.json
-velaris eval task.vel --allow io,fs:read:data,fs:write:out \
+sabline eval task.vel --receipt task.receipt.json
+sabline eval task.vel --allow io,fs:read:data,fs:write:out \
     --timeout 60 --max-memory-mb 1024 --receipt ../receipts/task.json
-velaris eval task.vel --receipt-url https://collector.example.org/receipts
-velaris eval --confinement-probe
+sabline eval task.vel --receipt-url https://collector.example.org/receipts
+sabline eval --confinement-probe
 ```
 
 ## What it guarantees
@@ -28,17 +28,17 @@ velaris eval --confinement-probe
   required. The file must not be inside any `fs` grant, read or write, and
   must not be the program; it is written after the run ends, by eval, not
   by the worker. The URL receives one JSON object per POST
-  (`velaris.receipt-stream/1`): `started`, then each refusal and
+  (`sabline.receipt-stream/1`): `started`, then each refusal and
   declassification as the worker reports it, then the receipt; no proxy is
   used and a redirect counts as a failure. If the file cannot be written or
   the receipt is not accepted at the URL, eval exits 3. The receipt is
-  `velaris.receipt/1` with `run_parameters.profile` set to `"eval"` and
+  `sabline.receipt/1` with `run_parameters.profile` set to `"eval"` and
   `run_parameters.confinement` set to the level the worker got.
 - **A stop from outside is honoured and recorded.** SIGINT, SIGTERM
   (SIGBREAK on Windows), or the appearance of the file named by
   `--stop-file`, asks the run to stop. The program runs interpreted, and
   every call and every loop turn can see the request, so a program that is
-  running Velaris code stops at the next of them with E615, which it cannot
+  running Sabline code stops at the next of them with E615, which it cannot
   catch; its receipt is complete. A worker that has not stopped after
   `--grace` seconds (5 unless given, at most 60) - one still checking the
   program, say - is killed; its receipt says so and is marked incomplete.
@@ -63,11 +63,11 @@ velaris eval --confinement-probe
   that got **none** is not sent the program: eval refuses, exit 2, and says
   why. Until 8.4 such a run went ahead under the budget alone.
 
-  `velaris eval --confinement-probe` starts a worker confined as a run is,
+  `sabline eval --confinement-probe` starts a worker confined as a run is,
   has it try a TCP connection, a write and a read outside the granted
   directories and a process start, prints what was refused, and exits 1 if a
   refusal the level claims did not hold.
-- **Nothing it runs reads the proof cache.** Velaris has kept no proofs
+- **Nothing it runs reads the proof cache.** Sabline has kept no proofs
   between runs since 8.2, so there is no cache for `--no-cache` to turn off.
 
 Anything else that would widen the profile is refused before the program is
@@ -95,7 +95,7 @@ program's `args()` and never eval's flags.
   lands at a call or a loop turn. A worker compiling the program, or inside
   one long builtin, sees no stop point until it finishes that, and is killed
   when the grace period ends.
-- **A receipt when eval itself is killed.** If the `velaris eval` process is
+- **A receipt when eval itself is killed.** If the `sabline eval` process is
   killed outright, the file is not written. A URL has received `started` and
   the events streamed until then, and no `receipt`: its absence is the
   record.
@@ -113,6 +113,6 @@ program's `args()` and never eval's flags.
 The program's own exit status when it ran and its receipt was delivered;
 124 when the time limit stopped it; 2 when eval refused the command line; 3
 when the program ran and the receipt could not be written or sent.
-`--json` prints `velaris.eval/1` (provisional): the outcome, the code, the
+`--json` prints `sabline.eval/1` (provisional): the outcome, the code, the
 confinement level with its layers and reason, whether signals could be taken, the stop, whether the receipt
 was delivered, and the program's output and logs.

@@ -7,7 +7,7 @@
   "use strict";
 
   var root = document.documentElement;
-  var KEY = "velaris-docs-theme";
+  var KEY = "sabline-docs-theme";
   root.classList.add("js");
 
   function stored() {

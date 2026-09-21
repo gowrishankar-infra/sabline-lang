@@ -1,5 +1,5 @@
 // Int + Float with no conversion: in most languages this silently
-// converts (and sometimes silently loses precision). Velaris makes
+// converts (and sometimes silently loses precision). Sabline makes
 // the conversion explicit - this is a compile error with the fix.
 
 fn main() uses io {

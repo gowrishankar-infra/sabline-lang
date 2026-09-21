@@ -1,18 +1,20 @@
-# What a policy asks of a Velaris capability attestation.
+# What a policy asks of a Sabline capability attestation.
 #
 # Input: an in-toto Statement v1 whose predicate type is
-#   https://velaris-lang.dev/capability/v1
-# which is what `velaris attest program.vel` writes from 8.3 (velaris-spec
-# 8.5): the audit of a program, bound to its bytes by sha256. A Statement
-# written by Velaris 4.2 to 8.2.1 names the same type at the project's
-# earlier documentation address, and is admitted as the same type; any
-# other type is refused, velaris.dev/capability/v1 among them.
+#   https://sabline.dev/capability/v1
+# which is what `sabline attest program.vel` writes from 8.6 (sabline-spec
+# 8.5): the audit of a program, bound to its bytes by sha256. The type has
+# been named twice before - at the project's GitHub Pages address by
+# releases 4.2 to 8.2.1, and at velaris-lang.dev by 8.3 to 8.5, before the
+# project was renamed Sabline - and a Statement carrying either is admitted
+# as the same type. Any other type is refused - velaris.dev/capability/v1 among them,
+# and velaris.io's would be too.
 #
 # Data: the platform's allow-lists,
 #   {"platform": {"effects": ["io", "net"],
 #                 "hosts": ["api.example.com", "*.cdn.example.net:443"]}}
-# An effect is one of Velaris's names (io, env, fs, net, clock, rand, ffi,
-# declassify). A host entry is written as velaris.audit/1 writes a host:
+# An effect is one of Sabline's names (io, env, fs, net, clock, rand, ffi,
+# declassify). A host entry is written as sabline.audit/1 writes a host:
 # lower-case, `host` or `host:port`, an IPv6 address in brackets. An entry
 # without a port admits that host on any port; `*.example.com` admits one
 # label in place of the star, and not example.com itself.
@@ -23,17 +25,22 @@
 # program runs cannot be held to a list.
 #
 #   opa eval -d capability.rego -d platform.json -i app.intoto.json \
-#       'data.velaris.capability.deny'
+#       'data.sabline.capability.deny'
 #   conftest test app.intoto.json -p capability.rego \
-#       --namespace velaris.capability -d platform.json
-package velaris.capability
+#       --namespace sabline.capability -d platform.json
+package sabline.capability
 
 import rego.v1
 
-predicate_type := "https://velaris-lang.dev/capability/v1"
+predicate_type := "https://sabline.dev/capability/v1"
 
-# the type as Statements written before 8.3 name it
-predicate_types := {predicate_type, "https://gowrishankar-infra.github.io/velaris-lang/capability/v1"}
+# the type as Statements written before the address moved name it: at the
+# GitHub Pages address until 8.3, at velaris-lang.dev until the rename in 8.6
+predicate_types := {
+	predicate_type,
+	"https://velaris-lang.dev/capability/v1",
+	"https://gowrishankar-infra.github.io/velaris-lang/capability/v1",
+}
 
 default allowed_effects := {"io"}
 

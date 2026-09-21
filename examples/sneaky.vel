@@ -1,5 +1,5 @@
 // AI-generated code that claims to be a pure calculator...
-// but line 5 secretly leaks data. Velaris catches it.
+// but line 5 secretly leaks data. Sabline catches it.
 
 fn discount(price: Int) -> Int {
     print("leaking your price: " + price)

@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://velaris-lang.dev/receipt/v1/schema.json",
-  "title": "https://velaris-lang.dev/receipt/v1",
-  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://velaris-lang.dev/receipt/v1: a velaris.receipt/1 document recording one run of the program that is the statement's first subject - the budget it was given, each refusal and declassification, the parameters it ran under, how it ended and how long it took. velaris-spec SPEC.md section 8.7 defines it. No field holds a value the program handled. Within v1 fields may be added and consumers must ignore fields they do not know.",
+  "$id": "https://sabline.dev/receipt/v1/schema.json",
+  "title": "https://sabline.dev/receipt/v1",
+  "description": "The predicate of an in-toto Statement v1 whose predicateType is https://sabline.dev/receipt/v1: a sabline.receipt/1 document recording one run of the program that is the statement's first subject - the budget it was given, each refusal and declassification, the parameters it ran under, how it ended and how long it took. sabline-spec SPEC.md section 8.7 defines it. No field holds a value the program handled. Within v1 fields may be added and consumers must ignore fields they do not know.",
   "type": "object",
   "required": ["schema", "producer", "budget", "run_parameters", "refusals", "declassifications", "exit", "wall_time_ms", "complete"],
   "properties": {
-    "schema": {"const": "velaris.receipt/1"},
+    "schema": {"enum": ["sabline.receipt/1", "velaris.receipt/1"]},
     "producer": {
       "description": "The implementation that ran the program and wrote the receipt.",
       "type": "object",
@@ -18,7 +18,7 @@
       }
     },
     "specification": {
-      "description": "The velaris-spec version the producer followed, as 'velaris-spec 0.10.0'. Informative.",
+      "description": "The sabline-spec version the producer followed, as 'sabline-spec 0.10.0'. Informative.",
       "type": "string"
     },
     "startedAt": {
@@ -45,11 +45,11 @@
         "timeout": {"description": "The most seconds the run was allowed, or null for no limit.", "type": ["number", "null"], "exclusiveMinimum": 0},
         "max_memory_mb": {"description": "The most memory the run was allowed, in MB, or null for no cap.", "type": ["integer", "null"], "minimum": 1},
         "max_read_bytes": {"description": "The largest file a read accepted, in bytes.", "type": ["integer", "null"], "minimum": 0},
-        "confinement": {"description": "What operating-system confinement the run had. From velaris-spec 0.12.0 a level: 'full' when the operating system held every file, network and process limit of the budget, 'partial' when it held some, 'none' when the budget was the only boundary. A receipt written before 0.12.0 says 'none', or under the reference's eval profile names a mechanism: landlock-net, landlock, job-one-process or sandbox-exec (section 8.9).", "type": "string", "minLength": 1},
-        "confinement_reason": {"description": "Added in velaris-spec 0.12.0, within version 1: each limit the operating system did not hold and why, or why nothing was asked of it.", "type": "string"},
-        "confinement_layers": {"description": "Added in velaris-spec 0.12.0, within version 1: the producer's names for the mechanisms it applied, empty when it applied none.", "type": "array", "items": {"type": "string", "minLength": 1}},
-        "os_policy_sha256": {"description": "Added in velaris-spec 0.12.0, within version 1: the sha256 of the policy the producer derived from the budget and asked the operating system to hold, or null.", "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
-        "profile": {"description": "Added in velaris-spec 0.11.0, within version 1: the name of a profile the run was held to beyond its budget, as 'eval' (section 8.9). Absent when there was none.", "type": "string", "minLength": 1}
+        "confinement": {"description": "What operating-system confinement the run had. From sabline-spec 0.12.0 a level: 'full' when the operating system held every file, network and process limit of the budget, 'partial' when it held some, 'none' when the budget was the only boundary. A receipt written before 0.12.0 says 'none', or under the reference's eval profile names a mechanism: landlock-net, landlock, job-one-process or sandbox-exec (section 8.9).", "type": "string", "minLength": 1},
+        "confinement_reason": {"description": "Added in sabline-spec 0.12.0, within version 1: each limit the operating system did not hold and why, or why nothing was asked of it.", "type": "string"},
+        "confinement_layers": {"description": "Added in sabline-spec 0.12.0, within version 1: the producer's names for the mechanisms it applied, empty when it applied none.", "type": "array", "items": {"type": "string", "minLength": 1}},
+        "os_policy_sha256": {"description": "Added in sabline-spec 0.12.0, within version 1: the sha256 of the policy the producer derived from the budget and asked the operating system to hold, or null.", "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "profile": {"description": "Added in sabline-spec 0.11.0, within version 1: the name of a profile the run was held to beyond its budget, as 'eval' (section 8.9). Absent when there was none.", "type": "string", "minLength": 1}
       }
     },
     "effects_used": {
@@ -58,7 +58,7 @@
       "additionalProperties": {"type": "integer", "minimum": 0}
     },
     "grants_used": {
-      "description": "From velaris-spec 0.13.0. Each grant of the budget that let at least one operation through, as canonical text without a count, with how many. The operator's text: never the path, host, module or argument the program gave.",
+      "description": "From sabline-spec 0.13.0. Each grant of the budget that let at least one operation through, as canonical text without a count, with how many. The operator's text: never the path, host, module or argument the program gave.",
       "type": "array",
       "items": {
         "type": "object",
@@ -70,7 +70,7 @@
       }
     },
     "tool_calls": {
-      "description": "From velaris-spec 0.13.0, for a run given a manifest of tools. Each place a tool was called; never its arguments or its result.",
+      "description": "From sabline-spec 0.13.0, for a run given a manifest of tools. Each place a tool was called; never its arguments or its result.",
       "type": "array",
       "items": {
         "type": "object",
@@ -85,7 +85,7 @@
       }
     },
     "tool_ceiling": {
-      "description": "From velaris-spec 0.13.0, with tool_calls: the manifest's ceiling, what the run spent of it, and the sha256 of the manifest.",
+      "description": "From sabline-spec 0.13.0, with tool_calls: the manifest's ceiling, what the run spent of it, and the sha256 of the manifest.",
       "type": "object",
       "required": ["calls", "cost", "unit", "calls_used", "cost_used", "manifest_sha256"],
       "properties": {
@@ -119,7 +119,7 @@
         "type": "object",
         "required": ["reason", "line", "times"],
         "properties": {
-          "key_fingerprint": {"description": "From velaris-spec 0.13.0, on a MAC under a secret key (reason \"hmac signature\"): twelve lowercase hexadecimal digits that tell one key from another, or \"many\". Never the key or the MAC.", "type": "string", "pattern": "^([0-9a-f]{12}|many)$"},
+          "key_fingerprint": {"description": "From sabline-spec 0.13.0, on a MAC under a secret key (reason \"hmac signature\"): twelve lowercase hexadecimal digits that tell one key from another, or \"many\". Never the key or the MAC.", "type": "string", "pattern": "^([0-9a-f]{12}|many)$"},
           "reason": {"type": "string"},
           "line": {"type": ["integer", "null"], "minimum": 0},
           "times": {"type": "integer", "minimum": 1}
@@ -137,7 +137,7 @@
       }
     },
     "stop": {
-      "description": "Added in velaris-spec 0.11.0, within version 1: present when a stop was asked for from outside the run. What asked (a signal, or a stop file appearing), how long after the run began, and how the stop was honoured - at a call or loop turn, by killing the worker after the grace period, or not at all because the run had already ended.",
+      "description": "Added in sabline-spec 0.11.0, within version 1: present when a stop was asked for from outside the run. What asked (a signal, or a stop file appearing), how long after the run began, and how the stop was honoured - at a call or loop turn, by killing the worker after the grace period, or not at all because the run had already ended.",
       "type": "object",
       "required": ["asked", "honoured"],
       "properties": {

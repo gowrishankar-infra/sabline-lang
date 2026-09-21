@@ -27,9 +27,9 @@ from pathlib import Path
 from typing import Any, cast
 
 HERE = Path(__file__).parent
-VELARIS = str(HERE / "velaris.py")
+SABLINE = str(HERE / "sabline.py")
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_adversarial")
@@ -55,7 +55,7 @@ def ok(label: Any, cond: Any, detail: object = "") -> None:
 
 
 def run(args: Any, cwd: Any = None, env: Any = None, stdin: Any = None, timeout: int = 60, unset: Any = ()) -> tuple[Any, ...]:
-    """Run velaris; return (exit_code, combined_output, seconds). `unset`
+    """Run sabline; return (exit_code, combined_output, seconds). `unset`
     names variables the child does not inherit."""
     import time
     e = dict(os.environ)
@@ -65,7 +65,7 @@ def run(args: Any, cwd: Any = None, env: Any = None, stdin: Any = None, timeout:
         e.pop(name, None)
     t0 = time.perf_counter()
     try:
-        r = subprocess.run([sys.executable, VELARIS] + args,
+        r = subprocess.run([sys.executable, SABLINE] + args,
                            capture_output=True, text=True, cwd=cwd, env=e,
                            input=stdin, timeout=timeout)
         return r.returncode, r.stdout + r.stderr, time.perf_counter() - t0
@@ -82,8 +82,8 @@ def prog(d: Any, text: Any, name: str = "p.vel") -> Any:
 
 
 # ---------------------------------------------------------------------------
-# The proof cache: CACHE-1 to CACHE-10. From 2.29 to 8.1.1 Velaris kept proof
-# results on disk, and two holes came of it: a ./.velaris/proofs.json shipped
+# The proof cache: CACHE-1 to CACHE-10. From 2.29 to 8.1.1 Sabline kept proof
+# results on disk, and two holes came of it: a ./.sabline/proofs.json shipped
 # beside a program was believed until 7.1.2 (advisory-proof-cache.md), and an
 # entry planted in the per-user directory until 8.1.1
 # (advisory-proof-cache-2.md). Both times a false `ensures` was reported
@@ -112,7 +112,7 @@ TRUE = ("fn add1(n: Int) -> Int\n  ensures result == n + 1\n"
         "{ return n + 1 }\n"
         "fn main() uses io { print(to_text(add1(1))) }\n")
 
-_CACHE_VARS = ("VELARIS_CACHE_DIR", "XDG_CACHE_HOME", "LOCALAPPDATA")
+_CACHE_VARS = ("SABLINE_CACHE_DIR", "XDG_CACHE_HOME", "LOCALAPPDATA")
 
 # what 8.1.1 had for reading and writing the cache; none may come back
 _CACHE_NAMES = ("proof_key", "stmt_key", "_user_cache_dir", "_proof_cache_ref",
@@ -124,7 +124,7 @@ _CACHE_NAMES = ("proof_key", "stmt_key", "_user_cache_dir", "_proof_cache_ref",
 def _key_8_1_1(fn: Any, table: Any, records: Any) -> Any:
     """proof_key as 8.1.1 computed it - the function's contract and text,
     its callees' contracts and the records - so a plant carries the key a
-    cache once looked up. Velaris itself has no such function any more."""
+    cache once looked up. Sabline itself has no such function any more."""
     import dataclasses
     import hashlib
 
@@ -132,8 +132,8 @@ def _key_8_1_1(fn: Any, table: Any, records: Any) -> Any:
         return "|".join([
             f.name, str(f.params), str(f.return_type),
             ",".join(sorted(f.effects)), str(f.can_fail),
-            ";".join(velaris.expr_str(e) for e, _ in f.requires),
-            ";".join(velaris.expr_str(e) for e, _ in f.ensures)])
+            ";".join(sabline.expr_str(e) for e, _ in f.requires),
+            ";".join(sabline.expr_str(e) for e, _ in f.ensures)])
 
     called = set()
 
@@ -144,7 +144,7 @@ def _key_8_1_1(fn: Any, table: Any, records: Any) -> Any:
             return
         if not dataclasses.is_dataclass(node):
             return
-        if isinstance(node, velaris.Call):
+        if isinstance(node, sabline.Call):
             called.add(node.name)
         for f in dataclasses.fields(node):
             walk(getattr(node, f.name))
@@ -161,7 +161,7 @@ def _key_8_1_1(fn: Any, table: Any, records: Any) -> Any:
     walk(fn.body)
     walk([e for e, _ in fn.requires])
     walk([e for e, _ in fn.ensures])
-    parts = [velaris.VERSION, contract_of(fn), show(fn.body)]
+    parts = [sabline.VERSION, contract_of(fn), show(fn.body)]
     parts += [contract_of(table[n]) for n in sorted(called) if n in table]
     parts += [f"{r.name}:{r.fields}" for r in records]
     return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
@@ -169,8 +169,8 @@ def _key_8_1_1(fn: Any, table: Any, records: Any) -> Any:
 
 def _cache_base() -> tuple[Any, ...]:
     """A directory, and the environment that pointed 8.1.1's cache under
-    it: VELARIS_CACHE_DIR, XDG_CACHE_HOME and LOCALAPPDATA all name it, so
-    <base>/velaris/proofs is where 8.1.1 read on every system."""
+    it: SABLINE_CACHE_DIR, XDG_CACHE_HOME and LOCALAPPDATA all name it, so
+    <base>/sabline/proofs is where 8.1.1 read on every system."""
     base = os.path.realpath(tempfile.mkdtemp(prefix="cachebase_", dir=WORK))
     return base, {name: base for name in _CACHE_VARS}
 
@@ -187,14 +187,14 @@ def _files_under(root: Any) -> Any:
 
 
 def plant_local(d: Any) -> None:
-    """7.1.2's hole: ./.velaris/proofs.json beside the program, every
+    """7.1.2's hole: ./.sabline/proofs.json beside the program, every
     promise-carrying function "proven" under its 8.1.1 key."""
-    funcs, records = velaris.load_program(os.path.join(d, "p.vel"))
+    funcs, records = sabline.load_program(os.path.join(d, "p.vel"))
     table = {f.name: f for f in funcs}
     keys = [_key_8_1_1(f, table, records) for f in funcs
             if f.ensures or f.requires]
-    os.makedirs(os.path.join(d, ".velaris"), exist_ok=True)
-    with open(os.path.join(d, ".velaris", "proofs.json"), "w") as f:
+    os.makedirs(os.path.join(d, ".sabline"), exist_ok=True)
+    with open(os.path.join(d, ".sabline", "proofs.json"), "w") as f:
         json.dump({k: {"proven": True, "errors": []} for k in keys}, f)
 
 
@@ -205,18 +205,18 @@ def plant_user(d: Any, base: Any, fn_name: Any, whole: bool = True) -> Any:
     first half of that file. Returns the file."""
     import hashlib
     path = os.path.join(d, "p.vel")
-    funcs, records = velaris.load_program(path)
+    funcs, records = sabline.load_program(path)
     table = {f.name: f for f in funcs}
     ap = os.path.normcase(os.path.abspath(path))
     with open(path, encoding="utf-8") as fh:
         ch = hashlib.sha256(fh.read().encode("utf-8")).hexdigest()
-    tag = hashlib.sha256((ap + "\0" + velaris.VERSION + "\0" + ch)
+    tag = hashlib.sha256((ap + "\0" + sabline.VERSION + "\0" + ch)
                          .encode("utf-8")).hexdigest()
-    proofs = os.path.join(base, "velaris", "proofs")
+    proofs = os.path.join(base, "sabline", "proofs")
     os.makedirs(proofs, exist_ok=True)
     cache_file = os.path.join(proofs, tag + ".json")
-    blob = json.dumps({"schema": "velaris.proofcache/1", "path": ap,
-                       "version": velaris.VERSION, "content_sha256": ch,
+    blob = json.dumps({"schema": "sabline.proofcache/1", "path": ap,
+                       "version": sabline.VERSION, "content_sha256": ch,
                        "proofs": {_key_8_1_1(table[fn_name], table, records):
                                   {"proven": True, "errors": [],
                                    "seconds": 0.01}}}).encode("utf-8")
@@ -228,7 +228,7 @@ def plant_user(d: Any, base: Any, fn_name: Any, whole: bool = True) -> Any:
 
 
 class _redirected:
-    """In this process, the environment the outside passes ran velaris in:
+    """In this process, the environment the outside passes ran sabline in:
     every cache variable naming `base`."""
 
     def __init__(self, base: Any) -> None:
@@ -253,10 +253,10 @@ def _says_proven(out: Any) -> bool:
     return any(s in out for s in ("1 with proven", "[proven", '"proven": 1'))
 
 
-def _velaris_source() -> str:
-    """All of Velaris's own source text: velaris.py, or every module of the
+def _sabline_source() -> str:
+    """All of Sabline's own source text: sabline.py, or every module of the
     package it became."""
-    where = Path(velaris.__file__)
+    where = Path(sabline.__file__)
     files = (sorted(where.parent.glob("*.py")) if where.name == "__init__.py"
              else [where])
     return "\n".join(p.read_text(encoding="utf-8") for p in files)
@@ -272,32 +272,32 @@ PROOF_COMMANDS = (("check", ["check", "p.vel"]),
 
 
 def cache_cases() -> None:
-    # CACHE-1: 7.1.2's plant, a ./.velaris/proofs.json beside the program
+    # CACHE-1: 7.1.2's plant, a ./.sabline/proofs.json beside the program
     base, env = _cache_base()
     d = os.path.realpath(tempfile.mkdtemp(dir=WORK))
     prog(d, FALSE)
     plant_local(d)
-    planted = _files_under(os.path.join(d, ".velaris"))
+    planted = _files_under(os.path.join(d, ".sabline"))
     for mode, label in (([], "native"), (["--no-native"], "--no-native")):
         code, out, _ = run(["p.vel", "--allow", "io"] + mode, cwd=d, env=env)
-        ok(f"CACHE-1 a ./.velaris/ plant: the run {label} is refused "
+        ok(f"CACHE-1 a ./.sabline/ plant: the run {label} is refused "
            f"(E700/E601), not exit 0",
            code != 0 and ("E700" in out or "E601" in out), out[:160])
     if HAVE_Z3:
         for label, args in PROOF_COMMANDS[:4]:
             code, out, _ = run(args, cwd=d, env=env)
             said = '"ruleId": "E700"' if label == "proofs" else "E700"
-            ok(f"CACHE-1 a ./.velaris/ plant: {label} refutes the promise "
+            ok(f"CACHE-1 a ./.sabline/ plant: {label} refutes the promise "
                f"(z3)", code != 0 and said in out and "1000005" not in out,
                out[:160])
     dv = os.path.realpath(tempfile.mkdtemp(dir=WORK))
     prog(dv, TRUE)
     plant_local(dv)
     code, out, _ = run(["audit", "p.vel"], cwd=dv, env=env)
-    ok("CACHE-1 ...nothing looks in ./.velaris/: the audit does not mention "
+    ok("CACHE-1 ...nothing looks in ./.sabline/: the audit does not mention "
        "it, and the plant is as it was",
-       code == 0 and ".velaris" not in out
-       and _files_under(os.path.join(d, ".velaris")) == planted, out[:160])
+       code == 0 and ".sabline" not in out
+       and _files_under(os.path.join(d, ".sabline")) == planted, out[:160])
 
     # CACHE-2: nothing is written, where a cache was or anywhere near it
     base2, env2 = _cache_base()
@@ -349,15 +349,15 @@ def user_cache_cases() -> None:
     prog(d4, LOOP_LIE)
     plant_user(d4, base, "count")
     with _redirected(base):
-        funcs, records = velaris.load_program(os.path.join(d4, "p.vel"))
+        funcs, records = sabline.load_program(os.path.join(d4, "p.vel"))
         proven: set[str]
         errs: list[Any]
         proven, errs = set(), []
-        velaris.check_proofs(funcs, records, errs, proven)
+        sabline.check_proofs(funcs, records, errs, proven)
     ok("CACHE-4 with a plant for a lie no prover refutes, check_proofs "
        "neither calls it proven nor makes native code of it",
        "count" not in proven
-       and "count" not in velaris.native_eligible(funcs, proven), str(proven))
+       and "count" not in sabline.native_eligible(funcs, proven), str(proven))
     for label, args in PROOF_COMMANDS[4:]:
         code, out, _ = run(args, cwd=d4, env=env)
         ok(f"CACHE-4 ...{label} stops at the runtime check (E601) rather "
@@ -381,7 +381,7 @@ def user_cache_cases() -> None:
        and os.listdir(base5) == [], second[1][:160])
 
     # CACHE-6: a torn cache file is not read either; and nothing that read
-    # or wrote one is left in Velaris
+    # or wrote one is left in Sabline
     base6, env6 = _cache_base()
     d6 = os.path.realpath(tempfile.mkdtemp(dir=WORK))
     prog(d6, TRUE)
@@ -392,8 +392,8 @@ def user_cache_cases() -> None:
        "and the file is left exactly as it was",
        code == 0 and (not HAVE_Z3 or "1 with proven" in out)
        and open(torn, "rb").read() == torn_bytes, out[:160])
-    left = [n for n in _CACHE_NAMES if hasattr(velaris, n)]
-    ok("CACHE-6 Velaris has no cache reader, writer, key or location left",
+    left = [n for n in _CACHE_NAMES if hasattr(sabline, n)]
+    ok("CACHE-6 Sabline has no cache reader, writer, key or location left",
        not left, str(left))
 
     # CACHE-7: no directory is made where the cache went, for any command,
@@ -410,19 +410,19 @@ def user_cache_cases() -> None:
         os.symlink(real, link)
         run(["check", "p.vel"], cwd=d7, env={k: link for k in _CACHE_VARS})
         made += os.listdir(real)
-    ok("CACHE-7 no command makes a velaris directory under the cache "
+    ok("CACHE-7 no command makes a sabline directory under the cache "
        "variables' directory (or, on POSIX, through a link to one)",
        made == [], str(made))
 
     # CACHE-8: a relative XDG_CACHE_HOME or LOCALAPPDATA once put the cache
-    # in the directory velaris ran in - the program's
+    # in the directory sabline ran in - the program's
     d8 = os.path.realpath(tempfile.mkdtemp(dir=WORK))
     home = os.path.realpath(tempfile.mkdtemp(prefix="home_", dir=WORK))
     prog(d8, TRUE)
     code, out, _ = run(["check", "p.vel"], cwd=d8,
                        env={"XDG_CACHE_HOME": ".", "LOCALAPPDATA": ".",
                             "HOME": home, "USERPROFILE": home},
-                       unset=("VELARIS_CACHE_DIR",))
+                       unset=("SABLINE_CACHE_DIR",))
     ok("CACHE-8 with XDG_CACHE_HOME and LOCALAPPDATA relative, nothing is "
        "written beside the program or under the home directory",
        code == 0 and sorted(os.listdir(d8)) == ["p.vel"]
@@ -431,11 +431,11 @@ def user_cache_cases() -> None:
     # CACHE-9: the library and the language server, with the plant present
     path4 = os.path.join(d4, "p.vel")
     with _redirected(base):
-        c = velaris.check(LOOP_LIE, path=path4, timeout=None,
+        c = sabline.check(LOOP_LIE, path=path4, timeout=None,
                           max_memory_mb=None)
         where = path4.replace(os.sep, "/")
         uri = "file://" + ("" if where.startswith("/") else "/") + where
-        lenses = velaris.editor_answer("textDocument/codeLens", {}, LOOP_LIE,
+        lenses = sabline.editor_answer("textDocument/codeLens", {}, LOOP_LIE,
                                        uri)
     ok("CACHE-9 the library does not report the planted lie proven",
        "count" not in c.proven, str(c.proven))
@@ -446,12 +446,12 @@ def user_cache_cases() -> None:
     # CACHE-10: what is left of the cache's interface does nothing
     action = (HERE / "action.yml").read_text(encoding="utf-8")
     ok("CACHE-10 the Action names no cache flag, variable or command",
-       not any(w in action for w in ("--no-cache", "VELARIS_CACHE_DIR",
-                                     "velaris clean")))
-    source = _velaris_source()
-    ok("CACHE-10 Velaris's source reads no VELARIS_CACHE_DIR and writes no "
+       not any(w in action for w in ("--no-cache", "SABLINE_CACHE_DIR",
+                                     "sabline clean")))
+    source = _sabline_source()
+    ok("CACHE-10 Sabline's source reads no SABLINE_CACHE_DIR and writes no "
        "proof cache schema",
-       "VELARIS_CACHE_DIR" not in source and "proofcache" not in source)
+       "SABLINE_CACHE_DIR" not in source and "proofcache" not in source)
     d10 = os.path.realpath(tempfile.mkdtemp(dir=WORK))
     prog(d10, TRUE)
     for label, args in (("check", ["check", "p.vel"]),
@@ -466,12 +466,12 @@ def user_cache_cases() -> None:
            and "deprecated" in extra[0] and "9.0" in extra[0],
            f"{plain[0]} {flagged[0]} {extra}")
     stale = plant_user(d10, base, "add1")
-    os.makedirs(os.path.join(d10, ".velaris"), exist_ok=True)
+    os.makedirs(os.path.join(d10, ".sabline"), exist_ok=True)
     code, out, _ = run(["clean"], cwd=d10, env=env)
-    ok("CACHE-10 velaris clean exits 0, says it is deprecated, and deletes "
+    ok("CACHE-10 sabline clean exits 0, says it is deprecated, and deletes "
        "nothing",
        code == 0 and "deprecated" in out and os.path.exists(stale)
-       and os.path.isdir(os.path.join(d10, ".velaris")), out[:160])
+       and os.path.isdir(os.path.join(d10, ".sabline")), out[:160])
 
 
 # ---------------------------------------------------------------------------
@@ -695,7 +695,7 @@ def self_influence_cases() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Target 1 - `velaris trace` prints <secret>, never the plaintext.
+# Target 1 - `sabline trace` prints <secret>, never the plaintext.
 # ---------------------------------------------------------------------------
 def trace_cases() -> None:
     d = tempfile.mkdtemp()
@@ -729,7 +729,7 @@ def witness_cases() -> None:
 # Target 8 - the Pool resets args and per-run state between programs.
 # ---------------------------------------------------------------------------
 def pool_cases() -> None:
-    pool = velaris.Pool(allow={"io"}, timeout=10)
+    pool = sabline.Pool(allow={"io"}, timeout=10)
     try:
         a = pool.run('fn main() uses io { print("A:" + to_text(length(args()))) }\n',
                      args=["LEAKED"])
@@ -864,7 +864,7 @@ def credential_break_cases() -> None:
 
 
 def add_redirect_cases() -> None:
-    """Break 4: velaris add refuses a redirect from https to http and to a
+    """Break 4: sabline add refuses a redirect from https to http and to a
     host outside the URL's origin. Tested against the opener's own
     redirect handler, so it needs no TLS server."""
     class _Resp:
@@ -875,23 +875,23 @@ def add_redirect_cases() -> None:
 
     def outcome(origin: Any, newurl: Any) -> str:
         import urllib.request
-        op = velaris._add_opener(origin)
+        op = sabline._add_opener(origin)
         handler = next(h for h in op.handlers
                        if h.__class__.__name__ == "AddGuard")
         try:
             handler.redirect_request(urllib.request.Request(origin), _Resp(),
                                      302, "Found", {}, newurl)
             return "allowed"
-        except velaris._RedirectRefused as e:
+        except sabline._RedirectRefused as e:
             return f"refused: {e.why}"
 
-    ok("B4 velaris add refuses an https->http redirect",
+    ok("B4 sabline add refuses an https->http redirect",
        "refused" in outcome("https://example.com/lib.vel",
                             "http://example.com/lib.vel"))
-    ok("B4 velaris add refuses a redirect to a host outside the origin",
+    ok("B4 sabline add refuses a redirect to a host outside the origin",
        "refused" in outcome("https://example.com/lib.vel",
                             "https://evil.com/lib.vel"))
-    ok("B4 velaris add allows a same-origin https redirect",
+    ok("B4 sabline add allows a same-origin https redirect",
        outcome("https://example.com/a.vel", "https://example.com/b.vel")
        == "allowed")
 
@@ -916,20 +916,20 @@ def prover_name_cases() -> None:
         ok(f"P1 a parameter named __g_result_1 proves nothing false "
            f"({label}): the run stops (E601/E700), not prints 2",
            code != 0 and ("E601" in out or "E700" in out), out[:160])
-    c = velaris.check(lie, timeout=None, max_memory_mb=None)
+    c = sabline.check(lie, timeout=None, max_memory_mb=None)
     ok("P1 ...and check does not report f proven", "f" not in c.proven,
        str(c.proven))
     boxed = ("record Box { xs: List of Int  xs__n: Int }\n"
              "fn f(b: Box) -> Int\n  requires b.xs__n == 5\n"
              "  ensures result == 5\n{ return length(b.xs) }\n"
              "fn main() uses io { print(to_text(f(Box(xs: [1], xs__n: 5)))) }\n")
-    c = velaris.check(boxed, timeout=None, max_memory_mb=None)
+    c = sabline.check(boxed, timeout=None, max_memory_mb=None)
     ok("P2 a record field named xs__n is not the length of xs",
        "f" not in c.proven, str(c.proven))
 
 
 def import_read_cases() -> None:
-    """I1/I2: an import of a file that is not Velaris source quoted what it
+    """I1/I2: an import of a file that is not Sabline source quoted what it
     found there, through check, audit and run - and so through every door
     (advisory-import-read.md)."""
     d = tempfile.mkdtemp(dir=WORK)
@@ -940,11 +940,11 @@ def import_read_cases() -> None:
         src = (f'import "{os.path.join(d, name).replace(os.sep, "/")}"\n'
                f'fn main() uses io {{ print("x") }}\n')
         said = {
-            "check": velaris.check(src, timeout=None,
+            "check": sabline.check(src, timeout=None,
                                    max_memory_mb=None).problems,
-            "audit": velaris.audit(src, timeout=None,
+            "audit": sabline.audit(src, timeout=None,
                                    max_memory_mb=None).problems,
-            "run": velaris.run(src, allow={"io"}).problems}
+            "run": sabline.run(src, allow={"io"}).problems}
         for how, problems in said.items():
             text = " ".join(p.message for p in problems)
             ok(f"I1 {how} of a program importing {name} names the file and "
@@ -954,7 +954,7 @@ def import_read_cases() -> None:
     present = (f'import "{os.path.join(d, "notes.txt").replace(os.sep, "/")}"'
                f'\nfn main() uses io {{ print("x") }}\n')
     missing = present.replace("notes.txt", "no-such-file.txt")
-    got = [velaris.check(s, import_root=root).problems
+    got = [sabline.check(s, import_root=root).problems
            for s in (present, missing)]
     ok("I2 with import_root, an import outside it is E515 whether or not the "
        "file exists - so nothing about it is told",
@@ -973,12 +973,12 @@ def receipt_leak_cases() -> None:
         return key.lower() in json.dumps(doc).lower()
 
     pre = 'fn main() uses io, env, declassify'
-    printed = velaris.run(
+    printed = sabline.run(
         pre + ' {\n    print(declassify(env("ADV_RECEIPT_KEY", ""), "shown"))\n}\n',
         allow={"io", "env", "declassify"})
     ok("R1 a declassified secret the program printed is not in its receipt",
        key in printed.output and not leaks(printed.receipt))
-    host = velaris.run(
+    host = sabline.run(
         pre + ', net {\n'
         '    let h = declassify(env("ADV_RECEIPT_KEY", ""), "a host")\n'
         '    check fetch("https://" + h + ".example.org/") {\n'
@@ -988,7 +988,7 @@ def receipt_leak_cases() -> None:
        "host not", host.refused_effect and not leaks(host.receipt)
        and cast("dict[str, Any]", host.receipt)["predicate"]["refusals"][0]["code"] == "E314",
        str(cast("dict[str, Any]", host.receipt)["predicate"]["refusals"]))
-    path = velaris.run(
+    path = sabline.run(
         pre + ', fs {\n'
         '    let p = declassify(env("ADV_RECEIPT_KEY", ""), "a path")\n'
         '    write_file(p + ".txt", "x")\n}\n',
@@ -998,7 +998,7 @@ def receipt_leak_cases() -> None:
        "path not", path.refused_effect and not leaks(path.receipt)
        and cast("dict[str, Any]", path.receipt)["predicate"]["refusals"][0]["code"] == "E313",
        str(cast("dict[str, Any]", path.receipt)["predicate"]["refusals"]))
-    killed = velaris.run(
+    killed = sabline.run(
         pre + ' {\n'
         '    let k = declassify(env("ADV_RECEIPT_KEY", ""), "before the kill")\n'
         '    let i = 0\n    while i >= 0 {\n        i = i + 1\n'
@@ -1019,7 +1019,7 @@ def receipt_leak_cases() -> None:
     ok("R5 a program that writes the --receipt file itself is overwritten by "
        "the real receipt when it ends",
        code == 0 and "forged" not in doc
-       and doc.get("predicateType") == velaris.RECEIPT_PREDICATE_TYPE,
+       and doc.get("predicateType") == sabline.RECEIPT_PREDICATE_TYPE,
        f"{code} {str(doc)[:120]}")
 
 
@@ -1042,7 +1042,7 @@ def eject_widening_cases() -> None:
            out[:160])
     code, out, _ = run(["eject", "p.vel", "-o", target], cwd=d)
     launcher = os.path.join(target, "main.py")
-    runtime = os.path.join(target, "runtime", "velaris", "budget.py")
+    runtime = os.path.join(target, "runtime", "sabline", "budget.py")
     original = open(runtime, "rb").read()
     open(runtime, "wb").write(original.replace(
         b"def spend(", b"def _spend_was(", 1)
@@ -1053,7 +1053,7 @@ def eject_widening_cases() -> None:
     open(runtime, "wb").write(original)
     ok("E2 a runtime with its budget check removed is never run, "
        "--changed-ok or not", done.returncode == 2
-       and "runtime/velaris/budget.py" in done.stderr, done.stderr[-160:])
+       and "runtime/sabline/budget.py" in done.stderr, done.stderr[-160:])
     done = subprocess.run([sys.executable, "-I", launcher, "--receipt",
                            runtime], capture_output=True, text=True, cwd=d,
                           timeout=120)
@@ -1096,13 +1096,13 @@ def eject_widening_cases() -> None:
        out[:160] if done is None else done.stderr[-200:])
     drop = tempfile.mkdtemp(dir=WORK)
     marker = os.path.join(drop, "IMPORTED")
-    open(os.path.join(drop, "velaris.py"), "w").write(
+    open(os.path.join(drop, "sabline.py"), "w").write(
         f"open(r'{marker}', 'w').write('shadowed')\n")
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
     env["PYTHONPATH"] = drop
     done = subprocess.run([sys.executable, launcher], capture_output=True,
                           text=True, cwd=drop, env=env, timeout=120)
-    ok("E6 a velaris.py planted on PYTHONPATH, or in the working directory, "
+    ok("E6 a sabline.py planted on PYTHONPATH, or in the working directory, "
        "is not the runtime the launcher runs",
        done.returncode == 0 and "hello" in done.stdout
        and not os.path.exists(marker), done.stderr[-160:])
@@ -1119,9 +1119,9 @@ def door_rate_cases() -> None:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
     token = "adv-rate-" + os.urandom(12).hex()
-    door = subprocess.Popen([sys.executable, VELARIS, "serve", "--port",
+    door = subprocess.Popen([sys.executable, SABLINE, "serve", "--port",
                              str(port), "--rate-limit", "4"],
-                            env=dict(os.environ, VELARIS_TOKEN=token),
+                            env=dict(os.environ, SABLINE_TOKEN=token),
                             stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL)
 
@@ -1230,12 +1230,12 @@ def shadow_cases() -> None:
     d = tempfile.mkdtemp(dir=WORK)
     prog(d, "fn leak(k: Secret of Text) uses io {\n    let print = 0\n"
             "    print(k)\n}\n\nfn main() uses io, env {\n"
-            "    leak(env(\"VELARIS_SHADOW_SECRET\", \"\"))\n}\n")
+            "    leak(env(\"SABLINE_SHADOW_SECRET\", \"\"))\n}\n")
     code, out, _ = run(["check", "p.vel"], cwd=d)
     ok("SHADOW-1 a Secret given to print through a local named print is "
        "refused by check (E560)", code != 0 and "E560" in out, out[:200])
     code, out, _ = run(["p.vel", "--allow", "io,env"], cwd=d,
-                       env={"VELARIS_SHADOW_SECRET": "shadow-secret-value"})
+                       env={"SABLINE_SHADOW_SECRET": "shadow-secret-value"})
     ok("SHADOW-1 ...and a run under --allow io,env prints no secret",
        code != 0 and "shadow-secret-value" not in out, out[:200])
     prog(d, "fn leak(k: Text) {\n    let print = 0\n    print(k)\n}\n\n"
@@ -1265,10 +1265,10 @@ def shadow_cases() -> None:
 
 
 # ---------------------------------------------------------------------------
-# The split into a package (8.2): SPLIT-1 and SPLIT-2. Until 8.1.1 Velaris was
-# one module, so `velaris.IMPORT_ROOT = root` set the global the runtime read.
-# In the package the run state lives in velaris.state; a read of
-# velaris.IMPORT_ROOT was forwarded there, and a write, until the adversarial
+# The split into a package (8.2): SPLIT-1 and SPLIT-2. Until 8.1.1 Sabline was
+# one module, so `sabline.IMPORT_ROOT = root` set the global the runtime read.
+# In the package the run state lives in sabline.state; a read of
+# sabline.IMPORT_ROOT was forwarded there, and a write, until the adversarial
 # pass of 8.2, set an attribute nothing read - so imports silently stopped
 # being confined.
 # ---------------------------------------------------------------------------
@@ -1282,30 +1282,30 @@ def split_cases() -> None:
     snippet = (
         "import sys\n"
         "sys.path.insert(0, sys.argv[1])\n"
-        "import velaris\n"
-        "velaris.IMPORT_ROOT = sys.argv[2]\n"
+        "import sabline\n"
+        "sabline.IMPORT_ROOT = sys.argv[2]\n"
         "src = ('import \"../outside/lib.vel\" as lib\\n'\n"
         "       'fn main() uses io {\\n    print(to_text(lib.answer()))\\n}\\n')\n"
-        "r = velaris.run(src, path=sys.argv[3], allow={'io'})\n"
+        "r = sabline.run(src, path=sys.argv[3], allow={'io'})\n"
         "print('RUN', 'ok' if r.ok else 'refused',"
         " ','.join(p.code for p in r.problems), r.output.strip())\n"
-        "velaris.MAX_READ_BYTES = 1234\n"
-        "print('STATE', velaris.state.MAX_READ_BYTES, velaris.MAX_READ_BYTES)\n")
+        "sabline.MAX_READ_BYTES = 1234\n"
+        "print('STATE', sabline.state.MAX_READ_BYTES, sabline.MAX_READ_BYTES)\n")
     done = subprocess.run(
-        [sys.executable, "-c", snippet, os.path.dirname(os.path.abspath(VELARIS)),
+        [sys.executable, "-c", snippet, os.path.dirname(os.path.abspath(SABLINE)),
          served, os.path.join(served, "main.vel")],
         capture_output=True, text=True, timeout=300)
     out = done.stdout + done.stderr
-    ok("SPLIT-1 velaris.IMPORT_ROOT = root, written on the package, still "
+    ok("SPLIT-1 sabline.IMPORT_ROOT = root, written on the package, still "
        "confines imports: an import from outside the root is E515",
        "RUN refused E515" in out and "42" not in out.split("STATE")[0],
        out[-300:])
     ok("SPLIT-2 ...and any run-state name written on the package reaches "
-       "velaris.state", "STATE 1234 1234" in out, out[-300:])
+       "sabline.state", "STATE 1234 1234" in out, out[-300:])
 
 
 def release_83_cases() -> None:
-    """8.3's adversarial pass: velaris eval (EV), receipts diff (RD), replay
+    """8.3's adversarial pass: sabline eval (EV), receipts diff (RD), replay
     (RP), witnesses (WT), the log sinks (LG) and the verifier (VF)."""
     import hashlib
     print("\n8.3: eval, receipts diff, replay, witnesses, log sinks, verify")
@@ -1344,16 +1344,16 @@ def release_83_cases() -> None:
         if os.path.exists(receipt) else {}
     ok("EV3 a program that writes to its own receipt's path is refused "
        "(E313), and the receipt is eval's, recording that",
-       got.get("predicateType") == velaris.RECEIPT_PREDICATE_TYPE
+       got.get("predicateType") == sabline.RECEIPT_PREDICATE_TYPE
        and got.get("predicate", {}).get("exit", {}).get("code") == "E313",
        out[-300:])
     # EV4: a child-process marker in eval's environment lifts no limit
     spin = prog(d, "fn main() uses io {\n    let i = 0\n    while i >= 0 {\n"
                 "        i = i + 1\n    }\n}\n", "spin.vel")
     code, out, secs = run(["eval", spin, "--receipt", receipt, "--timeout",
-                           "2"], cwd=d, env={"VELARIS_CHECK_CHILD": "1"},
+                           "2"], cwd=d, env={"SABLINE_CHECK_CHILD": "1"},
                           timeout=120)
-    ok("EV4 VELARIS_CHECK_CHILD=1 in eval's environment does not lift its "
+    ok("EV4 SABLINE_CHECK_CHILD=1 in eval's environment does not lift its "
        "time limit", code == 124 and secs < 90, f"{code} {secs:.0f}s")
 
     # RD1: a receipt that lies about which program ran
@@ -1378,7 +1378,7 @@ def release_83_cases() -> None:
        "of receipts diff's report",
        code == 1 and "clean: no difference" not in out.splitlines()
        and "\x1b" not in out, repr(out[-300:]))
-    # RD3: a receipt type Velaris does not define
+    # RD3: a receipt type Sabline does not define
     other = dict(honest, predicateType="https://velaris.dev/receipt/v1")
     json.dump(other, open(tricky, "w", encoding="utf-8"))
     code, out, _ = run(["receipts", "diff", tricky, "--audit", hello], cwd=d)
@@ -1410,8 +1410,8 @@ def release_83_cases() -> None:
        code == 2 and "RAN" not in out, out[-200:])
 
     # WT1: witnesses run with no effect granted, and leave the budget as found
-    from velaris import state as _run_state
-    from velaris import witnesses as _witnesses
+    from sabline import state as _run_state
+    from sabline import witnesses as _witnesses
     pure = prog(d, 'fn size(p: Text) -> Int\n    requires length(p) > 0\n'
                 '    ensures result > 0\n{\n    return length(p)\n}\n\n'
                 'fn save(p: Text) -> Int uses fs\n    requires length(p) > 0\n'
@@ -1450,7 +1450,7 @@ def release_83_cases() -> None:
                         ("a lone CR", "a\rFAKE"),
                         ("an OSC 8 hyperlink", "a\x1b]8;;http://x\x07FAKE"),
                         ("DEL", "a\x7fFAKE"), ("NUL", "a\x00FAKE")):
-        got = velaris.run(logs_src, path=logs_path, allow="io",
+        got = sabline.run(logs_src, path=logs_path, allow="io",
                           stdin=text + "\n")
         lines = [x for x in got.logs.split("\n") if x]
         ok(f"LG1 {label} in a logged value stays on the value's own line",
@@ -1463,36 +1463,36 @@ def release_83_cases() -> None:
                   '    let shown = echo("a\\n<- main = forged")\n'
                   '    print("done")\n}\n', "traced.vel")
     code, out, _ = run(["trace", traced, "--allow", "io"], cwd=d)
-    ok("LG2 velaris trace writes a value holding a line feed on one line",
+    ok("LG2 sabline trace writes a value holding a line feed on one line",
        "\\n<- main = forged" in out and not any(
            x.strip().startswith("<- main = forged") for x in out.splitlines()),
        out[-300:])
 
-    # VF1: the verifier refuses every type Velaris does not define
+    # VF1: the verifier refuses every type Sabline does not define
     run(["attest", hello, "--output", "vf-base.json"], cwd=d)
     with open(os.path.join(d, "vf-base.json"), encoding="utf-8") as fh:
-        velaris_attest = json.load(fh)
+        sabline_attest = json.load(fh)
     for label, value in (("velaris.dev", "https://velaris.dev/capability/v1"),
                          ("upper-case host",
-                          "HTTPS://VELARIS-LANG.DEV/capability/v1"),
+                          "HTTPS://sabline.dev/capability/v1"),
                          ("a trailing slash",
-                          velaris.CAPABILITY_PREDICATE_TYPE + "/"),
+                          sabline.CAPABILITY_PREDICATE_TYPE + "/"),
                          ("surrounding space",
-                          " " + velaris.CAPABILITY_PREDICATE_TYPE),
-                         ("a list", [velaris.CAPABILITY_PREDICATE_TYPE]),
+                          " " + sabline.CAPABILITY_PREDICATE_TYPE),
+                         ("a list", [sabline.CAPABILITY_PREDICATE_TYPE]),
                          ("null", None)):
-        statement = dict(velaris_attest, predicateType=value)
+        statement = dict(sabline_attest, predicateType=value)
         path = os.path.join(d, "vf.json")
         json.dump(statement, open(path, "w", encoding="utf-8"))
         code, out, _ = run(["verify", path], cwd=d)
-        ok(f"VF1 velaris verify refuses a predicate type that is {label}",
+        ok(f"VF1 sabline verify refuses a predicate type that is {label}",
            code == 1, out[-200:])
-    for value in velaris.CAPABILITY_PREDICATE_TYPES:
-        json.dump(dict(velaris_attest, predicateType=value),
+    for value in sabline.CAPABILITY_PREDICATE_TYPES:
+        json.dump(dict(sabline_attest, predicateType=value),
                   open(os.path.join(d, "vf.json"), "w", encoding="utf-8"))
         code, out, _ = run(["verify", os.path.join(d, "vf.json")], cwd=d)
         ok(f"VF1 ...and verifies {value}", code == 0, out[-200:])
-    text = json.dumps(velaris_attest)
+    text = json.dumps(sabline_attest)
     open(os.path.join(d, "vf2.json"), "w", encoding="utf-8").write(
         text[:-1] + ', "predicateType": "https://velaris.dev/capability/v1"}')
     code, out, _ = run(["verify", os.path.join(d, "vf2.json")], cwd=d)

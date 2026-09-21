@@ -1,4 +1,4 @@
-"""Stage 1, the lexer, alone: velaris.lexer.lex and unescape.
+"""Stage 1, the lexer, alone: sabline.lexer.lex and unescape.
 
 SPEC.md 2 is what these hold it to: comments, identifiers, keywords and
 the literal table, plus the refusals - a character the lexer cannot
@@ -10,8 +10,8 @@ import json
 import unittest
 
 import _support
-from velaris.errors import VelarisError
-from velaris.lexer import KEYWORDS, lex, unescape
+from sabline.errors import SablineError
+from sabline.lexer import KEYWORDS, lex, unescape
 from typing import Any
 
 STAGE = "lexer"
@@ -86,13 +86,13 @@ class Literals(unittest.TestCase):
         self.assertEqual(kinds(r'"\q"'), [("STRING", r'"\q"')])
 
     def test_text_cannot_span_lines(self) -> None:
-        with self.assertRaises(VelarisError) as caught:
+        with self.assertRaises(SablineError) as caught:
             lex('let t = "one\ntwo"')
         self.assertEqual((caught.exception.code, caught.exception.line),
                          ("E000", 1))
 
     def test_unterminated_text(self) -> None:
-        with self.assertRaises(VelarisError) as caught:
+        with self.assertRaises(SablineError) as caught:
             lex('\n\nprint("never closed)')
         self.assertEqual((caught.exception.code, caught.exception.line),
                          ("E000", 3))
@@ -113,19 +113,19 @@ class Escapes(unittest.TestCase):
         them, and the document now says so."""
         for text in (r"a\rb", r"a\0b"):
             with self.subTest(text=text):
-                with self.assertRaises(VelarisError) as caught:
+                with self.assertRaises(SablineError) as caught:
                     unescape(text, 3)
                 self.assertEqual(caught.exception.code, "E002")
 
     def test_unknown_escape_is_E002(self) -> None:
-        with self.assertRaises(VelarisError) as caught:
+        with self.assertRaises(SablineError) as caught:
             unescape(r"bad \q here", 7)
         e = caught.exception
         self.assertEqual((e.code, e.line), ("E002", 7))
         self.assertIn(r"'\q'", e.message)
 
     def test_trailing_backslash_is_E002(self) -> None:
-        with self.assertRaises(VelarisError) as caught:
+        with self.assertRaises(SablineError) as caught:
             unescape("ends with \\", 2)
         self.assertEqual(caught.exception.code, "E002")
 
@@ -151,7 +151,7 @@ class KeywordsAndIdentifiers(unittest.TestCase):
     def test_identifiers_are_ascii(self) -> None:
         # SPEC.md 2 says "a letter"; the lexer reads ASCII letters only,
         # so a name that looks the same as another cannot be two names
-        with self.assertRaises(VelarisError) as caught:
+        with self.assertRaises(SablineError) as caught:
             lex("let café = 1")
         self.assertEqual(caught.exception.code, "E000")
 
@@ -159,7 +159,7 @@ class KeywordsAndIdentifiers(unittest.TestCase):
 class Refusals(unittest.TestCase):
 
     def assert_E000(self, source: str, char: str, line: int = 1) -> None:
-        with self.assertRaises(VelarisError) as caught:
+        with self.assertRaises(SablineError) as caught:
             lex(source)
         e = caught.exception
         self.assertEqual((e.code, e.line), ("E000", line))

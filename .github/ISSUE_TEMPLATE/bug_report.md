@@ -13,7 +13,7 @@ labels: bug
 (paste here)
 ```
 
-**Output of `velaris doctor`**
+**Output of `sabline doctor`**
 ```
 (paste here)
 ```

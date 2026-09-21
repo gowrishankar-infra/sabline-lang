@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# The last release of the PyPI name `velaris-lang`. This project was
+# renamed Sabline in 8.6.0; the name Velaris belongs to an unrelated
+# company (velaris.io). This holds no code: installing it installs
+# sabline-lang, which still provides the `velaris` command and the
+# `velaris` import for one major version (STABILITY.md).
+#
+# Nothing published under the old name is deleted or yanked - a pin to
+# velaris-lang==8.5.0 resolves to the same file it always did. This is one
+# release above it so that an unpinned install finds the new package.
+# packaging/farewell/README.md says how it is published.
+[project]
+name = "velaris-lang"
+version = "8.6.0"
+description = "Renamed: Velaris is now Sabline. Installing this installs sabline-lang."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Palakurthi Gowri Shankar" }]
+dependencies = ["sabline-lang>=8.6.0"]
+
+[project.urls]
+Homepage = "https://sabline.dev/"
+"The package" = "https://pypi.org/project/sabline-lang/"
+"What moved where" = "https://sabline.dev/renamed.html"
+Source = "https://github.com/gowrishankar-infra/sabline-lang"
+
+[tool.hatch.build.targets.wheel]
+bypass-selection = true

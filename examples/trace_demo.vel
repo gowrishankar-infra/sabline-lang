@@ -1,6 +1,6 @@
 // v2.21: watch a program run.
 //
-// velaris trace examples/trace_demo.vel
+// sabline trace examples/trace_demo.vel
 //
 // Every call is shown as it happens, indented by depth, with the
 // arguments going in and the answer coming back - including native
@@ -26,7 +26,7 @@ fn shout(word: Text) -> Text
 }
 
 fn main() uses io {
-    print(shout("velaris"))
+    print(shout("sabline"))
     for n in [8, 7] {
         check halve(n) {
             ok half {

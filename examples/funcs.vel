@@ -1,5 +1,5 @@
 // v1.6: functions are values. Pass them by name, call them through
-// parameters - map and filter, written in Velaris itself.
+// parameters - map and filter, written in Sabline itself.
 // Only PURE functions can be passed: nothing smuggled, ever.
 
 fn double(n: Int) -> Int {

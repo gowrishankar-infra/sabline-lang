@@ -1,5 +1,5 @@
 {
-  "about": "expr_str writes a tree back as source, bracketing only where the meaning needs it (velaris/parser.py).",
+  "about": "expr_str writes a tree back as source, bracketing only where the meaning needs it (sabline/parser.py).",
   "cases": [
     ["(result + 1) * count", "(result + 1) * count"],
     ["result + 1 * count", "result + 1 * count"],

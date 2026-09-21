@@ -6,7 +6,7 @@ name: monthly
 #                 translator, coverage-guided (atheris) for 20 minutes
 #   mutation      check_mutants.py for 90 minutes; the score goes in the run
 #                 summary, and each surviving mutant becomes an issue
-#   soak          velaris.Pool, 5,000 runs (check_pool_soak.py)
+#   soak          sabline.Pool, 5,000 runs (check_pool_soak.py)
 #   urls          every URL the documents name, and llms.txt (check_urls.py)
 #   differential  the release before this one against this commit
 #   sanitizers    the suites that run native code and the parsers, on a
@@ -62,11 +62,11 @@ jobs:
           python-version: "3.12"
       - name: Install (full)
         run: pip install -c requirements/ci.txt ".[full,test]"
-      - name: velaris-spec, for the schemas the killing suites use
+      - name: sabline-spec, for the schemas the killing suites use
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
-          repository: gowrishankar-infra/velaris-spec
-          path: velaris-spec
+          repository: gowrishankar-infra/sabline-spec
+          path: sabline-spec
           persist-credentials: false
       - name: Mutate, run the killing suites, keep the survivors
         run: |
@@ -123,17 +123,17 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
-      - name: velaris-spec, for its conformance corpus
+      - name: sabline-spec, for its conformance corpus
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
-          repository: gowrishankar-infra/velaris-spec
-          path: velaris-spec
+          repository: gowrishankar-infra/sabline-spec
+          path: sabline-spec
           persist-credentials: false
       - name: Install (full)
         run: pip install -c requirements/ci.txt ".[full,test]"
       # every benchmark program here; a release runs the quick set
       - name: Every difference is one the CHANGELOG names
-        run: python check_differential.py --spec velaris-spec/tests --benchmark full
+        run: python check_differential.py --spec sabline-spec/tests --benchmark full
 
   sanitizers:
     name: under AddressSanitizer and UndefinedBehaviorSanitizer (Linux)
@@ -143,10 +143,10 @@ jobs:
       # leaks: CPython does not free everything at exit, by design.
       # RLIMIT_AS cannot be set under ASan, whose shadow memory is reserved
       # address space, so the check ceiling's memory cap is off here
-      # (VELARIS_CHECK_CHILD) and the suites that cap memory are not run.
+      # (SABLINE_CHECK_CHILD) and the suites that cap memory are not run.
       ASAN_OPTIONS: detect_leaks=0:halt_on_error=1:abort_on_error=1:strict_string_checks=1
       UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-      VELARIS_CHECK_CHILD: "1"
+      SABLINE_CHECK_CHILD: "1"
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
@@ -172,7 +172,7 @@ jobs:
           make -j"$(nproc)" > make.log 2>&1 || { tail -n 100 make.log; exit 1; }
           make install > install.log 2>&1 || { tail -n 100 install.log; exit 1; }
           "$RUNNER_TEMP/san/bin/python3" -c "import sysconfig; print(sysconfig.get_config_var('CONFIG_ARGS'))"
-      - name: Install Velaris into it (full)
+      - name: Install Sabline into it (full)
         run: |
           "$RUNNER_TEMP/san/bin/python3" -m pip install -c requirements/ci.txt ".[full,test]"
           echo "PY=$RUNNER_TEMP/san/bin/python3" >> "$GITHUB_ENV"

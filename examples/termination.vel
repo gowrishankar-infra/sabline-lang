@@ -1,7 +1,7 @@
 // Every loop here is shown to end before the program runs: a counter
-// moves one step toward a limit the body does not change. `velaris
+// moves one step toward a limit the body does not change. `sabline
 // explain examples/termination.vel` says "loops: N terminate, 0 not
-// shown", and `velaris check --strict` accepts it.
+// shown", and `sabline check --strict` accepts it.
 
 fn count_up(n: Int) -> Int {
     let i = 0

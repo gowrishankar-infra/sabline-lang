@@ -1,6 +1,6 @@
 // The effect system showcase: four effects, each declared honestly.
 //
-// velaris examples/effects.vel --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand
+// sabline examples/effects.vel --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand
 // (Network gets its own showcase in net.vel - it needs a connection.)
 
 fn dice() -> Int uses rand {

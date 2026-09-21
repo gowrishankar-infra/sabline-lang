@@ -1,6 +1,6 @@
-// A small HTTP tool, written in Velaris.
+// A small HTTP tool, written in Sabline.
 //
-// velaris examples/fetcher.vel --allow io,net <url> [words]
+// sabline examples/fetcher.vel --allow io,net <url> [words]
 // narrower, and better: --allow io,net:example.com:443@10
 //
 // Note the signature of every function below: only the ones that say
@@ -39,7 +39,7 @@ fn body_of(url: Text) -> Text uses net or fail {
 fn main() uses io, net {
     let given = args()
     if length(given) == 0 {
-        print("usage: velaris examples/fetcher.vel --allow io,net <url> [words]")
+        print("usage: sabline examples/fetcher.vel --allow io,net <url> [words]")
         return
     }
     let url = get(given, 0)

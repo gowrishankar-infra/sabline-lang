@@ -1,5 +1,5 @@
 // The loop body SUBTRACTS, so 'total' goes negative - the invariant
-// cannot survive a step. Velaris shows a state, allowed by the promises,
+// cannot survive a step. Sabline shows a state, allowed by the promises,
 // that one loop step breaks. Rejected before running.
 
 fn drain(n: Int) -> Int

@@ -1,4 +1,4 @@
-"""Stage 3, the loader, alone: velaris.loader.load_program.
+"""Stage 3, the loader, alone: sabline.loader.load_program.
 
 SPEC.md 10: imports resolve relative to the importing file with the
 standard library searched last; a plain import merges names and rejects
@@ -17,10 +17,10 @@ import tempfile
 import unittest
 
 import _support
-from velaris import state
-from velaris.errors import VelarisError
-from velaris.loader import load_program
-from velaris.nodes import Call, Var
+from sabline import state
+from sabline.errors import SablineError
+from sabline.loader import load_program
+from sabline.nodes import Call, Var
 from typing import Any
 
 STAGE = "loader"
@@ -67,8 +67,8 @@ class LoaderTest(unittest.TestCase):
     def tearDown(self) -> None:
         state.IMPORT_ROOT = self._root
 
-    def refused(self, entry: str, **kw: Any) -> VelarisError:
-        with self.assertRaises(VelarisError) as caught:
+    def refused(self, entry: str, **kw: Any) -> SablineError:
+        with self.assertRaises(SablineError) as caught:
             load_program(entry, **kw)
         return caught.exception
 
@@ -149,7 +149,7 @@ class Resolution(LoaderTest):
         self.assertSamePath(e.file, path("broken", "bad.vel"))
 
     def test_import_that_is_not_utf8_is_E512(self) -> None:
-        d = tempfile.mkdtemp(prefix="velaris-unit-loader-")
+        d = tempfile.mkdtemp(prefix="sabline-unit-loader-")
         self.addCleanup(shutil.rmtree, d, True)
         with open(os.path.join(d, "main.vel"), "w", encoding="utf-8") as f:
             f.write('import "blob.vel"\n\nfn main() uses io {\n    print(1)\n}\n')
@@ -282,7 +282,7 @@ class ImportRoot(LoaderTest):
         self.assertIn("notes", names(funcs))
 
 
-class NonVelarisImports(LoaderTest):
+class NonSablineImports(LoaderTest):
     """SPEC.md 10: an error inside an imported file that is not a .vel
     file names the file and shows nothing of its content."""
 

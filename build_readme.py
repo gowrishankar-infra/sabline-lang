@@ -9,7 +9,7 @@ A value in running text is marked where it stands, and only the part between
 the markers is rewritten:
 
     <!-- count:examples -->97<!-- /count -->
-    <!-- count:benchmark-velaris-missed:word -->two<!-- /count -->
+    <!-- count:benchmark-sabline-missed:word -->two<!-- /count -->
 
 `:word` writes a number from zero to twenty as a word. A whole block is
 written between `<!-- generated:NAME -->` and `<!-- /generated -->`: README's
@@ -23,7 +23,7 @@ its document is a failure, not a count that has quietly stopped being checked,
 and so is a count that no document uses. EMBEDDING.md takes the same markers.
 
 Where each value comes from is COUNTS. The proven share, and the two counts of
-examples/discount.vel beside it, are what `velaris proofs examples stdlib
+examples/discount.vel beside it, are what `sabline proofs examples stdlib
 --json` measures, and need z3-solver: without it, --check skips them with a
 notice and --write leaves them as they are.
 
@@ -81,13 +81,13 @@ class Facts:
     def proofs(self) -> dict[Any, Any]:
         def measure() -> dict[Any, Any]:
             done = subprocess.run(
-                [sys.executable, str(HERE / "velaris.py"), "proofs",
+                [sys.executable, str(HERE / "sabline.py"), "proofs",
                  "examples", "stdlib", "--json"],
                 cwd=HERE, capture_output=True, text=True, timeout=900)
             try:
                 return cast("dict[Any, Any]", json.loads(done.stdout))
             except ValueError:
-                raise SystemExit("velaris proofs examples stdlib --json did "
+                raise SystemExit("sabline proofs examples stdlib --json did "
                                  f"not answer with JSON (exit "
                                  f"{done.returncode}): {done.stderr[:400]}")
         return cast("dict[Any, Any]", self._once("proofs", measure))
@@ -96,12 +96,12 @@ class Facts:
         for f in self.proofs["files"]:
             if f["file"].replace("\\", "/").endswith(name):
                 return cast("dict[Any, Any]", f)
-        raise SystemExit(f"velaris proofs examples stdlib --json names no {name}")
+        raise SystemExit(f"sabline proofs examples stdlib --json names no {name}")
 
     @property
-    def velaris(self) -> Any:
-        import velaris
-        return velaris
+    def sabline(self) -> Any:
+        import sabline
+        return sabline
 
 
 def passes_counted(path: str) -> int:
@@ -132,7 +132,7 @@ def corpus_cases() -> int:
 
 
 def card_words(f: Facts) -> str:
-    n = len(f.velaris.card().split())
+    n = len(f.sabline.card().split())
     return f"{round(n, -2):,}"
 
 
@@ -149,17 +149,17 @@ COUNTS: dict[str, tuple[str, Callable[[Facts], Any], bool]] = {
                             lambda f: f.programs(True), False),
     "benchmark-controls": ("benchmark controls",
                            lambda f: f.programs(False), False),
-    "benchmark-velaris-missed": (
-        "dangerous benchmark programs Velaris missed",
-        lambda f: f.results["totals"]["velaris"]["missed"], False),
+    "benchmark-sabline-missed": (
+        "dangerous benchmark programs Sabline missed",
+        lambda f: f.results["totals"]["sabline"]["missed"], False),
     "category-12-dangerous": ("category 12's dangerous programs",
                               lambda f: f.programs(True, 12), False),
     "category-12-controls": ("category 12's controls",
                              lambda f: f.programs(False, 12), False),
-    "conformance-cases": ("cases in velaris-spec's corpus, as "
+    "conformance-cases": ("cases in sabline-spec's corpus, as "
                           "build_conformance.py writes it",
                           lambda f: corpus_cases(), False),
-    "card-words": ("words in `velaris card`, to the nearest hundred",
+    "card-words": ("words in `sabline card`, to the nearest hundred",
                    card_words, False),
     "stress-checks": ("checks examples/stress.vel counts",
                       lambda f: passes_counted("examples/stress.vel"), False),
@@ -170,17 +170,17 @@ COUNTS: dict[str, tuple[str, Callable[[Facts], Any], bool]] = {
     "sandbox-escapes": ("escape attempts in check_sandbox.py",
                         lambda f: escapes(), False),
     "deps-max-upgrades": ("upgrades one deps-diff --against compares",
-                          lambda f: f.velaris.upgrades._DEPS_MAX_UPGRADES,
+                          lambda f: f.sabline.upgrades._DEPS_MAX_UPGRADES,
                           False),
-    "currencies": ("currencies in velaris.CURRENCIES",
-                   lambda f: len(f.velaris.CURRENCIES), False),
-    "version": ("velaris.VERSION", lambda f: f.velaris.VERSION, False),
+    "currencies": ("currencies in sabline.CURRENCIES",
+                   lambda f: len(f.sabline.CURRENCIES), False),
+    "version": ("sabline.VERSION", lambda f: f.sabline.VERSION, False),
     "proven": ("functions proven, over examples and stdlib",
                lambda f: f.proofs["totals"]["proven"], True),
     "promised": ("functions that make a promise, over examples and stdlib",
                  lambda f: f.proofs["totals"]["proven"]
                  + f.proofs["totals"]["runtime"], True),
-    "proven-share": ("velaris proofs examples stdlib --json's proven_share",
+    "proven-share": ("sabline proofs examples stdlib --json's proven_share",
                      lambda f: f.proofs["proven_share"], True),
     "discount-proven": ("functions proven in examples/discount.vel",
                         lambda f: f.proof_file("examples/discount.vel")
@@ -193,14 +193,14 @@ COUNTS: dict[str, tuple[str, Callable[[Facts], Any], bool]] = {
 # Counts found by the text around them: (document, the text, {name} where
 # the value stands). Whitespace in the text matches any whitespace.
 IN_TEXT = (
-    ("README.md", "velaris card > card.md # ~{card-words} words: paste into "
+    ("README.md", "sabline card > card.md # ~{card-words} words: paste into "
                   "any model"),
     ("README.md", "# {stress-checks} checks across the whole language"),
     ("README.md", "# {edges-checks} boundary, property and round-trip checks"),
     ("README.md", "# {refusals} wrong programs, each refused correctly"),
     ("README.md", "# {sandbox-escapes} escape attempts, each refused with its "
                   "code"),
-    ("README.md", "# velaris-spec's {conformance-cases}-case corpus, L1 to L3"),
+    ("README.md", "# sabline-spec's {conformance-cases}-case corpus, L1 to L3"),
     ("SPEC.md", "Version {version}. Where this document"),
     ("SPEC.md", "which today holds {currencies} of them"),
 )
@@ -225,7 +225,7 @@ def benchmark_table(f: Facts) -> str:
     lines = ["| | caught before running | caught while running | missed "
              f"| false positives on the {f.programs(False)} controls |",
              "|---|---|---|---|---|"]
-    for label, tool in ((f"**Velaris {minor(meta['velaris'])}**", "velaris"),
+    for label, tool in ((f"**Sabline {minor(meta['sabline'])}**", "sabline"),
                         (f"Deno {minor(meta['deno'])}", "deno"),
                         (f"Python {minor(meta['python'])}", "python")):
         t = totals[tool]

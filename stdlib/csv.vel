@@ -57,7 +57,7 @@ fn fields(line: Text) -> List of Text
 
 // One value as a field of a line: as it is, or quoted when it holds a
 // comma, a double quote, a carriage return (code 13, which no escape in
-// Velaris text writes) or a line feed.
+// Sabline text writes) or a line feed.
 fn quoted_field(value: Text) -> Text {
     let cs = chars(value)
     let plain = true

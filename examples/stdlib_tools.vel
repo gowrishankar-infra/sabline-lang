@@ -1,13 +1,13 @@
 // v2.31: the standard library reaches the outside world for you.
 //
-// velaris examples/stdlib_tools.vel --allow env,ffi:_sqlite3,builtins,sqlite3,io
+// sabline examples/stdlib_tools.vel --allow env,ffi:_sqlite3,builtins,sqlite3,io
 //
 // import "http.vel" as http     the web, without JSON plumbing
 // import "db.vel" as db         a database, without handles by hand
 // import "time.vel" as time     dates from the host language
 // import "env_tools.vel" as sys settings, and how to exit
 //
-// Every one of these still carries its effects, so 'velaris explain'
+// Every one of these still carries its effects, so 'sabline explain'
 // on your program shows exactly what it can touch.
 
 import "db.vel" as db

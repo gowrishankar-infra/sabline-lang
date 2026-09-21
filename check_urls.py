@@ -9,8 +9,8 @@ are examples or placeholders by construction (example.com and its kind,
 127.0.0.1, localhost, anything holding `<` or `{`) are not asked. A link
 into this repository at a commit or on main is asked like any other.
 
-Last, https://velaris-lang.dev/llms.txt must serve LLM.md: every compiler
-error names it as the reference (8.0; at velaris-lang.dev from 8.3). The
+Last, https://sabline.dev/llms.txt must serve LLM.md: every compiler
+error names it as the reference (8.0; at sabline.dev from 8.3). The
 documentation site's earlier address must answer that card's old URL with a
 redirect to the new one, since errors printed by 8.0 to 8.2.1 name it.
 
@@ -30,12 +30,25 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).resolve().parent
-CARD_URL = "https://velaris-lang.dev/llms.txt"
-# the card's address until 8.3, which the errors 8.0 to 8.2.1 print name; it
-# must redirect to CARD_URL. check_docs holds this, check_library's redirect
-# test, the CHANGELOG's history and the readers of earlier predicate types to
-# be the only places in the repository that name the earlier address.
-EARLIER_CARD_URL = "https://gowrishankar-infra.github.io/velaris-lang/llms.txt"
+CARD_URL = "https://sabline.dev/llms.txt"
+# Where the card was before sabline.dev: an address the errors of some
+# released version print in their `reference:` line, which must still lead
+# a reader to the card. check_docs holds this, check_library's copy of it,
+# the CHANGELOG's history and the readers of earlier predicate types to be
+# the only places that name an earlier address.
+#
+# NOT here, and it cannot be: https://gowrishankar-infra.github.io/velaris-lang/llms.txt,
+# which the errors of 8.0 to 8.2.1 print. A GitHub Pages site is served at
+# <owner>.github.io/<repo>, so renaming the repository to sabline-lang in
+# 8.6 moved it, and the old path answers 404. The only way to serve it
+# again is a repository called velaris-lang, and creating one would end
+# GitHub's redirect from every old repository URL - `git clone`, a link, and
+# `uses: gowrishankar-infra/velaris-lang@<commit>` in somebody's workflow.
+# Those are worth more than one address, so the address is gone, and
+# docs/renamed.md says so. The predicate type named there is unaffected: a
+# predicate type is a name, and nothing is fetched from it to verify a
+# Statement (sabline/predicates.py, THREAT_MODEL.md).
+EARLIER_CARD_URLS = ("https://velaris-lang.dev/llms.txt",)
 SOURCES = ["*.md", "docs/*.md", "benchmark/*.md", "paper/*.md", "stdlib/*.md",
            "editor/vscode/*.md", "npm/*.md", "integrations/**/*.md",
            "action.yml", "pyproject.toml", "CITATION.cff",
@@ -82,7 +95,7 @@ def ask(url: str) -> tuple[str, str | None]:
     for attempt in range(3):
         for method in ("HEAD", "GET"):
             request = urllib.request.Request(url, method=method, headers={
-                "User-Agent": "velaris-check-urls"})
+                "User-Agent": "sabline-check-urls"})
             try:
                 with urllib.request.urlopen(request, timeout=30) as response:
                     if response.status < 400:
@@ -118,7 +131,7 @@ def main(argv: list[str]) -> int:
     card = (HERE / "LLM.md").read_text(encoding="utf-8")
     try:
         with urllib.request.urlopen(urllib.request.Request(
-                CARD_URL, headers={"User-Agent": "velaris-check-urls"}),
+                CARD_URL, headers={"User-Agent": "sabline-check-urls"}),
                 timeout=30) as response:
             served = response.read().decode("utf-8", errors="replace")
         same = served.strip() == card.strip()
@@ -128,10 +141,22 @@ def main(argv: list[str]) -> int:
     except (urllib.error.URLError, OSError) as e:
         same = False
         print(f"  BROKEN  {CARD_URL}  ({getattr(e, 'reason', e)})")
-    moved, said = redirect_of(EARLIER_CARD_URL)
-    print(f"  {'ok' if moved else 'BROKEN'}      {EARLIER_CARD_URL} "
-          f"{'redirects to ' + said if moved else '(' + said + ')'}")
-    return 1 if bad or not same or moved is not True else 0
+    # Every line below is a statement about the DEPLOYED site. Until the
+    # site serves this commit's card, this checkout is ahead of it - which
+    # is every commit between a change to LLM.md or to the site's address
+    # and the deploy that publishes it - and there is nothing here to
+    # decide. Once it does serve it, each earlier address must reach it.
+    leads = True
+    for earlier in EARLIER_CARD_URLS:
+        if not same:
+            print(f"  skipped   {earlier}: the site does not serve this "
+                  f"commit's card yet, so where its earlier addresses lead "
+                  f"is not this commit's to say")
+            continue
+        reaches, said = leads_to_card(earlier, card)
+        print(f"  {'ok' if reaches else 'BROKEN'}      {earlier} {said}")
+        leads = leads and reaches is True
+    return 1 if bad or not same or not leads else 0
 
 
 class _Stay(urllib.request.HTTPRedirectHandler):
@@ -143,6 +168,35 @@ class _Stay(urllib.request.HTTPRedirectHandler):
         return None
 
 
+def leads_to_card(url: str, card: str) -> tuple[bool | None, str]:
+    """Whether an earlier address of the card leads a reader to `card`.
+
+    What every error and refusal printed by 8.0 to 8.5 promises is that the
+    address in its `reference:` line reaches the card. This holds the
+    promise rather than one way of keeping it: the address is followed,
+    through however many redirects, and what comes back must be these
+    bytes. An address that serves the card itself keeps the promise; so
+    does one that redirects to the address that does, directly or through
+    another; a 404, a redirect into nowhere, or a different card does not.
+
+    (None, why) when the address could not be asked at all.
+    """
+    try:
+        with urllib.request.urlopen(urllib.request.Request(
+                url, headers={"User-Agent": "sabline-check-urls"}),
+                timeout=30) as response:
+            served = response.read().decode("utf-8", errors="replace")
+            landed = response.geturl()
+    except (urllib.error.URLError, OSError) as e:
+        return None, f"could not be read ({getattr(e, 'reason', e)})"
+    if served.strip() != card.strip():
+        return False, (f"leads to {landed}, which does not serve this card"
+                       if landed != url else "does not serve this card")
+    if landed == url:
+        return True, "serves the card itself"
+    return True, f"leads to {landed}, which serves it"
+
+
 def redirect_of(url: str) -> tuple[bool | None, str]:
     """(True, the Location) when `url` answers with a redirect to CARD_URL's
     host and path (either scheme: GitHub Pages redirects to http until the
@@ -150,7 +204,7 @@ def redirect_of(url: str) -> tuple[bool | None, str]:
     when it could not be asked at all."""
     opener = urllib.request.build_opener(_Stay)
     request = urllib.request.Request(url, headers={
-        "User-Agent": "velaris-check-urls"})
+        "User-Agent": "sabline-check-urls"})
     try:
         with opener.open(request, timeout=30) as response:
             return False, f"HTTP {response.status}, not a redirect"

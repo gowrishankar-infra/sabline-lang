@@ -3,7 +3,7 @@
 
 build_docs.py renders README-style documents - TUTORIAL.md, SPEC.md,
 THREAT_MODEL.md and the rest - with this module, and check_site.py holds
-what it writes. It needs nothing outside the standard library, as Velaris
+what it writes. It needs nothing outside the standard library, as Sabline
 does not.
 
 What it reads, as CommonMark and GitHub read it:
@@ -34,7 +34,7 @@ CALLOUTS. A block quote whose first line is one of
     > [!REFUSES]         > **Refuses.** text ...
     > [!KNOWN-OPEN]      > **Known open.** text ...
 
-is a callout of that kind: a note, something Velaris refuses, or a
+is a callout of that kind: a note, something Sabline refuses, or a
 problem that is known and not yet closed. The [!KIND] line is GitHub's
 alert syntax (GitHub shows NOTE as an alert, and the other two as a quote
 starting with the marker); the bold lead-in reads the same everywhere. Any

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""The Velaris comparison benchmark.
+"""The Sabline comparison benchmark.
 
     python benchmark/run.py            # all 76 programs -> RESULTS.md, results.json
     python benchmark/run.py --quick    # one program per category, table on stdout
     python benchmark/run.py --check    # also compare verdicts with results.json
     python benchmark/run.py --only 03a,10c
 
-For every program in corpus.json and every tool (Velaris, Deno, plain
+For every program in corpus.json and every tool (Sabline, Deno, plain
 Python) this records one verdict:
 
     caught-before-run   flagged by a static step, before anything ran
@@ -42,19 +42,19 @@ TIMEOUT = 5            # seconds, for every tool
 MEMORY_MB = 256        # for every tool, where the platform lets us
 SENTINEL = "spawned-child-ran"   # printed by the child a program spawns
 MODULE_MARK = "module-reached"   # printed when a module call came back
-TOOLS = ("velaris", "deno", "python")
+TOOLS = ("sabline", "deno", "python")
 VERDICTS = ("caught-before-run", "caught-during-run", "missed",
             "not-applicable", "false-positive", "tool-absent")
 SCOPED_KINDS = ("fs-scope", "net-scope", "env")
 PORTS_IN_USE: list[Any] = []          # every listener port, masked in evidence
-EXT = {"velaris": ".vel", "deno": ".js", "python": ".py"}
+EXT = {"sabline": ".vel", "deno": ".js", "python": ".py"}
 
 sys.path.insert(0, ROOT)
-import velaris  # noqa: E402  (the checkout being benchmarked)
+import sabline  # noqa: E402  (the checkout being benchmarked)
 from suite_dirs import isolate  # noqa: E402
 
 isolate("benchmark")                  # its own directory
-HAVE_PROVER = velaris.HAVE_Z3
+HAVE_PROVER = sabline.HAVE_Z3
 
 
 class CorpusError(Exception):
@@ -424,26 +424,26 @@ def verdict_for(prog: Any, absent: Any, flagged_before: Any, stopped: Any, seen:
 
 # ------------------------------------------------------------ the tools
 
-def velaris_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = None, placed: Any = None) -> dict[str, Any]:
-    path = placed["caller"] if placed else prog["files"]["velaris"]
+def sabline_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = None, placed: Any = None) -> dict[str, Any]:
+    path = placed["caller"] if placed else prog["files"]["sabline"]
     with open(path, encoding="utf-8") as f:
         source = f.read()
-    danger = prog["danger_line"]["velaris"]
+    danger = prog["danger_line"]["sabline"]
     needs = set(needs_filled if needs_filled is not None else prog["needs"])
     need_effects = {n.split(":")[0].split("@")[0] for n in needs}
     need_modules = {n.split(":", 1)[1] for n in needs
                     if n.startswith("ffi:")}
 
-    chk = velaris.check(source, path=path)
+    chk = sabline.check(source, path=path)
     problems = [{"code": p.code, "line": p.line, "message": tidy(p.message)}
                 for p in chk.problems]
     off_line = [p for p in problems if p["line"] != danger]
     if off_line:
-        raise CorpusError(f"{prog['id']}: velaris check reports "
+        raise CorpusError(f"{prog['id']}: sabline check reports "
                           f"{off_line[0]['code']} on line "
                           f"{off_line[0]['line']}, which is not the "
                           f"dangerous line - fix the program")
-    aud = velaris.audit(source, path=path)
+    aud = sabline.audit(source, path=path)
     beyond = [e for e in aud.effects if e not in need_effects]
     modules = list(aud.ffi_modules or [])
     if "ffi" in aud.effects and "ffi" in need_effects and need_modules:
@@ -462,9 +462,9 @@ def velaris_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
     deps = None
     if placed:
         dep = prog["dependency"]
-        found = velaris.deps_diff("dir:" + placed["versions"], dep["old"],
+        found = sabline.deps_diff("dir:" + placed["versions"], dep["old"],
                                   dep["new"])
-        vel = found["velaris"] or {"findings": [], "narrowed": []}
+        vel = found["sabline"] or {"findings": [], "narrowed": []}
         said = []
         for f in vel["findings"]:
             if f["kind"] == "grant":
@@ -492,7 +492,7 @@ def velaris_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
     stopped = False
     seen = None
     if chk.ok:
-        r = velaris.run(source, path=path, allow=needs, stdin=stdin_text,
+        r = sabline.run(source, path=path, allow=needs, stdin=stdin_text,
                         timeout=TIMEOUT, max_memory_mb=MEMORY_MB)
         during = {"ran": True, "ok": r.ok, "exit": r.exit_code,
                   "refused_effect": (tidy(r.refused_effect)
@@ -503,7 +503,7 @@ def velaris_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
                                for p in r.problems],
                   "stdout": tidy(r.output)[:120]}
         stopped = not r.ok
-        seen = observed(prog["kind"], prog["id"], "velaris", work_path,
+        seen = observed(prog["kind"], prog["id"], "sabline", work_path,
                         r.output)
     else:
         during = {"ran": False, "reason": "did not compile"}
@@ -698,7 +698,7 @@ def settle_memory_row(prog: Any, result: Any) -> Any:
     5 s deadline, and which one fires first depends on how loaded the
     machine is - it changed from run to run. Both are the same verdict;
     the evidence records only that it stopped, so two runs on the same
-    machine produce the same file. The Velaris column is left alone:
+    machine produce the same file. The Sabline column is left alone:
     its child process reports E610 or E611, and that is stable."""
     if prog["kind"] != "memory" or result["verdict"] == "tool-absent":
         return result
@@ -840,8 +840,8 @@ def run_program(prog: Any, deno: Any, port: Any, other: Any, workdir: Any) -> An
                 lambda t, tool=tool, work_path=work_path: fill(
                     t, work_path, workdir, port, other, prog["id"], tool,
                     slashes=True))
-        if tool == "velaris":
-            row["tools"][tool] = velaris_row(prog, stdin_text, work_path,
+        if tool == "sabline":
+            row["tools"][tool] = sabline_row(prog, stdin_text, work_path,
                                              needs, placed)
         elif tool == "deno":
             deno_path = None
@@ -921,17 +921,17 @@ KIND_WHY = {
     "env": "env is its own effect since 3.0; the audit lists it beyond the "
            "task's needs, and the run under io refuses env() with E310",
     "dep-net": "the dependency's new version declares net where the old "
-               "one declared nothing, and velaris deps-diff on the two "
+               "one declared nothing, and sabline deps-diff on the two "
                "versions names the grant and the function that gained it "
                "before anything runs; main already declared net for its "
                "own request, so the compiler had nothing to refuse at the "
                "call, and the run refuses the second host with E314",
     "dep-host": "the dependency already had net; its new version names a "
-                "second host, which velaris deps-diff reports as a grant "
+                "second host, which sabline deps-diff reports as a grant "
                 "outside the old version's surface before anything runs, "
                 "and the run refuses it with E314",
     "dep-write": "the dependency already had fs for a read; its new version "
-                 "writes a file, which velaris deps-diff reports as an "
+                 "writes a file, which sabline deps-diff reports as an "
                  "fs:write grant outside the old version's surface before "
                  "anything runs, and the run refuses it under a read-only "
                  "grant",
@@ -943,7 +943,7 @@ KIND_WHY = {
                    "posting the environment value, which is a Secret, does "
                    "not even compile (E560)",
     "hallucinated": "the import names a package that is not vendored in "
-                    "lib/, so velaris check reports E512 on the import line "
+                    "lib/, so sabline check reports E512 on the import line "
                     "before anything runs; the import never resolves, so no "
                     "attacker code could run in its place",
 }
@@ -962,7 +962,7 @@ def results_markdown(meta: Any, categories: Any, rows: Any, summary: Any, tot: A
     L.append("Generated by `python benchmark/run.py`. Do not edit; rerun it.")
     L.append("")
     L.append(f"- Platform: {meta['platform']}")
-    L.append(f"- Velaris {meta['velaris']} from this checkout, prover "
+    L.append(f"- Sabline {meta['sabline']} from this checkout, prover "
              f"{'present' if meta['prover'] else 'ABSENT (promises fall back to runtime checks)'}, "
              f"native compiler {'present' if meta['native'] else 'absent'}")
     L.append(f"- Python {meta['python']}")
@@ -973,8 +973,8 @@ def results_markdown(meta: Any, categories: Any, rows: Any, summary: Any, tot: A
                  "reads tool-absent. Install it (`winget install "
                  "DenoLand.Deno`, or see deno.com) and rerun.")
     L.append(f"- Timeout {TIMEOUT} s for every tool. Memory cap "
-             f"{MEMORY_MB} MB: Velaris via `max_memory_mb` "
-             f"({meta['velaris_memory_cap']} on this platform - enforced on Linux by RLIMIT_AS and on Windows by a job object, best-effort on macOS; where it does not hold the timeout is what stops a memory-growth program); "
+             f"{MEMORY_MB} MB: Sabline via `max_memory_mb` "
+             f"({meta['sabline_memory_cap']} on this platform - enforced on Linux by RLIMIT_AS and on Windows by a job object, best-effort on macOS; where it does not hold the timeout is what stops a memory-growth program); "
              f"Deno via `--v8-flags=--max-old-space-size={MEMORY_MB}`; "
              f"Python via {meta['python_memory_cap']}.")
     L.append(f"- Programs: {len(rows)}"
@@ -995,14 +995,14 @@ def results_markdown(meta: Any, categories: Any, rows: Any, summary: Any, tot: A
 
     def row_line(r: Any) -> str:
         dl = r["danger_line"]
-        where = (f"yes, line {dl['velaris']}/{dl['deno']}/{dl['python']} "
+        where = (f"yes, line {dl['sabline']}/{dl['deno']}/{dl['python']} "
                  f"(vel/js/py)" if r["dangerous"] else "no")
         if r.get("dependency") and r["dangerous"]:
             where += (f" of {r['dependency']['module']} "
                       f"{r['dependency']['new']}")
         return (f"| {r['id']} | `{r.get('category_key', '')}{r['name']}`"
                 f"<br>{r['description']} | {where} | "
-                f"{short_cell(r['tools']['velaris'])} | "
+                f"{short_cell(r['tools']['sabline'])} | "
                 f"{short_cell(r['tools']['deno'])} | "
                 f"{short_cell(r['tools']['python'])} |")
 
@@ -1012,7 +1012,7 @@ def results_markdown(meta: Any, categories: Any, rows: Any, summary: Any, tot: A
             continue
         L.append(f"### {cat['number']}. {cat['title']}")
         L.append("")
-        L.append("| # | Program | Dangerous? | Velaris | Deno | Python |")
+        L.append("| # | Program | Dangerous? | Sabline | Deno | Python |")
         L.append("|---|---|---|---|---|---|")
         for r in mine:
             L.append(row_line(r))
@@ -1023,7 +1023,7 @@ def results_markdown(meta: Any, categories: Any, rows: Any, summary: Any, tot: A
              "(control rows count not-applicable as a pass and are shown "
              "as clean / false-positive).")
     L.append("")
-    L.append("| Category | Velaris | Deno | Python |")
+    L.append("| Category | Sabline | Deno | Python |")
     L.append("|---|---|---|---|")
     for s in summary:
         cells = []
@@ -1076,10 +1076,10 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
     fp = {t: [r for r in control if v(r, t) == "false-positive"]
           for t in TOOLS}
 
-    s = (f"Of the {len(dangerous)} dangerous programs, Velaris caught "
-         f"{len(caught['velaris'])} ({tot['velaris']['caught-before-run']} "
-         f"before running, {tot['velaris']['caught-during-run']} while "
-         f"running) and missed {len(missed['velaris'])}. ")
+    s = (f"Of the {len(dangerous)} dangerous programs, Sabline caught "
+         f"{len(caught['sabline'])} ({tot['sabline']['caught-before-run']} "
+         f"before running, {tot['sabline']['caught-during-run']} while "
+         f"running) and missed {len(missed['sabline'])}. ")
     if deno_absent:
         s += "Deno was not installed, so its column is empty. "
     else:
@@ -1090,7 +1090,7 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
     s += (f"Plain Python caught {len(caught['python'])} (all while running, "
           f"it has no static step) and missed {len(missed['python'])}. ")
     s += (f"On the {len(control)} control programs the false positives "
-          f"were: Velaris {len(fp['velaris'])}, "
+          f"were: Sabline {len(fp['sabline'])}, "
           f"Deno {'-' if deno_absent else len(fp['deno'])}, "
           f"Python {len(fp['python'])}.")
     P.append(s)
@@ -1099,7 +1099,7 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
     scoped = [r for r in dangerous if r["kind"] in SCOPED_KINDS]
     if scoped:
         P.append("Category 11 runs every tool under the narrowest budget "
-                 "its task needs - Velaris with `fs:read:<dir>`, "
+                 "its task needs - Sabline with `fs:read:<dir>`, "
                  "`net:127.0.0.1:<port>` or plain `io`; Deno with the "
                  "matching `--allow-read=<dir>`, `--allow-net=<host:port>` "
                  "or nothing; Python with nothing, since it has no "
@@ -1109,16 +1109,16 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
     if indirect:
         bad = [r for r in indirect if r["dangerous"]]
         good = [r for r in indirect if not r["dangerous"]]
-        before = [r for r in bad if v(r, "velaris") == "caught-before-run"]
-        clean = [r for r in good if v(r, "velaris") == "not-applicable"]
+        before = [r for r in bad if v(r, "sabline") == "caught-before-run"]
+        clean = [r for r in good if v(r, "sabline") == "not-applicable"]
         P.append("Category 12 is indirect authority. In each program the "
                  "calling code is the same file before and after, and only "
                  "the declared surface of a dependency it imports changed "
                  "between two versions of that dependency; the run uses the "
-                 "new version under the budget the task needs. Velaris's "
-                 "static step there is `velaris deps-diff` on the "
+                 "new version under the budget the task needs. Sabline's "
+                 "static step there is `sabline deps-diff` on the "
                  "dependency's two versions, which compares their declared "
-                 "surfaces the way `velaris capabilities check` compares a "
+                 "surfaces the way `sabline capabilities check` compares a "
                  "tree with its baseline. It flagged " + ids(before)
                  + " before running, and "
                  + (f"did not flag the control {ids(clean)}, whose surface "
@@ -1132,28 +1132,28 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
                  "Python have no declared surface per module to compare, so "
                  "their static steps are the same as in every other "
                  "category; for a JavaScript or Python dependency, "
-                 "`velaris deps-diff` reports the surface as unknown. Rows: "
+                 "`sabline deps-diff` reports the surface as unknown. Rows: "
                  + ids(indirect) + ".")
         P.append("")
-    only_velaris = [r for r in dangerous if v(r, "velaris").startswith("caught")
+    only_sabline = [r for r in dangerous if v(r, "sabline").startswith("caught")
                     and v(r, "python") == "missed"
                     and (deno_absent or v(r, "deno") == "missed")]
-    if only_velaris:
+    if only_sabline:
         kinds: dict[str, list[str]] = {}
-        for r in only_velaris:
+        for r in only_sabline:
             kinds.setdefault(r["kind"], []).append(r["id"])
-        s = ("What Velaris caught that " + ("Python" if deno_absent else
-             "neither Deno nor Python") + " did: " + ids(only_velaris) + ". ")
+        s = ("What Sabline caught that " + ("Python" if deno_absent else
+             "neither Deno nor Python") + " did: " + ids(only_sabline) + ". ")
         for kind, lst in kinds.items():
             s += f"{', '.join(lst)}: {KIND_WHY.get(kind, '')}. "
         P.append(s.strip())
         P.append("")
     by_rule = [r for r in dangerous if r["kind"] in ("loop", "memory")
-               and v(r, "velaris") == "caught-before-run"]
+               and v(r, "sabline") == "caught-before-run"]
     if by_rule:
-        P.append("Flagged by Velaris before running through the "
+        P.append("Flagged by Sabline before running through the "
                  "termination rule (SPEC.md 9.5), not through an effect: "
-                 + ids(by_rule) + ". `velaris audit` reports "
+                 + ids(by_rule) + ". `sabline audit` reports "
                  "`loops_unshown` for a loop whose condition has no "
                  "counter moving one step toward an unchanging limit, and "
                  "`check --strict` makes it E612. The rule claims nothing "
@@ -1161,13 +1161,13 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
                  "these happens not to, and the run confirmed it.")
         P.append("")
     runtime_only = [r for r in dangerous if r["kind"] in ("div0", "oob")
-                    and v(r, "velaris") == "caught-during-run"]
+                    and v(r, "sabline") == "caught-during-run"]
     if runtime_only:
-        s = ("Caught by Velaris only while running, where a sibling "
+        s = ("Caught by Sabline only while running, where a sibling "
              "program was caught before: " + ids(runtime_only) + ". ")
         for r in runtime_only:
-            if r.get("velaris_note"):
-                s += f"{r['id']}: {r['velaris_note']}. "
+            if r.get("sabline_note"):
+                s += f"{r['id']}: {r['sabline_note']}. "
         s += ("The runtime check (E403 for a zero divisor, E602 for a read "
               "out of range) stopped each of them; the prover did not "
               "settle the obligation before running. These are the "
@@ -1176,51 +1176,51 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
         P.append(s)
         P.append("")
     if not deno_absent:
-        earlier = [r for r in dangerous if v(r, "velaris") == "caught-before-run"
+        earlier = [r for r in dangerous if v(r, "sabline") == "caught-before-run"
                    and v(r, "deno") == "caught-during-run"
                    and r["kind"] not in ("loop", "memory", "dep-net",
                                          "dep-host", "dep-write")]
         if earlier:
-            P.append("Caught by both, but by Velaris before running and by "
+            P.append("Caught by both, but by Sabline before running and by "
                      "Deno only once the program reached the call: "
                      + ids(earlier) + ". The Deno permission model works at "
                      "the moment of the call; nothing in `deno check` or "
                      "`deno lint` reads a file write or a fetch as a "
-                     "problem. Velaris makes the effect part of the "
-                     "function's signature, so `velaris audit` lists it "
+                     "problem. Sabline makes the effect part of the "
+                     "function's signature, so `sabline audit` lists it "
                      "without running anything.")
             P.append("")
         deno_only = [r for r in dangerous if v(r, "deno").startswith("caught")
-                     and v(r, "velaris") == "missed"]
+                     and v(r, "sabline") == "missed"]
         if deno_only:
-            P.append("Caught by Deno and missed by Velaris: " + ids(deno_only)
+            P.append("Caught by Deno and missed by Sabline: " + ids(deno_only)
                      + ".")
             P.append("")
         deno_before_only = [r for r in dangerous
                             if v(r, "deno") == "caught-before-run"
-                            and v(r, "velaris") == "caught-during-run"]
+                            and v(r, "sabline") == "caught-during-run"]
         if deno_before_only:
-            P.append("Flagged by `deno lint` before running where Velaris "
+            P.append("Flagged by `deno lint` before running where Sabline "
                      "only stopped the program while it ran: "
                      + ids(deno_before_only) + ". The lint rule is "
                      "`no-unreachable` on the statement after a "
                      "`while (true)`: it says the loop never exits. "
-                     "Velaris has no equivalent static warning; its answer "
+                     "Sabline has no equivalent static warning; its answer "
                      "was the time or memory limit.")
             P.append("")
 
-    if missed["velaris"]:
-        s = "What Velaris missed: " + ids(missed["velaris"]) + ". "
-        for r in missed["velaris"]:
-            why = r.get("velaris_miss_reason") or (
+    if missed["sabline"]:
+        s = "What Sabline missed: " + ids(missed["sabline"]) + ". "
+        for r in missed["sabline"]:
+            why = r.get("sabline_miss_reason") or (
                 "it ran to the end under the budget with nothing refused "
                 "and no promise broken")
             s += f"{r['id']} ({r['name']}): {why}. "
         P.append(s.strip())
         P.append("")
-    if fp["velaris"]:
-        P.append("Velaris false positives on the control group: "
-                 + ids(fp["velaris"]) + " - see the evidence column.")
+    if fp["sabline"]:
+        P.append("Sabline false positives on the control group: "
+                 + ids(fp["sabline"]) + " - see the evidence column.")
         P.append("")
 
     # caveats that the table alone does not make obvious
@@ -1232,7 +1232,7 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
                  "are crashes on the input this harness supplies (a zero, a "
                  "non-number, a missing key). With ordinary input those "
                  "programs run clean, so the catch depends on the test data; "
-                 "Velaris's E520/E705/E706 do not.")
+                 "Sabline's E520/E705/E706 do not.")
     if not deno_absent:
         nan_rows = [r for r in dangerous if r["kind"] in ("div0", "oob",
                                                           "ignored", "overflow")
@@ -1251,7 +1251,7 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
                      "ordinary exception there) and exited 0. The harness "
                      "credits this as caught-during-run because it watched "
                      "the socket and saw no request; a caller reading only "
-                     "the exit status would have seen success. A Velaris "
+                     "the exit status would have seen success. A Sabline "
                      "refusal (E310/E311) cannot be caught by the program.")
     timeouts = [r for r in dangerous if r["kind"] in ("loop", "memory")
                 and (v(r, "python") == "caught-during-run"
@@ -1259,19 +1259,19 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
     if timeouts:
         C.append("For Deno and Python the timeout in categories 7 and 8 is "
                  "the harness's own `subprocess` timeout, not a feature of "
-                 "the tool; Velaris's is the `timeout=` argument of "
-                 "`velaris.run`. The difference is who owns the limit, not "
+                 "the tool; Sabline's is the `timeout=` argument of "
+                 "`sabline.run`. The difference is who owns the limit, not "
                  "whether it fired.")
     mem_by_timeout = [r for r in dangerous if r["kind"] == "memory"
-                      and r["tools"]["velaris"]["during"].get("timed_out")]
+                      and r["tools"]["sabline"]["during"].get("timed_out")]
     if mem_by_timeout:
-        C.append(f"In {ids(mem_by_timeout)} Velaris stopped the program with "
+        C.append(f"In {ids(mem_by_timeout)} Sabline stopped the program with "
                  "the timeout (E610), not the memory cap: the interpreter "
                  "allocates slowly enough that 5 seconds did not reach "
                  f"{MEMORY_MB} MB"
                  + (f", and on this platform the cap is "
-                    f"{meta['velaris_memory_cap']} in any case"
-                    if meta["velaris_memory_cap"] != "enforced" else "")
+                    f"{meta['sabline_memory_cap']} in any case"
+                    if meta["sabline_memory_cap"] != "enforced" else "")
                  + ". For Deno and Python the cap and the deadline race, "
                  "and which fires first varies with the machine's load, "
                  "so those cells record only that the program was "
@@ -1292,7 +1292,7 @@ def narrative(meta: Any, rows: Any, tot: Any) -> Any:
 
 def print_table(rows: Any) -> None:
     w = max(len(r["id"]) + len(r["name"]) + 1 for r in rows)
-    print(f"{'program':<{w}}  {'velaris':<20} {'deno':<20} {'python':<20}")
+    print(f"{'program':<{w}}  {'sabline':<20} {'deno':<20} {'python':<20}")
     for r in rows:
         name = f"{r['id']} {r['name']}"
         print(f"{name:<{w}}  " + " ".join(
@@ -1324,9 +1324,9 @@ def compare(rows: Any, path: Any) -> Any:
             # and the runtime check stops the program instead: the same
             # program, caught later. Named, not hidden, and not a failure
             # when the prover is the only thing that differs.
-            if (t == "velaris" and not HAVE_PROVER and recorded_with_prover
+            if (t == "sabline" and not HAVE_PROVER and recorded_with_prover
                     and b == "caught-before-run" and a == "caught-during-run"):
-                print(f"  {r['id']} velaris: caught while running here; "
+                print(f"  {r['id']} sabline: caught while running here; "
                       f"recorded as caught before running with the prover "
                       f"(prover absent, expected)", file=sys.stderr)
                 continue
@@ -1370,7 +1370,7 @@ def main(argv: Any = None) -> int:
     server, port = start_listener()
     other_server, other = start_listener()   # a host no task needs
     PORTS_IN_USE[:] = [port, other]
-    workdir = tempfile.mkdtemp(prefix="velaris-bench-")
+    workdir = tempfile.mkdtemp(prefix="sabline-bench-")
     os.makedirs(os.path.join(workdir, "granted"), exist_ok=True)
     os.makedirs(os.path.join(workdir, "outside"), exist_ok=True)
     with open(os.path.join(workdir, "granted", "notes.txt"), "w") as fh:
@@ -1388,7 +1388,7 @@ def main(argv: Any = None) -> int:
     with open(os.path.join(workdir, "granted", "service.pem"), "w") as fh:
         fh.write("-----BEGIN PRIVATE KEY-----\nbench-not-a-real-key\n"
                  "-----END PRIVATE KEY-----\n")
-    os.environ["BENCH_SECRET"] = SECRET      # velaris.run's child inherits
+    os.environ["BENCH_SECRET"] = SECRET      # sabline.run's child inherits
     try:
         import z3  # noqa: F401
         prover = True
@@ -1399,7 +1399,7 @@ def main(argv: Any = None) -> int:
         native = True
     except ImportError:
         native = False
-    meta = {"velaris": velaris.VERSION,
+    meta = {"sabline": sabline.VERSION,
             "python": platform.python_version(),
             "deno": deno_version,
             "platform": f"{platform.system()} {platform.release()} "
@@ -1408,8 +1408,8 @@ def main(argv: Any = None) -> int:
             # RLIMIT_AS on POSIX, a job object on Windows: enforced on
             # Linux and on Windows, best-effort on macOS. The compiler
             # answers for itself rather than the harness guessing.
-            "velaris_memory_cap": (
-                "enforced" if velaris.memory_cap_is_enforced()
+            "sabline_memory_cap": (
+                "enforced" if sabline.memory_cap_is_enforced()
                 else ("best-effort" if sys.platform == "darwin"
                       else "not applied")),
             "python_memory_cap": None,
@@ -1427,7 +1427,7 @@ def main(argv: Any = None) -> int:
                 print("\ncorpus error:", e, file=sys.stderr)
                 return 2
             row["category_key"] = prog["category_key"] + "/"
-            for key in ("velaris_miss_reason", "velaris_note"):
+            for key in ("sabline_miss_reason", "sabline_note"):
                 if prog.get(key):
                     row[key] = prog[key]
             rows.append(row)
@@ -1443,7 +1443,7 @@ def main(argv: Any = None) -> int:
 
     summary = summarise(categories, rows)
     tot = totals(rows)
-    result = {"schema": "velaris.benchmark/1", "meta": meta,
+    result = {"schema": "sabline.benchmark/1", "meta": meta,
               "programs": rows, "summary": summary, "totals": tot}
     # compared before a full run rewrites the file: until 7.1 --check
     # read results.json after this run had written it, and a full run

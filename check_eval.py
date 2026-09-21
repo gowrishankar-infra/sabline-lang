@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""velaris eval (8.3): a run under the profile holds it, and every attempt to
+"""sabline eval (8.3): a run under the profile holds it, and every attempt to
 relax the profile from the command line is refused.
 
     python check_eval.py
@@ -16,8 +16,8 @@ What it holds, each against the command line as a user runs it:
              flag given twice. Each exits 2 and writes no receipt.
   receipt    a run's receipt names the new predicate type, the budget it
              was given, the profile's limits, the confinement level eval
-             reported and the profile; it validates against velaris-spec's
-             schema when that is here, and `velaris verify` verifies it
+             reported and the profile; it validates against sabline-spec's
+             schema when that is here, and `sabline verify` verifies it
   stops      a stop file asked for mid-loop ends the run at a stop point
              with E615 and a complete receipt; a stop the worker cannot see
              (a compile stalled in the checker) ends with the worker killed
@@ -46,12 +46,12 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
-from velaris import confine  # noqa: E402
+import sabline  # noqa: E402
+from sabline import confine  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_eval")
-VELARIS = [sys.executable, str(HERE / "velaris.py")]
+SABLINE = [sys.executable, str(HERE / "sabline.py")]
 PASSED = FAILED = SKIPPED = 0
 
 HELLO = 'fn main() uses io {\n    print("args " + to_text(args()))\n}\n'
@@ -87,7 +87,7 @@ def skip(label: str, why: str) -> None:
 
 def run_eval(*args: str, stdin: str = "", timeout: float = 300,
              **kw: Any) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(VELARIS + ["eval", *args], capture_output=True,
+    return subprocess.run(SABLINE + ["eval", *args], capture_output=True,
                           text=True, encoding="utf-8", errors="replace",
                           input=stdin, timeout=timeout, cwd=str(WORK), **kw)
 
@@ -100,7 +100,7 @@ def receipt_of(name: str) -> dict[str, Any]:
 
 def expected_level() -> set[str]:
     """The level this platform should give a run under the profile, as
-    velaris/confine.py names levels from 8.4: full where Landlock and
+    sabline/confine.py names levels from 8.4: full where Landlock and
     seccomp are both there, partial on macOS and on Windows. Never none:
     the profile refuses to run there."""
     if sys.platform.startswith("linux"):
@@ -196,9 +196,9 @@ def receipts() -> None:
     ok("a clean run exits 0 and writes its receipt",
        done.returncode == 0 and report.get("delivered") is True and rec,
        done.stderr[-300:])
-    ok("...a Statement of receipt/v1 at velaris-lang.dev",
-       rec.get("predicateType") == velaris.RECEIPT_PREDICATE_TYPE
-       == "https://velaris-lang.dev/receipt/v1")
+    ok("...a Statement of receipt/v1 at sabline.dev",
+       rec.get("predicateType") == sabline.RECEIPT_PREDICATE_TYPE
+       == "https://sabline.dev/receipt/v1")
     ok("...whose budget is what the run was given, io",
        p.get("budget") == "io", p.get("budget"))
     ok("...whose limits are the profile's defaults, 30 s and 512 MB",
@@ -212,25 +212,25 @@ def receipts() -> None:
        f"{params.get('confinement')} not in {expected_level()}")
     ok("...complete, ok, and no stop", p.get("complete") is True
        and p.get("exit", {}).get("outcome") == "ok" and "stop" not in p, p)
-    verified = subprocess.run(VELARIS + ["verify", "hello.json"],
+    verified = subprocess.run(SABLINE + ["verify", "hello.json"],
                               capture_output=True, text=True, cwd=str(WORK))
-    ok("velaris verify verifies it against the program's bytes",
+    ok("sabline verify verifies it against the program's bytes",
        verified.returncode == 0, verified.stdout[-400:])
     spec_schema = next((s for s in (
-        HERE / "velaris-spec" / "schemas" / "receipt-predicate.v1.schema.json",
-        HERE.parent / "velaris-spec" / "schemas"
+        HERE / "sabline-spec" / "schemas" / "receipt-predicate.v1.schema.json",
+        HERE.parent / "sabline-spec" / "schemas"
         / "receipt-predicate.v1.schema.json") if s.exists()), None)
     try:
         from jsonschema import Draft202012Validator
     except ImportError:
         Draft202012Validator = None  # type: ignore[assignment, misc]  # jsonschema is optional
     if spec_schema is None or Draft202012Validator is None:
-        skip("the receipt validates against velaris-spec's schema",
-             "velaris-spec or jsonschema is not here")
+        skip("the receipt validates against sabline-spec's schema",
+             "sabline-spec or jsonschema is not here")
     else:
         errors = [e.message for e in Draft202012Validator(json.loads(
             spec_schema.read_text(encoding="utf-8"))).iter_errors(p)]
-        ok("the receipt validates against velaris-spec's schema", not errors,
+        ok("the receipt validates against sabline-spec's schema", not errors,
            errors[:3])
     (WORK / "data" / "in.txt").write_text("x", encoding="utf-8")
     done = run_eval("hello.vel", "--receipt", "scoped.json", "--allow",
@@ -304,7 +304,7 @@ def stops() -> None:
     ok("the time limit ends a run with E610 and an incomplete receipt",
        p.get("exit", {}).get("outcome") == "timeout"
        and p.get("complete") is False, p.get("exit"))
-    if velaris.memory_cap_is_enforced():
+    if sabline.memory_cap_is_enforced():
         (WORK / "grow.vel").write_text(GROW, encoding="utf-8")
         done = run_eval("grow.vel", "--receipt", "grow.json",
                         "--max-memory-mb", "150", "--timeout", "120")
@@ -317,7 +317,7 @@ def stops() -> None:
     flags: dict[str, Any] = {}
     if os.name == "nt":
         flags["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]  # Windows only
-    proc = subprocess.Popen(VELARIS + ["eval", "spin.vel", "--receipt",
+    proc = subprocess.Popen(SABLINE + ["eval", "spin.vel", "--receipt",
                                        "signal.json", "--timeout", "120",
                                        "--json"],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -376,8 +376,8 @@ def stream() -> None:
        and kinds[-1:] == ["receipt"]
        and [x.get("seq") for x in posts] == list(range(1, len(posts) + 1)),
        kinds)
-    ok("...each marked velaris.receipt-stream/1 with one run id",
-       all(x.get("schema") == "velaris.receipt-stream/1" for x in posts)
+    ok("...each marked sabline.receipt-stream/1 with one run id",
+       all(x.get("schema") == "sabline.receipt-stream/1" for x in posts)
        and len({x.get("run") for x in posts}) == 1)
     ok("...and the receipt sent is the receipt written",
        bool(posts) and posts[-1].get("statement") == receipt_of("both.json"))
@@ -392,7 +392,7 @@ def confinement() -> None:
     print()
     print("confinement")
     print("-" * 62)
-    done = subprocess.run(VELARIS + ["eval", "--confinement-probe", "--json"],
+    done = subprocess.run(SABLINE + ["eval", "--confinement-probe", "--json"],
                           capture_output=True, text=True, cwd=str(WORK),
                           timeout=300)
     report = json.loads(done.stdout or "{}")
@@ -421,10 +421,10 @@ def windows_job() -> None:
     if os.name != "nt":
         skip(label, "Windows only")
         return
-    if not velaris.memory_cap_is_enforced():
+    if not sabline.memory_cap_is_enforced():
         skip(label, "no job object can be made on this machine")
         return
-    from velaris.library import _spawn_capped
+    from sabline.library import _spawn_capped
     child = WORK / "spawns.py"
     child.write_text(
         "import subprocess, sys\n"

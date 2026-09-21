@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>The Velaris language reference - Velaris 8.5.0</title>
-<meta name="description" content="This is the specification: what Velaris means, precisely. It is not a tutorial (TUTORIAL.md is), and it does not teach programming. It exists so that anyone ...">
-<meta name="velaris-version" content="8.5.0">
-<link rel="canonical" href="https://velaris-lang.dev/spec.html">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<title>The Sabline language reference - Sabline 8.6.0</title>
+<meta name="description" content="This is the specification: what Sabline means, precisely. It is not a tutorial (TUTORIAL.md is), and it does not teach programming. It exists so that anyone ...">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/spec.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
 </head>
@@ -17,8 +17,8 @@
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,26 +44,26 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
 <li><span class="sec-label">Spec</span>
-<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
-<h1 id="the-velaris-language-reference">The Velaris language reference</h1>
-<p>This is the specification: what Velaris means, precisely. It is not a
+<h1 id="the-sabline-language-reference">The Sabline language reference</h1>
+<p>This is the specification: what Sabline means, precisely. It is not a
 tutorial (<a href="tutorial.html">TUTORIAL.md</a> is), and it does not teach
 programming. It exists so that anyone deciding whether to depend on
 this language can find out exactly what it promises — and what it
 does not.</p>
-<p>Version 8.5.0. Where this document and the implementation disagree,
+<p>Version 8.6.0. Where this document and the implementation disagree,
 that is a bug in one of them; please report it.</p>
 <h2 id="1-programs">1. Programs <a class="anchor" href="#1-programs" aria-label="Link to this section">#</a></h2>
 <p>A program is one or more files of UTF-8 text with the extension
@@ -194,7 +194,7 @@ because the obvious alternative is wrong. It is tempting to let a
 comparison give an ordinary <code>Bool</code> — a comparison is one bit, and <code>if key == ""</code> is a natural thing to write. But a comparison is not one bit
 once it is in a loop. With <code>length</code> and <code>code_at</code>, <code>key == c</code> is a
 character-by-character oracle:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">let</span> at = <span class="n">0</span>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">let</span> at = <span class="n">0</span>
 <span class="k">while</span> at &lt; <span class="n">3</span> {
     <span class="k">for</span> c in alphabet {
         <span class="k">if</span> code_at(key, at) == code_at(c, <span class="n">0</span>) {   <span class="c">// E563</span>
@@ -211,7 +211,7 @@ precisely so that acting on it is refused.</p>
 <p><strong>What it costs, and what to write instead.</strong> A program cannot check
 whether its own API key is empty without saying so. Saying so is
 <code>declassify</code>:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">let</span> empty = declassify(key == <span class="s">""</span>,
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">let</span> empty = declassify(key == <span class="s">""</span>,
                        <span class="s">"whether a key is set at all is not the key"</span>)
 <span class="k">if</span> empty { ... }</code></pre></div>
 <p>which needs the effect, the grant and a written reason, and is named in
@@ -226,7 +226,7 @@ run rather than reading a secret out in a loop, and the message it
 prints redacts the values whose type is secret. THREAT_MODEL.md lists
 the bit per run that remains.</p>
 <p><strong>What is still not bounded.</strong> This bounds what a program can <em>do</em> with
-a secret it cannot see. It does not make Velaris non-interfering, and
+a secret it cannot see. It does not make Sabline non-interfering, and
 this document does not claim that it does: a program still chooses how
 long to run and whether to stop, and an operator who runs the same
 program repeatedly is outside anything stated here. THREAT_MODEL.md
@@ -237,14 +237,14 @@ gives back the <code>T</code>. It is the only way, and it says so three times:</
 <li>the function doing it needs <code>uses declassify</code>, checked across the
 whole call graph like any other effect (§7, E300);</li>
 <li><code>reason</code> must be written as text in the call, not built while
-running, so that <code>velaris audit</code> can report it without running the
+running, so that <code>sabline audit</code> can report it without running the
 program (E561 - and E561 again for an empty reason, or for something
 that is not a Secret);</li>
 <li>the operator's budget must grant <code>declassify</code>, or the call is refused
 at the moment it happens (E310, §7.1), like any other effect.</li>
 </ul>
 <p>So a program that can let a secret out says so in its type; the audit
-names every place it does and the reason given (velaris-spec §8.6, the
+names every place it does and the reason given (sabline-spec §8.6, the
 <code>secrets</code> field); and an operator can run the program without letting
 it.</p>
 <p><strong>A MAC under a secret key (8.5).</strong> <code>hmac_sha256(key, message)</code> and
@@ -266,7 +266,7 @@ do with these that it could already do without them.</p>
 distinction with no runtime representation, so it costs nothing, and
 <code>declassify</code> evaluates to the value itself. Two places print values a
 program did not ask them to print, and both write <code>&lt;secret&gt;</code> instead:
-<code>velaris trace</code>, and the message of a broken <code>requires</code> or <code>ensures</code>
+<code>sabline trace</code>, and the message of a broken <code>requires</code> or <code>ensures</code>
 (E600, E601).</p>
 <h2 id="4-numbers">4. Numbers <a class="anchor" href="#4-numbers" aria-label="Link to this section">#</a></h2>
 <h3 id="41-whole-numbers">4.1 Whole numbers <a class="anchor" href="#41-whole-numbers" aria-label="Link to this section">#</a></h3>
@@ -300,7 +300,7 @@ units_of(m)               its minor units, as an Int
 with_units(m, n)          n minor units, in m's currency</code></pre></div>
 <p><code>money</code> and <code>parse_money</code> take the currency as text <strong>written in the
 call</strong>, and it must be one the implementation knows
-(<code>velaris.CURRENCIES</code>, §4.4); anything else is E551. A function may be generic in
+(<code>sabline.CURRENCIES</code>, §4.4); anything else is E551. A function may be generic in
 a currency: <code>fn f(m: Money of C) -&gt; Money of C for any C</code>.</p>
 <p><strong>Arithmetic.</strong> Two amounts in the same currency add, subtract and
 compare. An amount multiplies by an <code>Int</code>. Everything else is refused
@@ -331,12 +331,12 @@ fewer digits after the point; it fails on anything else, including a
 text with more digits than the currency has.</p>
 <p>Dividing an amount into parts that still add up to it is
 <code>money.split(amount, n)</code> from <code>stdlib/money.vel</code>, which is written in
-Velaris so that its promises are proven with the program that imports
+Sabline so that its promises are proven with the program that imports
 it (§9.2): <code>length(result) == n</code>, <code>units_of(result) == units_of(amount)</code>,
 and no part with a sign the amount does not have.</p>
 <h3 id="44-which-currencies">4.4 Which currencies <a class="anchor" href="#44-which-currencies" aria-label="Link to this section">#</a></h3>
 <p>An implementation carries a table of currency codes and how many digits
-each has after the point: <code>velaris.CURRENCIES</code>, which today
+each has after the point: <code>sabline.CURRENCIES</code>, which today
 holds 21 of them — 2 digits for INR, USD, EUR and most others, 0 for JPY
 and KRW, 3 for KWD, BHD, JOD and OMR. <strong>It is not exhaustive.</strong> A
 currency outside it is refused (E551) rather than assumed to have two
@@ -367,7 +367,7 @@ value, raises a language error with a code, or fails in the sense of
 §8.</p>
 <h2 id="7-effects">7. Effects <a class="anchor" href="#7-effects" aria-label="Link to this section">#</a></h2>
 <p>A function declares what it may do:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> save(path: Text, body: Text) <span class="k">uses</span> fs { ... }</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> save(path: Text, body: Text) <span class="k">uses</span> fs { ... }</code></pre></div>
 <p>The effects are <code>io</code> (the console: <code>print</code>, <code>read_line</code>, <code>args</code>),
 <code>env</code> (environment variables, through <code>env()</code>), <code>fs</code> (files), <code>net</code>
 (network), <code>clock</code> (the time), <code>rand</code> (randomness), <code>ffi</code> (calling the
@@ -394,8 +394,8 @@ or <code>allow=</code> in the library, and enforced by the runtime at the moment
 an effect is attempted, whatever the source declares. A refusal stops
 the program and cannot be caught.</p>
 <p>An operator who writes no budget gets <code>io</code> - the console, and nothing
-else. That is the default in 5.0 for <code>velaris file.vel</code>,
-<code>velaris.run(source)</code> with no <code>allow</code>, <code>velaris.Pool(...)</code> with no
+else. That is the default in 5.0 for <code>sabline file.vel</code>,
+<code>sabline.run(source)</code> with no <code>allow</code>, <code>sabline.Pool(...)</code> with no
 <code>allow</code>, and the ceilings of both doors. Before 5.0 the first three
 granted all seven effects. <code>--deny</code> narrows whatever <code>--allow</code> gave,
 so a denial alone narrows <code>io</code>; <code>--allow all</code> is a command-line
@@ -443,7 +443,7 @@ directory is that directory's content; a file system changed by another
 process between the check and the open is outside the model; where a
 granted host name resolves is DNS's business.</p>
 <h3 id="72-tools-85">7.2 Tools (8.5) <a class="anchor" href="#72-tools-85" aria-label="Link to this section">#</a></h3>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> mail(to: Text) -&gt; Text <span class="k">uses</span> tool <span class="k">or</span> <span class="k">fail</span> {
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> mail(to: Text) -&gt; Text <span class="k">uses</span> tool <span class="k">or</span> <span class="k">fail</span> {
     <span class="k">return</span> <span class="k">try</span> tool(<span class="s">"send_email"</span>, json_of({<span class="s">"to"</span>: to, <span class="s">"body"</span>: <span class="s">"hello"</span>}))
 }</code></pre></div>
 <p><code>tool(name, arguments)</code> calls a tool the host process offers and gives
@@ -452,8 +452,8 @@ back its result as <code>Text</code>; <code>tool_secret</code> is the same call 
 <code>tool</code> effect and can fail: a tool that reports an error is a failure the
 caller handles, like a request that does not get through.</p>
 <p>Which tools exist is not the language's to say. A run started with
-<code>--tools</code> is given a manifest (<code>velaris.tools/1</code>,
-velaris-spec §8.10) naming each tool, a JSON Schema for its arguments,
+<code>--tools</code> is given a manifest (<code>sabline.tools/1</code>,
+sabline-spec §8.10) naming each tool, a JSON Schema for its arguments,
 whether its result is secret, what a call costs, and the most calls and
 cost one run may spend; with no manifest there is no tool, and a call is
 E320. A call is made only when all of these hold, and is otherwise a
@@ -482,10 +482,10 @@ other: nothing yet marks it as the host's words rather than the
 program's own. That mark, <code>Untrusted of T</code>, is 9.0's.</p>
 <h2 id="8-failure">8. Failure <a class="anchor" href="#8-failure" aria-label="Link to this section">#</a></h2>
 <p>A function that can fail says so:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> parse(t: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> { ... }</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> parse(t: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> { ... }</code></pre></div>
 <p>Inside it, <code>fail "reason"</code> stops that call. A caller must handle the
 possibility, in one of two ways:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">check</span> parse(t) { ok n { ... } <span class="k">fail</span> why { ... } }   <span class="c">// handle here</span>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">check</span> parse(t) { ok n { ... } <span class="k">fail</span> why { ... } }   <span class="c">// handle here</span>
 <span class="k">let</span> n = <span class="k">try</span> parse(t)                               <span class="c">// pass it up</span></code></pre></div>
 <p><code>try</code> is only allowed inside a function that itself says <code>or fail</code>.
 Ignoring a fallible call is a compile error (E520). <code>main</code> cannot
@@ -502,7 +502,7 @@ prover's domain (§9.4), and <code>get_or(m, k, default)</code> gives a total ma
 lookup.</p>
 <h2 id="9-contracts-and-proof">9. Contracts and proof <a class="anchor" href="#9-contracts-and-proof" aria-label="Link to this section">#</a></h2>
 <h3 id="91-what-you-write">9.1 What you write <a class="anchor" href="#91-what-you-write" aria-label="Link to this section">#</a></h3>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">fn</span> f(x: Int) -&gt; Int
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> f(x: Int) -&gt; Int
     <span class="k">requires</span> x &gt;= <span class="n">0</span>            <span class="c">// what the caller must ensure</span>
     <span class="k">ensures</span> result &gt;= x        <span class="c">// what f guarantees in return</span>
 { ... }
@@ -513,7 +513,7 @@ lookup.</p>
 <p>Contract expressions must be pure and may call pure functions.
 <code>result</code> names the return value in <code>ensures</code>.</p>
 <h3 id="92-what-proven-means">9.2 What "proven" means <a class="anchor" href="#92-what-proven-means" aria-label="Link to this section">#</a></h3>
-<p>When Velaris says a promise is <strong>proven</strong>, it means: for every input
+<p>When Sabline says a promise is <strong>proven</strong>, it means: for every input
 permitted by the <code>requires</code>, the <code>ensures</code> holds — established by the
 Z3 theorem prover before the program runs, using the semantics in this
 document, with no execution and no sampling.</p>
@@ -523,7 +523,7 @@ counterexample involves no summarized calls, so a reported violation is
 always literally realisable.</p>
 <p>When neither can be established, the promise is <strong>checked at runtime</strong>
 instead, and violating it is an error when it happens (E600, E601).
-<code>velaris explain</code> reports which of the three applies to each function.
+<code>sabline explain</code> reports which of the three applies to each function.
 The compiler never reports a promise as proven when it was in fact
 left to a runtime check.</p>
 <h3 id="93-what-is-proven-and-what-is-not">9.3 What is proven, and what is not <a class="anchor" href="#93-what-is-proven-and-what-is-not" aria-label="Link to this section">#</a></h3>
@@ -559,7 +559,7 @@ budget. Loop invariants are inferred only for simple counter bounds;
 anything richer must be written.</p>
 <p>A proof gets <strong>120 seconds</strong> when the function mentions <code>Float</code> and
 <strong>3 seconds</strong> otherwise, and either can be replaced for one run with
-<code>--proof-timeout SECONDS</code> or <code>VELARIS_PROOF_TIMEOUT</code>. A proof that
+<code>--proof-timeout SECONDS</code> or <code>SABLINE_PROOF_TIMEOUT</code>. A proof that
 spends its budget without an answer is <strong>abandoned</strong>, and an
 implementation must say so: reporting it the same way it reports a
 promise the prover looked at and found nothing wrong is a soundness
@@ -599,15 +599,15 @@ end when run.</p>
 rewrites it; ARCHITECTURE.md) and goes through it unchanged: <code>for i in a to b</code> is shown to end unless the body
 assigns <code>i</code> or changes <code>b</code>, and <code>for x in xs</code> unless the body assigns
 <code>xs</code>.</p>
-<p>The verdict is reported by <code>velaris explain</code> ("loops: 2 terminate, 1 not
-shown") and by <code>velaris audit</code> (<code>loops_unshown</code> per function, and a
+<p>The verdict is reported by <code>sabline explain</code> ("loops: 2 terminate, 1 not
+shown") and by <code>sabline audit</code> (<code>loops_unshown</code> per function, and a
 warning naming the functions). It is an error only under
-<code>velaris check --strict</code>, as E612; without the flag a loop whose end is
-not shown is not a problem, and the time limit in <code>velaris.run</code> remains
+<code>sabline check --strict</code>, as E612; without the flag a loop whose end is
+not shown is not a problem, and the time limit in <code>sabline.run</code> remains
 the guard against a loop that never ends. The compiler never reports
 <code>terminates</code> for a shape outside the rule above.</p>
 <h2 id="10-modules">10. Modules <a class="anchor" href="#10-modules" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"std.vel"</span>                 <span class="c">// names merge into this file</span>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"std.vel"</span>                 <span class="c">// names merge into this file</span>
 <span class="k">import</span> <span class="s">"lib/geo.vel"</span> as geo      <span class="c">// names live behind geo.</span></code></pre></div>
 <p>A plain import merges the imported file's functions and records, with
 duplicate names rejected. A named import prefixes that file's
@@ -682,7 +682,7 @@ treats them as unknown. What the language still guarantees is that
 crossing it is <strong>visible</strong> — a function that reaches the host says
 <code>uses ffi</code>, and a pure function cannot.</p>
 <h2 id="13-concurrency">13. Concurrency <a class="anchor" href="#13-concurrency" aria-label="Link to this section">#</a></h2>
-<p><strong>Velaris is single-threaded, deliberately, and has no concurrency
+<p><strong>Sabline is single-threaded, deliberately, and has no concurrency
 model.</strong> There are no threads, no async functions, no channels, and no
 parallel execution. A program is one sequence of steps.</p>
 <p>This is a position, not an oversight. The language's central claim is
@@ -692,7 +692,7 @@ signature of the current design cannot express. Adding threads without
 extending the effect system to describe them would break the one
 promise the language exists to make.</p>
 <p>If concurrency is added, it will be as an effect with rules stated
-here first. Until then, a Velaris program that needs parallelism should
+here first. Until then, a Sabline program that needs parallelism should
 get it outside the program: run several, or reach the host language
 through <code>uses ffi</code> and accept that what happens there is unverified.</p>
 <h2 id="12a-function-values-and-capture">12a. Function values and capture <a class="anchor" href="#12a-function-values-and-capture" aria-label="Link to this section">#</a></h2>
@@ -710,7 +710,7 @@ function value fall back to runtime checks rather than being proven.
 That is the conservative direction, and a false promise on such a
 function is still caught while running.</p>
 <h2 id="13a-early-loop-exit-considered-and-answered">13a. Early loop exit: considered, and answered <a class="anchor" href="#13a-early-loop-exit-considered-and-answered" aria-label="Link to this section">#</a></h2>
-<p>Velaris has no <code>break</code> or <code>continue</code>. An adversarial review argued the
+<p>Sabline has no <code>break</code> or <code>continue</code>. An adversarial review argued the
 absence <em>hurts</em> the invariant story it presumably protects: exiting via
 a flag (<code>while going and i &lt; n</code>) makes invariants harder to state, not
 easier. That criticism is fair, and this section is the considered
@@ -726,7 +726,7 @@ loop proof would weaken from "the condition is false" to "the condition
 is false OR any break fired", which in practice abandons most of them.</p>
 <p>The invariant-friendly alternative is to put the exit in the loop test,
 where the prover can see it:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Velaris</span></div><pre tabindex="0"><code><span class="k">while</span> i &lt; n <span class="k">and</span> <span class="k">not</span> found {
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">while</span> i &lt; n <span class="k">and</span> <span class="k">not</span> found {
     ...
 }
 <span class="c">// afterward: not (i &lt; n and not found)</span>
@@ -744,7 +744,7 @@ naming where to read more (<code>reference:</code>), which <code>--json</code> a
 as a field. <code>--json</code> emits them as structured data. The complete list is
 generated from the compiler source itself and published with the
 documentation.</p>
-<p><code>velaris check</code> reports every error it can find in one pass, recovering
+<p><code>sabline check</code> reports every error it can find in one pass, recovering
 at statement boundaries rather than stopping at the first. <strong>The first
 error reported is authoritative</strong>: it is the one a run of a program with
 only that error would give, and the errors after it may be its
@@ -758,7 +758,7 @@ implementation's fault-injection hook) — E4xx arity and runtime arithmetic, E5
 types — E56x among them, for a Secret that must not escape (§3.1) — E6xx
 runtime contract violations, E7xx proof results.</p>
 <h2 id="15-versioning-and-stability">15. Versioning and stability <a class="anchor" href="#15-versioning-and-stability" aria-label="Link to this section">#</a></h2>
-<p>Velaris follows semantic versioning. Breaking changes happen only at
+<p>Sabline follows semantic versioning. Breaking changes happen only at
 major versions; 2.0 made four builtins fallible and the compiler
 pointed at every call site that needed updating. Minor versions add;
 patch versions fix. <a href="stability.html">STABILITY.md</a> states what that
@@ -783,7 +783,7 @@ in Python, which is clear to read and slower than a production
 compiler.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/SPEC.md">SPEC.md</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/SPEC.md">SPEC.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#1-programs">1. Programs</a></li><li><a href="#2-lexical-structure">2. Lexical structure</a></li><li><a href="#3-types">3. Types</a><ul><li><a href="#31-secret-of-t">3.1 Secret of T</a></li></ul></li><li><a href="#4-numbers">4. Numbers</a><ul><li><a href="#41-whole-numbers">4.1 Whole numbers</a></li><li><a href="#42-decimals">4.2 Decimals</a></li><li><a href="#43-money">4.3 Money</a></li><li><a href="#44-which-currencies">4.4 Which currencies</a></li><li><a href="#45-text">4.5 Text</a></li></ul></li><li><a href="#5-values-and-mutation">5. Values and mutation</a></li><li><a href="#6-evaluation">6. Evaluation</a></li><li><a href="#7-effects">7. Effects</a><ul><li><a href="#71-the-budget">7.1 The budget</a></li><li><a href="#72-tools-85">7.2 Tools (8.5)</a></li></ul></li><li><a href="#8-failure">8. Failure</a></li><li><a href="#9-contracts-and-proof">9. Contracts and proof</a><ul><li><a href="#91-what-you-write">9.1 What you write</a></li><li><a href="#92-what-proven-means">9.2 What &quot;proven&quot; means</a></li><li><a href="#93-what-is-proven-and-what-is-not">9.3 What is proven, and what is not</a></li><li><a href="#94-calls-and-the-soundness-rule">9.4 Calls, and the soundness rule</a></li><li><a href="#95-which-loops-are-shown-to-end">9.5 Which loops are shown to end</a></li></ul></li><li><a href="#10-modules">10. Modules</a><ul><li><a href="#101-your-names-and-the-builtins">10.1 Your names and the builtins</a></li></ul></li><li><a href="#11-compilation-and-execution">11. Compilation and execution</a></li><li><a href="#12-the-host-language">12. The host language</a></li><li><a href="#13-concurrency">13. Concurrency</a></li><li><a href="#12a-function-values-and-capture">12a. Function values and capture</a></li><li><a href="#13a-early-loop-exit-considered-and-answered">13a. Early loop exit: considered, and answered</a></li><li><a href="#14-errors">14. Errors</a></li><li><a href="#15-versioning-and-stability">15. Versioning and stability</a></li><li><a href="#16-what-this-language-does-not-have">16. What this language does not have</a></li></ul></nav>

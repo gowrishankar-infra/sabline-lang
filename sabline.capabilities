@@ -1,0 +1,2039 @@
+{
+  "schema": "sabline.capabilities/1",
+  "sabline_version": "7.1.1",
+  "date": "2026-09-13",
+  "surface": {
+    "grants": [
+      "clock",
+      "declassify",
+      "env",
+      "ffi:base64",
+      "ffi:builtins",
+      "ffi:datetime",
+      "ffi:math",
+      "ffi:os",
+      "ffi:sqlite3",
+      "ffi:subprocess",
+      "fs:read",
+      "fs:write",
+      "io",
+      "net",
+      "rand",
+      "tool:search",
+      "tool:send_email"
+    ],
+    "counts": {"fs": null, "net": null}
+  },
+  "programs": [
+    {
+      "file": "benchmark/corpus/01_file_write/a_save_report.vel",
+      "grants": [
+        "fs:write",
+        "io"
+      ],
+      "counts": {"fs": 1},
+      "functions": {
+        "main": ["fs", "io"],
+        "save": ["fs"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/01_file_write/b_two_levels.vel",
+      "grants": [
+        "fs:write",
+        "io"
+      ],
+      "counts": {"fs": 1},
+      "functions": {
+        "main": ["fs", "io"],
+        "persist": ["fs"],
+        "summarise": ["fs"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/01_file_write/c_log_in_loop.vel",
+      "grants": [
+        "fs:write",
+        "io"
+      ],
+      "counts": {"fs": 3},
+      "functions": {
+        "log_line": ["fs"],
+        "main": ["fs", "io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/01_file_write/d_three_layers.vel",
+      "grants": [
+        "fs:write",
+        "io"
+      ],
+      "counts": {"fs": 1},
+      "functions": {
+        "main": ["fs", "io"],
+        "render": ["fs"],
+        "report": ["fs"],
+        "store": ["fs"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/01_file_write/e_path_in_record.vel",
+      "grants": [
+        "fs:write",
+        "io"
+      ],
+      "counts": {"fs": 1},
+      "functions": {
+        "main": ["fs", "io"],
+        "run_job": ["fs"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/01_file_write/f_write_in_condition.vel",
+      "grants": [
+        "fs:write",
+        "io"
+      ],
+      "counts": {"fs": 1},
+      "functions": {
+        "main": ["fs", "io"],
+        "ready": ["fs"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/02_network/a_fetch_helper.vel",
+      "grants": [
+        "io",
+        "net"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "main": ["io", "net"],
+        "ping": ["net"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/02_network/b_post_summary.vel",
+      "grants": [
+        "io",
+        "net"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "main": ["io", "net"],
+        "sync": ["net"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/02_network/c_quiet_fetch.vel",
+      "grants": [
+        "io",
+        "net"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "main": ["io", "net"],
+        "warm_cache": ["net"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/02_network/d_two_layers.vel",
+      "grants": [
+        "io",
+        "net"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "main": ["io", "net"],
+        "summarise": ["net"],
+        "upload": ["net"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/02_network/e_is_valid_url.vel",
+      "grants": [
+        "io",
+        "net"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "is_valid": ["net"],
+        "main": ["io", "net"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/02_network/f_probe_with_headers.vel",
+      "grants": [
+        "io",
+        "net"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "main": ["io", "net"],
+        "probe": ["net"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/03_div_zero/a_share_per_person.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "share": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/03_div_zero/b_bucket_remainder.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "bucket": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/03_div_zero/c_per_item_in_main.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/03_div_zero/d_guarded_one_path.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "share": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/03_div_zero/e_range_width.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "density": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/03_div_zero/f_remainder_in_loop.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "bucket_all": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/04_off_by_one/a_sum_inclusive.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "total": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/04_off_by_one/b_last_item.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "last": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/04_off_by_one/c_skips_last.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "total": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/04_off_by_one/d_empty_input.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "last_word": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/04_off_by_one/e_pairs.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "rises": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/04_off_by_one/f_index_from_input.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "pick": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/05_overflow/a_factorial_25.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "factorial": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/05_overflow/b_square_input.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "square": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/05_overflow/c_sum_of_cubes.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "sum_of_cubes": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/05_overflow/d_record_field.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "apply_rate": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/05_overflow/e_map_accumulate.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/05_overflow/f_negate_minimum.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "magnitude": [],
+        "main": ["io"]
+      }
+    },
+    {"file": "benchmark/corpus/06_ignored_failure/a_to_int_unhandled.vel", "compiles": false},
+    {"file": "benchmark/corpus/06_ignored_failure/b_json_field.vel", "compiles": false},
+    {"file": "benchmark/corpus/06_ignored_failure/c_map_lookup.vel", "compiles": false},
+    {"file": "benchmark/corpus/06_ignored_failure/d_inside_lambda.vel", "compiles": false},
+    {"file": "benchmark/corpus/06_ignored_failure/e_pop_empty.vel", "compiles": false},
+    {"file": "benchmark/corpus/06_ignored_failure/f_json_parse.vel", "compiles": false},
+    {
+      "file": "benchmark/corpus/07_infinite_loop/a_never_advances.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/07_infinite_loop/b_steps_past.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/07_infinite_loop/c_slow_but_finite.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/07_infinite_loop/d_ends_on_input.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/07_infinite_loop/e_reset_in_if.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/07_infinite_loop/f_wrong_sign.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/08_memory/a_rows_forever.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/08_memory/b_log_kept_in_memory.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/08_memory/c_split_rows.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/08_memory/d_text_concat.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/08_memory/e_map_growth.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/08_memory/f_two_layer_log.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "append": [],
+        "main": ["io"],
+        "remember": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/09_dangerous_module/a_subprocess_helper.vel",
+      "grants": [
+        "ffi:subprocess",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["ffi", "io"],
+        "tidy": ["ffi"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/09_dangerous_module/b_os_system.vel",
+      "grants": [
+        "ffi:os",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["ffi", "io"],
+        "notify": ["ffi"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/09_dangerous_module/c_command_on_stdout.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "cleanup_hint": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/09_dangerous_module/d_via_py_json.vel",
+      "grants": [
+        "ffi:subprocess",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["ffi", "io"],
+        "run_spec": ["ffi"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/09_dangerous_module/e_via_handle.vel",
+      "grants": [
+        "ffi:os",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["ffi", "io"],
+        "open_pipe": ["ffi"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/09_dangerous_module/f_os_listdir.vel",
+      "grants": [
+        "ffi:os",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "describe": ["ffi"],
+        "main": ["ffi", "io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/10_control/a_expense_total.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "total_of": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/10_control/b_word_count.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "count_words": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/10_control/c_sqrt_via_math.vel",
+      "grants": [
+        "ffi:math",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["ffi", "io"],
+        "root": ["ffi"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/10_control/d_warning_text.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "warning": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/10_control/e_reads_own_args.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/10_control/f_math_in_loop.vel",
+      "grants": [
+        "ffi:math",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["ffi", "io"],
+        "root": ["ffi"],
+        "sum_of_roots": ["ffi"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/11_scoped_budget/a_read_outside.vel",
+      "grants": [
+        "fs:read",
+        "io"
+      ],
+      "counts": {"fs": 1},
+      "functions": {
+        "main": ["fs", "io"],
+        "peek": ["fs"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/11_scoped_budget/b_other_host.vel",
+      "grants": [
+        "io",
+        "net"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "main": ["io", "net"],
+        "ping": ["net"]
+      }
+    },
+    {"file": "benchmark/corpus/11_scoped_budget/c_secret_from_env.vel", "compiles": false},
+    {"file": "benchmark/corpus/12_indirect_authority/a_gains_net.vel", "compiles": false},
+    {
+      "file": "benchmark/corpus/12_indirect_authority/a_gains_net/2.3.0/pricing.vel",
+      "grants": [],
+      "counts": {},
+      "functions": {
+        "price_line": []
+      }
+    },
+    {
+      "file": "benchmark/corpus/12_indirect_authority/a_gains_net/2.4.0/pricing.vel",
+      "grants": [
+        "net:{other_url}"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "price_line": ["net"]
+      }
+    },
+    {"file": "benchmark/corpus/12_indirect_authority/b_new_host.vel", "compiles": false},
+    {
+      "file": "benchmark/corpus/12_indirect_authority/b_new_host/1.4.0/mailer.vel",
+      "grants": [
+        "net:{url}"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "send": ["net"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/12_indirect_authority/b_new_host/1.5.0/mailer.vel",
+      "grants": [
+        "net:{other_url}",
+        "net:{url}"
+      ],
+      "counts": {"net": 2},
+      "functions": {
+        "send": ["net"]
+      }
+    },
+    {"file": "benchmark/corpus/12_indirect_authority/c_gains_write.vel", "compiles": false},
+    {
+      "file": "benchmark/corpus/12_indirect_authority/c_gains_write/3.1.0/settings.vel",
+      "grants": [
+        "fs:read:{granted}/notes.txt"
+      ],
+      "counts": {"fs": 1},
+      "functions": {
+        "load": ["fs"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/12_indirect_authority/c_gains_write/3.2.0/settings.vel",
+      "grants": [
+        "fs:read:{granted}/notes.txt",
+        "fs:write:{path}"
+      ],
+      "counts": {"fs": 2},
+      "functions": {
+        "load": ["fs"]
+      }
+    },
+    {"file": "benchmark/corpus/12_indirect_authority/d_narrows.vel", "compiles": false},
+    {
+      "file": "benchmark/corpus/12_indirect_authority/d_narrows/1.0.0/report.vel",
+      "grants": [
+        "fs:read:{granted}/notes.txt"
+      ],
+      "counts": {"fs": 1},
+      "functions": {
+        "label": ["fs"],
+        "total_line": ["fs"]
+      }
+    },
+    {
+      "file": "benchmark/corpus/12_indirect_authority/d_narrows/2.0.0/report.vel",
+      "grants": [],
+      "counts": {},
+      "functions": {
+        "total_line": []
+      }
+    },
+    {
+      "file": "examples/avg_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "average": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/bench.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "burn": [],
+        "fib": [],
+        "main": ["io"]
+      }
+    },
+    {"file": "examples/builtin_unhandled.vel", "compiles": false},
+    {
+      "file": "examples/callsite_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "discount": [],
+        "main": ["io"]
+      }
+    },
+    {"file": "examples/caught.vel", "compiles": false},
+    {
+      "file": "examples/compose.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "clamp_pos": [],
+        "main": ["io"],
+        "shipping": []
+      }
+    },
+    {
+      "file": "examples/conj_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "weighted": []
+      }
+    },
+    {
+      "file": "examples/contract.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "absolute": [],
+        "discount": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/contract_broken.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "discount": [],
+        "main": ["io"]
+      }
+    },
+    {"file": "examples/contract_impure.vel", "compiles": false},
+    {
+      "file": "examples/database.vel",
+      "grants": [
+        "ffi:builtins",
+        "ffi:sqlite3",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "count_rows": ["ffi"],
+        "main": ["ffi", "io"],
+        "open_db": ["ffi"],
+        "run": ["ffi"]
+      }
+    },
+    {
+      "file": "examples/discount.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "basket_total": [],
+        "charged_per_line": [],
+        "discount_for": [],
+        "line_total": [],
+        "main": ["io"],
+        "not_negative": [],
+        "show": ["io"],
+        "total_after": []
+      }
+    },
+    {
+      "file": "examples/discount_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "basket_total": [],
+        "discount_for": [],
+        "line_total": [],
+        "main": ["io"],
+        "not_negative": [],
+        "total_after": []
+      }
+    },
+    {
+      "file": "examples/div_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "share": []
+      }
+    },
+    {
+      "file": "examples/div_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "average": [],
+        "is_even": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/edges.vel",
+      "grants": [
+        "ffi:datetime",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "is_sorted_text": [],
+        "main": ["ffi", "io"],
+        "pseudo": [],
+        "slow_sum": [],
+        "spread": [],
+        "sum_of_list": [],
+        "sum_to_checked": []
+      }
+    },
+    {
+      "file": "examples/effects.vel",
+      "grants": [
+        "clock",
+        "fs:read:report.txt",
+        "fs:write:report.txt",
+        "io",
+        "rand"
+      ],
+      "counts": {"fs": 2},
+      "functions": {
+        "dice": ["rand"],
+        "main": ["clock", "fs", "io", "rand"],
+        "save_report": ["fs"],
+        "timestamp": ["clock"]
+      }
+    },
+    {
+      "file": "examples/escapes.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/fail_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "boosted": [],
+        "checked_half": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/fail_proof_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "positive_only": []
+      }
+    },
+    {
+      "file": "examples/failing.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "ratio_line": [],
+        "safe_divide": []
+      }
+    },
+    {"file": "examples/failing_bad.vel", "compiles": false},
+    {
+      "file": "examples/features.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "biggest": [],
+        "describe": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/fetcher.vel",
+      "grants": [
+        "io",
+        "net"
+      ],
+      "counts": {"net": 2},
+      "functions": {
+        "body_of": ["net"],
+        "head_of": ["net"],
+        "main": ["io", "net"],
+        "summarise": []
+      }
+    },
+    {
+      "file": "examples/ffi.vel",
+      "grants": [
+        "ffi:base64",
+        "ffi:builtins",
+        "ffi:datetime",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "base64_of": ["ffi"],
+        "digits_in": ["ffi"],
+        "main": ["ffi", "io"],
+        "today": ["ffi"]
+      }
+    },
+    {
+      "file": "examples/floats.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "average": [],
+        "main": ["io"],
+        "to_fahrenheit": []
+      }
+    },
+    {"file": "examples/floats_bad.vel", "compiles": false},
+    {
+      "file": "examples/forloops.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "longest": [],
+        "main": ["io"],
+        "sum_to": []
+      }
+    },
+    {
+      "file": "examples/fp_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "bump": [],
+        "magnitude_up": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/fp_proof_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "add_twice": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/funcs.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "apply_to_each": [],
+        "count_where": [],
+        "double": [],
+        "is_even": [],
+        "main": ["io"]
+      }
+    },
+    {"file": "examples/funcs_bad.vel", "compiles": false},
+    {
+      "file": "examples/generics.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "double": [],
+        "main": ["io"]
+      }
+    },
+    {"file": "examples/generics_bad.vel", "compiles": false},
+    {
+      "file": "examples/grid_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "second_row": []
+      }
+    },
+    {
+      "file": "examples/grid_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "add_row": [],
+        "first_row": [],
+        "main": ["io"],
+        "row_count": []
+      }
+    },
+    {
+      "file": "examples/guess.vel",
+      "grants": [
+        "io",
+        "rand"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io", "rand"]
+      }
+    },
+    {
+      "file": "examples/hello.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "add": [],
+        "discount": [],
+        "greet": ["io"],
+        "main": ["io"]
+      }
+    },
+    {"file": "examples/import_bad.vel", "compiles": false},
+    {
+      "file": "examples/inferred.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "count_up": [],
+        "main": ["io"],
+        "steps_down": [],
+        "sum_to": []
+      }
+    },
+    {
+      "file": "examples/json_ffi.vel",
+      "grants": [
+        "ffi:math",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "age_in": [],
+        "main": ["ffi", "io"],
+        "name_in": [],
+        "root_of": ["ffi"]
+      }
+    },
+    {
+      "file": "examples/lambda_capture.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/lambda_contract.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/lambda_contract_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/lambdas.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/ledger.vel",
+      "grants": [
+        "fs:read:ledger.txt",
+        "fs:write:ledger.txt",
+        "io"
+      ],
+      "counts": {"fs": null},
+      "functions": {
+        "add_flow": ["io"],
+        "describe": [],
+        "digit_value": [],
+        "load_all": ["fs"],
+        "main": ["fs", "io"],
+        "money": [],
+        "parse_int": [],
+        "parse_line": [],
+        "save_all": ["fs"],
+        "total_of": []
+      }
+    },
+    {
+      "file": "examples/lib/geo.vel",
+      "grants": [],
+      "counts": {},
+      "functions": {
+        "distance": [],
+        "scale": []
+      }
+    },
+    {
+      "file": "examples/lib/money.vel",
+      "grants": [],
+      "counts": {},
+      "functions": {
+        "distance": [],
+        "scale": []
+      }
+    },
+    {
+      "file": "examples/linkcheck.vel",
+      "grants": [
+        "io",
+        "net"
+      ],
+      "counts": {"net": null},
+      "functions": {
+        "check_one": ["io", "net"],
+        "gather": ["io"],
+        "is_bad": [],
+        "main": ["io", "net"],
+        "verdict": []
+      }
+    },
+    {"file": "examples/list_mixed.vel", "compiles": false},
+    {
+      "file": "examples/list_oob.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/list_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "grow": [],
+        "head": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/list_proof_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "last": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/loop.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "countdown": ["io"],
+        "main": ["io"],
+        "sum_to": []
+      }
+    },
+    {"file": "examples/loop_bad.vel", "compiles": false},
+    {
+      "file": "examples/loop_lists.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "doubled": [],
+        "drop_last": [],
+        "first_n": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/loop_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "sum_to": []
+      }
+    },
+    {
+      "file": "examples/loop_proof_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "drain": [],
+        "main": ["io"]
+      }
+    },
+    {"file": "examples/many_errors.vel", "compiles": false},
+    {
+      "file": "examples/map_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "bump": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/map_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "bump": [],
+        "main": ["io"],
+        "remember": []
+      }
+    },
+    {
+      "file": "examples/maps.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {"file": "examples/maps_bad.vel", "compiles": false},
+    {
+      "file": "examples/mathlib.vel",
+      "grants": [],
+      "counts": {},
+      "functions": {
+        "cube": [],
+        "square": []
+      }
+    },
+    {
+      "file": "examples/namespaces.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/native_build.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "banner": [],
+        "framed_length": [],
+        "main": ["io"],
+        "stretch": []
+      }
+    },
+    {
+      "file": "examples/native_float.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "axpy": [],
+        "decay": [],
+        "is_hot": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/native_list.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "build": [],
+        "main": ["io"],
+        "sum_squares": []
+      }
+    },
+    {
+      "file": "examples/native_text.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "count_letters": [],
+        "main": ["io"],
+        "scan": []
+      }
+    },
+    {
+      "file": "examples/net.vel",
+      "grants": [
+        "io",
+        "net"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "homepage": ["net"],
+        "main": ["io", "net"]
+      }
+    },
+    {"file": "examples/ns_bad.vel", "compiles": false},
+    {
+      "file": "examples/offbyone_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "walk": []
+      }
+    },
+    {
+      "file": "examples/pipeline.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "total_of": []
+      }
+    },
+    {
+      "file": "examples/proof_catch.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "pay_bonus": []
+      }
+    },
+    {
+      "file": "examples/qlist_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "is_pos": [],
+        "main": ["io"],
+        "stamp": []
+      }
+    },
+    {
+      "file": "examples/qlist_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "grow_pos": [],
+        "head_pos": [],
+        "is_pos": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/quantified.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "amount_of": [],
+        "is_positive": [],
+        "keep_positive": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/rec_list_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "add_item": [],
+        "item_count": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/rec_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "distance_sq": [],
+        "main": ["io"],
+        "shift": []
+      }
+    },
+    {
+      "file": "examples/rec_proof_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "shift": []
+      }
+    },
+    {
+      "file": "examples/rec_push.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"],
+        "parse_one": [],
+        "total_of": []
+      }
+    },
+    {
+      "file": "examples/records.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "describe": [],
+        "main": ["io"],
+        "shift": []
+      }
+    },
+    {"file": "examples/records_bad.vel", "compiles": false},
+    {
+      "file": "examples/recursion.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "count_down": [],
+        "main": ["io"],
+        "total_with_invariant": [],
+        "triangle": []
+      }
+    },
+    {
+      "file": "examples/report_fixes.vel",
+      "grants": [
+        "ffi:math",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["ffi", "io"],
+        "weighted": []
+      }
+    },
+    {
+      "file": "examples/sandbox.vel",
+      "grants": [
+        "ffi:builtins",
+        "fs:read",
+        "io",
+        "net"
+      ],
+      "counts": {"fs": 1, "net": 1},
+      "functions": {
+        "main": ["ffi", "fs", "io", "net"],
+        "pure_work": [],
+        "touches_python": ["ffi"],
+        "touches_the_disk": ["fs"],
+        "touches_the_network": ["net"]
+      }
+    },
+    {
+      "file": "examples/secret.vel",
+      "grants": [
+        "env",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "authorization": [],
+        "build": [],
+        "key": ["env"],
+        "main": ["env", "io"],
+        "summary": []
+      }
+    },
+    {"file": "examples/secret_bad.vel", "compiles": false},
+    {
+      "file": "examples/settlement.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "fee_on": [],
+        "main": ["io"],
+        "not_negative": [],
+        "parse_claim": [],
+        "payout_of": [],
+        "shares_of": [],
+        "total_of": []
+      }
+    },
+    {"file": "examples/sneaky.vel", "compiles": false},
+    {
+      "file": "examples/sneaky_fixed.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "discount": ["io"],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/stack.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "apply": [],
+        "main": ["io"],
+        "run": [],
+        "show": ["io"]
+      }
+    },
+    {
+      "file": "examples/std_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/std_test.vel",
+      "grants": [],
+      "counts": {},
+      "functions": {
+        "test_join_uses_the_separator": [],
+        "test_keep_if_filters": [],
+        "test_max_finds_the_biggest": [],
+        "test_range_counts_up": [],
+        "test_reverse_turns_it_around": [],
+        "test_sorting_keeps_every_item": [],
+        "test_sorting_orders_numbers": []
+      }
+    },
+    {
+      "file": "examples/std_tour.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "is_even": [],
+        "main": ["io"],
+        "negated": []
+      }
+    },
+    {
+      "file": "examples/stdlib_tools.vel",
+      "grants": [
+        "declassify",
+        "env",
+        "ffi:builtins",
+        "ffi:sqlite3",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["declassify", "env", "ffi", "io"]
+      }
+    },
+    {
+      "file": "examples/stress.vel",
+      "grants": [
+        "clock",
+        "declassify",
+        "env",
+        "ffi:datetime",
+        "ffi:math",
+        "ffi:sqlite3",
+        "io",
+        "net:raw.githubusercontent.com"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "add_item": [],
+        "average": [],
+        "bump": [],
+        "count_letters": [],
+        "discount": [],
+        "halve": [],
+        "is_even": [],
+        "main": ["clock", "declassify", "env", "ffi", "io", "net"],
+        "negated": [],
+        "quarter": [],
+        "rows_of": [],
+        "scan_list": [],
+        "shift": [],
+        "shout": [],
+        "sum_to": [],
+        "tag_it": []
+      }
+    },
+    {
+      "file": "examples/termination.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "count_down": [],
+        "count_down_to_zero": [],
+        "count_up": [],
+        "count_up_inclusive": [],
+        "find": [],
+        "first_negative": [],
+        "main": ["io"],
+        "pairs": [],
+        "squares": [],
+        "step_inside_check": [],
+        "step_on_both_arms": [],
+        "until_limit": []
+      }
+    },
+    {
+      "file": "examples/termination_bad.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "by_twos": [],
+        "growing_limit": [],
+        "main": ["io"],
+        "reset_once": [],
+        "until_flag": []
+      }
+    },
+    {
+      "file": "examples/text_list_proof.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "add_word": [],
+        "label": [],
+        "main": ["io"],
+        "pieces": []
+      }
+    },
+    {
+      "file": "examples/text_tools.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "fizzbuzz": [],
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/tools.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/trace_demo.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "halve": [],
+        "is_even": [],
+        "main": ["io"],
+        "shout": []
+      }
+    },
+    {"file": "examples/types_bad.vel", "compiles": false},
+    {
+      "file": "examples/uses_import.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "main": ["io"]
+      }
+    },
+    {
+      "file": "examples/wordcount.vel",
+      "grants": [
+        "fs:read",
+        "io"
+      ],
+      "counts": {"fs": 1},
+      "functions": {
+        "bar": [],
+        "clean": [],
+        "count_words": [],
+        "main": ["fs", "io"],
+        "report": [],
+        "to_tallies": [],
+        "total_words": []
+      }
+    },
+    {
+      "file": "stdlib/csv.vel",
+      "grants": [],
+      "counts": {},
+      "functions": {
+        "column": [],
+        "column_int": [],
+        "fields": [],
+        "line_of": [],
+        "rows_of": []
+      }
+    },
+    {
+      "file": "stdlib/dates.vel",
+      "grants": [
+        "ffi:datetime"
+      ],
+      "counts": {},
+      "functions": {
+        "before": [],
+        "days_in": [],
+        "make": [],
+        "next_day": [],
+        "parse": [],
+        "same": [],
+        "text_of": [],
+        "today": ["ffi"]
+      }
+    },
+    {
+      "file": "stdlib/db.vel",
+      "grants": [
+        "ffi:builtins",
+        "ffi:sqlite3"
+      ],
+      "counts": {},
+      "functions": {
+        "close": ["ffi"],
+        "commit": ["ffi"],
+        "count": ["ffi"],
+        "open": ["ffi"],
+        "rows_json": ["ffi"],
+        "run": ["ffi"]
+      }
+    },
+    {
+      "file": "stdlib/env_tools.vel",
+      "grants": [
+        "declassify",
+        "env",
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "give_up": ["io"],
+        "number_setting": ["declassify", "env"],
+        "public_setting": ["declassify", "env"],
+        "setting": ["env"],
+        "succeed": ["io"]
+      }
+    },
+    {
+      "file": "stdlib/http.vel",
+      "grants": [
+        "net"
+      ],
+      "counts": {"net": 1},
+      "functions": {
+        "body_of": [],
+        "call": ["net"],
+        "code_of": [],
+        "get": ["net"],
+        "get_json": ["net"],
+        "get_with": ["net"],
+        "header_of": [],
+        "ok": ["net"],
+        "post_json": ["net"],
+        "send": ["net"],
+        "status": ["net"]
+      }
+    },
+    {
+      "file": "stdlib/log.vel",
+      "grants": [
+        "io"
+      ],
+      "counts": {},
+      "functions": {
+        "die": ["io"],
+        "error": ["io"],
+        "event": ["io"],
+        "fail_with": ["io"],
+        "field": [],
+        "info": ["io"],
+        "warn": ["io"]
+      }
+    },
+    {
+      "file": "stdlib/money.vel",
+      "grants": [],
+      "counts": {},
+      "functions": {
+        "not_negative": [],
+        "not_positive": [],
+        "split": []
+      }
+    },
+    {
+      "file": "stdlib/std.vel",
+      "grants": [],
+      "counts": {},
+      "functions": {
+        "apply_to_each": [],
+        "contains_item": [],
+        "count_where": [],
+        "first": [],
+        "index_of": [],
+        "insert_by": [],
+        "insert_sorted": [],
+        "is_sorted": [],
+        "join": [],
+        "keep_if": [],
+        "last": [],
+        "map_to": [],
+        "max_of": [],
+        "min_of": [],
+        "range_list": [],
+        "reverse": [],
+        "sort": [],
+        "sort_by": [],
+        "sum_of": []
+      }
+    },
+    {
+      "file": "stdlib/time.vel",
+      "grants": [
+        "clock",
+        "ffi:datetime"
+      ],
+      "counts": {},
+      "functions": {
+        "clock_text": ["ffi"],
+        "day_number": [],
+        "day_of": [],
+        "month_of": [],
+        "seconds": ["clock"],
+        "today": ["ffi"],
+        "year_of": []
+      }
+    }
+  ]
+}

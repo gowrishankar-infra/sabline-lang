@@ -1,5 +1,5 @@
 {
-  "schema": "velaris.tools/1",
+  "schema": "sabline.tools/1",
   "description": "The two tools examples/runner/host.py offers.",
   "tools": {
     "search": {

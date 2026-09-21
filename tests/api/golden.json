@@ -331,6 +331,7 @@
      "problems": [],
      "proven_share": "NoneType",
      "prover": "bool",
+     "sabline_version": "str",
      "safe_command": "str",
      "schema": "str",
      "secrets": {
@@ -408,6 +409,7 @@
      ],
      "proven_share": "NoneType",
      "prover": "bool",
+     "sabline_version": "str",
      "safe_command": "str",
      "schema": "str",
      "secrets": {
@@ -473,6 +475,7 @@
      "max_timeout": "int",
      "prover": "bool",
      "rate_limit": "int",
+     "sabline": "str",
      "velaris": "str"
     },
     "status": 200
@@ -481,6 +484,7 @@
     "shape": {
      "auth": "str",
      "prover": "bool",
+     "sabline": "str",
      "velaris": "str"
     },
     "status": 200
@@ -500,6 +504,7 @@
      "max_timeout": "int",
      "prover": "bool",
      "rate_limit": "int",
+     "sabline": "str",
      "velaris": "str"
     },
     "status": 200
@@ -1040,7 +1045,7 @@
    "AUDIT_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.audit/1"
+    "value": "sabline.audit/1"
    },
    "Assign": {
     "bases": [
@@ -1065,12 +1070,13 @@
     "kind": "class",
     "methods": {
      "__init__": "(self, **kw)",
-     "as_dict": "(self)"
+     "as_dict": "(self)",
+     "velaris_version": "property"
     },
     "signature": "(**kw)",
     "slots": [
      "schema",
-     "velaris_version",
+     "sabline_version",
      "ok",
      "problems",
      "effects",
@@ -1180,7 +1186,7 @@
    "CAPABILITIES_CHECK_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.capabilities-check/1"
+    "value": "sabline.capabilities-check/1"
    },
    "CAPABILITIES_FILE": {
     "kind": "value",
@@ -1189,12 +1195,12 @@
    "CAPABILITIES_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.capabilities/1"
+    "value": "sabline.capabilities/1"
    },
    "CAPABILITY_PREDICATE_TYPE": {
     "kind": "value",
     "type": "str",
-    "value": "https://velaris-lang.dev/capability/v1"
+    "value": "https://sabline.dev/capability/v1"
    },
    "CAPABILITY_PREDICATE_TYPES": {
     "kind": "value",
@@ -1227,7 +1233,7 @@
    "CONFORMANCE_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.conformance/1"
+    "value": "sabline.conformance/1"
    },
    "CORPUS_FORMAT": {
     "kind": "value",
@@ -1318,12 +1324,12 @@
    "DEPS_DIFF_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.deps-diff/1"
+    "value": "sabline.deps-diff/1"
    },
    "DEPS_LOCKFILES_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.deps-diff-lockfiles/1"
+    "value": "sabline.deps-diff-lockfiles/1"
    },
    "DEPS_SOURCES": {
     "kind": "value",
@@ -1360,7 +1366,7 @@
    "EJECT_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.eject/1"
+    "value": "sabline.eject/1"
    },
    "ERRORS_PAGE": {
     "kind": "value",
@@ -1542,7 +1548,7 @@
    "INVOCATION_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.invocation/1"
+    "value": "sabline.invocation/1"
    },
    "If": {
     "bases": [
@@ -1588,7 +1594,7 @@
    "LOCK_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.lock/1"
+    "value": "sabline.lock/1"
    },
    "Let": {
     "bases": [
@@ -1635,7 +1641,7 @@
    "MCP_TOOLS_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.mcp-tools/1"
+    "value": "sabline.mcp-tools/1"
    },
    "MIGRATE_LINE": {
     "kind": "value",
@@ -1771,7 +1777,7 @@
    "PERMISSIONS_RATCHET_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.permissions-ratchet/1"
+    "value": "sabline.permissions-ratchet/1"
    },
    "PERMISSION_LEVELS": {
     "kind": "value",
@@ -1894,7 +1900,7 @@
    "RECEIPT_PREDICATE_TYPE": {
     "kind": "value",
     "type": "str",
-    "value": "https://velaris-lang.dev/receipt/v1"
+    "value": "https://sabline.dev/receipt/v1"
    },
    "RECEIPT_PREDICATE_TYPES": {
     "kind": "value",
@@ -1903,7 +1909,7 @@
    "RECEIPT_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.receipt/1"
+    "value": "sabline.receipt/1"
    },
    "RECEIPT_SPEC": {
     "kind": "value",
@@ -1948,7 +1954,7 @@
    "REVIEW_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.review/1"
+    "value": "sabline.review/1"
    },
    "ROUNDING": {
     "kind": "value",
@@ -2102,11 +2108,23 @@
    "STATS_FFI_SCHEMA": {
     "kind": "value",
     "type": "str",
-    "value": "velaris.stats-ffi/1"
+    "value": "sabline.stats-ffi/1"
    },
    "STOP_FILE": {
     "kind": "value",
     "type": "NoneType"
+   },
+   "SablineError": {
+    "bases": [
+     "Exception"
+    ],
+    "kind": "class",
+    "methods": {
+     "__init__": "(self, code, message, line, fixes=None, file=None)",
+     "human": "(self, filename)",
+     "machine": "(self, filename)"
+    },
+    "signature": "(code, message, line, fixes=None, file=None)"
    },
    "Str": {
     "bases": [
@@ -2290,11 +2308,11 @@
    },
    "capabilities_compare": {
     "kind": "function",
-    "signature": "(baseline, scan, baseline_file='velaris.capabilities')"
+    "signature": "(baseline, scan, baseline_file='sabline.capabilities')"
    },
    "capabilities_document": {
     "kind": "function",
-    "signature": "(scan, date=None)"
+    "signature": "(scan, date=None, schema=None)"
    },
    "capabilities_main": {
     "kind": "function",
@@ -2809,7 +2827,7 @@
    },
    "warn_allow_all": {
     "kind": "function",
-    "signature": "(where='velaris')"
+    "signature": "(where='sabline')"
    },
    "wrap_secret": {
     "kind": "function",
@@ -3067,6 +3085,7 @@
      "problems": [],
      "proven_share": "NoneType",
      "prover": "bool",
+     "sabline_version": "str",
      "safe_command": "str",
      "schema": "str",
      "secrets": {
@@ -3408,15 +3427,15 @@
   "protocol": "2024-11-05",
   "tools": [
    {
-    "description": "The Velaris language in about 4,600 words: syntax, the rules models get wrong, every builtin with its effects and whether it can fail, full standard-library signatures, and the error table. Read this before writing Velaris.",
+    "description": "The Sabline language in about 4,600 words: syntax, the rules models get wrong, every builtin with its effects and whether it can fail, full standard-library signatures, and the error table. Read this before writing Sabline.",
     "inputSchema": {
      "properties": {},
      "type": "object"
     },
-    "name": "velaris_card"
+    "name": "sabline_card"
    },
    {
-    "description": "Compile a Velaris program without running it. Returns every problem with a code, line and suggested fixes, plus which promises were proven before running and which fall back to runtime checks. Use this to iterate until a program compiles.",
+    "description": "Compile a Sabline program without running it. Returns every problem with a code, line and suggested fixes, plus which promises were proven before running and which fall back to runtime checks. Use this to iterate until a program compiles.",
     "inputSchema": {
      "properties": {
       "source": {
@@ -3429,7 +3448,7 @@
      ],
      "type": "object"
     },
-    "name": "velaris_check"
+    "name": "sabline_check"
    },
    {
     "description": "What a program can touch (io, env, fs, net, clock, rand, ffi, declassify), whether it holds a secret and whether it ever lets one out, what each function promises, how much of that is proven rather than checked while running, what can fail, and the command to run it safely. Use this before running code you did not write.",
@@ -3444,10 +3463,10 @@
      ],
      "type": "object"
     },
-    "name": "velaris_audit"
+    "name": "sabline_audit"
    },
    {
-    "description": "Run a Velaris program under an effect budget. Anything outside the budget is refused while the program runs, whatever the source claims about itself, and a refusal cannot be caught by the program. Grant the least you can: ['io'] lets it print and nothing else. This server grants at most what its operator set with --max-allow, and without that flag it grants io only: a request for more is refused, and the refusal names what the server grants. The operator also sets the most time and memory one run may have (--max-timeout, --max-memory-mb: 30 seconds and 512 MB unless changed); a run may ask for less, never more.",
+    "description": "Run a Sabline program under an effect budget. Anything outside the budget is refused while the program runs, whatever the source claims about itself, and a refusal cannot be caught by the program. Grant the least you can: ['io'] lets it print and nothing else. This server grants at most what its operator set with --max-allow, and without that flag it grants io only: a request for more is refused, and the refusal names what the server grants. The operator also sets the most time and memory one run may have (--max-timeout, --max-memory-mb: 30 seconds and 512 MB unless changed); a run may ask for less, never more.",
     "inputSchema": {
      "properties": {
       "allow": {
@@ -3468,7 +3487,7 @@
        "type": "integer"
       },
       "receipt": {
-       "description": "true to be given the run's receipt: an in-toto Statement (velaris.receipt/1) of what this run did - the budget, each refusal and declassification with its reason, the parameters, how it ended and how long it took - bound to the program's sha256 and holding none of its values.",
+       "description": "true to be given the run's receipt: an in-toto Statement (sabline.receipt/1) of what this run did - the budget, each refusal and declassification with its reason, the parameters, how it ended and how long it took - bound to the program's sha256 and holding none of its values.",
        "type": "boolean"
       },
       "source": {
@@ -3487,7 +3506,7 @@
      ],
      "type": "object"
     },
-    "name": "velaris_run"
+    "name": "sabline_run"
    }
   ],
   "unknown_method": {

@@ -29,8 +29,8 @@ today, it needs to be said out loud, in the changelog, in those words.
 
 These are real, small and self-contained:
 
-- **`velaris.toml` for projects** — a place to record which files are
-  a project, so `velaris check` needs no arguments.
+- **`sabline.toml` for projects** — a place to record which files are
+  a project, so `sabline check` needs no arguments.
 - **Dates arithmetic** in `stdlib/dates.vel`: adding days across month
   and year boundaries, with proven promises.
 - **`json_set(doc, path, value)`** to go with the readers.

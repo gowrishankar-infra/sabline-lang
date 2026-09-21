@@ -1,5 +1,5 @@
 // v0.10: the prover learned loops. An 'invariant' is a promise the loop
-// keeps on EVERY spin. Velaris proves it holds at the start, survives
+// keeps on EVERY spin. Sabline proves it holds at the start, survives
 // every step, and uses it to prove the function's ensures - so a function
 // WITH A LOOP is now fully proven before running.
 

@@ -25,7 +25,7 @@ right, and the places a hole would be:
   * declassify is refused without the effect declared, refused by the
     budget without the grant, and refused without a reason written in
     the call; with all three it works, and the audit records it
-  * velaris.audit/1's secrets section reports the sources, whether the
+  * sabline.audit/1's secrets section reports the sources, whether the
     program declassifies, and each reason
   * the tracer and a broken promise print <secret>, not the value
   * and an honest program that uses a secret correctly still runs
@@ -40,10 +40,10 @@ from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).parent
-VELARIS = HERE / "velaris.py"
+SABLINE = HERE / "sabline.py"
 
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 # its own directory, so two runs at once do not collide
@@ -65,7 +65,7 @@ def ok(label: str, good: bool, detail: str = "") -> None:
 def check(source: str) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
-        [sys.executable, str(VELARIS), "check", str(SCRATCH)],
+        [sys.executable, str(SABLINE), "check", str(SCRATCH)],
         capture_output=True, text=True, timeout=300, cwd=str(HERE))
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
@@ -73,7 +73,7 @@ def check(source: str) -> tuple[Any, ...]:
 def run(source: str, allow: str) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
-        [sys.executable, str(VELARIS), str(SCRATCH), "--allow", allow],
+        [sys.executable, str(SABLINE), str(SCRATCH), "--allow", allow],
         capture_output=True, text=True, timeout=300, cwd=str(HERE))
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
@@ -109,7 +109,7 @@ def prints(label: str, source: str, allow: str, want: str) -> None:
 
 def audit_of(source: str) -> dict[Any, Any]:
     SCRATCH.write_text(source, encoding="utf-8")
-    return velaris.audit(source, path=str(SCRATCH)).as_dict()
+    return sabline.audit(source, path=str(SCRATCH)).as_dict()
 
 
 # every case that starts from a key in the environment starts from this
@@ -535,9 +535,9 @@ prints("...and a program that keeps it runs",
        '        }\n    }\n}\n',
        "fs:read,io", "could not read it")
 
-# ---- 9. what velaris.audit/1 says ------------------------------------------
+# ---- 9. what sabline.audit/1 says ------------------------------------------
 print()
-print("what velaris.audit/1 says about both (velaris-spec 8.6)")
+print("what sabline.audit/1 says about both (sabline-spec 8.6)")
 print("-" * 62)
 doc = audit_of(KEY + '    print("a key was read")\n}\n')
 ok("the audit reports env as a source of secrets",
@@ -636,11 +636,11 @@ SCRATCH.write_text(
     '    let held = keep(key)\n'
     '    print("held one")\n}\n', encoding="utf-8")
 done = subprocess.run(
-    [sys.executable, str(VELARIS), "trace", str(SCRATCH),
+    [sys.executable, str(SABLINE), "trace", str(SCRATCH),
      "--allow", "env,io"],
     capture_output=True, text=True, timeout=300, cwd=str(HERE))
 trace = (done.stdout or "") + (done.stderr or "")
-ok("velaris trace prints <secret> in place of the value",
+ok("sabline trace prints <secret> in place of the value",
    "sesame" not in trace and "<secret>" in trace, trace.strip()[:200])
 
 SCRATCH.write_text(
@@ -652,7 +652,7 @@ SCRATCH.write_text(
     '    let held = keep(key)\n'
     '    print("held one")\n}\n', encoding="utf-8")
 done = subprocess.run(
-    [sys.executable, str(VELARIS), str(SCRATCH), "--allow", "env,io"],
+    [sys.executable, str(SABLINE), str(SCRATCH), "--allow", "env,io"],
     capture_output=True, text=True, timeout=300, cwd=str(HERE))
 broke = (done.stdout or "") + (done.stderr or "")
 ok("a broken promise about a secret prints <secret>, not the value",

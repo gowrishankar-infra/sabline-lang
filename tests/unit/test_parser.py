@@ -1,4 +1,4 @@
-"""Stage 2, the parser, alone: velaris.parser.Parser over the lexer's tokens.
+"""Stage 2, the parser, alone: sabline.parser.Parser over the lexer's tokens.
 
 The syntax tree of each construct (LLM.md "The whole syntax", SPEC.md 9
 and 12a, ARCHITECTURE.md "Parser"): signatures with promises, `uses`,
@@ -12,14 +12,14 @@ import json
 import unittest
 
 import _support
-from velaris.errors import VelarisError
-from velaris.lexer import lex
-from velaris.nodes import (
+from sabline.errors import SablineError
+from sabline.lexer import lex
+from sabline.nodes import (
     Assign, BinOp, Block, Call, Check, Closure, ExprStmt, FailStmt,
     FieldGet, FloatNum, If, Let, ListLit, MapLit, Neg, Not, Num,
     RecordLit, Return, Str, TryExpr, While,
 )
-from velaris.parser import EXPR_CHAIN_LIMIT, EXPR_NEST_LIMIT, Parser, expr_str
+from sabline.parser import EXPR_CHAIN_LIMIT, EXPR_NEST_LIMIT, Parser, expr_str
 from typing import Any, Callable, Iterator, cast
 
 STAGE = "parser"
@@ -258,7 +258,7 @@ class Literals(unittest.TestCase):
         self.assertEqual(expr(r'"a\tb\"c"'), Str('a\tb"c'))
 
     def test_unknown_escape_in_text_is_E002(self) -> None:
-        with self.assertRaises(VelarisError) as caught:
+        with self.assertRaises(SablineError) as caught:
             parse('fn f() {\n    let t = "\\q"\n}')
         self.assertEqual((caught.exception.code, caught.exception.line),
                          ("E002", 2))
@@ -300,7 +300,7 @@ class ForLoops(unittest.TestCase):
 
     def test_index_name_is_one_a_program_cannot_write(self) -> None:
         index = self.fns["sum_of"].body[1].name
-        with self.assertRaises(VelarisError):
+        with self.assertRaises(SablineError):
             lex(index)
 
     def test_no_block_is_left_in_the_tree(self) -> None:
@@ -409,7 +409,7 @@ class Refusals(unittest.TestCase):
     """fixtures/parser/refusals.json, one test per entry."""
 
     def assert_refused(self, source: str, code: str, line: int) -> Any:
-        with self.assertRaises(VelarisError) as caught:
+        with self.assertRaises(SablineError) as caught:
             parse(source)
         e = caught.exception
         self.assertEqual((e.code, e.line), (code, line), e.message)
@@ -453,7 +453,7 @@ class DepthLimits(unittest.TestCase):
         source = f"fn f(a: Int, b: Bool) -> Int {{\n    return {expression}\n}}"
         try:
             _support.on_big_stack(lambda: parse(source))
-        except VelarisError as e:
+        except SablineError as e:
             return e.code, e.line
         return "ok"
 

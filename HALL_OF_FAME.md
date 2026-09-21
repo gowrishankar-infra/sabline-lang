@@ -1,6 +1,6 @@
 # Hall of fame
 
-People and models who made Velaris report something false, or found a
+People and models who made Sabline report something false, or found a
 way past what it claimed, and so made it better. The standing
 challenge that adds to this list is in [SECURITY.md](SECURITY.md):
 credit here and in the changelog, and a fix within a week. There is no
@@ -12,7 +12,7 @@ CHANGELOG.md entry named.
 ## Adversarial reviews by model, August 2026
 
 Three model families - a Gemini model, a ChatGPT model and a Claude
-model - each read `velaris card`, wrote programs, and then set out to
+model - each read `sabline card`, wrote programs, and then set out to
 break the language. The changelog entries recorded what each review
 found and not which family produced it. The names below were added in
 3.2 from the maintainer's account, not from a record made at the time,
@@ -42,7 +42,7 @@ and the changelog entries now carry them too.
   76/100, and
   found the soundness hole of that month: `pop`, `slice` and `set_at`
   were documented fallible but the checker never demanded handling,
-  so a clean `velaris check` could be followed by a raw traceback. Also
+  so a clean `sabline check` could be followed by a raw traceback. Also
   a checker that could crash instead of reporting, `main` validated
   only at runtime, and a typed FFI that sent numbers as text (2.44;
   `check_fallible.py` exists because of this review). A third pass by
@@ -53,7 +53,7 @@ and the changelog entries now carry them too.
 
 ## The spec extraction, September 2026
 
-Writing velaris-spec 0.1 from velaris-lang 3.1.1 - stating each rule of
+Writing sabline-spec 0.1 from sabline-lang 3.1.1 - stating each rule of
 the capability format precisely enough to implement without the compiler
 - turned up five places where the compiler did not do what the format
 says. 3.2 recorded them and changed no code; 3.3 fixed all five, and the
@@ -64,22 +64,22 @@ are in the 3.3 CHANGELOG entry.
 - **The spec extraction** - 2026-09-11 - `ffi:M` checked the module a
   call named and not the module its attribute chain reached, so
   `py("json", "codecs.encode", ...)` ran codecs code under `ffi:json`
-  (velaris-spec Q9); `ffi` grants were not additive, so `ffi,ffi:math`
+  (sabline-spec Q9); `ffi` grants were not additive, so `ffi,ffi:math`
   granted `math` alone against the reference text (Q2); `safe_command`
   wrote IPv6 hosts without brackets and could not carry a `,` or `@` in a
   path or host, so it did not round-trip (Q5); the budget parser accepted
   an unknown effect name in `uses` and read a count with non-ASCII digits
   (`fs@²` stopped it with an uncaught error) (Q1, Q6); and the command
   line's `audit --json` printed an unversioned shape the schema rejected
-  instead of `velaris.audit/1` (Q3).
+  instead of `sabline.audit/1` (Q3).
 
 ## The conformance corpus, September 2026
 
-- **Writing velaris-spec's conformance corpus** - 2026-09-11 - an audit
+- **Writing sabline-spec's conformance corpus** - 2026-09-11 - an audit
   case for a program whose `uses` clause names something that is not an
   effect (`uses io, teleport`) found that the audit reporting the E300
   still listed `teleport` in `effects` and in its function's `effects`,
-  and wrote a `safe_command` that does not parse - where velaris-spec
+  and wrote a `safe_command` that does not parse - where sabline-spec
   said `effects` is always a subset of the seven and `safe_command`
   always parses. 3.3 had fixed the compile check and not the document
   that reports it. Fixed in 4.1; the details are in the 4.1 CHANGELOG
@@ -105,4 +105,4 @@ are in the 3.3 CHANGELOG entry.
   the project kept deferring: nothing bounded how long a program could
   run or how much
   memory it could take. `timeout=` and `max_memory_mb=` in
-  `velaris.run` are the result (2.59).
+  `sabline.run` are the result (2.59).

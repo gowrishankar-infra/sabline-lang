@@ -1,7 +1,7 @@
 // DISCOUNT - a rule the customer wrote, proven before it runs.
 //
-// velaris examples/discount.vel              (io, the 5.0 default)
-// velaris proofs examples/discount.vel --detail
+// sabline examples/discount.vel              (io, the 5.0 default)
+// sabline proofs examples/discount.vel --detail
 //
 // A commerce platform lets each customer write their own discount
 // rule. The one here is an ordinary shape: a percentage off once the

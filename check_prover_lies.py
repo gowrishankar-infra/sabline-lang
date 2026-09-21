@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A corpus of lies: false promises that must NEVER come back proven.
 
-Goal A of SECURITY.md is that a promise Velaris reports "proven" never
+Goal A of SECURITY.md is that a promise Sabline reports "proven" never
 breaks at run time. This suite is the adversary's side of it: a set of
 `requires` / `ensures` / `invariant` clauses that are false, grouped by
 what they are about - IEEE-754 floats, 64-bit overflow, Money, all_of and
@@ -27,7 +27,7 @@ Three things are asserted about every lie (8.2):
   never proven  The lying function is not in check(src).proven.
 
 Seeds. Every lie and every IDENTIFIERS case is checked under Z3 random
-seeds 0 to 4 (VELARIS_PROVER_SEED, which new_solver() passes to every
+seeds 0 to 4 (SABLINE_PROVER_SEED, which new_solver() passes to every
 solver), with check(src, timeout=None, max_memory_mb=None) so that it
 proves in this process and sees the variable. No lie may be proven under
 any seed; a true IDENTIFIERS case must be proven under every seed; and
@@ -60,7 +60,7 @@ from typing import Any
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 isolate("check_prover_lies")          # its own directory
@@ -73,9 +73,9 @@ except ImportError:
     HAVE_Z3 = False
 
 SEEDS = (0, 1, 2, 3, 4)
-SEED_ENV = "VELARIS_PROVER_SEED"
+SEED_ENV = "SABLINE_PROVER_SEED"
 # Seconds per query, in this process and in the children run() starts.
-# None keeps velaris's own budgets (3s, and 120s for a query with Float).
+# None keeps sabline's own budgets (3s, and 120s for a query with Float).
 # They stand: with them the whole suite took under six minutes with z3
 # when it was written (8.2), no float lie here needing more than a few
 # seconds. One budget for both kinds would either cut the float queries
@@ -88,7 +88,7 @@ ABANDONED_NOTE = "ran out of time"
 # Refusals the prover makes before a program runs. E704 starts with E7
 # too, but it is the runtime half of E703 - an invariant that broke while
 # running - so a case that expects it names it.
-PROVER_CODES = frozenset(c for c in velaris.ERROR_TABLE
+PROVER_CODES = frozenset(c for c in sabline.ERROR_TABLE
                          if c.startswith("E7") and c != "E704")
 
 PASS = FAIL = 0
@@ -158,7 +158,7 @@ fn main() uses io { let p = move(P(x: 1, y: 2), 5)  print(to_text(p.x)) }
 fn bad(k: Secret of Text) -> Int
   ensures result == length(k)
 { return 5 }
-fn main() uses io, env { print(to_text(bad(env("VELARIS_LIES_NEVER_SET", "hi")))) }
+fn main() uses io, env { print(to_text(bad(env("SABLINE_LIES_NEVER_SET", "hi")))) }
 '''),
     ("float promise that is false", "half", "E601", '''
 fn half(x: Float) -> Float
@@ -1514,7 +1514,7 @@ fn main() uses io { print(to_text(magnitude(-9223372036854775807 - 1))) }
 ALLOW = {"ensures over a Secret parameter is false": {"io", "env"}}
 
 # Identifiers spelled like SMT-LIB, and text holding SMT-LIB, are what they
-# are in Velaris: names and text. The prover builds its queries from the
+# are in Sabline: names and text. The prover builds its queries from the
 # syntax tree through Z3's API, never from contract text (8.1 confirmed it:
 # no query is parsed from a string), so `assert` is a parameter and
 # "(assert false)" is six words of text. A true promise over them proves;
@@ -1552,13 +1552,13 @@ fn main() uses io { print(to_text(f(Box(xs: [1, 2], xs__n: 9)))) }
 
 
 def check_here(src: str) -> tuple[Any, ...]:
-    """check() in this process with no ceiling, so VELARIS_PROVER_SEED
+    """check() in this process with no ceiling, so SABLINE_PROVER_SEED
     reaches every solver. (result or None, whether a proof was abandoned,
     what a crash said.)"""
     notes = io.StringIO()
     try:
         with contextlib.redirect_stderr(notes):
-            result = velaris.check(src, timeout=None, max_memory_mb=None)
+            result = sabline.check(src, timeout=None, max_memory_mb=None)
     except Exception as e:            # a crash is not "proven", but say so
         return None, False, f"{type(e).__name__}: {e}"
     return result, ABANDONED_NOTE in notes.getvalue(), ""
@@ -1627,7 +1627,7 @@ def run_findings(name: str, src: str, stops: str) -> list[Any]:
     breaks it, and the run must not end ok."""
     allowed = set(stops.split()) | (set(PROVER_CODES) if HAVE_Z3 else set())
     try:
-        r = velaris.run(src, allow=ALLOW.get(name, {"io"}),
+        r = sabline.run(src, allow=ALLOW.get(name, {"io"}),
                         timeout=RUN_SECONDS)
     except Exception as e:
         return [("NOT A LIE", f"run crashed: {type(e).__name__}: {e}")]
@@ -1686,7 +1686,7 @@ def judge_edge(name: str, src: str) -> None:
     for native in (True, False):
         engine = "native" if native else "interpreted"
         try:
-            r = velaris.run(src, allow={"io"}, native=native,
+            r = sabline.run(src, allow={"io"}, native=native,
                             timeout=RUN_SECONDS)
         except Exception as e:
             bad.append(("WRONG RUN", f"{engine}: {type(e).__name__}: {e}"))
@@ -1730,15 +1730,15 @@ def judge_identifier(name: str, fn: str, true: bool, src: str) -> None:
 def main() -> int:
     started = time.monotonic()
     if PROOF_SECONDS is not None:
-        velaris.set_proof_timeout(PROOF_SECONDS)
+        sabline.set_proof_timeout(PROOF_SECONDS)
         # and for the children run() starts, which prove the program again
-        os.environ["VELARIS_PROOF_TIMEOUT"] = str(PROOF_SECONDS)
+        os.environ["SABLINE_PROOF_TIMEOUT"] = str(PROOF_SECONDS)
     counts = ", ".join(f"{len(cases)} {what}" for what, cases in CATEGORIES)
     print(f"prover-lie corpus ({len(LIES)} lies: {counts}), z3 "
           + ("present" if HAVE_Z3 else "absent")
           + f", seeds {SEEDS[0]}-{SEEDS[-1]}")
     budget = (f"{PROOF_SECONDS:g}s a query" if PROOF_SECONDS is not None
-              else "velaris's own budgets")
+              else "sabline's own budgets")
     print(f"proofs get {budget}")
     for what, cases in CATEGORIES:
         print("-" * 62)

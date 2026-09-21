@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""What Velaris offers the code and the people that use it, held to a golden.
+"""What Sabline offers the code and the people that use it, held to a golden.
 
 tests/api/golden.json records, and this suite compares against, what this
 tree offers:
 
-  library  every public name `import velaris` gives: the signature of each
+  library  every public name `import sabline` gives: the signature of each
            function, class and public method, a result class's fields, the
            type of each constant, the value of each document identifier
            (a *_SCHEMA or *_PREDICATE_TYPE text), every error code and every
            removed one. STABILITY.md's covered names are marked "covered".
-  cli      every command `velaris` has, and the flags its usage names
-  http     the HTTP door (`velaris serve`): for a fixed set of requests, the
+  cli      every command `sabline` has, and the flags its usage names
+  http     the HTTP door (`sabline serve`): for a fixed set of requests, the
            status and the shape of each answer - every key, and the type of
            its value - and the shape of each line of its invocation log
   mcp      the MCP server: its tools as a client lists them, and the shape of
@@ -28,7 +28,7 @@ from the previous tag's without such a line.
 
 The shapes are the same with and without the prover and on every system,
 so every CI leg compares against the one golden. 8.2 recorded it from
-velaris.py before that file became a package, which is how the package is
+sabline.py before that file became a package, which is how the package is
 shown to offer what the file did.
 
     python check_api.py            compare
@@ -53,13 +53,13 @@ from typing import IO, Any, Callable, cast
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import velaris  # noqa: E402
+import sabline  # noqa: E402
 import release_checks  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_api")
 GOLDEN = HERE / "tests" / "api" / "golden.json"
-VELARIS = [sys.executable, str(HERE / "velaris.py")]
+SABLINE = [sys.executable, str(HERE / "sabline.py")]
 
 # STABILITY.md's list of the library it covers
 COVERED = ("check", "audit", "run", "Pool", "card", "attest",
@@ -112,8 +112,8 @@ def _signature(obj: Any) -> str | None:
     """The signature as text: each parameter's name, kind and default, and
     no annotation - of a parameter or of the return - so that typing the
     package (8.2) does not move the golden. A default that names something
-    of ours is shown without the module it was defined in (`velaris.X` and,
-    in the package, `velaris.nodes.X` are one default)."""
+    of ours is shown without the module it was defined in (`sabline.X` and,
+    in the package, `sabline.nodes.X` are one default)."""
     try:
         sig = inspect.signature(obj)
     except (TypeError, ValueError):
@@ -122,20 +122,20 @@ def _signature(obj: Any) -> str | None:
         parameters=[p.replace(annotation=inspect.Parameter.empty)
                     for p in sig.parameters.values()],
         return_annotation=inspect.Signature.empty)
-    return re.sub(r"\bvelaris(?:\.[a-z_]+)?\.(?=[A-Z_])", "", str(bare))
+    return re.sub(r"\bsabline(?:\.[a-z_]+)?\.(?=[A-Z_])", "", str(bare))
 
 
 def _ours(obj: Any) -> bool:
     owner = str(getattr(obj, "__module__", "") or "")
-    return owner == "velaris" or owner.startswith("velaris.")
+    return owner == "sabline" or owner.startswith("sabline.")
 
 
 def library_surface() -> dict[str, Any]:
     names: dict[Any, Any] = {}
-    for name in sorted(dir(velaris)):
+    for name in sorted(dir(sabline)):
         if name.startswith("_"):
             continue
-        obj = getattr(velaris, name)
+        obj = getattr(sabline, name)
         if inspect.ismodule(obj):
             continue
         if inspect.isclass(obj) or inspect.isfunction(obj):
@@ -173,15 +173,15 @@ def library_surface() -> dict[str, Any]:
             entry["covered"] = True
         names[name] = entry
     return {"names": names,
-            "error_codes": sorted(velaris.ERROR_TABLE),
-            "removed_codes": sorted(getattr(velaris, "REMOVED_ERRORS", {}))}
+            "error_codes": sorted(sabline.ERROR_TABLE),
+            "removed_codes": sorted(getattr(sabline, "REMOVED_ERRORS", {}))}
 
 
 # ---- the command line -------------------------------------------------------
 
 def cli_surface() -> dict[str, Any]:
-    usage = velaris.usage_lines()
-    block = (velaris.usage_lines.__globals__.get("__doc__") or "") \
+    usage = sabline.usage_lines()
+    block = (sabline.usage_lines.__globals__.get("__doc__") or "") \
         .split("\nUsage:\n", 1)[-1].split("\n\n", 1)[0]
     return {"commands": {c: sorted(set(re.findall(r"--[a-z][a-z-]*",
                                                   "\n".join(lines))))
@@ -218,9 +218,9 @@ def _lines_of(stream: Any, into: queue.Queue[Any]) -> None:
 def http_surface() -> dict[str, Any]:
     token = "api-golden-" + secrets.token_hex(16)
     log_file = WORK / "door.log"
-    env = dict(os.environ, VELARIS_TOKEN=token)
+    env = dict(os.environ, SABLINE_TOKEN=token)
     door = subprocess.Popen(
-        VELARIS + ["serve", "--port", "0", "--root", str(WORK),
+        SABLINE + ["serve", "--port", "0", "--root", str(WORK),
                    "--log-file", str(log_file)],
         cwd=str(WORK), env=env, stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL, text=True)
@@ -241,7 +241,7 @@ def http_surface() -> dict[str, Any]:
             port = int(m.group(1))
     if port is None:
         door.kill()
-        raise RuntimeError("velaris serve did not say where it listens")
+        raise RuntimeError("sabline serve did not say where it listens")
 
     auth = {"Authorization": f"Bearer {token}"}
     cases = [
@@ -301,7 +301,7 @@ def http_surface() -> dict[str, Any]:
 def mcp_surface() -> dict[str, Any]:
     log_file = WORK / "mcp.log"
     server = subprocess.Popen(
-        [sys.executable, str(HERE / "velaris_mcp.py"), "--root", str(WORK),
+        [sys.executable, str(HERE / "sabline_mcp.py"), "--root", str(WORK),
          "--log-file", str(log_file)],
         cwd=str(WORK), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL, text=True, encoding="utf-8")
@@ -345,24 +345,24 @@ def mcp_surface() -> dict[str, Any]:
                                    "clientInfo": {"name": "check_api"}})
         tools = ask("tools/list")["result"]["tools"]
         calls = {
-            "card": call("velaris_card", {}),
-            "check": call("velaris_check", {"source": HELLO}),
-            "check, does not compile": call("velaris_check",
+            "card": call("sabline_card", {}),
+            "check": call("sabline_check", {"source": HELLO}),
+            "check, does not compile": call("sabline_check",
                                             {"source": BROKEN}),
-            "audit": call("velaris_audit", {"source": HELLO}),
-            "run": call("velaris_run", {"source": HELLO}),
-            "run, every field": call("velaris_run", {
+            "audit": call("sabline_audit", {"source": HELLO}),
+            "run": call("sabline_run", {"source": HELLO}),
+            "run, every field": call("sabline_run", {
                 "source": HELLO, "allow": ["io"], "args": ["a"],
                 "stdin": "x\n", "seed": 7,
                 "freeze_time": "2026-01-01T00:00:00Z", "timeout": 20,
                 "max_memory_mb": 256, "receipt": True}),
-            "run, refused": call("velaris_run", {"source": READS,
+            "run, refused": call("sabline_run", {"source": READS,
                                                  "allow": ["io"]}),
-            "run, past the ceiling": call("velaris_run", {
+            "run, past the ceiling": call("sabline_run", {
                 "source": HELLO, "allow": ["net"]}),
-            "run, a budget that does not parse": call("velaris_run", {
+            "run, a budget that does not parse": call("sabline_run", {
                 "source": HELLO, "allow": ["banana"]}),
-            "no such tool": call("velaris_nothing", {}),
+            "no such tool": call("sabline_nothing", {}),
         }
         unknown = ask("no/such/method")
     finally:
@@ -385,7 +385,7 @@ def mcp_surface() -> dict[str, Any]:
 # ---- the language server ----------------------------------------------------
 
 def lsp_surface() -> dict[str, Any]:
-    server = subprocess.Popen(VELARIS + ["lsp"], cwd=str(WORK),
+    server = subprocess.Popen(SABLINE + ["lsp"], cwd=str(WORK),
                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                               stderr=subprocess.DEVNULL)
     got: queue.Queue[Any] = queue.Queue()
@@ -448,7 +448,7 @@ def lsp_surface() -> dict[str, Any]:
         for uri, text in ((good, PROMISE), (bad, BROKEN)):
             send({"jsonrpc": "2.0", "method": "textDocument/didOpen",
                   "params": {"textDocument": {"uri": uri, "languageId":
-                                              "velaris", "version": 1,
+                                              "sabline", "version": 1,
                                               "text": text}}})
         answers = {
             "hover": ask(2, "textDocument/hover", at),
@@ -544,7 +544,7 @@ def api_line_for_change() -> tuple[bool, str]:
         return True, f"{tag} has no golden to compare with"
     if json.loads(before) == json.loads(GOLDEN.read_text(encoding="utf-8")):
         return True, f"the golden is {tag}'s"
-    version = velaris.VERSION
+    version = sabline.VERSION
     text = (HERE / "CHANGELOG.md").read_text(encoding="utf-8")
     if cast("tuple[int, int, int]", release_checks.parse_version(version)) > \
             cast("tuple[int, int, int]", release_checks.parse_version(tag)):

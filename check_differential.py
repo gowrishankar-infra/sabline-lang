@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Two versions of Velaris run the same programs; every difference is named.
+"""Two versions of Sabline run the same programs; every difference is named.
 
     python check_differential.py                     # working tree vs the newest older tag
     python check_differential.py --old v8.1.1
@@ -8,21 +8,23 @@
 
 THE TWO VERSIONS. --new is the working tree unless a ref is given. --old is
 the newest tag vX.Y.Z whose version is below the new tree's VERSION (read
-from velaris/version.py, or from velaris.py where the compiler is one file,
+from sabline/version.py, or from sabline.py where the compiler is one file,
+or from velaris/version.py or velaris.py in a tree from before the 8.6
+rename,
 as it was up to 8.1.1). A ref is checked out with `git worktree add --detach`
 into this suite's scratch directory - or, when git refuses that, extracted
 from `git archive` - and removed when the suite ends, whether it passed,
 failed or was interrupted. Both versions run under one Python (--python, by
-default the one running this file) as `python velaris.py`, which starts the
+default the one running this file) as `python sabline.py`, which starts the
 compiler in either layout. The children's environment is this one without
-PYTHONPATH, with PYTHONIOENCODING=utf-8, NO_COLOR=1, and VELARIS_CACHE_DIR
-set to a scratch directory per side (so an 8.1.x proof cache is neither read
+PYTHONPATH, with PYTHONIOENCODING=utf-8, NO_COLOR=1, and both spellings of
+the cache directory set to a scratch directory per side (so an 8.1.x proof cache is neither read
 from nor written to the user's).
 
 WHAT IS COMPARED, program by program:
 
   examples     Every program in run_tests.py's EXPECT, run as run_tests.py
-               runs it: `python velaris.py examples/NAME` with its ALLOW
+               runs it: `python sabline.py examples/NAME` with its ALLOW
                budget, its ARGS and its STDIN (an empty stdin when it has
                none). Each version uses its own run_tests.py and examples/;
                each program runs in a fresh directory of its own, --jobs at
@@ -31,8 +33,8 @@ WHAT IS COMPARED, program by program:
                8.0 or later (the flags came in 8.0), so a dice roll or the
                time of day is not a difference. Compared: the exit code,
                stdout and stderr.
-  conformance  `python velaris.py conformance --corpus DIR --json` over
-               velaris-spec's corpus (--spec; by default velaris-spec/tests
+  conformance  `python sabline.py conformance --corpus DIR --json` over
+               sabline-spec's corpus (--spec; by default sabline-spec/tests
                inside or beside this checkout). Compared: each case id's
                verdict, the report's `result` (pass, fail or skip). The
                detail is shown beside a difference, not compared.
@@ -40,7 +42,7 @@ WHAT IS COMPARED, program by program:
                corpus: --benchmark quick (the default, one program per
                category, enough for CI) or --benchmark full (every program,
                the monthly job). Compared: each program's verdict for each
-               tool the harness records (velaris, deno, python). Never a
+               tool the harness records (sabline, deno, python). Never a
                timing, and never the evidence text.
 
 A program or case present on one side only is a difference too. An argument
@@ -186,17 +188,36 @@ def version_tuple(text: str) -> tuple[Any, ...]:
     return tuple((parts + [0, 0, 0])[:3])
 
 
+# Where a checkout keeps the compiler, newest spelling first: the package
+# from 8.2, the single file before it, and both under the name the project
+# had before 8.6 renamed it Sabline. A tag from 8.5 or earlier is a tree
+# with velaris/ and velaris.py in it, and this suite has to run it.
+LAYOUTS = (("sabline", "version.py"), ("sabline.py",),
+           ("velaris", "version.py"), ("velaris.py",))
+ENTRY_POINTS = ("sabline.py", "velaris.py")
+
+
 def tree_version(root: Path) -> str:
-    """VERSION as the tree at `root` declares it, in either layout."""
-    for rel in (("velaris", "version.py"), ("velaris.py",)):
+    """VERSION as the tree at `root` declares it, in either layout and
+    under either of the project's two names."""
+    for rel in LAYOUTS:
         path = root.joinpath(*rel)
         if path.is_file():
             m = VERSION_LINE.search(path.read_text(encoding="utf-8",
                                                    errors="replace"))
             if m:
                 return m.group(1)
-    raise CannotRun(f"{root} declares no VERSION in velaris/version.py or "
-                    f"velaris.py")
+    raise CannotRun(f"{root} declares no VERSION in "
+                    + " or ".join("/".join(r) for r in LAYOUTS))
+
+
+def entry_point(root: Path) -> Path:
+    """The launcher that starts the compiler in the tree at `root`:
+    sabline.py, or velaris.py in a tree from before the 8.6 rename."""
+    for name in ENTRY_POINTS:
+        if (root / name).is_file():
+            return root / name
+    raise CannotRun(f"{root} holds none of {', '.join(ENTRY_POINTS)}")
 
 
 def newest_tag_below(version: str) -> str:
@@ -212,7 +233,7 @@ def newest_tag_below(version: str) -> str:
 
 
 class Tree:
-    """One version of Velaris on disk."""
+    """One version of Sabline on disk."""
 
     def __init__(self, label: str, root: Path, ref: Any, commit: Any, dirty: bool = False) -> None:
         self.label, self.root, self.ref = label, Path(root), ref
@@ -422,8 +443,11 @@ class Run:
     def env(self, side: str) -> dict[Any, Any]:
         env = dict(os.environ)
         env.pop("PYTHONPATH", None)
+        # both spellings: a tree from before the 8.6 rename reads
+        # VELARIS_CACHE_DIR, and neither side may reach the user's cache
+        cache = str(self.scratch / "cache" / side)
         env.update(PYTHONIOENCODING="utf-8", NO_COLOR="1",
-                   VELARIS_CACHE_DIR=str(self.scratch / "cache" / side))
+                   SABLINE_CACHE_DIR=cache, VELARIS_CACHE_DIR=cache)
         return env
 
     def normaliser(self, tree: Tree, work: Any = None) -> Normaliser:
@@ -467,7 +491,7 @@ def run_examples(tree: Tree, run: Run, side: str) -> dict[str, Any]:
     def one(name: str, attempt: int = 1) -> dict[str, Any]:
         work = run.scratch / "work" / side / f"{Path(name).stem}-{attempt}"
         work.mkdir(parents=True, exist_ok=True)
-        cmd = [run.python, str(tree.root / "velaris.py"),
+        cmd = [run.python, str(entry_point(tree.root)),
                str(tree.root / "examples" / name)]
         if name in tables["ALLOW"]:
             cmd += ["--allow", tables["ALLOW"][name]]
@@ -513,7 +537,7 @@ def run_examples(tree: Tree, run: Run, side: str) -> dict[str, Any]:
 def run_conformance(tree: Tree, run: Run, side: str) -> dict[str, Any]:
     cwd = run.scratch / "conformance" / side
     cwd.mkdir(parents=True, exist_ok=True)
-    cmd = [run.python, str(tree.root / "velaris.py"), "conformance",
+    cmd = [run.python, str(entry_point(tree.root)), "conformance",
            "--corpus", str(run.spec), "--json"]
     try:
         done = subprocess.run(cmd, capture_output=True, cwd=str(cwd),
@@ -533,6 +557,20 @@ def run_conformance(tree: Tree, run: Run, side: str) -> dict[str, Any]:
                                                        or ""))}
                         for row in rows},
             "again": None}      # the runner has no way to run one case
+
+
+# The benchmark records one column per tool, and the column for the
+# implementation this repository ships was called "velaris" until 8.6
+# renamed the project. It is the same column, measured the same way, so it
+# is compared under the name it has now - otherwise every program in the
+# corpus would read as a difference across the rename, and a real change of
+# verdict would be lost in 68 spurious ones. Delete this in 9.0, once no
+# tag the suite compares against predates 8.6.
+RENAMED_TOOL = {"velaris": "sabline"}
+
+
+def tool_now(name: str) -> str:
+    return RENAMED_TOOL.get(name, name)
 
 
 def run_benchmark(tree: Tree, run: Run, side: str, only: Any = None) -> dict[str, Any]:
@@ -565,14 +603,14 @@ def run_benchmark(tree: Tree, run: Run, side: str, only: Any = None) -> dict[str
         data = json.loads(results.read_text(encoding="utf-8"))
         for p in data["programs"]:
             rows[p["id"]] = {"name": p["name"],
-                             "verdicts": {t: v["verdict"]
+                             "verdicts": {tool_now(t): v["verdict"]
                                           for t, v in p["tools"].items()}}
     else:                       # --quick writes no file: read its table
         tools = None
         for line in done.stdout.decode("utf-8", "replace").splitlines():
             parts = line.split()
             if parts[:1] == ["program"]:
-                tools = parts[1:]
+                tools = [tool_now(name) for name in parts[1:]]
             elif tools and len(parts) == 2 + len(tools) \
                     and all(v in BENCH_VERDICTS for v in parts[2:]):
                 rows[parts[0]] = {"name": parts[1],
@@ -683,8 +721,8 @@ def compare_benchmark(old: dict[Any, Any], new: dict[Any, Any], labels: Any) -> 
 def find_spec(given: Any) -> Any:
     if given:
         return Path(given).resolve()
-    for candidate in (HERE / "velaris-spec" / "tests",
-                      HERE.parent / "velaris-spec" / "tests"):
+    for candidate in (HERE / "sabline-spec" / "tests",
+                      HERE.parent / "sabline-spec" / "tests"):
         if (candidate / "index.json").is_file():
             return candidate
     return None
@@ -696,8 +734,8 @@ def compare(args: Any, corpora: list[Any], scratch: Path, checkouts: Checkouts,
     if "conformance" in corpora:
         run.spec = find_spec(args.spec)
         if run.spec is None or not (run.spec / "index.json").is_file():
-            raise CannotRun("velaris-spec's conformance corpus was not found: "
-                            "pass --spec velaris-spec/tests, or leave "
+            raise CannotRun("sabline-spec's conformance corpus was not found: "
+                            "pass --spec sabline-spec/tests, or leave "
                             "--corpus out of conformance")
     new = (checkouts.checkout(args.new, "new") if args.new
            else checkouts.working_tree())
@@ -714,8 +752,8 @@ def compare(args: Any, corpora: list[Any], scratch: Path, checkouts: Checkouts,
                   normalised=NORMALISED)
     said_new = new.label + (f" at {new.commit[:12]}" if new.commit else "") \
         + (" with uncommitted changes" if new.dirty else "")
-    say(f"check_differential: {said_new} (Velaris {new.version}) against "
-        f"{old.label} at {old.commit[:12]} (Velaris {old.version}), Python "
+    say(f"check_differential: {said_new} (Sabline {new.version}) against "
+        f"{old.label} at {old.commit[:12]} (Sabline {old.version}), Python "
         f"{run.python_version}")
     if entry.heading is None:
         say(f"note: CHANGELOG.md of {new.label} has no entry for "
@@ -830,7 +868,7 @@ NORMALISED = [
 def main(argv: Any = None) -> int:
     ap = argparse.ArgumentParser(
         description="Run the examples, the conformance corpus and the "
-                    "benchmark under two versions of Velaris; every "
+                    "benchmark under two versions of Sabline; every "
                     "difference must be named in the CHANGELOG.")
     ap.add_argument("--new", metavar="REF",
                     help="the new version (default: the working tree)")
@@ -844,7 +882,7 @@ def main(argv: Any = None) -> int:
                     help="quick: one program per category (CI); full: every "
                          "program (the monthly job)")
     ap.add_argument("--spec", metavar="DIR",
-                    help="velaris-spec's tests/ directory")
+                    help="sabline-spec's tests/ directory")
     ap.add_argument("--entry", metavar="X.Y.Z",
                     help="the CHANGELOG entry to read (default: the new "
                          "version's)")
@@ -861,7 +899,7 @@ def main(argv: Any = None) -> int:
 
     scratch = isolate("check_differential")
     checkouts = Checkouts(scratch)
-    report: dict[Any, Any] = {"schema": "velaris.differential/1"}
+    report: dict[Any, Any] = {"schema": "sabline.differential/1"}
     try:
         code = compare(args, corpora, scratch, checkouts, report)
     except CannotRun as e:

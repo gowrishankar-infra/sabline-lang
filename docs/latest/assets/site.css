@@ -580,7 +580,7 @@ blockquote {
   overflow-wrap: normal;
 }
 
-/* Velaris tokens, by the lexer's own classes (build_docs.py) */
+/* Sabline tokens, by the lexer's own classes (build_docs.py) */
 .k { color: var(--tok-kw); font-weight: 600; }
 .s { color: var(--tok-str); }
 .n { color: var(--tok-num); }

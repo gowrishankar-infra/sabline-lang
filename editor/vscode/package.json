@@ -1,8 +1,8 @@
 {
-  "name": "velaris",
-  "displayName": "Velaris",
-  "description": "Velaris language support: syntax highlighting, and live errors and proofs from the real compiler.",
-  "version": "8.5.0",
+  "name": "sabline",
+  "displayName": "Sabline",
+  "description": "Sabline language support: syntax highlighting, and live errors and proofs from the real compiler.",
+  "version": "8.6.0",
   "publisher": "gowrishankar-infra",
   "engines": {
     "vscode": "^1.75.0"
@@ -14,10 +14,10 @@
   "contributes": {
     "languages": [
       {
-        "id": "velaris",
+        "id": "sabline",
         "aliases": [
-          "Velaris",
-          "velaris"
+          "Sabline",
+          "sabline"
         ],
         "extensions": [
           ".vel"
@@ -27,20 +27,20 @@
     ],
     "grammars": [
       {
-        "language": "velaris",
-        "scopeName": "source.velaris",
-        "path": "./syntaxes/velaris.tmLanguage.json"
+        "language": "sabline",
+        "scopeName": "source.sabline",
+        "path": "./syntaxes/sabline.tmLanguage.json"
       }
     ],
     "configuration": {
-      "title": "Velaris",
+      "title": "Sabline",
       "properties": {
-        "velaris.command": {
+        "sabline.command": {
           "type": "string",
-          "default": "velaris",
-          "description": "How to run Velaris (a path, if it is not on your PATH)."
+          "default": "sabline",
+          "description": "How to run Sabline (a path, if it is not on your PATH)."
         },
-        "velaris.checkOnSave": {
+        "sabline.checkOnSave": {
           "type": "boolean",
           "default": true,
           "description": "Check the file and prove its promises when you save."
@@ -49,19 +49,19 @@
     },
     "snippets": [
       {
-        "language": "velaris",
-        "path": "./snippets/velaris.json"
+        "language": "sabline",
+        "path": "./snippets/sabline.json"
       }
     ]
   },
   "main": "./extension.js",
   "activationEvents": [
-    "onLanguage:velaris"
+    "onLanguage:sabline"
   ],
   "license": "MIT",
   "icon": "icon.png",
   "keywords": [
-    "velaris",
+    "sabline",
     "verification",
     "contracts",
     "effects",
@@ -69,12 +69,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/gowrishankar-infra/velaris-lang"
+    "url": "https://github.com/gowrishankar-infra/sabline-lang"
   },
   "bugs": {
-    "url": "https://github.com/gowrishankar-infra/velaris-lang/issues"
+    "url": "https://github.com/gowrishankar-infra/sabline-lang/issues"
   },
-  "homepage": "https://velaris-lang.dev/",
+  "homepage": "https://sabline.dev/",
   "galleryBanner": {
     "color": "#101418",
     "theme": "dark"

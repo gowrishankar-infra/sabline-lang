@@ -110,12 +110,12 @@ def main(argv: Any = None) -> int:
             if not args.verbose:
                 out.write(f"    skipped {test.id()}: {reason}\n")
 
-    package = sys.modules.get("velaris")
+    package = sys.modules.get("sabline")
     if package is not None and not os.path.normcase(
             os.path.abspath(cast(str, package.__file__))).startswith(
-            os.path.normcase(os.path.join(ROOT, "velaris")) + os.sep):
+            os.path.normcase(os.path.join(ROOT, "sabline")) + os.sep):
         failed_tests.append(("(runner)", None,
-                             f"imported velaris from {package.__file__}, not "
+                             f"imported sabline from {package.__file__}, not "
                              f"from this checkout\n"))
         totals["failed"] += 1
 

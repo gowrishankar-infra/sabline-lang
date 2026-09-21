@@ -290,13 +290,13 @@ def issues() -> None:
                                 "message": "Node.js 20 is deprecated"},
                                {"annotation_level": "failure",
                                 "message": "wheel: --version answers 8.2.1 - "
-                                           "No module named velaris"}])
+                                           "No module named sabline"}])
     run_jobs(fake)
     created = fake.made("issue", "create")
     body = created[0][created[0].index("--body") + 1] if created else ""
     ok("a log gh will not read yet: the issue holds the job's failure "
        "annotations instead, and says why",
-       "still in progress" in body and "No module named velaris" in body
+       "still in progress" in body and "No module named sabline" in body
        and "Node.js 20" not in body, body)
 
     run = "https://api.github.com/repos/o/r/actions/runs/7"
@@ -388,11 +388,11 @@ def models() -> None:
     text = adversarial_models.prompt("budget")
     ok("the prompt names the version, the area and its files, and leaves no "
        "placeholder", adversarial_models.version() in text
-       and "effect budgets" in text and "`velaris/budget.py`" in text
+       and "effect budgets" in text and "`sabline/budget.py`" in text
        and "{" + "focus" not in text)
     answer = ("prose\n```json\n[{\"title\": \"old\"}]\n```\nmore\n```json\n"
-              "[{\"title\": \"a hole\", \"goal\": \"C\", \"where\": \"velaris/x.py:1\","
-              " \"reproduction\": \"velaris a.vel -- ```\", \"observed\": "
+              "[{\"title\": \"a hole\", \"goal\": \"C\", \"where\": \"sabline/x.py:1\","
+              " \"reproduction\": \"sabline a.vel -- ```\", \"observed\": "
               "\"key sk-test-12345678 and @someone\"}]\n```\n")
     ok("the last json block is the findings",
        adversarial_models.read_findings(answer) == [

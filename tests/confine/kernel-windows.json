@@ -1,6 +1,6 @@
 {
   "platform": "windows",
-  "velaris": "8.4.0",
+  "sabline": "8.4.0",
   "kernel": 8,
   "language_only": 30,
   "not_applicable": 5,

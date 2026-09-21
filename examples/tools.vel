@@ -4,7 +4,7 @@
 fn main() uses io {
     let given = args()
     if length(given) == 0 {
-        print("try: velaris examples/tools.vel alpha beta")
+        print("try: sabline examples/tools.vel alpha beta")
         return
     }
     print(format("you passed {} argument(s)", length(given)))

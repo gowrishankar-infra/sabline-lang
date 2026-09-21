@@ -1,0 +1,34 @@
+{
+  "name": "velaris",
+  "displayName": "Velaris (renamed: install Sabline)",
+  "description": "This extension is renamed. Install gowrishankar-infra.sabline instead; a Marketplace id cannot be renamed, so this is its last version.",
+  "version": "8.6.0",
+  "publisher": "gowrishankar-infra",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {},
+  "activationEvents": [],
+  "license": "MIT",
+  "icon": "icon.png",
+  "keywords": [
+    "sabline",
+    "renamed",
+    "deprecated"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gowrishankar-infra/sabline-lang"
+  },
+  "bugs": {
+    "url": "https://github.com/gowrishankar-infra/sabline-lang/issues"
+  },
+  "homepage": "https://sabline.dev/renamed.html",
+  "galleryBanner": {
+    "color": "#101418",
+    "theme": "dark"
+  }
+}

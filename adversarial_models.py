@@ -40,22 +40,22 @@ FOCUS: list[tuple[str, str, list[str]]] = [
     ("gate", "the release gate and the kill switch",
      ["release_checks.py", ".github/workflows/release.yml", "RELEASING.md"]),
     ("budget", "effect budgets: how a grant is parsed, held and enforced",
-     ["velaris/budget.py", "velaris/effects.py"]),
+     ["sabline/budget.py", "sabline/effects.py"]),
     ("prover", "the prover: what is reported proven",
-     ["velaris/prover.py", "velaris/termination.py"]),
+     ["sabline/prover.py", "sabline/termination.py"]),
     ("native", "native code: whether it keeps every rule the interpreter keeps",
-     ["velaris/native.py", "velaris/runtime.py"]),
+     ["sabline/native.py", "sabline/runtime.py"]),
     ("imports", "imports, the loader and the import root",
-     ["velaris/loader.py", "velaris/project.py"]),
+     ["sabline/loader.py", "sabline/project.py"]),
     ("doors", "the doors: the MCP server, the HTTP door and the worker pool",
-     ["velaris/doors.py", "velaris/pool.py", "velaris_mcp.py"]),
+     ["sabline/doors.py", "sabline/pool.py", "sabline_mcp.py"]),
     ("secret", "Secret of T and declassify: what can reach an output",
-     ["velaris/wrappers.py", "velaris/checker.py"]),
+     ["sabline/wrappers.py", "sabline/checker.py"]),
     ("reports", "the audit, SARIF, receipts and attestations",
-     ["velaris/library.py", "velaris/receipts.py", "velaris/attestation.py",
-      "velaris/findings.py"]),
+     ["sabline/library.py", "sabline/receipts.py", "sabline/attestation.py",
+      "sabline/findings.py"]),
     ("cli", "the command line: flags, arguments and the check ceiling",
-     ["velaris/cli.py", "velaris/eject.py"]),
+     ["sabline/cli.py", "sabline/eject.py"]),
 ]
 PER_FILE = 150_000
 FENCE = re.compile(r"```json\s*\n(.*?)\n\s*```", re.S)
@@ -63,7 +63,7 @@ FENCE = re.compile(r"```json\s*\n(.*?)\n\s*```", re.S)
 
 def version() -> str:
     found = re.search(r'^VERSION = "([^"]+)"',
-                      (HERE / "velaris" / "version.py").read_text(encoding="utf-8"),
+                      (HERE / "sabline" / "version.py").read_text(encoding="utf-8"),
                       re.M)
     return found.group(1) if found else "(unknown)"
 

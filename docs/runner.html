@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Hosting a run that calls tools - Velaris 8.5.0</title>
-<meta name="description" content="The runner&#x27;s first cut, new in 8.5. A host process - an agent framework, a service, a script - starts a Velaris program and offers it tools. The program ...">
-<meta name="velaris-version" content="8.5.0">
-<link rel="canonical" href="https://velaris-lang.dev/runner.html">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<title>Hosting a run that calls tools - Sabline 8.6.0</title>
+<meta name="description" content="The runner&#x27;s first cut, new in 8.5. A host process - an agent framework, a service, a script - starts a Sabline program and offers it tools. The program ...">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/runner.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
 </head>
@@ -17,8 +17,8 @@
 <header class="topbar">
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
-<a class="brand" href="index.html">Velaris</a>
-<a class="badge" href="versions.html" aria-label="Version 8.5.0, all versions"><span>8.5.0</span></a>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -44,33 +44,33 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html" aria-current="page">Hosting a run that calls tools</a></li><li><a href="eval.html">velaris eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Velaris program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html" aria-current="page">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 </li>
 <li><span class="sec-label">Spec</span>
-<ul><li><a href="stability.html">Stability</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-2.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-3.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
 <h1 id="hosting-a-run-that-calls-tools">Hosting a run that calls tools</h1>
 <p>The runner's first cut, new in 8.5. A host process - an agent framework, a
-service, a script - starts a Velaris program and offers it tools. The
+service, a script - starts a Sabline program and offers it tools. The
 program calls them with <code>tool(name, arguments)</code>; the operator's budget says
 which may be called and holds arguments to patterns; and the host's manifest
 says what each tool takes, what it costs, and the most one run may spend.
 There is no adapter for any framework yet: the protocol below is all of it.</p>
 <p><code>examples/runner/host.py</code> is a whole host in a hundred lines of Python, and
 <code>examples/runner/digest_outside.vel</code> a program it refuses.</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>velaris run program.vel --tools tools.json \
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline run program.vel --tools tools.json \
     --allow io,tool:search@20,tool:send_email:to=*@corp.com \
     --receipt run.receipt.json</code></pre></div>
-<p><strong>The manifest</strong> (<code>velaris.tools/1</code>) is the host's:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"schema": "velaris.tools/1",
+<p><strong>The manifest</strong> (<code>sabline.tools/1</code>) is the host's:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"schema": "sabline.tools/1",
  "tools": {
    "search": {"description": "Look a phrase up.",
               "arguments": {"type": "object",
@@ -80,7 +80,7 @@ There is no adapter for any framework yet: the protocol below is all of it.</p>
    "vault":  {"arguments": {"type": "object"}, "result": "secret"}},
  "allow": ["tool:search@20"],
  "ceiling": {"calls": 25, "cost": 40, "unit": "credits"}}</code></pre></div>
-<p><code>arguments</code> is a JSON Schema, of the keywords Velaris checks and no others
+<p><code>arguments</code> is a JSON Schema, of the keywords Sabline checks and no others
 (<code>type</code>, <code>properties</code>, <code>required</code>, <code>additionalProperties</code>, <code>items</code>, <code>enum</code>,
 <code>const</code>, <code>minLength</code>, <code>maxLength</code>, <code>minimum</code>, <code>maximum</code>, <code>minItems</code>,
 <code>maxItems</code>; a manifest that uses another is refused, because a constraint
@@ -99,7 +99,7 @@ line, UTF-8. From the run:</p>
 <div class="table-wrap" tabindex="0"><table>
 <thead><tr><th>Event</th><th>Fields</th></tr></thead>
 <tbody>
-<tr><td><code>ready</code></td><td>first: <code>protocol</code> (<code>velaris.tools-door/1</code>), <code>velaris</code>, <code>budget</code>, <code>tools</code></td></tr>
+<tr><td><code>ready</code></td><td>first: <code>protocol</code> (<code>sabline.tools-door/1</code>), <code>sabline</code>, <code>budget</code>, <code>tools</code></td></tr>
 <tr><td><code>output</code></td><td><code>text</code>: one line the program printed. Its standard error is still standard error</td></tr>
 <tr><td><code>call</code></td><td><code>id</code>, <code>tool</code>, <code>arguments</code> (a JSON object, already held to the schema, the grants and the ceilings)</td></tr>
 <tr><td><code>exit</code></td><td>last, whatever ended the run: <code>status</code>, and the ceiling record - <code>calls</code>, <code>cost</code>, <code>unit</code>, <code>calls_used</code>, <code>cost_used</code>, <code>manifest_sha256</code></td></tr>
@@ -116,30 +116,30 @@ JSON, carries another id, holds both or neither of <code>result</code> and <code
 does not come within <code>--tool-timeout</code> seconds (120) stops the run with
 E324. The program reads nothing from standard input while it is hosted:
 <code>read_line</code> gives an empty line.</p>
-<p><code>velaris skill verify</code>, given a directory <code>DIR</code>, reads a skill before any of it runs: the
+<p><code>sabline skill verify</code>, given a directory <code>DIR</code>, reads a skill before any of it runs: the
 programs under <code>DIR</code>, and the manifest in <code>DIR/tools.json</code> (or <code>--tools FILE</code>). It reports the tools the programs name and whether the manifest
 offers each, the budget that covers every program, what they declassify
 and which Python modules they call, and the manifest's own grants and
 ceiling; it exits 1 when a program does not compile, names a tool the
 manifest lacks or one built while running, or would take a secret result
-as <code>Text</code>. <code>--json</code> writes <code>velaris.skill-verify/1</code>.</p>
+as <code>Text</code>. <code>--json</code> writes <code>sabline.skill-verify/1</code>.</p>
 <p><strong>What is not here yet.</strong> A result is a <code>Text</code> like any other; nothing
 marks it as the host's words rather than the program's, so what a tool
 returns can steer a program anywhere inside its budget, though nowhere
 outside it. That mark, <code>Untrusted</code>, arrives in 9.0, with the HTTP door for
-tools and the first framework adapters. <code>velaris.tools/1</code>,
-<code>velaris.tools-door/1</code> and <code>velaris.skill-verify/1</code> are provisional until
+tools and the first framework adapters. <code>sabline.tools/1</code>,
+<code>sabline.tools-door/1</code> and <code>sabline.skill-verify/1</code> are provisional until
 then (STABILITY.md).</p>
 <h2 id="reading-a-receipt-or-an-audit-as-a-page">Reading a receipt, or an audit, as a page <a class="anchor" href="#reading-a-receipt-or-an-audit-as-a-page" aria-label="Link to this section">#</a></h2>
-<p><code>velaris receipt show RECEIPT</code> writes a receipt as a page: what was read,
+<p><code>sabline receipt show RECEIPT</code> writes a receipt as a page: what was read,
 written and fetched - by grant, with counts, from <code>grants_used</code> - which
 secrets were declassified and why, each tool call, what was refused and
-where, the confinement level, the wall time and the subjects. <code>velaris audit program.vel --html</code> does the same for an audit. Both write to standard
+where, the confinement level, the wall time and the subjects. <code>sabline audit program.vel --html</code> does the same for an audit. Both write to standard
 output or <code>-o FILE</code>: plain HTML with this site's stylesheet inside it, no
 script, nothing fetched, every value escaped, and the same bytes for the
 same input on every system. <code>--text</code> writes a receipt for a terminal, with
 control characters written as escapes. Neither verifies anything; that is
-<code>velaris verify</code>.</p>
+<code>sabline verify</code>.</p>
 <h2 id="who-trusts-whom">Who trusts whom <a class="anchor" href="#who-trusts-whom" aria-label="Link to this section">#</a></h2>
 <p>A run started with <code>--tools</code> and a manifest lets a program call tools
 the process that started it offers (the protocol is above). Who
@@ -189,7 +189,7 @@ exception here.</li>
 </ul>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/velaris-lang/blob/main/docs/runner.md">docs/runner.md</a> by build_docs.py, for Velaris 8.5.0. <a href="https://github.com/gowrishankar-infra/velaris-lang">Velaris on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/runner.md">docs/runner.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#reading-a-receipt-or-an-audit-as-a-page">Reading a receipt, or an audit, as a page</a></li><li><a href="#who-trusts-whom">Who trusts whom</a></li></ul></nav>

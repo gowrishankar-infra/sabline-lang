@@ -1,0 +1,101 @@
+name: farewell
+
+# The last release of the OLD names, velaris-lang on PyPI and on npm
+# (packaging/farewell/). This project was renamed Sabline in 8.6.0; each
+# stub holds no code, depends on sabline-lang, and says on its page that
+# the project moved. Run by hand, once, and then never again: a release
+# publishes the current names and nothing else.
+#
+# BEFORE RUNNING IT. Both registries' trusted publishers for velaris-lang
+# name this repository under its old name and name release.yml. Renaming
+# the repository changes the OIDC claim, so each publisher must be edited
+# first to say repository sabline-lang, workflow farewell.yml, environment
+# placeholders. packaging/farewell/README.md gives the exact fields. A run
+# before that is done fails at the upload, having published nothing.
+#
+# AFTER RUNNING IT, as the package owner, mark the npm one deprecated:
+#   npm deprecate velaris-lang "renamed: this project is now sabline-lang (https://sabline.dev)"
+# and publish the old VS Code extension's last version from
+# packaging/farewell/vscode. Neither can be done from here: npm deprecate
+# needs a long-lived token, and the Marketplace has no OIDC publishing.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pypi:
+    name: the last velaris-lang on PyPI
+    runs-on: ubuntu-latest
+    environment: placeholders
+    permissions:
+      contents: read
+      id-token: write            # trusted publishing, no token stored
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      - name: It depends on sabline-lang and holds no code
+        working-directory: packaging/farewell/pypi/velaris-lang
+        run: |
+          python3 - <<'EOF'
+          import re
+          text = open("pyproject.toml", encoding="utf-8").read()
+          assert 'name = "velaris-lang"' in text, "not the old name"
+          assert re.search(r'dependencies = \["sabline-lang>=', text), \
+              "it must depend on sabline-lang"
+          print("velaris-lang", re.search(r'version = "([^"]+)"', text).group(1))
+          EOF
+      - name: Build it
+        working-directory: packaging/farewell/pypi/velaris-lang
+        run: |
+          pip install build
+          python -m build
+          ls -l dist
+      - name: Publish it
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
+        with:
+          packages-dir: packaging/farewell/pypi/velaris-lang/dist
+          skip-existing: true
+
+  npm:
+    name: the last velaris-lang on npm
+    needs: pypi
+    runs-on: ubuntu-latest
+    environment: placeholders
+    permissions:
+      contents: read
+      id-token: write            # trusted publishing; npm adds provenance
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: "24"
+          check-latest: true
+          registry-url: "https://registry.npmjs.org"
+      - name: It depends on sabline-lang and holds no code
+        working-directory: packaging/farewell/npm/velaris-lang
+        run: |
+          test "$(node -p "require('./package.json').name")" = velaris-lang
+          test -n "$(node -p "require('./package.json').dependencies['sabline-lang']")"
+          node -p "require('./package.json').version"
+      - name: Publish it
+        working-directory: packaging/farewell/npm/velaris-lang
+        run: npm publish
+      - name: Say what is still to be done by hand
+        run: |
+          {
+            echo "### The last velaris-lang is published"
+            echo ""
+            echo 'Still to do, neither of which can be done from a workflow:'
+            echo ''
+            echo '1. `npm deprecate velaris-lang "renamed: this project is now sabline-lang (https://sabline.dev)"`'
+            echo '2. publish `packaging/farewell/vscode` to the Marketplace'
+          } >> "$GITHUB_STEP_SUMMARY"
