@@ -163,6 +163,22 @@ def write_versions(repo: Path, version: str, overrides: dict[Any, Any] | None = 
         path.write_text(text.rstrip("\n") + "\n", encoding="utf-8")
 
 
+def write_crate(repo: Path, version: str) -> None:
+    """rt/Cargo.toml, whose version is what a pre-release publishes.
+
+    It is the one place a `9.0.0-alpha.N` is written: the Python package's
+    six version files stay on the release users get, because an alpha
+    publishes the crate and nothing else (plan/9.0.md, alpha.1).
+    """
+    path = repo / "rt" / "Cargo.toml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "[workspace]\n"
+        'members = ["crates/sabline-rt"]\n\n'
+        "[workspace.package]\n"
+        f'version = "{version}"\n', encoding="utf-8")
+
+
 BASE_ENTRY = ("7.1.2", "The proof cache could be lied to",
               "The proof cache moved to a per-user directory.")
 
@@ -339,9 +355,17 @@ def in_order(jobs: dict[Any, Any]) -> list[Any]:
 
 def decides(expr: Any, needs: list[Any], results: dict[Any, Any], outputs: dict[Any, Any]) -> bool:
     """A job's `if:` as GitHub Actions decides it, for the shapes release.yml
-    uses: needs.X.result, needs.X.outputs.Y, !cancelled(), && and ||. A job
-    with no status function in its condition also needs every job it needs
-    to have succeeded."""
+    uses: needs.X.result, needs.X.outputs.Y, !=, !cancelled(), always(),
+    contains(needs.*.result, '...'), && and ||. A job with no status
+    function in its condition also needs every job it needs to have
+    succeeded.
+
+    `contains(needs.*.result, 'failure')` is what the tag job asks, because
+    from 9.0.0-alpha.1 half the jobs it waits on are skipped rather than
+    successful: a pre-release builds the crate and none of the Python
+    artefacts, and an ordinary release the other way round. A skipped need
+    is not a failed one, and the tag must run in both.
+    """
     implicit = all(results.get(n) == "success" for n in needs)
     if not expr:
         return implicit
@@ -350,12 +374,21 @@ def decides(expr: Any, needs: list[Any], results: dict[Any, Any], outputs: dict[
         text = text[3:-2].strip()
     status = "cancelled()" in text or "always()" in text
     text = text.replace("!cancelled()", "True").replace("always()", "True")
+    # contains(needs.*.result, 'x'): whether any job this one needs ended x
+    text = re.sub(
+        r"contains\(needs\.\*\.result, '(\w+)'\)",
+        lambda m: str(any(results.get(n) == m.group(1) for n in needs)), text)
     text = re.sub(r"needs\.([\w-]+)\.result == '(\w+)'",
                   lambda m: str(results.get(m.group(1)) == m.group(2)), text)
     text = re.sub(r"needs\.([\w-]+)\.outputs\.([\w-]+) == '([^']*)'",
                   lambda m: str(outputs.get((m.group(1), m.group(2)))
                                 == m.group(3)), text)
+    text = re.sub(r"needs\.([\w-]+)\.outputs\.([\w-]+) != '([^']*)'",
+                  lambda m: str(outputs.get((m.group(1), m.group(2)))
+                                != m.group(3)), text)
     text = text.replace("&&", " and ").replace("||", " or ")
+    text = re.sub(r"!\s*(True|False)",
+                  lambda m: str(not (m.group(1) == "True")), text)
     if re.search(r"[A-Za-z_]\.[A-Za-z_]|[()]\s*[A-Za-z_]+\(", text):
         raise Unreadable(f"cannot decide {expr!r}")
     return bool(eval(text, {"__builtins__": {}}, {})) and (status or implicit)
@@ -381,6 +414,7 @@ class Release:
         self.full = all_at(version)
         self.server = server
         StandIn.routes = {
+            ("GET", f"/api/v1/crates/sabline-rt/{version}"): (404, {}),
             ("GET", "/pypi/sabline-lang/json"): (200, {"info": {
                 "version": "7.1.2"}}),
             ("GET", "/sabline-lang"): (200, {"dist-tags": {
@@ -414,6 +448,9 @@ class Release:
         elif target == "registry":
             self._serve(("GET", f"{s}/versions/{v}"),
                         ("GET", f"{s}/versions/latest"))
+        elif target == "crates":
+            StandIn.routes[("GET", f"/api/v1/crates/sabline-rt/{v}")] = (
+                200, {"version": {"num": v}})
 
     def release_files(self, attach: bool) -> None:
         """The GitHub release's step: create it with what it lacks, or, for
@@ -450,6 +487,16 @@ def run_job(name: str, job: dict[Any, Any], release: Release) -> None:
         target = asks.group(1)
         if not release_checks.published(target, release.v):
             release.publish(target)
+    elif name == "crate":
+        release.made["crate-built"] += 1
+    elif name == "prerelease_github":
+        # `gh release create --prerelease`: a release GitHub does not call
+        # the latest one, which is what keeps 8.6.0 what a user gets
+        if "--prerelease" not in steps:
+            raise Unreadable("the pre-release's GitHub release is not "
+                             "created with --prerelease, so it would "
+                             "become the latest release")
+        release.made["prerelease-github"] += 1
     elif name == "github_release":
         release.release_files(attach=False)
     elif name == "attach_attestation":
@@ -494,6 +541,9 @@ def fresh_results(paused: str = "false") -> tuple[dict[Any, Any], dict[Any, Any]
 
 PUBLISHES = ("tag", "pypi", "npm", "vscode", "github", "registry",
              "attestation", "pins")
+# what a pre-release makes instead, and nothing else
+PRERELEASE_PUBLISHES = ("tag", "crate-built", "crates",
+                        "prerelease-github")
 
 
 # ---- the vscode job's own steps, in bash, with stand-ins for vsce and npm ----
@@ -699,6 +749,21 @@ class PinFixture:
             target = self.work / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(HERE / name, target)
+        # This fixture is about an ordinary release's pin move, so the
+        # tree is put in an ordinary release's state: if this checkout's
+        # rt/Cargo.toml names a pre-release, the copy's names the release
+        # it leads to. A pre-release moves no pin at all, and has fixtures
+        # of its own above.
+        crate = self.work / release_checks.CRATE_MANIFEST
+        if crate.exists():
+            said = release_checks.crate_version(self.work) or ""
+            if release_checks.prerelease_of(said):
+                numbers = release_checks.parse_version(said)
+                plain = ".".join(str(n) for n in numbers) if numbers else "1.0.0"
+                crate.write_text(
+                    crate.read_text(encoding="utf-8").replace(
+                        f'version = "{said}"', f'version = "{plain}"', 1),
+                    encoding="utf-8")
         # a release commit's documents pin the release before it, whichever
         # this tree's happen to pin
         for doc in release_checks.PIN_DOCS:
@@ -840,9 +905,9 @@ def main() -> int:
     line = one_line(out) or ""
     ok("a docs-only commit is not a release: exit 0 and one notice line",
        code == 0 and line.startswith("::notice::no release:"), out + err)
-    ok("...which says the version is already the newest tag, and tells the "
-       "jobs after it to do nothing",
-       "VERSION is 7.1.2 and v7.1.2 is already the newest tag" in line
+    ok("...which says the version is already the newest release, and tells "
+       "the jobs after it to do nothing",
+       "VERSION is 7.1.2 and v7.1.2 is already the newest release" in line
        and outputs.get("release") == "false"
        and outputs.get("build") == "false", out + str(outputs))
 
@@ -873,8 +938,9 @@ def main() -> int:
        out + err)
     ok("...handing the jobs after it the version, the tag, the commit and "
        "the tag before",
-       outputs == {"release": "true", "build": "true", "version": "7.2.0",
-                   "tag": "v7.2.0", "previous_tag": "v7.1.2", "sha": head},
+       outputs == {"release": "true", "build": "true", "prerelease": "false",
+                   "version": "7.2.0", "tag": "v7.2.0",
+                   "previous_tag": "v7.1.2", "sha": head},
        str(outputs))
 
     parent = git(repo, "rev-parse", "HEAD~1")
@@ -921,8 +987,9 @@ def main() -> int:
     write_changelog(repo, BASE_ENTRY, ("7.0.5", "A backport", "..."))
     commit(repo, "7.0.5")
     code, out, err, outputs = cli("gate", repo=repo)
-    ok("a version that is not newer than the newest tag is not a release",
-       code == 0 and "7.0.5 is not newer than the newest tag, v7.1.2" in out
+    ok("a version that is not newer than the newest release is not a release",
+       code == 0
+       and "7.0.5 is not newer than the newest release, v7.1.2" in out
        and outputs.get("release") == "false", out + err)
 
     repo = base_repo("one-package")
@@ -1145,6 +1212,129 @@ def main() -> int:
     ok("a registry manifest whose packages are not a list is not a release, "
        "and no traceback", code == 0 and "Traceback" not in out + err
        and outputs.get("release") == "false", out + err)
+
+    print()
+    print("the gate: a pre-release publishes the crate and nothing else")
+    print("-" * 62)
+
+    # A repository at 7.1.2, tagged, whose Rust workspace says an alpha.
+    # The six version files stay where the tag left them: that is what
+    # makes it a pre-release of the crate and not a release of Sabline.
+    repo = base_repo("prerelease")
+    write_crate(repo, "9.0.0-alpha.1")
+    write_changelog(repo, ("9.0.0-alpha.1", "The parser, twice",
+                           "sabline-rt reads a program."), BASE_ENTRY)
+    head = commit(repo, "9.0.0-alpha.1: the parser, twice")
+    code, out, err, outputs = cli("gate", "--expect-sha", head, repo=repo)
+    line = one_line(out) or ""
+    ok("an alpha in rt/Cargo.toml is a release, with the Python package "
+       "left where it was",
+       code == 0 and line.startswith("::notice::pre-release: 9.0.0-alpha.1"),
+       out + err)
+    ok("...telling the jobs after it that it is a pre-release, and which "
+       "version",
+       outputs == {"release": "true", "build": "true", "prerelease": "true",
+                   "version": "9.0.0-alpha.1", "tag": "v9.0.0-alpha.1",
+                   "previous_tag": "v7.1.2", "sha": head},
+       str(outputs))
+    ok("...and the line says what it publishes and what stays",
+       "publishing the sabline-rt crate" in line
+       and "marked pre-release" in line
+       and "v7.1.2 stays what a user gets" in line, line)
+
+    repo = base_repo("prerelease-moves-python")
+    write_crate(repo, "9.0.0-alpha.1")
+    write_versions(repo, "7.1.3")
+    write_changelog(repo, ("9.0.0-alpha.1", "The parser, twice", "..."),
+                    BASE_ENTRY)
+    commit(repo, "an alpha that also bumps the Python package")
+    code, out, err, outputs = cli("gate", repo=repo)
+    line = one_line(out) or ""
+    ok("an alpha that also moves the Python package is refused: exit 1, an "
+       "error", code == 1 and line.startswith("::error::refused:")
+       and outputs.get("release") == "false", out + err)
+    ok("...saying it would change what PyPI serves",
+       "would change what PyPI serves" in line, line)
+
+    repo = base_repo("prerelease-no-entry")
+    write_crate(repo, "9.0.0-alpha.1")
+    commit(repo, "an alpha with no CHANGELOG entry")
+    code, out, err, outputs = cli("gate", repo=repo)
+    ok("an alpha with no CHANGELOG entry is not a release",
+       code == 0 and "no entry heading for 9.0.0-alpha.1" in out
+       and outputs.get("release") == "false", out + err)
+
+    repo = base_repo("prerelease-already-tagged")
+    write_crate(repo, "9.0.0-alpha.1")
+    write_changelog(repo, ("9.0.0-alpha.1", "The parser, twice", "..."),
+                    BASE_ENTRY)
+    commit(repo, "9.0.0-alpha.1")
+    git(repo, "tag", "-a", "v9.0.0-alpha.1", "-m", "v9.0.0-alpha.1")
+    (repo / "README.md").write_text("after the alpha\n", encoding="utf-8")
+    commit(repo, "a commit after the alpha")
+    code, out, err, outputs = cli("gate", repo=repo)
+    ok("a commit after the alpha is not a second release of it, and it is "
+       "asked the ordinary questions again",
+       code == 0 and "no release:" in out
+       and "v7.1.2 is already the newest release" in out
+       and outputs.get("prerelease") == "false"
+       and outputs.get("release") == "false", out + err)
+
+    repo = base_repo("prerelease-then-release")
+    write_crate(repo, "9.0.0-alpha.1")
+    write_changelog(repo, ("9.0.0-alpha.1", "The parser, twice", "..."),
+                    BASE_ENTRY)
+    commit(repo, "9.0.0-alpha.1")
+    git(repo, "tag", "-a", "v9.0.0-alpha.1", "-m", "v9.0.0-alpha.1")
+    write_crate(repo, "9.0.0-alpha.2")
+    write_changelog(repo, ("9.0.0-alpha.2", "Types, twice", "..."),
+                    ("9.0.0-alpha.1", "The parser, twice", "..."), BASE_ENTRY)
+    head = commit(repo, "9.0.0-alpha.2")
+    code, out, err, outputs = cli("gate", "--expect-sha", head, repo=repo)
+    ok("alpha.2 follows alpha.1, and v9.0.0-alpha.1 is the tag before it",
+       code == 0 and "pre-release: 9.0.0-alpha.2" in out
+       and outputs.get("previous_tag") == "v9.0.0-alpha.1", out + err)
+
+    # After the alpha is tagged, rt/Cargo.toml still says its version
+    # until somebody moves it - and the commits after it must be able to be
+    # the next ordinary release. A rule that read the crate alone would
+    # block every release until the crate's version moved.
+    repo = base_repo("release-after-an-alpha")
+    write_crate(repo, "9.0.0-alpha.1")
+    write_changelog(repo, ("9.0.0-alpha.1", "The parser, twice", "..."),
+                    BASE_ENTRY)
+    commit(repo, "9.0.0-alpha.1")
+    git(repo, "tag", "-a", "v9.0.0-alpha.1", "-m", "v9.0.0-alpha.1")
+    write_versions(repo, "7.1.3")
+    write_changelog(repo, ("7.1.3", "A patch after the alpha", "..."),
+                    ("9.0.0-alpha.1", "The parser, twice", "..."), BASE_ENTRY)
+    head = commit(repo, "7.1.3, after the alpha, with the crate unmoved")
+    code, out, err, outputs = cli("gate", "--expect-sha", head, repo=repo)
+    ok("a release of the Python package after a tagged alpha is an ordinary "
+       "release, with the crate's version left where the alpha put it",
+       code == 0 and "::notice::release: 7.1.3" in out
+       and outputs.get("prerelease") == "false", out + err)
+    ok("...measured against the newest release and not against the alpha, "
+       "which is what everything it compares with means by 'the previous "
+       "one'",
+       outputs.get("previous_tag") == "v7.1.2"
+       and "the newest release was v7.1.2" in out, out + str(outputs))
+
+    # and an ordinary release, in a repository that has a Rust workspace,
+    # is decided exactly as it was: the alpha path is entered by the crate
+    # saying a pre-release version and by nothing else
+    repo = base_repo("release-with-a-crate")
+    write_crate(repo, "9.0.0")
+    write_versions(repo, "7.2.0")
+    write_changelog(repo, ("7.2", "Releases that tag themselves", "..."),
+                    BASE_ENTRY)
+    head = commit(repo, "v7.2.0, beside a crate at 9.0.0")
+    code, out, err, outputs = cli("gate", "--expect-sha", head, repo=repo)
+    ok("a repository with a Rust workspace at a release version takes the "
+       "ordinary path",
+       code == 0 and "::notice::release: 7.2.0" in out
+       and outputs.get("prerelease") == "false"
+       and outputs.get("version") == "7.2.0", out + err)
 
     print()
     print("the release notes and the tag message")
@@ -1557,6 +1747,94 @@ def main() -> int:
                results.get("vscode") == "success"
                and results.get("consistency") == "success"
                and all(release.made[p] == 1 for p in PUBLISHES),
+               f"{dict(release.made)} {results}")
+
+            print()
+            print("release.yml, job by job: a pre-release publishes the "
+                  "crate and nothing else")
+            print("-" * 62)
+
+            # An alpha: the gate says prerelease=true, and only the jobs
+            # that publish the crate may run. This is the fixture for
+            # plan/9.0.md's rule that 8.6.0 stays what users get.
+            # A pre-release skips every Python build, so the jobs before
+            # the tag are skipped rather than successful - which is what
+            # the tag job's condition has to survive.
+            def prerelease_results(paused: str = "false") -> Any:
+                results, outputs = fresh_results(paused)
+                for name in BEFORE_TAG - {"gate", "paused"}:
+                    results[name] = "skipped"
+                outputs[("gate", "prerelease")] = "true"
+                return results, outputs
+
+            release = Release("9.0.0-alpha.1")
+            results, outputs = prerelease_results()
+            attempt(jobs, release, results, outputs)
+            made = dict(release.made)
+            never = ("pypi", "npm", "vscode", "registry", "github",
+                     "attestation", "pins")
+            ok("a pre-release tags, builds the crate, publishes it to "
+               "crates.io and makes a GitHub release marked pre-release",
+               all(release.made[p] == 1 for p in PRERELEASE_PUBLISHES), made)
+            ok("...and publishes to PyPI, npm, the Marketplace and the MCP "
+               "registry not at all, attaches no attestation, and moves no "
+               "Action pin",
+               all(release.made[p] == 0 for p in never), made)
+            ok("...with every job of the ordinary path skipped rather than "
+               "failed, the tag still made on top of them",
+               all(results.get(n) == "skipped" for n in (
+                   "pypi", "npm", "vscode", "github_release", "mcp_registry",
+                   "attach_attestation", "consistency", "move_pins",
+                   "advisory"))
+               and results.get("tag") == "success",
+               {n: r for n, r in results.items() if r != "success"})
+            ok("...and the crate's own jobs ran",
+               results.get("crate") == "success"
+               and results.get("crates_io") == "success"
+               and results.get("prerelease_github") == "success", results)
+
+            release = Release("9.0.0-alpha.1")
+            results, outputs = prerelease_results(paused="true")
+            attempt(jobs, release, results, outputs)
+            ok("RELEASE_PAUSED stops a pre-release too: the crate is still "
+               "built, so a paused pre-release is a checked one, and "
+               "nothing is tagged and nothing is published",
+               release.made["crate-built"] == 1
+               and not any(release.made[p] for p in
+                           ("tag", "crates", "prerelease-github")),
+               dict(release.made))
+
+            release = Release("9.0.0-alpha.1")
+            release.fail.add("crates")
+            results, outputs = prerelease_results()
+            attempt(jobs, release, results, outputs)
+            ok("a crates.io publish that fails leaves no GitHub release "
+               "behind it",
+               results.get("crates_io") == "failure"
+               and results.get("prerelease_github") == "skipped"
+               and release.made["prerelease-github"] == 0,
+               f"{results} {dict(release.made)}")
+            attempt(jobs, release, results, outputs,
+                    only=descendants(jobs, {"crates_io"}))
+            ok("...and re-running the failed jobs finishes it, each publish "
+               "made once",
+               all(release.made[p] == 1 for p in PRERELEASE_PUBLISHES),
+               f"{dict(release.made)} {results}")
+
+            # and the ordinary path, run again after all that, is what it
+            # was: this is the other half of the fixture the alpha needs
+            release = Release("7.2.0")
+            results, outputs = fresh_results()
+            attempt(jobs, release, results, outputs)
+            ok("an ordinary release is unchanged: every publish made once, "
+               "and no crate job ran",
+               all(release.made[p] == 1 for p in PUBLISHES)
+               and release.made["crate-built"] == 0
+               and release.made["crates"] == 0
+               and release.made["prerelease-github"] == 0
+               and results.get("crate") == "skipped"
+               and results.get("crates_io") == "skipped"
+               and results.get("prerelease_github") == "skipped",
                f"{dict(release.made)} {results}")
 
             print()

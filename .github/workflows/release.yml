@@ -29,6 +29,16 @@ name: release
 #      security advisory, and the gh commands that make it are printed:
 #      GITHUB_TOKEN cannot be given that permission. Nothing here ever
 #      publishes an advisory.
+#   8. A PRE-RELEASE is a different thing and publishes a different set.
+#      When rt/Cargo.toml's version is X.Y.Z-alpha.N (or beta, or rc), the
+#      gate says `prerelease=true` and only two jobs publish: the crate to
+#      crates.io by OIDC trusted publishing, and a GitHub release marked
+#      pre-release carrying the packaged crate. PyPI, npm, the VS Code
+#      Marketplace and the MCP registry are not touched; the Action pins
+#      are not moved; no "latest" moves anywhere. The newest release stays
+#      what a user gets. Every job of the ordinary path carries
+#      `needs.gate.outputs.prerelease != 'true'` for exactly that reason,
+#      and check_release.py holds both paths to fixtures (plan/9.0.md).
 #
 # Every artifact is signed with sigstore (keyless, through this
 # workflow's OIDC identity), the wheel is built twice and compared, and a
@@ -74,6 +84,7 @@ jobs:
     outputs:
       release: ${{ steps.gate.outputs.release }}
       build: ${{ steps.gate.outputs.build }}
+      prerelease: ${{ steps.gate.outputs.prerelease }}
       version: ${{ steps.gate.outputs.version }}
       tag: ${{ steps.gate.outputs.tag }}
       previous_tag: ${{ steps.gate.outputs.previous_tag }}
@@ -101,7 +112,7 @@ jobs:
   dist:
     name: wheel and sdist, signed, with SBOM
     needs: gate
-    if: needs.gate.outputs.build == 'true'
+    if: needs.gate.outputs.build == 'true' && needs.gate.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -195,7 +206,7 @@ jobs:
   reproducible:
     name: the wheel builds the same twice
     needs: gate
-    if: needs.gate.outputs.build == 'true'
+    if: needs.gate.outputs.build == 'true' && needs.gate.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
@@ -227,7 +238,7 @@ jobs:
   bundle:
     name: the double-click bundle, signed
     needs: gate
-    if: needs.gate.outputs.build == 'true'
+    if: needs.gate.outputs.build == 'true' && needs.gate.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -258,7 +269,7 @@ jobs:
   binaries:
     name: standalone executable, signed
     needs: gate
-    if: needs.gate.outputs.build == 'true'
+    if: needs.gate.outputs.build == 'true' && needs.gate.outputs.prerelease != 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -342,7 +353,7 @@ jobs:
   attestation:
     name: a signed in-toto attestation of one example program, and a receipt of one run of it
     needs: gate
-    if: needs.gate.outputs.build == 'true'
+    if: needs.gate.outputs.build == 'true' && needs.gate.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -501,7 +512,7 @@ jobs:
   perf:
     name: pure-numeric time against the previous release
     needs: gate
-    if: needs.gate.outputs.build == 'true'
+    if: needs.gate.outputs.build == 'true' && needs.gate.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     env:
       PREVIOUS: ${{ needs.gate.outputs.previous_tag }}
@@ -525,7 +536,7 @@ jobs:
   differential:
     name: every difference from the previous release is named
     needs: gate
-    if: needs.gate.outputs.build == 'true'
+    if: needs.gate.outputs.build == 'true' && needs.gate.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     env:
       PREVIOUS: ${{ needs.gate.outputs.previous_tag }}
@@ -555,9 +566,57 @@ jobs:
   # no or off, this says so and the tag and every publish after it are
   # skipped, while the tests and the builds above still run. RELEASING.md
   # says when to use it and how to release once it is cleared.
+  # ---- a pre-release: the crate, and nothing else ---------------------------
+
+  crate:
+    name: the sabline-rt crate, packaged and verified
+    needs: gate
+    # A pre-release only. An ordinary release does not publish the crate:
+    # 9.0.0 will, and that is a change to this file made then, with its own
+    # fixture.
+    if: needs.gate.outputs.build == 'true' && needs.gate.outputs.prerelease == 'true'
+    runs-on: ubuntu-latest
+    env:
+      V: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+        with:
+          toolchain: stable
+      - name: The crate says the version the gate read
+        working-directory: rt
+        run: |
+          said=$(cargo metadata --no-deps --format-version 1 \
+                 | python3 -c 'import json,sys; print(json.load(sys.stdin)["packages"][0]["version"])')
+          test "$said" = "$V" || { echo "::error::rt/Cargo.toml says $said, the gate read $V"; exit 1; }
+      # Built from the committed lockfile, as the release builds
+      # everything else (plan/9.0.md, risk 4)
+      - name: Build, test and package
+        working-directory: rt
+        run: |
+          cargo build --release --locked
+          cargo test --release --locked
+          cargo package --locked -p sabline-rt
+      - name: What is in the package
+        working-directory: rt
+        run: |
+          cargo package --locked -p sabline-rt --list > ../crate-contents.txt
+          cat ../crate-contents.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: crate
+          path: |
+            rt/target/package/sabline-rt-*.crate
+            crate-contents.txt
+          if-no-files-found: error
+
   paused:
     name: is releasing paused?
     needs: gate
+    # RELEASE_PAUSED is the kill switch, and it stops a pre-release too
     if: needs.gate.outputs.release == 'true'
     runs-on: ubuntu-latest
     environment: release
@@ -576,8 +635,17 @@ jobs:
 
   tag:
     name: tag the commit
-    needs: [gate, paused, perf, differential, dist, reproducible, bundle, binaries, attestation]
-    if: needs.gate.outputs.release == 'true' && needs.paused.outputs.paused == 'false'
+    needs: [gate, paused, perf, differential, dist, reproducible, bundle,
+            binaries, attestation, crate]
+    # A pre-release skips every Python build, so those jobs are skipped
+    # rather than successful and the tag must not wait for a result they
+    # will never give. `crate` is the one a pre-release does run, and it
+    # is skipped on an ordinary release.
+    if: >-
+      !cancelled() && needs.gate.outputs.release == 'true' &&
+      needs.paused.outputs.paused == 'false' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -615,10 +683,90 @@ jobs:
           git push origin "refs/tags/$TAG"
           echo "::notice::tagged $SHA as $TAG (annotated, not signed)"
 
+  crates_io:
+    name: publish the crate to crates.io
+    needs: [gate, tag]
+    if: needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write            # crates.io trusted publishing, no token stored
+    env:
+      V: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+        with:
+          toolchain: stable
+      - name: Is this version on crates.io already?
+        id: there
+        run: python3 release_checks.py published crates "$V" --annotate --github-output "$GITHUB_OUTPUT"
+      # Trusted publishing: crates.io mints a short-lived token from this
+      # workflow's GitHub identity, so no publish token is stored anywhere.
+      # The trusted publisher on crates.io names this repository, the
+      # workflow file release.yml and the environment `release`, as PyPI's
+      # and npm's already do - MAINTENANCE.md's secrets table gains no row.
+      - uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18  # v1.0.5
+        if: steps.there.outputs.published == 'false'
+        id: auth
+      - name: Publish
+        if: steps.there.outputs.published == 'false'
+        working-directory: rt
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: cargo publish --locked -p sabline-rt
+      - name: crates.io serves it
+        run: python3 release_checks.py published crates "$V" --require --timeout 900 --interval 20 --annotate --summary "$GITHUB_STEP_SUMMARY"
+
+  prerelease_github:
+    name: a GitHub release, marked pre-release
+    needs: [gate, crates_io]
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease == 'true' && needs.crates_io.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write            # create the release, attach the crate
+    env:
+      V: ${{ needs.gate.outputs.version }}
+      TAG: ${{ needs.gate.outputs.tag }}
+      SHA: ${{ needs.gate.outputs.sha }}
+      PREVIOUS: ${{ needs.gate.outputs.previous_tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: crate
+          path: assets
+      - name: Create the release, marked pre-release
+        shell: bash
+        run: |
+          ls -l assets
+          python3 release_checks.py notes "$V" --sha "$SHA" --previous "$PREVIOUS" -o notes.md
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "::notice::the GitHub release $TAG is already there; leaving it"
+            exit 0
+          fi
+          gh release create "$TAG" --verify-tag --prerelease \
+            --title "$TAG" --notes-file notes.md assets/*
+      # The one thing a pre-release must be checked for: that it moved
+      # nothing else. Everything published before this run still says what
+      # it said, and no "latest" moved.
+      - name: Nothing else moved
+        run: python3 release_checks.py prerelease-left-alone "$V" --annotate --summary "$GITHUB_STEP_SUMMARY"
+
   pypi:
     name: publish to PyPI
     needs: [gate, tag]
-    if: needs.gate.outputs.release == 'true'
+    if: needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -649,7 +797,7 @@ jobs:
   npm:
     name: publish to npm
     needs: [gate, pypi]
-    if: needs.gate.outputs.release == 'true'
+    if: needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -693,7 +841,7 @@ jobs:
   vscode:
     name: publish the VS Code extension
     needs: [gate, npm]
-    if: needs.gate.outputs.release == 'true'
+    if: needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     environment: release
     # Six attempts of about three minutes, 15.5 minutes of waiting between
@@ -792,7 +940,7 @@ jobs:
     needs: [gate, npm, vscode]
     # after the Marketplace whatever it did, as before; after npm only if
     # npm published
-    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.npm.result == 'success' }}
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true' && needs.npm.result == 'success' }}
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -846,7 +994,7 @@ jobs:
   mcp_registry:
     name: publish to the MCP registry
     needs: [gate, github_release]
-    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.github_release.result == 'success' }}
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true' && needs.github_release.result == 'success' }}
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -902,7 +1050,7 @@ jobs:
   attach_attestation:
     name: the attestation, attached to the release
     needs: [gate, mcp_registry]
-    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.mcp_registry.result == 'success' }}
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true' && needs.mcp_registry.result == 'success' }}
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -933,7 +1081,7 @@ jobs:
   consistency:
     name: PyPI, npm, the registry, the release and the extension all say this version
     needs: [gate, attach_attestation]
-    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.attach_attestation.result == 'success' }}
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true' && needs.attach_attestation.result == 'success' }}
     runs-on: ubuntu-latest
     env:
       V: ${{ needs.gate.outputs.version }}
@@ -951,7 +1099,7 @@ jobs:
   advisory:
     name: a draft security advisory, if the release adds one
     needs: [gate, tag, consistency]
-    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.tag.result == 'success' }}
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true' && needs.tag.result == 'success' }}
     runs-on: ubuntu-latest
     env:
       TAG: ${{ needs.gate.outputs.tag }}
@@ -1004,7 +1152,7 @@ jobs:
   move_pins:
     name: move the Action pins to the tag
     needs: [gate, tag, consistency]
-    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.tag.result == 'success' }}
+    if: ${{ !cancelled() && needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true' && needs.tag.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write            # push the commit to main
