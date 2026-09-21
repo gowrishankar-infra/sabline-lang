@@ -1,0 +1,45 @@
+# cargo-fuzz's crate, deliberately outside the workspace: it needs a
+# nightly toolchain and a sanitizer, and the workspace is what `cargo deny`
+# and the MSRV leg read. `cargo fuzz` runs it:
+#
+#     cargo +nightly fuzz run parse -- -max_total_time=30
+#
+# rt/README.md says what it is for. No panic in sabline-rt is ever
+# acceptable: every malformed input is a coded error, so the target's only
+# assertion is that the parser returned.
+
+# A workspace of its own, so that `cargo` does not read it as a member of
+# rt/'s - which excludes it, for the reasons above.
+[workspace]
+
+[package]
+name = "sabline-rt-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.sabline-rt]
+path = ".."
+
+[[bin]]
+name = "parse"
+path = "fuzz_targets/parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "dump"
+path = "fuzz_targets/dump.rs"
+test = false
+doc = false
+bench = false
+
+[profile.release]
+debug = true

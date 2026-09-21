@@ -77,16 +77,37 @@ def dispatched() -> set[Any]:
     return names
 
 
+# Commands deliberately left out of `usage_lines`, each with the reason.
+# A command here still answers `--help` for itself: the rule this list
+# relaxes is that `sabline --help` advertises it, not that it is
+# documented.
+UNLISTED = {
+    "ast": "the canonical AST dump is a comparison surface for the "
+           "agreement gate, not a feature (rt/README.md; 9.0.0-alpha.1)",
+}
+
+
 def help_cases() -> None:
     print("--help, for every command and the top level")
     print("-" * 62)
     commands = dispatched()
     usage = sabline.usage_lines()
-    ok("main() dispatches commands, and the usage list names every one",
-       bool(commands) and not commands - set(usage),
-       f"no usage lines for: {sorted(commands - set(usage))}")
+    missing = commands - set(usage) - set(UNLISTED)
+    ok("main() dispatches commands, and the usage list names every one "
+       f"but the {len(UNLISTED)} left out on purpose",
+       bool(commands) and not missing,
+       f"no usage lines for: {sorted(missing)}")
+    ok("...and every command left out of the usage list is one this suite "
+       "names, with a reason",
+       not set(UNLISTED) - commands,
+       f"listed as unlisted but not a command: "
+       f"{sorted(set(UNLISTED) - commands)}")
     ok("...and names no command main() does not have",
        not set(usage) - commands, str(sorted(set(usage) - commands)))
+    for command, why in sorted(UNLISTED.items()):
+        code, out, _ = sabline_cmd("--help")
+        ok(f"sabline --help does not advertise {command}: {why}",
+           f"sabline {command}" not in out, out[:200])
     for flag in ("--help", "-h"):
         code, out, err = sabline_cmd(flag)
         ok(f"sabline {flag}: usage, exit 0, nothing on stderr",

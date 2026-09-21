@@ -363,6 +363,7 @@ from . import state as _state
 from . import naming
 from .version import REFERENCE_URL, VERSION, _INSTALL_DIR, _launch_command
 from .errors import SablineError
+from .ast_dump import ast_main
 from . import confine as _confine
 from .tables import CHECK_MEMORY_MB_DEFAULT, CHECK_TIMEOUT_DEFAULT
 from .recorder import _RunRecorder, _note_error, _note_stop, _utc_now_ms
@@ -708,6 +709,11 @@ def main() -> int:
         return 0
     if argv[:1] == ["fmt"]:
         return fmt_main(argv[1:])
+    # The canonical AST dump, for check_agreement.py and for nothing else.
+    # It is not in usage_lines, it is not covered by STABILITY.md, and it
+    # is the surface sabline-rt is compared on (rt/README.md).
+    if argv[:1] == ["ast"]:
+        return ast_main(argv[1:])
     if argv[:1] == ["lsp"]:
         return lsp_serve()
     # `sabline verify` alone is the older spelling of `deps --verify`; given a

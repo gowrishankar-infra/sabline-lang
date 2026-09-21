@@ -13,6 +13,7 @@ import typing as _typing
 
 _MODULES = (
     "version", "naming", "predicates", "errors", "lexer", "nodes", "parser",
+    "ast_dump",
     "tables", "confine", "state", "recorder", "loader", "values",
     "wrappers", "budget", "tools", "effects", "checker", "termination",
     "prover", "native", "runtime", "witnesses", "editor", "formatter",
@@ -26,6 +27,7 @@ _MODULES = (
 )
 
 from . import version, naming, predicates, errors, lexer, nodes, parser  # noqa: E402,F401
+from . import ast_dump  # noqa: E402,F401
 from . import tables, confine, state, recorder, loader, values  # noqa: E402,F401
 from . import wrappers, budget, tools  # noqa: E402,F401
 from . import effects, checker, termination, prover, native, runtime  # noqa: E402,F401

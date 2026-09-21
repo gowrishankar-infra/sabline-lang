@@ -1,0 +1,5 @@
+# The width the rest of this repository writes to, so a Rust file and a
+# Python file sit side by side in one window.
+max_width = 95
+use_small_heuristics = "Max"
+edition = "2021"

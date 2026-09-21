@@ -1,0 +1,28 @@
+[package]
+name = "sabline-rt"
+description = "The Sabline runtime: a lexer and a parser that agree, token for token and node for node, with the Python reference implementation."
+readme = "../../README.md"
+keywords = ["sabline", "capability", "parser", "compiler"]
+categories = ["parser-implementations", "compilers"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+# No dependencies. plan/9.0.md caps the default build at 25 crates and asks
+# for an argument per crate; the argument for every one of them is easier to
+# make when there are none. The canonical JSON writer, the Python-compatible
+# `ascii()` and float forms and the command line are all in this crate,
+# because each of them has to match one particular Python and a general
+# library would not.
+[dependencies]
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "sabline-rt"
+path = "src/bin/sabline-rt.rs"
