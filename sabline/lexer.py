@@ -41,7 +41,14 @@ def lex(source: str, keep_trivia: bool = False) -> list[Token]:
     while pos < len(source):
         m = MASTER_RE.match(source, pos)
         if not m:
-            raise SablineError("E000", f"unexpected character {source[pos]!r}", line,
+            # !a, not !r: repr() writes a character raw when the Unicode
+            # database calls it printable, and which characters those are
+            # is the database of whichever CPython is running - so the same
+            # program gave two different messages on two supported Pythons,
+            # and a second implementation could match at most one of them.
+            # ascii() escapes every character outside ASCII and asks the
+            # database nothing (9.0.0-alpha.1, found by check_agreement.py).
+            raise SablineError("E000", f"unexpected character {source[pos]!a}", line,
                               fixes=["remove or replace this character"])
         kind, text = m.lastgroup, m.group()
         pos = m.end()
