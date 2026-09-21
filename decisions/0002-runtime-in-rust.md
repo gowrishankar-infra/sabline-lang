@@ -88,6 +88,12 @@ crates.io, with a C header and no Rust in its interface. It holds:
   implementations of `run` is a claim the agreement gate can test on
   every commit. Two implementations of thirty commands is a maintenance
   bill with nothing behind it.
+
+  Four of those commands *contain* a run - `eval`, `serve`, `mcp` and
+  `test` - and the distinction is worth stating: the command stays in
+  Python, and the run inside it goes through sabline-rt exactly as
+  `sabline run` does. What moves is the execution of a Sabline program,
+  wherever it is asked for, and nothing else.
 - **`sabline.check`, `sabline.audit`, `sabline.attest`,
   `sabline.card`.** `sabline.run` and `sabline.Pool.run` change what
   they call underneath; their signatures, their results and
