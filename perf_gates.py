@@ -314,14 +314,25 @@ def machine_load() -> str:
 
 # ------------------------------------------------------------ the tree
 
+# The launcher a tree starts from. It was velaris.py until 8.6 renamed the
+# project, and --against checks out a tag that may well predate that, so
+# both names are looked for - the current one first. Delete the old one in
+# 9.0, once no tag this measures against is older than 8.6.
+LAUNCHERS = ("sabline.py", "velaris.py")
+
+
 class Sabline:
-    """A tree of Sabline to start as `python sabline.py`."""
+    """A tree of Sabline to start as `python sabline.py` - or velaris.py,
+    in a tree from before the 8.6 rename."""
 
     def __init__(self, root: Path, label: str) -> None:
         self.root, self.label = Path(root), label
-        self.script = self.root / "sabline.py"
-        if not self.script.is_file():
-            raise CannotMeasure(f"{label} has no sabline.py")
+        found = next((self.root / n for n in LAUNCHERS
+                      if (self.root / n).is_file()), None)
+        if found is None:
+            raise CannotMeasure(
+                f"{label} has none of {', '.join(LAUNCHERS)}")
+        self.script = found
 
     def cmd(self, *args: Any) -> list[Any]:
         return [sys.executable, str(self.script)] + [str(a) for a in args]

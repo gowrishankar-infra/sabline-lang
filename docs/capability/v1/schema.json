@@ -36,7 +36,7 @@
     "audit": {
       "description": "A sabline.audit/1 document (sabline-spec section 8) produced from the bytes of the statement's subjects.",
       "type": "object",
-      "required": ["schema", "sabline_version", "ok", "effects", "safe_command"],
+      "required": ["schema", "ok", "effects", "safe_command"], "anyOf": [{"required": ["sabline_version"]}, {"required": ["velaris_version"]}],
       "properties": {
         "schema": {"enum": ["sabline.audit/1", "velaris.audit/1"]}
       }

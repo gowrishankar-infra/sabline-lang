@@ -207,6 +207,9 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # package is velaris/; the differential runs such a tree.
     "release_checks.py": ("velaris",),
     "check_differential.py": ("velaris", "VELARIS_"),
+    # the perf gate measures against a tag that may predate the rename,
+    # whose launcher is velaris.py
+    "perf_gates.py": ("velaris",),
     # the suite that scans for the variables the package reads, and the one
     # place that names velaris.toml outside project.py
     "check_self_budget.py": ("VELARIS_", "velaris.toml"),
