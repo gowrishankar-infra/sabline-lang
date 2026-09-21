@@ -29,7 +29,18 @@ name: release
 #      security advisory, and the gh commands that make it are printed:
 #      GITHUB_TOKEN cannot be given that permission. Nothing here ever
 #      publishes an advisory.
-#   8. A PRE-RELEASE is a different thing and publishes a different set.
+#   8. EVERY JOB AFTER `tag` CARRIES `!cancelled()` AND CHECKS THE ONE
+#      BEFORE IT BY RESULT. GitHub propagates a skip along `needs`
+#      transitively, and a job that rescued itself with `!cancelled()`
+#      does NOT rescue the jobs after it: its own result is `success`,
+#      and the skip still reaches them. Since `tag` waits on jobs that are
+#      skipped in one direction or the other - the Python builds on a
+#      pre-release, the crate on an ordinary release - everything after it
+#      would be skipped without this. 9.0.0-alpha.1 was released with the
+#      crates_io job skipped for exactly that reason; check_release.py's
+#      simulation models it now, so a fixture says so rather than a
+#      release.
+#   9. A PRE-RELEASE is a different thing and publishes a different set.
 #      When rt/Cargo.toml's version is X.Y.Z-alpha.N (or beta, or rc), the
 #      gate says `prerelease=true` and only two jobs publish: the crate to
 #      crates.io by OIDC trusted publishing, and a GitHub release marked
@@ -686,7 +697,13 @@ jobs:
   crates_io:
     name: publish the crate to crates.io
     needs: [gate, tag]
-    if: needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease == 'true'
+    # !cancelled() and the tag's own result, because `tag` waits on the
+    # Python builds, which a pre-release skips - and a skip travels down
+    # `needs` however the job between rescued itself (header, item 8).
+    if: >-
+      !cancelled() && needs.gate.outputs.release == 'true' &&
+      needs.gate.outputs.prerelease == 'true' &&
+      needs.tag.result == 'success'
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -766,7 +783,12 @@ jobs:
   pypi:
     name: publish to PyPI
     needs: [gate, tag]
-    if: needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true'
+    # ...and the same here, because `tag` waits on the crate job, which an
+    # ordinary release skips (header, item 8).
+    if: >-
+      !cancelled() && needs.gate.outputs.release == 'true' &&
+      needs.gate.outputs.prerelease != 'true' &&
+      needs.tag.result == 'success'
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -797,7 +819,10 @@ jobs:
   npm:
     name: publish to npm
     needs: [gate, pypi]
-    if: needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true'
+    if: >-
+      !cancelled() && needs.gate.outputs.release == 'true' &&
+      needs.gate.outputs.prerelease != 'true' &&
+      needs.pypi.result == 'success'
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -841,7 +866,10 @@ jobs:
   vscode:
     name: publish the VS Code extension
     needs: [gate, npm]
-    if: needs.gate.outputs.release == 'true' && needs.gate.outputs.prerelease != 'true'
+    if: >-
+      !cancelled() && needs.gate.outputs.release == 'true' &&
+      needs.gate.outputs.prerelease != 'true' &&
+      needs.npm.result == 'success'
     runs-on: ubuntu-latest
     environment: release
     # Six attempts of about three minutes, 15.5 minutes of waiting between

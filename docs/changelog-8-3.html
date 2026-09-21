@@ -405,7 +405,7 @@ Two gaps are closed with them: <code>velaris capabilities check</code> gets the 
 ceiling, and the perf gate no longer accepts fewer than three runs a side.</p>
 <p>compatibility: <code>velaris capabilities check</code> runs under the ceiling <code>check</code> and <code>audit</code> have had since 8.0 - 60 seconds and 2048 MB, raised with <code>--check-timeout</code> and <code>--check-memory-mb</code>, removed with <code>--no-check-ceiling</code> - and a check past it stops with E613 or E614 and exit 2. A tree whose check takes longer than 60 seconds needs <code>--check-timeout</code>; this repository's takes 0 to 3 seconds on each CI leg. No program that compiled under 8.2.0 is refused, and no report, audit or proof changes.
 api: against 8.2.0 the command line moved in one place: <code>velaris capabilities</code> takes <code>--check-timeout</code> and <code>--check-memory-mb</code>, as <code>check</code> and <code>audit</code> do.</p>
-<h3 id="what-was-wrong">What was wrong <a class="anchor" href="#what-was-wrong" aria-label="Link to this section">#</a></h3>
+<h3 id="what-was-wrong-1">What was wrong <a class="anchor" href="#what-was-wrong-1" aria-label="Link to this section">#</a></h3>
 <p><strong>A counterexample that could not name a value ended in a traceback.</strong>
 When the prover finds that a call can break its callee's <code>requires</code>
 (E701), the message gives each argument's value in the counterexample. An

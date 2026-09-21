@@ -326,6 +326,26 @@ def needs_of(job: dict[Any, Any]) -> list[Any]:
     return [needs] if isinstance(needs, str) else list(needs)
 
 
+def ancestors(jobs: dict[Any, Any], names: Any) -> set[Any]:
+    """Every job in the transitive `needs` closure of `names`.
+
+    GitHub skips a job whose `if` has no status check function when ANY
+    job in this closure was skipped - not just a direct `needs`. A job
+    that rescued itself with `!cancelled()` does not rescue the jobs after
+    it: its own result is `success`, but the skip still reaches them. That
+    behaviour is what made 9.0.0-alpha.1's crates_io job skip after a tag
+    job that had run, and it is modelled here so a fixture says so.
+    """
+    out: set[Any] = set()
+    stack = list(names)
+    while stack:
+        for need in needs_of(jobs.get(stack.pop(), {})):
+            if need not in out:
+                out.add(need)
+                stack.append(need)
+    return out
+
+
 def descendants(jobs: dict[Any, Any], names: Any) -> set[Any]:
     """`names` and every job that needs one of them, however far down."""
     out = set(names)
@@ -353,7 +373,8 @@ def in_order(jobs: dict[Any, Any]) -> list[Any]:
     return order
 
 
-def decides(expr: Any, needs: list[Any], results: dict[Any, Any], outputs: dict[Any, Any]) -> bool:
+def decides(expr: Any, needs: list[Any], results: dict[Any, Any],
+            outputs: dict[Any, Any], closure: Any = None) -> bool:
     """A job's `if:` as GitHub Actions decides it, for the shapes release.yml
     uses: needs.X.result, needs.X.outputs.Y, !=, !cancelled(), always(),
     contains(needs.*.result, '...'), && and ||. A job with no status
@@ -366,7 +387,13 @@ def decides(expr: Any, needs: list[Any], results: dict[Any, Any], outputs: dict[
     artefacts, and an ordinary release the other way round. A skipped need
     is not a failed one, and the tag must run in both.
     """
-    implicit = all(results.get(n) == "success" for n in needs)
+    # Without a status check function GitHub inserts success(), and that
+    # is over the TRANSITIVE closure of `needs`: one skipped ancestor
+    # anywhere above skips this job, however the jobs between rescued
+    # themselves. `closure` is that set; `needs` alone is what a reader
+    # would assume and is not what GitHub does.
+    watched = needs if closure is None else closure
+    implicit = all(results.get(n) == "success" for n in watched)
     if not expr:
         return implicit
     text = str(expr).strip()
@@ -523,7 +550,8 @@ def attempt(jobs: dict[Any, Any], release: Release, results: dict[Any, Any], out
         if name in BEFORE_TAG or (only is not None and name not in only):
             continue
         job = jobs[name]
-        if not decides(job.get("if"), needs_of(job), results, outputs):
+        if not decides(job.get("if"), needs_of(job), results, outputs,
+                       ancestors(jobs, [name])):
             results[name] = "skipped"
             continue
         try:
@@ -1748,6 +1776,28 @@ def main() -> int:
                and results.get("consistency") == "success"
                and all(release.made[p] == 1 for p in PUBLISHES),
                f"{dict(release.made)} {results}")
+
+            print()
+            print("every job after the tag survives a skipped ancestor")
+            print("-" * 62)
+
+            # GitHub propagates a skip along `needs` transitively, and a
+            # job that rescued itself with `!cancelled()` does NOT rescue
+            # the jobs after it. `tag` waits on jobs that are skipped in
+            # one direction or the other - the Python builds on a
+            # pre-release, the crate on an ordinary release - so every job
+            # below it needs a status check function of its own, or it is
+            # skipped whatever its condition says. 9.0.0-alpha.1 was
+            # released with crates_io skipped for exactly this reason.
+            STATUS = ("cancelled()", "always()", "failure()", "success()")
+            after_tag = descendants(jobs, {"tag"})
+            ok("release.yml has jobs after the tag to check",
+               len(after_tag) >= 8, sorted(after_tag))
+            for after in sorted(after_tag):
+                condition = str(jobs[after].get("if", ""))
+                ok(f"{after}: its condition has a status check function, so "
+                   f"a skipped ancestor does not skip it",
+                   any(f in condition for f in STATUS), condition[:150])
 
             print()
             print("release.yml, job by job: a pre-release publishes the "
