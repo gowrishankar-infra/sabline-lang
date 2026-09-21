@@ -1,0 +1,42 @@
+name: farewell-vscode
+
+# The last version of the OLD VS Code extension, gowrishankar-infra.velaris
+# (packaging/farewell/vscode). This project was renamed Sabline in 8.6.0; a
+# Marketplace id cannot be renamed and an extension cannot install another,
+# so this final version is how somebody on the old extension learns to
+# install gowrishankar-infra.sabline. It contributes nothing, so it no
+# longer fights the new extension over a .vel file.
+#
+# It is here rather than in farewell.yml because the Marketplace has no
+# OIDC publishing: it needs the VSCE_TOKEN secret, which lives in the
+# `release` environment, while farewell.yml runs in `placeholders`.
+#
+# Run by hand, once, and then never again: a release publishes the current
+# names and nothing else.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vscode:
+    name: the last gowrishankar-infra.velaris
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: "22"        # Node 20 is in maintenance; 22 is LTS
+      - name: Publish it
+        working-directory: packaging/farewell/vscode
+        run: npx --yes @vscode/vsce publish --pat "$VSCE_TOKEN"
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}

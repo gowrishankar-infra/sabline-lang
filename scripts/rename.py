@@ -219,6 +219,11 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # old names on PyPI and npm so that nobody else can take them.
     "packaging/farewell/**": ("velaris", "Velaris", "VELARIS_"),
     ".github/workflows/farewell.yml": ("velaris", "Velaris"),
+    ".github/workflows/farewell-vscode.yml": ("velaris", "Velaris"),
+    # the suite that holds farewell-vscode.yml to publishing the OLD
+    # extension id: a fixture asserts the manifest still says velaris, and
+    # another breaks it by putting the new name there.
+    "check_workflows.py": ("velaris",),
     "packaging/placeholders/**": ("velaris", "Velaris"),
 }
 

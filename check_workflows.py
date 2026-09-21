@@ -33,6 +33,15 @@ practices, reports kept as files; one stylesheet, one script, no third party
 and 100 KB a page; and test.yml running check_site.py. Each rule is also
 broken once in a copy, and must be caught.
 
+Last, farewell-vscode.yml (8.6.0), the one-off that publishes the final
+version of the old VS Code extension: by hand only, a read-only token,
+every action pinned by sha, main checked out keeping no credential, and
+in the `release` environment - where VSCE_TOKEN is - vsce publish run in
+packaging/farewell/vscode and nothing else, naming no other secret; with
+the manifest it publishes holding the old id and contributing nothing, so
+it cannot fight gowrishankar-infra.sabline over a .vel file. Each rule is
+broken once in a copy, and must be caught.
+
     python check_workflows.py
 """
 from __future__ import annotations
@@ -570,11 +579,147 @@ def site() -> None:
            test_yml=lambda y: y.replace("python check_site.py", "python other.py"))
 
 
+VSCE_PUBLISH = re.compile(r'vsce\s+publish\s+--pat\s+"\$VSCE_TOKEN"')
+
+
+def farewell_vscode_problems(doc: dict[Any, Any], text: str,
+                             manifest: dict[str, Any]) -> list[str]:
+    """What is wrong with farewell-vscode.yml and the manifest it
+    publishes; nothing when they hold."""
+    found = []
+    triggers = doc.get("on", doc.get(True)) or {}
+    if set(triggers) != {"workflow_dispatch"}:
+        found.append(f"runs on more than workflow_dispatch: {sorted(triggers)}")
+    jobs: dict[str, dict[str, Any]] = doc.get("jobs") or {}
+    if len(jobs) != 1:
+        found.append(f"is not one job: {sorted(jobs)}")
+    blocks = [doc.get("permissions")] + [j.get("permissions") for j in jobs.values()]
+    for block in blocks:
+        if block is not None and block != {"contents": "read"}:
+            found.append(f"a token that may do more than read the repository: {block}")
+    for line in re.findall(r"^\s*(?:-\s+)?uses:\s*(.*)$", text, re.M):
+        action, _, comment = line.partition("#")
+        if not SHA_PINNED.match(action.strip()) or not re.match(r"\s*v\d", comment):
+            found.append(f"not pinned by commit sha with its version: {line.strip()}")
+    for name, job in jobs.items():
+        if job.get("environment") != "release":
+            found.append(f"{name}: does not run in the release environment, "
+                         f"where VSCE_TOKEN is: {job.get('environment')}")
+        all_steps = steps(job)
+        runs = [s for s in all_steps if "run" in s]
+        if len(runs) != 1:
+            found.append(f"{name}: publishes and does something else: "
+                         f"{[s.get('name') or s.get('run') for s in runs]}")
+        for s in all_steps:
+            if str(s.get("uses", "")).startswith("actions/checkout@"):
+                with_ = s.get("with") or {}
+                if with_.get("persist-credentials") is not False:
+                    found.append(f"{name}: a checkout that keeps its credential")
+                if with_.get("ref") != "main":
+                    found.append(f"{name}: does not check out main: {with_.get('ref')}")
+        for s in runs:
+            if not VSCE_PUBLISH.search(str(s.get("run", ""))):
+                found.append(f'{name}: does not run vsce publish --pat "$VSCE_TOKEN"')
+            if s.get("working-directory") != "packaging/farewell/vscode":
+                found.append(f"{name}: does not publish packaging/farewell/vscode: "
+                             f"{s.get('working-directory')}")
+    named = set(re.findall(r"secrets\.(\w+)", text))
+    if named != {"VSCE_TOKEN"}:
+        found.append(f"names a secret that is not VSCE_TOKEN: {sorted(named)}")
+    # the manifest it publishes: a final version that contributes nothing,
+    # so it cannot fight gowrishankar-infra.sabline over a .vel file
+    if manifest.get("contributes") != {}:
+        found.append(f"the manifest still contributes: {manifest.get('contributes')}")
+    for key in ("activationEvents", "main", "browser"):
+        if key in manifest:
+            found.append(f"the manifest has no entry point, so {key} must be gone")
+    if manifest.get("publisher") != "gowrishankar-infra" or \
+            manifest.get("name") != "velaris":
+        found.append(f"not the old extension id: "
+                     f"{manifest.get('publisher')}.{manifest.get('name')}")
+    return found
+
+
+def farewell_vscode() -> None:
+    print()
+    print("farewell-vscode.yml and the manifest it publishes")
+    print("-" * 62)
+    path = HERE / ".github" / "workflows" / "farewell-vscode.yml"
+    text = path.read_text(encoding="utf-8")
+    doc = workflow("farewell-vscode.yml")
+    manifest = json.loads((HERE / "packaging" / "farewell" / "vscode"
+                           / "package.json").read_text(encoding="utf-8"))
+    problems = farewell_vscode_problems(doc, text, manifest)
+    ok("farewell-vscode.yml runs by hand only, with a read-only token, pins "
+       "every action by sha, checks out main keeping no credential, and in "
+       "the release environment runs vsce publish with VSCE_TOKEN in "
+       "packaging/farewell/vscode and nothing else; the manifest it "
+       "publishes is the old id contributing nothing",
+       not problems, "\n          ".join(problems))
+
+    def broken(label: str, want: str, **change: Any) -> None:
+        """farewell_vscode_problems on a copy with one thing broken must
+        name it."""
+        d, m, t = copy.deepcopy(doc), copy.deepcopy(manifest), text
+        if "doc" in change:
+            change["doc"](d)
+        if "manifest" in change:
+            change["manifest"](m)
+        if "text" in change:
+            t = change["text"](t)
+        got = farewell_vscode_problems(d, t, m)
+        ok(f"...and it is refused {label}", any(want in g for g in got), str(got))
+
+    job = "vscode"
+    broken("when a push would run it", "more than workflow_dispatch",
+           doc=lambda d: d.__setitem__(
+               "on" if "on" in d else True,
+               {"workflow_dispatch": None, "push": {"branches": ["main"]}}))
+    broken("with a token that may write", "more than read",
+           doc=lambda d: d.__setitem__("permissions", {"contents": "write"}))
+    broken("with a job token that may write", "more than read",
+           doc=lambda d: d["jobs"][job].__setitem__(
+               "permissions", {"contents": "write"}))
+    broken("with an action pinned by tag", "not pinned by commit sha",
+           text=lambda t: t.replace(
+               "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5",
+               "actions/checkout@v5"))
+    broken("with a checkout that keeps its credential", "keeps its credential",
+           doc=lambda d: d["jobs"][job]["steps"][0]["with"].__setitem__(
+               "persist-credentials", True))
+    broken("checking out something other than main", "does not check out main",
+           doc=lambda d: d["jobs"][job]["steps"][0]["with"].__setitem__(
+               "ref", "a-branch"))
+    broken("outside the release environment", "release environment",
+           doc=lambda d: d["jobs"][job].__setitem__("environment", "placeholders"))
+    broken("publishing another directory", "packaging/farewell/vscode",
+           doc=lambda d: d["jobs"][job]["steps"][-1].__setitem__(
+               "working-directory", "editor/vscode"))
+    broken("with the publish replaced", "does not run vsce publish",
+           doc=lambda d: d["jobs"][job]["steps"][-1].__setitem__(
+               "run", "npx --yes @vscode/vsce package"))
+    broken("with a step that does something else", "does something else",
+           doc=lambda d: d["jobs"][job]["steps"].append(
+               {"name": "and one more thing", "run": "git push"}))
+    broken("naming another secret", "not VSCE_TOKEN",
+           text=lambda t: t + "\n          PYPI: ${{ secrets.PYPI_TOKEN }}\n")
+    broken("with a manifest that still contributes", "still contributes",
+           manifest=lambda m: m.__setitem__(
+               "contributes", {"languages": [{"id": "velaris"}]}))
+    broken("with activationEvents back in the manifest", "activationEvents",
+           manifest=lambda m: m.__setitem__("activationEvents", []))
+    broken("with the manifest given an entry point", "main must be gone",
+           manifest=lambda m: m.__setitem__("main", "./extension.js"))
+    broken("with the new extension's id", "not the old extension id",
+           manifest=lambda m: m.__setitem__("name", "sabline"))
+
+
 def main() -> int:
     structure()
     issues()
     models()
     site()
+    farewell_vscode()
     print("-" * 62)
     print(f"{PASS} correct, {FAIL} wrong")
     return 1 if FAIL else 0
