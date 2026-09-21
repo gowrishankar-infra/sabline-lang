@@ -1,0 +1,72 @@
+# cargo-deny: the crates.io half of the supply chain.
+#
+# plan/9.0.md's risk 4 is the policy this file holds: advisories, licences,
+# bans and sources, on every leg of CI, with a cap of 25 direct and
+# transitive crates for the default build that a pull request has to argue
+# past in writing.
+#
+# In 9.0.0-alpha.1 the count is **zero**. sabline-rt depends on nothing:
+# the canonical JSON writer, the Python-compatible `ascii()` and float
+# forms, the Unicode decimal-digit table and the command line are all in
+# the crate, because each of them has to match one particular CPython and
+# a general library would be free to differ. Later alphas will add some -
+# the confinement work is raw system calls against `libc`, not a wrapper
+# crate - and each will state in its pull request what the crate does,
+# what it would take to write that ourselves, and why not.
+#
+#     cargo deny --manifest-path rt/Cargo.toml check
+
+[graph]
+# The systems a release builds for, so an advisory or a licence that only
+# applies to one of them is still seen.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+]
+all-features = true
+
+[advisories]
+# Every advisory in the RustSec database is an error. There is no
+# ignore list, and a pull request that adds one says why in its
+# description, the way a `compatibility:` line does.
+yanked = "deny"
+ignore = []
+
+[licenses]
+# Apache-2.0 is this project's own licence (LICENSE). The rest are the
+# permissive licences a dependency may carry without asking anyone.
+version = 2
+confidence-threshold = 0.93
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+]
+exceptions = []
+
+[bans]
+# Two versions of one crate is two copies of its defects, and a crate that
+# is there twice is usually a dependency that was not looked at.
+multiple-versions = "deny"
+wildcards = "deny"
+highlight = "all"
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+# crates.io and nothing else: no git dependency, no alternative registry,
+# and no path dependency outside this workspace. A git dependency is a
+# dependency on whatever that branch says today.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

@@ -32,3 +32,11 @@ advisory-*.json
 # what Lighthouse CI writes when site.yml's steps run in a checkout
 .lighthouseci/
 lighthouse-reports/
+
+# the Rust workspace's build directory, and cargo-fuzz's (rt/README.md).
+# Cargo.lock IS committed: the release builds from it.
+rt/target/
+rt/crates/sabline-rt/fuzz/target/
+rt/crates/sabline-rt/fuzz/Cargo.lock
+rt/crates/sabline-rt/fuzz/artifacts/
+rt/crates/sabline-rt/fuzz/corpus/

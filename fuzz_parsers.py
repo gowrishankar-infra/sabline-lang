@@ -17,6 +17,10 @@ traceback, a RecursionError, a process that dies or stops making progress
     contracts  generated signatures with requires / ensures, well- and
                ill-typed, through check_effects / check_types /
                check_proofs (needs z3-solver; skipped without it)
+    agreement  the same generated input to both parsers - the Python one
+               and sabline-rt - which must answer the same tree, or the
+               same code, message, fixes and line (9.0.0-alpha.1; needs
+               Rust, and is never skipped for want of it)
 
     python fuzz_parsers.py 30               30 iterations per target, under
                                             a random seed and then each of
@@ -50,6 +54,7 @@ import json
 import os
 import random
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -63,7 +68,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from suite_dirs import isolate  # noqa: E402
 
-TARGETS = ("parser", "json", "csv", "py_json", "contracts")
+TARGETS = ("parser", "json", "csv", "py_json", "contracts", "agreement")
 
 # A child is given its parent's work directory; only the parent makes one.
 if "--work" in sys.argv[1:-1]:
@@ -1296,9 +1301,118 @@ class ContractsTarget(Target):
         compile_text(as_text(data), self.entry, prove=True)
 
 
+# ---------------------------------------------------------------------------
+# agreement: the same input to both parsers (9.0.0-alpha.1)
+# ---------------------------------------------------------------------------
+
+class Difference(Exception):
+    """The two parsers answered differently about one input.
+
+    Not a SablineError and not a FailSignal, so the harness saves the
+    input as a finding, which is what a difference is.
+    """
+
+
+class AgreementTarget(Target):
+    """Every generated input to both parsers, which must agree exactly.
+
+    plan/9.0.md asks for this beside `check_agreement.py`: the gate
+    compares the programs this project has, and this compares the ones
+    nobody wrote. The comparison is the same one - the canonical AST dump,
+    byte for byte - so a difference here reads the same way as a
+    difference there.
+
+    sabline-rt is built if it is not built. A run that quietly compared
+    one parser with itself would be worse than no run, so there is no path
+    here that skips.
+    """
+
+    name = "agreement"
+    max_len = 96 * 1024
+    pairs = PARSER_PAIRS
+
+    def setup(self) -> None:
+        super().setup()
+        self.binary = str(rt_binary())
+        self.dump = importlib.import_module("sabline.ast_dump")
+        self.tokens = PARSER_TOKENS + sorted(n.encode() for n in V.BUILTINS)
+        # the file both parsers read; written before each input, never left
+        self.entry = str(WORK / "agreement_input.vel")
+        if sys.getrecursionlimit() < 20000:     # as load_program does
+            sys.setrecursionlimit(20000)
+
+    def seeds(self, rng: Any) -> Any:
+        files = (sorted(HERE.glob("examples/**/*.vel"))
+                 + sorted(HERE.glob("stdlib/*.vel")))
+        out = [p.read_bytes() for p in files] + PARSER_SNIPPETS
+        # the adversarial corpus the gate carries, so the fuzzer starts
+        # from the shapes that are already known to be interesting
+        try:
+            edges = importlib.import_module("agreement_edges")
+        except ImportError:
+            return out
+        return out + [payload for _, payload in edges.cases()]
+
+    def execute(self, data: Any) -> None:
+        Path(self.entry).write_bytes(data)
+        mine = self.dump.canonical(self.dump.dump_file(self.entry)).encode("ascii")
+        try:
+            done = subprocess.run([self.binary, "ast", self.entry],
+                                  capture_output=True)
+        except OSError as e:
+            # sabline-rt is not where it was, so there is nothing to compare
+            # against. That is not a difference and must never be reported
+            # as one: stop, loudly.
+            raise SystemExit(f"fuzz_parsers: {self.binary} cannot be run "
+                             f"({e}); the comparison would be one parser "
+                             f"against itself")
+        if done.returncode not in (0, 1):
+            raise Difference(
+                f"sabline-rt ended {done.returncode}, which is neither a "
+                f"tree nor a coded error: "
+                f"{done.stderr.decode('utf-8', 'replace')[:2000]}")
+        theirs = done.stdout.rstrip(b"\n")
+        if mine != theirs:
+            at = next((i for i, (a, b) in enumerate(zip(mine, theirs))
+                       if a != b), min(len(mine), len(theirs)))
+            window = slice(max(0, at - 80), at + 80)
+            raise Difference(
+                f"the two parsers differ at byte {at} of the dump:\n"
+                f"  python:     {mine[window]!r}\n"
+                f"  sabline-rt: {theirs[window]!r}")
+
+
+def rt_binary() -> Path:
+    """sabline-rt, built if it is not there.
+
+    The same rule `check_agreement.py` follows, for the same reason: a
+    comparison with nothing to compare against passes, and passing is the
+    one thing it must not do.
+    """
+    exe = "sabline-rt.exe" if os.name == "nt" else "sabline-rt"
+    manifest = HERE / "rt" / "Cargo.toml"
+    for profile in ("release", "debug"):
+        candidate = HERE / "rt" / "target" / profile / exe
+        if candidate.exists():
+            return candidate
+    if shutil.which("cargo") is None:
+        raise SystemExit(
+            "fuzz_parsers: the agreement target needs sabline-rt, which is "
+            "not built, and cargo is not here. Install Rust "
+            "(https://rustup.rs), or run one other target: "
+            "python fuzz_parsers.py --target parser")
+    subprocess.run(["cargo", "build", "--release", "--manifest-path",
+                    str(manifest)], check=True)
+    built = HERE / "rt" / "target" / "release" / exe
+    if not built.exists():
+        raise SystemExit(f"fuzz_parsers: cargo built nothing at {built}")
+    return built
+
+
 def make_target(name: str) -> Target:
     return {"parser": ParserTarget, "json": JsonTarget, "csv": CsvTarget,
-            "py_json": PyJsonTarget, "contracts": ContractsTarget}[name]()
+            "py_json": PyJsonTarget, "contracts": ContractsTarget,
+            "agreement": AgreementTarget}[name]()
 
 
 # ---------------------------------------------------------------------------

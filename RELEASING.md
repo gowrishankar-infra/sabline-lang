@@ -3,7 +3,8 @@
 **Nobody tags a release by hand** - not a maintainer, not an agent, not
 to help one along. A release is made by
 [`.github/workflows/release.yml`](.github/workflows/release.yml) after
-the tests pass on main, and by nothing else. A tag pushed by hand
+the tests pass on main, and by nothing else. That holds for a pre-release
+too (*A pre-release: the crate, and nothing else*, below). A tag pushed by hand
 publishes nothing, because no workflow listens for tags. It does block
 the real release of that version, because the gate refuses a version
 that is already tagged. If one is pushed by mistake, delete it
@@ -165,6 +166,67 @@ tokens already have.
 release.yml --ref <branch>`). The gate says what it would decide, and
 everything is built, signed under that branch's identity and verified.
 Nothing is tagged or published.
+
+## A pre-release: the crate, and nothing else
+
+From 9.0.0-alpha.1 there is a second kind of release. `plan/9.0.md`'s
+alphas are shippable tags, and an alpha ships **the `sabline-rt` crate**
+and nothing else: whatever the newest ordinary release was stays what a
+user gets.
+
+**What makes a commit a pre-release** is the version in
+[`rt/Cargo.toml`](rt/Cargo.toml). When the workspace's `version` is
+`X.Y.Z-alpha.N` - or `-beta.N`, or `-rc.N` - the gate asks a different set
+of questions and the workflow runs a different set of jobs. Everything a
+person does still happens before the push:
+
+1. Put the new version in `rt/Cargo.toml` and run `cargo build
+   --manifest-path rt/Cargo.toml` so `rt/Cargo.lock` follows it. **Leave
+   the six version files alone.** The Python package stays on the newest
+   ordinary release; the gate refuses the commit if one of them moved,
+   because a pre-release that changed what PyPI would serve is not a
+   pre-release of the crate.
+2. Write the CHANGELOG entry, headed `## X.Y.Z-alpha.N - Title`. It says
+   what exists, what does not yet, and the agreement gate's numbers.
+3. `python release_checks.py gate` should say `pre-release: X.Y.Z-alpha.N`.
+4. Commit and push to main.
+
+The workflow then tags the commit, builds and packages the crate from the
+committed lockfile, publishes it to crates.io by **trusted publishing**
+(OIDC; no token is stored, and MAINTENANCE.md's secrets table gains no
+row), and makes a GitHub release **marked pre-release**, which is what
+keeps GitHub from calling it the latest one.
+
+**What a pre-release must not do**, and what checks that it did not: it
+publishes nothing to PyPI, npm, the VS Code Marketplace or the MCP
+registry; it moves no Action pin; it moves no "latest" anywhere. Every job
+that would do one of those carries `needs.gate.outputs.prerelease !=
+'true'`, and after the GitHub release a last step asks each of those
+places whether it moved - reading the workflow and believing it is not the
+same as checking:
+
+    python release_checks.py prerelease-left-alone X.Y.Z-alpha.N
+
+`check_release.py` holds both halves to fixtures, on every leg of CI: an
+alpha publishes the crate, the tag and the pre-release GitHub release and
+nothing else, with every other job skipped rather than failed;
+`RELEASE_PAUSED` stops a pre-release too; a crates.io publish that fails
+leaves no GitHub release behind it, and re-running the failed jobs
+finishes it with each publish made once; and **an ordinary release is
+unchanged**, with no crate job run.
+
+**crates.io trusted publishing has to be set up once, by hand**, and it
+can only be set up on a crate that exists - crates.io has no way to
+reserve a name for a publisher that has never published. So the first
+`sabline-rt` publish is made from a workstation with a scoped token, and
+the trusted publisher is added afterwards, from
+https://crates.io/crates/sabline-rt/settings: **Trusted Publishing**, then
+GitHub, with the repository `gowrishankar-infra/sabline-lang`, the
+workflow file `release.yml` and the environment `release`. Every publish
+after the first is the workflow's, with no token anywhere. The scoped
+token used for the first publish is revoked at
+https://crates.io/settings/tokens the moment the trusted publisher is
+saved.
 
 ## Pausing releases: RELEASE_PAUSED
 

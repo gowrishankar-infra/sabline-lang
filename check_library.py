@@ -1921,13 +1921,25 @@ def main() -> int:
         _table = set(_re_npm.findall(
             r'^\s*"?([a-z][a-z-]*)"?:\s*"\d',
             _wrapper.read_text(encoding="utf-8"), _re_npm.M))
+        # ...every subcommand a user types, which is every one but the
+        # few sabline/cli.py's UNLISTED_COMMANDS names and says why: the
+        # wrapper's table is there to tell a user that the command they
+        # typed needs a newer compiler, and nobody types those.
+        _unlisted = {name for name, _why in sabline.cli.UNLISTED_COMMANDS}
+        _want = _dispatch - _unlisted
         ok("the wrapper's table of subcommands covers every subcommand "
-           "the compiler dispatches",
-           bool(_dispatch) and not (_dispatch - _table),
-           "missing from npm/bin/sabline.js: " + str(sorted(_dispatch - _table)))
-        ok("and claims none the compiler does not have",
-           not (_table - _dispatch),
-           "not a subcommand: " + str(sorted(_table - _dispatch)))
+           "the compiler dispatches and advertises",
+           bool(_want) and not (_want - _table),
+           "missing from npm/bin/sabline.js: " + str(sorted(_want - _table)))
+        ok("and claims none the compiler does not have, nor any it does "
+           "not advertise",
+           not (_table - _want),
+           "not a subcommand a user types: " + str(sorted(_table - _want)))
+        ok("...and every command left out is one the compiler names, with "
+           "a reason",
+           not (_unlisted - _dispatch),
+           "listed as unlisted but not a command: "
+           + str(sorted(_unlisted - _dispatch)))
 
     print()
     print("sabline.lock (3.1)")

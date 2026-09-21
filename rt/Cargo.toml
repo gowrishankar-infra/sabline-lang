@@ -1,0 +1,34 @@
+# The Rust runtime's workspace. decisions/0002-runtime-in-rust.md says why
+# there is a second runtime; plan/9.0.md is the ladder it climbs. In
+# 9.0.0-alpha.1 the workspace holds one crate and that crate holds a lexer
+# and a parser.
+
+[workspace]
+resolver = "2"
+members = ["crates/sabline-rt"]
+# cargo-fuzz's crate needs a nightly toolchain and a sanitizer, and
+# the workspace is what `cargo deny`, `cargo fmt --check` and the MSRV
+# leg read. It is built by `cargo fuzz` and by nothing else.
+exclude = ["crates/sabline-rt/fuzz"]
+
+[workspace.package]
+version = "9.0.0-alpha.1"
+edition = "2021"
+rust-version = "1.82"
+license = "Apache-2.0"
+repository = "https://github.com/gowrishankar-infra/sabline-lang"
+homepage = "https://sabline.dev"
+authors = ["Palakurthi Gowri Shankar"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+
+[profile.release]
+panic = "abort"
+overflow-checks = true

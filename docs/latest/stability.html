@@ -52,7 +52,7 @@
 <ul><li><a href="stability.html" aria-current="page">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -109,7 +109,21 @@ and 5.0 changed it.</li>
 every function, class and
 module-level name not listed above, including those the doors and
 suites use (<code>Budget</code>, <code>InvocationLog</code>, <code>inspect_source</code>,
-<code>load_program</code>, ...). They may change in any release.</li>
+<code>load_program</code>, ...). They may change in any release. From
+9.0.0-alpha.1 that clause is what covers the <strong>canonical AST dump</strong> -
+<code>sabline ast --json</code>, <code>sabline/ast_dump.py</code> and the document they write.
+It is a comparison surface for the agreement gate and nothing else: it
+is not in <code>tests/api/golden.json</code>, <code>sabline ast</code> is not in <code>--help</code>, and
+its shape may change in any release. rt/README.md states what it is
+today.</li>
+<li><strong>The <code>sabline-rt</code> crate, until 9.0.0.</strong> Every pre-release of 9.0 -
+<code>9.0.0-alpha.N</code>, and any beta or rc - publishes the crate to crates.io
+and nothing else, and what the crate offers is provisional until the
+release that says otherwise. A pre-release changes nothing a user of
+8.6.0 has: it publishes to neither PyPI, npm, the VS Code Marketplace
+nor the MCP registry, moves no Action pin and moves no "latest"
+anywhere. RELEASING.md says how that is held, and <code>check_release.py</code>
+holds it to fixtures.</li>
 <li><strong>The wording of messages.</strong> Codes are stable; prose is not. That
 covers error messages, their suggested fixes, an audit's <code>warnings</code>,
 and every command's text output - read <code>--json</code>, not the text.</li>

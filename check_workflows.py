@@ -714,8 +714,82 @@ def farewell_vscode() -> None:
            manifest=lambda m: m.__setitem__("name", "sabline"))
 
 
+def agreement_job() -> None:
+    """The agreement gate cannot be skipped by the workflow.
+
+    plan/9.0.md's second of three: the `agreement` job exists in test.yml,
+    has no `if:` and no `continue-on-error`, runs on push and on pull
+    request, and nothing in it narrows what is compared. A pull request
+    that removes it, or gives it a condition, fails on itself.
+
+    The first of the three - that the gate reads nothing that could
+    disable it - and the third - that it is proven to go red - are
+    check_gate.py's.
+    """
+    print()
+    print("the agreement gate cannot be skipped (plan/9.0.md)")
+    print("-" * 62)
+    doc = workflow("test.yml")
+    triggers = doc.get("on", doc.get(True)) or {}
+    jobs: dict[str, Any] = doc["jobs"]
+    ok("test.yml runs on push and on pull_request",
+       "push" in triggers and "pull_request" in triggers, str(list(triggers)))
+
+    job = jobs.get("agreement")
+    ok("test.yml has an `agreement` job", job is not None,
+       f"it has {sorted(jobs)}")
+    if job is None:
+        return
+    ok("the agreement job has no `if:`", "if" not in job, str(job.get("if")))
+    ok("the agreement job has no `continue-on-error`",
+       "continue-on-error" not in job, str(job.get("continue-on-error")))
+    ok("the agreement job is not in a matrix that could empty it",
+       "strategy" not in job, str(job.get("strategy")))
+
+    rows = steps(job)
+    ok("no step of the agreement job has an `if:`",
+       not any("if" in step for step in rows),
+       str([step.get("name") for step in rows if "if" in step]))
+    ok("no step of the agreement job has `continue-on-error`",
+       not any("continue-on-error" in step for step in rows),
+       str([step.get("name") for step in rows
+            if "continue-on-error" in step]))
+
+    runs = " ".join(str(step.get("run", "")) for step in rows)
+    ok("the agreement job runs check_agreement.py",
+       "check_agreement.py" in runs, runs[:200])
+    ok("the agreement job runs check_gate.py, which proves it detects",
+       "check_gate.py" in runs, runs[:200])
+    ok("the agreement job runs the differential fuzzer",
+       "--target agreement" in runs, runs[:200])
+    # a gate given an environment is a gate that can be told to look away
+    ok("no step of the agreement job sets an environment",
+       not any("env" in step for step in rows) and "env" not in job,
+       str([step.get("name") for step in rows if "env" in step]))
+
+    # and it runs in the matrix too, so every system compares as well
+    matrix = jobs.get("test") or {}
+    in_matrix = " ".join(str(step.get("run", "")) for step in steps(matrix))
+    ok("every leg of the matrix runs the gate as well",
+       "check_agreement.py" in in_matrix)
+    where = [step for step in steps(matrix)
+             if "check_agreement.py" in str(step.get("run", ""))]
+    ok("the matrix's own gate step has no `if:` and no `continue-on-error`",
+       all("if" not in step and "continue-on-error" not in step
+           for step in where),
+       str([step.get("name") for step in where]))
+
+    # the legs the alpha adds, so that removing one is a failing test
+    for name in ("msrv", "supply_chain", "rt_fuzz"):
+        ok(f"test.yml has a `{name}` job", name in jobs, f"it has {sorted(jobs)}")
+        leg = jobs.get(name) or {}
+        ok(f"the {name} job has no `if:` and no `continue-on-error`",
+           "if" not in leg and "continue-on-error" not in leg)
+
+
 def main() -> int:
     structure()
+    agreement_job()
     issues()
     models()
     site()

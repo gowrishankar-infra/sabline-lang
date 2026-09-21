@@ -53,7 +53,21 @@ major version.
   every function, class and
   module-level name not listed above, including those the doors and
   suites use (`Budget`, `InvocationLog`, `inspect_source`,
-  `load_program`, ...). They may change in any release.
+  `load_program`, ...). They may change in any release. From
+  9.0.0-alpha.1 that clause is what covers the **canonical AST dump** -
+  `sabline ast --json`, `sabline/ast_dump.py` and the document they write.
+  It is a comparison surface for the agreement gate and nothing else: it
+  is not in `tests/api/golden.json`, `sabline ast` is not in `--help`, and
+  its shape may change in any release. rt/README.md states what it is
+  today.
+- **The `sabline-rt` crate, until 9.0.0.** Every pre-release of 9.0 -
+  `9.0.0-alpha.N`, and any beta or rc - publishes the crate to crates.io
+  and nothing else, and what the crate offers is provisional until the
+  release that says otherwise. A pre-release changes nothing a user of
+  8.6.0 has: it publishes to neither PyPI, npm, the VS Code Marketplace
+  nor the MCP registry, moves no Action pin and moves no "latest"
+  anywhere. RELEASING.md says how that is held, and `check_release.py`
+  holds it to fixtures.
 - **The wording of messages.** Codes are stable; prose is not. That
   covers error messages, their suggested fixes, an audit's `warnings`,
   and every command's text output - read `--json`, not the text.

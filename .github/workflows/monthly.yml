@@ -12,6 +12,9 @@ name: monthly
 #   sanitizers    the suites that run native code and the parsers, on a
 #                 CPython built with AddressSanitizer and
 #                 UndefinedBehaviorSanitizer (Linux)
+#   rt_fuzz       sabline-rt under cargo-fuzz for an hour a target, and
+#                 the differential fuzzer - the same generated input to
+#                 both parsers - for twenty minutes (9.0.0-alpha.1)
 #
 # It commits nothing. Every job's token reads the repository and nothing
 # more, except the report job's, which may only open issues - one per
@@ -47,6 +50,47 @@ jobs:
         with:
           name: fuzz-crashes
           path: fuzz-crashes
+          if-no-files-found: ignore
+
+  rt_fuzz:
+    name: sabline-rt fuzzed, and both parsers on the same input
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      # cargo-fuzz needs nightly and a sanitizer; the fuzzing crate is
+      # outside the workspace for exactly that reason.
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+        with:
+          toolchain: nightly
+      - name: Install
+        run: |
+          pip install -c requirements/ci.txt ".[full,test]"
+          cargo install cargo-fuzz --locked
+      - name: The parser, on arbitrary bytes, for an hour
+        working-directory: rt/crates/sabline-rt
+        run: cargo fuzz run parse -- -max_total_time=3600 -rss_limit_mb=4096
+      - name: The dump, on arbitrary bytes, for an hour
+        working-directory: rt/crates/sabline-rt
+        run: cargo fuzz run dump -- -max_total_time=3600 -rss_limit_mb=4096
+      # Both parsers on the same generated input, which must answer the
+      # same tree or the same code, message, fixes and line.
+      - name: The differential fuzzer, 20 minutes
+        run: |
+          cargo build --release --manifest-path rt/Cargo.toml
+          python fuzz_parsers.py --target agreement --minutes 20 --crashes rt-fuzz-crashes
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        with:
+          name: rt-fuzz-crashes
+          path: |
+            rt-fuzz-crashes
+            rt/crates/sabline-rt/fuzz/artifacts
           if-no-files-found: ignore
 
   mutation:
@@ -190,7 +234,7 @@ jobs:
 
   report:
     name: one issue per failed job, and one per surviving mutant
-    needs: [fuzz, mutation, soak, urls, differential, sanitizers]
+    needs: [fuzz, rt_fuzz, mutation, soak, urls, differential, sanitizers]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:

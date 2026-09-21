@@ -363,6 +363,7 @@ from . import state as _state
 from . import naming
 from .version import REFERENCE_URL, VERSION, _INSTALL_DIR, _launch_command
 from .errors import SablineError
+from .ast_dump import ast_main
 from . import confine as _confine
 from .tables import CHECK_MEMORY_MB_DEFAULT, CHECK_TIMEOUT_DEFAULT
 from .recorder import _RunRecorder, _note_error, _note_stop, _utc_now_ms
@@ -516,6 +517,17 @@ def _check_ceiling(argv: list[Any]) -> int:
 
 
 HELP_FLAGS = ("--help", "-h")
+
+# Commands `usage_lines` below does not name, each with the reason. A
+# command here still answers `--help` for itself: what this list relaxes
+# is that `sabline --help` advertises it, and that the npm wrapper's table
+# of which version each command arrived in has a row for it. check_cli.py
+# and check_library.py both read it, so there is one place to add to and
+# one place to argue.
+UNLISTED_COMMANDS = (
+    ("ast", "the canonical AST dump is a comparison surface for the "
+            "agreement gate, not a feature (rt/README.md; 9.0.0-alpha.1)"),
+)
 
 
 def usage_lines() -> dict[Any, Any]:
@@ -708,6 +720,11 @@ def main() -> int:
         return 0
     if argv[:1] == ["fmt"]:
         return fmt_main(argv[1:])
+    # The canonical AST dump, for check_agreement.py and for nothing else.
+    # It is not in usage_lines, it is not covered by STABILITY.md, and it
+    # is the surface sabline-rt is compared on (rt/README.md).
+    if argv[:1] == ["ast"]:
+        return ast_main(argv[1:])
     if argv[:1] == ["lsp"]:
         return lsp_serve()
     # `sabline verify` alone is the older spelling of `deps --verify`; given a

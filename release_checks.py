@@ -56,9 +56,12 @@ ENDPOINTS = {
     "registry": "https://registry.modelcontextprotocol.io",
     "github": "https://api.github.com",
     "vscode": "https://marketplace.visualstudio.com",
+    # the crate, which only a pre-release publishes (plan/9.0.md)
+    "crates": "https://crates.io",
 }
 NAMES = {"pypi": "PyPI", "npm": "npm", "registry": "the MCP registry",
-         "github": "GitHub releases", "vscode": "the VS Code Marketplace"}
+         "github": "GitHub releases", "vscode": "the VS Code Marketplace",
+         "crates": "crates.io"}
 RETRY_WAIT = 10          # seconds between attempts at a target that failed
 
 # The six files run_tests.py's check_versions holds to one version. The
@@ -69,8 +72,23 @@ VERSION_FILES = ("sabline/version.py", "pyproject.toml", "npm/package.json",
                  "integrations/mcp_registry/server.json")
 OLD_VERSION_FILE = "sabline.py"
 
-# A CHANGELOG entry heading: "## 7.1.2 - The proof cache could be lied to"
-ENTRY = re.compile(r"^## (\d+\.\d+(?:\.\d+)?) - (.+)$", re.M)
+# A CHANGELOG entry heading: "## 7.1.2 - The proof cache could be lied to",
+# or a pre-release's: "## 9.0.0-alpha.1 - The parser, twice"
+ENTRY = re.compile(
+    r"^## (\d+\.\d+(?:\.\d+)?(?:-(?:alpha|beta|rc)\.\d+)?) - (.+)$", re.M)
+
+# The Rust workspace, whose version is what a pre-release publishes. It is
+# the one place a 9.0.0-alpha.N version is written: the Python package's six
+# version files stay on the release users get, because an alpha publishes
+# the crate and nothing else (plan/9.0.md, alpha.1).
+CRATE_MANIFEST = "rt/Cargo.toml"
+CRATE_NAME = "sabline-rt"
+
+# What a pre-release publishes, and what it must not touch.
+PRERELEASE_PUBLISHES = ("crates.io", "a GitHub release marked pre-release")
+PRERELEASE_LEAVES = ("PyPI", "npm", "the VS Code Marketplace",
+                     "the MCP registry", "the Action pins",
+                     "the docs site's latest")
 
 ADVISORY = "advisory-*.md"
 
@@ -81,12 +99,56 @@ class Unanswered(Exception):
 
 # ---- versions, tags and the CHANGELOG ----------------------------------------
 
+# A pre-release is `alpha`, `beta` or `rc` and a number, and they order
+# that way. A release with no pre-release part is newer than every
+# pre-release of the same X.Y.Z, which is semantic versioning's rule and is
+# why the fourth element is 3 for a release and 0, 1 or 2 for a
+# pre-release.
+PRERELEASE_KINDS = ("alpha", "beta", "rc")
+VERSION_TEXT = re.compile(
+    r"v?(\d+)\.(\d+)(?:\.(\d+))?(?:-(alpha|beta|rc)\.(\d+))?\Z")
+
+
 def parse_version(text: Any) -> tuple[int, int, int] | None:
-    """(major, minor, patch) of '7.2.0', 'v7.2.0' or '7.2'; None otherwise."""
-    m = re.fullmatch(r"v?(\d+)\.(\d+)(?:\.(\d+))?", str(text or "").strip())
+    """(major, minor, patch) of '7.2.0', 'v7.2.0' or '7.2'; None otherwise.
+
+    A pre-release reads as the release it leads to, because everything that
+    asks this question - which tag is newest, does the CHANGELOG have an
+    entry - wants the three numbers. `order` is what compares two of them
+    and `prerelease_of` is what tells them apart.
+    """
+    m = VERSION_TEXT.fullmatch(str(text or "").strip())
     if not m:
         return None
     return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
+
+
+def prerelease_of(text: Any) -> tuple[str, int] | None:
+    """('alpha', 1) of '9.0.0-alpha.1'; None for a release."""
+    m = VERSION_TEXT.fullmatch(str(text or "").strip())
+    if not m or not m.group(4):
+        return None
+    return m.group(4), int(m.group(5))
+
+
+def order(text: Any) -> tuple[int, int, int, int, int] | None:
+    """What makes one version newer than another, pre-releases included."""
+    numbers = parse_version(text)
+    if numbers is None:
+        return None
+    pre = prerelease_of(text)
+    if pre is None:
+        return (*numbers, len(PRERELEASE_KINDS), 0)
+    return (*numbers, PRERELEASE_KINDS.index(pre[0]), pre[1])
+
+
+def crate_version(root: Path) -> str | None:
+    """What rt/Cargo.toml's workspace says the crate's version is."""
+    text = _read(root, CRATE_MANIFEST)
+    if text is None:
+        return None
+    m = re.search(r'^version = "([^"\r\n]*)"', text, re.M)
+    return m.group(1) if m else None
 
 
 def _read(root: Path, name: str) -> str | None:
@@ -146,8 +208,10 @@ def changelog_entry(root: Path, version: str) -> tuple[str, str] | None:
     want = parse_version(version)
     if want is None:
         return None
+    want_pre = prerelease_of(version)
     for m in ENTRY.finditer(text):
-        if parse_version(m.group(1)) == want:
+        if (parse_version(m.group(1)) == want
+                and prerelease_of(m.group(1)) == want_pre):
             rest = text[m.end():]
             following = re.search(r"^## ", rest, re.M)
             body = rest[:following.start()] if following else rest
@@ -423,6 +487,106 @@ def api_golden_changed(root: Path, since: str) -> bool:
 
 # ---- the gate ----------------------------------------------------------------
 
+def _newest_tag(root: Path, releases_only: bool = False) -> tuple[str, list[str]]:
+    """The newest `v*` tag by version order, and every tag read.
+
+    `releases_only` leaves the pre-releases out, which is what an ordinary
+    release is measured against. They are a second line of tags, not a
+    later point on the first: 9.0.0-alpha.1 does not mean 8.6.1 cannot
+    follow 8.6.0, and everything an ordinary release compares itself with
+    - what STABILITY.md covers that changed, the API golden, the release
+    notes' compare link, the perf gate's previous tag - means the previous
+    **release**. The pre-release gate uses the other answer, because
+    alpha.2 does follow alpha.1.
+    """
+    tags = [t for t in git(root, "tag", "--list", "v*").splitlines()
+            if order(t)]
+    among = [t for t in tags if not prerelease_of(t)] if releases_only else tags
+    newest = max(among, key=cast("Callable[[str], Any]", order)) if among else ""
+    return newest, tags
+
+
+def prerelease_gate(root: Path, expect_sha: str | None = None) -> dict[Any, Any]:
+    """Whether HEAD is a pre-release of the crate, and nothing else.
+
+    A pre-release is `X.Y.Z-alpha.N` (or beta, or rc) in the Rust
+    workspace's version, and it publishes the crate to crates.io and a
+    GitHub release marked pre-release. It publishes to PyPI, npm, the VS
+    Code Marketplace and the MCP registry not at all, moves no Action pin
+    and moves no "latest" anywhere: whatever the newest release was stays
+    what a user gets. plan/9.0.md's alphas are shippable tags, and this is
+    what makes one shippable without moving the project underneath anyone.
+
+    The Python package's version is **not** the pre-release's. It stays on
+    the release users have, and the gate refuses a commit where it moved,
+    because a pre-release that changed what PyPI would serve is not a
+    pre-release of the crate.
+    """
+    claims = version_claims(root)
+    python_version = claims[0][1] or ""
+    version = crate_version(root) or ""
+    head = git(root, "rev-parse", "HEAD")
+    newest, tags = _newest_tag(root)
+    answer: dict[Any, Any] = {
+        "release": False, "refused": False, "prerelease": True,
+        "version": version, "tag": f"v{version}" if version else "",
+        "previous_tag": newest, "sha": head, "crate": CRATE_NAME,
+    }
+
+    def no(why: str) -> dict[Any, Any]:
+        answer["line"] = f"no release: {why}"
+        return answer
+
+    tag = answer["tag"]
+    if tag in tags:
+        return no(f"{CRATE_MANIFEST} says {version} and {tag} already exists")
+    if newest and cast("Any", order(version)) <= cast("Any", order(newest)):
+        return no(f"the crate's version {version} is not newer than the "
+                  f"newest tag, {newest}")
+    if changelog_entry(root, version) is None:
+        return no(f"CHANGELOG.md has no entry heading for {version} (a line "
+                  f"'## {version} - <title>')")
+
+    # every version file of the Python package must still say what the
+    # newest release said: an alpha publishes the crate, and nothing else
+    released = [t for t in tags if not prerelease_of(t)]
+    last = max(released, key=cast("Callable[[str], Any]", order)) if released else ""
+    if last and f"v{python_version}" != last:
+        answer["refused"] = True
+        answer["line"] = (
+            f"refused: {version} is a pre-release, which publishes "
+            f"{' and '.join(PRERELEASE_PUBLISHES)} and nothing else - but "
+            f"{claims[0][0]} says {python_version} where {last} is the newest "
+            f"release, so this commit would change what PyPI serves. A "
+            f"pre-release leaves {', '.join(PRERELEASE_LEAVES)} where they "
+            f"are (plan/9.0.md)")
+        return answer
+    disagree = [f"{name} says {said}" for name, said in claims[1:]
+                if said != python_version]
+    if disagree:
+        answer["refused"] = True
+        answer["line"] = (
+            f"refused: {version} is a pre-release and must leave the Python "
+            f"package alone, but {claims[0][0]} says {python_version} and "
+            + ", ".join(disagree))
+        return answer
+
+    if expect_sha and head != expect_sha:
+        answer["refused"] = True
+        answer["line"] = (
+            f"refused: the tests passed on {expect_sha[:12]}, but main is at "
+            f"{head[:12]}; a release is only the commit its tests passed on, "
+            f"so {head[:12]}'s own test run decides whether it is {tag}")
+        return answer
+    answer["release"] = True
+    answer["line"] = (
+        f"pre-release: {version} - tagging {head[:12]} as {tag}, publishing "
+        f"the {CRATE_NAME} crate and a GitHub release marked pre-release, and "
+        f"nothing else. {last or 'the newest release'} stays what a user "
+        f"gets (the newest tag was {newest or 'none'})")
+    return answer
+
+
 def gate(root: Path, expect_sha: str | None = None) -> dict[Any, Any]:
     """Whether HEAD of `root` is a release: the step outputs, and 'line',
     the one line that says why. A release needs the compiler's VERSION to be
@@ -432,17 +596,32 @@ def gate(root: Path, expect_sha: str | None = None) -> dict[Any, Any]:
     code added, a flag removed, a default changed - and its entry has no
     line beginning 'compatibility:'; or the API golden moved and the entry
     has no line beginning 'api:'; or HEAD is not `expect_sha`, the commit
-    the tests passed on."""
+    the tests passed on.
+
+    A commit whose Rust workspace says a pre-release version - `9.0.0-alpha.1`
+    - is asked a different set of questions, because it publishes a
+    different set of things: `prerelease_gate` above. **Only until that
+    pre-release is tagged**: after v9.0.0-alpha.1 exists, rt/Cargo.toml
+    still says 9.0.0-alpha.1 until somebody moves it, and the commits after
+    it are ordinary commits again - one of which may be the next release of
+    the Python package. A rule that read the crate alone would block every
+    release after an alpha until the crate's version moved, which is not
+    what an alpha is for.
+    """
+    crate = crate_version(root)
+    if prerelease_of(crate) is not None:
+        _, tags = _newest_tag(root)
+        if f"v{crate}" not in tags:
+            return prerelease_gate(root, expect_sha)
+
     claims = version_claims(root)
     version = claims[0][1] or ""
     if parse_version(version) is None:
         version = ""             # never an output: it came from the commit
     head = git(root, "rev-parse", "HEAD")
-    tags = [t for t in git(root, "tag", "--list", "v*").splitlines()
-            if parse_version(t)]
-    newest = max(tags, key=cast("Callable[[str], tuple[int, int, int]]",
-                                parse_version)) if tags else ""
-    answer = {"release": False, "refused": False, "version": version,
+    newest, tags = _newest_tag(root, releases_only=True)
+    answer = {"release": False, "refused": False, "prerelease": False,
+              "version": version,
               "tag": f"v{version}" if version else "",
               "previous_tag": newest, "sha": head}
 
@@ -455,13 +634,12 @@ def gate(root: Path, expect_sha: str | None = None) -> dict[Any, Any]:
     tag = answer["tag"]
     if tag == newest:
         return no(f"VERSION is {version} and {tag} is already the newest "
-                  f"tag")
+                  f"release")
     if tag in tags:
         return no(f"VERSION is {version} and {tag} already exists (the "
-                  f"newest tag is {newest})")
-    if newest and (cast("tuple[int, int, int]", parse_version(version))
-                   <= cast("tuple[int, int, int]", parse_version(newest))):
-        return no(f"VERSION {version} is not newer than the newest tag, "
+                  f"newest release is {newest or 'none'})")
+    if newest and (cast("Any", order(version)) <= cast("Any", order(newest))):
+        return no(f"VERSION {version} is not newer than the newest release, "
                   f"{newest}")
     if changelog_entry(root, version) is None:
         major, minor, patch = cast("tuple[int, int, int]",
@@ -520,7 +698,7 @@ def gate(root: Path, expect_sha: str | None = None) -> dict[Any, Any]:
         return answer
     answer["release"] = True
     answer["line"] = (f"release: {version} - tagging {head[:12]} as {tag} "
-                      f"(the newest tag was {newest or 'none'})")
+                      f"(the newest release was {newest or 'none'})")
     return answer
 
 
@@ -619,6 +797,7 @@ def published(target: str, version: str) -> bool:
            "npm": f"{base}/{PACKAGE}/{version}",
            "registry": f"{base}{_server_path()}/versions/{version}",
            "github": f"{base}/repos/{REPOSITORY}/releases/tags/v{version}",
+           "crates": f"{base}/api/v1/crates/{CRATE_NAME}/{version}",
            }[target]
     status, _ = _fetch(url, headers=_github_auth(base)
                        if target == "github" else None)
@@ -628,6 +807,53 @@ def published(target: str, version: str) -> bool:
         return False
     raise Unanswered(f"{NAMES[target]} answered HTTP {status} about "
                      f"{version}")
+
+
+def prerelease_left_alone(version: str) -> list[tuple[str, str, bool]]:
+    """(target, what it reports, whether it was left alone) for everything a
+    pre-release must not touch.
+
+    A pre-release publishes the crate and a GitHub release marked
+    pre-release. Nothing else may move: PyPI, npm, the MCP registry and the
+    VS Code Marketplace must still serve the newest ordinary release, and
+    GitHub's own "latest release" must not be this tag - which is what
+    `--prerelease` on `gh release create` buys, and this is what checks
+    that it was passed.
+    """
+    rows: list[tuple[str, str, bool]] = []
+    status, raw = _fetch(f"{ENDPOINTS['pypi']}/pypi/{PACKAGE}/json")
+    said = _dig(_json_of(raw), "info", "version") if status == 200 else None
+    rows.append(("PyPI", f"latest is {said}" if said else f"HTTP {status}",
+                 said is not None and said != version))
+    status, raw = _fetch(f"{ENDPOINTS['npm']}/{PACKAGE}", headers={
+        "Accept": "application/vnd.npm.install-v1+json"})
+    said = _dig(_json_of(raw), "dist-tags", "latest") if status == 200 else None
+    rows.append(("npm", f"latest is {said}" if said else f"HTTP {status}",
+                 said is not None and said != version))
+    status, raw = _fetch(
+        f"{ENDPOINTS['registry']}{_server_path()}/versions/latest")
+    said = _dig(_json_of(raw), "server", "version") if status == 200 else None
+    rows.append(("the MCP registry",
+                 f"latest is {said}" if said else f"HTTP {status}",
+                 said is not None and said != version))
+    status, listed = _marketplace(MARKETPLACE_LATEST)
+    said = listed[0] if listed else None
+    rows.append(("the VS Code Marketplace",
+                 f"latest is {said}" if said else f"HTTP {status}",
+                 said is not None and said != version))
+    base = ENDPOINTS["github"]
+    status, raw = _fetch(f"{base}/repos/{REPOSITORY}/releases/latest",
+                         headers=_github_auth(base))
+    tag = _dig(_json_of(raw), "tag_name") if status == 200 else None
+    rows.append(("the GitHub release marked latest",
+                 f"latest is {tag}" if tag else f"HTTP {status}",
+                 tag is not None and tag != f"v{version}"))
+    # and the crate itself is there, which is the one thing that did move
+    rows.append((f"the {CRATE_NAME} crate",
+                 f"{version} is on crates.io" if published("crates", version)
+                 else f"{version} is not on crates.io",
+                 published("crates", version)))
+    return rows
 
 
 def registry_prerequisites(version: str) -> list[str]:
@@ -849,6 +1075,7 @@ def cmd_gate(args: Any) -> int:
          else "notice",
          release=str(release).lower(),
          build=str(answer["release"] or args.dry_run).lower(),
+         prerelease=str(answer.get("prerelease", False)).lower(),
          version=answer["version"], tag=answer["tag"],
          previous_tag=answer["previous_tag"], sha=answer["sha"])
     return 1 if answer["refused"] and not args.dry_run else 0
@@ -1034,6 +1261,38 @@ def cmd_consistent(args: Any) -> int:
     return 1
 
 
+def cmd_prerelease_left_alone(args: Any) -> int:
+    """After a pre-release: that it published the crate and moved nothing
+    else.
+
+    plan/9.0.md's alphas ship without moving the project underneath
+    anyone, and the way to know that held is to ask each place afterwards
+    rather than to read the workflow and believe it. The one thing that
+    must have moved is the crate.
+    """
+    try:
+        rows = prerelease_left_alone(args.version)
+    except Unanswered as e:
+        emit(args, f"could not check that {args.version} moved nothing "
+                   f"else: {e}", "error")
+        return 1
+    for target, report, good in rows:
+        print(f"  {'ok' if good else 'MOVED':8} {target}: {report}")
+    wrong = [f"{target} ({report})" for target, report, good in rows
+             if not good]
+    if wrong:
+        emit(args, f"a pre-release moved what it must not: "
+                   f"{', '.join(wrong)}. {args.version} publishes the "
+                   f"{CRATE_NAME} crate and a GitHub release marked "
+                   f"pre-release, and nothing else (plan/9.0.md)", "error")
+        return 1
+    emit(args, f"pre-release {args.version}: the {CRATE_NAME} crate is on "
+               f"crates.io, and "
+               f"{', '.join(n for n, _, _ in rows[:-1])} are where they "
+               f"were")
+    return 0
+
+
 # ---- after the release: the Action pins (8.4) ---------------------------------
 
 PIN_DOCS = ("README.md", "EMBEDDING.md")
@@ -1208,6 +1467,11 @@ def main(argv: Any = None) -> int:
                        help="seconds to keep asking (default: ask once)")
         p.add_argument("--interval", type=float, default=30)
         p.set_defaults(run=run)
+
+    p = sub.add_parser("prerelease-left-alone", parents=[common],
+                       help="after a pre-release: did it move anything else?")
+    p.add_argument("version")
+    p.set_defaults(run=cmd_prerelease_left_alone)
 
     p = sub.add_parser("advisories", parents=[common],
                        help="advisory-*.md files added since a tag")

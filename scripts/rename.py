@@ -136,6 +136,20 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # two where the whole word may appear freely.
     "scripts/rename.py": ("velaris", "Velaris", "VELARIS"),
     "check_rename.py": ("velaris", "Velaris", "VELARIS"),
+    # And the decision that ends them. 0005 is the list of what 9.0
+    # breaks, and eight of its rows are the deprecations 8.6 announced -
+    # each named as the user wrote it, because a row that did not name the
+    # thing being removed would not say what a user has to change. The
+    # ninth row is the one 9.0 does NOT remove: the predicate type names,
+    # which were signed.
+    "decisions/0005-breaking-set.md": ("velaris", "Velaris", "VELARIS"),
+    # The agreement gate's own test sets every variable that could
+    # plausibly turn the gate off and requires the count of compared
+    # programs to be unchanged. VELARIS_* names are still read where the
+    # SABLINE_* one is unset, for one major version, so a gate that
+    # ignored SABLINE_REFERENCE_RUNTIME and read the other would be a gate
+    # with a way out (plan/9.0.md).
+    "check_gate.py": ("VELARIS_REFERENCE_RUNTIME",),
 
     # ---- the aliases kept for one major (STABILITY.md rule 2) ------------
     # The `velaris` command. The command line is part of what STABILITY.md
