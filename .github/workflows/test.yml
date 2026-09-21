@@ -50,6 +50,28 @@ jobs:
         run: pip install -c requirements/ci.txt ".[test]"
       - name: Version
         run: sabline --version
+      # sabline-rt on every leg of the matrix, including arm64 and Windows.
+      # The agreement gate and the differential fuzzer both need it, and
+      # neither has a path that skips when it is missing, so it is built
+      # here rather than by them.
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+        with:
+          workspaces: rt
+          key: ${{ matrix.python }}-${{ matrix.deps }}
+      - name: Build sabline-rt
+        run: cargo build --release --manifest-path rt/Cargo.toml
+      - name: sabline-rt's own tests
+        run: cargo test --manifest-path rt/Cargo.toml --release
+      - name: clippy, with every warning an error
+        run: cargo clippy --manifest-path rt/Cargo.toml --all-targets --release -- -D warnings
+      - name: rustfmt
+        run: cargo fmt --manifest-path rt/Cargo.toml --check
+      - name: The crate holds its own rules (no unsafe, the MSRV, the cap)
+        run: python check_rt.py
       # sabline-spec: its conformance corpus, and the schemas the library
       # suite holds audits and attestations to. It holds no .vel file, so
       # the capability check below still sees this repository alone.
@@ -64,6 +86,13 @@ jobs:
         uses: open-policy-agent/setup-opa@b2b258e089860efaadaaf71bf6e3aecb4a3eeff1  # v2.4.0
         with:
           version: "1.20.2"
+      # The agreement gate: both parsers over every Sabline source this
+      # project has, failing on any difference in the tree, the error code,
+      # the message, the fixes or the line. It has no `if:`, no
+      # `continue-on-error` and no flag that skips a corpus, and
+      # check_workflows.py fails on a pull request that gives it one.
+      - name: Both runtimes agree, program for program
+        run: python check_agreement.py sabline-spec/tests
       - name: Test suite
         run: python run_tests.py
       - name: Each stage on its own (unit tests, and the modules' pipeline order)
@@ -193,6 +222,97 @@ jobs:
           name: identical-${{ runner.os }}
           path: identical-out
           if-no-files-found: error
+
+  agreement:
+    name: both runtimes agree, and the gate that says so cannot be turned off
+    # No `if:`, no `continue-on-error`, and nothing here reads a variable
+    # that could narrow what is compared. check_workflows.py holds this
+    # job to that shape, so a pull request that weakens it fails on itself.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+        with:
+          workspaces: rt
+          key: agreement
+      - name: Install
+        run: pip install -c requirements/ci.txt ".[full,test]"
+      - name: sabline-spec, for its corpus
+        uses: actions/checkout@v5
+        with:
+          repository: gowrishankar-infra/sabline-spec
+          path: sabline-spec
+      - name: Build sabline-rt
+        run: cargo build --release --manifest-path rt/Cargo.toml
+      - name: Both runtimes agree, program for program
+        run: python check_agreement.py sabline-spec/tests
+      # Three differences injected into sabline-rt, one per comparison
+      # class, each of which the gate must go red for; and the scan that
+      # says the gate reads nothing that could disable it.
+      - name: The gate cannot be turned off, and it detects
+        run: python check_gate.py sabline-spec/tests
+      # Both parsers on generated input, briefly. monthly.yml runs it for
+      # twenty minutes and cargo-fuzz for an hour.
+      - name: The same generated input to both parsers
+        run: python fuzz_parsers.py --target agreement --minutes 2
+
+  msrv:
+    name: sabline-rt builds on the Rust version it says it needs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # The number here is rt/Cargo.toml's rust-version, and check_rt.py
+      # fails when the two disagree.
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+        with:
+          toolchain: "1.82"
+      - name: Build and test on the minimum
+        run: |
+          cargo build --manifest-path rt/Cargo.toml --locked
+          cargo test --manifest-path rt/Cargo.toml --locked
+
+  supply_chain:
+    name: cargo-deny - advisories, licenses, bans and sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+        with:
+          toolchain: stable
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25  # v2
+        with:
+          manifest-path: rt/Cargo.toml
+          command: check
+          arguments: --all-features
+
+  rt_fuzz:
+    name: sabline-rt, fuzzed - no input is a panic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # cargo-fuzz needs nightly and a sanitizer; the fuzzing crate is
+      # outside the workspace for exactly that reason.
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+        with:
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+        with:
+          workspaces: rt/crates/sabline-rt/fuzz
+          key: fuzz
+      - name: cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+      - name: The parser, on arbitrary bytes
+        working-directory: rt/crates/sabline-rt
+        run: cargo fuzz run parse -- -max_total_time=60 -rss_limit_mb=4096
+      - name: The dump, on arbitrary bytes
+        working-directory: rt/crates/sabline-rt
+        run: cargo fuzz run dump -- -max_total_time=60 -rss_limit_mb=4096
 
   identical:
     name: the audit and SARIF are the same bytes on Linux, Windows and macOS
