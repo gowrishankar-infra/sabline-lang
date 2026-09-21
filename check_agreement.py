@@ -81,8 +81,7 @@ if _reconfigure is not None:
 # Where sabline-spec's corpus is looked for when no path is given. The
 # release and CI check it out beside this repository (test.yml) or one
 # directory up (a local clone).
-CORPUS_GUESSES = ("sabline-spec/tests", "../sabline-spec/tests",
-                  "velaris-spec/tests", "../velaris-spec/tests")
+CORPUS_GUESSES = ("sabline-spec/tests", "../sabline-spec/tests")
 
 # Sabline source inside a conformance case lives under one of these keys.
 # A case that grows another key adds a line here, and until it does the

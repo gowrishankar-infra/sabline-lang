@@ -265,8 +265,7 @@ def main(argv: list[str]) -> int:
     # repository in a directory of its own
     corpus = str(Path(argv[0]).resolve()) if argv else ""
     if not corpus:
-        for guess in ("sabline-spec/tests", "../sabline-spec/tests",
-                      "velaris-spec/tests", "../velaris-spec/tests"):
+        for guess in ("sabline-spec/tests", "../sabline-spec/tests"):
             if (ROOT / guess).is_dir():
                 corpus = str((ROOT / guess).resolve())
                 break
