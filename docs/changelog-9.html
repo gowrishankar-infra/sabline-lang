@@ -144,14 +144,24 @@ overflow its stack or hang: the library publishes <code>PARSE_STACK</code> and
 <code>tests/limits.rs</code> holds the deepest program the parser accepts against
 that number. A stack overflow is not a panic - it is the process going
 away with no message - so it is held by a measurement and not by hope.</p>
-<p><strong>CI.</strong> <code>cargo build</code>, <code>cargo test</code>, <code>cargo clippy -D warnings</code> and
-<code>cargo fmt --check</code> on every leg of the matrix, arm64 and Windows
-included, with <code>Swatinem/rust-cache</code>; and four legs of their own:
-<code>agreement</code> (the gate, its own test, and two minutes of the differential
-fuzzer), <code>msrv</code> (a build on 1.82, the version <code>rt/Cargo.toml</code> states),
-<code>supply_chain</code> (<code>cargo deny check</code> - advisories, licenses, bans and
-sources, with a committed <code>rt/deny.toml</code> naming all five target triples a
-release builds for), and <code>rt_fuzz</code> (a minute of each <code>cargo fuzz</code> target).</p>
+<p><strong>CI.</strong> <code>cargo build</code>, <code>cargo test</code>, <code>cargo clippy -D warnings</code>,
+<code>cargo fmt --check</code> and <code>check_rt.py</code> on every leg of the matrix, arm64
+and Windows included, with <code>Swatinem/rust-cache</code>; and four legs of their
+own: <code>agreement</code> (the gate, its own test's three injections, and two
+minutes of the differential fuzzer) at <strong>169 s</strong>, <code>rt_fuzz</code> (a minute of
+each <code>cargo fuzz</code> target) at <strong>144 s</strong>, <code>supply_chain</code> (<code>cargo deny check</code> - advisories, licenses, bans and sources, with a committed
+<code>rt/deny.toml</code> naming all five target triples a release builds for) at
+<strong>30 s</strong>, and <code>msrv</code> (a build and test on 1.82, the version
+<code>rt/Cargo.toml</code> states and <code>check_rt.py</code> holds it to) at <strong>22 s</strong>.</p>
+<p>The cost, measured against the last green run of main before this branch:
+the eighteen matrix legs together went from <strong>20,250 s to 21,016 s</strong>, up
+<strong>3.8%</strong>, and the median leg from 938 s to 1,051 s. Wall clock did not
+move - 2,781 s to 2,719 s, which is noise - because the four new legs run
+beside a matrix whose slowest leg is three quarters of an hour. Per-leg
+noise on these runners is larger than the change: three legs got faster.
+<code>cargo deny</code> runs once rather than eighteen times, because it reads the
+lockfile and <code>deny.toml</code> already names every platform a release builds
+for; running it on each leg would tell nobody anything one run does not.</p>
 <h3 id="what-does-not-exist">What does not exist <a class="anchor" href="#what-does-not-exist" aria-label="Link to this section">#</a></h3>
 <p>sabline-rt does not check types, does not check effects, does not check
 termination, does not prove anything, does not run a program, does not

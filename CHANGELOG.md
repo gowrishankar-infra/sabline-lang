@@ -101,14 +101,26 @@ overflow its stack or hang: the library publishes `PARSE_STACK` and
 that number. A stack overflow is not a panic - it is the process going
 away with no message - so it is held by a measurement and not by hope.
 
-**CI.** `cargo build`, `cargo test`, `cargo clippy -D warnings` and
-`cargo fmt --check` on every leg of the matrix, arm64 and Windows
-included, with `Swatinem/rust-cache`; and four legs of their own:
-`agreement` (the gate, its own test, and two minutes of the differential
-fuzzer), `msrv` (a build on 1.82, the version `rt/Cargo.toml` states),
-`supply_chain` (`cargo deny check` - advisories, licenses, bans and
-sources, with a committed `rt/deny.toml` naming all five target triples a
-release builds for), and `rt_fuzz` (a minute of each `cargo fuzz` target).
+**CI.** `cargo build`, `cargo test`, `cargo clippy -D warnings`,
+`cargo fmt --check` and `check_rt.py` on every leg of the matrix, arm64
+and Windows included, with `Swatinem/rust-cache`; and four legs of their
+own: `agreement` (the gate, its own test's three injections, and two
+minutes of the differential fuzzer) at **169 s**, `rt_fuzz` (a minute of
+each `cargo fuzz` target) at **144 s**, `supply_chain` (`cargo deny
+check` - advisories, licenses, bans and sources, with a committed
+`rt/deny.toml` naming all five target triples a release builds for) at
+**30 s**, and `msrv` (a build and test on 1.82, the version
+`rt/Cargo.toml` states and `check_rt.py` holds it to) at **22 s**.
+
+The cost, measured against the last green run of main before this branch:
+the eighteen matrix legs together went from **20,250 s to 21,016 s**, up
+**3.8%**, and the median leg from 938 s to 1,051 s. Wall clock did not
+move - 2,781 s to 2,719 s, which is noise - because the four new legs run
+beside a matrix whose slowest leg is three quarters of an hour. Per-leg
+noise on these runners is larger than the change: three legs got faster.
+`cargo deny` runs once rather than eighteen times, because it reads the
+lockfile and `deny.toml` already names every platform a release builds
+for; running it on each leg would tell nobody anything one run does not.
 
 ### What does not exist
 
