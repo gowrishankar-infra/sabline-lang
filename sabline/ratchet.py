@@ -837,17 +837,20 @@ def capability_scan(root: str = ".", use_git: bool = True) -> dict[str, Any]:
 
 
 def _schema_of(path: str) -> str | None:
-    """The schema an existing baseline declares, or None for a new file.
-    A document already on disk, already read by something, keeps the name
-    it has (capabilities_document says why)."""
-    try:
-        with open(path, encoding="utf-8") as fh:
-            said = json.load(fh).get("schema")
-    except (OSError, ValueError):
-        return None
-    if isinstance(said, str) and naming.schema_matches(
-            said, CAPABILITIES_SCHEMA):
-        return said
+    """The schema to write a baseline at `path` under: the name that
+    matches the FILE's name, or None for the name this version writes.
+
+    The schema follows the file, because the file is what a reader looks
+    for. A repository that still has velaris.capabilities has something
+    reading it under that name - an Action pinned before 8.6 - and gets
+    velaris.capabilities/1, so that reader keeps working. Renaming the
+    file to sabline.capabilities is the deliberate act that says the
+    reader has moved, and the schema moves with it, which is what
+    docs/renamed.md tells a reader to expect. What the file happens to
+    contain does not decide this: a half-done rename - the new name on
+    the file, the old one inside - should end as a whole one."""
+    if os.path.basename(path) == naming.old_filename(CAPABILITIES_FILE):
+        return naming.old_schema(CAPABILITIES_SCHEMA)
     return None
 
 
