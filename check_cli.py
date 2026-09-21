@@ -78,13 +78,9 @@ def dispatched() -> set[Any]:
 
 
 # Commands deliberately left out of `usage_lines`, each with the reason.
-# A command here still answers `--help` for itself: the rule this list
-# relaxes is that `sabline --help` advertises it, not that it is
-# documented.
-UNLISTED = {
-    "ast": "the canonical AST dump is a comparison surface for the "
-           "agreement gate, not a feature (rt/README.md; 9.0.0-alpha.1)",
-}
+# The list is the compiler's own (sabline/cli.py), so that this suite and
+# check_library.py's npm-wrapper check read the same one.
+UNLISTED = dict(sabline.cli.UNLISTED_COMMANDS)
 
 
 def help_cases() -> None:

@@ -79,9 +79,11 @@ class TheCanonicalForm(unittest.TestCase):
         # The writer does not recurse, so that a program 4,000 levels deep
         # can be dumped; it must still write exactly what the standard
         # library writes for anything the standard library can write.
-        for doc in ({"b": [], "a": {}, "c": [1, [2, {"x": None, "y": True}]]},
-                    1, "hi", [], {}, {"k": "café \U0001f600"},
-                    {"z": [[[1]]], "a": "\x00\x7f\\\"\n"}):
+        documents: tuple[Any, ...] = (
+            {"b": [], "a": {}, "c": [1, [2, {"x": None, "y": True}]]},
+            1, "hi", [], {}, {"k": "café \U0001f600"},
+            {"z": [[[1]]], "a": "\x00\x7f\\\"\n"})
+        for doc in documents:
             want = json.dumps(doc, sort_keys=True, ensure_ascii=True,
                               separators=(",", ":"))
             self.assertEqual(canonical(doc), want, repr(doc))

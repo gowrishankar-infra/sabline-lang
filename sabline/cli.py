@@ -518,6 +518,17 @@ def _check_ceiling(argv: list[Any]) -> int:
 
 HELP_FLAGS = ("--help", "-h")
 
+# Commands `usage_lines` below does not name, each with the reason. A
+# command here still answers `--help` for itself: what this list relaxes
+# is that `sabline --help` advertises it, and that the npm wrapper's table
+# of which version each command arrived in has a row for it. check_cli.py
+# and check_library.py both read it, so there is one place to add to and
+# one place to argue.
+UNLISTED_COMMANDS = (
+    ("ast", "the canonical AST dump is a comparison surface for the "
+            "agreement gate, not a feature (rt/README.md; 9.0.0-alpha.1)"),
+)
+
 
 def usage_lines() -> dict[Any, Any]:
     """{command: its lines in the usage list above} - the list `sabline`
