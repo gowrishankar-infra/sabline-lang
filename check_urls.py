@@ -69,7 +69,19 @@ IDENTIFIERS = re.compile(
     r"^https://token\.actions\.githubusercontent\.com/?$|"
     r"^https://github\.com/login/oauth/?$|"
     r"^https://archive\.softwareheritage\.org/api/|"
-    r"^https://github\.com/o/[\w.-]+/?$")
+    r"^https://github\.com/o/[\w.-]+/?$|"
+    # 8.6: the address the Pages site had before the repository was
+    # renamed. It answers 404 and will go on answering 404 - a repository
+    # called velaris-lang would serve it again and would end GitHub's
+    # redirect from every old repository URL, which is worth more. The
+    # CHANGELOG and docs/renamed.md name it BECAUSE it is broken, so asking
+    # it is asking whether a thing this project has published as gone is
+    # gone. The predicate types under it are names, not pages
+    # (sabline/predicates.py), and nothing fetches them.
+    r"^https://gowrishankar-infra\.github\.io/velaris-lang(?:[/#?]|$)|"
+    # the domain that is not this project's, named as the worked example of
+    # a predicate type Sabline refuses
+    r"^https://velaris\.dev/")
 
 
 def urls() -> dict[str, list[str]]:

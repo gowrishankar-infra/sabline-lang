@@ -202,7 +202,7 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     "check_pool.py": ("velaris",),
     # why the pre-8.3 card address could not be kept: a repository of that
     # name would end GitHub's redirect from every old repository URL
-    "check_urls.py": ("velaris-lang",),
+    "check_urls.py": ("velaris-lang", r"velaris\.dev"),
     # The gate reads the compiler at a tag from before the rename, where the
     # package is velaris/; the differential runs such a tree.
     "release_checks.py": ("velaris",),
