@@ -5,7 +5,10 @@ below 8.6 uses the name it had at the time, which is what the
 record is for. [docs/renamed.md](docs/renamed.md) says what
 moved where.
 
-### Since v9.0.0-alpha.4, not yet released
+**Since v9.0.0-alpha.4, not yet released.** One line, which moves into
+the entry for the next version when there is one - this is where
+`check_api.py` looks for it while VERSION is one a tag already has
+(RELEASING.md).
 
 api: `tests/api/golden.json`'s `http.log` changes shape. It was a list
 of the shape of each line of `sabline serve`'s invocation log, in the
@@ -20,9 +23,7 @@ once on a Windows leg in 8.4 and again on #97, and never reproduced.
 `check_api.py` now waits for each request's line before making the next
 one, and terminates the door only once its last line is in. The new form
 also catches things the old one could not: which endpoint a line names,
-and which outcome, are now part of the golden. This line moves into the
-entry for the next version when there is one (`check_api.py`,
-RELEASING.md).
+and which outcome, are now part of the golden.
 
 ## 9.0.0-alpha.4 - The job that was read, and then run
 

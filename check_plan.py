@@ -142,6 +142,16 @@ def changelog_entries(changelog: str) -> list[tuple[str, str]]:
 
 
 def tags() -> set[str] | None:
+    """Every tag this checkout has, or None where the question cannot be
+    asked of it.
+
+    None where this is not a git checkout, and **None where the checkout
+    has no tags at all**: `actions/checkout` fetches none by default, so
+    on CI the answer would otherwise be "every version in the table is
+    untagged", which is a fact about the checkout and not about the
+    table. A checkout that has some tags is one whose answer means
+    something.
+    """
     try:
         done = subprocess.run(["git", "tag", "--list"], cwd=HERE,
                               capture_output=True, text=True, timeout=120)
@@ -149,7 +159,8 @@ def tags() -> set[str] | None:
         return None
     if done.returncode != 0:
         return None
-    return {t.strip() for t in done.stdout.splitlines() if t.strip()}
+    found = {t.strip() for t in done.stdout.splitlines() if t.strip()}
+    return found or None
 
 
 # ---- the rules, as a function of the two texts -----------------------------
@@ -369,7 +380,8 @@ def main(argv: list[str] | None = None) -> int:
         for _, label, held, detail in verdicts(plan, changelog, have):
             ok(label, held, detail)
         if have is None:
-            skip("every row's version is tagged", "not a git checkout")
+            skip("every row's version is tagged",
+                 "this checkout has no tags to ask")
 
     print()
     print("and the check is shown to fail: one injection per rule")
