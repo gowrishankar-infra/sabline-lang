@@ -112,6 +112,16 @@ constraints or bounds.</p>
 what it printed was the secret. <code>Secret of T</code> is the other half: a
 value the compiler tracks so that it cannot reach anything that emits
 it.</p>
+<blockquote>
+<p><strong>9.0 draft, not normative.</strong> <code>decisions/0004-untrusted.md</code> designs a
+second mark, <code>Untrusted of T</code>, and its Amendment 1 gives both marks a
+<em>reach</em> - the set of sinks a marked value may still reach, written in
+the grant grammar of §7.1, propagated by intersection and never
+widened, and granted by the operator with a <code>reach:</code> grant. Under it
+every rule in this section is the empty-reach case, so nothing below
+changes meaning. None of it is normative, none of it has shipped, and
+nothing here may be read as describing it.</p>
+</blockquote>
 <p><strong>Where one comes from.</strong> Three builtins, and nothing else:</p>
 <div class="table-wrap" tabindex="0"><table>
 <thead><tr><th>Builtin</th><th>Returns</th></tr></thead>
@@ -479,7 +489,10 @@ secret is called through <code>tool_secret</code> (E323).</li>
 <p>The host answers each call on the run's standard input, and an answer
 that is not one - E324 - stops the run. A result is a value like any
 other: nothing yet marks it as the host's words rather than the
-program's own. That mark, <code>Untrusted of T</code>, is 9.0's.</p>
+program's own. That mark, <code>Untrusted of T</code>, is 9.0's: it is designed in
+<code>decisions/0004-untrusted.md</code>, whose Amendment 1 gives it and <code>Secret</code>
+a reach in this same grant grammar. Both are <strong>9.0 drafts and not
+normative</strong>; what this section says is what a tool call is today.</p>
 <h2 id="8-failure">8. Failure <a class="anchor" href="#8-failure" aria-label="Link to this section">#</a></h2>
 <p>A function that can fail says so:</p>
 <div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> parse(t: Text) -&gt; Int <span class="k">or</span> <span class="k">fail</span> { ... }</code></pre></div>

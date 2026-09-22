@@ -5,6 +5,26 @@ below 8.6 uses the name it had at the time, which is what the
 record is for. [docs/renamed.md](docs/renamed.md) says what
 moved where.
 
+**Since v9.0.0-alpha.4, not yet released.** One line, which moves into
+the entry for the next version when there is one - this is where
+`check_api.py` looks for it while VERSION is one a tag already has
+(RELEASING.md).
+
+api: `tests/api/golden.json`'s `http.log` changes shape. It was a list
+of the shape of each line of `sabline serve`'s invocation log, in the
+order the lines were in the file; it is now an object keyed by the
+request that produced the line, holding that line's `endpoint` and
+`outcome` as **values** and the shape of the whole line. Nothing the
+HTTP door offers changed, and no line of the log changed: this is what
+the suite records, not what the door does. The reason is that the door
+is a `ThreadingHTTPServer` and writes its line after it has answered, so
+the order of the file was a race the old golden depended on - it failed
+once on a Windows leg in 8.4 and again on #97, and never reproduced.
+`check_api.py` now waits for each request's line before making the next
+one, and terminates the door only once its last line is in. The new form
+also catches things the old one could not: which endpoint a line names,
+and which outcome, are now part of the golden.
+
 ## 9.0.0-alpha.4 - The job that was read, and then run
 
 9.0.0-alpha.3 published its crate and made no GitHub release. The two

@@ -169,10 +169,15 @@ Nothing is tagged or published.
 
 ## A pre-release: the crate, and nothing else
 
-From 9.0.0-alpha.1 there is a second kind of release. `plan/9.0.md`'s
-alphas are shippable tags, and an alpha ships **the `sabline-rt` crate**
-and nothing else: whatever the newest ordinary release was stays what a
-user gets.
+From 9.0.0-alpha.1 there is a second kind of release. A pre-release is a
+shippable tag, and it ships **the `sabline-rt` crate** and nothing else:
+whatever the newest ordinary release was stays what a user gets.
+
+`plan/9.0.md` is the eight milestones M1 to M8, which are bodies of work
+and not version numbers - several pre-releases may be spent inside one,
+and three were spent inside M1. Its *Versions, and the milestone each one
+was in* table is the record of which pre-release was in which, and
+`check_plan.py` fails if that table and this CHANGELOG disagree.
 
 **What makes a commit a pre-release** is the version in
 [`rt/Cargo.toml`](rt/Cargo.toml). When the workspace's `version` is
@@ -186,10 +191,21 @@ person does still happens before the push:
    ordinary release; the gate refuses the commit if one of them moved,
    because a pre-release that changed what PyPI would serve is not a
    pre-release of the crate.
-2. Write the CHANGELOG entry, headed `## X.Y.Z-alpha.N - Title`. It says
-   what exists, what does not yet, and the agreement gate's numbers.
-3. `python release_checks.py gate` should say `pre-release: X.Y.Z-alpha.N`.
-4. Commit and push to main.
+2. Write the CHANGELOG entry, headed
+   **`## X.Y.Z-alpha.N - M<n>: Title`** - the milestone first, as `M<n>`
+   followed by a colon and a space, and exactly one of them. It says what
+   exists, what does not yet, and the agreement gate's numbers.
+3. Add the version to `plan/9.0.md`'s table, with the same milestone and
+   one line saying what it published. `python check_plan.py` fails until
+   both are done, and it also fails when the heading names a milestone
+   the table does not, when the milestone is one the ladder does not
+   define, or when the table names a version this checkout has no tag
+   for. The four pre-releases published before this rule existed
+   (`9.0.0-alpha.1` to `alpha.4`) are named in `check_plan.py` as exempt
+   from the heading rule; they are not retitled, and nothing else may
+   join them without editing that list.
+4. `python release_checks.py gate` should say `pre-release: X.Y.Z-alpha.N`.
+5. Commit and push to main.
 
 The workflow then tags the commit, builds and packages the crate from the
 committed lockfile, publishes it to crates.io by **trusted publishing**

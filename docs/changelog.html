@@ -64,6 +64,24 @@
 below 8.6 uses the name it had at the time, which is what the
 record is for. <a href="renamed.html">docs/renamed.md</a> says what
 moved where.</p>
+<p><strong>Since v9.0.0-alpha.4, not yet released.</strong> One line, which moves into
+the entry for the next version when there is one - this is where
+<code>check_api.py</code> looks for it while VERSION is one a tag already has
+(RELEASING.md).</p>
+<p>api: <code>tests/api/golden.json</code>'s <code>http.log</code> changes shape. It was a list
+of the shape of each line of <code>sabline serve</code>'s invocation log, in the
+order the lines were in the file; it is now an object keyed by the
+request that produced the line, holding that line's <code>endpoint</code> and
+<code>outcome</code> as <strong>values</strong> and the shape of the whole line. Nothing the
+HTTP door offers changed, and no line of the log changed: this is what
+the suite records, not what the door does. The reason is that the door
+is a <code>ThreadingHTTPServer</code> and writes its line after it has answered, so
+the order of the file was a race the old golden depended on - it failed
+once on a Windows leg in 8.4 and again on #97, and never reproduced.
+<code>check_api.py</code> now waits for each request's line before making the next
+one, and terminates the door only once its last line is in. The new form
+also catches things the old one could not: which endpoint a line names,
+and which outcome, are now part of the golden.</p>
 <h2 id="9x">9.x <a class="anchor" href="#9x" aria-label="Link to this section">#</a></h2>
 <ul><li><a href="changelog-9.html#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li>
 <li><a href="changelog-9.html#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li>
