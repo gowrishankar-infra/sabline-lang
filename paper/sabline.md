@@ -559,83 +559,241 @@ mechanically.
 
 ## 5. Related work
 
-This section says what each piece of work does and how Sabline differs.
-It claims priority over none of it; sabline-lang's changelog does not
-name any of it as the source of a design decision.
+This section says what each piece of work does, **where it is ahead of
+Sabline**, and where Sabline differs. One decision here has a named
+source: the amendment to `decisions/0004` takes its propagation rule
+from ChainCaps, and says so. Nothing else in sabline-lang's changelog
+names any of this work as the source of a decision, and no priority is
+claimed over any of it.
+
+Three of the systems below - CaMeL, TypeGuard and ChainCaps - report an
+evaluation against an adversary on a published benchmark. Sabline has
+none. Section 4.1's benchmark counts defects a tool catches, not attacks
+it resists, and section 6 says so; `plan/8.7.md` is the plan for an
+evaluation that would answer them, and it is a plan and not a result.
 
 **Object capabilities.** Dennis and Van Horn introduced the capability,
 a reference that both names a resource and carries the right to use it
 [@dennis1966semantics]; Miller's object-capability model builds least
 authority from references a program has been handed
-[@miller2006robust]. A Sabline effect is a name in a signature, and a
-budget is ambient to a whole run: any function declaring `fs` may reach
-any path the budget allows without holding a reference to it. Nothing
-in Sabline is unforgeable, and nothing is handed over. "Capability" in
-the format's name follows common usage.
+[@miller2006robust]. Where that model is ahead: authority is
+unforgeable and cannot be had except by being handed over, so least
+authority holds between the parts of one program and not only between a
+program and its operator. A Sabline effect is a name in a signature,
+and a budget is ambient to a whole run: any function declaring `fs` may
+reach any path the budget allows without holding a reference to it.
+Nothing in Sabline is unforgeable, and nothing is handed over.
+"Capability" in the format's name follows common usage.
+
+**Language-based agent control.** Zhou, D'Antoni and Polikarpova have
+the agent write a program in a typed host language against a
+specification the surrounding scaffolding fixes, so that a program the
+type checker rejects never runs, and the same policy binds
+agent-written and developer-written code [@zhou2026lbac]. Policies -
+capability constraints, data provenance, information flow - are types
+and effects; arbitrary side-effect-free computation and recursive
+subagent calls stay available. Their prototype, TypeGuard, is Haskell:
+its filesystem policy hands out `Path` values that are unforgeable
+tokens of authority over a directory subtree, and its information-flow
+case study uses the LIO library. On AgentDojo's Slack suite - 21 user
+tasks and 5 injection tasks, whose pairs make 105 attacks - TypeGuard
+and CaMeL each resisted all 105 with information-flow policies enabled;
+TypeGuard completed 15 of the 21 benign tasks without policies and 8
+with them.
+
+Where it is ahead: it has information-flow control and provenance,
+which Sabline has not - `Secret of T` is a one-way mark with an audited
+`declassify`, not a lattice, and the mark for untrusted input is a 9.0
+draft (`decisions/0004`) that has not shipped. Its filesystem authority
+is an unforgeable value in Dennis and Van Horn's sense, where a Sabline
+budget is ambient. Its policies are ordinary types in a general-purpose
+language, so they compose and a user can write a new one, where
+Sabline's seven effects and its grant grammar are fixed and only the
+compiler can add to them. And it is measured against an adversary.
+Where Sabline differs: the policy is text an operator writes outside
+the program, so whoever bounds a run need not have written the
+scaffolding or be able to read Haskell; the refusal happens at the
+operation and cannot be caught by the program, rather than at a type
+check before the run; and the language is small enough to hand a model
+on a card.
+
+**ChainCaps.** Jiang and colleagues attach to every value a
+*sink-specific capability budget* - the set of `(operation, scope)`
+sinks that value may still reach - and propagate it through a tool
+chain by intersection: a tool's output carries the tool's own
+pass-through budget intersected with the budget of every input
+[@jiang2026chaincaps]. Authority can be lost by composition and never
+gained, which they call monotonic attenuation, and which answers what
+they name *permission laundering*: reading a confidential document,
+summarising it and sending the summary to an external endpoint, where
+each call on its own passes its own permission check. It runs as a
+transparent MCP proxy needing no change to the agent or to the tool
+servers, and over 82 tasks on five frontier models it takes attack
+success from 25-68% down to 0-4.8% while 96-100% of benign tasks still
+complete.
+
+Where it is ahead: permission laundering is exactly what a Sabline
+budget cannot see. A budget bounds the set of resources a run may
+reach; laundering is a choice within that set, and every step of it is
+granted. `docs/runner.md` records the case - a value a tool returned
+choosing which granted file is read - `decisions/0004` is the design
+that answers it, and neither has shipped. ChainCaps also puts tools
+that already exist under a policy without modifying them, where Sabline
+needs the program written in Sabline; its budgets are per value and per
+sink, where Sabline's is one budget for a whole run; and it is measured
+against an adversary. Its authors scope the claim to explicit flows,
+trusted manifests and data movement the proxy can see, and name
+manifest quality as the deployment bottleneck: manifests written by
+experts blocked every attack, and naive ones 27.3% of them. Where
+Sabline differs: the budget is checked inside the runtime at each
+operation, so it bounds what a program does with no tool call at all -
+a file it opens, a host it reaches, a module it imports - and from
+8.4.0 the operating system is asked to hold the same bounds beneath it.
+The amendment to `decisions/0004` adopts the intersection rule for
+Sabline's two marks; it is a 9.0 draft and is not normative.
+
+**CaMeL.** Debenedetti and colleagues have a privileged model turn a
+trusted request into a program in a restricted subset of Python, run by
+an interpreter that attaches to every value its provenance and
+permitted readers and checks a policy at each tool call, while a
+quarantined model parses untrusted data [@debenedetti2025camel]. Where
+it is ahead: it tracks data, which Sabline does not - a Sabline budget
+bounds which effects, paths, hosts and modules a run may reach, not
+which values may flow to them - and it has an evaluation against an
+adversary, on AgentDojo, of a kind Sabline has not done. Its split
+between a privileged and a quarantined model has no counterpart here at
+all. Where Sabline differs: the program is written in a language whose
+signatures declare effects and whose compiler checks them across the
+call graph before anything runs, and the operator's budget is enforced
+against the operation rather than against a value's history.
+
+**Wassette.** Microsoft's Wassette runs MCP tools as WebAssembly
+components under Wasmtime, under a deny-by-default policy file granting
+storage, network and environment access per component: "components have
+no access to system resources by default and must be explicitly granted
+permissions" [@wassette]. Where it is ahead: the tools are ordinary MCP
+tools and are not modified, and a model may load one at run time from an
+OCI reference and have the policy still hold; the boundary is a
+WebAssembly sandbox rather than a check inside an interpreter; and the
+grants are per component, where a Sabline budget is per run.
+
+It is also the clearest published case of why Sabline does not claim its
+budget is a boundary. On 2026-08-20 a filesystem sandbox escape was
+published against Wasmtime's WASI implementation: a defect in the
+`cap-std` dependency let a guest leave its granted directories when a
+path or a symlink carried a trailing slash, rated 8.8, held on Linux 5.6
+and later where `openat2` is used and not on macOS or older kernels
+(RUSTSEC-2026-0269, GHSA-vqjp-4c8c-hfgg) [@rustsec2026trailing].
+Wassette 0.6.0 and 0.7.0 shipped the affected Wasmtime and 0.7.1 moved
+to the patched one. Wassette's policy was not wrong; the defect was
+underneath it. A deny-by-default policy is worth what the layer
+enforcing it is worth, and Sabline's confinement layer is exposed the
+same way - it rests on Landlock, seccomp-bpf, `sandbox_init` and a
+Windows job object, and a defect in any of those is a defect in what a
+receipt claims. That is why section 3 says a run belongs inside a
+separate account or a virtual machine when the stakes warrant one, and
+why section 6 says the budget is not a security boundary.
+
+**Sandbox platforms.** E2B runs every sandbox in its own Firecracker
+microVM with its own kernel, so that "isolation is at the hypervisor
+boundary, not the container or process boundary" [@e2b]; Modal states
+that its compute is "containerized and virtualized using gVisor"
+[@modal]. Where they are ahead, and it is the thing Sabline most lacks:
+they are a boundary that holds when the runtime inside it is defective
+or hostile, and Sabline's budget is enforced by a Python interpreter in
+the same process as the program it bounds. A Sabline run inside either
+is strictly better off than one outside. Where they do not reach: they
+bound a machine, not an operation - a program in a microVM that has the
+network can reach every host on it - and neither says what a function
+may do, nor leaves behind a declared surface a repository can hold to a
+baseline. They are the layer Sabline combines with rather than one it
+competes with; `plan/9.0.md` names a template for both as work after
+the release candidate.
+
+**Benchmarking agents.** Abdelnabi, Hicks, Rieck and Sadeghi argue that
+the benchmarks used to evaluate agents in security-critical roles have
+three weaknesses - vulnerabilities in the benchmark itself, temporal
+staleness, and runtime uncertainty - and outline what more trustworthy
+evaluation would need [@abdelnabi2026measuring]. Where it is ahead: it
+is a direct account of what section 4.1's benchmark is weakest at. That
+benchmark was written by this project, is small, and counts defects
+caught rather than attacks resisted; section 6 says so, and
+`plan/8.7.md` is the plan for an evaluation built to answer the three,
+including an AgentDojo run comparable to CaMeL's, TypeGuard's and
+ChainCaps'.
 
 **TACIT.** Odersky and colleagues have agents write Scala 3 with capture
 checking, in which capabilities - a file system rooted at a directory, a
 set of hosts, a set of commands - are values the type system tracks,
 and pure computations over classified data cannot leak it
-[@odersky2026tacit]. In Sabline capabilities are effect names plus an
-operator's budget written as text and enforced by an interpreter, in a
-small language a model learns from a card; it has no counterpart to
-TACIT's information-flow control, and no grant for running commands.
-
-**CaMeL.** Debenedetti and colleagues have a privileged model turn a
-trusted request into a program in a restricted subset of Python, run by
-an interpreter that attaches to every value its provenance and permitted
-readers and checks a policy at each tool call, while a quarantined
-model parses untrusted data [@debenedetti2025camel]. Sabline tracks
-nothing about data: a budget bounds which effects, paths, hosts and
-modules a run may reach, not which values may flow to them.
+[@odersky2026tacit]. Where it is ahead: capture checking tracks
+capabilities as values through a full type system, so authority is
+bounded per expression rather than per run, and it has an
+information-flow story where Sabline has none. In Sabline capabilities
+are effect names plus an operator's budget written as text and enforced
+by an interpreter, in a small language a model learns from a card; it
+has no counterpart to TACIT's information-flow control, and no grant for
+running commands.
 
 **WASI.** The WebAssembly System Interface gives a module only the
 directories, sockets and other resources its host hands it as handles,
-so a module given nothing reaches nothing [@wasi]. Sabline's grants are
-text an operator writes, enforced inside the same process rather than
-at a virtual machine's boundary. Until version 5.0 its command line
-granted every effect when no budget was given, so deny-by-default held
-only once an operator wrote one; 5.0 made the default `io` - the
-console and nothing else - in the command line, the library, the worker
-pool and both doors, so a run that asks for nothing now gets close to
-what a WASI module given nothing gets, and `--allow all` is the
-explicit way to ask for everything.
+so a module given nothing reaches nothing [@wasi]. Where it is ahead:
+the handle is the authority, enforced at a virtual machine's boundary
+rather than inside the process running the program, and it applies to
+any language that compiles to WebAssembly. Sabline's grants are text an
+operator writes, enforced inside the same process. Until version 5.0 its
+command line granted every effect when no budget was given, so
+deny-by-default held only once an operator wrote one; 5.0 made the
+default `io` - the console and nothing else - in the command line, the
+library, the worker pool and both doors, so a run that asks for nothing
+now gets close to what a WASI module given nothing gets, and `--allow
+all` is the explicit way to ask for everything.
 
 **Deno.** Deno's permission flags give a script no file, network,
 environment or subprocess access unless granted, with scoped forms much
 like Sabline's grammar [@deno_security]; section 4.1 compares the two
-directly. A Deno denial is an exception a script can catch; a Sabline
-refusal ends the run. Deno checks at the call; Sabline also declares the
-effect in the signature, so it is visible before running.
+directly. Where it is ahead: it bounds programs written in a language
+people already use, with a runtime and an ecosystem Sabline has not
+got, and it grants subprocesses, which Sabline does not model at all. A
+Deno denial is an exception a script can catch; a Sabline refusal ends
+the run. Deno checks at the call; Sabline also declares the effect in
+the signature, so it is visible before running.
 
 **Effect systems.** Lucassen and Gifford's polymorphic effect systems
 record in an expression's type the side effects evaluating it may have
-[@lucassen1988effects]. Sabline's `uses` is a fixed set of seven names
-with no polymorphism - a function value is simply required to be pure -
-a small instance of the idea.
+[@lucassen1988effects]. Where that work is ahead: it is polymorphic, so
+an effect can be a variable and a higher-order function can be typed in
+the effects of what it is given. Sabline's `uses` is a fixed set of
+seven names with no polymorphism - a function value is simply required
+to be pure - a small instance of the idea.
 
 **in-toto and SLSA.** in-toto binds signed statements about software
 artifacts to subjects identified by digest [@torresarias2019intoto;
 @intoto_attestation], and SLSA defines levels of build integrity and a
-provenance predicate [@slsa]. Sabline's documents describe what a source
-text declares, not how or by whom an artifact was built. sabline-spec
-defines an in-toto predicate type for the audit, and sabline-lang 4.2.0
-writes statements of it; its release workflow signs one for an example
-program with Sigstore's tools and verifies it.
+provenance predicate [@slsa]. Where they are ahead: they cover how an
+artifact was built and by whom, across a supply chain and several
+parties, which Sabline says nothing about. Sabline's documents describe
+what a source text declares, not how or by whom an artifact was built.
+sabline-spec defines an in-toto predicate type for the audit, and
+sabline-lang 4.2.0 writes statements of it; its release workflow signs
+one for an example program with Sigstore's tools and verifies it.
 
 **SARIF.** SARIF is a common format for the findings of static analysis
-tools [@sarif2020]. sabline-lang writes its compile errors, unproven
-promises and capability widenings as SARIF for code scanning; the audit
-itself describes a program rather than listing findings, and is not
-SARIF.
+tools [@sarif2020]. Where it is ahead: it is an OASIS standard that
+code-scanning tools and their hosts already read, where sabline-spec's
+formats are one project's. sabline-lang writes its compile errors,
+unproven promises and capability widenings as SARIF for code scanning;
+the audit itself describes a program rather than listing findings, and
+is not SARIF.
 
 **Gradual attacks.** Hills, Caspary and Cooper Stickland show that a
 coding agent can spread a covert side task across pull requests so that
 no single diff looks decisive, that such attacks evade diff monitors,
 and that a stateful monitor tracking buildup across pull requests
-detects them better [@hills2026distributed]. The ratchet is not a
-monitor of intent. It is a deterministic comparison of what a
+detects them better [@hills2026distributed]. Where it is ahead: it
+measures a threat and a defence against it, and its monitor sees
+buildup of any kind, where the ratchet sees one kind. The ratchet is
+not a monitor of intent. It is a deterministic comparison of what a
 repository's Sabline programs need with a baseline the repository
 declared, at every change. It sees the part of a gradual attack that
 needs capability the baseline did not declare, and nothing else: a side
@@ -659,24 +817,25 @@ where Sabline's audit describes a source text and binds to in-toto and
 SARIF, and it grants nothing by default, where Sabline without a budget
 granted all seven effects until version 5.0 and grants `io` - the
 console alone - from it. Boruna's default is still the stricter of the
-two: it grants nothing, and a Sabline program with no budget can print. Thermite mandates `req`, `ens` and `fx` on
-every function and settles each obligation separately on a five-rung
-ladder from reconstruction in Lean down to an always-active runtime
-check, recording engine and level per clause [@thermite]; its
-verification is well ahead of Sabline's single Z3 tier, and the
-difference is who writes the policy - Thermite derives a seccomp filter
-from the program's own `fx`, where a Sabline budget is the operator's
-and may be narrower than the program declares. Vera makes `requires`,
-`ensures` and `effects` mandatory and sorts each obligation into Z3's
-decidable fragment or a compiled runtime guard, with a conformance
-corpus and a draft specification [@vera], but bounds no paths or hosts
-at run time and keeps no audit record. AILANG declares effects as rows
-in signatures and grants capability categories at the command line, not
-wideable from within [@ailang] - Sabline's arrangement, at the
-granularity of the category rather than the resource. No entry combines
-all four of effects in signatures, an operator's budget refused against
-at the operation, a prover with a runtime fallback, and a published
-format for the declared surface.
+two: it grants nothing, and a Sabline program with no budget can print.
+Thermite mandates `req`, `ens` and `fx` on every function and settles
+each obligation separately on a five-rung ladder from reconstruction in
+Lean down to an always-active runtime check, recording engine and level
+per clause [@thermite]; its verification is well ahead of Sabline's
+single Z3 tier, and the difference is who writes the policy - Thermite
+derives a seccomp filter from the program's own `fx`, where a Sabline
+budget is the operator's and may be narrower than the program declares.
+Vera makes `requires`, `ensures` and `effects` mandatory and sorts each
+obligation into Z3's decidable fragment or a compiled runtime guard,
+with a conformance corpus and a draft specification [@vera], but bounds
+no paths or hosts at run time and keeps no audit record. AILANG declares
+effects as rows in signatures and grants capability categories at the
+command line, not wideable from within [@ailang] - Sabline's
+arrangement, at the granularity of the category rather than the
+resource, and polymorphic in its rows where Sabline's `uses` is a fixed
+set. No entry combines all four of effects in signatures, an operator's
+budget refused against at the operation, a prover with a runtime
+fallback, and a published format for the declared surface.
 
 ## 6. Limitations
 
@@ -736,6 +895,15 @@ These are stated as sabline-lang's THREAT_MODEL.md states them.
   project and is small; no user study has been done; the ratchet's
   properties rest on its definition and its cases, not on a measured
   detection rate.
+- **No evaluation against an adversary.** The benchmark counts defects
+  caught. Nothing here measures what Sabline does against someone
+  trying to get past it, on AgentDojo or on any other published suite,
+  and the three systems of section 5 that make such a claim - CaMeL,
+  TypeGuard and ChainCaps - have a number where Sabline has none.
+  `plan/8.7.md` is the plan for one, written against the three
+  weaknesses Abdelnabi and colleagues name
+  [@abdelnabi2026measuring]. It is a plan. Until it has been run, no
+  sentence in this paper should be read as a claim about an attacker.
 
 ## 7. Conclusion
 
@@ -798,13 +966,27 @@ commands 7.x accepted, and added the benchmark's thirteenth category;
 8.1.0 added receipts of a run; 8.2.0 split the compiler into one
 module per stage and keeps no proof cache at all; 8.3.0 added an
 evaluation profile, a comparison and a replay of receipts, and the
-benchmark's fourteenth and fifteenth categories; and 8.4.0 asks the
+benchmark's fourteenth and fifteenth categories; 8.4.0 asks the
 operating system to hold a run's budget, which sections 3 and 6 now
-describe. Later
+describe; 8.5.0 added a tool door for a runner and the batteries built
+on it; and 8.6.0 renamed the project from Velaris to Sabline, which is
+the name used throughout here. Later
 patches corrected documentation and packaging. What each one changed is
 in the two repositories' changelogs.
 The tags below are therefore the ones to check out, not the current
 releases.
+
+Four files that section 5 and section 6 name are plans and decisions
+rather than measurements, and they are at the tip of `main` rather than
+at either tag: `decisions/0004-untrusted.md`, the design for a mark on
+untrusted input, whose amendment takes ChainCaps' propagation rule;
+`plan/9.0.md`, the milestones of the Rust runtime; `plan/8.7.md`, the
+plan for an evaluation against an adversary; and `docs/runner.md`,
+which records the laundering case 0004 answers. None of the four has
+shipped, and nothing in this paper is measured from any of them. The
+9.0 pre-releases published so far - `9.0.0-alpha.1` to `alpha.4` -
+publish the `sabline-rt` crate alone and change nothing the paper
+measures.
 
 The numbers in this paper can be regenerated from the two repositories
 at their tags:

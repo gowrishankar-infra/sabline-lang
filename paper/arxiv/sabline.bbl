@@ -1,5 +1,11 @@
 \begin{thebibliography}{}
 
+\bibitem[Abdelnabi et~al., 2026]{abdelnabi2026measuring}
+Abdelnabi, S., Hicks, C., Rieck, K., and Sadeghi, A.-R. (2026).
+\newblock Measuring security without fooling ourselves: Why benchmarking agents
+  is hard.
+\newblock arXiv:2605.22568.
+
 \bibitem[Allan, 2026a]{agentlanguages}
 Allan, A. (2026a).
 \newblock Agent languages: a catalogue of programming languages designed for
@@ -12,6 +18,16 @@ Allan, A. (2026a).
 Allan, A. (2026b).
 \newblock {Vera}: a language with mandatory contracts and tiered verification.
 \newblock Version 0.1.13. \url{https://github.com/aallan/vera}.
+
+\bibitem[{Bytecode Alliance}, 2026]{rustsec2026trailing}
+{Bytecode Alliance} (2026).
+\newblock Filesystem sandbox escape when paths or symlinks contain trailing
+  slashes.
+\newblock RUSTSEC-2026-0269; GHSA-vqjp-4c8c-hfgg.
+\newblock Published 2026-08-20; CVSS 8.8. Patched in wasmtime 24.0.13, 36.0.14,
+  46.0.3 and 47.0.4.
+  \url{https://rustsec.org/advisories/RUSTSEC-2026-0269.html}. Accessed
+  2026-09-22.
 
 \bibitem[{de Moura} and Bj{\o}rner, 2008]{demoura2008z3}
 {de Moura}, L. and Bj{\o}rner, N. (2008).
@@ -43,6 +59,12 @@ Dennis, J.~B. and Van~Horn, E.~C. (1966).
   levels.
 \newblock \url{https://github.com/dollspace-gay/Thermite}.
 
+\bibitem[{E2B}, 2026]{e2b}
+{E2B} (2026).
+\newblock Security and compliance.
+\newblock \url{https://e2b.dev/security}.
+\newblock Accessed 2026-09-22.
+
 \bibitem[Edmondson, 2026]{ailang}
 Edmondson, M. (2026).
 \newblock {AILANG}: row-polymorphic effects with capability grants.
@@ -65,17 +87,38 @@ Hills, J., Caspary, I., and Cooper~Stickland, A. (2026).
 \newblock \url{https://github.com/in-toto/attestation}.
 \newblock Accessed 2026-09-11.
 
+\bibitem[Jiang et~al., 2026]{jiang2026chaincaps}
+Jiang, X., Yang, S., Li, Z., Liu, L., Yu, H., and Liu, Y. (2026).
+\newblock {ChainCaps}: Composition-safe tool-using agents via monotonic
+  capability attenuation.
+\newblock arXiv:2605.26542.
+\newblock Second Workshop on Agents in the Wild: Safety, Security, and Beyond
+  (AIWILD) at ICML 2026.
+
 \bibitem[Lucassen and Gifford, 1988]{lucassen1988effects}
 Lucassen, J.~M. and Gifford, D.~K. (1988).
 \newblock Polymorphic effect systems.
 \newblock In {\em Proceedings of the 15th ACM SIGPLAN-SIGACT Symposium on
   Principles of Programming Languages (POPL '88)}, pages 47--57.
 
+\bibitem[{Microsoft}, 2026]{wassette}
+{Microsoft} (2026).
+\newblock {Wassette}: a security-oriented runtime that runs {WebAssembly}
+  components via {MCP}.
+\newblock Version 0.7.1, 12 September 2026. Documentation:
+  \url{https://microsoft.github.io/wassette/}. Accessed 2026-09-22.
+
 \bibitem[Miller, 2006]{miller2006robust}
 Miller, M.~S. (2006).
 \newblock {\em Robust Composition: Towards a Unified Approach to Access Control
   and Concurrency Control}.
 \newblock PhD thesis, Johns Hopkins University.
+
+\bibitem[{Modal}, 2026]{modal}
+{Modal} (2026).
+\newblock Security and privacy at {Modal}.
+\newblock \url{https://modal.com/docs/guide/security}.
+\newblock Accessed 2026-09-22.
 
 \bibitem[{OASIS}, 2020]{sarif2020}
 {OASIS} (2020).
@@ -120,5 +163,11 @@ Torres-Arias, S., Afzali, H., Kuppusamy, T.~K., Curtmola, R., and Cappos, J.
 \newblock \url{https://wasi.dev}.
 \newblock Releases 0.1, 0.2 and 0.3, also called Previews 1 to 3. Accessed
   2026-09-11.
+
+\bibitem[Zhou et~al., 2026]{zhou2026lbac}
+Zhou, T., D'Antoni, L., and Polikarpova, N. (2026).
+\newblock Language-based agent control.
+\newblock arXiv:2605.12863.
+\newblock Prototype: {TypeGuard}, in Haskell.
 
 \end{thebibliography}

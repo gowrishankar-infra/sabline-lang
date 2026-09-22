@@ -1,11 +1,60 @@
 # Submitting sabline.md to arXiv: a checklist
 
-A draft for the author. Nothing has been submitted. The rules below were
-read from arXiv's own pages on 2026-09-11; each section names the page.
-Where this file says "tested here", it means on the maintainer's
-Windows machine, in a scratch directory, on that date.
+A checklist for the author. The paper has not been submitted; a
+submission has been **started** under cs.CR, and four endorsement
+requests are out against endorsement code 7KRYIG (section 2). The rules
+below were read from arXiv's own pages on 2026-09-11; each section names
+the page. Where this file says "tested here", it means on the
+maintainer's Windows machine, in a scratch directory, on that date.
 
-## 1. Category: cs.PL, cross-listed to cs.CR
+## 1. Category: cs.CR, cross-listed to cs.PL
+
+**Settled on 2026-09-22, the other way round from what this section
+recommended until then.** The submission and all four endorsement
+requests are under cs.CR (endorsement code 7KRYIG), so the choice is
+made and is not open. The record of the earlier recommendation, and of
+why it moved, is below: it is kept rather than deleted, because a file
+that quietly agrees with whatever was decided last is not a record.
+
+What changed, and what did not:
+
+- **The related work moved.** Section 5 now places the paper against
+  ChainCaps (cs.CR), Abdelnabi and colleagues on benchmarking agents
+  (cs.CR), CaMeL (cs.CR), Microsoft's Wassette and a Wasmtime sandbox
+  escape, E2B and Modal as the isolation layer, and language-based
+  agent control (cs.PL). Six of the seven works added are read by
+  cs.CR readers, and three of them make a claim against an adversary
+  that this paper does not. A cs.CR reader is now the one most likely
+  to be misled by the paper if it is filed away from them.
+- **The paper's claims did not move, and must not.** Sections 3 and 6
+  still say the budget is not a security boundary; that it is enforced
+  by a Python interpreter in the same process as the program; that
+  from 8.4.0 the operating system is asked to hold the same budget
+  beneath it - on by default, `--no-confine` to turn it off - and
+  holds it fully on Linux, partly on macOS and less on Windows, with
+  each run's receipt saying which; and that **there is no evaluation
+  against an adversary**, which section 6 now states as a limitation
+  of its own and `plan/8.7.md` is the plan for. Filing under cs.CR
+  does not license a single stronger sentence, and a moderator reading
+  the paper should find it saying less than its category invites, not
+  more.
+- **Moderators may still reclassify**
+  (<https://info.arxiv.org/help/moderation/index.html>). If cs.PL is
+  put back as primary, nothing in the paper needs changing.
+
+**What this section recommended until 2026-09-22, kept as the record.**
+Primary cs.PL, one cross-list to cs.CR: what the paper contributes is
+language design and its implementation - an effect discipline in
+signatures checked across the call graph (2.1), the semantics of a
+budget checked at each operation (2.2), contracts and what the prover
+settles (2.3), and a format and check for a repository's declared
+surface (2.4, 2.5), with a compiler and runtime (3) - which is cs.PL's
+"language features ... programming approaches ... compilers", and
+"cs.CR would be the wrong primary: the paper says plainly that the
+budget is not a security boundary (sections 3 and 6), has no attack
+evaluation, and does not claim to stop an adversary." That argument is
+still true of the paper's claims; what it got wrong is who the paper's
+reader is.
 
 arXiv's descriptions (<https://arxiv.org/category_taxonomy>):
 
@@ -20,24 +69,32 @@ arXiv's descriptions (<https://arxiv.org/category_taxonomy>):
   debugging, programming environments, etc. Roughly includes material
   in all of ACM Subject Classes D.2 ..."
 
-**Recommendation: primary cs.PL, one cross-list to cs.CR.** What the
-paper contributes is language design and its implementation: an effect
-discipline in signatures checked across the call graph (2.1), the
-semantics of a budget checked at each operation (2.2), contracts and
-what the prover settles (2.3), and a format and check for a
-repository's declared surface (2.4, 2.5), with a compiler and runtime
-(3). That is cs.PL's "language features ... programming approaches ...
-compilers". The motivation - running code nobody read, gradual attacks
-- is security, and so is much of the related work (CaMeL, TACIT,
-in-toto), which is why cs.CR readers should see it. But cs.CR would be
-the wrong primary: the paper says plainly that the budget is not a
-security boundary (sections 3 and 6), has no attack evaluation, and
-does not claim to stop an adversary. cs.SE fits the ratchet (a CI
-check) and could be a second cross-list; arXiv says "It is rarely
-appropriate to add more than one or two cross-lists" and that "Bad
-cross-lists will be removed" (<https://info.arxiv.org/help/cross.html>).
-Moderators may reclassify either way
-(<https://info.arxiv.org/help/moderation/index.html>).
+**Settled: primary cs.CR, one cross-list to cs.PL.** The motivation -
+running code nobody has read, and gradual attacks - is security, and
+so is nearly all of section 5: CaMeL, ChainCaps, TypeGuard, Wassette,
+WASI, TACIT, in-toto and SLSA, the sandbox platforms, the gradual-attack
+paper and the paper on benchmarking agents. That is cs.CR's "all areas
+of cryptography and security", and it is where the readers who most
+need to know what this paper does **not** claim are. The cs.PL
+cross-list carries the contribution that is language design and its
+implementation: an effect discipline in signatures checked across the
+call graph (2.1), the semantics of a budget checked at each operation
+(2.2), contracts and what the prover settles (2.3), and a format and
+check for a repository's declared surface (2.4, 2.5), with a compiler
+and runtime (3) - cs.PL's "language features ... programming approaches
+... compilers". cs.SE fits the ratchet (a CI check) and could be a
+second cross-list; arXiv says "It is rarely appropriate to add more
+than one or two cross-lists" and that "Bad cross-lists will be removed"
+(<https://info.arxiv.org/help/cross.html>). Moderators may reclassify
+either way (<https://info.arxiv.org/help/moderation/index.html>), and
+if they put cs.PL back as primary, nothing in the paper changes.
+
+**The one thing filing under cs.CR must not do** is soften what the
+paper says about its own limits. It says the budget is not a security
+boundary, that from 8.4.0 the operating system holds the same budget
+beneath it - by default, and only fully on Linux - and that there is no
+evaluation against an adversary. Those sentences stay exactly as strong
+as they are.
 
 ## 2. What a first-time submitter needs
 
@@ -61,8 +118,10 @@ Moderators may reclassify either way
    (<https://blog.arxiv.org/2026/01/21/attention-authors-updated-endorsement-policy/>).
    With a gmail address and no earlier arXiv paper, the personal route
    is the only one. How it works:
-   - start a submission and choose cs.PL; arXiv emails an endorsement
-     request with a link and a six-character code;
+   - start a submission and choose cs.CR; arXiv emails an endorsement
+     request with a link and a six-character code. This was done on
+     2026-09-22 under cs.CR: the code is 7KRYIG, and four requests are
+     out;
    - send that link to someone who has published in cs on arXiv
      recently and who knows you or will read the paper - the abstract
      page's "Which authors of this paper are endorsers?" link shows who
@@ -154,9 +213,9 @@ arXiv's metadata fields take ASCII only
 | Title | Sabline: effects in signatures, budgets at run time, and a baseline for a repository's capability surface |
 | Authors | Gowri Shankar Palakurthi |
 | Abstract | the text in section 6 below |
-| Comments | 12 pages, 1 figure, 2 tables. Code: https://github.com/gowrishankar-infra/sabline-lang ; format and conformance corpus: https://github.com/gowrishankar-infra/sabline-spec |
-| Primary category | cs.PL |
-| Cross-list | cs.CR |
+| Comments | 16 pages, 1 figure, 2 tables. Code: https://github.com/gowrishankar-infra/sabline-lang ; format and conformance corpus: https://github.com/gowrishankar-infra/sabline-spec |
+| Primary category | cs.CR |
+| Cross-list | cs.PL |
 | ACM-class | D.3.3; D.4.6; D.2.4 |
 | MSC-class, Report-no, Journal-ref, DOI | leave empty |
 
@@ -166,7 +225,11 @@ arXiv's metadata fields take ASCII only
   choice, and arXiv does not require the PDF to match.
 - **Comments.** arXiv asks for the number of pages and figures, and
   "submitted to" information if any; no copyright statements. Recount
-  the pages from arXiv's build - 11 is the Tectonic build's count.
+  the pages from arXiv's build. 16 is this text's count, from MiKTeX
+  pdflatex on 2026-09-22 with sabline.tex and sabline.bbl alone in an
+  empty folder, which is how arXiv builds it; 11 was the Tectonic
+  build's count of a shorter paper, and 12 and 13 were earlier ones.
+  paper/arxiv/README-for-me.txt's REBUILT log has each.
 - **ACM-class.** arXiv's field takes codes of the 1998 ACM Computing
   Classification System, separated by "a semicolon and a space": D.3.3
   Language Constructs and Features, D.4.6 Security and Protection, D.2.4
@@ -211,7 +274,8 @@ by single spaces.
    the package, checked with pdflatex; its build leaves out the draft
    date line (section 3).
 2. Find one endorser who knows the work; register; start the
-   submission in cs.PL and send them the endorsement link.
+   submission in cs.CR and send them the endorsement link. Started:
+   four endorsement requests are out under cs.CR, code 7KRYIG.
 3. Once endorsed: upload `sabline.tex` and `sabline.bbl` from
    `paper/arxiv/` (zipped locally as `paper/arxiv-submission.zip`, which
    is not committed), enter the metadata (section 4), choose the

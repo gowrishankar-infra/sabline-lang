@@ -211,6 +211,14 @@ ALLOWED: dict[str, tuple[str, ...]] = {
         ("velaris.audit/1",),
     # The paper's submission log records builds made under the old name.
     "paper/arxiv/README-for-me.txt": ("Velaris", "velaris"),
+    # The paper's reproducibility section lists every release that
+    # postdates the two tags it is pinned to, and one of them is the
+    # rename: "8.6.0 renamed the project from Velaris to Sabline". A
+    # reader checking out v4.2.1 needs that sentence to say which name
+    # they will find there. sabline.tex is pandoc's output of the same
+    # sentence and is regenerated, never edited.
+    "paper/sabline.md": ("from Velaris to Sabline",),
+    "paper/arxiv/sabline.tex": ("from Velaris to Sabline",),
     "check_policies.py": ("velaris.audit/1",),
     # why naming._said is written once per process and never reset
     "check_pool.py": ("velaris",),

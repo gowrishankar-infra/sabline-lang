@@ -12,6 +12,22 @@
 % capitals where BibTeX styles would lower them. The four web pages
 % (WASI, in-toto attestation, SLSA, Deno) were opened on 2026-09-11,
 % the date their notes give, and their titles are the pages' own.
+%
+% Seven entries added on 2026-09-22 with the related-work section, each
+% checked against its own source on that date and not against a summary
+% of it: zhou2026lbac, jiang2026chaincaps and abdelnabi2026measuring
+% against arXiv's abstract pages and its API's metadata for 2605.12863,
+% 2605.26542 and 2605.22568 - title, every author's name in order, the
+% submission date, the primary category, and, for ChainCaps, the venue
+% its own arXiv comment names; wassette against the repository's
+% description, its documentation and the notes of its 0.7.1 release;
+% rustsec2026trailing against the RUSTSEC entry and the Bytecode
+% Alliance's GHSA advisory, which agree on the identifiers, the date
+% and the patched versions; e2b and modal against the pages the notes
+% give, whose titles are the pages' own and whose quoted sentences in
+% section 5 are quoted from them. "TypeGuard" is the prototype's name
+% and does not appear in 2605.12863's abstract, which is why the note
+% carries it rather than the title.
 
 @inproceedings{odersky2026tacit,
   author    = {Odersky, Martin and Zhao, Yaoyu and Xu, Yichen and
@@ -211,4 +227,81 @@
   url          = {https://github.com/gowrishankar-infra/sabline-spec},
   note         = {Version 0.5.1.
                   \url{https://github.com/gowrishankar-infra/sabline-spec}}
+}
+
+@misc{zhou2026lbac,
+  author        = {Zhou, Timothy and D'Antoni, Loris and Polikarpova, Nadia},
+  title         = {Language-Based Agent Control},
+  year          = {2026},
+  howpublished  = {arXiv:2605.12863},
+  eprint        = {2605.12863},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.PL},
+  note          = {Prototype: {TypeGuard}, in Haskell}
+}
+
+@misc{jiang2026chaincaps,
+  author        = {Jiang, Xiaochong and Yang, Shiqi and Li, Ziwei and
+                   Liu, Lifei and Yu, Haoran and Liu, Yichen},
+  title         = {{ChainCaps}: Composition-Safe Tool-Using Agents via
+                   Monotonic Capability Attenuation},
+  year          = {2026},
+  howpublished  = {arXiv:2605.26542},
+  eprint        = {2605.26542},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CR},
+  note          = {Second Workshop on Agents in the Wild: Safety, Security,
+                   and Beyond (AIWILD) at ICML 2026}
+}
+
+@misc{abdelnabi2026measuring,
+  author        = {Abdelnabi, Sahar and Hicks, Chris and Rieck, Konrad and
+                   Sadeghi, Ahmad-Reza},
+  title         = {Measuring Security Without Fooling Ourselves: Why
+                   Benchmarking Agents Is Hard},
+  year          = {2026},
+  howpublished  = {arXiv:2605.22568},
+  eprint        = {2605.22568},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CR}
+}
+
+@software{wassette,
+  author       = {{Microsoft}},
+  title        = {{Wassette}: a security-oriented runtime that runs
+                  {WebAssembly} Components via {MCP}},
+  version      = {0.7.1},
+  year         = {2026},
+  url          = {https://github.com/microsoft/wassette},
+  note         = {Version 0.7.1, 12 September 2026. Documentation:
+                  \url{https://microsoft.github.io/wassette/}.
+                  Accessed 2026-09-22}
+}
+
+@misc{rustsec2026trailing,
+  author       = {{Bytecode Alliance}},
+  title        = {Filesystem sandbox escape when paths or symlinks contain
+                  trailing slashes},
+  year         = {2026},
+  howpublished = {RUSTSEC-2026-0269; GHSA-vqjp-4c8c-hfgg},
+  note         = {Published 2026-08-20; CVSS 8.8. Patched in wasmtime
+                  24.0.13, 36.0.14, 46.0.3 and 47.0.4.
+                  \url{https://rustsec.org/advisories/RUSTSEC-2026-0269.html}.
+                  Accessed 2026-09-22}
+}
+
+@misc{e2b,
+  author       = {{E2B}},
+  title        = {Security and compliance},
+  howpublished = {\url{https://e2b.dev/security}},
+  year         = {2026},
+  note         = {Accessed 2026-09-22}
+}
+
+@misc{modal,
+  author       = {{Modal}},
+  title        = {Security and privacy at {Modal}},
+  howpublished = {\url{https://modal.com/docs/guide/security}},
+  year         = {2026},
+  note         = {Accessed 2026-09-22}
 }

@@ -12,7 +12,11 @@ tree offers:
   cli      every command `sabline` has, and the flags its usage names
   http     the HTTP door (`sabline serve`): for a fixed set of requests, the
            status and the shape of each answer - every key, and the type of
-           its value - and the shape of each line of its invocation log
+           its value - and, per request, the line its invocation log got:
+           the endpoint and the outcome as values, and the shape of the
+           whole line. Keyed by the request, not by the line's position in
+           the file, because the door is threaded and writes its line
+           after it has answered, so file order is a race (see `_one_line`)
   mcp      the MCP server: its tools as a client lists them, and the shape of
            each answer to a fixed set of calls and of its log lines
   lsp      the language server: its capabilities, and the shape of each
@@ -192,7 +196,22 @@ def cli_surface() -> dict[str, Any]:
 # ---- helpers for the doors --------------------------------------------------
 
 def _log_shapes(path: Path) -> list[Any]:
-    """The shape of each line of an invocation log, in order."""
+    """The shape of each line of an invocation log, in order.
+
+    Used for the MCP server, whose log is written in file order by
+    construction: it answers one request at a time on standard input, and
+    its line for a call is written before it reads the next one. The HTTP
+    door has no such guarantee and does not use this - see `_one_line`.
+    """
+    return [shape(doc) for doc in _log_docs(path)]
+
+
+def _log_docs(path: Path) -> list[Any]:
+    """Every line of an invocation log that parses as JSON, in file order.
+
+    A line still being written parses as nothing and is skipped, so a
+    caller that polls sees a line only once it is whole.
+    """
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -203,8 +222,51 @@ def _log_shapes(path: Path) -> list[Any]:
             doc = json.loads(line)
         except ValueError:
             continue
-        out.append(shape(doc))
+        out.append(doc)
     return out
+
+
+def _one_line(path: Path, had: int, label: str,
+              seconds: float = 120) -> dict[str, Any]:
+    """The one invocation-log line the HTTP door wrote for the request
+    just made, waited for.
+
+    **Why this exists.** `sabline serve` is a `ThreadingHTTPServer`, and
+    it writes its log line in a `finally` block **after** the response has
+    been sent. So a client can be handed the answer to request N and issue
+    request N+1 before line N has been written at all - and with two
+    handler threads contending for the log's lock, N+1's line can reach
+    the file first. A golden that is a list of shapes in file order
+    therefore rests on a race that is usually won and need not be. The
+    last line is worse: the suite used to read the log after
+    `door.terminate()`, which on Windows is `TerminateProcess` and does
+    not let the door write it at all. That is how this failed once on a
+    Windows leg in 8.4 and again on #97, and never reproduced anywhere the
+    timing was kinder.
+
+    Waiting for exactly one new line before making the next request
+    removes the race at its source rather than papering over it: there is
+    never more than one request in flight, so the new line can only be
+    this one's, and the door is not terminated until its last line is in.
+    A request that writes no line, or writes two, is a real change and is
+    raised rather than waited out - a door that stops logging must fail
+    this suite, which is the whole point of recording the log at all.
+    """
+    deadline = time.monotonic() + seconds
+    while True:
+        docs = _log_docs(path)
+        if len(docs) > had:
+            break
+        if time.monotonic() >= deadline:
+            raise RuntimeError(
+                f"the HTTP door wrote no invocation-log line for {label!r} "
+                f"within {seconds:g}s; {had} line(s) before it")
+        time.sleep(0.02)
+    if len(docs) != had + 1:
+        raise RuntimeError(
+            f"the HTTP door wrote {len(docs) - had} invocation-log lines for "
+            f"{label!r}; one request through a door is one line")
+    return cast("dict[str, Any]", docs[had])
 
 
 def _lines_of(stream: Any, into: queue.Queue[Any]) -> None:
@@ -271,6 +333,17 @@ def http_surface() -> dict[str, Any]:
         ("no such endpoint", "GET", "/nope", None, auth),
     ]
     answers = {}
+    # The log, keyed by the case that produced the line rather than by its
+    # position in the file. One request is in flight at a time and its
+    # line is waited for before the next is made (`_one_line`), so the
+    # attribution is exact and nothing here depends on the order the door
+    # happened to write in, or on the door having flushed before it was
+    # killed. `endpoint` and `outcome` are recorded as VALUES, not as
+    # types: they are the two fields of a line whose content is fixed by
+    # the request, so a door that started logging the path as sent, or
+    # renamed an outcome, now fails this suite where the old positional
+    # list of shapes would not have noticed.
+    log: dict[str, Any] = {}
     try:
         for label, method, path, body, headers in cases:
             conn = http.client.HTTPConnection("127.0.0.1", port, timeout=120)
@@ -287,13 +360,17 @@ def http_surface() -> dict[str, Any]:
             except ValueError:
                 doc = "not JSON"
             answers[label] = {"status": got.status, "shape": shape(doc)}
+            logged = _one_line(log_file, len(log), label)
+            log[label] = {"endpoint": logged.get("endpoint"),
+                          "outcome": logged.get("outcome"),
+                          "shape": shape(logged)}
     finally:
         door.terminate()
         try:
             door.wait(timeout=30)
         except subprocess.TimeoutExpired:
             door.kill()
-    return {"answers": answers, "log": _log_shapes(log_file)}
+    return {"answers": answers, "log": log}
 
 
 # ---- the MCP server ---------------------------------------------------------

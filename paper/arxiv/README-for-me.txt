@@ -10,14 +10,11 @@ the pandoc commands in it were run on files called velaris.md and
 velaris.tex. The names in it were renamed with the rest of the tree; the
 dates, versions, page counts and engine versions are untouched.
 
-STILL TO DO FOR THE RENAME: sabline.tex is pandoc output and must be
-REGENERATED from sabline.md, not hand-edited (step 1 below). The committed
-.tex was produced by substituting the name, which is what pandoc would have
-produced for a word change and nothing else - but it has not been rebuilt
-or re-checked since, so the page count in the Comments field below is
-8.2.0's 13 pages and is unconfirmed for this text. Run steps 1 to 3 before
-uploading. sabline.bbl changes too: the entries velaris_lang and
-velaris_spec are sabline_lang and sabline_spec in references.bib.
+DONE 2026-09-22: the rename's outstanding rebuild. sabline.tex was
+regenerated from sabline.md by pandoc (step 1 below) rather than edited,
+sabline.bbl was rebuilt by BibTeX, and both were checked as steps 2 and 3.
+The page count in the Comments field is now this text's own, measured, not
+8.2.0's. See the last REBUILT entry.
 
 This file is for you, not for arXiv. It is NOT inside
 ..\arxiv-submission.zip: arXiv asks that a submission hold nothing that
@@ -42,9 +39,10 @@ BEFORE YOU UPLOAD
   Reproducibility, is that statement; sabline.md and sabline.tex carry
   the same text.
 
-  Still to do: find one endorser who knows your work (a personal
-  endorsement is required for a first submission since 2026-01-21), and
-  read the PDF arXiv builds before you confirm.
+  Still to do: get one endorsement (a personal endorsement is required
+  for a first submission since 2026-01-21; four requests are out under
+  cs.CR against code 7KRYIG), and read the PDF arXiv builds before you
+  confirm.
 
 FORM FIELDS - paste as they are
 
@@ -57,24 +55,41 @@ Gowri Shankar Palakurthi
   family name. The PDF's byline, from sabline.md, reads "Palakurthi
   Gowri Shankar"; arXiv does not require the two to match.)
 
-Abstract (1729 characters, one line, plain ASCII; the limit is 1920;
-no character needed replacing - the abstract has none outside ASCII):
-Code written by language models is increasingly run by people who have not read it. Sabline is a small programming language for that situation. A function's signature declares which of seven effects it may perform, and the compiler checks the declaration across the whole call graph. A runtime refuses any operation outside a budget the operator writes - before the operation happens, and in a way the program cannot catch. Contracts are checked by the Z3 prover where it can settle them, and at run time where it cannot. A repository can commit a baseline of the capability surface its programs need, and a check fails any change that needs more. The central claim is about that surface. Suppose a repository's Sabline programs are held to a committed baseline by a required check. If a change makes a program need an effect, path, host, module or operation count the baseline does not grant, the check fails. It goes on failing at every later commit at which the program still compiles and still needs it, until a person edits the baseline. The claim is not about which function an effect is attributed to: a function renamed in the change that gives it an effect its program already had escapes the function-level rule. On a benchmark of 68 programs, 60 with one defect and 8 correct, each written in Sabline, in JavaScript for Deno and in Python, Sabline caught 58 of the 60 defects, 46 of them before running; Deno caught 36 and Python 28; none of the three flagged a correct program. One of Sabline's two misses is a logic error with no contract; the other no tool should catch. The capability format is published separately, under CC0, with a conformance corpus of 456 cases that an implementation in any language can run.
+Abstract (1730 characters, one line, plain ASCII; the limit is 1920;
+no character needed replacing - the abstract has none outside ASCII.
+CORRECTED 2026-09-22: this field had been left at 8.2.0's text, which
+said 68 programs, 60 with one defect and 8 correct, Sabline 58 of 60
+and 46 before running, Deno 36, Python 28. sabline.md's abstract has
+said 76/66/10 and 64/52/42/31 since 8.3.0 added the benchmark's
+fourteenth and fifteenth categories. The text below is now copied
+from sabline.md and the count is of that text):
+Code written by language models is increasingly run by people who have not read it. Sabline is a small programming language for that situation. A function's signature declares which of seven effects it may perform, and the compiler checks the declaration across the whole call graph. A runtime refuses any operation outside a budget the operator writes - before the operation happens, and in a way the program cannot catch. Contracts are checked by the Z3 prover where it can settle them, and at run time where it cannot. A repository can commit a baseline of the capability surface its programs need, and a check fails any change that needs more. The central claim is about that surface. Suppose a repository's Sabline programs are held to a committed baseline by a required check. If a change makes a program need an effect, path, host, module or operation count the baseline does not grant, the check fails. It goes on failing at every later commit at which the program still compiles and still needs it, until a person edits the baseline. The claim is not about which function an effect is attributed to: a function renamed in the change that gives it an effect its program already had escapes the function-level rule. On a benchmark of 76 programs, 66 with one defect and 10 correct, each written in Sabline, in JavaScript for Deno and in Python, Sabline caught 64 of the 66 defects, 52 of them before running; Deno caught 42 and Python 31; none of the three flagged a correct program. One of Sabline's two misses is a logic error with no contract; the other no tool should catch. The capability format is published separately, under CC0, with a conformance corpus of 456 cases that an implementation in any language can run.
 
 Comments:
-13 pages, 1 figure, 2 tables. Code: https://github.com/gowrishankar-infra/sabline-lang ; format and conformance corpus: https://github.com/gowrishankar-infra/sabline-spec
+16 pages, 1 figure, 2 tables. Code: https://github.com/gowrishankar-infra/sabline-lang ; format and conformance corpus: https://github.com/gowrishankar-infra/sabline-spec
 
 Primary category:
-cs.PL (Programming Languages)
+cs.CR (Cryptography and Security)
 
 Cross-list:
-cs.CR (Cryptography and Security)
-  Why: the contribution is a language design and its implementation -
-  effects in signatures, the semantics of a budget, contracts, a
-  compiler - which is cs.PL's "language features ... compilers". The
-  motivation and related work are security, hence the cs.CR
-  cross-list; but the paper says the budget is not a security boundary
-  and has no attack evaluation, so cs.CR would be the wrong primary.
+cs.PL (Programming Languages)
+  CHANGED 2026-09-22, the other way round from every build above. The
+  submission and all four endorsement requests are under cs.CR
+  (endorsement code 7KRYIG), so this is settled; paper/SUBMITTING.md
+  section 1 carries the argument and keeps the earlier recommendation
+  as the record.
+  Why: the motivation and nearly all of the related work are security -
+  CaMeL, ChainCaps, TypeGuard, Wassette, WASI, TACIT, in-toto and SLSA,
+  the sandbox platforms, the gradual-attack paper and the paper on
+  benchmarking agents - and a cs.CR reader is the one most likely to be
+  misled if the paper is filed away from them. The contribution that is
+  language design and its implementation carries the cs.PL cross-list.
+  What this does NOT change: the paper still says the budget is not a
+  security boundary, that from 8.4.0 the operating system holds the
+  same budget beneath it (by default, fully only on Linux), and that
+  there is no evaluation against an adversary - section 6 now states
+  that last one as a limitation of its own, and plan/8.7.md is the plan
+  for one. The category does not license a stronger sentence anywhere.
 
 ACM-class:
 D.3.3; D.4.6; D.2.4
@@ -129,6 +144,72 @@ HOW THE PACKAGE WAS MADE AND CHECKED (2026-09-11)
   2025-08-03; this build used the final TeX Live 2025 (March 2026). The
   packages the paper loads are standard ones. If arXiv's form suggests
   a processor other than pdflatex, change it to pdflatex.
+
+REBUILT 2026-09-22 (related work: six more systems, and cs.CR primary)
+  sabline.md's section 5 was rewritten. It now says, for each piece of
+  work, WHERE THAT WORK IS AHEAD OF SABLINE and not only how Sabline
+  differs, and it adds six systems: language-based agent control and its
+  TypeGuard prototype (arXiv:2605.12863), ChainCaps (arXiv:2605.26542,
+  AIWILD at ICML 2026), Microsoft's Wassette together with the Wasmtime
+  filesystem sandbox escape published on 2026-08-20 (RUSTSEC-2026-0269 /
+  GHSA-vqjp-4c8c-hfgg), E2B and Modal as the isolation layer Sabline
+  combines with, and Abdelnabi and colleagues on why benchmarking agents
+  is hard (arXiv:2605.22568). CaMeL's paragraph was rewritten to the same
+  shape. Section 6 gained one limitation - that there is NO evaluation
+  against an adversary, and that plan/8.7.md is a plan for one and not a
+  result - and the reproducibility section gained a paragraph naming the
+  four files section 5 cites that are at the tip of main rather than at
+  either pinned tag.
+
+  Every citation was checked against its own source on 2026-09-22, not
+  against a summary: the three arXiv entries against their abstract pages
+  and arXiv's API metadata (title, every author in order, submission
+  date, primary category, and ChainCaps' venue from its own arXiv
+  comment); Wassette against its repository, its documentation and the
+  notes of its 0.7.1 release; the advisory against both the RUSTSEC entry
+  and the Bytecode Alliance's GHSA page; E2B's and Modal's quoted
+  sentences against the pages the bibliography names. references.bib's
+  header records this. Nothing was cited that could not be checked.
+
+  references.bib went from 20 entries to 27: zhou2026lbac,
+  jiang2026chaincaps, abdelnabi2026measuring, wassette,
+  rustsec2026trailing, e2b, modal.
+
+  CATEGORY CHANGED: primary cs.CR, cross-list cs.PL - the other way round
+  from every build above. The submission and four endorsement requests
+  are under cs.CR (code 7KRYIG). The form fields above are updated, and
+  paper/SUBMITTING.md section 1 keeps the earlier cs.PL recommendation as
+  the record of what changed and why. No claim in the paper was softened
+  or strengthened for the category.
+
+  sabline.tex is pandoc output and was REGENERATED, not edited, with
+  pandoc 3.11 and the same command as step 1 above - which also clears
+  the rename's outstanding rebuild, noted at the top of this file.
+  Because the bibliography changed, sabline.bbl WAS rebuilt (step 2:
+  pdflatex, bibtex, pdflatex, pdflatex with the .bib beside it). BibTeX
+  gave the familiar "entry type ... isn't style-file defined" warning for
+  the seven @software entries, one more than before because wassette is
+  one, and no other warning.
+
+  Checked as step 3: sabline.tex and sabline.bbl alone in an empty
+  folder, pdflatex three times, no bibtex. Result: 16 pages - three more
+  than 8.2.0's 13, from the longer related work, the added limitation,
+  the reproducibility paragraph and seven more bibliography entries - so
+  the Comments field above now reads 16. No undefined citation or
+  reference; no overfull or underfull box; no error; the same one
+  harmless caption warning ("Unused \captionsetup[table]"). All 27 cited
+  keys have an entry in sabline.bbl, every entry is cited, and both files
+  are pure ASCII (checked byte by byte).
+
+  The abstract form field above was ALSO corrected in this pass: it had
+  been left at 8.2.0's benchmark figures while sabline.md's abstract has
+  carried 8.3.0's since the fourteenth and fifteenth categories were
+  added. It is now copied from sabline.md; the character count is of that
+  text. This was a defect in the package, not a change of claim.
+
+  Engine: MiKTeX 25.12 (MiKTeX-pdfTeX 4.23, BibTeX 0.99e), not the TeX
+  Live arXiv runs. Read the PDF arXiv builds before confirming.
+
 
 REBUILT 2026-09-12 (sabline-lang 5.0.0)
   sabline-lang 5.0.0 made `io` the budget a run gets when nobody writes

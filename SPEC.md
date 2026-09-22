@@ -72,6 +72,15 @@ what it printed was the secret. `Secret of T` is the other half: a
 value the compiler tracks so that it cannot reach anything that emits
 it.
 
+> **9.0 draft, not normative.** `decisions/0004-untrusted.md` designs a
+> second mark, `Untrusted of T`, and its Amendment 1 gives both marks a
+> *reach* - the set of sinks a marked value may still reach, written in
+> the grant grammar of §7.1, propagated by intersection and never
+> widened, and granted by the operator with a `reach:` grant. Under it
+> every rule in this section is the empty-reach case, so nothing below
+> changes meaning. None of it is normative, none of it has shipped, and
+> nothing here may be read as describing it.
+
 **Where one comes from.** Three builtins, and nothing else:
 
 | Builtin | Returns |
@@ -505,7 +514,10 @@ refusal that stops the run and cannot be caught:
 The host answers each call on the run's standard input, and an answer
 that is not one - E324 - stops the run. A result is a value like any
 other: nothing yet marks it as the host's words rather than the
-program's own. That mark, `Untrusted of T`, is 9.0's.
+program's own. That mark, `Untrusted of T`, is 9.0's: it is designed in
+`decisions/0004-untrusted.md`, whose Amendment 1 gives it and `Secret`
+a reach in this same grant grammar. Both are **9.0 drafts and not
+normative**; what this section says is what a tool call is today.
 
 ## 8. Failure
 

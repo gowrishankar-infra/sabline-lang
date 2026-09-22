@@ -714,235 +714,299 @@
     "status": 200
    }
   },
-  "log": [
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "NoneType",
-    "ts": "str"
+  "log": {
+   "audit": {
+    "endpoint": "POST /audit",
+    "outcome": "ok",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "str",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "NoneType",
-    "ts": "str"
+   "audit, does not compile": {
+    "endpoint": "POST /audit",
+    "outcome": "problems",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "str",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "NoneType",
-    "ts": "str"
+   "card": {
+    "endpoint": "GET /card",
+    "outcome": "ok",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "NoneType",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "NoneType",
-    "ts": "str"
+   "check": {
+    "endpoint": "POST /check",
+    "outcome": "ok",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "str",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "str",
-    "ts": "str"
+   "check, does not compile": {
+    "endpoint": "POST /check",
+    "outcome": "problems",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "str",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "str",
-    "ts": "str"
+   "health": {
+    "endpoint": "GET /health",
+    "outcome": "ok",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "NoneType",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "str",
-    "ts": "str"
+   "health, no token": {
+    "endpoint": "GET /health",
+    "outcome": "ok",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "NoneType",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "str",
-    "ts": "str"
+   "index": {
+    "endpoint": "GET /",
+    "outcome": "ok",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "NoneType",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "str",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": {
-     "io": "int"
-    },
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "str",
-    "ts": "str"
+   "no such endpoint": {
+    "endpoint": "GET (no such endpoint)",
+    "outcome": "not_found",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "NoneType",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "str",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": {
-     "io": "int"
-    },
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "run_params": {
-     "freeze_time": "str",
-     "seed": "int"
-    },
-    "schema": "str",
-    "source_sha256": "str",
-    "ts": "str"
+   "run": {
+    "endpoint": "POST /run",
+    "outcome": "ok",
+    "shape": {
+     "budget": "str",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": {
+      "io": "int"
+     },
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "str",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "str",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": {},
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [
-     {
-      "by": "str",
-      "code": "str",
-      "what": "str"
-     }
-    ],
-    "schema": "str",
-    "source_sha256": "str",
-    "ts": "str"
+   "run, a budget that does not parse": {
+    "endpoint": "POST /run",
+    "outcome": "bad_request",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "str",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [
-     {
-      "by": "str",
-      "what": "str"
-     }
-    ],
-    "schema": "str",
-    "source_sha256": "str",
-    "ts": "str"
+   "run, every field": {
+    "endpoint": "POST /run",
+    "outcome": "ok",
+    "shape": {
+     "budget": "str",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": {
+      "io": "int"
+     },
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "run_params": {
+      "freeze_time": "str",
+      "seed": "int"
+     },
+     "schema": "str",
+     "source_sha256": "str",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "str",
-    "ts": "str"
+   "run, no source": {
+    "endpoint": "POST /run",
+    "outcome": "bad_request",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "NoneType",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "NoneType",
-    "ts": "str"
+   "run, no token": {
+    "endpoint": "POST /run",
+    "outcome": "unauthorized",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [],
+     "schema": "str",
+     "source_sha256": "NoneType",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "NoneType",
-    "ts": "str"
+   "run, past the ceiling": {
+    "endpoint": "POST /run",
+    "outcome": "ceiling",
+    "shape": {
+     "budget": "NoneType",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": "NoneType",
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [
+      {
+       "by": "str",
+       "what": "str"
+      }
+     ],
+     "schema": "str",
+     "source_sha256": "str",
+     "ts": "str"
+    }
    },
-   {
-    "budget": "NoneType",
-    "client": "str",
-    "door": "str",
-    "duration_ms": "float",
-    "effects": "NoneType",
-    "endpoint": "str",
-    "outcome": "str",
-    "refusals": [],
-    "schema": "str",
-    "source_sha256": "NoneType",
-    "ts": "str"
+   "run, refused": {
+    "endpoint": "POST /run",
+    "outcome": "refused",
+    "shape": {
+     "budget": "str",
+     "client": "str",
+     "door": "str",
+     "duration_ms": "float",
+     "effects": {},
+     "endpoint": "str",
+     "outcome": "str",
+     "refusals": [
+      {
+       "by": "str",
+       "code": "str",
+       "what": "str"
+      }
+     ],
+     "schema": "str",
+     "source_sha256": "str",
+     "ts": "str"
+    }
    }
-  ]
+  }
  },
  "library": {
   "error_codes": [
