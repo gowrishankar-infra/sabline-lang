@@ -533,16 +533,16 @@ Each of `SPEC.md` §3.1's rules, and what this amendment does to it:
 | No branching on a Secret (E563) | Unchanged, as above. |
 | No type variable bound to a type that carries a mark | Unchanged, and for the same reason: a generic body checked with `T` standing for nothing in particular would hand back a plain `T` and lose the reach with the mark. `fn first(xs: Secret reaching R of List of T) -> Secret reaching R of T for any T` is how to write it. |
 | `declassify(value, reason)` | Unchanged. It removes the mark and the reach together. It is still needed for every sink a reach does not cover, and is **not** needed for one it does - which is the whole of the amendment's benefit and also its whole risk, so the audit says which (below). |
-| `Secret of Untrusted of T`, `Secret` outermost (E572) | Unchanged as a spelling. With reaches: `Secret reaching R1 of Untrusted reaching R2 of T`, and the sinks the value may reach are **R1 ∩ R2** - the intersection rule applied to nesting rather than to an operation. E560 is still given in preference to E570 and E573 when the value carries `Secret` and the sink is outside R1, because a Secret's rule is the stronger and earlier one. |
+| `Secret of Untrusted of T`, `Secret` outermost (E572) | Unchanged as a spelling. With reaches: `Secret reaching R1 of Untrusted reaching R2 of T`, and the sinks the value may reach are **R1 ∩ R2** - the intersection rule applied to nesting rather than to an operation. **Which code a refusal gets is decided by which reach failed, and `Secret`'s is asked first**, because a Secret's rule is the stronger and earlier one: a sink outside R1 is E560 when R1 is empty and E573 when it is not; a sink inside R1 but outside R2 is E570 when R2 is empty and E573 when it is not. One rule, and the two existing codes are the empty-reach ends of it. |
 | The two ways out are independent | Unchanged. `declassify` removes `Secret` and its reach and leaves `Untrusted` and its reach; `trust` does the reverse. |
 
-## Three cases that must fail
+## Six cases that must fail
 
 These are the cases `check_secret.py` and `check_runner.py` must hold,
 and they are written here so that an implementation cannot pass by
 choosing its own. Each is stated as a program, a budget and the code it
-must get. The first three are the ones this amendment exists for; the
-rest are the ones that would quietly undo it.
+must get. **The first three are the ones this amendment exists for**;
+the other three are the ones that would quietly undo it.
 
 **1. Laundering by composition.** The value that reaches one host must
 not reach another by being combined with something that reaches it.
