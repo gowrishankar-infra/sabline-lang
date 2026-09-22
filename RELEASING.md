@@ -215,18 +215,48 @@ leaves no GitHub release behind it, and re-running the failed jobs
 finishes it with each publish made once; and **an ordinary release is
 unchanged**, with no crate job run.
 
-**crates.io trusted publishing has to be set up once, by hand**, and it
-can only be set up on a crate that exists - crates.io has no way to
-reserve a name for a publisher that has never published. So the first
-`sabline-rt` publish is made from a workstation with a scoped token, and
-the trusted publisher is added afterwards, from
+**The crate is published by
+[`publish-crate.yml`](.github/workflows/publish-crate.yml), not by
+release.yml**, and the reason is not a preference. crates.io refuses a
+Trusted Publishing token minted under the `workflow_run` event - *"Trusted
+Publishing does not support the `workflow_run` event trigger due to
+security concerns"* - and `workflow_run` is what release.yml runs on,
+because a release here is only ever the commit whose tests passed.
+crates.io removed `workflow_run` and `pull_request_target` on purpose:
+both have been behind supply-chain incidents. The triggers it allows are
+`push`, `release` and `workflow_dispatch`.
+
+`push` on a tag is the one this project cannot use: no workflow here
+listens for tags, precisely so that a tag pushed by hand publishes
+nothing. So the crate's publish is a `workflow_dispatch`, and release.yml
+starts it: the `crates_io` job tags, asks whether crates.io already has
+the version, dispatches `publish-crate.yml` if it does not, and then polls
+crates.io until the version is served. release.yml still decides what is
+released; that workflow is the arm that reaches crates.io for it.
+
+**A workflow anyone with write access can start by hand is only safe if
+it refuses everything release.yml would not have asked for.** Before it
+touches a credential, `publish-crate.yml` runs
+
+    python release_checks.py crate-publishable X.Y.Z-alpha.N --sha <commit>
+
+which refuses unless the version is a pre-release, the checkout's own
+`rt/Cargo.toml` says that version, the tag `vX.Y.Z-alpha.N` exists and
+names that commit, and crates.io does not have it already. A dispatch that
+is not release.yml's is a red run that published nothing, and
+`check_release.py` holds each of those four refusals to a fixture.
+
+**Setting the trusted publisher up is a one-time job, by hand**, and it
+can only be done on a crate that exists - crates.io has no way to reserve
+a name for a publisher that has never published. So the first `sabline-rt`
+publish is made from a workstation with a token scoped to `publish-new`
+on `sabline-rt` alone, and the trusted publisher is added afterwards, at
 https://crates.io/crates/sabline-rt/settings: **Trusted Publishing**, then
-GitHub, with the repository `gowrishankar-infra/sabline-lang`, the
-workflow file `release.yml` and the environment `release`. Every publish
-after the first is the workflow's, with no token anywhere. The scoped
-token used for the first publish is revoked at
-https://crates.io/settings/tokens the moment the trusted publisher is
-saved.
+GitHub, with the repository `gowrishankar-infra/sabline-lang`, **the
+workflow file `publish-crate.yml`** and the environment `release`. Every
+publish after the first is that workflow's, with no token anywhere. The
+scoped token is revoked at https://crates.io/settings/tokens the moment
+the trusted publisher is saved.
 
 ## Pausing releases: RELEASE_PAUSED
 

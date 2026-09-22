@@ -1293,6 +1293,96 @@ def cmd_prerelease_left_alone(args: Any) -> int:
     return 0
 
 
+def crate_publishable(root: Path, version: str,
+                      sha: str) -> tuple[list[str], bool]:
+    """(what refuses this publish, whether crates.io already has it).
+
+    The crate is published by `publish-crate.yml`, which runs on
+    `workflow_dispatch` - because crates.io refuses a Trusted Publishing
+    token minted under `workflow_run`, which is what release.yml runs on,
+    and refuses it on purpose: that trigger has been behind several
+    supply-chain incidents. release.yml starts that workflow after it
+    tags, waits for it, and is red if it is.
+
+    A workflow that anyone with write access can start by hand is only
+    safe if it refuses everything release.yml would not have asked for.
+    Three things refuse it, and they are the list returned:
+
+    - the version is not a pre-release, and this path publishes the crate
+      for a pre-release and nothing else;
+    - the checkout's own `rt/Cargo.toml` does not say that version, so a
+      dispatch cannot name one the tree does not hold;
+    - the tag does not exist, or does not name `sha`. release.yml tags
+      before it asks, and it only ever tags the commit whose tests
+      passed - so a tag that names this commit IS the statement that the
+      tests passed on it. A dispatch cannot publish a commit release.yml
+      never tagged.
+
+    A version already on crates.io is **not** one of them. It is the
+    second half of the answer, and it means there is nothing left to do:
+    the workflow skips its publish and ends green, because a re-run, or a
+    dispatch for a version that landed while somebody was typing, has
+    published nothing and broken nothing.
+    """
+    problems: list[str] = []
+    if prerelease_of(version) is None:
+        problems.append(f"{version} is not a pre-release; this path "
+                        f"publishes the crate for a pre-release and nothing "
+                        f"else (RELEASING.md)")
+    said = crate_version(root)
+    if said != version:
+        problems.append(f"the checkout's {CRATE_MANIFEST} says {said}, and "
+                        f"this run was asked for {version}")
+    tag = f"v{version}"
+    try:
+        at = git(root, "rev-parse", f"{tag}^{{commit}}")
+    except Unanswered:
+        at = ""
+    if not at:
+        problems.append(f"there is no tag {tag}; release.yml makes the tag "
+                        f"before it asks for the publish, and only ever tags "
+                        f"the commit whose tests passed")
+    elif sha and at != sha:
+        problems.append(f"{tag} names {at[:12]} and this run was asked for "
+                        f"{sha[:12]}")
+    already = False
+    if not problems:
+        try:
+            already = published("crates", version)
+        except Unanswered as e:
+            problems.append(f"crates.io could not be asked about {version}, "
+                            f"so it is not known whether it is there: {e}")
+    return problems, already
+
+
+def cmd_crate_publishable(args: Any) -> int:
+    """Before the crate is published: may this run publish it, and is
+    there anything left to publish?
+
+    Exit 1 - and `publish=false` - for a dispatch release.yml would not
+    have made. Exit 0 with `publish=false` when crates.io already has the
+    version, which is not a refusal: it is nothing left to do.
+    """
+    problems, already = crate_publishable(Path(args.repo), args.version,
+                                          args.sha)
+    for line in problems:
+        print(f"  REFUSED  {line}")
+    if problems:
+        emit(args, f"not publishing {args.version} to crates.io: "
+                   f"{problems[0]}", "error", publish="false")
+        return 1
+    if already:
+        emit(args, f"{args.version} is on crates.io already; there is "
+                   f"nothing to publish, and this run has published "
+                   f"nothing", publish="false")
+        return 0
+    emit(args, f"{args.version} may be published to crates.io: it is a "
+               f"pre-release, {CRATE_MANIFEST} says so, v{args.version} "
+               f"names {args.sha[:12] or 'the commit given'}, and crates.io "
+               f"does not have it", publish="true")
+    return 0
+
+
 # ---- after the release: the Action pins (8.4) ---------------------------------
 
 PIN_DOCS = ("README.md", "EMBEDDING.md")
@@ -1467,6 +1557,12 @@ def main(argv: Any = None) -> int:
                        help="seconds to keep asking (default: ask once)")
         p.add_argument("--interval", type=float, default=30)
         p.set_defaults(run=run)
+
+    p = sub.add_parser("crate-publishable", parents=[common],
+                       help="may this run publish the crate to crates.io?")
+    p.add_argument("version")
+    p.add_argument("--sha", default="", help="the commit the tag must name")
+    p.set_defaults(run=cmd_crate_publishable)
 
     p = sub.add_parser("prerelease-left-alone", parents=[common],
                        help="after a pre-release: did it move anything else?")

@@ -40,7 +40,15 @@ name: release
 #      crates_io job skipped for exactly that reason; check_release.py's
 #      simulation models it now, so a fixture says so rather than a
 #      release.
-#   9. A PRE-RELEASE is a different thing and publishes a different set.
+#   9. THE CRATE IS PUBLISHED BY publish-crate.yml, NOT BY THIS FILE.
+#      crates.io refuses a Trusted Publishing token minted under
+#      `workflow_run`, which is what this workflow runs on, and refuses it
+#      on purpose - that trigger has been behind supply-chain incidents.
+#      So the crates_io job here tags, asks, dispatches that workflow and
+#      waits for crates.io to serve the version. Nothing is stored either
+#      way, and release.yml is still the only thing that decides what is
+#      released (RELEASING.md).
+#  10. A PRE-RELEASE is a different thing and publishes a different set.
 #      When rt/Cargo.toml's version is X.Y.Z-alpha.N (or beta, or rc), the
 #      gate says `prerelease=true` and only two jobs publish: the crate to
 #      crates.io by OIDC trusted publishing, and a GitHub release marked
@@ -708,36 +716,55 @@ jobs:
     environment: release
     permissions:
       contents: read
-      id-token: write            # crates.io trusted publishing, no token stored
+      actions: write             # start publish-crate.yml
     env:
       V: ${{ needs.gate.outputs.version }}
+      SHA: ${{ needs.gate.outputs.sha }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
           ref: ${{ needs.gate.outputs.sha }}
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
-        with:
-          toolchain: stable
       - name: Is this version on crates.io already?
         id: there
         run: python3 release_checks.py published crates "$V" --annotate --github-output "$GITHUB_OUTPUT"
-      # Trusted publishing: crates.io mints a short-lived token from this
-      # workflow's GitHub identity, so no publish token is stored anywhere.
-      # The trusted publisher on crates.io names this repository, the
-      # workflow file release.yml and the environment `release`, as PyPI's
-      # and npm's already do - MAINTENANCE.md's secrets table gains no row.
-      - uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18  # v1.0.5
+      # The publish itself is publish-crate.yml's, because crates.io
+      # refuses a Trusted Publishing token minted under `workflow_run` -
+      # which is what this workflow runs on - and refuses it on purpose.
+      # That workflow runs on `workflow_dispatch`, which crates.io allows,
+      # and refuses everything this job would not have asked for before it
+      # touches a credential. Nothing is stored either way; this job still
+      # decides, and waits below for the result.
+      # Dispatch it, find the run it started, and WAIT for that run. If it
+      # is red, this job is red: `gh run watch --exit-status` exits
+      # non-zero for a run that failed, so a publish that did not happen
+      # cannot be mistaken for one that did. The crates.io check after it
+      # is the second answer to the same question, from the registry
+      # rather than from the run.
+      - name: Ask publish-crate.yml for it, and wait for it
         if: steps.there.outputs.published == 'false'
-        id: auth
-      - name: Publish
-        if: steps.there.outputs.published == 'false'
-        working-directory: rt
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-        run: cargo publish --locked -p sabline-rt
+        run: |
+          started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          gh workflow run publish-crate.yml --ref main -f version="$V" -f sha="$SHA"
+          echo "::notice::asked publish-crate.yml to publish $V from $SHA"
+          id=""
+          for i in $(seq 1 30); do
+            id=$(gh run list --workflow publish-crate.yml --event workflow_dispatch \
+                   --limit 10 --json databaseId,createdAt \
+                   --jq "[.[] | select(.createdAt >= \"$started\")] | sort_by(.createdAt) | last | .databaseId // empty")
+            [ -n "$id" ] && break
+            sleep 10
+          done
+          if [ -z "$id" ]; then
+            echo "::error::publish-crate.yml did not start within five minutes"
+            exit 1
+          fi
+          echo "::notice::watching publish-crate.yml run $id"
+          gh run watch "$id" --exit-status --interval 15
       - name: crates.io serves it
-        run: python3 release_checks.py published crates "$V" --require --timeout 900 --interval 20 --annotate --summary "$GITHUB_STEP_SUMMARY"
+        run: python3 release_checks.py published crates "$V" --require --timeout 600 --interval 20 --annotate --summary "$GITHUB_STEP_SUMMARY"
 
   prerelease_github:
     name: a GitHub release, marked pre-release
