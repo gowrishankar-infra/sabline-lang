@@ -624,12 +624,23 @@ jobs:
         run: |
           cargo package --locked -p sabline-rt --list > ../crate-contents.txt
           cat ../crate-contents.txt
+      # One flat directory, and the artifact is its contents. Given two
+      # paths instead, upload-artifact keeps the directories they have in
+      # common - so the release job would download `assets/rt/target/...`
+      # and `gh release create assets/*` would be handed a DIRECTORY and
+      # refuse it, which is how 9.0.0-alpha.3 tagged, published its crate
+      # and then made no GitHub release. check_release.py runs that job's
+      # own steps against this layout now.
+      - name: Collect what the release carries, flat
+        run: |
+          mkdir -p crate-assets
+          cp rt/target/package/sabline-rt-*.crate crate-assets/
+          cp crate-contents.txt crate-assets/
+          ls -l crate-assets
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: crate
-          path: |
-            rt/target/package/sabline-rt-*.crate
-            crate-contents.txt
+          path: crate-assets
           if-no-files-found: error
 
   paused:
@@ -794,13 +805,29 @@ jobs:
         shell: bash
         run: |
           ls -l assets
+          # every asset is a file, never a directory: `gh release create`
+          # refuses a directory and deletes the release it had just made
+          files=()
+          while IFS= read -r f; do files+=("$f"); done < <(find assets -type f | sort)
+          test ${#files[@]} -gt 0 || { echo "::error::the crate artifact is empty"; exit 1; }
+          printf '  asset: %s\n' "${files[@]}"
           python3 release_checks.py notes "$V" --sha "$SHA" --previous "$PREVIOUS" -o notes.md
           if gh release view "$TAG" > /dev/null 2>&1; then
-            echo "::notice::the GitHub release $TAG is already there; leaving it"
+            have=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+            missing=()
+            for f in "${files[@]}"; do
+              grep -qxF "$(basename "$f")" <<< "$have" || missing+=("$f")
+            done
+            if [ ${#missing[@]} -eq 0 ]; then
+              echo "::notice::the GitHub release $TAG is already there with every file"
+              exit 0
+            fi
+            echo "::notice::attaching the ${#missing[@]} file(s) $TAG lacks"
+            gh release upload "$TAG" "${missing[@]}"
             exit 0
           fi
           gh release create "$TAG" --verify-tag --prerelease \
-            --title "$TAG" --notes-file notes.md assets/*
+            --title "$TAG" --notes-file notes.md "${files[@]}"
       # The one thing a pre-release must be checked for: that it moved
       # nothing else. Everything published before this run still says what
       # it said, and no "latest" moved.

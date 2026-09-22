@@ -59,6 +59,58 @@
 <main id="content" class="doc" tabindex="-1">
 <h1 id="changelog">Changelog: 9.x</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run <a class="anchor" href="#900-alpha4---the-job-that-was-read-and-then-run" aria-label="Link to this section">#</a></h2>
+<p>9.0.0-alpha.3 published its crate and made no GitHub release. The two
+hard things worked: release.yml dispatched <code>publish-crate.yml</code>, waited
+for the run with <code>gh run watch --exit-status</code>, and <strong>sabline-rt
+9.0.0-alpha.3 went to crates.io through OIDC with no stored credential</strong>.
+Then the release job fell over on one line:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>Post https://uploads.github.com/.../assets: read assets/rt: is a
+directory</code></pre></div>
+<p>The <code>crate</code> job gave <code>upload-artifact</code> two paths, so the artifact kept
+the directories they had in common - <code>rt/target/package/...</code> - and the
+release step globbed <code>assets/*</code>, handing <code>gh</code> a directory. <code>gh</code> refuses
+one, and then <strong>deletes the release it had just created</strong>, so there is no
+GitHub release under <code>v9.0.0-alpha.3</code> although the tag and the crate
+stand.</p>
+<p>Two fixes, and the second is the one that matters:</p>
+<ul>
+<li>the step names files rather than globbing a tree (<code>find assets -type f</code>), so a directory can never reach <code>gh</code> whatever the artifact's shape,
+and it attaches what an existing release lacks rather than doing
+nothing - the same shape the ordinary release's job has always had;</li>
+<li>the artifact is one flat directory, so <code>assets/</code> holds the two files
+and nothing else.</li>
+</ul>
+<h3 id="the-part-worth-keeping">The part worth keeping <a class="anchor" href="#the-part-worth-keeping" aria-label="Link to this section">#</a></h3>
+<p><strong>Three releases were spent on three defects, and all three were in
+workflow code I had verified by reading it.</strong> A skip that travels past a
+job which rescued itself; a registry that refuses a token minted under
+<code>workflow_run</code>; a glob that hands a directory to a command that refuses
+one. Every one of them takes seconds to see in a run and is invisible on
+the page.</p>
+<p>This project already knew that. <code>check_release.py</code> has run the
+Marketplace job's and the pin-moving job's <strong>own steps, in bash, against
+stand-ins</strong> since 8.2.1 and 8.4 - because both had failed in ways reading
+did not catch. The jobs added for 9.0 did not get the same treatment.</p>
+<p>They do now. <code>run_prerelease_github_job</code> lays the assets out <strong>from the
+crate job's own <code>upload-artifact</code> path</strong>, so the fixture tests the
+artifact this repository actually produces rather than one chosen to
+pass, and runs the release job's real steps against a <code>gh</code> that refuses a
+directory exactly as the real one does. Run against the job as
+9.0.0-alpha.3 shipped it, the fixture fails with <code>gh refused a directory</code>; against the fix it passes. Writing it found two more things a
+reading had not: the notes step needs the checkout's CHANGELOG, and the
+"nothing else moved" step needs the registry to say the crate is there.</p>
+<p><code>check_release.py</code>: <strong>175 passed, 0 broken.</strong></p>
+<p>compatibility: a pre-release publishes the sabline-rt crate and a GitHub
+release marked pre-release and nothing else, so nothing a user of 8.6.0
+has is touched - not PyPI, not npm, not the VS Code Marketplace, not the
+MCP registry, not the Action pins, and not any "latest" anywhere.</p>
+<p><strong>v9.0.0-alpha.1, v9.0.0-alpha.2 and v9.0.0-alpha.3 stay where they
+are</strong>, neither moved nor deleted nor retagged. alpha.1's crate is on
+crates.io because a person put it there, which is how a crate's first
+version always gets there; alpha.3's is there because the workflow put it
+there, which is how every one after it will. None of the three has a
+GitHub release, and the entries below say why each.</p>
 <h2 id="900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own <a class="anchor" href="#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own" aria-label="Link to this section">#</a></h2>
 <p>9.0.0-alpha.2 tagged and did not publish either. Its crates_io job ran
 this time - the skip alpha.2 fixed stayed fixed - and failed at the one
@@ -361,7 +413,7 @@ performance floor of its own.</p>
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li><li><a href="#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li><li><a href="#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li><li><a href="#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li><li><a href="#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li><li><a href="#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>
