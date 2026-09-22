@@ -750,6 +750,167 @@ def run_vscode_job(job: dict[Any, Any], bash: str, base: str, answers: str,
 FAKE_GH = '#!/usr/bin/env bash\necho "$*" >> "$FAKE/gh.log"\n'
 
 
+FAKE_GH_RELEASE = """#!/usr/bin/env bash
+# `gh` for the pre-release job: it records what it was asked and refuses a
+# directory exactly as the real one does - "read <path>: is a directory",
+# after which gh deletes the release it had just created. That refusal is
+# the whole reason this harness exists.
+here="$(dirname "$0")"
+case "$1 $2" in
+  "release view")
+    tag="$3"
+    if [ -f "$here/../release.json" ] ; then
+      if [ "$4" = "--json" ] ; then cat "$here/../release-assets.txt" ; fi
+      exit 0
+    fi
+    exit 1
+    ;;
+  "release create")
+    shift 2
+    tag="$1" ; shift            # the tag is the first argument, not an asset
+    echo "create $tag $*" >> "$here/../asked.txt"
+    saw_prerelease=0
+    while [ $# -gt 0 ] ; do
+      case "$1" in
+        --prerelease) saw_prerelease=1 ;;
+        --notes-file|--title) shift ;;
+        --verify-tag) ;;
+        -*) ;;
+        *)
+          if [ -d "$1" ] ; then
+            echo "Post https://uploads.github.com/...: read $1: is a directory" >&2
+            rm -f "$here/../release.json"
+            exit 1
+          fi
+          test -f "$1" || { echo "no such asset: $1" >&2 ; exit 1 ; }
+          echo "$(basename "$1")" >> "$here/../uploaded.txt"
+          ;;
+      esac
+      shift
+    done
+    test "$saw_prerelease" = 1 || { echo "created without --prerelease" >&2 ; exit 1 ; }
+    echo "{}" > "$here/../release.json"
+    exit 0
+    ;;
+  "release upload")
+    shift 2
+    tag="$1" ; shift
+    for f in "$@" ; do
+      test -f "$f" || { echo "no such asset: $f" >&2 ; exit 1 ; }
+      echo "$(basename "$f")" >> "$here/../uploaded.txt"
+    done
+    exit 0
+    ;;
+esac
+exit 0
+"""
+
+
+def artifact_layout(crate_job: dict[Any, Any], names: list[str]) -> list[str]:
+    """What `actions/download-artifact` lays out under assets/, from what
+    the crate job's `upload-artifact` was given.
+
+    One path that is a directory: its CONTENTS go to the root, so every
+    entry is a file. Several paths: the directories they have in common
+    are kept - which is how `assets/rt/target/package/...` happened, and
+    `gh release create assets/*` was handed a directory.
+    """
+    step = next(st for st in (crate_job.get("steps") or [])
+                if str(st.get("uses", "")).startswith("actions/upload-artifact"))
+    given = [line.strip() for line in
+             str(step.get("with", {}).get("path", "")).splitlines()
+             if line.strip()]
+    if len(given) == 1 and "*" not in given[0] and "." not in Path(given[0]).name:
+        return names                      # a directory: its contents, flat
+    out = []
+    for path in given:
+        if "*" in path:
+            out += [str(Path(path).parent / n) for n in names
+                    if n.endswith(".crate")]
+        else:
+            out.append(path)
+    return out
+
+
+def run_prerelease_github_job(job: dict[Any, Any], crate_job: dict[Any, Any],
+                              bash: str, base: str) -> dict[str, Any]:
+    """The pre-release GitHub release job's own steps, in bash, with `gh`
+    stood in for and the assets laid out the way the crate job's artifact
+    actually lands.
+
+    9.0.0-alpha.3 tagged, published its crate and then made no GitHub
+    release, because the artifact carried `rt/target/package/...` and the
+    step globbed `assets/*` - handing `gh` a directory, which it refuses
+    and then deletes the release it had just made. Reading the job did not
+    catch it; running it does.
+    """
+    work = Path(tempfile.mkdtemp(prefix="prerelease-job-", dir=SCRATCH))
+    fake = work / "bin"
+    fake.mkdir()
+    assets = work / "assets"
+    # the job's last step asks whether anything else moved, and one of its
+    # answers is that the crate IS on crates.io - which is the one thing
+    # this release did move
+    StandIn.routes = dict(StandIn.routes or {})
+    StandIn.routes[("GET", "/api/v1/crates/sabline-rt/9.0.0-alpha.3")] = (
+        200, {"version": {"num": "9.0.0-alpha.3"}})
+    # the job runs in a checkout, and its notes step reads the CHANGELOG
+    # entry for the version being released
+    write_changelog(work, ("9.0.0-alpha.3", "The crate is published by a "
+                           "workflow of its own", "sabline-rt reads a "
+                           "program."))
+    # what the artifact holds, whatever shape it lands in
+    names = ["sabline-rt-9.0.0-alpha.3.crate", "crate-contents.txt"]
+    for rel in artifact_layout(crate_job, names):
+        target = assets / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("x", encoding="utf-8")
+
+    shim = work / "release_checks_shim.py"
+    shim.write_text(
+        "import sys\n"
+        f"sys.path.insert(0, {str(HERE)!r})\n"
+        "import release_checks\n"
+        f"release_checks.ENDPOINTS.update("
+        f"{{k: {base!r} for k in release_checks.ENDPOINTS}})\n"
+        "release_checks.RETRY_WAIT = 0\n"
+        "assert sys.argv[1] == 'release_checks.py', sys.argv\n"
+        "sys.exit(release_checks.main(sys.argv[2:]))\n", encoding="utf-8")
+    python3 = (f'#!/usr/bin/env bash\nexec "{_slashed(Path(sys.executable))}" '
+               f'"{_slashed(shim)}" "$@"\n')
+    for name, text in (("gh", FAKE_GH_RELEASE), ("python3", python3)):
+        (fake / name).write_bytes(text.encode("utf-8"))
+        (fake / name).chmod(0o755)
+
+    env = dict(os.environ)
+    env["PATH"] = f"{_slashed(fake)}:{env.get('PATH', '')}"
+    env.update({"V": "9.0.0-alpha.3", "TAG": "v9.0.0-alpha.3",
+                "SHA": "0" * 40, "PREVIOUS": "v9.0.0-alpha.2",
+                "GH_TOKEN": "x", "GH_REPO": REPOSITORY})
+    log, failed = [], False
+    for step in job.get("steps", []):
+        script = step.get("run")
+        if not script:
+            continue
+        done = subprocess.run([bash, "-e", "-c", script], cwd=str(work),
+                              env=env, capture_output=True, text=True,
+                              timeout=180)
+        log.append(f"--- {step.get('name')}: exit {done.returncode}\n"
+                   f"{done.stdout}{done.stderr}")
+        if done.returncode != 0:
+            failed = True
+            break
+    uploaded = (work / "uploaded.txt")
+    return {
+        "result": "failure" if failed else "success",
+        "uploaded": sorted(uploaded.read_text(encoding="utf-8").split())
+                    if uploaded.exists() else [],
+        "asked": (work / "asked.txt").read_text(encoding="utf-8")
+                 if (work / "asked.txt").exists() else "",
+        "log": "\n".join(log),
+    }
+
+
 def tracked_files() -> list[str] | None:
     """Every file of this repository git tracks or would (not the ignored
     ones), or None where this is not a git checkout."""
@@ -2109,6 +2270,56 @@ def main() -> int:
                and results.get("crates_io") == "skipped"
                and results.get("prerelease_github") == "skipped",
                f"{dict(release.made)} {results}")
+
+            print()
+            print("the pre-release GitHub release job's own steps, in bash, "
+                  "with a stand-in for gh")
+            print("-" * 62)
+
+            # 9.0.0-alpha.3 tagged, published its crate and then made no
+            # GitHub release: the crate artifact carried
+            # rt/target/package/..., the step globbed assets/*, and `gh`
+            # was handed a directory - which it refuses, after deleting
+            # the release it had just created. Reading the job did not
+            # catch that. Running it does.
+            pre_bash = posix_bash()
+            if pre_bash is None:
+                print("  skip     the pre-release job's steps (no POSIX "
+                      "bash here)")
+            else:
+                r = run_prerelease_github_job(
+                    jobs["prerelease_github"], jobs["crate"], pre_bash, base)
+                ok("the job creates the release and attaches every file the "
+                   "crate job packaged",
+                   r["result"] == "success"
+                   and r["uploaded"] == ["crate-contents.txt",
+                                         "sabline-rt-9.0.0-alpha.3.crate"],
+                   f"{r['result']} uploaded={r['uploaded']} "
+                   f"log={r['log'][-900:]}")
+                ok("...marked --prerelease, so GitHub does not call it the "
+                   "latest release",
+                   "--prerelease" in r["asked"], r["asked"][:200])
+                ok("...and every asset it names is a file, never a "
+                   "directory - `gh` refuses a directory and deletes the "
+                   "release it had just made",
+                   "is a directory" not in r["log"], r["log"][-600:])
+
+                # and the same job run again finds it there and attaches
+                # nothing twice
+                r2 = run_prerelease_github_job(
+                    jobs["prerelease_github"], jobs["crate"], pre_bash, base)
+                ok("...and the artifact the crate job uploads lands flat, "
+                   "which is what makes all of that true",
+                   artifact_layout(jobs["crate"],
+                                   ["sabline-rt-9.0.0-alpha.3.crate",
+                                    "crate-contents.txt"])
+                   == ["sabline-rt-9.0.0-alpha.3.crate",
+                       "crate-contents.txt"],
+                   str(artifact_layout(jobs["crate"],
+                                       ["sabline-rt-9.0.0-alpha.3.crate",
+                                        "crate-contents.txt"])))
+                ok("...and a second run of it is green too",
+                   r2["result"] == "success", r2["log"][-600:])
 
             print()
             print("the vscode job's own steps, in bash, with stand-ins for "

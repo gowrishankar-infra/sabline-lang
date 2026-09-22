@@ -5,6 +5,71 @@ below 8.6 uses the name it had at the time, which is what the
 record is for. [docs/renamed.md](docs/renamed.md) says what
 moved where.
 
+## 9.0.0-alpha.4 - The job that was read, and then run
+
+9.0.0-alpha.3 published its crate and made no GitHub release. The two
+hard things worked: release.yml dispatched `publish-crate.yml`, waited
+for the run with `gh run watch --exit-status`, and **sabline-rt
+9.0.0-alpha.3 went to crates.io through OIDC with no stored credential**.
+Then the release job fell over on one line:
+
+    Post https://uploads.github.com/.../assets: read assets/rt: is a
+    directory
+
+The `crate` job gave `upload-artifact` two paths, so the artifact kept
+the directories they had in common - `rt/target/package/...` - and the
+release step globbed `assets/*`, handing `gh` a directory. `gh` refuses
+one, and then **deletes the release it had just created**, so there is no
+GitHub release under `v9.0.0-alpha.3` although the tag and the crate
+stand.
+
+Two fixes, and the second is the one that matters:
+
+- the step names files rather than globbing a tree (`find assets -type
+  f`), so a directory can never reach `gh` whatever the artifact's shape,
+  and it attaches what an existing release lacks rather than doing
+  nothing - the same shape the ordinary release's job has always had;
+- the artifact is one flat directory, so `assets/` holds the two files
+  and nothing else.
+
+### The part worth keeping
+
+**Three releases were spent on three defects, and all three were in
+workflow code I had verified by reading it.** A skip that travels past a
+job which rescued itself; a registry that refuses a token minted under
+`workflow_run`; a glob that hands a directory to a command that refuses
+one. Every one of them takes seconds to see in a run and is invisible on
+the page.
+
+This project already knew that. `check_release.py` has run the
+Marketplace job's and the pin-moving job's **own steps, in bash, against
+stand-ins** since 8.2.1 and 8.4 - because both had failed in ways reading
+did not catch. The jobs added for 9.0 did not get the same treatment.
+
+They do now. `run_prerelease_github_job` lays the assets out **from the
+crate job's own `upload-artifact` path**, so the fixture tests the
+artifact this repository actually produces rather than one chosen to
+pass, and runs the release job's real steps against a `gh` that refuses a
+directory exactly as the real one does. Run against the job as
+9.0.0-alpha.3 shipped it, the fixture fails with `gh refused a
+directory`; against the fix it passes. Writing it found two more things a
+reading had not: the notes step needs the checkout's CHANGELOG, and the
+"nothing else moved" step needs the registry to say the crate is there.
+
+`check_release.py`: **175 passed, 0 broken.**
+
+compatibility: a pre-release publishes the sabline-rt crate and a GitHub
+release marked pre-release and nothing else, so nothing a user of 8.6.0
+has is touched - not PyPI, not npm, not the VS Code Marketplace, not the
+MCP registry, not the Action pins, and not any "latest" anywhere.
+
+**v9.0.0-alpha.1, v9.0.0-alpha.2 and v9.0.0-alpha.3 stay where they
+are**, neither moved nor deleted nor retagged. alpha.1's crate is on
+crates.io because a person put it there, which is how a crate's first
+version always gets there; alpha.3's is there because the workflow put it
+there, which is how every one after it will. None of the three has a
+GitHub release, and the entries below say why each.
+
 ## 9.0.0-alpha.3 - The crate is published by a workflow of its own
 
 9.0.0-alpha.2 tagged and did not publish either. Its crates_io job ran
