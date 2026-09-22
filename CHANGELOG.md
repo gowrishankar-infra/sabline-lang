@@ -5,6 +5,67 @@ below 8.6 uses the name it had at the time, which is what the
 record is for. [docs/renamed.md](docs/renamed.md) says what
 moved where.
 
+## 9.0.0-alpha.2 - The parser, twice, and a release that publishes
+
+9.0.0-alpha.1's content, released. The alpha before it tagged
+`v9.0.0-alpha.1` and then published nothing, because of a defect in
+release.yml that this entry is mostly about. Its crate reached crates.io
+only because a person put it there by hand, which is how a crate's first
+version always reaches crates.io - trusted publishing can only be
+configured on a crate that already exists. **What 9.0.0-alpha.1 was meant
+to be, 9.0.0-alpha.2 is**; the CHANGELOG entry below it says what exists
+and what does not, and none of that changed.
+
+`v9.0.0-alpha.1` is not moved, deleted or retagged, for the reason 3.4
+was not retagged and 6.0.0 was yanked rather than deleted: a published
+thing stays where it is. The tag stands, its crate stands, and this entry
+is the record of why there is no GitHub release under it.
+
+### What was wrong
+
+**GitHub propagates a skip along `needs` transitively, and a job that
+rescues itself with `!cancelled()` does not rescue the jobs after it.**
+Its own result is `success`, and the skip still reaches them.
+
+9.0.0-alpha.1 added the `crate` job to what `tag` waits on. On a
+pre-release the seven Python build jobs are skipped; `tag` rescued itself
+and ran; and every job below `tag` inherited the skip - so `crates_io`
+did not run, and `prerelease_github` after it did not either. The run
+ended green having tagged and published nothing.
+
+**The same defect would have broken an ordinary release worse.** There
+`crate` is the skipped job, so `pypi`, `npm`, `vscode`,
+`github_release`, `mcp_registry`, `attach_attestation` and `consistency`
+would all have been skipped: a release that tags and publishes nothing,
+on the path every release takes.
+
+`crates_io`, `pypi`, `npm` and `vscode` now carry `!cancelled()` and
+check the job before them by result. Every job further down already had
+that shape - the trap was known, and 9.0.0-alpha.1 walked into it by
+changing what `tag` waits on.
+
+### Why the fixtures did not catch it
+
+`check_release.py` runs release.yml job by job against a stand-in, and
+137 of its checks were green on the commit that shipped this defect. Its
+`decides` implemented the semantics a reader would assume - the implicit
+`success()` covering a job's **direct** `needs` - and GitHub's covers the
+**transitive closure**. The simulation agreed with the mistake, so it had
+nothing to say.
+
+`decides` now models the closure. Against the workflow as 9.0.0-alpha.1
+shipped it reproduces both failures exactly, the real one included. And
+thirteen structural checks were added: every job below `tag` must carry a
+status check function in its condition, which is the rule that keeps the
+next change to `tag`'s `needs` from doing this again.
+
+compatibility: a pre-release publishes the sabline-rt crate and a GitHub
+release marked pre-release and nothing else, so nothing a user of 8.6.0
+has is touched by this release either - not PyPI, not npm, not the VS
+Code Marketplace, not the MCP registry, not the Action pins, and not any
+"latest" anywhere. The Python package's version files still say 8.6.0,
+and the release gate refuses a pre-release whose commit moved one.
+
 ## 9.0.0-alpha.1 - The parser, twice
 
 The first alpha of 9.0. `decisions/0002-runtime-in-rust.md` says why there

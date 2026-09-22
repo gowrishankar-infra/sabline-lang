@@ -59,6 +59,55 @@
 <main id="content" class="doc" tabindex="-1">
 <h1 id="changelog">Changelog: 9.x</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes <a class="anchor" href="#900-alpha2---the-parser-twice-and-a-release-that-publishes" aria-label="Link to this section">#</a></h2>
+<p>9.0.0-alpha.1's content, released. The alpha before it tagged
+<code>v9.0.0-alpha.1</code> and then published nothing, because of a defect in
+release.yml that this entry is mostly about. Its crate reached crates.io
+only because a person put it there by hand, which is how a crate's first
+version always reaches crates.io - trusted publishing can only be
+configured on a crate that already exists. <strong>What 9.0.0-alpha.1 was meant
+to be, 9.0.0-alpha.2 is</strong>; the CHANGELOG entry below it says what exists
+and what does not, and none of that changed.</p>
+<p><code>v9.0.0-alpha.1</code> is not moved, deleted or retagged, for the reason 3.4
+was not retagged and 6.0.0 was yanked rather than deleted: a published
+thing stays where it is. The tag stands, its crate stands, and this entry
+is the record of why there is no GitHub release under it.</p>
+<h3 id="what-was-wrong">What was wrong <a class="anchor" href="#what-was-wrong" aria-label="Link to this section">#</a></h3>
+<p><strong>GitHub propagates a skip along <code>needs</code> transitively, and a job that
+rescues itself with <code>!cancelled()</code> does not rescue the jobs after it.</strong>
+Its own result is <code>success</code>, and the skip still reaches them.</p>
+<p>9.0.0-alpha.1 added the <code>crate</code> job to what <code>tag</code> waits on. On a
+pre-release the seven Python build jobs are skipped; <code>tag</code> rescued itself
+and ran; and every job below <code>tag</code> inherited the skip - so <code>crates_io</code>
+did not run, and <code>prerelease_github</code> after it did not either. The run
+ended green having tagged and published nothing.</p>
+<p><strong>The same defect would have broken an ordinary release worse.</strong> There
+<code>crate</code> is the skipped job, so <code>pypi</code>, <code>npm</code>, <code>vscode</code>,
+<code>github_release</code>, <code>mcp_registry</code>, <code>attach_attestation</code> and <code>consistency</code>
+would all have been skipped: a release that tags and publishes nothing,
+on the path every release takes.</p>
+<p><code>crates_io</code>, <code>pypi</code>, <code>npm</code> and <code>vscode</code> now carry <code>!cancelled()</code> and
+check the job before them by result. Every job further down already had
+that shape - the trap was known, and 9.0.0-alpha.1 walked into it by
+changing what <code>tag</code> waits on.</p>
+<h3 id="why-the-fixtures-did-not-catch-it">Why the fixtures did not catch it <a class="anchor" href="#why-the-fixtures-did-not-catch-it" aria-label="Link to this section">#</a></h3>
+<p><code>check_release.py</code> runs release.yml job by job against a stand-in, and
+137 of its checks were green on the commit that shipped this defect. Its
+<code>decides</code> implemented the semantics a reader would assume - the implicit
+<code>success()</code> covering a job's <strong>direct</strong> <code>needs</code> - and GitHub's covers the
+<strong>transitive closure</strong>. The simulation agreed with the mistake, so it had
+nothing to say.</p>
+<p><code>decides</code> now models the closure. Against the workflow as 9.0.0-alpha.1
+shipped it reproduces both failures exactly, the real one included. And
+thirteen structural checks were added: every job below <code>tag</code> must carry a
+status check function in its condition, which is the rule that keeps the
+next change to <code>tag</code>'s <code>needs</code> from doing this again.</p>
+<p>compatibility: a pre-release publishes the sabline-rt crate and a GitHub
+release marked pre-release and nothing else, so nothing a user of 8.6.0
+has is touched by this release either - not PyPI, not npm, not the VS
+Code Marketplace, not the MCP registry, not the Action pins, and not any
+"latest" anywhere. The Python package's version files still say 8.6.0,
+and the release gate refuses a pre-release whose commit moved one.</p>
 <h2 id="900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice <a class="anchor" href="#900-alpha1---the-parser-twice" aria-label="Link to this section">#</a></h2>
 <p>The first alpha of 9.0. <code>decisions/0002-runtime-in-rust.md</code> says why there
 is a second runtime and <code>plan/9.0.md</code> is the ladder; this is its first
@@ -251,7 +300,7 @@ performance floor of its own.</p>
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li><li><a href="#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

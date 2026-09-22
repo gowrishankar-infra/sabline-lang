@@ -72,7 +72,7 @@ compatibility: blocks nested more than 4,000 deep, <code>else if</code> chains i
 compatibility: <code>velaris check</code> and the library give a <code>main</code> marked <code>or fail</code> E524, as a run always did; they gave E523. E523 is now only <code>fail</code> in a function that does not declare <code>or fail</code>. The descriptions of E102, E542 and E609 in the error table say what the compiler gives them for.
 compatibility: <code>read_file</code> of a path holding a NUL character fails with a reason the program can handle, <code>write_file</code> of one stops with E608, and <code>file_exists</code> of one is false. Each was a Python traceback.
 api: tests/api/golden.json is new in 8.2 and records the library, the command line, both doors, the MCP tools and the Action, with signatures written without their annotations; against 8.1.1 the surface moved in two places, both text: <code>velaris check --help</code> lists <code>--json</code>, and the <code>velaris_card</code> tool's description says about 4,600 words.</p>
-<h3 id="what-was-wrong-1">What was wrong <a class="anchor" href="#what-was-wrong-1" aria-label="Link to this section">#</a></h3>
+<h3 id="what-was-wrong-2">What was wrong <a class="anchor" href="#what-was-wrong-2" aria-label="Link to this section">#</a></h3>
 <p><strong>Unary minus was not range-checked (Goal A; <code>advisory-int-negation.md</code>;
 2.14 through 8.1.1).</strong> <code>-n</code> of the smallest whole number was 2^63 in the
 interpreter and wrapped back to itself in native code, and the smallest
