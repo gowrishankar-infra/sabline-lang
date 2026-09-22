@@ -363,12 +363,7 @@ GitHub and the MCP registry, makes one publish fail - npm, the
 Marketplace, the registry, the GitHub release - re-runs the failed jobs
 and the jobs after them, as GitHub does, and checks that every publish
 was made exactly once, none was skipped, and the consistency check
-passes; and that a whole second run publishes nothing again. From 8.2.1
-it also runs the Marketplace job's own steps in bash, with stand-ins for
-`vsce`, `npm` and `sleep`: a timeout on every attempt, timeouts that
-clear, a version listed after a timeout, a refused token, no token, and
-a version already listed. The job must be red whenever the Marketplace
-does not list the version at its end.
+passes; and that a whole second run publishes nothing again.
 
 **Never finish a publish by hand with a token.** Trusted publishing
 means no long-lived publish token exists; making one to get past a
@@ -377,6 +372,79 @@ failure brings it back.
 If the fix needs a change to the repository after the tag was made,
 that version is spent: bump to the next one, add its CHANGELOG entry and
 push. Do not delete or move a tag that has published anything.
+
+## The standing rule: every job's own shell is run here
+
+**Every job of [release.yml](.github/workflows/release.yml) and of
+[publish-crate.yml](.github/workflows/publish-crate.yml) has its own
+`run:` scripts executed, in bash, against stand-ins, by
+`check_release.py`.** There is no exemption list. A job added to either
+workflow without a harness fails `check_release.py` on every leg of CI
+until it has one, which is what makes this a rule rather than a habit.
+
+**Why it is a rule.** Three 9.0 pre-releases in a row were spent on
+three defects, and every one of them was in workflow code that had been
+verified by reading it:
+
+- `9.0.0-alpha.1`: a skip that travels down `needs` past a job which had
+  rescued itself with `!cancelled()`, so `crates_io` never ran;
+- `9.0.0-alpha.2`: crates.io refusing a Trusted Publishing token minted
+  under `workflow_run`, which is what release.yml runs on;
+- `9.0.0-alpha.3`: `gh release create` handed a directory, which it
+  refuses - and then deletes the release it had just made.
+
+Each takes seconds to see in a run and is invisible on the page. The
+three jobs that had a harness before 9.0 - `vscode` (8.2.1), `move_pins`
+(8.4) and `prerelease_github` (9.0.0-alpha.4) - each got one *after*
+failing in production. The rule is that the next one gets it before.
+
+**What a harness has to do**, and what makes one count:
+
+1. **Run the job's own `run:` text**, taken out of the YAML, in bash.
+   Not a description of what the job means - `check_release.py`'s
+   `run_job` is that, and it stays, because it is what decides what a
+   whole release publishes.
+2. **Stand in for every command that would reach the network, a
+   registry, a credential, a compiler or a signing service.** A stand-in
+   records every call with its arguments, produces the files the real
+   command would produce, and **refuses the way the real one refuses**:
+   `gh release create` refuses a directory, `cosign sign-blob` refuses a
+   file that is not there, `cargo publish` refuses a version crates.io
+   already has, and every one of them refuses a subcommand it does not
+   know. Nothing is really signed, built or published.
+3. **Model `uses:` steps by what they leave behind**, not by skipping
+   them. `upload-artifact` collects the paths it is given into a named
+   artifact and `download-artifact` lays that artifact out again, with
+   the same root rule GitHub uses - so the shape an artifact actually
+   lands in is what the next job's shell sees. That is exactly the
+   defect that cost `9.0.0-alpha.3` its GitHub release.
+4. **Be shown to fail.** Each job is run twice: once as it is, which
+   must be green, and once with **one fault injected** - a wrong
+   command, a wrong path, a wrong artifact name - which must make it
+   red. A harness that has never gone red is a harness nobody has
+   tested. The `attestation`, `dist` and `binaries` stand-ins check what
+   `cosign`, the wheel build and PyInstaller are *called with* and what
+   files they are expected to produce; they do not need to sign or build
+   anything to catch a wrong name.
+
+`release_harness.py` has the runner and the stand-ins;
+`check_release.py` has the fixtures, what each job must do, and the
+fault injected into it. `release_harness.HARNESSED` is the map from job
+to harness, and `release_harness.coverage()` is the check: it fails on a
+job with no harness, on a harness naming a job that is gone, and on two
+jobs sharing one harness. That check is itself shown to fail, three
+ways, every time the suite runs.
+
+**When you add a job**, add its harness in the same pull request. When
+you change a job's shell, run `python check_release.py` before pushing:
+it is the only place a workflow's shell runs outside a release.
+
+`vsce` is the worked example, from 8.2.1: the Marketplace job's steps run
+in bash against stand-ins for `vsce`, `npm` and `sleep`, through a
+timeout on every attempt, timeouts that clear, a version listed after a
+timeout, a refused token, no token, and a version already listed. The
+job must be red whenever the Marketplace does not list the version at
+its end.
 
 ## Performance
 
