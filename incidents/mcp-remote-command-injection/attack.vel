@@ -1,0 +1,37 @@
+// The shape of CVE-2025-6514: the untrusted server names its own
+// authorization endpoint, and the proxy opens it by handing the string to
+// the operating system.
+//
+// The answer is read from a file here so that this entry runs with no
+// network. Where it came from makes no difference to the refusal: a Text
+// is a Text, and reaching the operating system is an effect.
+
+fn open_in_browser(url: Text) -> Text uses ffi or fail {
+    return try py("os", "system", ["open " + url])
+}
+
+fn main() uses io, fs, ffi {
+    check read_file("oauth_metadata.json") {
+        ok metadata {
+            check json_get(metadata, "authorization_endpoint") {
+                ok endpoint {
+                    print("opening the endpoint the server named")
+                    check open_in_browser(endpoint) {
+                        ok answer {
+                            print("opened")
+                        }
+                        fail why {
+                            print("could not open it: " + why)
+                        }
+                    }
+                }
+                fail why {
+                    print("no endpoint in the metadata: " + why)
+                }
+            }
+        }
+        fail why {
+            print("no metadata: " + why)
+        }
+    }
+}

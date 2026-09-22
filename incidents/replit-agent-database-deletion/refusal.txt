@@ -1,0 +1,25 @@
+# under the budget a program gets when nobody sets one
+$ sabline drop_table.vel
+error[E310] 'py_new' needs the 'ffi' effect, which this run does not allow (it allows: io)
+  --> ./stdlib/db.vel, line 7
+  how to fix (pick one):
+    1. allow it: sabline <file> --allow io,ffi
+    2. a run with no --allow gets io (5.0); --allow all grants every effect
+    3. or use a program that does not need it
+  reference: https://sabline.dev/llms.txt
+exit 1
+
+# with Python granted, but not the module that talks to the database
+$ sabline drop_table.vel --allow io,ffi:json,fs:read:./data,fs:write:./data --receipt receipt.json
+error[E311] 'py_new' reaches into Python module 'sqlite3', which this run does not allow
+  --> ./stdlib/db.vel, line 7
+  how to fix (pick one):
+    1. allow it: --allow ffi:sqlite3,json
+    2. or use a program that does not need it
+  reference: https://sabline.dev/llms.txt
+exit 1
+
+# and with the grant right, nothing stops the drop
+$ sabline drop_table.vel --allow io,ffi:sqlite3,ffi:_sqlite3,fs:read:./data,fs:write:./data --receipt receipt-allowed.json
+dropped
+exit 0

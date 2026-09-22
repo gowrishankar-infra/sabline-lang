@@ -1,0 +1,22 @@
+# the untrusted server's endpoint reaches the operating system
+$ sabline attack.vel --allow io,fs:read:.,ffi:json --receipt receipt.json
+opening the endpoint the server named
+error[E311] 'py' reaches into Python module 'os', which this run does not allow
+  --> attack.vel, line 10
+  how to fix (pick one):
+    1. allow it: --allow ffi:os,json
+    2. or use a program that does not need it
+  reference: https://sabline.dev/llms.txt
+exit 1
+
+# and with no ffi grant at all
+$ sabline attack.vel --allow io,fs:read:.
+opening the endpoint the server named
+error[E310] 'py' needs the 'ffi' effect, which this run does not allow (it allows: fs:read:.,io)
+  --> attack.vel, line 10
+  how to fix (pick one):
+    1. allow it: sabline <file> --allow fs:read:.,io,ffi
+    2. a run with no --allow gets io (5.0); --allow all grants every effect
+    3. or use a program that does not need it
+  reference: https://sabline.dev/llms.txt
+exit 1

@@ -1,0 +1,15 @@
+{
+  "schema": "sabline.incident-run/1",
+  "steps": [
+    {
+      "name": "the mail goes to an address outside the granted domain",
+      "in_repo": true,
+      "command": ["python", "examples/runner/host.py",
+                  "examples/runner/digest_outside.vel"],
+      "expect_exit": 1,
+      "expect": ["error[E321]",
+                 "argument 'to' does not match '*@corp.com'",
+                 "mail sent: 0"]
+    }
+  ]
+}

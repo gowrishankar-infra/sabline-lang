@@ -1,0 +1,15 @@
+# the credential the Action printed into the build log
+$ sabline attack.vel --allow io,env --receipt receipt.json
+error[E560] argument 1 of 'print' is Secret of Text, and 'print' performs io - a Secret cannot be printed, written, sent or passed to Python. It came from env(), line 8
+  --> attack.vel, line 10
+  how to fix (pick one):
+    1. build what you emit out of values that are not secret
+    2. or let it out on purpose: declassify(x, "why this is safe to emit") needs "uses declassify", is named in the audit with that reason, and an operator can refuse to grant it
+  reference: https://sabline.dev/llms.txt
+exit 1
+
+# the same program with the token used and not shown
+$ sabline same_program_kept.vel --allow io,env --receipt receipt-kept.json
+changed-files: collecting the diff
+an authorization header was built; it is not in this output
+exit 0

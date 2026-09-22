@@ -1,0 +1,45 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "attack.vel",
+      "digest": {
+        "sha256": "70130c204e8784374fa5df0f78b7b9518837f7139ffa3d71965a9336dff52e8e"
+      }
+    }
+  ],
+  "predicateType": "https://sabline.dev/receipt/v1",
+  "predicate": {
+    "schema": "sabline.receipt/1",
+    "producer": {
+      "name": "sabline-lang",
+      "uri": "https://github.com/gowrishankar-infra/sabline-lang",
+      "version": "<version>"
+    },
+    "specification": "sabline-spec <version>",
+    "startedAt": "<varies>",
+    "wall_time_ms": "<varies>",
+    "budget": "fs:read:./id_rsa.pem,io,net:calculator.example.com:443",
+    "run_parameters": {
+      "seed": null,
+      "freeze_time": null,
+      "timeout": null,
+      "max_memory_mb": null,
+      "max_read_bytes": 67108864,
+      "confinement": "<varies by operating system>",
+      "confinement_reason": "<varies by operating system>",
+      "confinement_layers": "<varies by operating system>",
+      "os_policy_sha256": "<varies by operating system>"
+    },
+    "effects_used": {},
+    "grants_used": [],
+    "refusals": [],
+    "declassifications": [],
+    "exit": {
+      "status": 1,
+      "outcome": "did_not_compile",
+      "code": "E560"
+    },
+    "complete": true
+  }
+}

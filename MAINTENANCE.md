@@ -183,3 +183,9 @@ and every script, 182 files at 8.2.0, with 0 findings. Each
     python agent_loop.py --metric --offline
 
 None of them writes into the repository.
+
+`check_urls.py` reads `incidents/**/*.md` as well, so the monthly run asks
+every source the incident catalogue cites. A source that stops answering is
+worth knowing about before somebody sets `verified: true` against it: replace
+it with another primary report, or say in the entry that the original has
+gone, as `postmark-mcp-bcc-exfiltration` does.

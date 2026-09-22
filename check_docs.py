@@ -222,6 +222,7 @@ NOT_COUNTS = [
     (r"exit 1 as the plain check", "an exit status"),
     (r"stops working in 8\.x", "the major version in which the names "
                                 "the rename kept still work"),
+    (r"in this lane since 2023", "the year the incident catalogue starts"),
 ]
 
 # repository-shaped names in README.md that are not files here: (name, why)
@@ -1031,8 +1032,10 @@ def check_codes() -> Result:
             if line.startswith("## "):
                 section = line[3:].strip()
             # docs/crosswalk.md quotes AIUC-1's requirement identifiers, whose
-            # E001 to E017 are AIUC-1's and not Sabline's error codes (8.3)
-            if doc == "docs/crosswalk.md" and (
+            # E001 to E017 are AIUC-1's and not Sabline's error codes (8.3);
+            # so does docs/known-open.md, which holds the crosswalk's
+            # known-open section
+            if doc in ("docs/crosswalk.md", "docs/known-open.md") and (
                     section == "AIUC-1" or "AIUC-1:" in line):
                 continue
             for m in CODE.finditer(line):
@@ -1422,8 +1425,10 @@ def _table_first_cells(text: str, heading: str) -> list[str]:
 
 def crosswalk_check() -> Result:
     """docs/crosswalk.md (8.3) names every guarantee in README.md's "Why
-    Sabline" table and every row of THREAT_MODEL.md's Known open table, and
-    nothing that is not one; every row it has gives one of the four words."""
+    Sabline" table, and nothing that is not one; every row it has gives one
+    of the four words. docs/known-open.md, where the known-open table moved
+    from THREAT_MODEL.md so that neither page outgrows PAGE_BUDGET, lands
+    every row of that table on the crosswalk's controls, and no other."""
     res = Result("crosswalk")
     page = HERE / "docs" / "crosswalk.md"
     if not page.exists():
@@ -1431,7 +1436,11 @@ def crosswalk_check() -> Result:
         return res
     text = page.read_text(encoding="utf-8")
     readme = (HERE / "README.md").read_text(encoding="utf-8")
-    threat = (HERE / "THREAT_MODEL.md").read_text(encoding="utf-8")
+    known_open = HERE / "docs" / "known-open.md"
+    if not known_open.exists():
+        res.wrong("docs/known-open.md is missing")
+        return res
+    threat = known_open.read_text(encoding="utf-8")
     guarantees = _table_first_cells(readme, "## Why Sabline")
     listed = _section_headings(text, "Every guarantee, and where it lands")
     listed = [h for h in listed if h != "Rows that rest on no guarantee"]
@@ -1444,16 +1453,16 @@ def crosswalk_check() -> Result:
         res.ok(f"the crosswalk names README's {len(guarantees)} guarantees, "
                f"and no other")
     open_rows = [c.replace("`", "") for c in
-                 _table_first_cells(threat, "## Known open")]
+                 _table_first_cells(threat, "# Known open")]
     open_listed = [h.replace("`", "") for h in _section_headings(
-        text, "Every known-open item, and where it lands")]
+        threat, "Every known-open item, and where it lands")]
     if set(open_rows) != set(open_listed) or not open_rows:
-        res.wrong(f"the crosswalk's known-open items are not THREAT_MODEL's: "
+        res.wrong(f"docs/known-open.md's sections are not its table's rows: "
                   f"missing {sorted(set(open_rows) - set(open_listed))}, "
                   f"extra {sorted(set(open_listed) - set(open_rows))}")
     else:
-        res.ok(f"the crosswalk names THREAT_MODEL.md's {len(open_rows)} "
-               f"known-open items, and no other")
+        res.ok(f"docs/known-open.md lands each of its {len(open_rows)} "
+               f"known-open items on the crosswalk, and no other")
     words = ("enforced", "recorded", "partial", "not addressed")
     bad = []
     in_controls = False

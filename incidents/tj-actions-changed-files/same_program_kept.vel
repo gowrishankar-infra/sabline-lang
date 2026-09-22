@@ -1,0 +1,10 @@
+// The same work, with the rule obeyed: the token is read and used, and
+// what reaches the log is a sentence about the request rather than the
+// token. `"Bearer " + token` is still a Secret of Text.
+
+fn main() uses io, env {
+    let token = env("GITHUB_TOKEN", "")
+    let header = "Bearer " + token
+    print("changed-files: collecting the diff")
+    print("an authorization header was built; it is not in this output")
+}

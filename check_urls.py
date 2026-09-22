@@ -51,6 +51,10 @@ CARD_URL = "https://sabline.dev/llms.txt"
 EARLIER_CARD_URLS = ("https://velaris-lang.dev/llms.txt",)
 SOURCES = ["*.md", "docs/*.md", "benchmark/*.md", "paper/*.md", "stdlib/*.md",
            "editor/vscode/*.md", "npm/*.md", "integrations/**/*.md",
+           # the incident catalogue's sources: every entry names the report
+           # it was written from, and a summary whose source has gone is
+           # worth knowing about before somebody fact-checks it
+           "incidents/**/*.md",
            "action.yml", "pyproject.toml", "CITATION.cff",
            "integrations/mcp_registry/server.json", "mcpb/manifest.json",
            "npm/package.json", "editor/vscode/package.json"]

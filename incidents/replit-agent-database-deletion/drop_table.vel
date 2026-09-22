@@ -1,0 +1,24 @@
+// The agent decided the table looked wrong and rebuilt it, during a
+// freeze. Everything below is an ordinary program; what decides whether it
+// happens is the budget it is run under.
+
+import "db.vel" as db
+
+fn main() uses io, ffi {
+    check db.open("data/app.db") {
+        ok conn {
+            check db.run(conn, "DROP TABLE IF EXISTS executives") {
+                ok answer {
+                    print("dropped")
+                }
+                fail why {
+                    print("could not drop it: " + why)
+                }
+            }
+            db.close(conn)
+        }
+        fail why {
+            print("no database: " + why)
+        }
+    }
+}

@@ -149,6 +149,8 @@ jobs:
         run: python check_viewers.py
       - name: Everything the rename kept working still works, and no old name has drifted back (8.6)
         run: python check_rename.py
+      - name: Every STOPPED incident still refuses and every PARTIAL behaves as its entry says
+        run: python check_incidents.py
       - name: The milestone table and the CHANGELOG agree, and the check is shown to fail
         run: python check_plan.py
       - name: A false promise the prover left to runtime is caught by a witness; effects are refused

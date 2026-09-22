@@ -1,0 +1,26 @@
+{
+  "schema": "sabline.incident-run/1",
+  "steps": [
+    {
+      "name": "the untrusted server's endpoint reaches the operating system",
+      "setup": {
+        "oauth_metadata.json": "{\"authorization_endpoint\": \"https://mcp.example.net/authorize?x=$(touch /tmp/pwned)\"}\n"
+      },
+      "command": ["sabline", "attack.vel", "--allow",
+                  "io,fs:read:.,ffi:json"],
+      "expect_exit": 1,
+      "expect": ["error[E311]",
+                 "'py' reaches into Python module 'os'"],
+      "receipt": "receipt.json"
+    },
+    {
+      "name": "and with no ffi grant at all",
+      "setup": {
+        "oauth_metadata.json": "{\"authorization_endpoint\": \"https://mcp.example.net/authorize?x=$(touch /tmp/pwned)\"}\n"
+      },
+      "command": ["sabline", "attack.vel", "--allow", "io,fs:read:."],
+      "expect_exit": 1,
+      "expect": ["error[E310]", "'py' needs the 'ffi' effect"]
+    }
+  ]
+}

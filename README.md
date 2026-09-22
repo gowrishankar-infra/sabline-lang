@@ -1054,6 +1054,12 @@ docker run --rm -v "$PWD:/work" sabline check /work/main.vel
 What a reviewer should read before allowing agent-written Sabline to
 run: [THREAT_MODEL.md](THREAT_MODEL.md), [COMPLIANCE.md](COMPLIANCE.md)
 and the verification steps in [SECURITY.md](SECURITY.md).
+[incidents/](incidents/README.md) is the same question asked from the
+other end: publicly reported attacks in this lane since 2023, each with
+the shape written as a Sabline program and a verdict on whether it
+refuses — including the ones where the honest verdict is that it does
+not. It is a catalogue of shapes, not a claim that Sabline would have
+prevented the real events.
 
 ## Project
 

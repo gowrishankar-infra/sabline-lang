@@ -44,9 +44,10 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li></ul>
 </li>
 <li><span class="sec-label">Spec</span>
 <ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
@@ -82,6 +83,30 @@ once on a Windows leg in 8.4 and again on #97, and never reproduced.
 one, and terminates the door only once its last line is in. The new form
 also catches things the old one could not: which endpoint a line names,
 and which outcome, are now part of the golden.</p>
+<p>An <strong>incident catalogue</strong>, in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/README.md">incidents/</a> and on
+<a href="incidents.html">/incidents.html</a>. Sixteen publicly
+reported incidents from 2023 onward in this project's lane - AI agent
+failures and supply-chain attacks where code ran with more authority than
+it should have - each with the primary report it was written from, and a
+verdict on whether a program of the same <em>shape</em> is refused: STOPPED,
+PARTIAL, NOT COVERED, UNVERIFIED, or OUT OF SCOPE where nothing ran. A
+STOPPED or PARTIAL entry carries a real program, the command, the refusal
+the runtime printed and the receipt, recorded by <code>incident_evidence.py</code>
+and re-run by <code>check_incidents.py</code> on every push, so no release is made
+from a tree where one has stopped refusing. It is not a claim that adopting
+Sabline would have prevented any of the real events, and every entry says
+which part of its incident is outside Sabline entirely; the seven new rows
+in the known-open table are where those sentences went. Every
+summary carries <code>verified: false</code> until a person has checked it against its
+sources, and <code>build_incidents.py</code> will not publish one that does.</p>
+<p>The known-open table has a page of its own,
+<a href="known-open.html">docs/known-open.md</a>, with the crosswalk's section that
+lands each of its rows on a framework's controls. Those seven rows took
+threat-model.html and crosswalk.html past the 100,000-byte page budget, and
+the table grows every time a gap is recorded honestly, so it was moved
+rather than trimmed and the budget stays where it was. THREAT_MODEL.md
+keeps its Known open heading, which links to the page, and every word of
+the table and the section is where it was moved to.</p>
 <h2 id="9x">9.x <a class="anchor" href="#9x" aria-label="Link to this section">#</a></h2>
 <ul><li><a href="changelog-9.html#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li>
 <li><a href="changelog-9.html#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li>

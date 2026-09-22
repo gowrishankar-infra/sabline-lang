@@ -1,0 +1,24 @@
+{
+  "schema": "sabline.incident-run/1",
+  "steps": [
+    {
+      "name": "the model is steered into asking the server for more than its ceiling",
+      "command": ["python", "ask_for_more.py"],
+      "expect_exit": 0,
+      "expect": ["this server does not grant fs", "outcome=ceiling"]
+    },
+    {
+      "name": "and the key cannot leave in an argument, even to a granted host",
+      "setup": {
+        "id_rsa.pem": "-----BEGIN OPENSSH PRIVATE KEY-----\nCANARY-tool-poisoning-this-is-not-a-real-key\n-----END OPENSSH PRIVATE KEY-----\n"
+      },
+      "command": ["sabline", "attack.vel", "--allow",
+                  "io,fs:read:./id_rsa.pem,net:calculator.example.com:443"],
+      "expect_exit": 1,
+      "expect": ["error[E560]", "argument 2 of 'post' is Secret of Text",
+                 "It came from read_file_secret()"],
+      "expect_absent": ["CANARY-tool-poisoning-this-is-not-a-real-key"],
+      "receipt": "receipt.json"
+    }
+  ]
+}

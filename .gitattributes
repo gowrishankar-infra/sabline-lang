@@ -3,3 +3,7 @@
 tests/sarif-schema-2.1.0.json -text
 # check_permissions.py reads these line ends as they are: CRLF, and tabs
 tests/permissions/** -text
+# the incident catalogue's evidence is recorded byte for byte, and one
+# recording holds the sha256 `sabline add` computed from a program on disk,
+# so no file here may be rewritten on checkout (check_incidents.py)
+incidents/** -text

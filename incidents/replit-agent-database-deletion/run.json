@@ -1,0 +1,29 @@
+{
+  "schema": "sabline.incident-run/1",
+  "steps": [
+    {
+      "name": "under the budget a program gets when nobody sets one",
+      "command": ["sabline", "drop_table.vel"],
+      "expect_exit": 1,
+      "expect": ["error[E310]", "needs the 'ffi' effect"]
+    },
+    {
+      "name": "with Python granted, but not the module that talks to the database",
+      "setup": {"data/README": "the directory the database lives in\n"},
+      "command": ["sabline", "drop_table.vel", "--allow",
+                  "io,ffi:json,fs:read:./data,fs:write:./data"],
+      "expect_exit": 1,
+      "expect": ["error[E311]",
+                 "reaches into Python module 'sqlite3'"],
+      "receipt": "receipt.json"
+    },
+    {
+      "name": "and with the grant right, nothing stops the drop",
+      "command": ["sabline", "drop_table.vel", "--allow",
+                  "io,ffi:sqlite3,ffi:_sqlite3,fs:read:./data,fs:write:./data"],
+      "expect_exit": 0,
+      "expect": ["dropped"],
+      "receipt": "receipt-allowed.json"
+    }
+  ]
+}

