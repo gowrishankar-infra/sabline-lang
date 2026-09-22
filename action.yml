@@ -205,7 +205,7 @@ runs:
     # fork, where the job's token is read-only and the upload would fail.
     - name: Upload the findings to code scanning
       if: ${{ always() && steps.check.outputs.sarif-file != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-      uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+      uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
       with:
         sarif_file: ${{ steps.check.outputs.sarif-file }}
 
@@ -279,7 +279,7 @@ runs:
 
     - name: Upload the ratchet's findings to code scanning
       if: ${{ always() && steps.ratchet.outputs.sarif-file != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-      uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+      uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
       with:
         sarif_file: ${{ steps.ratchet.outputs.sarif-file }}
 
@@ -558,6 +558,6 @@ runs:
 
     - name: Upload deps-diff's findings to code scanning
       if: ${{ always() && steps.deps.outputs.sarif-file != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-      uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+      uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
       with:
         sarif_file: ${{ steps.deps.outputs.sarif-file }}
