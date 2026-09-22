@@ -59,6 +59,67 @@
 <main id="content" class="doc" tabindex="-1">
 <h1 id="changelog">Changelog: 9.x</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own <a class="anchor" href="#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own" aria-label="Link to this section">#</a></h2>
+<p>9.0.0-alpha.2 tagged and did not publish either. Its crates_io job ran
+this time - the skip alpha.2 fixed stayed fixed - and failed at the one
+place nothing had exercised:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>Failed to retrieve token from Cargo registry. Status: 400.
+Trusted Publishing does not support the `workflow_run` event trigger
+due to security concerns.</code></pre></div>
+<p><strong>crates.io refuses a Trusted Publishing token minted under
+<code>workflow_run</code>, and release.yml runs on <code>workflow_run</code>.</strong> It refuses it
+on purpose: crates.io removed <code>workflow_run</code> and <code>pull_request_target</code>
+because both have been behind supply-chain incidents. The triggers it
+allows are <code>push</code>, <code>release</code> and <code>workflow_dispatch</code>. <code>push</code> on a tag is
+the one this project cannot use - no workflow here listens for tags,
+precisely so that a tag pushed by hand publishes nothing.</p>
+<p>So the crate's publish is
+<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/.github/workflows/publish-crate.yml"><code>publish-crate.yml</code></a>, a
+<code>workflow_dispatch</code> workflow of its own, and release.yml starts it: the
+<code>crates_io</code> job tags, asks whether crates.io has the version, dispatches
+that workflow if it does not, <strong>waits for the run it started</strong> with
+<code>gh run watch --exit-status</code>, and asks crates.io itself afterwards. A
+publish that did not happen cannot be mistaken for one that did.
+release.yml still decides what is released; that workflow is the arm that
+reaches crates.io for it, and it stores no credential either.</p>
+<p><strong>A workflow anyone with write access can start by hand is only safe if
+it refuses everything release.yml would not have asked for.</strong> Before a
+credential is touched, and with no <code>if:</code> of its own to be stepped around,
+<code>release_checks.py crate-publishable</code> gives one of three answers:</p>
+<ul>
+<li><strong>red</strong> - the version is not a pre-release, or the checkout's own
+<code>rt/Cargo.toml</code> does not say it, or its tag is missing or names another
+commit. release.yml only ever tags the commit whose tests passed, so a
+tag that names this commit is the statement that they did.</li>
+<li><strong>publish</strong> - go ahead. Every step that touches a credential or the
+registry is conditioned on this answer and on nothing else.</li>
+<li><strong>skip</strong> - crates.io has it already. Not a refusal and not a failure:
+there is nothing left to do, the publish steps are skipped, and the run
+ends green having published nothing. A re-run lands here, and so does a
+version that landed while somebody was typing.</li>
+</ul>
+<p><code>check_release.py</code> holds every one of those to a fixture, the workflow's
+shape included: the guard comes before the token and before the publish,
+the guard has no condition, each step after it carries the guard's own
+answer and nothing else, the last step runs whichever way the guard went,
+and nothing in that workflow publishes anywhere but crates.io.</p>
+<p><strong>What a person does once</strong>, and only once: the trusted publisher on
+crates.io names a workflow file, and it now names <code>publish-crate.yml</code>
+rather than <code>release.yml</code>. RELEASING.md says where to change it. No token
+is involved and none is stored; the entry simply pointed at the wrong
+file.</p>
+<p>compatibility: a pre-release publishes the sabline-rt crate and a GitHub
+release marked pre-release and nothing else, so nothing a user of 8.6.0
+has is touched - not PyPI, not npm, not the VS Code Marketplace, not the
+MCP registry, not the Action pins, and not any "latest" anywhere. The
+Python package's version files still say 8.6.0, and the release gate
+refuses a pre-release whose commit moved one.</p>
+<p><strong>v9.0.0-alpha.1 and v9.0.0-alpha.2 stay where they are</strong>, tags and all,
+neither moved nor deleted nor retagged - a published thing stays where it
+is (3.4 was not retagged; 6.0.0 was yanked, not deleted). alpha.1's crate
+is on crates.io because a person put it there, which is how a crate's
+first version always gets there. Neither has a GitHub release, and the
+two entries below say why. What alpha.1 was meant to be, this is.</p>
 <h2 id="900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes <a class="anchor" href="#900-alpha2---the-parser-twice-and-a-release-that-publishes" aria-label="Link to this section">#</a></h2>
 <p>9.0.0-alpha.1's content, released. The alpha before it tagged
 <code>v9.0.0-alpha.1</code> and then published nothing, because of a defect in
@@ -300,7 +361,7 @@ performance floor of its own.</p>
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li><li><a href="#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li><li><a href="#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li><li><a href="#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

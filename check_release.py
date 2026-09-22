@@ -506,6 +506,19 @@ def run_job(name: str, job: dict[Any, Any], release: Release) -> None:
     """What one job of release.yml does, against the stand-in."""
     steps = "\n".join(str(s.get("run", "")) for s in job.get("steps", []))
     asks = re.search(r"release_checks\.py published (\w+)", steps)
+    if name == "crates_io":
+        # It does not publish: it dispatches publish-crate.yml and waits
+        # for crates.io to serve the version, because crates.io refuses a
+        # Trusted Publishing token minted under `workflow_run`. The
+        # stand-in plays the dispatched workflow, which is the same
+        # question - does crates.io end up with it - from this job's side.
+        if "gh workflow run publish-crate.yml" not in steps:
+            raise Unreadable("the crates_io job does not dispatch "
+                             "publish-crate.yml, so nothing would publish "
+                             "the crate")
+        if not release_checks.published("crates", release.v):
+            release.publish("crates")
+        return
     if name == "tag":
         if not release.tagged:
             release.tagged = True
@@ -1365,6 +1378,94 @@ def main() -> int:
        and outputs.get("version") == "7.2.0", out + err)
 
     print()
+    print("crate-publishable: what a hand dispatch cannot do, and what is "
+          "simply done already")
+    print("-" * 62)
+
+    # publish-crate.yml runs on workflow_dispatch, which anyone with write
+    # access can start. Three things refuse it. A fourth answer - the
+    # version is on crates.io already - is not a refusal: it is nothing
+    # left to do, and the run ends green having published nothing.
+    repo = base_repo("crate-publishable")
+    write_crate(repo, "9.0.0-alpha.1")
+    write_changelog(repo, ("9.0.0-alpha.1", "The parser, twice", "..."),
+                    BASE_ENTRY)
+    head = commit(repo, "9.0.0-alpha.1")
+    git(repo, "tag", "-a", "v9.0.0-alpha.1", "-m", "v9.0.0-alpha.1")
+    elsewhere = git(repo, "rev-parse", "HEAD~1")
+
+    def why(version: str, sha: str, there: bool = False) -> tuple[Any, ...]:
+        StandIn.routes = dict(StandIn.routes or {})
+        StandIn.routes[("GET", f"/api/v1/crates/sabline-rt/{version}")] = (
+            (200, {"version": {"num": version}}) if there else (404, {}))
+        return release_checks.crate_publishable(repo, version, sha)
+
+    stand_in = ThreadingHTTPServer(("127.0.0.1", 0), StandIn)
+    threading.Thread(target=stand_in.serve_forever, daemon=True).start()
+    guard_base = f"http://127.0.0.1:{stand_in.server_address[1]}"
+    guard_saved = dict(release_checks.ENDPOINTS)
+    release_checks.ENDPOINTS.update({k: guard_base for k in guard_saved})
+    try:
+        problems, already = why("7.1.2", head)
+        ok("a version that is not a pre-release is refused",
+           any("not a pre-release" in line for line in problems), str(problems))
+        problems, already = why("9.0.0-alpha.7", head)
+        ok("a version the checkout does not hold is refused",
+           any("this run was asked for" in line for line in problems),
+           str(problems))
+        problems, already = why("9.0.0-alpha.1", elsewhere)
+        ok("a commit the tag does not name is refused - release.yml only "
+           "ever tags the commit whose tests passed, so the tag is that "
+           "statement",
+           any("and this run was asked for" in line for line in problems),
+           str(problems))
+
+        repo2 = base_repo("crate-publishable-untagged")
+        write_crate(repo2, "9.0.0-alpha.1")
+        head2 = commit(repo2, "9.0.0-alpha.1, not tagged")
+        problems, already = release_checks.crate_publishable(
+            repo2, "9.0.0-alpha.1", head2)
+        ok("a version with no tag is refused - release.yml tags before it "
+           "asks",
+           any("there is no tag" in line for line in problems), str(problems))
+
+        problems, already = why("9.0.0-alpha.1", head, there=False)
+        ok("a version release.yml would have asked for is allowed, with "
+           "something to do", not problems and not already,
+           f"{problems} already={already}")
+        outputs_file = SCRATCH / "publishable.out"
+        code, out = in_process("crate-publishable", "9.0.0-alpha.1", "--sha",
+                               head, "--repo", str(repo), "--annotate",
+                               "--github-output", str(outputs_file))
+        ok("...and says so as publish=true, exit 0",
+           code == 0 and "publish=true" in
+           outputs_file.read_text(encoding="utf-8"), out)
+
+        problems, already = why("9.0.0-alpha.1", head, there=True)
+        ok("a version crates.io already has is NOT a refusal",
+           not problems and already, f"{problems} already={already}")
+        code, out = in_process("crate-publishable", "9.0.0-alpha.1", "--sha",
+                               head, "--repo", str(repo), "--annotate",
+                               "--github-output", str(outputs_file))
+        ok("...it is a clean skip: exit 0, publish=false, and a notice "
+           "rather than an error",
+           code == 0 and "publish=false" in
+           outputs_file.read_text(encoding="utf-8")
+           and out.startswith("::notice::") and "nothing to publish" in out,
+           f"{code} {out}")
+
+        code, out = in_process("crate-publishable", "7.1.2", "--sha", head,
+                               "--repo", str(repo), "--annotate",
+                               "--github-output", str(outputs_file))
+        ok("...where a refusal is exit 1, publish=false, and an error",
+           code == 1 and "publish=false" in
+           outputs_file.read_text(encoding="utf-8")
+           and "::error::" in out, f"{code} {out}")
+    finally:
+        release_checks.ENDPOINTS.update(guard_saved)
+        stand_in.shutdown()
+
+    print()
     print("the release notes and the tag message")
     print("-" * 62)
     notes = SCRATCH / "notes.md"
@@ -1776,6 +1877,96 @@ def main() -> int:
                and results.get("consistency") == "success"
                and all(release.made[p] == 1 for p in PUBLISHES),
                f"{dict(release.made)} {results}")
+
+            print()
+            print("publish-crate.yml: the arm that reaches crates.io")
+            print("-" * 62)
+
+            # crates.io refuses a Trusted Publishing token minted under
+            # `workflow_run`, which release.yml runs on, and refuses it on
+            # purpose. The publish is a workflow_dispatch of its own, which
+            # anyone with write access can start - so it must refuse
+            # everything release.yml would not have asked for, before it
+            # touches a credential.
+            import yaml as _yaml
+            crate_yml = _yaml.safe_load(
+                (HERE / ".github" / "workflows" / "publish-crate.yml")
+                .read_text(encoding="utf-8"))
+            triggers = crate_yml.get("on", crate_yml.get(True)) or {}
+            ok("publish-crate.yml runs on workflow_dispatch and nothing else "
+               "- crates.io allows push, release and workflow_dispatch, and "
+               "refuses workflow_run",
+               set(triggers) == {"workflow_dispatch"}, str(list(triggers)))
+            pub = crate_yml["jobs"]["publish"]
+            ok("...in the release environment, with an OIDC token and no "
+               "stored credential",
+               pub.get("environment") == "release"
+               and pub.get("permissions", {}).get("id-token") == "write",
+               f"{pub.get('environment')} {pub.get('permissions')}")
+            pub_steps = list(pub.get("steps") or [])
+            pub_said = "\n".join(str(st.get("run", "")) for st in pub_steps)
+            guard = next(i for i, st in enumerate(pub_steps)
+                         if "crate-publishable" in str(st.get("run", "")))
+            token = next(i for i, st in enumerate(pub_steps)
+                         if "crates-io-auth-action" in str(st.get("uses", "")))
+            publish = next(i for i, st in enumerate(pub_steps)
+                           if "cargo publish" in str(st.get("run", "")))
+            ok("...and it asks crate-publishable before the step that asks "
+               "crates.io for a token, and before the publish",
+               guard < token < publish,
+               f"guard at {guard}, token at {token}, publish at {publish}")
+            ok("...with no `if` on the guard itself, so there is no way "
+               "past it",
+               "if" not in pub_steps[guard], str(pub_steps[guard].get("if")))
+            # the publish steps are conditioned on the guard's answer and on
+            # nothing else, which is what makes "already there" a clean skip
+            # rather than a second publish or a red run
+            after = pub_steps[guard + 1:]
+            conditioned = [st for st in after if "if" in st]
+            ok("...and every step that touches a credential or the registry "
+               "is conditioned on the guard's own answer",
+               all(str(st["if"]) == "steps.may.outputs.publish == 'true'"
+                   for st in conditioned)
+               and {pub_steps[token].get("uses"),
+                    pub_steps[publish].get("name")}
+               <= {st.get("uses") or st.get("name") for st in conditioned},
+               str([(st.get("name") or st.get("uses"), st.get("if"))
+                    for st in after]))
+            ok("...and the last step, which says crates.io serves it, runs "
+               "whichever way the guard went - a skip has to leave the "
+               "version there too",
+               "if" not in pub_steps[-1]
+               and "published crates" in str(pub_steps[-1].get("run", "")),
+               str(pub_steps[-1]))
+            ok("...and nothing in it publishes anywhere but crates.io",
+               not any(w in pub_said for w in ("pypi", "npm publish",
+                                               "vsce", "mcp-publisher",
+                                               "gh release")),
+               pub_said[:200])
+
+            crates_steps = list(jobs["crates_io"].get("steps") or [])
+            crates_said = "\n".join(str(st.get("run", ""))
+                                    for st in crates_steps)
+            ok("release.yml's crates_io job asks for actions: write, and "
+               "not for an id-token it can no longer use",
+               jobs["crates_io"].get("permissions", {}).get("actions")
+               == "write"
+               and "id-token" not in jobs["crates_io"].get("permissions", {}),
+               str(jobs["crates_io"].get("permissions")))
+            ok("...it dispatches publish-crate.yml and WAITS for that run, "
+               "with --exit-status, so a publish that did not happen cannot "
+               "be mistaken for one that did",
+               "gh workflow run publish-crate.yml" in crates_said
+               and "gh run watch" in crates_said
+               and "--exit-status" in crates_said, crates_said[:300])
+            ok("...and is red if the run it started never appeared at all",
+               "did not start" in crates_said and "exit 1" in crates_said,
+               crates_said[:300])
+            ok("...and asks crates.io itself afterwards, which is the same "
+               "question from the registry rather than from the run",
+               "published crates" in str(crates_steps[-1].get("run", ""))
+               and "--require" in str(crates_steps[-1].get("run", ""))
+               and "if" not in crates_steps[-1], str(crates_steps[-1]))
 
             print()
             print("every job after the tag survives a skipped ancestor")

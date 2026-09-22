@@ -5,6 +5,76 @@ below 8.6 uses the name it had at the time, which is what the
 record is for. [docs/renamed.md](docs/renamed.md) says what
 moved where.
 
+## 9.0.0-alpha.3 - The crate is published by a workflow of its own
+
+9.0.0-alpha.2 tagged and did not publish either. Its crates_io job ran
+this time - the skip alpha.2 fixed stayed fixed - and failed at the one
+place nothing had exercised:
+
+    Failed to retrieve token from Cargo registry. Status: 400.
+    Trusted Publishing does not support the `workflow_run` event trigger
+    due to security concerns.
+
+**crates.io refuses a Trusted Publishing token minted under
+`workflow_run`, and release.yml runs on `workflow_run`.** It refuses it
+on purpose: crates.io removed `workflow_run` and `pull_request_target`
+because both have been behind supply-chain incidents. The triggers it
+allows are `push`, `release` and `workflow_dispatch`. `push` on a tag is
+the one this project cannot use - no workflow here listens for tags,
+precisely so that a tag pushed by hand publishes nothing.
+
+So the crate's publish is
+[`publish-crate.yml`](.github/workflows/publish-crate.yml), a
+`workflow_dispatch` workflow of its own, and release.yml starts it: the
+`crates_io` job tags, asks whether crates.io has the version, dispatches
+that workflow if it does not, **waits for the run it started** with
+`gh run watch --exit-status`, and asks crates.io itself afterwards. A
+publish that did not happen cannot be mistaken for one that did.
+release.yml still decides what is released; that workflow is the arm that
+reaches crates.io for it, and it stores no credential either.
+
+**A workflow anyone with write access can start by hand is only safe if
+it refuses everything release.yml would not have asked for.** Before a
+credential is touched, and with no `if:` of its own to be stepped around,
+`release_checks.py crate-publishable` gives one of three answers:
+
+- **red** - the version is not a pre-release, or the checkout's own
+  `rt/Cargo.toml` does not say it, or its tag is missing or names another
+  commit. release.yml only ever tags the commit whose tests passed, so a
+  tag that names this commit is the statement that they did.
+- **publish** - go ahead. Every step that touches a credential or the
+  registry is conditioned on this answer and on nothing else.
+- **skip** - crates.io has it already. Not a refusal and not a failure:
+  there is nothing left to do, the publish steps are skipped, and the run
+  ends green having published nothing. A re-run lands here, and so does a
+  version that landed while somebody was typing.
+
+`check_release.py` holds every one of those to a fixture, the workflow's
+shape included: the guard comes before the token and before the publish,
+the guard has no condition, each step after it carries the guard's own
+answer and nothing else, the last step runs whichever way the guard went,
+and nothing in that workflow publishes anywhere but crates.io.
+
+**What a person does once**, and only once: the trusted publisher on
+crates.io names a workflow file, and it now names `publish-crate.yml`
+rather than `release.yml`. RELEASING.md says where to change it. No token
+is involved and none is stored; the entry simply pointed at the wrong
+file.
+
+compatibility: a pre-release publishes the sabline-rt crate and a GitHub
+release marked pre-release and nothing else, so nothing a user of 8.6.0
+has is touched - not PyPI, not npm, not the VS Code Marketplace, not the
+MCP registry, not the Action pins, and not any "latest" anywhere. The
+Python package's version files still say 8.6.0, and the release gate
+refuses a pre-release whose commit moved one.
+
+**v9.0.0-alpha.1 and v9.0.0-alpha.2 stay where they are**, tags and all,
+neither moved nor deleted nor retagged - a published thing stays where it
+is (3.4 was not retagged; 6.0.0 was yanked, not deleted). alpha.1's crate
+is on crates.io because a person put it there, which is how a crate's
+first version always gets there. Neither has a GitHub release, and the
+two entries below say why. What alpha.1 was meant to be, this is.
+
 ## 9.0.0-alpha.2 - The parser, twice, and a release that publishes
 
 9.0.0-alpha.1's content, released. The alpha before it tagged

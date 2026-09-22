@@ -1,0 +1,116 @@
+name: publish-crate
+
+# The one job that publishes the sabline-rt crate to crates.io.
+#
+# **Why this is not a job of release.yml.** crates.io refuses a Trusted
+# Publishing token minted under the `workflow_run` event - "Trusted
+# Publishing does not support the `workflow_run` event trigger due to
+# security concerns" - and `workflow_run` is what release.yml runs on,
+# because a release here is only ever the commit whose tests passed.
+# crates.io removed `workflow_run` and `pull_request_target` on purpose:
+# both have been behind supply-chain incidents. The allowed triggers are
+# `push`, `release` and `workflow_dispatch`, and this is the third.
+#
+# **So release.yml starts this one and waits for the result.** It tags the
+# commit, asks whether crates.io already has the version, dispatches this
+# workflow if it does not, and then polls crates.io until the version is
+# served or the poll runs out. Nothing about "a release is made by
+# release.yml and by nothing else" changes: release.yml still decides,
+# and this is the arm that reaches crates.io for it.
+#
+# **A workflow anyone with write access can start by hand is only safe if
+# it refuses everything release.yml would not have asked for.** Before a
+# credential is touched, `release_checks.py crate-publishable` refuses
+# unless the version is a pre-release, the checkout's own rt/Cargo.toml
+# says that version, and the tag exists and names the commit given -
+# release.yml only ever tags the commit whose tests passed, so a tag that
+# names this commit IS the statement that they did. A dispatch that is not
+# release.yml's is therefore a red run that published nothing.
+#
+# A version crates.io already has is a different answer: not a refusal,
+# nothing left to do. The publish steps are skipped and the run ends
+# green, so a re-run and a race are both harmless.
+#
+# It stores no credential. The token comes from this workflow's own GitHub
+# identity, and the trusted publisher on crates.io names this repository,
+# THIS workflow file and the environment `release` (RELEASING.md).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "the crate version to publish, e.g. 9.0.0-alpha.3"
+        required: true
+        type: string
+      sha:
+        description: "the commit its tag must name"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-crate
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish ${{ inputs.version }} to crates.io
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write            # crates.io trusted publishing, no token stored
+    env:
+      V: ${{ inputs.version }}
+      SHA: ${{ inputs.sha }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          ref: ${{ inputs.sha }}
+          fetch-depth: 0             # every tag, to check the one given
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+        with:
+          toolchain: stable
+      # Before anything else, and before any credential: is this something
+      # release.yml would have asked for? Three answers.
+      #
+      #   red      - a dispatch release.yml would not have made: the
+      #              version is not a pre-release, rt/Cargo.toml does not
+      #              say it, or its tag is missing or names another
+      #              commit. Nothing below runs.
+      #   publish  - go ahead.
+      #   skip     - crates.io has it already. That is not a refusal and
+      #              not a failure: there is nothing left to do, the steps
+      #              below are skipped, and the run ends green having
+      #              published nothing. A re-run lands here.
+      #
+      # This step carries no `if:` of its own, so there is no way past it,
+      # and every step after it is conditioned on its answer and on
+      # nothing else. check_release.py holds that shape.
+      - name: May this run publish it, and is there anything left to do?
+        id: may
+        run: python3 release_checks.py crate-publishable "$V" --sha "$SHA" --annotate --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+      # From the committed lockfile, as the release builds everything else
+      - name: Build, test and package
+        if: steps.may.outputs.publish == 'true'
+        working-directory: rt
+        run: |
+          cargo build --release --locked
+          cargo test --release --locked
+          cargo package --locked -p sabline-rt
+      - uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18  # v1.0.5
+        if: steps.may.outputs.publish == 'true'
+        id: auth
+      - name: Publish
+        if: steps.may.outputs.publish == 'true'
+        working-directory: rt
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: cargo publish --locked -p sabline-rt
+      # Whichever way the guard went, the version has to be there when this
+      # workflow ends: that is what release.yml waits on.
+      - name: crates.io serves it
+        run: python3 release_checks.py published crates "$V" --require --timeout 900 --interval 20 --annotate --summary "$GITHUB_STEP_SUMMARY"
