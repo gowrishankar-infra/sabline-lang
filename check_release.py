@@ -34,6 +34,7 @@ and the perf gate's medians of three runs a side. Nothing here leaves
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -1015,7 +1016,8 @@ class PinFixture:
 
 
 def run_move_pins_job(job: dict[Any, Any], bash: str,
-                      fixture: PinFixture) -> dict[str, Any]:
+                      fixture: PinFixture,
+                      patch: tuple[str, str] | None = None) -> dict[str, Any]:
     """The move_pins job's steps in order, in the fixture's checkout, with
     gh stood in for and python3 this Python. A `uses:` step succeeds; an
     `if:` is a steps.<id>.outputs.<key> == '<value>' test; a failed step
@@ -1047,8 +1049,10 @@ def run_move_pins_job(job: dict[Any, Any], bash: str,
         if "uses" in step:
             steps[name] = "success"
             continue
-        (fixture.home / f"step-{i}.sh").write_bytes(
-            str(step["run"]).encode("utf-8"))
+        script = str(step["run"])
+        if patch:
+            script = script.replace(*patch)
+        (fixture.home / f"step-{i}.sh").write_bytes(script.encode("utf-8"))
         runner = fixture.home / f"run-{i}.sh"
         runner.write_bytes((
             'fakebin=$FAKE\n'
@@ -1075,6 +1079,869 @@ def run_move_pins_job(job: dict[Any, Any], bash: str,
     return {"result": "failure" if failed else "success", "steps": steps,
             "outputs": outputs, "log": "\n".join(log)}
 
+
+
+# ---- every job of both workflows, its own shell, against stand-ins ----------
+#
+# release_harness.py has the runner and the stand-ins; the fixtures and
+# what each job must do are here. RELEASING.md carries the standing rule:
+# a job added to either workflow arrives with a harness, and
+# release_harness.coverage() fails until it has one.
+#
+# Each case runs its job twice - once as it is, which must be green, and
+# once with ONE fault injected, which must make it red. A harness that
+# has never been shown to fail is a harness nobody has tested.
+
+import release_harness as rh  # noqa: E402
+
+V = "7.2.0"
+PRE = "9.0.0-alpha.5"
+PREVIOUS = "v7.1.2"
+SHA = "a" * 40
+
+
+def job_context(version: str = V, *, prerelease: bool = False,
+                sha: str = SHA, paused: str = "false",
+                token: str = "a-marketplace-token") -> dict[str, Any]:
+    """What a runner puts in `needs`, `github`, `secrets`, `vars` and
+    `inputs` for these two workflows."""
+    return {
+        "needs": {
+            "gate": {"outputs": {
+                "release": "true", "build": "true",
+                "prerelease": "true" if prerelease else "false",
+                "version": version, "tag": f"v{version}",
+                "previous_tag": PREVIOUS, "sha": sha}},
+            "paused": {"outputs": {"paused": paused}},
+            "tag": {"result": "success"},
+        },
+        "github": {"token": "a-github-token", "repository": REPOSITORY,
+                   "sha": sha, "ref": "refs/heads/main",
+                   "event_name": "workflow_run",
+                   "event": {"workflow_run": {"head_sha": sha}}},
+        "secrets": {"VSCE_TOKEN": token},
+        "vars": {"RELEASE_PAUSED": ""},
+        "inputs": {"version": version, "sha": sha},
+    }
+
+
+def scene(base: str, files: dict[str, str] | None = None,
+          work: Path | None = None, **kw: Any) -> rh.Scenario:
+    return rh.Scenario(SCRATCH, base, files or {}, job_context(**kw), work=work)
+
+
+def repo_scene(base: str, name: str, version: str = V,
+               **kw: Any) -> tuple[rh.Scenario, str]:
+    """A throwaway git checkout at `version`, and its HEAD.
+
+    The six version files, a CHANGELOG with an entry for `version`, a
+    v7.1.2 tag before it: what `release_checks.py` reads out of a
+    checkout.
+    """
+    repo = SCRATCH / name
+    repo.mkdir(parents=True)
+    git(repo, "init", "-q", "-b", "main")
+    write_versions(repo, "7.1.2")
+    write_changelog(repo, BASE_ENTRY)
+    commit(repo, "v7.1.2")
+    git(repo, "tag", "-a", PREVIOUS, "-m", PREVIOUS)
+    write_versions(repo, version)
+    write_changelog(repo, (version, "Releases that tag themselves",
+                           "The workflow makes the release."), BASE_ENTRY)
+    for path, text in (("examples/effects.vel",
+                        "fn main() uses io {\n    print(\"hi\")\n}\n"),
+                       ("examples/hello.vel",
+                        "fn main() uses io {\n    print(\"hello\")\n}\n"),
+                       ("examples/discount.vel",
+                        "fn main() uses io {\n    print(\"d\")\n}\n"),
+                       ("sabline.py", "# the launcher\n"),
+                       ("report.txt", "a report\n")):
+        target = repo / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+    head = commit(repo, f"v{version}: the release commit")
+    sc = rh.Scenario(SCRATCH, base, {}, job_context(version=version, sha=head,
+                                                    **kw), work=repo)
+    return sc, head
+
+
+def green(ok: Any, job: str, r: dict[str, Any], *,
+          also: object = True, detail: str = "") -> bool:
+    good = r["result"] == "success" and bool(also)
+    ok(f"{job}: its own steps, in bash, against stand-ins",
+       good, detail or f"{r['steps']} log={r['log'][-2000:]}")
+    return good
+
+
+def red(ok: Any, job: str, what: str, r: dict[str, Any]) -> None:
+    ok(f"...and with {what}, the job is red",
+       r["result"] == "failure",
+       f"{r['steps']} log={r['log'][-1200:]}")
+
+
+# ---- the jobs, one function each ------------------------------------------
+
+def harness_gate(ok: Any, bash: str, base: str) -> None:
+    sc, head = repo_scene(base, "harness-gate")
+    r = rh.run_job("release.yml", "gate", sc, bash)
+    said = r["outputs"].get("gate", {}).get("outputs", {})
+    green(ok, "gate", r,
+          also=said.get("release") == "true" and said.get("version") == V
+          and said.get("tag") == f"v{V}" and said.get("sha") == head
+          and said.get("prerelease") == "false",
+          detail=f"{said} {r['log'][-1500:]}")
+    sc2, _ = repo_scene(base, "harness-gate-bad")
+    r2 = rh.run_job("release.yml", "gate", sc2, bash, fault=rh.Fault(
+        "the gate's outputs written to a directory that is not there",
+        patch=('--github-output "$GITHUB_OUTPUT"',
+               '--github-output no/such/place/out')))
+    red(ok, "gate", "its outputs written where nothing can read them", r2)
+
+
+def harness_dist(ok: Any, bash: str, base: str) -> None:
+    sc, _ = repo_scene(base, "harness-dist")
+    r = rh.run_job("release.yml", "dist", sc, bash)
+    pypi = sorted(sc.artifacts.get("pypi-dist", {}))
+    rel = sorted(sc.artifacts.get("release-dist", {}))
+    green(ok, "dist", r,
+          also=any(n.endswith(".whl") for n in pypi)
+          and any(n.endswith(".tar.gz") for n in pypi)
+          and "SHA256SUMS" in rel
+          and any(n.endswith(".cdx.json") for n in rel)
+          and any(n.startswith("sabline-mcp-tools-") and n.endswith(".json")
+                  for n in rel)
+          and all("/" not in n for n in pypi + rel),
+          detail=f"pypi-dist={pypi} release-dist={rel} log={r['log'][-2000:]}")
+    ok("...and the SBOM and the tool manifest were made from the wheel, "
+       "not from this tree",
+       sc.asked("cyclonedx-py", "environment")
+       and any("mcp-manifest" in call for call in sc.calls("sabline")),
+       f"{sc.calls('cyclonedx-py')} {sc.calls('sabline')}")
+    sc2, _ = repo_scene(base, "harness-dist-bad")
+    r2 = rh.run_job("release.yml", "dist", sc2, bash, fault=rh.Fault(
+        "the checksums list a manifest name that is not the one written",
+        patch=("sabline-mcp-tools-*.json > SHA256SUMS",
+               "sabline-mcp-tool-*.json > SHA256SUMS")))
+    red(ok, "dist", "a wrong artifact name in the checksum step", r2)
+
+
+def harness_reproducible(ok: Any, bash: str, base: str) -> None:
+    sc, _ = repo_scene(base, "harness-reproducible")
+    r = rh.run_job("release.yml", "reproducible", sc, bash)
+    green(ok, "reproducible", r,
+          also="reproducible: both builds are byte-identical" in r["log"],
+          detail=r["log"][-2000:])
+    sc2, _ = repo_scene(base, "harness-reproducible-bad")
+    r2 = rh.run_job("release.yml", "reproducible", sc2, bash, fault=rh.Fault(
+        "the second build given another SOURCE_DATE_EPOCH",
+        patch=("python -m build --wheel --outdir build2",
+               "SOURCE_DATE_EPOCH=1 python -m build --wheel --outdir build2")))
+    red(ok, "reproducible", "a second build that is not the first's bytes", r2)
+
+
+def harness_bundle(ok: Any, bash: str, base: str) -> None:
+    sc, _ = repo_scene(base, "harness-bundle")
+    r = rh.run_job("release.yml", "bundle", sc, bash)
+    kept = sorted(sc.artifacts.get("bundle", {}))
+    green(ok, "bundle", r,
+          also=kept == ["sabline.mcpb", "sabline.mcpb.pem",
+                        "sabline.mcpb.sha256", "sabline.mcpb.sig",
+                        "sabline.mcpb.sigstore.json"]
+          and sc.asked("cosign", "sign-blob", "sabline.mcpb"),
+          detail=f"{kept} {sc.calls('cosign')} log={r['log'][-1500:]}")
+    sc2, _ = repo_scene(base, "harness-bundle-bad")
+    r2 = rh.run_job("release.yml", "bundle", sc2, bash, fault=rh.Fault(
+        "cosign asked to sign a path that is not there",
+        patch=("cosign sign-blob --yes sabline.mcpb ",
+               "cosign sign-blob --yes sabline.mcp ")))
+    red(ok, "bundle", "a wrong path given to cosign", r2)
+
+
+LINUX = {"os": "ubuntu-latest", "asset": "sabline-linux", "sep": ":"}
+
+
+def harness_binaries(ok: Any, bash: str, base: str) -> None:
+    sc, _ = repo_scene(base, "harness-binaries")
+    r = rh.run_job("release.yml", "binaries", sc, bash, matrix=LINUX)
+    kept = sorted(sc.artifacts.get("binary-sabline-linux", {}))
+    green(ok, "binaries", r,
+          also=kept == ["sabline-linux", "sabline-linux.pem",
+                        "sabline-linux.sha256", "sabline-linux.sig",
+                        "sabline-linux.sigstore.json"]
+          and sc.asked("pyinstaller", "--onefile", "--name", "sabline")
+          and sc.asked("cosign", "sign-blob", "sabline-linux"),
+          detail=f"{kept} {sc.calls('pyinstaller')} log={r['log'][-2000:]}")
+    runs = sc.calls("exe")
+    ok("...and the executable proved its own confinement: it was run once "
+       "under SABLINE_FAULT_INJECT=spawn and refused, and once more with "
+       "--no-confine and not refused",
+       any(c[:1] == ["spawn"] and "--no-confine" not in c for c in runs)
+       and any(c[:1] == ["spawn"] and "--no-confine" in c for c in runs),
+       f"{runs} log={r['log'][-1500:]}")
+    sc2, _ = repo_scene(base, "harness-binaries-bad")
+    r2 = rh.run_job("release.yml", "binaries", sc2, bash, matrix=LINUX,
+                    fault=rh.Fault(
+                        "PyInstaller asked for another executable name",
+                        patch=("--name sabline ", "--name sabline-x ")))
+    red(ok, "binaries", "a wrong artifact name from PyInstaller", r2)
+
+
+def harness_attestation(ok: Any, bash: str, base: str) -> None:
+    identity = (f"https://github.com/{REPOSITORY}"
+                "/.github/workflows/release.yml@refs/heads/main")
+    sc, _ = repo_scene(base, "harness-attestation")
+    r = rh.run_job("release.yml", "attestation", sc, bash,
+                   extra_env={"FAKE_SIGSTORE_IDENTITY": identity})
+    kept = sorted(sc.artifacts.get("attestation", {}))
+    green(ok, "attestation", r,
+          also=len(kept) == 6
+          and sc.asked("cosign", "verify-blob-attestation")
+          and "sigstore-python: verified, as" in r["log"]
+          and "receipt: the attestation's subjects, outcome ok" in r["log"],
+          detail=f"{kept} log={r['log'][-2500:]}")
+    ok("...and both signatures were checked against the example's own "
+       "bytes, by cosign and by sigstore-python",
+       r["log"].count("Verified OK") == 2
+       and "the receipt verified, as" in r["log"], r["log"][-1500:])
+    sc2, _ = repo_scene(base, "harness-attestation-bad")
+    r2 = rh.run_job("release.yml", "attestation", sc2, bash,
+                    extra_env={"FAKE_SIGSTORE_IDENTITY": identity},
+                    fault=rh.Fault(
+                        "the Statement made about another file",
+                        patch=("sabline attest examples/effects.vel",
+                               "sabline attest examples/hello.vel")))
+    red(ok, "attestation", "a Statement about a file the verify step does "
+                           "not name", r2)
+
+
+def harness_perf(ok: Any, bash: str, base: str) -> None:
+    sc, _ = repo_scene(base, "harness-perf")
+    r = rh.run_job("release.yml", "perf", sc, bash)
+    green(ok, "perf", r,
+          also=sc.asked("python3", "perf_gates.py") or
+          any("perf_gates.py" in c for c in sc.calls("python3")),
+          detail=f"{sc.calls('python3')} log={r['log'][-1200:]}")
+    ok("...and it asked for three runs a side against the previous tag",
+       any("--runs" in c and c[c.index("--runs") + 1] == "3"
+           and PREVIOUS in c for c in sc.calls("python3")),
+       sc.calls("python3"))
+    sc2, _ = repo_scene(base, "harness-perf-bad")
+    r2 = rh.run_job("release.yml", "perf", sc2, bash, fault=rh.Fault(
+        "one run a side instead of three",
+        patch=("--runs 3", "--runs 1")))
+    red(ok, "perf", "one run a side, which perf_gates.py refuses", r2)
+
+
+def harness_differential(ok: Any, bash: str, base: str) -> None:
+    sc, _ = repo_scene(base, "harness-differential")
+    r = rh.run_job("release.yml", "differential", sc, bash)
+    green(ok, "differential", r,
+          also=any("check_differential.py" in c for c in sc.calls("python3")),
+          detail=f"{sc.calls('python3')} log={r['log'][-1200:]}")
+    sc2, _ = repo_scene(base, "harness-differential-bad")
+    r2 = rh.run_job("release.yml", "differential", sc2, bash, fault=rh.Fault(
+        "the corpus looked for where the checkout does not put it",
+        patch=("--spec sabline-spec/tests", "--spec sabline-spec/test")))
+    red(ok, "differential", "a wrong path to the conformance corpus", r2)
+
+
+def crate_files(version: str) -> dict[str, str]:
+    return {"rt/Cargo.toml": ("[package]\nname = \"sabline-rt\"\n"
+                              f"version = \"{version}\"\n"),
+            "rt/Cargo.lock": "# a lock file\n"}
+
+
+def harness_crate(ok: Any, bash: str, base: str) -> None:
+    sc = scene(base, crate_files(PRE), version=PRE, prerelease=True)
+    r = rh.run_job("release.yml", "crate", sc, bash)
+    kept = sorted(sc.artifacts.get("crate", {}))
+    green(ok, "crate", r,
+          also=kept == ["crate-contents.txt", f"sabline-rt-{PRE}.crate"],
+          detail=f"{kept} log={r['log'][-1500:]}")
+    ok("...and the artifact is FLAT: no entry has a directory in it, "
+       "which is what 9.0.0-alpha.3's release died of",
+       all("/" not in n for n in kept), kept)
+    sc2 = scene(base, crate_files(PRE), version=PRE, prerelease=True)
+    r2 = rh.run_job("release.yml", "crate", sc2, bash, fault=rh.Fault(
+        "the crate copied to a directory the upload does not name",
+        patch=("cp rt/target/package/sabline-rt-*.crate crate-assets/",
+               "cp rt/target/package/sabline-rt-*.crate crate-asset/")))
+    red(ok, "crate", "a wrong path for what the release carries", r2)
+
+
+def harness_paused(ok: Any, bash: str, base: str) -> None:
+    sc, _ = repo_scene(base, "harness-paused")
+    r = rh.run_job("release.yml", "paused", sc, bash)
+    said = r["outputs"].get("paused", {}).get("outputs", {})
+    green(ok, "paused", r, also=said.get("paused") == "false",
+          detail=f"{said} log={r['log'][-1200:]}")
+    sc_on, _ = repo_scene(base, "harness-paused-on")
+    sc_on.context["vars"]["RELEASE_PAUSED"] = "true"
+    r_on = rh.run_job("release.yml", "paused", sc_on, bash)
+    ok("...and with RELEASE_PAUSED set it says paused, and says so green "
+       "rather than failing",
+       r_on["result"] == "success"
+       and r_on["outputs"].get("paused", {}).get("outputs", {})
+       .get("paused") == "true",
+       f"{r_on['outputs']} {r_on['log'][-1200:]}")
+    sc2, _ = repo_scene(base, "harness-paused-bad")
+    r2 = rh.run_job("release.yml", "paused", sc2, bash, fault=rh.Fault(
+        "a command release_checks.py does not have",
+        patch=("release_checks.py paused", "release_checks.py pause")))
+    red(ok, "paused", "a wrong command name", r2)
+
+
+class TagFixture:
+    """A bare origin and a checkout of the release commit, which is what
+    the tag job is handed."""
+
+    def __init__(self, name: str) -> None:
+        self.home = SCRATCH / name
+        self.home.mkdir(parents=True)
+        self.origin = self.home / "origin.git"
+        self.work = self.home / "work"
+        git_init_bare(self.origin)
+        self.work.mkdir()
+        git(self.work, "init", "-q", "-b", "main")
+        write_versions(self.work, V)
+        write_changelog(self.work, (V, "Releases that tag themselves",
+                                    "The workflow makes the release."))
+        self.sha = commit(self.work, "the release commit")
+        git(self.work, "remote", "add", "origin", str(self.origin))
+        git(self.work, "push", "-q", "origin", "main")
+
+    def tags(self) -> str:
+        return git(self.origin, "tag", "--list")
+
+    def names(self, tag: str) -> str:
+        return git(self.origin, "rev-list", "-n", "1", tag)
+
+
+def git_init_bare(where: Path) -> None:
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(where)],
+                   check=True, capture_output=True)
+
+
+def harness_tag(ok: Any, bash: str, base: str) -> None:
+    fx = TagFixture("harness-tag")
+    sc = rh.Scenario(SCRATCH, base, {}, job_context(sha=fx.sha),
+                     work=fx.work)
+    r = rh.run_job("release.yml", "tag", sc, bash)
+    green(ok, "tag", r,
+          also=fx.tags() == f"v{V}" and fx.names(f"v{V}") == fx.sha,
+          detail=f"tags={fx.tags()!r} log={r['log'][-1500:]}")
+    again = rh.run_job("release.yml", "tag", sc, bash)
+    ok("...and run again it says the tag is already there and makes no "
+       "second one",
+       again["result"] == "success"
+       and "already tags" in again["log"] and fx.tags() == f"v{V}",
+       again["log"][-1200:])
+    fx2 = TagFixture("harness-tag-bad")
+    sc2 = rh.Scenario(SCRATCH, base, {}, job_context(sha=fx2.sha),
+                      work=fx2.work)
+    r2 = rh.run_job("release.yml", "tag", sc2, bash, fault=rh.Fault(
+        "a ref pushed that this checkout never made",
+        patch=('git push origin "refs/tags/$TAG"',
+               'git push origin "refs/tags/$TAG-typo"')))
+    red(ok, "tag", "a wrong ref name pushed to origin", r2)
+    ok("...and origin has no tag after it", not fx2.tags(), fx2.tags())
+
+
+def crates_routes(version: str, *, ever: bool) -> None:
+    """crates.io: not there when the job asks first, there when it asks
+    after the dispatched run - which is the two answers the job's two
+    `published` steps are for."""
+    here: tuple[int, dict[str, Any]] = (200, {"version": {"num": version}})
+    away: tuple[int, dict[str, Any]] = (404, {})
+    StandIn.routes[("GET", f"/api/v1/crates/sabline-rt/{version}")] = (
+        [away, here] if ever else [away, away])
+
+
+def harness_crates_io(ok: Any, bash: str, base: str) -> None:
+    Release(PRE)
+    crates_routes(PRE, ever=True)
+    sc = scene(base, {}, version=PRE, prerelease=True)
+    r = rh.run_job("release.yml", "crates_io", sc, bash)
+    green(ok, "crates_io", r,
+          also=sc.asked("gh", "workflow", "run", "publish-crate.yml")
+          and sc.asked("gh", "run", "watch", "--exit-status"),
+          detail=f"{sc.calls('gh')} log={r['log'][-1500:]}")
+    ok("...and it waited for the run it started before asking crates.io",
+       [c[:2] for c in sc.calls("gh")].count(["workflow", "run"]) == 1
+       and any(c[:2] == ["run", "watch"] for c in sc.calls("gh")),
+       sc.calls("gh"))
+    Release(PRE)
+    crates_routes(PRE, ever=False)
+    sc2 = scene(base, {}, version=PRE, prerelease=True)
+    r2 = rh.run_job("release.yml", "crates_io", sc2, bash, fault=rh.Fault(
+        "the last step asking crates.io for a version nothing published",
+        patch=('published crates "$V" --require',
+               'published crates "9.9.9" --require')))
+    red(ok, "crates_io", "a wrong version asked of the registry", r2)
+
+
+def harness_prerelease_github(ok: Any, bash: str, base: str) -> None:
+    Release(PRE)
+    crates_routes(PRE, ever=True)
+    sc, _ = repo_scene(base, "harness-prerelease", version=PRE,
+                       prerelease=True)
+    for name, text in crate_files(PRE).items():
+        target = sc.work / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+    # the crate job first, so that what this job downloads is the
+    # artifact this repository actually produces
+    first = rh.run_job("release.yml", "crate", sc, bash)
+    r = rh.run_job("release.yml", "prerelease_github", sc, bash)
+    assets = sc.release_assets(f"v{PRE}")
+    green(ok, "prerelease_github", r,
+          also=first["result"] == "success"
+          and assets == ["crate-contents.txt", f"sabline-rt-{PRE}.crate"],
+          detail=f"assets={assets} log={r['log'][-2000:]}")
+    ok("...and the release was made with --prerelease, so GitHub does not "
+       "call it the latest one",
+       sc.asked("gh", "release", "create", "--prerelease"), sc.calls("gh"))
+    again = rh.run_job("release.yml", "prerelease_github", sc, bash)
+    ok("...and run again it attaches nothing and stays green",
+       again["result"] == "success"
+       and "already there with every file" in again["log"]
+       and sc.release_assets(f"v{PRE}") == assets, again["log"][-1200:])
+    Release(PRE)
+    crates_routes(PRE, ever=True)
+    sc2, _ = repo_scene(base, "harness-prerelease-bad", version=PRE,
+                        prerelease=True)
+    for name, text in crate_files(PRE).items():
+        target = sc2.work / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+    rh.run_job("release.yml", "crate", sc2, bash)
+    r2 = rh.run_job("release.yml", "prerelease_github", sc2, bash,
+                    fault=rh.Fault("the crate artifact under another name",
+                                   rename=("crate", "crates")))
+    red(ok, "prerelease_github", "a wrong artifact name to download", r2)
+
+
+def harness_pypi(ok: Any, bash: str, base: str) -> None:
+    rel = Release(V)
+    sc = scene(base)
+    sc.artifacts["pypi-dist"] = {
+        f"sabline_lang-{V}-py3-none-any.whl": b"a wheel",
+        f"sabline_lang-{V}.tar.gz": b"an sdist"}
+    r = rh.run_job("release.yml", "pypi", sc, bash)
+    published = (sc.fake / "pypi-published")
+    green(ok, "pypi", r,
+          also=published.exists()
+          and f"sabline_lang-{V}-py3-none-any.whl" in published.read_text(
+              encoding="utf-8"),
+          detail=r["log"][-1500:])
+    rel.publish("pypi")
+    sc_there = scene(base)
+    r_there = rh.run_job("release.yml", "pypi", sc_there, bash)
+    ok("...and a version PyPI already has is skipped, not published twice",
+       r_there["result"] == "success"
+       and not (sc_there.fake / "pypi-published").exists(),
+       f"{r_there['steps']} {r_there['log'][-1200:]}")
+    Release(V)
+    sc2 = scene(base)
+    sc2.artifacts["pypi-dist"] = {f"sabline_lang-{V}-py3-none-any.whl": b"x"}
+    r2 = rh.run_job("release.yml", "pypi", sc2, bash, fault=rh.Fault(
+        "the signed files under another artifact name",
+        rename=("pypi-dist", "pypi-distribution")))
+    red(ok, "pypi", "a wrong artifact name to download", r2)
+
+
+def npm_files(version: str) -> dict[str, str]:
+    return {"npm/package.json": json.dumps(
+        {"name": "sabline-lang", "version": version}, indent=2)}
+
+
+def harness_npm(ok: Any, bash: str, base: str) -> None:
+    Release(V)
+    sc = scene(base, npm_files(V))
+    r = rh.run_job("release.yml", "npm", sc, bash)
+    green(ok, "npm", r, also=(sc.fake / "npm-published" / V).exists(),
+          detail=f"{sc.calls('npm')} log={r['log'][-1500:]}")
+    ok("...and it refused to publish before checking Node and npm are new "
+       "enough for trusted publishing",
+       "Node v" in r["log"] and "npm 11" in r["log"], r["log"][-1200:])
+    Release(V)
+    sc2 = scene(base, npm_files(V))
+    r2 = rh.run_job("release.yml", "npm", sc2, bash, fault=rh.Fault(
+        "npm/package.json saying a version the gate did not read",
+        write=npm_files("7.1.9")))
+    red(ok, "npm", "a package.json that names another version", r2)
+    ok("...and nothing was published by the red run",
+       not (sc2.fake / "npm-published").exists(), sc2.calls("npm"))
+
+
+def vscode_files(version: str) -> dict[str, str]:
+    return {"editor/vscode/package.json": json.dumps(
+        {"name": "sabline", "publisher": "gowrishankar-infra",
+         "version": version}, indent=2)}
+
+
+def marketplace_routes(version: str, *, ever: bool) -> None:
+    """The Marketplace: not listing the version when the job asks first,
+    listing it when the job asks again after vsce has published - the two
+    answers the vscode job's two `published vscode` steps are for."""
+    def listing(versions: list[str]) -> tuple[int, dict[str, Any]]:
+        return 200, {"results": [{"extensions": [{"versions": [
+            {"version": v} for v in versions]}]}]}
+    before = listing(["7.1.2"])
+    after = listing([version, "7.1.2"])
+    StandIn.routes[("POST", "/_apis/public/gallery/extensionquery")] = (
+        [before, after] if ever else [before, before])
+
+
+def harness_vscode(ok: Any, bash: str, base: str) -> None:
+    Release(V)
+    marketplace_routes(V, ever=True)
+    sc = scene(base, vscode_files(V))
+    r = rh.run_job("release.yml", "vscode", sc, bash)
+    green(ok, "vscode", r,
+          also=sc.asked("vsce", "publish")
+          and (sc.fake / "vscode-landed").exists(),
+          detail=f"{sc.calls('vsce')} log={r['log'][-2000:]}")
+    Release(V)
+    marketplace_routes(V, ever=False)
+    sc2 = scene(base, vscode_files(V))
+    r2 = rh.run_job("release.yml", "vscode", sc2, bash, fault=rh.Fault(
+        "a vsce subcommand that does not exist",
+        patch=("vsce publish --pat", "vsce publsh --pat")))
+    red(ok, "vscode", "a wrong command name given to vsce", r2)
+    ok("...and it said the refusal was not an outage, so it did not retry "
+       "five times over it",
+       "not for an outage" in r2["log"]
+       and len(sc2.calls("sleep")) == 0, r2["log"][-1200:])
+
+
+def release_artifacts() -> dict[str, dict[str, bytes]]:
+    return {
+        "release-dist": {
+            f"sabline_lang-{V}-py3-none-any.whl": b"a wheel",
+            f"sabline_lang-{V}.tar.gz": b"an sdist",
+            f"sabline-lang-{V}.cdx.json": b"{}",
+            f"sabline-mcp-tools-{V}.json": b"{}",
+            "SHA256SUMS": b"sums"},
+        "bundle": {"sabline.mcpb": b"a bundle",
+                   "sabline.mcpb.sig": b"sig"},
+        "binary-sabline-linux": {"sabline-linux": b"an executable",
+                                 "sabline-linux.sha256": b"sum"},
+        "binary-sabline-windows.exe": {"sabline-windows.exe": b"an exe"},
+        "binary-sabline-macos": {"sabline-macos": b"a mach-o"},
+    }
+
+
+def harness_github_release(ok: Any, bash: str, base: str) -> None:
+    Release(V)
+    sc, _ = repo_scene(base, "harness-github-release")
+    sc.artifacts.update(release_artifacts())
+    r = rh.run_job("release.yml", "github_release", sc, bash)
+    assets = sc.release_assets(f"v{V}")
+    want = sorted(n for files in release_artifacts().values() for n in files)
+    green(ok, "github_release", r, also=assets == want,
+          detail=f"got={assets}\nwant={want}\nlog={r['log'][-2000:]}")
+    ok("...and the three binary artifacts merged flat, so no asset is a "
+       "directory", all("/" not in n for n in assets), assets)
+    again = rh.run_job("release.yml", "github_release", sc, bash)
+    ok("...and run again it attaches nothing and stays green",
+       again["result"] == "success"
+       and "already there with every file" in again["log"],
+       again["log"][-1200:])
+    Release(V)
+    sc2, _ = repo_scene(base, "harness-github-release-bad")
+    sc2.artifacts.update(release_artifacts())
+    r2 = rh.run_job("release.yml", "github_release", sc2, bash,
+                    fault=rh.Fault("the bundle under another artifact name",
+                                   rename=("bundle", "bundles")))
+    red(ok, "github_release", "a wrong artifact name to download", r2)
+
+
+def registry_files(version: str) -> dict[str, str]:
+    return {"integrations/mcp_registry/server.json": json.dumps({
+        "name": SERVER, "version": version,
+        "packages": [{"registryType": kind, "identifier": "sabline-lang",
+                      "version": version} for kind in ("pypi", "npm")]},
+        indent=2)}
+
+
+def harness_mcp_registry(ok: Any, bash: str, base: str) -> None:
+    rel = Release(V)
+    rel.publish("pypi")
+    rel.publish("npm")
+    sc = scene(base, registry_files(V))
+    payload = hashlib.sha256(b"mcp-publisher\n").hexdigest()
+    r = rh.run_job("release.yml", "mcp_registry", sc, bash,
+                   extra_env={"MCP_PUBLISHER_SHA256": payload})
+    green(ok, "mcp_registry", r,
+          also=(sc.fake / "registry-published").exists()
+          and sc.asked("mcp-publisher", "validate", "server.json")
+          and sc.asked("mcp-publisher", "login", "github-oidc"),
+          detail=f"{sc.calls('mcp-publisher')} log={r['log'][-2000:]}")
+    ok("...and it waited for PyPI and npm to serve the version before "
+       "publishing the entry that names them",
+       "registry-ready" in r["log"] or any(
+           "registry-ready" in c for c in sc.calls("python3")),
+       sc.calls("python3"))
+    rel2 = Release(V)
+    rel2.publish("pypi")
+    rel2.publish("npm")
+    sc2 = scene(base, registry_files(V))
+    r2 = rh.run_job("release.yml", "mcp_registry", sc2, bash,
+                    extra_env={"MCP_PUBLISHER_SHA256": payload},
+                    fault=rh.Fault(
+                        "the download written to a name the checksum step "
+                        "does not read",
+                        patch=("-o mcp-publisher.tar.gz",
+                               "-o mcp-publishr.tar.gz")))
+    red(ok, "mcp_registry", "a wrong path for the downloaded publisher", r2)
+    ok("...and nothing was published by the red run",
+       not (sc2.fake / "registry-published").exists(),
+       sc2.calls("mcp-publisher"))
+
+
+def harness_attach_attestation(ok: Any, bash: str, base: str) -> None:
+    Release(V)
+    sc = scene(base)
+    sc.artifacts["attestation"] = {
+        f"sabline-attestation-{V}.intoto.json": b"{}",
+        f"sabline-attestation-{V}.cosign.sigstore.json": b"{}",
+        f"sabline-receipt-{V}.intoto.json": b"{}"}
+    # the release exists already, holding one of the three
+    made = sc.fake / "releases" / f"v{V}"
+    made.mkdir(parents=True)
+    (made / f"sabline-attestation-{V}.intoto.json").write_bytes(b"{}")
+    r = rh.run_job("release.yml", "attach_attestation", sc, bash)
+    assets = sc.release_assets(f"v{V}")
+    green(ok, "attach_attestation", r,
+          also=assets == sorted(sc.artifacts["attestation"]),
+          detail=f"{assets} log={r['log'][-1500:]}")
+    ok("...and it uploaded only the two the release lacked",
+       any(c[:2] == ["release", "upload"] and len(
+           [a for a in c if a.startswith("attestation/")]) == 2
+           for c in sc.calls("gh")), sc.calls("gh"))
+    again = rh.run_job("release.yml", "attach_attestation", sc, bash)
+    ok("...and run again it uploads nothing and stays green",
+       again["result"] == "success"
+       and "already attached" in again["log"], again["log"][-1200:])
+    Release(V)
+    sc2 = scene(base)
+    sc2.artifacts["attestation"] = {f"sabline-attestation-{V}.intoto.json":
+                                    b"{}"}
+    (sc2.fake / "releases" / f"v{V}").mkdir(parents=True)
+    r2 = rh.run_job("release.yml", "attach_attestation", sc2, bash,
+                    fault=rh.Fault(
+                        "the attestation under another artifact name",
+                        rename=("attestation", "attestations")))
+    red(ok, "attach_attestation", "a wrong artifact name to download", r2)
+
+
+def harness_consistency(ok: Any, bash: str, base: str) -> None:
+    rel = Release(V)
+    for target in ("pypi", "npm", "vscode", "registry"):
+        rel.publish(target)
+    rel.release_files(attach=False)      # the release, with its assets
+    rel.release_files(attach=True)       # and the attestation attached
+    sc, _ = repo_scene(base, "harness-consistency")
+    r = rh.run_job("release.yml", "consistency", sc, bash)
+    green(ok, "consistency", r,
+          also=V in r["summary"] or V in r["log"],
+          detail=f"summary={r['summary'][:400]} log={r['log'][-1500:]}")
+    sc2, _ = repo_scene(base, "harness-consistency-bad")
+    r2 = rh.run_job("release.yml", "consistency", sc2, bash, fault=rh.Fault(
+        "every registry asked about a version none of them serves",
+        patch=('consistent "$V"', 'consistent "7.1.9"')))
+    red(ok, "consistency", "a wrong version asked of every registry", r2)
+
+
+def advisory_repo(base: str, name: str) -> tuple[rh.Scenario, str]:
+    """A checkout where the release adds one advisory-*.md, which is what
+    the job looks for between the previous tag and this commit."""
+    sc, head = repo_scene(base, name)
+    (sc.work / "advisory-import-read.md").write_text(
+        "# A read outside the import root\n\n"
+        "## What happened\n\n"
+        "An import could read a file outside the import root.\n\n"
+        "## Affected versions\n\n"
+        "7.1.0 through 7.1.2. Fixed in 7.2.0.\n\n"
+        "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N\n\n"
+        "## CWE\n\nCWE-22\n", encoding="utf-8")
+    head = commit(sc.work, "and the advisory it closes")
+    sc.context["needs"]["gate"]["outputs"]["sha"] = head
+    return sc, head
+
+
+def harness_advisory(ok: Any, bash: str, base: str) -> None:
+    sc, _ = advisory_repo(base, "harness-advisory")
+    r = rh.run_job("release.yml", "advisory", sc, bash)
+    made = sorted(p.name for p in
+                  (sc.work / "advisory-requests").glob("*.json")) \
+        if (sc.work / "advisory-requests").is_dir() else []
+    green(ok, "advisory", r,
+          also=made == ["advisory-import-read.json"]
+          and sorted(sc.artifacts.get("advisory-requests", {}))
+          == ["advisory-import-read.json"],
+          detail=f"made={made} artifacts={sorted(sc.artifacts)} "
+                 f"log={r['log'][-2000:]}")
+    plain, _ = repo_scene(base, "harness-advisory-none")
+    r_none = rh.run_job("release.yml", "advisory", plain, bash)
+    ok("...and a release that adds no advisory says so and keeps no "
+       "artifact",
+       r_none["result"] == "success"
+       and "no advisory to draft" in r_none["log"]
+       and "advisory-requests" not in plain.artifacts,
+       f"{r_none['log'][-1200:]} {sorted(plain.artifacts)}")
+    sc2, _ = advisory_repo(base, "harness-advisory-bad")
+    r2 = rh.run_job("release.yml", "advisory", sc2, bash, fault=rh.Fault(
+        "the request body written to a directory nothing made",
+        patch=('-o "advisory-requests/$name.json"',
+               '-o "advisory-request/$name.json"')))
+    red(ok, "advisory", "a wrong path for the request body", r2)
+
+
+def harness_move_pins(ok: Any, bash: str, base: str, names: list[str]) -> None:
+    fx = PinFixture(names)
+    r = run_move_pins_job(release_jobs()["move_pins"], bash, fx)
+    ok("move_pins: its own steps, in bash, against stand-ins",
+       r["result"] == "success"
+       and r["outputs"].get("move", {}).get("pushed") == "true",
+       f"{r['steps']} log={r['log'][-1500:]}")
+    fx2 = PinFixture(names)
+    r2 = run_move_pins_job(release_jobs()["move_pins"], bash, fx2,
+                           patch=("git add -- README.md EMBEDDING.md docs",
+                                  "git add -- README.md EMBEDDING.md doc"))
+    ok("...and with a wrong path given to git add, the job is red",
+       r2["result"] == "failure" and fx2.main() == fx2.sha,
+       f"{r2['steps']} log={r2['log'][-1200:]}")
+
+
+def harness_publish_crate(ok: Any, bash: str, base: str) -> None:
+    Release(PRE)
+    crates_routes(PRE, ever=True)
+    repo = SCRATCH / "harness-publish-crate"
+    repo.mkdir(parents=True)
+    git(repo, "init", "-q", "-b", "main")
+    for name, text in crate_files(PRE).items():
+        target = repo / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+    write_versions(repo, "8.6.0")
+    write_changelog(repo, ("8.6.0", "The name", "The rename."))
+    head = commit(repo, "the pre-release commit")
+    git(repo, "tag", "-a", f"v{PRE}", "-m", f"v{PRE}")
+    sc = rh.Scenario(SCRATCH, base, {},
+                     job_context(version=PRE, prerelease=True, sha=head),
+                     work=repo)
+    r = rh.run_job("publish-crate.yml", "publish", sc, bash)
+    green(ok, "publish-crate.yml's publish", r,
+          also=(sc.fake / "crates" / PRE).exists()
+          and sc.asked("cargo", "publish"),
+          detail=f"{sc.calls('cargo')} log={r['log'][-2000:]}")
+    ok("...and the guard answered before anything touched a credential",
+       r["outputs"].get("may", {}).get("outputs", {}).get("publish") == "true",
+       r["outputs"])
+    # crates.io as it was before the green run published: otherwise the
+    # guard would answer "skip", the publish steps would not run, and the
+    # injection would have nothing to break
+    Release(PRE)
+    crates_routes(PRE, ever=True)
+    sc2 = rh.Scenario(SCRATCH, base, {},
+                      job_context(version=PRE, prerelease=True, sha=head),
+                      work=repo)
+    r2 = rh.run_job("publish-crate.yml", "publish", sc2, bash,
+                    fault=rh.Fault("a cargo subcommand that does not exist",
+                                   patch=("cargo package --locked",
+                                          "cargo packag --locked")))
+    red(ok, "publish-crate.yml's publish", "a wrong command name given to "
+                                           "cargo", r2)
+
+
+HARNESS_FUNCTIONS: dict[str, Any] = {
+    "harness_gate": harness_gate,
+    "harness_dist": harness_dist,
+    "harness_reproducible": harness_reproducible,
+    "harness_bundle": harness_bundle,
+    "harness_binaries": harness_binaries,
+    "harness_attestation": harness_attestation,
+    "harness_perf": harness_perf,
+    "harness_differential": harness_differential,
+    "harness_crate": harness_crate,
+    "harness_paused": harness_paused,
+    "harness_tag": harness_tag,
+    "harness_crates_io": harness_crates_io,
+    "harness_prerelease_github": harness_prerelease_github,
+    "harness_pypi": harness_pypi,
+    "harness_npm": harness_npm,
+    "harness_vscode": harness_vscode,
+    "harness_github_release": harness_github_release,
+    "harness_mcp_registry": harness_mcp_registry,
+    "harness_attach_attestation": harness_attach_attestation,
+    "harness_consistency": harness_consistency,
+    "harness_advisory": harness_advisory,
+    "harness_move_pins": harness_move_pins,
+    "harness_publish_crate": harness_publish_crate,
+}
+
+
+def harness_cases(ok: Any, bash: str | None, base: str,
+                  names: list[str] | None) -> None:
+    """The standing rule, and every job held to it.
+
+    RELEASING.md: every job of release.yml and publish-crate.yml has its
+    own shell run against stand-ins here. The map that says which
+    harness runs which job is `release_harness.HARNESSED`, and it has no
+    exemption list - a job added to either workflow fails the first case
+    below until it has one.
+    """
+    print()
+    print("the standing rule: every release job's own shell, against "
+          "stand-ins")
+    print("-" * 62)
+    jobs = rh.all_jobs()
+    wrong = rh.coverage()
+    ok(f"each of the {len(jobs)} jobs of release.yml and publish-crate.yml "
+       f"has a harness, and no harness names a job that is gone",
+       not wrong, "; ".join(wrong))
+
+    # and the rule is shown to fail, three ways, because a coverage check
+    # that has never gone red is one nobody has tested
+    added = set(jobs) | {("release.yml", "a_job_somebody_just_added")}
+    ok("...and a job added with no harness fails it",
+       any("has no harness" in line for line in rh.coverage(added)),
+       rh.coverage(added))
+    stale = dict(rh.HARNESSED)
+    stale[("release.yml", "a_job_that_was_removed")] = "harness_gone"
+    ok("...and a harness left behind by a job that is gone fails it",
+       any("which that workflow does not have" in line
+           for line in rh.coverage(harnessed=stale)),
+       rh.coverage(harnessed=stale))
+    shared = dict(rh.HARNESSED)
+    shared[("release.yml", "gate")] = shared[("release.yml", "dist")]
+    ok("...and two jobs sharing one harness fails it",
+       any("cannot test two jobs" in line
+           for line in rh.coverage(harnessed=shared)),
+       rh.coverage(harnessed=shared))
+
+    if bash is None or names is None:
+        print("  skip     every job's own steps (no POSIX bash here, or no "
+              "git checkout)")
+        return
+    saved_routes = dict(StandIn.routes)
+    for (wf, job), fn in sorted(rh.HARNESSED.items(),
+                                key=lambda kv: (kv[0][0], kv[0][1])):
+        run = HARNESS_FUNCTIONS[fn]
+        try:
+            if fn == "harness_move_pins":
+                run(ok, bash, base, names)
+            else:
+                run(ok, bash, base)
+        except (rh.Unreadable, rh.Injected) as e:
+            ok(f"{job}: a harness this workflow can be read by", False,
+               f"{type(e).__name__}: {e}")
+        except Exception as e:                       # noqa: BLE001
+            ok(f"{job}: its harness ran at all", False,
+               f"{type(e).__name__}: {e}")
+    StandIn.routes = saved_routes
 
 # ---- the cases -----------------------------------------------------------------
 
@@ -2487,6 +3354,8 @@ def main() -> int:
                    "red and main is where it was",
                    r["result"] == "failure" and fx.main() == fx.sha
                    and not fx.gh_log(), f"{r['steps']} {fx.gh_log()}")
+
+            harness_cases(ok, pins_bash, base, names)
         except Unreadable as e:
             ok("release.yml is one this simulation can read", False, str(e))
     finally:
