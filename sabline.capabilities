@@ -20,6 +20,7 @@
       "io",
       "net",
       "rand",
+      "tool",
       "tool:search",
       "tool:send_email"
     ],
