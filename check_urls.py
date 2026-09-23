@@ -88,12 +88,21 @@ IDENTIFIERS = re.compile(
     r"^https://velaris\.dev/")
 
 
+# files a SOURCES pattern matches that are not documentation, with why
+NOT_SOURCES = {
+    "incidents/FACTCHECK.md": "working material: the record of one fact-check "
+                              "of the catalogue's sources, which the entries "
+                              "themselves already cite",
+}
+
+
 def urls() -> dict[str, list[str]]:
     """{url: [the files that name it]}."""
     found: dict[str, list[str]] = {}
     for pattern in SOURCES:
         for path in sorted(HERE.glob(pattern)):
-            if not path.is_file():
+            if not path.is_file() or str(path.relative_to(HERE)).replace(
+                    "\\", "/") in NOT_SOURCES:
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
             for m in URL.finditer(text):
