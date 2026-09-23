@@ -1,0 +1,524 @@
+{
+ "schema": "sabline.roundtrip/1",
+ "platform": "Linux x86_64",
+ "python": "3.12",
+ "sabline": "8.6.0",
+ "rounds": 6,
+ "tasks": [
+  "sum",
+  "parse",
+  "larger",
+  "write",
+  "fetch",
+  "evens",
+  "split_bill",
+  "points",
+  "home_set",
+  "positive"
+ ],
+ "models": [
+  {
+   "model": {
+    "spec": "ollama:qwen2.5:7b",
+    "provider": "ollama",
+    "name": "qwen2.5:7b",
+    "version": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "details": {
+     "parent_model": "",
+     "format": "gguf",
+     "family": "qwen2",
+     "families": [
+      "qwen2"
+     ],
+     "parameter_size": "7.6B",
+     "quantization_level": "Q4_K_M"
+    },
+    "server": "0.24.0",
+    "options": {
+     "temperature": 0,
+     "seed": 7,
+     "num_ctx": 16384,
+     "num_predict": 4000,
+     "think": null
+    }
+   },
+   "recorded": "2026-09-23",
+   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.json",
+   "card_sha256": "a5c6ea50447919fc525425ef05618c94cf27104a513d24ec1be31c5b4fc66c60",
+   "summary": {
+    "sabline": {
+     "tasks": 10,
+     "works_first": 6,
+     "works": 7,
+     "wrong": 1,
+     "gave_up": 2,
+     "mean_rounds_to_work": 1.29,
+     "failed_attempts": {
+      "did-not-compile E101": 12,
+      "did-not-compile E513": 2,
+      "wrong": 1
+     },
+     "calls": 22,
+     "sent_chars": 764289,
+     "reply_chars": 14743
+    },
+    "python": {
+     "tasks": 10,
+     "works_first": 9,
+     "works": 9,
+     "wrong": 1,
+     "gave_up": 0,
+     "mean_rounds_to_work": 1.0,
+     "failed_attempts": {
+      "wrong": 1
+     },
+     "calls": 10,
+     "sent_chars": 3240,
+     "reply_chars": 2468
+    }
+   },
+   "tasks": {
+    "sabline": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The sum is 45\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'max_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-larger-1/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'max_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-larger-2/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 3,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The larger of 3 and 7 is 7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,fs:write:./out.txt",
+        "exit": 0,
+        "stdout": "wrote to ./out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,net:127.0.0.1",
+        "exit": 0,
+        "stdout": "fetched 1216 characters\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "There are 3 even numbers.\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'invariant'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'invariant'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'invariant'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'invariant'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'invariant'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 8: [E101] unexpected 'invariant'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,env,declassify",
+        "exit": 0,
+        "stdout": "HOME is set\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "false\n",
+        "stderr": ""
+       }
+      }
+     ]
+    },
+    "python": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "55\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "43\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "hello was written to out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1216\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "Each person should pay: 33.33 INR\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "False\n",
+        "stderr": ""
+       }
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "cost": {
+  "prices_read": "2026-09-23",
+  "sources": {
+   "anthropic": "https://platform.claude.com/docs/en/about-claude/pricing",
+   "openai": "https://developers.openai.com/api/docs/pricing",
+   "google": "https://ai.google.dev/gemini-api/docs/pricing"
+  },
+  "assumptions": {
+   "rounds": 6,
+   "max_tokens": 4000,
+   "feedback_cap_chars": 2000,
+   "ceiling_chars_per_token": 3,
+   "estimate_chars_per_token": 4,
+   "estimate_from": [
+    "ollama:qwen2.5:7b"
+   ],
+   "estimate_calls_per_model": 32.0
+  },
+  "models": [
+   {
+    "spec": "anthropic:claude-fable-5-1",
+    "input": 10.0,
+    "output": 50.0,
+    "ceiling_usd": 47.6,
+    "estimate_usd": 2.77
+   },
+   {
+    "spec": "anthropic:claude-opus-5-5",
+    "input": 4.0,
+    "output": 20.0,
+    "ceiling_usd": 19.04,
+    "estimate_usd": 1.11
+   },
+   {
+    "spec": "anthropic:claude-sonnet-5",
+    "input": 2.0,
+    "output": 10.0,
+    "ceiling_usd": 9.52,
+    "estimate_usd": 0.55
+   },
+   {
+    "spec": "anthropic:claude-haiku-4-5-20251001",
+    "input": 1.0,
+    "output": 5.0,
+    "ceiling_usd": 4.49,
+    "estimate_usd": 0.21
+   },
+   {
+    "spec": "openai:gpt-6-astra",
+    "input": 10.0,
+    "output": 50.0,
+    "ceiling_usd": 44.92,
+    "estimate_usd": 2.13
+   },
+   {
+    "spec": "openai:gpt-6-sol",
+    "input": 2.0,
+    "output": 10.0,
+    "ceiling_usd": 8.98,
+    "estimate_usd": 0.43
+   },
+   {
+    "spec": "openai:gpt-6-luna",
+    "input": 0.1,
+    "output": 0.5,
+    "ceiling_usd": 0.45,
+    "estimate_usd": 0.02
+   },
+   {
+    "spec": "gemini:gemini-3.1-pro-preview",
+    "input": 2.0,
+    "output": 12.0,
+    "ceiling_usd": 9.94,
+    "estimate_usd": 0.44
+   },
+   {
+    "spec": "gemini:gemini-3.8-flash",
+    "input": 0.75,
+    "output": 3.75,
+    "ceiling_usd": 3.37,
+    "estimate_usd": 0.16
+   }
+  ],
+  "ceiling_usd": 148.31,
+  "estimate_usd": 7.82
+ }
+}

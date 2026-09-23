@@ -1,0 +1,69 @@
+{
+  "about": "The ten tasks of agent_loop.py --metric (tests/agent_loop/tasks.json), made checkable offline and in both languages. Each has the budget a Sabline run gets, the input it is given, and a check of what it printed or wrote, applied to the Sabline program and the Python program alike; the task text is the same for both. A URL arrives on standard input and is a local listener, so no run reaches the network, and HOME is a sentinel the check looks for. The wording differs from agent_loop's where a check needed it to be unambiguous (\"and nothing else\", \"only the x\"), and was fixed before any model was asked. Two changes were made after the first recording, which was discarded and asked again: \"parse\" gets \"42\" on standard input, because \"read the text\" reads as reading input and both languages' programs did; and every prompt says that standard output is what is checked, because one program gave its answer through a log on standard error.",
+  "tasks": [
+    {
+      "id": "sum",
+      "task": "Print the sum of the whole numbers from 1 to 10, and nothing else.",
+      "budget": "io",
+      "check": {"last_number": "55"}
+    },
+    {
+      "id": "parse",
+      "task": "Read the text \"42\" as a whole number and print one more than it, saying why if the text is not a number.",
+      "budget": "io",
+      "stdin": "42\n",
+      "check": {"last_number": "43"}
+    },
+    {
+      "id": "larger",
+      "task": "Write a function that returns the larger of two whole numbers, promising the result is at least each of them, and print the result for 3 and 7.",
+      "budget": "io",
+      "check": {"last_number": "7"}
+    },
+    {
+      "id": "write",
+      "task": "Write the text hello to a file named out.txt in the current directory, then say it was written.",
+      "budget": "io,fs:write:./out.txt",
+      "check": {"file": "out.txt", "file_equals": "hello"}
+    },
+    {
+      "id": "fetch",
+      "task": "Read a URL from the first line of standard input, fetch it, and print how many characters came back, or why it could not be fetched.",
+      "budget": "io,net:127.0.0.1",
+      "stdin": "{url}\n",
+      "check": {"stdout_re": "(?<![\\d.:])1216(?![\\d.])"}
+    },
+    {
+      "id": "evens",
+      "task": "Print how many of the numbers 1, 2, 3, 4, 5 and 6 are even, and nothing else.",
+      "budget": "io",
+      "check": {"last_number": "3"}
+    },
+    {
+      "id": "split_bill",
+      "task": "Split a bill of 100.00 INR between 3 people so the parts add up exactly, and print each part.",
+      "budget": "io",
+      "check": {"amounts_sum": "100.00", "amounts": 3}
+    },
+    {
+      "id": "points",
+      "task": "Define a point with whole-number x and y, a function that adds two points, and print only the x of the sum of the points (1, 2) and (3, 4).",
+      "budget": "io",
+      "check": {"last_number": "4"}
+    },
+    {
+      "id": "home_set",
+      "task": "Say whether the environment variable HOME is set, without printing its value.",
+      "budget": "io,env,declassify",
+      "check": {"stdout_re": "(?i)\\b(set|yes|true)\\b",
+                "stdout_not_re": "(?i)(roundtrip-home-7c1d|not set|isn't set|unset|\\bfalse\\b)"}
+    },
+    {
+      "id": "positive",
+      "task": "Write a pure function that says whether a whole number is positive, and print its answer for -3.",
+      "budget": "io",
+      "check": {"stdout_re": "(?i)\\b(false|no|not positive|negative)\\b",
+                "stdout_not_re": "(?i)\\btrue\\b"}
+    }
+  ]
+}

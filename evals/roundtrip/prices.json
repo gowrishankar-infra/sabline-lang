@@ -1,0 +1,22 @@
+{
+  "about": "Standard API prices, USD per million tokens, for the models `roundtrip_eval.py --cost` prices a run of: no batch discount, no prompt cache, no priority tier, prompts under 200k tokens. Read from each vendor's own pricing page on the date given; prices move, so confirm them before spending anything. The Anthropic rows were read from the page's table directly; the OpenAI and Google rows through a summary of their pages, and are the ones to check first.",
+  "read": "2026-09-23",
+  "sources": {
+    "anthropic": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "openai": "https://developers.openai.com/api/docs/pricing",
+    "google": "https://ai.google.dev/gemini-api/docs/pricing"
+  },
+  "tokenizer_note": "Anthropic's page says Claude 4.7 and later use a tokenizer that produces about 30% more tokens for the same text; --cost counts tokens from characters and applies that factor to those models.",
+  "models": [
+    {"spec": "anthropic:claude-fable-5-1", "vendor": "anthropic", "input": 10.00, "output": 50.00, "tokenizer_factor": 1.3},
+    {"spec": "anthropic:claude-opus-5-5", "vendor": "anthropic", "input": 4.00, "output": 20.00, "tokenizer_factor": 1.3},
+    {"spec": "anthropic:claude-sonnet-5", "vendor": "anthropic", "input": 2.00, "output": 10.00, "tokenizer_factor": 1.3},
+    {"spec": "anthropic:claude-haiku-4-5-20251001", "vendor": "anthropic", "input": 1.00, "output": 5.00, "tokenizer_factor": 1.0},
+    {"spec": "openai:gpt-6-astra", "vendor": "openai", "input": 10.00, "output": 50.00, "tokenizer_factor": 1.0},
+    {"spec": "openai:gpt-6-sol", "vendor": "openai", "input": 2.00, "output": 10.00, "tokenizer_factor": 1.0},
+    {"spec": "openai:gpt-6-luna", "vendor": "openai", "input": 0.10, "output": 0.50, "tokenizer_factor": 1.0},
+    {"spec": "gemini:gemini-3.1-pro-preview", "vendor": "google", "input": 2.00, "output": 12.00, "tokenizer_factor": 1.0},
+    {"spec": "gemini:gemini-3.8-flash", "vendor": "google", "input": 0.75, "output": 3.75, "tokenizer_factor": 1.0,
+     "note": "the page gives this price through 2026-12-31 and $1.50 / $7.50 from 2027-01-01; it also lists a free tier"}
+  ]
+}

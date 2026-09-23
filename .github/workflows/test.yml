@@ -374,6 +374,26 @@ jobs:
       - name: The published page is what the record says
         run: python build_agentdojo_page.py --check
 
+  # The model round trip against Python (plan/8.7.md section 2): every reply
+  # a model gave, recorded in evals/roundtrip/recordings, compiled, run and
+  # checked again, in both languages, and held to evals/roundtrip/results.json.
+  # No model and no key here: asking one is --live, which refuses to run
+  # under CI.
+  roundtrip:
+    name: the model round trip, replayed from its recordings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install the prover, as the recording machine had it
+        run: pip install -c requirements/ci.txt z3-solver llvmlite
+      - name: --check goes red when a verdict moves
+        run: python roundtrip_eval.py --self-test
+      - name: Every attempt re-derives, and the page is what the record says
+        run: python roundtrip_eval.py --check
+
   # The competitor scoring (plan/8.7.md section 3): the benchmark's programs
   # under Deno, WASI (CPython under wasmtime), Starlark (starlark-go), a
   # Python sandbox (smolagents) and CaMeL's reference interpreter, each in
