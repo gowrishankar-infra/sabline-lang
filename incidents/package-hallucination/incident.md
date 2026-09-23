@@ -11,8 +11,8 @@ verified: false
 ## What happened
 
 On 28 March 2024 Bar Lanyado published a test of what he had named "AI
-package hallucination": models repeatedly recommended installing a Python
-package called `huggingface-cli`, which did not exist. He registered the
+package hallucination": models recommended installing a Python package
+called `huggingface-cli`, which did not exist. He registered the
 name and uploaded an empty package under it, and reports that "in three
 months the fake and empty package got more than 30k authentic downloads",
 and that "instructions for installing this package can be found in the
@@ -24,7 +24,7 @@ from open-source ones, across 205,474 distinct invented names.
 
 ## Sources
 
-- [Diving Deeper into AI Package Hallucinations](https://www.lasso.security/blog/ai-package-hallucinations) - Bar Lanyado's own write-up, 28 March 2024: the `huggingface-cli` test, the 30,000 downloads, and the Alibaba README.
+- [Diving Deeper into AI Package Hallucinations](https://www.lasso.security/blog/ai-package-hallucinations) - Bar Lanyado's own write-up, 28 March 2024: the `huggingface-cli` test, the more than 30,000 downloads in three months, and the Alibaba README.
 - [We Have a Package for You! A Comprehensive Analysis of Package Hallucinations by Code Generating LLMs](https://www.usenix.org/conference/usenixsecurity25/presentation/spracklen) - USENIX Security 2025: the rates, the sample size, and the 205,474 names.
 - [Spracks/PackageHallucination](https://github.com/Spracks/PackageHallucination) - the paper's published code and data.
 

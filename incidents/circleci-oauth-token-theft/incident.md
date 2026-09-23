@@ -1,7 +1,7 @@
 ---
 slug: circleci-oauth-token-theft
 title: The CircleCI January 2023 incident
-date: 2023-01-04
+date: 2022-12-22
 lane: supply-chain
 verdict: NOT COVERED
 budget_line: none
@@ -16,13 +16,14 @@ a valid, 2FA-backed SSO session"; the actor then used that access to
 exfiltrate data from a subset of the company's production systems, including
 customer environment variables, tokens and keys. A customer's GitHub OAuth
 token was found compromised on 30 December 2022, CircleCI began rotating all
-customers' GitHub OAuth tokens on 31 December, alerted customers on 4
-January 2023 to rotate every secret they had stored, and completed the AWS
-token notifications on 12 January.
+customers' GitHub OAuth tokens on 31 December, and alerted customers on 4
+January 2023 to rotate every secret they had stored; the exfiltration itself
+took place on 22 December 2022. CircleCI reports that AWS's notifications to
+customers with possibly affected AWS tokens were complete by 12 January.
 
 ## Sources
 
-- [CircleCI incident report for January 4, 2023 security incident](https://circleci.com/blog/jan-4-2023-incident-report/) - CircleCI's own post-mortem: the malware, the stolen session, what was exfiltrated, and the rotation timeline.
+- [CircleCI Jan 4, 2023 security incident report](https://circleci.com/blog/jan-4-2023-incident-report/) - CircleCI's own post-mortem: the malware, the stolen session, what was exfiltrated, and the rotation timeline.
 - [CircleCI security alert: Rotate any secrets stored in CircleCI](https://circleci.com/blog/january-4-2023-security-alert/) - the customer-facing alert of 4 January 2023.
 
 ## The shape, in Sabline

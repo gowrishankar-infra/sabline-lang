@@ -164,6 +164,25 @@ def page(found: list[dict[str, Any]]) -> str:
       "from it.")
     w("")
 
+    w("## How these were chosen")
+    w("")
+    w("This is a selection, not a survey. An incident is here only if it is "
+      "**from 2023 onward**, **in the lane** - code that ran with more "
+      "authority than it should have - and **backed by a primary source**: a "
+      "vendor post-mortem, a CVE record, or the researcher's own write-up. "
+      "Nothing goes in without one.")
+    w("")
+    w("**These are not all the incidents in this lane, and the counts are not "
+      "a measurement of the field.** A verdict count is a count of what is in "
+      "this catalogue, not a claim about how common each shape is. What is "
+      "left out on purpose: anything before 2023; prompt injection where no "
+      "code ran, which is `OUT OF SCOPE` rather than a gap and is why "
+      "EchoLeak and CamoLeak are listed that way; and anything that cannot be "
+      "sourced to a primary report - one incident, an agent that deleted a "
+      "production database (Replit, July 2025), was dropped for exactly that "
+      "reason.")
+    w("")
+
     for verdict in VERDICTS:
         here = [e for e in found if e["verdict"] == verdict]
         if not here:

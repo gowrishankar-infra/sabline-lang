@@ -1,7 +1,7 @@
 ---
 slug: solana-web3js-backdoor
 title: The @solana/web3.js backdoor, 1.95.6 and 1.95.7
-date: 2024-12-02
+date: 2024-12-03
 lane: supply-chain
 verdict: STOPPED
 budget_line: sabline.lock
@@ -10,14 +10,16 @@ verified: false
 
 ## What happened
 
-On 2 December 2024 an account with publish rights to `@solana/web3.js` was
-compromised and two unauthorised versions, 1.95.6 and 1.95.7, were put on
-npm. The maintainers' advisory records that the injected code stole private
-key material and that the risk fell on applications which handle private
-keys directly, such as bots. The compromised versions were available for
-roughly five hours before being removed; an added function named
-`addToQueue` captured key material and sent it to an address the attacker
-controlled. Version 1.95.8 removed it.
+On 3 December 2024 an account with publish rights to `@solana/web3.js` was
+compromised through a spear-phishing email, and two unauthorised versions,
+1.95.6 and 1.95.7, were put on npm. The maintainers' advisory records that
+the injected code stole private key material and that the risk fell on
+applications which handle private keys directly, such as bots. The versions
+went up at about 3:20pm UTC; a clean 1.95.8 was published at 8:25pm UTC, and
+npm removed 1.95.6 and 1.95.7 entirely at about 12:22am UTC on 4 December.
+Code added to five existing key-handling methods, including
+`Keypair.fromSecretKey()` and `Keypair.fromSeed()`, captured private key
+material and sent it to a server the attacker controlled.
 
 ## Sources
 

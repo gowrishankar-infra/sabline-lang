@@ -83,6 +83,11 @@ IDENTIFIERS = re.compile(
     # gone. The predicate types under it are names, not pages
     # (sabline/predicates.py), and nothing fetches them.
     r"^https://gowrishankar-infra\.github\.io/velaris-lang(?:[/#?]|$)|"
+    # echoleak-m365-copilot's Aim Labs write-up: the page has answered 403
+    # since August 2025 (the Wayback Machine shows it stopped serving the
+    # article then), so the entry cites it as an archived copy and says so.
+    # It is named BECAUSE it is gone; MSRC's CVE record is its primary source.
+    r"^https://www\.aim\.security/lp/aim-labs-echoleak-blogpost$|"
     # the domain that is not this project's, named as the worked example of
     # a predicate type Sabline refuses
     r"^https://velaris\.dev/")

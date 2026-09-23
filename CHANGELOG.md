@@ -26,7 +26,7 @@ also catches things the old one could not: which endpoint a line names,
 and which outcome, are now part of the golden.
 
 An **incident catalogue**, in [incidents/](incidents/README.md) and on
-[/incidents.html](https://sabline.dev/incidents.html). Sixteen publicly
+[/incidents.html](https://sabline.dev/incidents.html). Fifteen publicly
 reported incidents from 2023 onward in this project's lane - AI agent
 failures and supply-chain attacks where code ran with more authority than
 it should have - each with the primary report it was written from, and a
@@ -38,9 +38,24 @@ and re-run by `check_incidents.py` on every push, so no release is made
 from a tree where one has stopped refusing. It is not a claim that adopting
 Sabline would have prevented any of the real events, and every entry says
 which part of its incident is outside Sabline entirely; the seven new rows
-in the known-open table are where those sentences went. Every
-summary carries `verified: false` until a person has checked it against its
-sources, and `build_incidents.py` will not publish one that does.
+in the known-open table are where those sentences went, each now naming the
+milestone that would close it or saying nothing will. A "How these were
+chosen" section states the window, the lane and the primary-source rule, and
+that this is a selection and not a survey. Every summary carries
+`verified: false` until a person has checked it against its sources, and
+`build_incidents.py` will not publish one that does. One candidate, an agent
+that deleted a production database (Replit, July 2025), was dropped for lack
+of any primary source - its record is participants' posts and the news that
+quoted them - and `incidents/FACTCHECK.md` keeps every source's evidence,
+row by row, behind the summaries.
+
+`tj-actions-changed-files` gains a Linux-only evidence step: under full
+confinement (8.4) the runtime is refused a read of another process's memory
+and the run ends with E319. A step may now name `platforms`; it runs and is
+checked only where it applies, held to its assertions and recorded in no
+`refusal.txt`, so a refusal one operating system makes and another does not
+is evidence here without making the recorded bytes differ from machine to
+machine.
 
 The known-open table has a page of its own,
 [docs/known-open.md](docs/known-open.md), with the crosswalk's section that

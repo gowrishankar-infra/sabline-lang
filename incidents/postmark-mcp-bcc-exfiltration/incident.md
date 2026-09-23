@@ -10,9 +10,10 @@ verified: false
 
 ## What happened
 
-An npm package called `postmark-mcp`, an MCP server that sends transactional
-email, was published in versions that quietly blind-copied every outgoing
-message to an address the author controlled. Snyk's analysis, published 25
+An npm package called `postmark-mcp`, an unofficial MCP server for sending
+email through Postmark, was published in versions that quietly blind-copied
+every outgoing message to an address the author controlled. Snyk's analysis,
+published 25
 September 2025, records that the added code set
 `Bcc: 'phan@giftshop.club'` and that versions from 1.0.16 through at least
 1.0.18 carried it, exposing "any email content sent through the MCP server
@@ -24,11 +25,13 @@ time.
 ## Sources
 
 - [Malicious MCP Server on npm: postmark-mcp harvests emails](https://snyk.io/blog/malicious-mcp-server-on-npm-postmark-mcp-harvests-emails/) - Snyk's analysis by Liran Tal, 25 September 2025: the affected versions, the BCC address, and what was exposed.
+- [Information regarding malicious "postmark-mcp" package](https://postmarkapp.com/blog/information-regarding-malicious-postmark-mcp-package) - Postmark's own statement, 25 September 2025: that the package was an unofficial one impersonating Postmark, and that the backdoor was added in version 1.0.16.
 - [Fake Postmark MCP npm package stole emails with one-liner](https://www.theregister.com/security/2025/09/29/fake-postmark-mcp-npm-package-stole-emails-with-one-liner/509095) - contemporaneous reporting, for the install counts and the timeline.
 
-> The first public disclosure was a Koi Security post. That blog no longer
-> resolves - the address now redirects away from the article - so it is not
-> linked here. Snyk's write-up carries the same technical detail with the
+> Koi Security discovered the package and wrote it up on 25 September 2025.
+> That post no longer resolves - the address now redirects away from the
+> article - so it is not linked here; an archived copy survives at the
+> Wayback Machine. Snyk's write-up carries the same technical detail with the
 > code shown.
 
 ## The shape, in Sabline

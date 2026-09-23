@@ -19,11 +19,12 @@ executing due to a syntax error", revoked the credentials, removed the
 payload, and released 1.85.0; users of 1.84.0 are told to remove it. It is
 tracked as CVE-2025-8217. Contemporaneous reporting described the payload
 as an instruction addressed to the agent, telling it to delete local files
-and cloud resources including S3 buckets, EC2 instances and IAM users.
+and cloud resources using AWS CLI commands such as `ec2 terminate-instances`,
+`s3 rm` and `iam delete-user`.
 
 ## Sources
 
-- [AWS-2025-015: Issue with Amazon Q Developer Extension for Visual Studio Code](https://aws.amazon.com/security/security-bulletins/AWS-2025-015/) - AWS's own security bulletin: the token scoping, the affected version, the syntax error, and the fix.
+- [Security Update for Amazon Q Developer Extension for Visual Studio Code (Version #1.84)](https://aws.amazon.com/security/security-bulletins/AWS-2025-015/) - AWS's own security bulletin (AWS-2025-015): the token scoping, the affected version, the syntax error, and the fix.
 - [CVE-2025-8217](https://nvd.nist.gov/vuln/detail/CVE-2025-8217) - the CVE record.
 - [Amazon AI coding agent hacked to inject data wiping commands](https://www.bleepingcomputer.com/news/security/amazon-ai-coding-agent-hacked-to-inject-data-wiping-commands/) - reporting on what the payload said, which the bulletin does not quote.
 

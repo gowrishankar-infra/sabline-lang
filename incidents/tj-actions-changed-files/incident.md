@@ -10,22 +10,24 @@ verified: false
 
 ## What happened
 
-Between 14 and 15 March 2025 the tags of the `tj-actions/changed-files`
-GitHub Action, v1 through v45.0.7, were retagged to point at a single
-malicious commit. The GitHub advisory records
-that the Action then "allows remote attackers to discover secrets by reading
-actions logs": the injected step ran a Python script that read secrets out
-of the Runner Worker process's memory and printed them, double-base64
-encoded, into the workflow log - public, on a public repository. CISA
-issued an alert on 18 March 2025 covering this and the related compromise of
-`reviewdog/action-setup@v1` (CVE-2025-30154). The behaviour was removed in
-v46.0.1.
+The GitHub advisory dates the compromise to 14-15 March 2025 (Wiz puts it
+some time before 14 March, and CISA asks for an audit of runs from 12 March
+00:00 UTC to 15 March 12:00 UTC); in that window the tags of the
+`tj-actions/changed-files` GitHub Action, v1 through v45.0.7, were retagged
+to point at a single malicious commit. The GitHub advisory records that the
+Action then "allows remote attackers to discover secrets by reading actions
+logs": the injected step ran a Python script that read secrets out of the
+Runner Worker process's memory and printed them, double-base64 encoded, into
+the workflow log - public, on a public repository. CISA issued an alert on 18
+March 2025, and updated it on 19 March to cover the related compromise of
+`reviewdog/action-setup@v1` (CVE-2025-30154), which it says potentially
+enabled this one. The behaviour was removed in v46.0.1.
 
 ## Sources
 
-- [GHSA-mrrh-fwg8-r2c3 / CVE-2025-30066](https://github.com/advisories/ghsa-mrrh-fwg8-r2c3) - the GitHub advisory record: affected versions, the disclosure of secrets through action logs, and the fixed version.
+- [GHSA-mrrh-fwg8-r2c3 / CVE-2025-30066](https://github.com/advisories/ghsa-mrrh-fwg8-r2c3) - the GitHub advisory record: affected versions, the malicious commit `0e58ed8` the tags were moved to, the disclosure of secrets through action logs, and the fixed version.
 - [Supply Chain Compromise of Third-Party tj-actions/changed-files (CVE-2025-30066) and reviewdog/action-setup@v1 (CVE-2025-30154)](https://www.cisa.gov/news-events/alerts/2025/03/18/supply-chain-compromise-third-party-tj-actionschanged-files-cve-2025-30066-and-reviewdogaction) - CISA's alert, 18 March 2025.
-- [GitHub Action tj-actions/changed-files supply chain attack](https://www.wiz.io/blog/github-action-tj-actions-changed-files-supply-chain-attack-cve-2025-30066) - Wiz's analysis: the retagging to commit `0e58ed8`, the memory scrape, the base64 encoding, and the scale.
+- [GitHub Action tj-actions/changed-files supply chain attack](https://www.wiz.io/blog/github-action-tj-actions-changed-files-supply-chain-attack-cve-2025-30066) - Wiz's analysis: the memory scrape, the double-base64 encoding, and the dozens of affected public repositories it found.
 
 ## The shape, in Sabline
 
@@ -61,3 +63,12 @@ module, and THREAT_MODEL.md says plainly that a granted module's behaviour
 is not bounded. A secret that arrives any way other than `env()` or
 `read_file_secret()` - through `args()`, `read_line`, the network, or a
 granted Python module - is ordinary text with no protection.
+
+One thing the language cannot do, the operating system can. This entry
+carries a Linux-only step: under full confinement (8.4), the runtime is
+refused a read of another process's memory (`/proc/1/mem`), and the run ends
+with E319, the kernel naming the layer that stopped it. It is evidence, not a
+language feature - it holds only where confinement is full (Linux with
+Landlock), it is the kernel's guarantee and no better, and it says nothing
+about the secret that arrives as ordinary text in the first place. The
+[Linux confinement row](../../docs/known-open.md) states its limits in full.

@@ -6,8 +6,7 @@ tests/permissions/** -text
 # a receipt names each standard-library file a run used by the sha256 of its
 # bytes on disk, and `sabline replay` compares that digest with the file: a
 # checkout that rewrote line ends would give a Windows clone a different
-# digest from every other one (the receipts under
-# incidents/replit-agent-database-deletion record db.vel's)
+# digest from every other one
 stdlib/*.vel eol=lf
 # the incident catalogue's evidence is recorded byte for byte, and one
 # recording holds the sha256 `sabline add` computed from a program on disk,

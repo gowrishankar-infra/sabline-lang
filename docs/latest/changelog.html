@@ -84,7 +84,7 @@ one, and terminates the door only once its last line is in. The new form
 also catches things the old one could not: which endpoint a line names,
 and which outcome, are now part of the golden.</p>
 <p>An <strong>incident catalogue</strong>, in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/README.md">incidents/</a> and on
-<a href="incidents.html">/incidents.html</a>. Sixteen publicly
+<a href="incidents.html">/incidents.html</a>. Fifteen publicly
 reported incidents from 2023 onward in this project's lane - AI agent
 failures and supply-chain attacks where code ran with more authority than
 it should have - each with the primary report it was written from, and a
@@ -96,9 +96,23 @@ and re-run by <code>check_incidents.py</code> on every push, so no release is ma
 from a tree where one has stopped refusing. It is not a claim that adopting
 Sabline would have prevented any of the real events, and every entry says
 which part of its incident is outside Sabline entirely; the seven new rows
-in the known-open table are where those sentences went. Every
-summary carries <code>verified: false</code> until a person has checked it against its
-sources, and <code>build_incidents.py</code> will not publish one that does.</p>
+in the known-open table are where those sentences went, each now naming the
+milestone that would close it or saying nothing will. A "How these were
+chosen" section states the window, the lane and the primary-source rule, and
+that this is a selection and not a survey. Every summary carries
+<code>verified: false</code> until a person has checked it against its sources, and
+<code>build_incidents.py</code> will not publish one that does. One candidate, an agent
+that deleted a production database (Replit, July 2025), was dropped for lack
+of any primary source - its record is participants' posts and the news that
+quoted them - and <code>incidents/FACTCHECK.md</code> keeps every source's evidence,
+row by row, behind the summaries.</p>
+<p><code>tj-actions-changed-files</code> gains a Linux-only evidence step: under full
+confinement (8.4) the runtime is refused a read of another process's memory
+and the run ends with E319. A step may now name <code>platforms</code>; it runs and is
+checked only where it applies, held to its assertions and recorded in no
+<code>refusal.txt</code>, so a refusal one operating system makes and another does not
+is evidence here without making the recorded bytes differ from machine to
+machine.</p>
 <p>The known-open table has a page of its own,
 <a href="known-open.html">docs/known-open.md</a>, with the crosswalk's section that
 lands each of its rows on a framework's controls. Those seven rows took

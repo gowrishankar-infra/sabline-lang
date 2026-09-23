@@ -23,8 +23,8 @@ exploitation in the wild.
 
 ## Sources
 
-- [Breaking down 'EchoLeak', the first zero-click AI vulnerability enabling data exfiltration in Microsoft 365 Copilot](https://www.aim.security/lp/aim-labs-echoleak-blogpost) - Aim Labs' own report: the vector, the scope-violation framing, and the disclosure.
-- [CVE-2025-32711](https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-32711) - Microsoft's record.
+- [CVE-2025-32711](https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-32711) - Microsoft's advisory and CVE record (Microsoft is the CNA): the CVE id, the CVSS score, the acknowledgement of Aim Labs, the server-side fix, and that there was no exploitation in the wild.
+- [Breaking down 'EchoLeak', the first zero-click AI vulnerability enabling data exfiltration in Microsoft 365 Copilot](https://www.aim.security/lp/aim-labs-echoleak-blogpost) - Aim Labs' own report, which describes the vector and the scope-violation framing. **The page has not served the article since August 2025** (it answers HTTP 403 now); it is cited as an archived copy, read through the Wayback Machine, and every sentence below that rests on it alone is marked as such.
 
 ## Why this is out of scope
 

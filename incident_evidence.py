@@ -14,6 +14,13 @@ must exit with, and the text that must and must not be in what it printed.
 That last one matters: a step whose point is that a credential did not
 leave names the credential in `expect_absent`.
 
+A step may name `platforms` (e.g. `["linux"]`): it runs, and is checked,
+only on an operating system it names, and is held to its `expect`,
+`expect_exit` and `expect_absent` alone - never a byte recording, so it
+carries no `receipt` and its output stays out of `refusal.txt`. That is how
+a refusal the kernel makes on one operating system, and not on another, is
+evidence here without making `refusal.txt` differ from machine to machine.
+
 Each entry runs in a scratch directory of its own, a copy of the entry's
 own directory, so nothing here writes into the repository and a `.env` a
 step needs is never a file this repository holds. The steps of one entry
@@ -193,8 +200,19 @@ def run_entry(entry: Path, write: bool) -> tuple[bool, list[str]]:
             if source.is_file():
                 shutil.copy2(source, work / source.name)
         for step in plan["steps"]:
+            platforms = step.get("platforms")
+            if platforms and not any(sys.platform.startswith(p)
+                                     for p in platforms):
+                # a platform-scoped step runs, and is checked, only where it
+                # can be: the operating system it names is the point (a Linux
+                # confinement refusal reads differently on macOS and Windows).
+                # It is held to expect/expect_exit/expect_absent alone and is
+                # recorded nowhere, so refusal.txt stays the same bytes on
+                # every machine (incidents/README.md).
+                continue
             said, problems = run_step(entry, step, work, write)
-            blocks.append(f"# {step['name']}\n{said}")
+            if not platforms:
+                blocks.append(f"# {step['name']}\n{said}")
             wrong += problems
     finally:
         shutil.rmtree(work, ignore_errors=True)

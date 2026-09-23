@@ -17,8 +17,9 @@ into popular JavaScript packages"; GitHub removed more than 500 compromised
 packages from the registry. StepSecurity's analysis of the payload reports
 that it "repurposes open-source tools like TruffleHog to scan the filesystem
 for high-entropy secrets", read cloud metadata endpoints and AWS Secrets
-Manager, and uploaded what it found to a public repository created in the
-victim's own GitHub account. It also wrote a workflow file,
+Manager, and uploaded what it found to a new public GitHub repository named
+Shai-Hulud, created through GitHub's `/user/repos` API. It also wrote a
+workflow file,
 `.github/workflows/shai-hulud-workflow.yml`, that exfiltrates repository
 secrets with `${{ toJSON(secrets) }}`, and republished itself into other
 packages the compromised maintainer owned.

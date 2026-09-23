@@ -11,8 +11,8 @@ verified: false
 ## What happened
 
 On 26 August 2025 several malicious versions of the Nx build system and its
-plugins were published to npm and stayed up for about four hours. Nx's own
-postmortem records that "the malicious packages ran a post-install script
+plugins were published to npm; Nx's postmortem says they were live for about
+four hours. Nx's own postmortem records that "the malicious packages ran a post-install script
 that scanned user systems for sensitive data, attempted to use local AI
 tools (like Claude and Gemini), and uploaded the results to a public GitHub
 repo via the GitHub CLI" - the repository being created in the victim's own

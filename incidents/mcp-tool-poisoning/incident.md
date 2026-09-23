@@ -16,11 +16,11 @@ published a proof of concept in which instructions hidden in an MCP tool's
 into doing something the tool does not claim to do. In their demonstration
 against Cursor, a poisoned `add` tool made the agent read
 `~/.cursor/mcp.json` and `~/.ssh/id_rsa` and pass the contents to the
-malicious server in a second argument: "the agent willingly reads the user's
-`~/.cursor/mcp.json` file, and other sensitive files like SSH keys and sends
-them to the malicious server." They note that even where the client asks for
-confirmation, "the full tool input (e.g. the included SSH key) is completely
-hidden". Reproduction code is published at
+malicious server in an extra `sidenote` argument: "the agent willingly reads
+the user's `~/.cursor/mcp.json` file, and other sensitive files like SSH keys
+and sends them to the malicious server." They note that even where the client
+asks for confirmation, Cursor "does not show the full tool input" and "the
+included SSH key is completely hidden". Reproduction code is published at
 `invariantlabs-ai/mcp-injection-experiments`.
 
 ## Sources

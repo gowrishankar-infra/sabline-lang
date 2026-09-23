@@ -7,20 +7,26 @@ Real, publicly reported incidents from 2023 onward in the lane Sabline is writte
 
 ## The counts
 
-14 incidents in scope, and 2 listed as out of scope. Every entry links the report it was written from.
+13 incidents in scope, and 2 listed as out of scope. Every entry links the report it was written from.
 
 | Verdict | Count | What it means |
 |---|---|---|
 | `STOPPED` | 2 | the shape, written in Sabline and run under a budget granting what the task needs, is refused - and the refusal is recorded and re-run on every push |
-| `PARTIAL` | 7 | part of the shape is refused and part is not; both halves are recorded |
+| `PARTIAL` | 6 | part of the shape is refused and part is not; both halves are recorded |
 | `NOT COVERED` | 5 | nothing in Sabline addresses this shape |
 | `UNVERIFIED` | 0 | it may be covered; no repro was built, so nothing is claimed |
 | `OUT OF SCOPE` | 2 | prompt injection where no code ran - listed so the boundary is visible, not counted as a gap |
 
 > [!KNOWN-OPEN]
-> **16 of 16 summaries have not been checked against their sources by a person**, so they are not published. Each is named below with its verdict and its sources, and its summary is withheld until someone reads those sources and sets `verified: true` in the entry. The counts above are of entries, not of checked entries. What is published for a withheld entry is the part a machine checks - the verdict, which `check_incidents.py` re-runs, and the links - and what is withheld is the part only a person can check: the account of what happened.
+> **15 of 15 summaries have not been checked against their sources by a person**, so they are not published. Each is named below with its verdict and its sources, and its summary is withheld until someone reads those sources and sets `verified: true` in the entry. The counts above are of entries, not of checked entries. What is published for a withheld entry is the part a machine checks - the verdict, which `check_incidents.py` re-runs, and the links - and what is withheld is the part only a person can check: the account of what happened.
 
 A verdict is never `STOPPED` on reasoning: `check_incidents.py` re-runs every recorded command on every push, and an entry whose program stops refusing fails the build before a release is made from it.
+
+## How these were chosen
+
+This is a selection, not a survey. An incident is here only if it is **from 2023 onward**, **in the lane** - code that ran with more authority than it should have - and **backed by a primary source**: a vendor post-mortem, a CVE record, or the researcher's own write-up. Nothing goes in without one.
+
+**These are not all the incidents in this lane, and the counts are not a measurement of the field.** A verdict count is a count of what is in this catalogue, not a claim about how common each shape is. What is left out on purpose: anything before 2023; prompt injection where no code ran, which is `OUT OF SCOPE` rather than a gap and is why EchoLeak and CamoLeak are listed that way; and anything that cannot be sourced to a primary report - one incident, an agent that deleted a production database (Replit, July 2025), was dropped for exactly that reason.
 
 ## STOPPED
 
@@ -28,7 +34,7 @@ The shape, written in Sabline and run under a budget granting what the task need
 
 ### The @solana/web3.js backdoor, 1.95.6 and 1.95.7
 
-2024-12-02 - [incidents/solana-web3js-backdoor/](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/solana-web3js-backdoor/) - the line that does the work: `sabline.lock`
+2024-12-03 - [incidents/solana-web3js-backdoor/](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/solana-web3js-backdoor/) - the line that does the work: `sabline.lock`
 
 *The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/solana-web3js-backdoor/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/solana-web3js-backdoor/incident.md).*
 
@@ -42,6 +48,7 @@ The shape, written in Sabline and run under a budget granting what the task need
 *The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/mcp-remote-command-injection/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/mcp-remote-command-injection/incident.md).*
 
 - [OS command injection in mcp-remote when connecting to untrusted MCP servers (JFSA-2025-001290844)](https://research.jfrog.com/vulnerabilities/mcp-remote-command-injection-rce-jfsa-2025-001290844/) - JFrog's own research advisory, which found and reported it.
+- [CVE-2025-6514: Critical mcp-remote RCE Vulnerability](https://jfrog.com/blog/2025-6514-critical-mcp-remote-rce-vulnerability/) - JFrog's own blog write-up (Or Peles, 9 July 2025): what mcp-remote is, the OAuth metadata path, the client (Claude Desktop), and which platforms allow arbitrary commands. The two advisories link it; the four sentences above that the advisories do not carry come from here.
 - [GHSA-6xpm-ggf7-wc3p / CVE-2025-6514](https://github.com/advisories/GHSA-6xpm-ggf7-wc3p) - the advisory record: affected versions, severity, and the fixed release.
 
 ## PARTIAL
@@ -54,7 +61,7 @@ Part of the shape is refused and part is not; both halves are recorded.
 
 *The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/package-hallucination/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/package-hallucination/incident.md).*
 
-- [Diving Deeper into AI Package Hallucinations](https://www.lasso.security/blog/ai-package-hallucinations) - Bar Lanyado's own write-up, 28 March 2024: the `huggingface-cli` test, the 30,000 downloads, and the Alibaba README.
+- [Diving Deeper into AI Package Hallucinations](https://www.lasso.security/blog/ai-package-hallucinations) - Bar Lanyado's own write-up, 28 March 2024: the `huggingface-cli` test, the more than 30,000 downloads in three months, and the Alibaba README.
 - [We Have a Package for You! A Comprehensive Analysis of Package Hallucinations by Code Generating LLMs](https://www.usenix.org/conference/usenixsecurity25/presentation/spracklen) - USENIX Security 2025: the rates, the sample size, and the 205,474 names.
 - [Spracks/PackageHallucination](https://github.com/Spracks/PackageHallucination) - the paper's published code and data.
 
@@ -64,9 +71,9 @@ Part of the shape is refused and part is not; both halves are recorded.
 
 *The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/tj-actions-changed-files/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/tj-actions-changed-files/incident.md).*
 
-- [GHSA-mrrh-fwg8-r2c3 / CVE-2025-30066](https://github.com/advisories/ghsa-mrrh-fwg8-r2c3) - the GitHub advisory record: affected versions, the disclosure of secrets through action logs, and the fixed version.
+- [GHSA-mrrh-fwg8-r2c3 / CVE-2025-30066](https://github.com/advisories/ghsa-mrrh-fwg8-r2c3) - the GitHub advisory record: affected versions, the malicious commit `0e58ed8` the tags were moved to, the disclosure of secrets through action logs, and the fixed version.
 - [Supply Chain Compromise of Third-Party tj-actions/changed-files (CVE-2025-30066) and reviewdog/action-setup@v1 (CVE-2025-30154)](https://www.cisa.gov/news-events/alerts/2025/03/18/supply-chain-compromise-third-party-tj-actionschanged-files-cve-2025-30066-and-reviewdogaction) - CISA's alert, 18 March 2025.
-- [GitHub Action tj-actions/changed-files supply chain attack](https://www.wiz.io/blog/github-action-tj-actions-changed-files-supply-chain-attack-cve-2025-30066) - Wiz's analysis: the retagging to commit `0e58ed8`, the memory scrape, the base64 encoding, and the scale.
+- [GitHub Action tj-actions/changed-files supply chain attack](https://www.wiz.io/blog/github-action-tj-actions-changed-files-supply-chain-attack-cve-2025-30066) - Wiz's analysis: the memory scrape, the double-base64 encoding, and the dozens of affected public repositories it found.
 
 ### MCP tool poisoning
 
@@ -76,15 +83,6 @@ Part of the shape is refused and part is not; both halves are recorded.
 
 - [MCP Security Notification: Tool Poisoning Attacks](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks) - the researchers' own write-up, 1 April 2025: the technique, the Cursor demonstration, the files read, and the hidden argument.
 - [invariantlabs-ai/mcp-injection-experiments](https://github.com/invariantlabs-ai/mcp-injection-experiments) - the published reproduction code.
-
-### An agent that deleted a production database
-
-2025-07-18 - [incidents/replit-agent-database-deletion/](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/replit-agent-database-deletion/) - the line that does the work: `ffi:json`
-
-*The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/replit-agent-database-deletion/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/replit-agent-database-deletion/incident.md).*
-
-- [AI Incident Database, incident 1152](https://incidentdatabase.ai/cite/1152/) - the curated record, dated 18 July 2025, with its cited reports.
-- [Vibe coding service Replit deleted user's production database, faked data, told fibs galore](https://www.theregister.com/2025/07/21/replit_saastr_vibe_coding_incident/) - The Register's account, quoting both participants.
 
 ### Nx "s1ngularity"
 
@@ -113,11 +111,13 @@ Part of the shape is refused and part is not; both halves are recorded.
 *The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/postmark-mcp-bcc-exfiltration/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/postmark-mcp-bcc-exfiltration/incident.md).*
 
 - [Malicious MCP Server on npm: postmark-mcp harvests emails](https://snyk.io/blog/malicious-mcp-server-on-npm-postmark-mcp-harvests-emails/) - Snyk's analysis by Liran Tal, 25 September 2025: the affected versions, the BCC address, and what was exposed.
+- [Information regarding malicious "postmark-mcp" package](https://postmarkapp.com/blog/information-regarding-malicious-postmark-mcp-package) - Postmark's own statement, 25 September 2025: that the package was an unofficial one impersonating Postmark, and that the backdoor was added in version 1.0.16.
 - [Fake Postmark MCP npm package stole emails with one-liner](https://www.theregister.com/security/2025/09/29/fake-postmark-mcp-npm-package-stole-emails-with-one-liner/509095) - contemporaneous reporting, for the install counts and the timeline.
 
-> The first public disclosure was a Koi Security post. That blog no longer
-> resolves - the address now redirects away from the article - so it is not
-> linked here. Snyk's write-up carries the same technical detail with the
+> Koi Security discovered the package and wrote it up on 25 September 2025.
+> That post no longer resolves - the address now redirects away from the
+> article - so it is not linked here; an archived copy survives at the
+> Wayback Machine. Snyk's write-up carries the same technical detail with the
 > code shown.
 
 ## NOT COVERED
@@ -126,11 +126,11 @@ Nothing in Sabline addresses this shape.
 
 ### The CircleCI January 2023 incident
 
-2023-01-04 - [incidents/circleci-oauth-token-theft/](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/circleci-oauth-token-theft/) - the line that does the work: no budget line: nothing here refuses it
+2022-12-22 - [incidents/circleci-oauth-token-theft/](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/circleci-oauth-token-theft/) - the line that does the work: no budget line: nothing here refuses it
 
 *The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/circleci-oauth-token-theft/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/circleci-oauth-token-theft/incident.md).*
 
-- [CircleCI incident report for January 4, 2023 security incident](https://circleci.com/blog/jan-4-2023-incident-report/) - CircleCI's own post-mortem: the malware, the stolen session, what was exfiltrated, and the rotation timeline.
+- [CircleCI Jan 4, 2023 security incident report](https://circleci.com/blog/jan-4-2023-incident-report/) - CircleCI's own post-mortem: the malware, the stolen session, what was exfiltrated, and the rotation timeline.
 - [CircleCI security alert: Rotate any secrets stored in CircleCI](https://circleci.com/blog/january-4-2023-security-alert/) - the customer-facing alert of 4 January 2023.
 
 ### The xz-utils backdoor, CVE-2024-3094
@@ -139,7 +139,7 @@ Nothing in Sabline addresses this shape.
 
 *The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/xz-utils-backdoor/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/xz-utils-backdoor/incident.md).*
 
-- [backdoor in upstream xz/liblzma leading to ssh server compromise](https://www.openwall.com/lists/oss-security/2024/03/29/4) - Andres Freund's original oss-security post, 29 March 2024, which is the disclosure.
+- [backdoor in upstream xz/liblzma leading to ssh server compromise](https://www.openwall.com/lists/oss-security/2024/03/29/4) - Andres Freund's original oss-security post, 29 March 2024, which is the public disclosure.
 - [CVE-2024-3094](https://nvd.nist.gov/vuln/detail/CVE-2024-3094) - the CVE record.
 
 ### Ultralytics 8.3.41 and 8.3.42 on PyPI
@@ -148,8 +148,8 @@ Nothing in Sabline addresses this shape.
 
 *The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/ultralytics-pypi-cache-poisoning/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/ultralytics-pypi-cache-poisoning/incident.md).*
 
-- [Supply-chain attack analysis: Ultralytics](https://blog.pypi.org/posts/2024-12-11-ultralytics-attack-analysis/) - the PyPI blog's analysis, 11 December 2024: the cache poisoning, the publishing path, and the timing.
-- [Ultralytics AI Library Hacked via GitHub for Cryptomining](https://www.wiz.io/blog/ultralytics-ai-library-hacked-via-github-for-cryptomining) - Wiz's analysis of the injection and the payload.
+- [Supply-chain attack analysis: Ultralytics](https://blog.pypi.org/posts/2024-12-11-ultralytics-attack-analysis/) - the PyPI blog's analysis, 11 December 2024: the cache poisoning and the two publishing paths. It defers the technical path to William Woodruff's analysis, which it links.
+- [Ultralytics AI Library Hacked via GitHub for Cryptomining](https://www.wiz.io/blog/ultralytics-ai-library-hacked-via-github-for-cryptomining) - Wiz's analysis: the branch-name injection in the "Publish Docs" workflow, and the XMRig payload.
 
 ### Private repositories leaked through the GitHub MCP server
 
@@ -165,7 +165,7 @@ Nothing in Sabline addresses this shape.
 
 *The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/amazon-q-extension-wiper/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/amazon-q-extension-wiper/incident.md).*
 
-- [AWS-2025-015: Issue with Amazon Q Developer Extension for Visual Studio Code](https://aws.amazon.com/security/security-bulletins/AWS-2025-015/) - AWS's own security bulletin: the token scoping, the affected version, the syntax error, and the fix.
+- [Security Update for Amazon Q Developer Extension for Visual Studio Code (Version #1.84)](https://aws.amazon.com/security/security-bulletins/AWS-2025-015/) - AWS's own security bulletin (AWS-2025-015): the token scoping, the affected version, the syntax error, and the fix.
 - [CVE-2025-8217](https://nvd.nist.gov/vuln/detail/CVE-2025-8217) - the CVE record.
 - [Amazon AI coding agent hacked to inject data wiping commands](https://www.bleepingcomputer.com/news/security/amazon-ai-coding-agent-hacked-to-inject-data-wiping-commands/) - reporting on what the payload said, which the bulletin does not quote.
 
@@ -179,8 +179,8 @@ Prompt injection where no code ran - listed so the boundary is visible, not coun
 
 *The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in [incidents/echoleak-m365-copilot/incident.md](https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/echoleak-m365-copilot/incident.md).*
 
-- [Breaking down 'EchoLeak', the first zero-click AI vulnerability enabling data exfiltration in Microsoft 365 Copilot](https://www.aim.security/lp/aim-labs-echoleak-blogpost) - Aim Labs' own report: the vector, the scope-violation framing, and the disclosure.
-- [CVE-2025-32711](https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-32711) - Microsoft's record.
+- [CVE-2025-32711](https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-32711) - Microsoft's advisory and CVE record (Microsoft is the CNA): the CVE id, the CVSS score, the acknowledgement of Aim Labs, the server-side fix, and that there was no exploitation in the wild.
+- [Breaking down 'EchoLeak', the first zero-click AI vulnerability enabling data exfiltration in Microsoft 365 Copilot](https://www.aim.security/lp/aim-labs-echoleak-blogpost) - Aim Labs' own report, which describes the vector and the scope-violation framing. **The page has not served the article since August 2025** (it answers HTTP 403 now); it is cited as an archived copy, read through the Wayback Machine, and every sentence below that rests on it alone is marked as such.
 
 ### CamoLeak, in GitHub Copilot Chat
 

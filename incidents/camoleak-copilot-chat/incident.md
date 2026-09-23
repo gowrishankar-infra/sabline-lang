@@ -17,9 +17,10 @@ does not see them - were read by Copilot when a user asked it about the pull
 request. To get data out past the content security policy, the exploit
 pre-generated a set of GitHub Camo image-proxy URLs standing for individual
 characters, and had Copilot render the secret it had read one character at a
-time as images. Mayraz reports extracting AWS keys and details of
-undisclosed vulnerabilities from private repositories. GitHub disabled image
-rendering in Copilot Chat on 14 August 2025.
+time as images. Mayraz reports having Copilot search a victim's codebase for
+"AWS_KEY" and exfiltrate the result, and extracting details of undisclosed
+vulnerabilities from private repositories. GitHub disabled image rendering in
+Copilot Chat on 14 August 2025.
 
 ## Sources
 

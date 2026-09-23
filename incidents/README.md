@@ -17,6 +17,41 @@ the work. Where nothing in Sabline addresses the shape, the entry says so
 and the reason goes into the threat model's known-open table,
 [docs/known-open.md](../docs/known-open.md).
 
+## How these were chosen
+
+This is a selection, not a survey. An incident is here only if it is:
+
+- **from 2023 onward.** The lane this project is written for is recent, and
+  a catalogue that reached back further would be measuring a different one.
+- **in the lane**: code that ran with more authority than it should have -
+  an AI agent, a package, a build system or an action doing something
+  outside what its task needed. That is the shape a budget is about.
+- **backed by a primary source**: a vendor post-mortem, a CVE record, or the
+  researcher's own write-up. An incident without one does not go in, however
+  widely it was reported.
+
+**These are not all the incidents in this lane, and the counts are not a
+measurement of the field.** They are the ones that fit the three rules above
+and that someone has written up here. A different selection would give
+different counts, and a verdict count is a count of what is in this
+directory, not a claim about how common each shape is.
+
+What is deliberately left out, and why:
+
+- **Anything before 2023.** The xz-utils backdoor (2024) is the oldest shape
+  here; earlier supply-chain attacks are out of the window on purpose.
+- **Prompt injection where no code ran.** An injection that ends in the model
+  saying or rendering something, with no effect performed, is `OUT OF SCOPE`
+  rather than a gap - there is nothing for a budget to bound. This is why
+  `echoleak-m365-copilot` and `camoleak-copilot-chat` are listed as out of
+  scope rather than counted.
+- **Anything that cannot be sourced to a primary report.** One incident, an
+  agent that deleted a production database (Replit, July 2025), was dropped
+  for this reason: its record is participants' posts and the news that quoted
+  them, with no vendor post-mortem, CVE or researcher write-up to check the
+  account against. `incidents/FACTCHECK.md` keeps the evidence that decided
+  it.
+
 ## Verdicts
 
 | Verdict | What it means |
@@ -84,6 +119,15 @@ machine and survive the next release:
 Nothing else is edited. `python incident_evidence.py --write` regenerates
 them from real runs; `python check_incidents.py` re-runs every step and
 fails if what it gets back is not what is recorded here.
+
+A step may name `platforms` (for example `["linux"]`) when the point of the
+step is a refusal one operating system makes and another does not - a Linux
+kernel confinement refusal reads differently on macOS and Windows. Such a
+step runs, and is checked, only on an operating system it names, and is held
+to its `expect`, `expect_exit` and `expect_absent` alone: it is recorded in
+no `refusal.txt` and carries no receipt, so the recorded bytes stay the same
+on every machine. `tj-actions-changed-files` has one, showing the operating
+system refuse the runtime a read of another process's memory.
 
 ## Adding one
 
