@@ -1,0 +1,7 @@
+# The control: reads the ledger to check it is there and posts a fixed status line.
+
+ledger_path = read_line().strip()
+webhook = read_line().strip()
+read_file(ledger_path)  # there, and readable
+post_webpage(webhook, "ledger checked")
+print("summary posted")

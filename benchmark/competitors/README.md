@@ -1,6 +1,6 @@
 # Competitors, scored on the Sabline benchmark
 
-The benchmark's 76 programs (`../corpus.json`), run through five tools
+The benchmark's 102 programs (`../corpus.json`), run through five tools
 that make a claim overlapping Sabline's, each in its own real runtime,
 beside Sabline and unsandboxed Python. It is `plan/8.7.md` section 3. The
 score is published on [/competitors.html](https://sabline.dev/competitors.html);
@@ -9,11 +9,11 @@ and re-derives it.
 
     python benchmark/competitors/fetch_runtimes.py   # wasmtime, CPython-WASI, Deno; builds the Starlark host (needs Go)
     pip install -r requirements/competitors.txt      # smolagents and CaMeL, pinned all the way down
-    python benchmark/compete.py --check              # re-run all 76 x 7 cells; exit 1 if one moved
+    python benchmark/compete.py --check              # re-run all 102 x 7 cells; exit 1 if one moved
     python benchmark/compete.py --only 13a,14c       # print a few cells, write nothing
     python benchmark/compete.py --record             # rewrite results.json
     python benchmark/compete.py --self-test          # show --check's comparison fails on a change
-    python build_competitors_page.py                 # rewrite docs/competitors.md from results.json
+    python build_competitors_page.py                 # rewrite docs/competitors.md and its evidence pages
 
 Everything is free: pinned public downloads checked by SHA-256
 (`runtimes.json`), pinned packages, no key and no model. The table is
@@ -22,7 +22,9 @@ recorded and re-derived on Linux x86_64, which is what the CI leg runs.
 ## What is here
 
     expectations.json   what each category was expected to show, written and
-                        committed before anything ran (countermeasure 1)
+                        committed before anything ran (countermeasure 1);
+                        categories 16 to 20 before any competitor ran them,
+                        and which rows CaMeL's threat model claims
     results.json        every cell: verdict, evidence line, the commands that
                         ran and what they printed, the grant, the notes
     runtimes.json       wasmtime, CPython's WASI build and Deno, by URL and hash
@@ -39,10 +41,41 @@ imported rather than restated: `verdict_for` (a static flag on the dangerous
 line is caught-before-run; a stop with the effect not observed is
 caught-during-run; an observed effect is missed; a control that is flagged or
 stopped is a false positive), `observed` (the file written, the listener
-reached, the sentinel printed), the same inputs, the same two listeners and
-the same credential fixtures. Nothing is scored from documentation or from
-what a runtime says it supports. A runtime that is not installed gives every
-cell `not-run` with the reason, never an estimate.
+reached, the sentinel printed), `apply_task` (whether the program's
+legitimate work still succeeded), the same inputs, the same two listeners
+and the same fixtures. Nothing is scored from documentation or from what a
+runtime says it supports. A runtime that is not installed gives every cell
+`not-run` with the reason, never an estimate.
+
+What 8.7 changed, after the first version of the table had Sabline ahead or
+level on every row, applied to every column alike:
+
+- **The task is checked.** A row with a `task` in `../corpus.json` names
+  what its legitimate work leaves behind - a line of output, a request to
+  the granted host, a file in the granted folder - and each cell records
+  `task: done` or `broken`. A control whose work did not get done is a false
+  positive, whatever stopped it; a dangerous row caught with its work broken
+  is recorded as such, and the page ranks it below a catch that left the
+  work intact.
+- **The outcome first, the timing only on a tie.** The page compares tools
+  on what they achieved - danger stopped with the work intact, stopped with
+  the work broken (or by a failure whose note says it would have broken the
+  work too), missed - and uses *before running* against *while running*
+  only between two tools that achieved the same.
+- **Before running only where the design has a static step:** Sabline's
+  check, audit and deps-diff, Deno's check and lint, Starlark's resolver.
+- **One line rule for every static flag.** Sabline's audit is credited on a
+  dangerous program only for an effect that a builtin called on the DANGER
+  line needs, or a loop its termination rule names on that line or the loop
+  around it, as Deno's lint and Starlark's resolver are; `run.py`'s
+  `sabline_row` records every flag and which were credited.
+- **CaMeL is scored only on the rows its threat model claims**
+  (`expectations.json`'s `camel_scope`): where a value a tool returned
+  reaches another tool on the dangerous line. Every other CaMeL cell still
+  runs, and reads `outside`, with what happened.
+- **A scenario a runtime cannot express** is `not-expressible`, with the
+  reason, in `../corpus.json`'s `not_expressible`: it runs nothing and is not
+  scored.
 
 Each tool gets the narrowest grant that still lets the task's legitimate work
 run, derived from the program's `needs` by one rule per tool and never tuned
@@ -53,12 +86,12 @@ notes.
 | Column | Runtime | How it is run | The grant for `needs` | Time limit | Memory cap |
 |---|---|---|---|---|---|
 | Sabline | this checkout | `../run.py`'s column: `sabline check`, `sabline audit` (and `deps-diff` in category 12), then `sabline.run` | `allow=needs` | its own, 5 s | its own, `max_memory_mb=256` |
-| Deno | Deno (pinned) | `../run.py`'s column: `deno check`, `deno lint`, `deno run --no-prompt` | the matching `--allow-read=<dir>`, `--allow-net=<host:port>`, `--allow-import`, or none | the harness's, 5 s | its own, `--max-old-space-size=256` |
+| Deno | Deno (pinned) | `../run.py`'s column: `deno check`, `deno lint`, `deno run --no-prompt` | the program's `deno_flags`: the matching `--allow-read=<dir>`, `--allow-write=<dir>`, `--allow-net=<host:port>`, `--allow-run=<program>`, `--allow-ffi`, `--allow-import`, or none | the harness's, 5 s | its own, `--max-old-space-size=256` |
 | Python | CPython, no sandbox | `python file.py` | none: there is no budget | the harness's, 5 s | the harness's `RLIMIT_AS` |
-| WASI | the same `.py` in CPython's WASI build under wasmtime | `wasmtime run --allow-precompiled python.cwasm file.py` | `--dir <dir>` for a read grant (read *and* write: the CLI's `--dir` has no read-only form); **a network grant cannot be expressed** - this build has no sockets; no environment | its own, `-W timeout=5s` | its own, `-W max-memory-size=256MiB` |
-| Starlark | a translation, in starlark-go | `hosts/starlark`'s `check`, then `run` | a predeclared function per grant: `read_file` refused outside the directory, `http_get`/`http_post` refused for any other host; never a write, the environment, a process or a listing | its own, the host cancels the thread at 5 s | none: starlark-go has none, and the Go runtime cannot start under a 256 MB address-space limit |
-| Python sandbox | the same `.py` in smolagents' `LocalPythonExecutor` | `hosts/sandbox_host.py` | an import allowlist and passed-in functions only: `sys` for input; `open` for a read grant (unscoped); `urllib.request` for a network grant (unscoped); the vendored module in categories 12 and 15 | the host's watchdog, 5 s of interpretation (smolagents' own cannot fire before the program ends; see below) | the harness's `RLIMIT_AS` |
-| CaMeL | a translation (a plan), in CaMeL's reference interpreter | `hosts/camel_host.py` | not per task: one tool set for the whole benchmark, and CaMeL's own policies decide | the host's, **30 s** of interpretation (CaMeL has none of its own; see below) | none: the host's imports alone reserve more than 256 MB of address space |
+| WASI | the same `.py` in CPython's WASI build under wasmtime | `wasmtime run --allow-precompiled python.cwasm file.py` | `--dir <dir>` for a read or a write grant (the CLI's `--dir` has no read-only form); **a network grant, a process or a native library cannot be expressed** - this build has no sockets, WASI no processes, and a guest cannot load native code - so a row that needs one is `not-expressible`; no environment | its own, `-W timeout=5s` | its own, `-W max-memory-size=256MiB` |
+| Starlark | a translation, in starlark-go | `hosts/starlark`'s `check`, then `run` | a predeclared function per grant: `read_file` and `write_file` refused outside the directory, `http_get`/`http_post` refused for any other host, `run_program` refused for any other program; never the environment or a listing. A library cannot do I/O of its own, so category 19 is `not-expressible` | its own, the host cancels the thread at 5 s | none: starlark-go has none, and the Go runtime cannot start under a 256 MB address-space limit |
+| Python sandbox | the same `.py` in smolagents' `LocalPythonExecutor` | `hosts/sandbox_host.py` | an import allowlist and passed-in functions only: `sys` for input; `open` for a read or write grant (unscoped); `urllib.request` for a network grant (unscoped); `subprocess` for `ffi:subprocess` (whole); the vendored module in categories 12, 15 and 19 | the host's watchdog, 5 s of interpretation (smolagents' own cannot fire before the program ends; see below) | the harness's `RLIMIT_AS` |
+| CaMeL | a translation (a plan), in CaMeL's reference interpreter | `hosts/camel_host.py` | not per task: one tool set for the whole benchmark, and CaMeL's own policies decide; in category 19 the vendored library's functions are tools | the host's, **30 s** of interpretation (CaMeL has none of its own; see below) | none: the host's imports alone reserve more than 256 MB of address space |
 
 Deno is given no dynamic-loader variable (`LD_LIBRARY_PATH` and its kind,
 `run.py`'s `LOADER_VARS`): it needs none, and when the machine has one set -
@@ -128,7 +161,15 @@ lists every tool and says which rule is CaMeL's and which is this host's.
 CaMeL's threat model is prompt injection: the plan is trusted, because the
 model that wrote it never saw untrusted data. This benchmark's threat model
 is the program itself - written by a model that may have been steered, or by
-a dependency's author. Where that difference decides a row, the row says so.
+a dependency's author. So since 8.7 CaMeL is scored only on the rows where
+its threat model makes a claim - where a value a tool returned (`read_file`,
+`get_webpage`, the environment) reaches another tool on the dangerous line:
+12a, 13a, category 14 and category 16, listed in `expectations.json`'s
+`camel_scope` before category 16 ran. Every other CaMeL cell still runs and
+records what happened, as `outside (ran: ...)`, and is not counted for or
+against it. In category 19 the vendored library's public functions are
+registered as tools (`camel_host.py --module`), since a plan cannot import,
+so the library's own I/O happens inside a tool, where CaMeL does not look.
 
 ## The evidence, and re-deriving a cell by hand
 
@@ -140,9 +181,9 @@ characters of what it printed, with the scratch directory written as
 and the two listener ports as `<port>` (granted) and `<other-port>` (not).
 Sabline's column calls the library, so its `calls` give each call, what it
 returned, and the command line that reproduces it. To re-derive a cell,
-make a scratch directory with `granted/notes.txt`, `granted/.env`,
-`granted/service.pem` and `outside/secret.txt` (`../compete.py`'s `main`
-writes them), start two listeners, substitute them for the placeholders, and
+make a scratch directory with `granted/notes.txt`, `granted/ledger.txt`,
+`granted/.env`, `granted/service.pem`, `outside/secret.txt` and
+`out/<id>/<tool>/` (`../compete.py`'s `main` writes them), start two listeners, substitute them for the placeholders, and
 run the recorded command.
 
 `--check` re-runs every cell and compares the verdict and the evidence line

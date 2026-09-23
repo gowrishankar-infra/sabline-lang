@@ -8,8 +8,8 @@
     python benchmark/compete.py --versions      the runtimes found, and exit
     python benchmark/compete.py --self-test     --check's comparison, shown to fail
 
-The 76 programs of benchmark/corpus.json, run through seven tools, each in
-its own real runtime:
+Every program of benchmark/corpus.json, run through seven tools, each in its
+own real runtime:
 
     sabline    this checkout (benchmark/run.py's own column, unchanged)
     deno       Deno's permissions (benchmark/run.py's own column, unchanged)
@@ -73,6 +73,11 @@ CAMEL_DEADLINE = 30          # of interpretation: see camel_cell
 CAMEL_BACKSTOP = 90          # CaMeL's host imports for seconds first
 EXT = {"starlark": ".star", "camel": ".camel"}
 KEEP = 600                   # characters of each output kept in the record
+
+# the rows CaMeL's threat model claims, and the rule that picks them: both
+# committed in expectations.json before any competitor ran on categories 16-20
+with open(os.path.join(COMP, "expectations.json"), encoding="utf-8") as _fh:
+    CAMEL_CLAIMS = frozenset(json.load(_fh)["camel_scope"]["claims"])
 
 LABEL = {
     "sabline": "Sabline", "deno": "Deno", "python": "Python (no sandbox)",
@@ -259,7 +264,13 @@ def place(prog: dict[str, Any], tool: str, workdir: str,
         return dest
 
     modules: list[str] = []
+    library = None
     dep = prog.get("dependency")
+    if prog.get("module"):
+        # category 19: the vendored library is Python for every column that
+        # can take one - imported by WASI's guest and by the sandbox, and
+        # offered to a CaMeL plan as tools (--module)
+        library = put(prog["module_files"]["python"], prog["module"] + ".py")
     if tool in ("wasi", "sandbox"):
         main = put(prog["files"]["python"], prog["name"] + ".py")
         if dep:
@@ -269,6 +280,8 @@ def place(prog: dict[str, Any], tool: str, workdir: str,
             put(os.path.join(bench.CORPUS, prog["category_key"],
                              "textcase.py"), "textcase.py")
             modules.append("textcase")
+        if library:
+            modules.append(prog["module"])
     elif tool == "starlark":
         main = put(translation(prog, tool), prog["name"] + ".star")
         if dep:
@@ -280,11 +293,13 @@ def place(prog: dict[str, Any], tool: str, workdir: str,
                              "textcase.star"), "textcase.star")
     else:                                       # camel: one file, no modules
         main = put(translation(prog, tool), prog["name"] + ".camel")
-    return {"main": main, "modules": modules, "dir": here}
+    return {"main": main, "modules": modules, "dir": here, "library": library}
 
 
 def source_of(prog: dict[str, Any], tool: str) -> str:
     """The file whose DANGER line the static step is held to."""
+    if prog.get("module"):                      # inside the vendored library
+        return str(prog["module_files"]["python"])
     if tool in ("wasi", "sandbox"):
         return str(prog["files"]["python"])
     if tool == "starlark" and prog.get("dependency"):
@@ -351,10 +366,12 @@ def row_notes(prog: dict[str, Any], tool: str) -> list[str]:
 
 # ---- the new columns ---------------------------------------------------------
 
-def grants_for(needs: list[str]) -> list[str]:
+def grants_for(needs: list[str], run: str | None = None) -> list[str]:
     out = []
     for n in needs:
         out += ["--grant", n]
+    if run:                                     # category 17: one program
+        out += ["--grant", f"run:{run}"]
     return out
 
 
@@ -391,6 +408,10 @@ def wasi_cell(prog: dict[str, Any], placed: dict[str, Any], needs: list[str],
             cmd += ["--dir", f"{d}::{d}"]
             grant.append(f"--dir for {mask(d)} (read and write: the CLI's "
                          f"--dir has no read-only form)")
+        elif n.startswith("fs:write:"):
+            d = n[len("fs:write:"):]
+            cmd += ["--dir", f"{d}::{d}"]
+            grant.append(f"--dir for {mask(d)}")
         elif n.startswith("net:"):
             grant.append(f"{n.split(':', 1)[0]}:{mask(n.split(':', 1)[1])} "
                          f"NOT EXPRESSIBLE: this CPython build has no "
@@ -419,14 +440,19 @@ def wasi_cell(prog: dict[str, Any], placed: dict[str, Any], needs: list[str],
 def starlark_cell(prog: dict[str, Any], placed: dict[str, Any],
                   needs: list[str], stdin_text: str, rt: dict[str, Any],
                   mask: Masker) -> dict[str, Any]:
-    grant_args = grants_for(needs)
+    grant_args = grants_for(needs, prog.get("run"))
     grant = ["read_line, print, json and math"]
     for n in needs:
         if n.startswith("fs:read:"):
             grant.append(f"read_file, refused outside {mask(n[8:])}")
+        elif n.startswith("fs:write:"):
+            grant.append(f"write_file, refused outside {mask(n[9:])}")
         elif n.startswith("net:"):
             grant.append(f"http_get and http_post, refused for any host but "
                          f"{mask(n[4:])}")
+    if prog.get("run"):
+        grant.append(f"run_program, which runs {prog['run']} and refuses any "
+                     f"other program")
     grant.append("nothing else is ever predeclared")
     check_cmd = [rt["path"], "check", placed["main"]] + grant_args
     chk = child(check_cmd, "", timeout=BACKSTOP, address_cap=False)
@@ -491,9 +517,12 @@ def sandbox_cell(prog: dict[str, Any], placed: dict[str, Any],
     grant = ["smolagents' base modules, json and dataclasses (pure), sys "
              "for the input"]
     for n in needs:
-        if n.startswith("fs:read:"):
+        if n.startswith(("fs:read:", "fs:write:")):
             grant.append("the builtin open (smolagents cannot scope it to "
-                         "a directory)")
+                         "a directory, or to one direction)")
+        elif n == "ffi:subprocess":
+            grant.append("subprocess, authorised whole (smolagents cannot "
+                         "narrow it to one program)")
         elif n.startswith("net:"):
             grant.append("urllib.request (smolagents cannot scope it to a "
                          "host)")
@@ -536,6 +565,8 @@ def camel_cell(prog: dict[str, Any], placed: dict[str, Any],
     # a `while`, which CaMeL refuses, so no danger depends on the deadline.
     cmd = [sys.executable, os.path.join(HOSTS, "camel_host.py"),
            placed["main"], "--timeout", str(CAMEL_DEADLINE)]
+    if placed.get("library"):                   # category 19: its tools
+        cmd += ["--module", placed["library"]]
     res = child(cmd, stdin_text, timeout=CAMEL_BACKSTOP, address_cap=False)
     calls = [record_call(cmd, res, mask, stdin_text)]
     if res["exit"] == 3:
@@ -585,9 +616,11 @@ def sabline_calls(prog: dict[str, Any], cell: dict[str, Any], path: str,
             "call": "sabline.audit(source)",
             "result": {k: before[k] for k in ("audit_effects",
                                               "audit_ffi_modules",
-                                              "beyond_needs", "loops_unshown",
-                                              "loops_unshown_in")}}]
-    if placed:
+                                              "beyond_needs",
+                                              "beyond_needs_on_danger_line",
+                                              "loops_unshown",
+                                              "loops_unshown_on_danger_line")}}]
+    if placed and prog.get("dependency"):
         dep = prog["dependency"]
         out.append({"command": f"sabline deps-diff dir:{mask(placed['versions'])}"
                                f" {dep['old']} {dep['new']}",
@@ -630,10 +663,28 @@ def run_program(prog: dict[str, Any], tools: tuple[str, ...],
         if "absent" in rt:
             row["cells"][tool] = {"verdict": "not-run",
                                   "evidence": "NOT RUN: " + rt["absent"],
-                                  "calls": [], "grant": "", "notes": []}
+                                  "calls": [], "grant": "", "notes": [],
+                                  "task": None}
             continue
+        cannot = prog.get("not_expressible", {}).get(tool)
+        if cannot:
+            # the scenario cannot be written for this runtime at all: say
+            # why, run nothing, score nothing
+            row["cells"][tool] = {"verdict": "not-expressible",
+                                  "evidence": "NOT EXPRESSIBLE: " + cannot,
+                                  "calls": [], "grant": "", "notes": [],
+                                  "task": None}
+            continue
+        os.makedirs(f("{outdir}"), exist_ok=True)
         cell = run_tool(prog, tool, rt, work_path, stdin_text, needs, f,
                         port, other, workdir, mask)
+        if tool == "camel" and prog["id"] not in CAMEL_CLAIMS:
+            # run, and recorded, but not scored: a plan doing what it was
+            # written to do is what CaMeL trusts by design
+            cell["ran_verdict"] = cell["verdict"]
+            cell["verdict"] = "outside"
+            cell["evidence"] = ("outside CaMeL's threat model (ran: "
+                                f"{cell['ran_verdict']}); " + cell["evidence"])
         row["cells"][tool] = cell
         if os.path.exists(work_path):
             os.remove(work_path)
@@ -648,8 +699,7 @@ def run_tool(prog: dict[str, Any], tool: str, rt: dict[str, Any],
         return str(f(t, slashes=True))
 
     if tool in ("sabline", "deno", "python"):
-        placed = (bench.place_dependency(prog, tool, workdir, slashed)
-                  if prog.get("dependency") else None)
+        placed = bench.place_for(prog, tool, workdir, port, other, work_path)
         CALLS.clear()
         if tool == "sabline":
             cell = bench.sabline_row(prog, stdin_text, work_path, needs, placed)
@@ -674,9 +724,11 @@ def run_tool(prog: dict[str, Any], tool: str, rt: dict[str, Any],
                 prog, stdin_text, work_path, port, placed))
             calls = [record_call(c, r, mask, s) for c, r, s in CALLS]
             grant = "none: plain Python has no budget"
+        cell = bench.finish(prog, tool, cell, f)
         cell["evidence"] = mask(cell["evidence"])
         return {"verdict": cell["verdict"], "evidence": cell["evidence"],
                 "observed": cell["observed"], "grant": grant, "calls": calls,
+                "task": cell.get("task"),
                 "notes": automatic_notes(prog, tool, cell["verdict"],
                                          cell["evidence"])}
 
@@ -708,9 +760,13 @@ def run_tool(prog: dict[str, Any], tool: str, rt: dict[str, Any],
         # else: a runtime that refused the loop outright keeps its reason
         if limit_stop(d):
             cell = bench.settle_memory_row(prog, cell)
+    # the task's legitimate work: done only if the program ran at all
+    cell = bench.apply_task(prog, tool, cell, got["stdout"],
+                            got["during"] is not None, f)
     out = got["stdout"] + "\n" + (got["during"] or {}).get("stderr", "")
     return {"verdict": cell["verdict"], "evidence": cell["evidence"],
             "observed": seen, "grant": got["grant"], "calls": got["calls"],
+            "task": cell.get("task"),
             "notes": row_notes(prog, tool) + automatic_notes(
                 prog, tool, cell["verdict"], cell["evidence"] + "\n" + out)
             + FIXED_NOTES.get((prog["id"], tool), [])}
@@ -733,9 +789,26 @@ def limit_stop(res: dict[str, Any]) -> bool:
     return res["exit"] not in (0, 1) or (res["exit"] != 0 and not text.strip())
 
 
+TASK_BROKEN = {
+    "sabline": "Stopped, and the task with it: a Sabline refusal ends the run "
+               "and a program cannot catch it (and a program that does not "
+               "compile does not run at all), so the legitimate work after "
+               "the refusal did not happen.",
+    "starlark": "Stopped, and the task with it: Starlark has no try, so the "
+                "refused call ended the program (and a program that does not "
+                "resolve does not run at all).",
+    "camel": "Stopped, and the task with it: a denial ends CaMeL's plan, and "
+             "what the plan printed before it is not shown, as in CaMeL's own "
+             "pipeline (replay_privileged_llm.py).",
+}
+
 # Facts about one cell that were verified by hand and that the verdict
 # alone would misreport. Each says how it was verified.
 FIXED_NOTES: dict[tuple[str, str], list[str]] = {
+    ("19d", "deno"): [
+        "The library's native code, loaded with --allow-ffi, runs outside "
+        "Deno's permissions: Deno's documentation says --allow-ffi grants "
+        "everything the process can do."],
     ("12a", "camel"): [
         "CaMeL allows it because the line posted carries len() of the page, "
         "and CaMeL's reference interpreter treats the length of a private "
@@ -773,6 +846,11 @@ def automatic_notes(prog: dict[str, Any], tool: str, verdict: str,
                      "urllib.request` wrongly, so `urllib.request.urlopen` "
                      "fails for every URL, granted or not. The task's own "
                      "request fails too.")
+    if tool == "sandbox" and verdict == "false-positive" \
+            and "no attribute 'request'" in evidence:
+        notes.append("A false positive by a defect, not a refusal: smolagents "
+                     "1.26.0 binds `import urllib.request` wrongly, so the "
+                     "task's own request to the granted host fails.")
     if tool == "sandbox" and caught and "takes no arguments" in evidence:
         notes.append("Not a refusal: smolagents 1.26.0 does not apply "
                      "@dataclass, so building the program's record fails "
@@ -781,7 +859,10 @@ def automatic_notes(prog: dict[str, Any], tool: str, verdict: str,
         notes.append("Not a refusal: `log` is one of smolagents' own tools "
                      "(math.log), so the program's `log = ...` is refused "
                      "before its loop runs.")
-    if tool == "sandbox" and prog.get("dependency"):
+    if caught and "task broken" in evidence:
+        notes.append(TASK_BROKEN.get(tool, "The danger was stopped, and the "
+                                           "task's legitimate work with it."))
+    if tool == "sandbox" and (prog.get("dependency") or prog.get("module")):
         notes.append("The dependency is an authorised import, so it runs as "
                      "real Python outside smolagents' interpreter, with the "
                      "process's full authority.")
@@ -799,9 +880,8 @@ def automatic_notes(prog: dict[str, Any], tool: str, verdict: str,
     if tool == "starlark" and "check elsewhere (not credited)" in evidence:
         notes.append("Refused before running, but on a line the benchmark "
                      "does not credit: the loop or call it rejects is not on "
-                     "the DANGER line. That is the rule Deno is held to; "
-                     "Sabline's audit flags an unbounded loop wherever it "
-                     "is, and is credited for it.")
+                     "the DANGER line. Every tool is held to that rule, "
+                     "Sabline's audit and Deno's lint included.")
     if tool == "deno" and caught and "require is not defined" in evidence:
         notes.append("Not a refusal: the JavaScript version calls require, "
                      "which Deno does not define, so it crashes before any "
@@ -814,7 +894,21 @@ def automatic_notes(prog: dict[str, Any], tool: str, verdict: str,
 
 def summarise(categories: Any, rows: list[dict[str, Any]],
               tools: tuple[str, ...]) -> dict[str, Any]:
-    verdicts = list(bench.VERDICTS) + ["not-run"]
+    # beside the harness's verdicts, the three that only this table has, and
+    # how many catches left the task's legitimate work broken
+    verdicts = list(bench.VERDICTS) + ["not-run", "not-expressible",
+                                       "outside"]
+
+    def count(mine: list[dict[str, Any]], t: str) -> dict[str, int]:
+        counts = {v: 0 for v in verdicts}
+        for r in mine:
+            counts[r["cells"][t]["verdict"]] += 1
+        counts["caught, task broken"] = sum(
+            1 for r in mine if r["dangerous"]
+            and r["cells"][t]["verdict"].startswith("caught")
+            and r["cells"][t].get("task") == "broken")
+        return counts
+
     per_cat = []
     for cat in categories:
         mine = [r for r in rows if r["category"] == cat["number"]]
@@ -823,17 +917,9 @@ def summarise(categories: Any, rows: list[dict[str, Any]],
         entry: dict[str, Any] = {"number": cat["number"],
                                  "title": cat["title"], "tools": {}}
         for t in tools:
-            counts = {v: 0 for v in verdicts}
-            for r in mine:
-                counts[r["cells"][t]["verdict"]] += 1
-            entry["tools"][t] = counts
+            entry["tools"][t] = count(mine, t)
         per_cat.append(entry)
-    totals = {}
-    for t in tools:
-        counts = {v: 0 for v in verdicts}
-        for r in rows:
-            counts[r["cells"][t]["verdict"]] += 1
-        totals[t] = counts
+    totals = {t: count(rows, t) for t in tools}
     return {"categories": per_cat, "totals": totals}
 
 
@@ -961,6 +1047,7 @@ def main(argv: list[str] | None = None) -> int:
     fixtures = {"granted/notes.txt": "granted-notes\n",
                 "outside/secret.txt": "outside-secret\n",
                 "granted/.env": "API_TOKEN=bench-not-a-real-token\n",
+                "granted/ledger.txt": bench.LEDGER_TEXT,
                 "granted/service.pem": "-----BEGIN PRIVATE KEY-----\n"
                                        "bench-not-a-real-key\n"
                                        "-----END PRIVATE KEY-----\n"}

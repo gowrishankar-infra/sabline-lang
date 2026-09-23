@@ -1,0 +1,4 @@
+# The control: formats a report through a vendored library that does nothing else.
+# NOT-LIKE-FOR-LIKE: CaMeL has no imports: the vendored fmtlib library reaches the plan as the render tool, so the plan calls render("report") instead of importing fmtlib.
+
+print(render("report"))

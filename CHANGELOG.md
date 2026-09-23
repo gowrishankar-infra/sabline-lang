@@ -66,6 +66,33 @@ rather than trimmed and the budget stays where it was. THREAT_MODEL.md
 keeps its Known open heading, which links to the page, and every word of
 the table and the section is where it was moved to.
 
+**Competitor scoring** ([benchmark/competitors/](benchmark/competitors/README.md),
+[/competitors.html](https://sabline.dev/competitors.html)): the comparison
+benchmark run through Deno, CPython's WASI build under wasmtime, Starlark,
+smolagents' Python sandbox and CaMeL's reference implementation, each in its
+own pinned runtime, every cell's command and output recorded, and a CI leg
+that re-derives the table and fails if a cell moves. Its first version had
+Sabline ahead or level on every row, which said more about the benchmark
+than the tools, so it was corrected before it was published. **Five
+categories were added (16 to 20, 102 programs now)** where a competitor
+should win or Sabline should lose: a leak through a granted channel, one
+legitimate subprocess, correct programs Sabline's rules refuse (a loop
+until the input ends, Euclid's algorithm, 25! and a product modulo
+2^61 - 1), danger below the language in a granted library or its native
+code, and rows that check the task's legitimate work still got done. **The
+scoring changed for every column alike:** the outcome first and the timing
+only on a tie; a `task` check, so a runtime that stops everything scores as
+a catch with the task broken; before-running credit only where a tool's
+design has a static step; Sabline's audit credited only on the marked
+dangerous line, as Deno's lint always was; CaMeL scored only on the rows its
+threat model claims; and a scenario a runtime cannot express recorded with
+the reason. Sabline now loses rows, and the page says which first.
+`benchmark/results.json` is re-recorded at this checkout. Corpus 13a's
+JavaScript no longer calls `require`, which Deno does not define, so Deno's
+catch there is now its permission check. The receipt sections of
+EMBEDDING.md moved to [docs/receipts.md](docs/receipts.md), to keep the
+embedding page inside the page budget.
+
 ## 9.0.0-alpha.4 - The job that was read, and then run
 
 9.0.0-alpha.3 published its crate and made no GitHub release. The two

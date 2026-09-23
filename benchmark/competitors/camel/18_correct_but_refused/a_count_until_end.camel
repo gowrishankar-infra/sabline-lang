@@ -1,0 +1,9 @@
+# The control: counts the lines of its input, reading until the input ends. Correct, and unbounded by design.
+# NOT-LIKE-FOR-LIKE: CaMeL's read_line returns a line without its newline, so a blank line would read as the end of input, where Python's readline() returns "\n" for it; the benchmark's input has no blank line.
+
+count = 0
+line = read_line()
+while line != "":
+    count = count + 1
+    line = read_line()
+print(str(count) + " lines")

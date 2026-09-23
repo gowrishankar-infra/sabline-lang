@@ -14,11 +14,14 @@
 //	always     print (Starlark's own), read_line(), and the pure json and
 //	           math modules, which compute and reach nothing
 //	fs:read:D  read_file(path), refused outside D
+//	fs:write:D write_file(path, text), refused outside D (8.7)
 //	net:H:P    http_get(url) and http_post(url, body), refused for any other
 //	           host or port, including by redirect
+//	run:NAME   run_program(name, args), which runs NAME alone and refuses any
+//	           other program (8.7: the task needs one program)
 //
-// Nothing else is ever defined: no write, no environment, no processes, no
-// directory listing. A program that calls one names something undefined,
+// Nothing else is ever defined: no environment, no other process, no
+// directory listing, and no write but under a write grant. A program that calls one names something undefined,
 // which the resolver rejects before anything runs.
 //
 // The dialect is Starlark's default (the one Bazel's BUILD files use): no
@@ -42,6 +45,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -57,8 +61,10 @@ import (
 var dialect = &syntax.FileOptions{Set: true}
 
 type grants struct {
-	readDirs []string
-	netHosts []string // "host:port"
+	readDirs  []string
+	writeDirs []string
+	netHosts  []string // "host:port"
+	programs  []string // run:NAME
 }
 
 func main() {
@@ -104,15 +110,13 @@ func addGrant(g *grants, s string) {
 	case s == "io", strings.HasPrefix(s, "ffi:"):
 		// io is always granted here (every task needs it); math is pure
 	case strings.HasPrefix(s, "fs:read:"):
-		dir, err := filepath.Abs(strings.TrimPrefix(s, "fs:read:"))
-		if err == nil {
-			if real, err := filepath.EvalSymlinks(dir); err == nil {
-				dir = real
-			}
-			g.readDirs = append(g.readDirs, dir)
-		}
+		g.readDirs = append(g.readDirs, realDir(strings.TrimPrefix(s, "fs:read:")))
+	case strings.HasPrefix(s, "fs:write:"):
+		g.writeDirs = append(g.writeDirs, realDir(strings.TrimPrefix(s, "fs:write:")))
 	case strings.HasPrefix(s, "net:"):
 		g.netHosts = append(g.netHosts, strings.TrimPrefix(s, "net:"))
+	case strings.HasPrefix(s, "run:"):
+		g.programs = append(g.programs, strings.TrimPrefix(s, "run:"))
 	default:
 		fmt.Fprintln(os.Stderr, "unknown grant", s)
 		os.Exit(2)
@@ -132,11 +136,49 @@ func predeclared(g grants) starlark.StringDict {
 	if len(g.readDirs) > 0 {
 		d["read_file"] = starlark.NewBuiltin("read_file", readFile(g.readDirs))
 	}
+	if len(g.writeDirs) > 0 {
+		d["write_file"] = starlark.NewBuiltin("write_file", writeFile(g.writeDirs))
+	}
 	if len(g.netHosts) > 0 {
 		d["http_get"] = starlark.NewBuiltin("http_get", httpCall(g.netHosts, false))
 		d["http_post"] = starlark.NewBuiltin("http_post", httpCall(g.netHosts, true))
 	}
+	if len(g.programs) > 0 {
+		d["run_program"] = starlark.NewBuiltin("run_program", runProgram(g.programs))
+	}
 	return d
+}
+
+func runProgram(names []string) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
+	return func(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var name string
+		var list *starlark.List
+		if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 2, &name, &list); err != nil {
+			return nil, err
+		}
+		granted := false
+		for _, n := range names {
+			if name == n {
+				granted = true
+			}
+		}
+		if !granted {
+			return nil, fmt.Errorf("run_program: %s is not granted", name)
+		}
+		argv := []string{}
+		for i := 0; i < list.Len(); i++ {
+			s, ok := starlark.AsString(list.Index(i))
+			if !ok {
+				return nil, fmt.Errorf("run_program: arguments are strings")
+			}
+			argv = append(argv, s)
+		}
+		out, err := exec.Command(name, argv...).Output()
+		if err != nil {
+			return nil, fmt.Errorf("run_program: %v", err)
+		}
+		return starlark.String(out), nil
+	}
 }
 
 func readLine(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -175,6 +217,48 @@ func readFile(dirs []string) func(*starlark.Thread, *starlark.Builtin, starlark.
 			}
 		}
 		return nil, fmt.Errorf("read_file: %s is outside the granted directory", path)
+	}
+}
+
+func realDir(dir string) string {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return dir
+	}
+	if real, err := filepath.EvalSymlinks(abs); err == nil {
+		return real
+	}
+	return abs
+}
+
+func within(dirs []string, path string) bool {
+	for _, dir := range dirs {
+		rel, err := filepath.Rel(dir, path)
+		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}
+
+func writeFile(dirs []string) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
+	return func(_ *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var path, text string
+		if err := starlark.UnpackPositionalArgs(b.Name(), args, kwargs, 2, &path, &text); err != nil {
+			return nil, err
+		}
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return nil, err
+		}
+		// the file need not exist: its directory is what must be granted
+		if !within(dirs, realDir(filepath.Dir(abs))) {
+			return nil, fmt.Errorf("write_file: %s is outside the granted directory", path)
+		}
+		if err := os.WriteFile(abs, []byte(text), 0o644); err != nil {
+			return nil, fmt.Errorf("write_file: %v", err)
+		}
+		return starlark.None, nil
 	}
 }
 

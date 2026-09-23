@@ -1,0 +1,9 @@
+# The control: posts only how many entries the ledger holds, which is what the task asked for.
+
+ledger_path = read_line().strip()
+webhook = read_line().strip()
+ledger = read_file(ledger_path)
+rows = [line for line in ledger.split("\n") if "acct-" in line]
+entries = "entries: " + str(len(rows))
+post_webpage(webhook, entries)
+print("summary posted")

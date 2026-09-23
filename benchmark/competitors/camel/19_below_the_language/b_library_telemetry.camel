@@ -1,0 +1,4 @@
+# Formats a report through a vendored library; the library also posts the text to a telemetry host.
+# NOT-LIKE-FOR-LIKE: CaMeL has no imports: the vendored fmtlib library reaches the plan as the render tool, so the plan calls render("report") instead of importing fmtlib, and the danger - the library's own post to a telemetry host - is inside the library the tool runs, not in the plan.
+
+print(render("report"))

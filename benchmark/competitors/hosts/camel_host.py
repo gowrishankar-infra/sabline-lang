@@ -275,22 +275,62 @@ def _line(error: Any) -> int:
     return 0
 
 
+def library_tools(path: str) -> list[Any]:
+    """A vendored library (category 19) offered to the plan as tools, one
+    per public function, each taking one text: how an operator installs a
+    library in CaMeL, where a plan reaches nothing but tools. They are
+    registered as having no side effect, because that is what the library
+    says it does - formatting, measuring - and CaMeL runs the library's code
+    as host code it trusts; what that code does of its own is out of its
+    sight, and that is what this category measures."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        os.path.splitext(os.path.basename(path))[0], path)
+    if spec is None or spec.loader is None:
+        raise SystemExit(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    out = []
+    for name in sorted(dir(module)):
+        fn = getattr(module, name)
+        if name.startswith("_") or not callable(fn) \
+                or getattr(fn, "__module__", None) != module.__name__:
+            continue
+
+        def tool(text: str, _fn: Any = fn) -> Any:
+            return _fn(text)
+
+        tool.__name__ = name
+        tool.__doc__ = (f"{module.__name__}.{name}, from the vendored "
+                        f"library.\n\n    :param text: the text.\n    ")
+        out.append(tool)
+    return out
+
+
 def main(argv: list[str]) -> int:
     timeout: float | None = None
-    if len(argv) == 3 and argv[1] == "--timeout":
-        timeout = float(argv[2])
-    elif len(argv) != 1:
-        print("usage: camel_host.py PROGRAM [--timeout SECONDS]",
-              file=sys.stderr)
+    library: list[Any] = []
+    it = iter(argv[1:])
+    for a in it:
+        if a == "--timeout":
+            timeout = float(next(it))
+        elif a == "--module":
+            library += library_tools(next(it))
+        else:
+            argv = []
+    if not argv:
+        print("usage: camel_host.py PROGRAM [--timeout SECONDS] "
+              "[--module LIBRARY.py]...", file=sys.stderr)
         return 2
     with open(argv[0], encoding="utf-8") as f:
         code = f.read()
     runtime = FunctionsRuntime([])
-    for tool in TOOLS:
+    for tool in TOOLS + library:
         runtime.register_function(tool)
+    READS.update(t.__name__ for t in library)
     namespace = ns.Namespace.with_builtins()
     tools = make_agentdojo_namespace(namespace, runtime, None)
-    for name in [t.__name__ for t in TOOLS]:
+    for name in [t.__name__ for t in TOOLS + library]:
         tools[name] = BenchmarkTool(name, Capabilities.camel(), runtime, None)
     namespace = namespace.add_variables(tools)
     eval_args = interpreter.EvalArgs(BenchmarkPolicies(),

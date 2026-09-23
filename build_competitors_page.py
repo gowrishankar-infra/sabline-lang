@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""docs/competitors.md and its two evidence pages, written from
-benchmark/competitors/results.json.
+"""docs/competitors.md, its page of every scenario and its evidence pages,
+written from benchmark/competitors/results.json.
 
-    python build_competitors_page.py            write all three
+    python build_competitors_page.py            write them all
     python build_competitors_page.py --check    fail if any is not current
     python build_competitors_page.py --self-test   the claim checks, shown to fail
 
 The first page publishes the table - the date, each runtime's version, the
-scenarios, every row with its verdict for all seven tools - and says, before
-anything else, where a competitor is ahead. Two more hold every cell's
-evidence line, which does not fit on one page within the site's page
-budget and is split, never trimmed. benchmark/compete.py records the
+scenarios, each category's count for all seven tools - and says, before
+anything else, where a competitor is ahead. The second has every row with
+its verdicts and notes, and the rest every cell's evidence line; none of it
+fits on one page within the site's page budget, so it is split, never
+trimmed. benchmark/compete.py records the
 numbers; this only renders them, so no page can drift from the record. What is written here as prose is
 about the design of the tools and the benchmark, and is checked against the
 record where it names a row: a claim about a row that the record does not
@@ -28,14 +29,14 @@ COMP = HERE / "benchmark" / "competitors"
 RESULTS = COMP / "results.json"
 EXPECT = COMP / "expectations.json"
 OUT = HERE / "docs" / "competitors.md"
-EVIDENCE = (HERE / "docs" / "competitors-evidence-1.md",
-            HERE / "docs" / "competitors-evidence-2.md")
+EVIDENCE_PART_BYTES = 45_000       # of Markdown: about 63,000 of HTML
 TOOLS = ("sabline", "deno", "python", "wasi", "starlark", "sandbox", "camel")
 RIVALS = ("deno", "wasi", "starlark", "sandbox", "camel")
 SHORT = {"caught-before-run": "before", "caught-during-run": "during",
          "missed": "**missed**", "not-applicable": "clean",
          "false-positive": "**false positive**", "not-run": "NOT RUN",
-         "tool-absent": "NOT RUN"}
+         "tool-absent": "NOT RUN", "not-expressible": "not expressible",
+         "outside": "outside"}
 RANK = {"caught-before-run": 2, "caught-during-run": 1, "missed": 0}
 REPO = "https://github.com/gowrishankar-infra/sabline-lang"
 
@@ -44,22 +45,11 @@ def v(row: dict[str, Any], tool: str) -> str:
     return str(row["cells"][tool]["verdict"])
 
 
-def compare_row(row: dict[str, Any], tool: str) -> str:
-    """ahead / behind / tie / timing-ahead / timing-behind / n/a: the
-    competitor against Sabline on one row."""
-    a, s = v(row, tool), v(row, "sabline")
-    if "not-run" in (a, s):
-        return "n/a"
-    if not row["dangerous"]:
-        if a == s:
-            return "tie"
-        return "ahead" if s == "false-positive" else "behind"
-    ra, rs = RANK[a], RANK[s]
-    if ra == rs:
-        return "tie"
-    if min(ra, rs) >= 1:                   # both caught: only the timing differs
-        return "timing-ahead" if ra > rs else "timing-behind"
-    return "ahead" if ra > rs else "behind"
+UNSCORED = ("not-run", "tool-absent", "not-expressible", "outside")
+
+
+def task_broken(row: dict[str, Any], tool: str) -> bool:
+    return bool(row["cells"][tool].get("task") == "broken")
 
 
 UNEARNED = ("Not a refusal", "Not like-for-like: the task's own request",
@@ -67,14 +57,67 @@ UNEARNED = ("Not a refusal", "Not like-for-like: the task's own request",
 
 
 def unearned(row: dict[str, Any], tool: str) -> bool:
-    """A catch whose own row note says the danger was not what was refused."""
+    """A catch whose own row note says the danger was not what was refused:
+    the runtime could not do the task's own work either, or a deadline
+    stopped a slow interpreter."""
     cell = row["cells"][tool]
     return (str(cell["verdict"]).startswith("caught")
             and any(n.startswith(UNEARNED) for n in cell["notes"]))
 
 
+def outcome(row: dict[str, Any], tool: str) -> int | None:
+    """What a tool achieved on a row, before timing: on a dangerous row 2
+    for the danger stopped with the task's work intact (or no work to
+    check), 1 for stopped with the work broken too - or stopped by
+    something that would have stopped the work as well, which the row's
+    note says - and 0 for missed; on a control 1 for clean, 0 for a false
+    positive. None when not scored."""
+    vd = v(row, tool)
+    if vd in UNSCORED:
+        return None
+    if row["dangerous"]:
+        if vd == "missed":
+            return 0
+        return 1 if task_broken(row, tool) or unearned(row, tool) else 2
+    return 1 if vd == "not-applicable" else 0
+
+
+def compare_row(row: dict[str, Any], tool: str) -> str:
+    """ahead / behind / tie / timing-ahead / timing-behind / n/a: the
+    competitor against Sabline on one row - the outcome first, and only
+    where the outcome is the same, the timing (before running or while)."""
+    a, s = outcome(row, tool), outcome(row, "sabline")
+    if a is None or s is None:
+        return "n/a"
+    if a != s:
+        return "ahead" if a > s else "behind"
+    if row["dangerous"] and a >= 1:
+        ra, rs = RANK[v(row, tool)], RANK[v(row, "sabline")]
+        if ra != rs:
+            return "timing-ahead" if ra > rs else "timing-behind"
+    return "tie"
+
+
+def why_ahead(row: dict[str, Any], tool: str) -> str:
+    a, s = outcome(row, tool), outcome(row, "sabline")
+    if not row["dangerous"]:
+        return "ran the correct program clean, where Sabline stopped or flagged it"
+    if s == 0:
+        if a == 2:
+            return "caught what Sabline missed"
+        if unearned(row, tool):
+            return ("stopped what Sabline missed, by a failure that is not a "
+                    "refusal and would have stopped the task too (†)")
+        return "caught what Sabline missed, though with the task broken"
+    return ("stopped the danger with the task's work intact, where Sabline's "
+            "refusal ended the run and the task with it")
+
+
 def cell_text(row: dict[str, Any], tool: str) -> str:
     text = SHORT[v(row, tool)]
+    if row["dangerous"] and v(row, tool).startswith("caught") \
+            and task_broken(row, tool):
+        text += ", task broken"
     if unearned(row, tool):
         text += " †"
     if tool != "sabline":
@@ -84,18 +127,68 @@ def cell_text(row: dict[str, Any], tool: str) -> str:
     return text
 
 
+def got_class(x: dict[str, Any], t: str) -> str:
+    """A cell's class for the expectations table, with a broken task said."""
+    k = SHORT[v(x, t)].strip("*")
+    return k + (" (task broken)" if x["dangerous"] and k in ("before", "during")
+                and task_broken(x, t) else "")
+
+
+def category_cell(mine: list[dict[str, Any]], t: str) -> str:
+    cells = [v(x, t) for x in mine]
+    if all(c in ("not-run", "tool-absent") for c in cells):
+        return "NOT RUN"
+    dang = [x for x in mine if x["dangerous"] and v(x, t) not in UNSCORED]
+    ctl = [x for x in mine if not x["dangerous"] and v(x, t) not in UNSCORED]
+    parts = []
+    if dang:
+        b = sum(v(x, t) == "caught-before-run" for x in dang)
+        d = sum(v(x, t) == "caught-during-run" for x in dang)
+        m = sum(v(x, t) == "missed" for x in dang)
+        broken = sum(1 for x in dang if v(x, t).startswith("caught")
+                     and task_broken(x, t))
+        parts.append(f"{b}/{d}/{m}" + (f" ({broken} task broken)"
+                                       if broken else ""))
+    if ctl:
+        fp = sum(v(x, t) == "false-positive" for x in ctl)
+        parts.append(f"{len(ctl) - fp} clean" + (f", **{fp} FP**" if fp else ""))
+    ne = sum(c == "not-expressible" for c in cells)
+    out = sum(c == "outside" for c in cells)
+    if ne:
+        parts.append(f"{ne} not expressible")
+    if out:
+        parts.append(f"{out} outside")
+    return "; ".join(parts)
+
+
+def total_caught(dangerous: list[dict[str, Any]], t: str) -> str:
+    scored = [x for x in dangerous if v(x, t) not in UNSCORED]
+    caught = [x for x in scored if v(x, t).startswith("caught")]
+    before = sum(v(x, t) == "caught-before-run" for x in caught)
+    broken = sum(task_broken(x, t) for x in caught)
+    return (f"**{len(caught)}** of {len(scored)} ({before} before; "
+            f"{broken} with the task broken)")
+
+
+def total_fp(controls: list[dict[str, Any]], t: str) -> str:
+    scored = [x for x in controls if v(x, t) not in UNSCORED]
+    fp = sum(v(x, t) == "false-positive" for x in scored)
+    return f"**{fp}** of {len(scored)}"
+
+
 def ids(rows: list[dict[str, Any]]) -> str:
     return ", ".join(r["id"] for r in rows) if rows else "none"
 
 
 def write_pages(r: dict[str, Any],
-                expect: dict[str, Any]) -> tuple[str, str, str]:
+                expect: dict[str, Any]) -> tuple[str, list[str]]:
     rows: list[dict[str, Any]] = r["programs"]
     labels: dict[str, str] = r["labels"]
     meta = r["meta"]
     rt = meta["runtimes"]
     dangerous = [x for x in rows if x["dangerous"]]
     controls = [x for x in rows if not x["dangerous"]]
+    parts = len(evidence_pages(r))
     w: list[str] = []
     p = w.append
 
@@ -131,57 +224,48 @@ def write_pages(r: dict[str, Any],
     # ---- losses first ---------------------------------------------------------
     p("## Where a competitor is ahead")
     p("")
-    ahead = [(x, t) for x in rows for t in RIVALS
-             if compare_row(x, t) == "ahead"]
-    timing = [(x, t) for x in rows for t in RIVALS
-              if compare_row(x, t) == "timing-ahead"]
-    if ahead:
-        p("On these rows a competitor did better than Sabline - caught what "
-          "Sabline missed, or left a correct program alone that Sabline "
-          "stopped:")
-        p("")
-        for x, t in ahead:
-            p(f"- **{x['id']}** ({x['name']}): {labels[t]} "
-              f"{v(x, t)}, Sabline {v(x, 'sabline')}.")
-        p("")
-    else:
-        p(f"**On this benchmark's {len(rows)} rows, no competitor is ahead "
-          "of Sabline on any row** - none caught a program Sabline missed, "
-          "and none left alone a correct program Sabline stopped. "
-          "plan/8.7.md says what that means, and it is repeated here "
-          "because it is the most important sentence on the page: a table "
-          "where Sabline wins everything is evidence that the benchmark is "
-          "wrong, not that Sabline is good. The benchmark was written by "
-          "this project, around what this project does. "
-          "[What it is missing](#what-the-benchmark-is-missing) lists the "
-          "scenarios where each competitor should win and where Sabline "
-          "should lose; none of them is in the corpus yet.")
-        p("")
-    if timing:
-        p("Where both caught a program and the competitor did it *earlier* - "
-          "before running, where Sabline stopped it while running:")
-        p("")
-        for x, t in timing:
-            p(f"- **{x['id']}** ({x['name']}): {labels[t]} "
-              f"{v(x, t)}, Sabline {v(x, 'sabline')}.")
-        p("")
-    p("Against Sabline, row by row. *Tie* is the same verdict; *earlier* "
-      "and *later* mean both caught the program, one before running and one "
-      "while running - a difference of timing, not of outcome.")
+    p("Each row is compared first on what a tool achieved, and only then on "
+      "when: stopping the danger with the task's legitimate work intact beats "
+      "stopping it with the work broken too, which beats missing it, and on "
+      "a correct program running it clean beats flagging it. Only where two "
+      "tools achieved the same does the timing count - before running or "
+      "while. A row a tool cannot express, or one outside CaMeL's threat "
+      "model, is not compared.")
     p("")
-    p("| Competitor | Ahead | Earlier | Tie | Later | Behind |")
-    p("|---|---:|---:|---:|---:|---:|")
+    ahead_any = False
+    for t in RIVALS:
+        rows_ahead = [x for x in rows if compare_row(x, t) == "ahead"]
+        if not rows_ahead:
+            continue
+        ahead_any = True
+        by_reason: dict[str, list[str]] = {}
+        for x in rows_ahead:
+            by_reason.setdefault(why_ahead(x, t), []).append(x["id"])
+        p(f"- **{labels[t]}**, {len(rows_ahead)} row(s): " + "; ".join(
+            f"{reason} ({', '.join(found)})"
+            for reason, found in by_reason.items()) + ".")
+    if not ahead_any:
+        p(f"**On this benchmark's {len(rows)} rows, no competitor is ahead "
+          "of Sabline on any row.** plan/8.7.md says what that means: a "
+          "table where Sabline wins everything is evidence that the "
+          "benchmark is wrong, not that Sabline is good.")
+    p("")
+    p("Against Sabline, row by row. *Tie* is the same outcome at the same "
+      "time; *earlier* and *later* mean the same outcome, one before running "
+      "and one while running. *Not compared* counts the rows a tool cannot "
+      "express, and for CaMeL the rows outside its threat model.")
+    p("")
+    p("| Competitor | Ahead | Earlier | Tie | Later | Behind | Not compared |")
+    p("|---|---:|---:|---:|---:|---:|---:|")
     for t in RIVALS:
         cs = [compare_row(x, t) for x in rows]
         p(f"| {labels[t]} | {cs.count('ahead')} | {cs.count('timing-ahead')}"
           f" | {cs.count('tie')} | {cs.count('timing-behind')} | "
-          f"{cs.count('behind')} |")
+          f"{cs.count('behind')} | {cs.count('n/a')} |")
     p("")
-    both_missed = [x for x in dangerous if all(
-        v(x, t) == "missed" for t in TOOLS)]
-    p(f"Every tool missed {ids(both_missed)}: the benchmark put them there "
-      "because nothing can catch them (a loop that stops one item early "
-      "with no contract; a program that only prints a shell command).")
+    nobody = [x for x in dangerous if all(
+        outcome(x, t) in (0, None) for t in TOOLS)]
+    p(f"Nothing caught {ids(nobody)}.")
     p("")
 
     p("### Where each is stronger by design")
@@ -198,88 +282,59 @@ def write_pages(r: dict[str, Any],
     p("## The table")
     p("")
     p("Per category: caught before running / caught while running / missed, "
-      "and for the control rows, clean / false positive. The per-program "
-      "rows, and every note on a row that is not like-for-like, follow.")
+      "with how many of the catches broke the task's legitimate work too; "
+      "for the correct programs, clean / false positive; and the rows a tool "
+      "cannot express, or that are outside CaMeL's threat model, which are "
+      "not scored. The per-program rows follow, each with its notes.")
     p("")
     p("| Category | " + " | ".join(labels[t] for t in TOOLS) + " |")
     p("|---|" + "---|" * len(TOOLS))
     for cat in r["categories"]:
         mine = [x for x in rows if x["category"] == cat["number"]]
-        cells = []
-        for t in TOOLS:
-            c = cat["tools"][t]
-            if c["not-run"] or c.get("tool-absent"):
-                cells.append("NOT RUN")
-                continue
-            parts = []
-            if any(x["dangerous"] for x in mine):
-                parts.append(f"{c['caught-before-run']}/"
-                             f"{c['caught-during-run']}/{c['missed']}")
-            if any(not x["dangerous"] for x in mine):
-                parts.append(f"{c['not-applicable']} clean"
-                             + (f", **{c['false-positive']} FP**"
-                                if c["false-positive"] else ""))
-            cells.append("; ".join(parts))
-        p(f"| {cat['number']}. {cat['title']} | " + " | ".join(cells) + " |")
-    tot = r["totals"]
-    p("| **Caught, of " + str(len(dangerous)) + "** | " + " | ".join(
-        f"**{tot[t]['caught-before-run'] + tot[t]['caught-during-run']}** "
-        f"({tot[t]['caught-before-run']} before)" for t in TOOLS) + " |")
-    p("| **False positives, of " + str(len(controls)) + "** | " + " | ".join(
-        f"**{tot[t]['false-positive']}**" for t in TOOLS) + " |")
+        p(f"| {cat['number']}. {cat['title']} | "
+          + " | ".join(category_cell(mine, t) for t in TOOLS) + " |")
+    p("| **Caught, of the dangerous rows scored** | " + " | ".join(
+        total_caught(dangerous, t) for t in TOOLS) + " |")
+    p("| **False positives, of the correct programs scored** | " + " | ".join(
+        total_fp(controls, t) for t in TOOLS) + " |")
+    p("| **Not expressible / outside the threat model** | " + " | ".join(
+        f"{sum(v(x, t) == 'not-expressible' for x in rows)} / "
+        f"{sum(v(x, t) == 'outside' for x in rows)}" for t in TOOLS) + " |")
     p("| **Catches the row itself says were not a refusal** | " + " | ".join(
         str(sum(1 for x in dangerous if unearned(x, t))) for t in TOOLS)
       + " |")
     p("")
-    p("The last row counts catches the benchmark's rule credits but whose "
-      "row note says the program was stopped by something other than a "
-      "refusal of its danger - a runtime with no network failing the task's "
-      "own request, an interpreter defect, a deadline reached by a slow "
-      "interpreter, a crash of a broken program. Read each column's catches "
-      "net of it.")
+    p("A catch with the task broken stopped the danger and the program's "
+      "legitimate work with it - a refusal that ends the whole run, a "
+      "program that did not compile or resolve, a runtime that cannot make "
+      "the task's own request. The last row counts catches the benchmark's "
+      "rule credits but whose row note says the program was stopped by "
+      "something other than a refusal of its danger. Read each column's "
+      "catches net of both.")
     p("")
 
     p("## Every scenario")
     p("")
-    p("▲ marks a competitor that did better than Sabline on the row (or "
-      "caught it earlier); † marks a catch whose row note says it was not "
-      "a refusal of the danger. The last column is where a row is not "
-      "like-for-like - a different threat model, a construct a runtime "
-      "lacks, a catch that came from a failure rather than a refusal - "
-      "stated in the row, not in a footnote. Every cell's evidence line is "
-      "on the evidence pages ([part 1](competitors-evidence-1.md), "
-      "[part 2](competitors-evidence-2.md)); the commands and "
-      "their output are in "
-      f"[results.json]({REPO}/blob/main/benchmark/competitors/results.json).")
+    p("Every program's row, with the verdict for all seven tools and every "
+      "place a row is not like-for-like, is on a page of its own: "
+      "[every scenario](competitors-scenarios.md). Every cell's evidence "
+      "line is on the evidence pages ("
+      + ", ".join(f"[part {i}](competitors-evidence-{i}.md)"
+                  for i in range(1, parts + 1))
+      + ").")
     p("")
-    for cat in r["categories"]:
-        mine = [x for x in rows if x["category"] == cat["number"]]
-        p(f"### {cat['number']}. {cat['title']}")
-        p("")
-        p("| # | Program | " + " | ".join(labels[t] for t in TOOLS)
-          + " | Not like-for-like |")
-        p("|---|---|" + "---|" * len(TOOLS) + "---|")
-        for x in mine:
-            notes = []
-            for t in TOOLS:
-                for n in x["cells"][t]["notes"] + PAGE_NOTES.get(
-                        (x["id"], t), []):
-                    notes.append(f"*{labels[t]}:* {n}")
-            name = x["name"] + ("" if x["dangerous"] else " (control)")
-            p(f"| {x['id']} | `{name}` | "
-              + " | ".join(cell_text(x, t) for t in TOOLS) + " | "
-              + ("<br>".join(n.replace("|", "\\|") for n in notes) or "-")
-              + " |")
-        p("")
 
     # ---- countermeasures 1 and 2 ------------------------------------------------
     p("## Expected, and what happened")
     p("")
     p("`benchmark/competitors/expectations.json` was committed before the "
-      "harness ran anything (countermeasure 1 in plan/8.7.md). Here it is "
+      "harness ran anything, and its categories 16 to 20 before any "
+      "competitor ran on them (countermeasure 1 in plan/8.7.md). Here it is "
       "beside the record, for the four columns it predicted; *as expected* "
       "means every dangerous row of the category landed in the predicted "
-      "class, and anything else is shown as it happened.")
+      "class, and anything else is shown as it happened. The predictions "
+      "for categories 1 to 15 were written under the first rules and are "
+      "left as they were.")
     p("")
     new = ("wasi", "starlark", "sandbox", "camel")
     p("| Category | " + " | ".join(labels[t] for t in new) + " |")
@@ -292,19 +347,27 @@ def write_pages(r: dict[str, Any],
                 and x["id"] not in excepted]
         if not mine:
             continue
+        ctl = [x for x in controls if x["category"] == ex["number"]]
         cells = []
         for t in new:
             want = str(ex["expect"].get(t, ""))
-            got = [SHORT[v(x, t)].strip("*") for x in mine]
+            got = [got_class(x, t) for x in mine]
             summary = ", ".join(f"{got.count(k)} {k}" for k in sorted(set(got)))
-            if want in ("before", "during", "missed") and set(got) == {want}:
+            if ctl:
+                cg = [got_class(x, t) for x in ctl]
+                summary += "; controls: " + ", ".join(
+                    f"{cg.count(k)} {k}" for k in sorted(set(cg)))
+            if want in ("before", "during", "missed", "not-expressible",
+                        "outside") and set(got) == {want}:
                 cell = "as expected"
+            elif set(got) == {"outside"}:
+                cell = f"outside, not scored (predicted {want})"
             else:
                 cell = f"expected {want}; got {summary}"
             for i in excepted:
                 x = next(y for y in rows if y["id"] == i)
-                cell += f"; {i} {SHORT[v(x, t)].strip('*')}"
-            cells.append(cell)
+                cell += f"; {i} {got_class(x, t)}"
+            cells.append(cell.replace("|", "\\|"))
         p(f"| {ex['number']}. {ex['title']} | " + " | ".join(cells) + " |")
     p("")
     p("The rows named as exceptions in advance, and what the file said of "
@@ -317,8 +380,9 @@ def write_pages(r: dict[str, Any],
 
     p("### Categories no competitor catches")
     p("")
+
     def earned(x: dict[str, Any], t: str) -> bool:
-        return v(x, t).startswith("caught") and not unearned(x, t)
+        return (outcome(x, t) or 0) >= 1 and not unearned(x, t)
 
     lone = []
     for cat in r["categories"]:
@@ -338,7 +402,7 @@ def write_pages(r: dict[str, Any],
           + LONE_REVIEW.get(c["number"], "Not yet reviewed."))
     p("")
     only_sabline = [x for x in dangerous
-                    if v(x, "sabline").startswith("caught")
+                    if (outcome(x, "sabline") or 0) >= 1
                     and not any(earned(x, t) for t in RIVALS)]
     p(f"Rows only Sabline catches: {ids(only_sabline)}.")
     p("")
@@ -376,49 +440,115 @@ def write_pages(r: dict[str, Any],
       "rather than an estimate.")
     p("")
 
-    # ---- the evidence pages -----------------------------------------------------
-    # every cell's evidence line does not fit one page within the site's
-    # budget, so it is split at the category that halves the programs
-    cats = r["categories"]
-    count = 0
-    split = len(cats)
-    for i, cat in enumerate(cats):
-        count += sum(1 for x in rows if x["category"] == cat["number"])
-        if count * 2 >= len(rows):
-            split = i + 1
-            break
-    parts = []
-    for part, group in ((1, cats[:split]), (2, cats[split:])):
-        e: list[str] = []
-        q = e.append
-        other = 2 if part == 1 else 1
-        q(f"# Competitors: the evidence, part {part}")
-        q("")
-        q(f"Categories {group[0]['number']} to {group[-1]['number']} of "
-          f"[the competitor table](competitors.md) (the rest are in "
-          f"[part {other}](competitors-evidence-{other}.md)), measured "
-          f"{meta['date']}: every cell's verdict and the evidence line the "
-          "harness wrote from what ran. The commands each cell ran, the "
-          "input it was given and what it printed are in "
-          f"[results.json]({REPO}/blob/main/benchmark/competitors/"
-          "results.json), with the scratch directory written as `<workdir>` "
-          "and the two listener ports as `<port>` (granted) and "
-          "`<other-port>` (not).")
-        q("")
+    return "\n".join(w), evidence_pages(r)
+
+
+def scenario_page(r: dict[str, Any], parts: int) -> str:
+    """Every program's row, for all seven tools, with its notes: a page of
+    its own, since it does not fit beside the rest within the budget."""
+    rows: list[dict[str, Any]] = r["programs"]
+    labels: dict[str, str] = r["labels"]
+    w: list[str] = []
+    p = w.append
+    p("# Competitors: every scenario")
+    p("")
+    p("Every row of [the competitor table](competitors.md), measured "
+      f"{r['meta']['date']}. ▲ marks a competitor that did better than "
+      "Sabline on the row (or the same, earlier); † marks a catch whose row "
+      "note says it was not a refusal of the danger; *task broken* marks a "
+      "catch that stopped the program's legitimate work too. The last column "
+      "is where a row is not like-for-like - a different threat model, a "
+      "construct a runtime lacks, a catch that came from a failure rather "
+      "than a refusal - stated in the row, not in a footnote. CaMeL's column "
+      "reads *outside* on every row its threat model does not claim: it "
+      "trusts the plan, and is scored only where private or untrusted data "
+      "reaches a tool ([the rule](competitors.md#how-each-column-was-run)). "
+      "Every cell's evidence line is on the evidence pages ("
+      + ", ".join(f"[part {i}](competitors-evidence-{i}.md)"
+                  for i in range(1, parts + 1))
+      + "); the commands and their output are in "
+      f"[results.json]({REPO}/blob/main/benchmark/competitors/results.json).")
+    p("")
+    for cat in r["categories"]:
+        mine = [x for x in rows if x["category"] == cat["number"]]
+        p(f"## {cat['number']}. {cat['title']}")
+        p("")
+        p("| # | Program | " + " | ".join(labels[t] for t in TOOLS)
+          + " | Not like-for-like |")
+        p("|---|---|" + "---|" * len(TOOLS) + "---|")
+        for x in mine:
+            notes = []
+            for t in TOOLS:
+                cell = x["cells"][t]
+                if cell["verdict"] == "not-expressible":
+                    notes.append(f"*{labels[t]}:* cannot be expressed: "
+                                 + cell["evidence"][len("NOT EXPRESSIBLE: "):]
+                                 + ".")
+                for n in cell["notes"] + PAGE_NOTES.get((x["id"], t), []):
+                    notes.append(f"*{labels[t]}:* {n}")
+            name = x["name"] + ("" if x["dangerous"] else " (control)")
+            p(f"| {x['id']} | `{name}` | "
+              + " | ".join(cell_text(x, t) for t in TOOLS) + " | "
+              + ("<br>".join(n.replace("|", "\\|") for n in notes) or "-")
+              + " |")
+        p("")
+    return "\n".join(w)
+
+
+def evidence_pages(r: dict[str, Any]) -> list[str]:
+    """Every cell's evidence line, in as many pages as the site's budget
+    needs: categories are packed in order until a page's text would pass
+    EVIDENCE_PART_BYTES, and a new page starts."""
+    rows: list[dict[str, Any]] = r["programs"]
+    labels: dict[str, str] = r["labels"]
+    meta = r["meta"]
+
+    def category(cat: dict[str, Any]) -> list[str]:
+        mine = [x for x in rows if x["category"] == cat["number"]]
+        e = [f"## {cat['number']}. {cat['title']}", ""]
+        for x in mine:
+            # a description may hold Python's power (2**61), which the site
+            # would take for emphasis: the page writes it 2^61
+            text = x["description"].replace("**", "^")
+            e += [f"**{x['id']}** `{x['name']}` - {text}", ""]
+            for t in TOOLS:
+                c = x["cells"][t]
+                task = c.get("task")
+                e.append(f"- {labels[t]}: **{c['verdict']}**"
+                         + (f" (task {task})" if task else "") + " - "
+                         + c["evidence"].replace("|", "\\|"))
+            e.append("")
+        return e
+
+    groups: list[list[dict[str, Any]]] = [[]]
+    size = 0
+    for cat in r["categories"]:
+        n = len("\n".join(category(cat)))
+        if groups[-1] and size + n > EVIDENCE_PART_BYTES:
+            groups.append([])
+            size = 0
+        groups[-1].append(cat)
+        size += n
+    pages = []
+    for part, group in enumerate(groups, 1):
+        others = ", ".join(f"[part {i}](competitors-evidence-{i}.md)"
+                           for i in range(1, len(groups) + 1) if i != part)
+        e = [f"# Competitors: the evidence, part {part}", "",
+             f"Categories {group[0]['number']} to {group[-1]['number']} of "
+             f"[the competitor table](competitors.md) (the rest are in "
+             f"{others}), measured {meta['date']}: every cell's verdict, "
+             "whether the program's legitimate work still succeeded where the "
+             "row checks it, and the evidence line the harness wrote from what "
+             "ran. The commands each cell ran, the input it was given and "
+             "what it printed are in "
+             f"[results.json]({REPO}/blob/main/benchmark/competitors/"
+             "results.json), with the scratch directory written as `<workdir>` "
+             "and the two listener ports as `<port>` (granted) and "
+             "`<other-port>` (not).", ""]
         for cat in group:
-            mine = [x for x in rows if x["category"] == cat["number"]]
-            q(f"## {cat['number']}. {cat['title']}")
-            q("")
-            for x in mine:
-                q(f"**{x['id']}** `{x['name']}` - {x['description']}")
-                q("")
-                for t in TOOLS:
-                    c = x["cells"][t]
-                    q(f"- {labels[t]}: **{c['verdict']}** - "
-                      + c["evidence"].replace("|", "\\|"))
-                q("")
-        parts.append("\n".join(e))
-    return "\n".join(w), parts[0], parts[1]
+            e += category(cat)
+        pages.append("\n".join(e))
+    return pages
 
 
 # ---- prose: about the tools and the benchmark, not about a number -----------
@@ -472,11 +602,10 @@ BY_DESIGN = {
 # Row notes the page adds to what the record holds, each a reading of the
 # record's own evidence line that claims() holds to it.
 PAGE_NOTES = {
-    ("08f", "deno"): [
-        "Deno's lint does flag this program's unbounded loop (no-unreachable "
-        "after it) and is not credited, because the growth is two helpers "
-        "away from the loop; Sabline's audit flags the same loop and is "
-        "credited. The benchmark's rule, applied unevenly."],
+    ("08f", "sabline"): [
+        "Sabline's audit, Deno's lint and Starlark's resolver each flag the "
+        "loop that drives the growth, two helpers above the line that grows, "
+        "and none of the three is credited: one line rule for all."],
 }
 
 MISMATCH_NOTE = (
@@ -484,10 +613,10 @@ MISMATCH_NOTE = (
     "difference is the finding. The predictions assumed each runtime would "
     "stop a program for the reason the category is about; where the record "
     "differs, the notes in the scenario rows say what did stop it - most "
-    "often a failure unrelated to the danger (a runtime with no network "
-    "failing the task's own request, a smolagents defect, a deadline "
-    "reached by a slow interpreter), which the benchmark's rule credits as "
-    "a catch.")
+    "often something other than a refusal of the danger (a smolagents "
+    "defect, or a language with no try that stops at the first refusal and "
+    "takes the task with it), which the benchmark's rule credits as a catch "
+    "and this page ranks as a catch with the task broken.")
 
 LONE_REVIEW = {
     5: "Reviewed, and kept, as a judgement call rather than a win. Sabline's "
@@ -496,117 +625,131 @@ LONE_REVIEW = {
        "right, larger number, because Python's, JavaScript's (as a double) "
        "and Starlark's integers do not wrap. Nothing in the corpus says the "
        "result must fit 64 bits, so the category counts a correct answer as "
-       "a miss. A reader who disagrees can discount its six rows, and the "
-       "control that would show the other side - a program that needs a "
-       "large integer, which Sabline would stop - is missing.",
+       "a miss. A reader who disagrees can discount its six rows. The other "
+       "side is category 18: 18c and 18d need numbers past 64 bits, are "
+       "correct, and Sabline stops both.",
 }
 
 PROSE = [
-    ("Where the benchmark is unfair", """
+    ("What changed in the scoring, and why", """
+The first version of this table (pull request #104, never published) had
+Sabline ahead or level on every row. That was the benchmark, not the tools,
+and these are the corrections, each applied to every column alike.
+
+- *The outcome comes first; the timing only breaks a tie.* A row is scored
+  on what a tool achieved: the danger stopped with the task's legitimate
+  work intact, stopped with the work broken too, or missed - and on a
+  correct program, run clean or not. Before, catching a danger *before
+  running* outranked catching it while running, so a design with no static
+  step (WASI, the Python sandbox, CaMeL) could never be ahead of one with
+  a static step, whatever it did.
+- *Whether the legitimate work still succeeded is checked,* on every row
+  that has work to check: the output the task asked for, the request it
+  was granted, the file it was to write. A runtime that stops everything
+  now scores as a catch with the task broken, not as though it had stopped
+  only the danger - and a Sabline refusal, which ends the run and cannot be
+  caught, is scored the same way. Where a row's own note says a catch came
+  from a failure that would have stopped the task as well (a runtime
+  without sockets, a defect in smolagents, a deadline), it is scored the
+  same way even where there is no task line to check.
+- *"Caught before running" is credited only where the tool's own design has
+  that step:* Sabline's check, audit and deps-diff, Deno's type check and
+  lint, Starlark's resolver. The others are scored on what happened when
+  the program ran.
+- *A static flag counts only on the marked dangerous line, for every tool.*
+  Before, Sabline's audit was credited for an effect or an unbounded loop
+  anywhere in the program, while Deno's lint and Starlark's resolver were
+  credited only on the dangerous line. Now Sabline's audit is credited only
+  for an effect that a call on the dangerous line needs, or a loop its
+  termination rule names on that line or on the loop around it; a flag
+  anywhere else is recorded and not credited.
+- *CaMeL is scored only where its threat model makes a claim:* where a
+  value that came from a tool (a file read, a web page, the environment)
+  reaches another tool on the dangerous line. Its plan is trusted by
+  design, so a hidden write or a runaway loop in the plan is outside what
+  it tries to stop. Those cells still ran and say what happened; they read
+  *outside* and are not counted.
+- *A scenario a runtime cannot express is recorded as such, with the reason,*
+  rather than scored or skipped: WASI has no sockets and no processes,
+  a Starlark module has no I/O of its own, a native library cannot be
+  loaded into a WebAssembly guest.
+- *Five categories were added where a competitor should win or Sabline
+  should lose* (16 to 20), and their predictions were committed before any
+  competitor ran them.
+"""),
+    ("Where the benchmark is still unfair", """
 **In Sabline's favour.**
 
-- *The controls are shaped to Sabline's rules.* The two control programs
-  with a loop (07c, 10f) are written in the one shape Sabline's termination
-  rule accepts, and no control divides, needs a whole number past 64 bits,
-  or loops until its input ends. So Sabline's static rules - E612 on a loop
-  it cannot show ends, E706 on a divisor it cannot show is non-zero, E407 on
-  overflow - never cost it a false positive here, though each would on a
-  correct program of that shape. The same gap hides Starlark's and CaMeL's
-  refusal of every `while`.
-- *Sabline's static flags are credited anywhere; a competitor's only on the
-  dangerous line.* The benchmark credits Sabline's audit for an unbounded
-  loop or an effect wherever it is, and credits Deno's lint (and here,
-  Starlark's resolver) only on the dangerous line or the loop around it. In
-  08f the growth sits two helpers below the loop that drives it: Sabline is
-  credited for flagging that loop, and Deno and Starlark, which flag the
-  same loop, are not.
-- *Before-running outranks while-running.* Three of the five competitors
-  (WASI, the Python sandbox, CaMeL) have no static step by design; every
-  catch they make is while running, and a reader comparing "before" counts
-  is comparing designs, not results.
-- *Category 5 counts a correct answer as a miss* (above).
+- *Most rows of categories 1 to 11 have no task check.* Their dangerous
+  programs do nothing but the dangerous thing, so there is no legitimate
+  work to measure, and a refusal that ends the run costs nothing there.
+  That favours the designs that end the program at the first refusal -
+  Sabline, Starlark and CaMeL - over the ones whose programs can catch a
+  denial and go on, as Deno's do. Category 20 measures exactly this, and
+  Sabline loses it.
 - *The corpus is about hidden effects, which is what an effect system is
   for.* Categories 1, 2 and 9 test a write, a request or a process call
-  hidden in a helper. CaMeL has no helpers to hide one in - its
-  translations inline them, and say so - and its threat model trusts the
-  plan, so its misses there are outside what it claims to stop.
-- *No row measures whether the task still works.* A dangerous program is
-  scored only on whether the danger happened, so a runtime that cannot do
-  the task at all scores as though it refused the danger. That flatters the
-  competitors as often as Sabline (next).
+  hidden in a helper, and Sabline finds each one before it runs (09c,
+  which only prints text, is no hidden effect).
+- *Categories 5 and 18f count a correct, larger number as a miss*
+  (reviewed above, under the categories no competitor catches).
+- *Every program was written by Sabline's author, and every translation by
+  agents working for them.* The rows are small, and each is built to
+  show one property.
 
 **Against Sabline, and for the competitors.**
 
-- *A catch by an unrelated failure counts.* WASI "catches" the rows whose
-  task needs the network because this CPython build has no sockets, so the
-  task's own request fails too; the Python sandbox "catches" them because
-  smolagents 1.26.0 cannot run `urllib.request.urlopen` at all (and does
-  not apply `@dataclass`, so the record rows stop early); Deno
-  "catches" 13a because the corpus's JavaScript calls `require`, which Deno
-  does not define; a deadline "catches" a slow interpreter. Each such row
-  carries its note.
-- *CaMeL gets 30 s, not 5.* Its reference interpreter needs about 4.5 s
-  for 07c's correct loop on the recording machine; at 5 s the slow-but-finite
-  control would be a false positive on a slower machine and 05c would be
-  "caught" by the clock. The longer deadline removes both, in CaMeL's favour,
-  and the two rows say so.
+- *A catch by an unrelated failure still ranks above a miss.* The Python
+  sandbox "catches" rows whose task needs the network because smolagents
+  1.26.0 cannot run `urllib.request.urlopen` at all; each such row says so,
+  and scores as a catch with the task broken - still ahead of a Sabline
+  miss.
 - *A swallowed denial counts.* Where a Deno program catches the permission
-  error and exits 0, the harness credits the catch because it watched the
-  socket. A caller reading the exit status would have seen success.
+  error and goes on, the harness credits the catch because it watched the
+  socket or the file. A caller reading the exit status would have seen
+  success.
 - *Crashes on chosen input count.* Categories 3 and 6 are caught by every
   Python-shaped runtime because the harness feeds the input that makes the
   defect fire; with ordinary input they run clean. Sabline's E706 and E520
   do not depend on the input.
 """),
-    ("What the benchmark is missing", """
-Scenarios where a competitor should win, or where Sabline should lose, none
-of which is in the corpus. Each is a category waiting to be written
-(CONTRIBUTING.md says how), and until they are, this table cannot show a
-competitor ahead.
-
-- **Laundering through a granted sink** - where CaMeL should win. The task
-  needs a read and a send to one host; the program sends what it read to
-  that host. Every grant Sabline has would allow it (`decisions/0004`, the
-  design that would not, has not shipped); CaMeL's provenance refuses it.
-  The AgentDojo evaluation already shows the shape (19 of 105 attacks land
-  under a task budget), but this corpus has no row for it.
-- **One legitimate subprocess** - where Deno should win.
-  `--allow-run=git` grants one program; Sabline can only grant a whole host
-  module, or nothing.
-- **A correct unbounded loop** - a read until end of input, Euclid's
-  algorithm - where Sabline's termination rule should cost it a false
-  positive (and Starlark's and CaMeL's refusal of `while` should cost them
-  one too), and Deno, WASI and the sandbox should run it clean.
-- **A correct large integer** - 25!, a 128-bit hash - where Sabline's E407
-  should stop a correct program and every Python-shaped runtime should not.
-- **A safe division the prover cannot show is safe**, where E706 would
-  refuse a correct program before it runs.
-- **Code below the language** - a granted host module that does its own
-  I/O, or a native extension - where WASI's boundary holds and a
-  language-level grant does not.
-- **The task still works** - every dangerous program paired with a check
-  that its legitimate part ran under the narrowest grant, so a runtime that
-  refuses everything, or cannot express the grant (WASI and the network,
-  smolagents and a scoped path), stops scoring as though it had refused
-  only the danger.
+    ("What the benchmark is still missing", """
+- **A model in the loop.** Every CaMeL plan here is a hand translation; CaMeL
+  exists to constrain plans a model writes from untrusted input, and the
+  [AgentDojo evaluation](agentdojo.md) is where that is measured (Sabline:
+  19 of 105 attacks land under a task budget).
+- **An operating-system sandbox column** - bubblewrap, nsjail, gVisor, a
+  container - which would stop 19d, where native code in a granted library
+  writes a file of its own and no column here stops it. Sabline's own OS
+  confinement (8.4) is not in its column: a granted `ffi:` module runs as
+  host code and the policy is widened to what the module can do.
+- **More correct programs Sabline refuses:** a legitimate read of a
+  credential file (E318), a safe division the prover cannot show is safe
+  (E706), a loop over a structure that shrinks.
+- **Task checks on categories 1 to 11,** so that ending the run at the
+  first refusal costs something there too.
+- **Other platforms.** Everything was recorded on one Linux machine; how
+  Deno, wasmtime and the others behave on Windows or macOS is not measured.
 """),
 ]
 
 COLUMNS = {
     "sabline": ("this checkout", "`allow=needs`", "its own, 5 s",
                 "its own, 256 MB"),
-    "deno": ("Deno, pinned", "`--allow-read=<dir>`, `--allow-net=<host:port>`"
-             " or none", "the harness's, 5 s",
+    "deno": ("Deno, pinned", "`--allow-read=<dir>`, `--allow-write=<dir>`, "
+             "`--allow-net=<host:port>`, `--allow-run=<program>`, "
+             "`--allow-ffi`, or none", "the harness's, 5 s",
              "its own, `--max-old-space-size=256`"),
     "python": ("CPython, no sandbox", "none: no budget exists",
                "the harness's, 5 s", "the harness's `RLIMIT_AS`"),
     "wasi": ("the same `.py`, in CPython's WASI build under wasmtime",
-             "`--dir <dir>` for a read (read and write: no read-only form); "
-             "**a network grant cannot be expressed** (no sockets); no "
-             "environment", "its own, `-W timeout=5s`",
+             "`--dir <dir>` for a read or a write (no read-only form); "
+             "**a network grant, a process or a native library cannot be "
+             "expressed**; no environment", "its own, `-W timeout=5s`",
              "its own, `-W max-memory-size`"),
     "starlark": ("a translation, in starlark-go", "a predeclared function per "
-                 "grant, refusing any other path or host; nothing else",
+                 "grant, refusing any other path, host or program; nothing "
+                 "else",
                  "its own (the host cancels the thread)",
                  "none: the Go runtime cannot start under a 256 MB address "
                  "limit"),
@@ -617,7 +760,8 @@ COLUMNS = {
                 "the harness's `RLIMIT_AS`"),
     "camel": ("a translation (a plan), in CaMeL's reference interpreter",
               "CaMeL's tool set and its own policies, the same for every "
-              "program", "the host's, **30 s** of interpretation (not like-for-"
+              "program; scored only on the rows its threat model claims",
+              "the host's, **30 s** of interpretation (not like-for-"
               "like: see 07c)",
               "none: its imports alone exceed a 256 MB address limit"),
 }
@@ -634,37 +778,52 @@ def claims(r: dict[str, Any]) -> list[str]:
         if not ok:
             wrong.append(what)
 
+    def cat(n: int) -> list[dict[str, Any]]:
+        return [x for x in r["programs"] if x["category"] == n]
+
     f = rows["08f"]
-    need(v(f, "sabline") == "caught-before-run"
-         and "loop not shown to end in main" in f["cells"]["sabline"]["evidence"],
-         "08f: Sabline credited for the loop in main")
+    need(v(f, "sabline") == "caught-during-run"
+         and "not credited" in f["cells"]["sabline"]["evidence"],
+         "08f: Sabline's audit of the loop in main recorded, not credited")
     need(v(f, "deno") == "caught-during-run"
          and "lint elsewhere: no-unreachable" in f["cells"]["deno"]["evidence"],
          "08f: Deno's lint of the same loop not credited")
     need(v(f, "starlark") == "caught-during-run"
          and "not credited" in f["cells"]["starlark"]["evidence"],
          "08f: Starlark's refusal of the same loop not credited")
-    need("require is not defined" in rows["13a"]["cells"]["deno"]["evidence"]
-         and v(rows["13a"], "deno").startswith("caught"),
-         "13a: Deno caught by a crash on require")
+    need(any(compare_row(x, "deno") == "ahead" for x in cat(20)),
+         "category 20: Deno ahead of Sabline on a row")
     need(any("no attribute 'request'" in x["cells"]["sandbox"]["evidence"]
-             for x in r["programs"]), "a sandbox row failed on urllib.request")
+             and unearned(x, "sandbox") for x in r["programs"]),
+         "a sandbox row failed on urllib.request, and says it was no refusal")
     need(any(v(x, "deno") == "caught-during-run"
              and "swallowed" in x["cells"]["deno"]["evidence"]
              for x in r["programs"]), "a Deno denial swallowed by a program")
-    for i in ("07c", "10f"):
-        need(v(rows[i], "sabline") == "not-applicable",
-             f"{i}: a control Sabline runs clean")
-    need(v(rows["07c"], "camel") == "not-applicable"
-         and v(rows["05c"], "camel") == "missed"
-         and all(any("30 s" in n for n in rows[i]["cells"]["camel"]["notes"])
-                 for i in ("07c", "05c")),
-         "07c and 05c: CaMeL's 30 s, said in both rows")
-    need(all(v(rows[i], "wasi").startswith("caught")
-             and any(n.startswith("Not like-for-like: the task's own request")
-                     for n in rows[i]["cells"]["wasi"]["notes"])
+    early = [x for n in range(1, 12) for x in cat(n) if x["dangerous"]]
+    need(sum(x["cells"]["sabline"].get("task") is None for x in early) * 2
+         > len(early), "categories 1 to 11: most dangerous rows no task check")
+    need(all(v(x, "sabline") == "caught-before-run"
+             for n in (1, 2, 9) for x in cat(n)
+             if x["dangerous"] and x["id"] != "09c"),
+         "categories 1, 2 and 9: every hidden effect found by Sabline before "
+         "running (09c prints text, and is no hidden effect)")
+    need(v(rows["18f"], "sabline").startswith("caught")
+         and all(v(rows["18f"], t) in ("missed",) + UNSCORED for t in RIVALS),
+         "18f: a larger number counted as every competitor's miss")
+    need(all(v(rows[i], "sabline") == "false-positive" for i in ("18c", "18d")),
+         "18c and 18d: Sabline stops both correct programs")
+    need(all(outcome(rows["19d"], t) in (0, None) for t in TOOLS),
+         "19d: no column stops the native write")
+    need(all(v(rows[i], "wasi") == "not-expressible"
              for i in ("11b", "12a", "12b")),
-         "11b, 12a, 12b: WASI caught with no network, and says so")
+         "11b, 12a, 12b: a network task WASI cannot express")
+    need(v(rows["07c"], "sabline") == "not-applicable"
+         and v(rows["10f"], "sabline") == "not-applicable",
+         "07c and 10f: loops in the shape Sabline's rule accepts")
+    need(not any(any(n.startswith("Stopped by the deadline")
+                     for n in x["cells"]["camel"]["notes"])
+                 and v(x, "camel") not in UNSCORED for x in r["programs"]),
+         "no scored CaMeL cell decided by its 30 s deadline")
     agentdojo = json.loads((HERE / "evals" / "agentdojo" / "results.json")
                            .read_text(encoding="utf-8"))
     a = agentdojo["attack_success"]["task_budget"]
@@ -679,13 +838,14 @@ def self_test(r: dict[str, Any]) -> int:
     import copy
     faults = 0
     injections = [
-        ("08f: Sabline no longer credited", "08f", "sabline", "verdict",
+        ("08f: Sabline credited again", "08f", "sabline", "verdict",
+         "caught-before-run"),
+        ("18c: Sabline runs it clean", "18c", "sabline", "verdict",
+         "not-applicable"),
+        ("19d: Deno stops the native write", "19d", "deno", "verdict",
          "caught-during-run"),
-        ("13a: Deno's crash gone", "13a", "deno", "evidence",
-         "run: exit 1, NotCapable: Requires net access"),
-        ("07c: CaMeL a false positive", "07c", "camel", "verdict",
-         "false-positive"),
-        ("12a: WASI missed", "12a", "wasi", "verdict", "missed"),
+        ("12a: WASI scored", "12a", "wasi", "verdict", "caught-during-run"),
+        ("18f: Deno catches it", "18f", "deno", "verdict", "caught-during-run"),
     ]
     ok = not claims(r)
     faults += not ok
@@ -718,13 +878,20 @@ def main(argv: list[str]) -> int:
         for w in wrong:
             print("  " + w)
         return 1
-    page, one, two = write_pages(r, expect)
-    pages = ((OUT, page), (EVIDENCE[0], one), (EVIDENCE[1], two))
+    page, parts = write_pages(r, expect)
+    pages = [(OUT, page),
+             (OUT.parent / "competitors-scenarios.md",
+              scenario_page(r, len(parts)))] + [
+        (OUT.parent / f"competitors-evidence-{i}.md", text)
+        for i, text in enumerate(parts, 1)]
+    names = {out.name for out, _ in pages}
+    extra = sorted(q for q in OUT.parent.glob("competitors-evidence-*.md")
+                   if q.name not in names)
     if "--check" in argv:
         stale = [out.name for out, text in pages
                  if not out.exists()
                  or out.read_text(encoding="utf-8").replace("\r\n", "\n")
-                 != text]
+                 != text] + [q.name + " (no longer written)" for q in extra]
         if stale:
             print(", ".join(stale) + " not current "
                   "(python build_competitors_page.py)")
@@ -734,6 +901,10 @@ def main(argv: list[str]) -> int:
     for out, text in pages:
         out.write_text(text, encoding="utf-8", newline="\n")
         print(f"wrote docs/{out.name} ({len(text)} bytes)")
+    for q in extra:
+        q.unlink()
+        print(f"removed docs/{q.name}: the evidence fits fewer pages now, "
+              "so take it out of build_docs.DOCS_ORDER")
     return 0
 
 

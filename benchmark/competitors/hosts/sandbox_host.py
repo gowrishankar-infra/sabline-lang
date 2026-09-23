@@ -33,12 +33,16 @@ functions passed in - with no wrapper of this harness's own:
                parsing and records), and smolagents' base modules (math
                among them)
     io         sys, so the program can read its input; print is smolagents'
-    fs:read:D  the builtin open, passed in as a function. smolagents has no
-               way to scope it to D
+    fs:read:D, fs:write:D
+               the builtin open, passed in as a function. smolagents has no
+               way to scope it to D, or to one direction
     net:H:P    urllib.request authorised. smolagents has no way to scope it
                to one host
+    ffi:NAME   the host module NAME (subprocess in category 17), authorised
+               by name; smolagents cannot narrow subprocess to one program
     --module   a module the project vendors beside the program (category
-               12's dependency, category 15's textcase), authorised by name
+               12's dependency, 15's textcase, 19's library), authorised by
+               name
 
 Nothing is authorised because a program asks for it. An authorised module is
 imported by real Python, outside the interpreter: its code runs with the
@@ -69,12 +73,15 @@ def config(grants: list[str], modules: list[str]) -> tuple[list[str],
     for g in grants:
         if g == "io":
             imports.append("sys")
-        elif g.startswith("fs:read:"):
+        elif g.startswith(("fs:read:", "fs:write:")):
             functions["open"] = open
         elif g.startswith("net:"):
             imports.append("urllib.request")
         elif g.startswith("ffi:"):
-            pass                        # math is one of smolagents' base modules
+            # the host module the task needs - subprocess (category 17), a
+            # vendored library (19) - authorised by name; math is one of
+            # smolagents' base modules already
+            imports.append(g[len("ffi:"):])
         else:
             raise SystemExit(f"unknown grant {g}")
     return sorted(set(imports)), functions
@@ -99,6 +106,9 @@ def main(argv: list[str]) -> int:
         code = f.read()
     # a vendored module sits beside the program, where an import finds it
     sys.path.insert(0, os.path.dirname(os.path.abspath(program)))
+    # the program imports this process's sys: give it the argv that
+    # `python PROGRAM` gives, not the host's own arguments (10e reads it)
+    sys.argv = [program]
     imports, functions = config(grants, modules)
     executor = LocalPythonExecutor(additional_authorized_imports=imports,
                                    additional_functions=functions,
