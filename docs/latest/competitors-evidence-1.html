@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <title>Competitors: the evidence, part 1 - Sabline 8.6.0</title>
-<meta name="description" content="Categories 1 to 7 of the competitor table (the rest are in part 2), measured 2026-09-23: every cell&#x27;s verdict and the evidence line the harness wrote from ...">
+<meta name="description" content="Categories 1 to 7 of the competitor table (the rest are in part 2, part 3), measured 2026-09-23: every cell&#x27;s verdict, whether the program&#x27;s legitimate work ...">
 <meta name="sabline-version" content="8.6.0">
 <link rel="canonical" href="https://sabline.dev/competitors-evidence-1.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
@@ -44,10 +44,10 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-evidence-1.html" aria-current="page">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html" aria-current="page">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
-<ul><li><a href="embedding-limit.html">The embedding limit</a></li></ul>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
 </li>
 <li><span class="sec-label">Spec</span>
 <ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
@@ -59,7 +59,7 @@
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
 <h1 id="competitors-the-evidence-part-1">Competitors: the evidence, part 1</h1>
-<p>Categories 1 to 7 of <a href="competitors.html">the competitor table</a> (the rest are in <a href="competitors-evidence-2.html">part 2</a>), measured 2026-09-23: every cell's verdict and the evidence line the harness wrote from what ran. The commands each cell ran, the input it was given and what it printed are in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/benchmark/competitors/results.json">results.json</a>, with the scratch directory written as <code>&lt;workdir&gt;</code> and the two listener ports as <code>&lt;port&gt;</code> (granted) and <code>&lt;other-port&gt;</code> (not).</p>
+<p>Categories 1 to 7 of <a href="competitors.html">the competitor table</a> (the rest are in <a href="competitors-evidence-2.html">part 2</a>, <a href="competitors-evidence-3.html">part 3</a>), measured 2026-09-23: every cell's verdict, whether the program's legitimate work still succeeded where the row checks it, and the evidence line the harness wrote from what ran. The commands each cell ran, the input it was given and what it printed are in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/benchmark/competitors/results.json">results.json</a>, with the scratch directory written as <code>&lt;workdir&gt;</code> and the two listener ports as <code>&lt;port&gt;</code> (granted) and <code>&lt;other-port&gt;</code> (not).</p>
 <h2 id="1-a-file-write-hidden-inside-a-helper-function">1. A file write hidden inside a helper function <a class="anchor" href="#1-a-file-write-hidden-inside-a-helper-function" aria-label="Link to this section">#</a></h2>
 <p><strong>01a</strong> <code>a_save_report</code> - Saves a report through a helper; nothing in main says a file is written.</p>
 <ul>
@@ -69,7 +69,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, FileNotFoundError: [Errno 44] No such file or directory: '&lt;workdir&gt;/01a.wasi.txt'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: write_file, line 5; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Forbidden function evaluation: 'open' is not among the explicitly allowed tools or defined/imported in the preceding code</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <p><strong>01b</strong> <code>b_two_levels</code> - The write sits two calls down: main -&gt; summarise -&gt; persist.</p>
 <ul>
@@ -79,7 +79,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, FileNotFoundError: [Errno 44] No such file or directory: '&lt;workdir&gt;/01b.wasi.txt'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: write_file, line 5; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Forbidden function evaluation: 'open' is not among the explicitly allowed tools or defined/imported in the preceding code</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <p><strong>01c</strong> <code>c_log_in_loop</code> - A "log" helper called from a loop writes to disk on every item.</p>
 <ul>
@@ -89,7 +89,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, FileNotFoundError: [Errno 44] No such file or directory: '&lt;workdir&gt;/01c.wasi.txt'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: write_file, line 5; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Forbidden function evaluation: 'open' is not among the explicitly allowed tools or defined/imported in the preceding code</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <p><strong>01d</strong> <code>d_three_layers</code> - The write sits three calls down: main -&gt; report -&gt; render -&gt; store.</p>
 <ul>
@@ -99,7 +99,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, FileNotFoundError: [Errno 44] No such file or directory: '&lt;workdir&gt;/01d.wasi.txt'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: write_file, line 5; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Forbidden function evaluation: 'open' is not among the explicitly allowed tools or defined/imported in the preceding code</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <p><strong>01e</strong> <code>e_path_in_record</code> - The path travels inside a record; a helper named run_job writes it.</p>
 <ul>
@@ -109,7 +109,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, FileNotFoundError: [Errno 44] No such file or directory: '&lt;workdir&gt;/01e.wasi.txt'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: write_file, line 10; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, TypeError: Job() takes no arguments</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <p><strong>01f</strong> <code>f_write_in_condition</code> - A helper called from an if condition writes a marker file as a side effect.</p>
 <ul>
@@ -119,7 +119,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, FileNotFoundError: [Errno 44] No such file or directory: '&lt;workdir&gt;/01f.wasi.txt'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: write_file, line 5; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Forbidden function evaluation: 'open' is not among the explicitly allowed tools or defined/imported in the preceding code</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <h2 id="2-a-network-call-hidden-inside-a-helper">2. A network call hidden inside a helper <a class="anchor" href="#2-a-network-call-hidden-inside-a-helper" aria-label="Link to this section">#</a></h2>
 <p><strong>02a</strong> <code>a_fetch_helper</code> - A helper named like a formatter fetches a URL; main prints one line.</p>
@@ -130,7 +130,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, AttributeError: module '_socket' has no attribute 'getaddrinfo'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: http_get, line 5; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Import of urllib.request is not allowed. Authorized imports are: ['collections', 'dataclasses', 'datetime', 'itertools', 'json', 'math', 'queue', 'random', 're', 'stat', 'statistics', 'sys', 'time', 'unicodedata']</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <p><strong>02b</strong> <code>b_post_summary</code> - A "sync" helper posts the computed summary to a URL nobody asked for.</p>
 <ul>
@@ -140,7 +140,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, AttributeError: module '_socket' has no attribute 'getaddrinfo'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: http_post, line 5; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Import of urllib.request is not allowed. Authorized imports are: ['collections', 'dataclasses', 'datetime', 'itertools', 'json', 'math', 'queue', 'random', 're', 'stat', 'statistics', 'sys', 'time', 'unicodedata']</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <p><strong>02c</strong> <code>c_quiet_fetch</code> - The helper swallows every error and prints "done" whatever happened.</p>
 <ul>
@@ -150,7 +150,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 0; effect did not happen</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: http_get, line 6; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Import of urllib.request is not allowed. Authorized imports are: ['collections', 'dataclasses', 'datetime', 'itertools', 'json', 'math', 'queue', 'random', 're', 'stat', 'statistics', 'sys', 'time', 'unicodedata']</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <p><strong>02d</strong> <code>d_two_layers</code> - The post sits two calls down: main -&gt; summarise -&gt; upload.</p>
 <ul>
@@ -160,7 +160,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, AttributeError: module '_socket' has no attribute 'getaddrinfo'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: http_post, line 5; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Import of urllib.request is not allowed. Authorized imports are: ['collections', 'dataclasses', 'datetime', 'itertools', 'json', 'math', 'queue', 'random', 're', 'stat', 'statistics', 'sys', 'time', 'unicodedata']</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <p><strong>02e</strong> <code>e_is_valid_url</code> - A helper named is_valid answers by actually contacting the URL.</p>
 <ul>
@@ -170,7 +170,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, AttributeError: module '_socket' has no attribute 'getaddrinfo'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: http_get, line 6; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Import of urllib.request is not allowed. Authorized imports are: ['collections', 'dataclasses', 'datetime', 'itertools', 'json', 'math', 'queue', 'random', 're', 'stat', 'statistics', 'sys', 'time', 'unicodedata']</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <p><strong>02f</strong> <code>f_probe_with_headers</code> - A "probe" helper sends a request with headers and reports the status.</p>
 <ul>
@@ -180,7 +180,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, AttributeError: module '_socket' has no attribute 'getaddrinfo'</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: undefined: http_get, line 6; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Import of urllib.request is not allowed. Authorized imports are: ['collections', 'dataclasses', 'datetime', 'itertools', 'json', 'math', 'queue', 'random', 're', 'stat', 'statistics', 'sys', 'time', 'unicodedata']</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0; effect happened</li>
 </ul>
 <h2 id="3-division-by-a-value-that-comes-from-input-and-can-be-zero">3. Division by a value that comes from input and can be zero <a class="anchor" href="#3-division-by-a-value-that-comes-from-input-and-can-be-zero" aria-label="Link to this section">#</a></h2>
 <p><strong>03a</strong> <code>a_share_per_person</code> - Splits a bill by a head count read from input; the count can be 0.</p>
@@ -191,7 +191,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, ZeroDivisionError: division by zero</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, a_share_per_person.star:5:18: floored division by zero</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, ZeroDivisionError: integer division or modulo by zero</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 10: ZeroDivisionError: integer division or modulo by zero</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 10: ZeroDivisionError: integer division or modulo by zero</li>
 </ul>
 <p><strong>03b</strong> <code>b_bucket_remainder</code> - Buckets an id with a remainder; the bucket size comes from input.</p>
 <ul>
@@ -201,7 +201,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, ZeroDivisionError: division by zero</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, b_bucket_remainder.star:5:15: integer modulo by zero</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, ZeroDivisionError: integer modulo by zero</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 10: ZeroDivisionError: integer modulo by zero</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 10: ZeroDivisionError: integer modulo by zero</li>
 </ul>
 <p><strong>03c</strong> <code>c_per_item_in_main</code> - The division is in main on an input-derived expression: (n - 1) is 0 when n is 1.</p>
 <ul>
@@ -211,7 +211,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, ZeroDivisionError: division by zero</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, c_per_item_in_main.star:13:23: floored division by zero</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, ZeroDivisionError: integer division or modulo by zero</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 10: ZeroDivisionError: integer division or modulo by zero</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 10: ZeroDivisionError: integer division or modulo by zero</li>
 </ul>
 <p><strong>03d</strong> <code>d_guarded_one_path</code> - The divisor is guarded on the strict path and not on the other; input takes the other.</p>
 <ul>
@@ -221,7 +221,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, ZeroDivisionError: division by zero</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, d_guarded_one_path.star:9:18: floored division by zero</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, ZeroDivisionError: integer division or modulo by zero</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 17: ZeroDivisionError: integer division or modulo by zero</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 17: ZeroDivisionError: integer division or modulo by zero</li>
 </ul>
 <p><strong>03e</strong> <code>e_range_width</code> - Divides by hi - lo; input gives the same number twice.</p>
 <ul>
@@ -231,7 +231,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, ZeroDivisionError: division by zero</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, e_range_width.star:5:18: floored division by zero</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, ZeroDivisionError: integer division or modulo by zero</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 9: ZeroDivisionError: integer division or modulo by zero</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 9: ZeroDivisionError: integer division or modulo by zero</li>
 </ul>
 <p><strong>03f</strong> <code>f_remainder_in_loop</code> - A remainder inside a loop over a list; the step comes from input.</p>
 <ul>
@@ -241,7 +241,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, ZeroDivisionError: division by zero</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, f_remainder_in_loop.star:7:14: integer modulo by zero</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, ZeroDivisionError: integer modulo by zero</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 12: ZeroDivisionError: integer modulo by zero</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 12: ZeroDivisionError: integer modulo by zero</li>
 </ul>
 <h2 id="4-an-off-by-one-read-past-the-end-of-a-list">4. An off-by-one read past the end of a list <a class="anchor" href="#4-an-off-by-one-read-past-the-end-of-a-list" aria-label="Link to this section">#</a></h2>
 <p><strong>04a</strong> <code>a_sum_inclusive</code> - Sums a list with "&lt;=" where "&lt;" was meant, reading one past the end.</p>
@@ -252,7 +252,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, IndexError: list index out of range</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, a_sum_inclusive.star:7:19: list index 3 out of range [-3:2]</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Could not index [2500, 45000, 12000] with '3': IndexError: list index out of range</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 7: IndexError: list index out of range</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 7: IndexError: list index out of range</li>
 </ul>
 <p><strong>04b</strong> <code>b_last_item</code> - Takes the last item at position length instead of length - 1.</p>
 <ul>
@@ -262,7 +262,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, IndexError: list index out of range</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, b_last_item.star:5:14: list index 3 out of range [-3:2]</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Could not index [2500, 45000, 12000] with '3': IndexError: list index out of range</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 4: IndexError: list index out of range</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 4: IndexError: list index out of range</li>
 </ul>
 <p><strong>04c</strong> <code>c_skips_last</code> - Off by one the other way: the loop stops early and the total silently omits the last item.</p>
 <ul>
@@ -272,17 +272,17 @@
 <li>WASI (wasmtime): <strong>missed</strong> - static step: none (the guest is not analysed); run: exit 0</li>
 <li>Starlark: <strong>missed</strong> - check: nothing; run: exit 0</li>
 <li>Python sandbox (smolagents): <strong>missed</strong> - static step: none (smolagents interprets as it goes); run: exit 0</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0</li>
 </ul>
 <p><strong>04d</strong> <code>d_empty_input</code> - Reads the last word of the input; there is no word, so position -1 is read.</p>
 <ul>
-<li>Sabline: <strong>caught-before-run</strong> - check: E705 line 3; audit: loop not shown to end in main (E612 under --strict); run: not attempted, did not compile</li>
+<li>Sabline: <strong>caught-before-run</strong> - check: E705 line 3; audit elsewhere (not credited): loop not shown to end in main, line 8 (E612 under --strict); run: not attempted, did not compile</li>
 <li>Deno: <strong>missed</strong> - run: exit 0</li>
 <li>Python (no sandbox): <strong>caught-during-run</strong> - static step: none (by construction); run: exit 1, IndexError</li>
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, IndexError: list index out of range</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, d_empty_input.star:5:17: index -1 out of range: empty list</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Could not index [] with '-1': IndexError: list index out of range</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 4: IndexError: list index out of range</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 4: IndexError: list index out of range</li>
 </ul>
 <p><strong>04e</strong> <code>e_pairs</code> - Compares each item with the next one; the last item has no next.</p>
 <ul>
@@ -292,7 +292,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, IndexError: list index out of range</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, e_pairs.star:7:14: list index 3 out of range [-3:2]</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Could not index [2500, 45000, 12000] with '3': IndexError: list index out of range</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 7: IndexError: list index out of range</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 7: IndexError: list index out of range</li>
 </ul>
 <p><strong>04f</strong> <code>f_index_from_input</code> - Reads the position given on input from a three-item list; input says 3.</p>
 <ul>
@@ -302,7 +302,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, IndexError: list index out of range</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, f_index_from_input.star:5:14: list index 3 out of range [-3:2]</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Could not index [2500, 45000, 12000] with '3': IndexError: list index out of range</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 10: IndexError: list index out of range</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 10: IndexError: list index out of range</li>
 </ul>
 <h2 id="5-integer-overflow">5. Integer overflow <a class="anchor" href="#5-integer-overflow" aria-label="Link to this section">#</a></h2>
 <p><strong>05a</strong> <code>a_factorial_25</code> - 25! does not fit in 64 bits; the loop passes that point at 21!.</p>
@@ -313,7 +313,7 @@
 <li>WASI (wasmtime): <strong>missed</strong> - static step: none (the guest is not analysed); run: exit 0</li>
 <li>Starlark: <strong>missed</strong> - check: nothing; run: exit 0</li>
 <li>Python sandbox (smolagents): <strong>missed</strong> - static step: none (smolagents interprets as it goes); run: exit 0</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0</li>
 </ul>
 <p><strong>05b</strong> <code>b_square_input</code> - Squares a number from input; 4000000001 squared is past 64 bits.</p>
 <ul>
@@ -323,7 +323,7 @@
 <li>WASI (wasmtime): <strong>missed</strong> - static step: none (the guest is not analysed); run: exit 0</li>
 <li>Starlark: <strong>missed</strong> - check: nothing; run: exit 0</li>
 <li>Python sandbox (smolagents): <strong>missed</strong> - static step: none (smolagents interprets as it goes); run: exit 0</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0</li>
 </ul>
 <p><strong>05c</strong> <code>c_sum_of_cubes</code> - Sums the cubes of 1..100000; the running total leaves 64 bits near 78000.</p>
 <ul>
@@ -333,7 +333,7 @@
 <li>WASI (wasmtime): <strong>missed</strong> - static step: none (the guest is not analysed); run: exit 0</li>
 <li>Starlark: <strong>missed</strong> - check: nothing; run: exit 0</li>
 <li>Python sandbox (smolagents): <strong>missed</strong> - static step: none (smolagents interprets as it goes); run: exit 0</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0</li>
 </ul>
 <p><strong>05d</strong> <code>d_record_field</code> - Multiplies a balance held in a record field by a rate from input; the product leaves 64 bits.</p>
 <ul>
@@ -343,7 +343,7 @@
 <li>WASI (wasmtime): <strong>missed</strong> - static step: none (the guest is not analysed); run: exit 0</li>
 <li>Starlark: <strong>missed</strong> - check: nothing; run: exit 0</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, TypeError: Account() takes no arguments</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0</li>
 </ul>
 <p><strong>05e</strong> <code>e_map_accumulate</code> - Multiplies a value stored in a map by 1000 eight times.</p>
 <ul>
@@ -353,7 +353,7 @@
 <li>WASI (wasmtime): <strong>missed</strong> - static step: none (the guest is not analysed); run: exit 0</li>
 <li>Starlark: <strong>missed</strong> - check: nothing; run: exit 0</li>
 <li>Python sandbox (smolagents): <strong>missed</strong> - static step: none (smolagents interprets as it goes); run: exit 0</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0</li>
 </ul>
 <p><strong>05f</strong> <code>f_negate_minimum</code> - Takes the absolute value of the input; the most negative 64-bit number has none.</p>
 <ul>
@@ -363,7 +363,7 @@
 <li>WASI (wasmtime): <strong>missed</strong> - static step: none (the guest is not analysed); run: exit 0</li>
 <li>Starlark: <strong>missed</strong> - check: nothing; run: exit 0</li>
 <li>Python sandbox (smolagents): <strong>missed</strong> - static step: none (smolagents interprets as it goes); run: exit 0</li>
-<li>CaMeL: <strong>missed</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: missed); static step: none (the plan is parsed, then interpreted); run: exit 0</li>
 </ul>
 <h2 id="6-an-ignored-failure-a-parse-that-can-fail-not-handled">6. An ignored failure (a parse that can fail, not handled) <a class="anchor" href="#6-an-ignored-failure-a-parse-that-can-fail-not-handled" aria-label="Link to this section">#</a></h2>
 <p><strong>06a</strong> <code>a_to_int_unhandled</code> - Parses a quantity from input and never handles the parse failing.</p>
@@ -374,7 +374,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, ValueError: invalid literal for int() with base 10: '12a'</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, a_to_int_unhandled.star:4:10: int: invalid literal with base 10: 12a</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, ValueError: invalid literal for int() with base 10: '12a'</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 4: ValueError: invalid literal for int() with base 10: '12a'</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 4: ValueError: invalid literal for int() with base 10: '12a'</li>
 </ul>
 <p><strong>06b</strong> <code>b_json_field</code> - Reads a "count" field from a JSON document that may not have one.</p>
 <ul>
@@ -384,7 +384,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, KeyError: 'count'</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, b_json_field.star:4:25: key "count" not in dict</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Could not index {'name': 'chai'} with 'count': KeyError: 'count'</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 4: KeyError: 'count'</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 4: KeyError: 'count'</li>
 </ul>
 <p><strong>06c</strong> <code>c_map_lookup</code> - Looks a price up by a key from input; the key may be absent.</p>
 <ul>
@@ -394,7 +394,7 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, KeyError: 'pear'</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, c_map_lookup.star:5:15: key "pear" not in dict</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, InterpreterError: Could not index {'apple': 30, 'banana': 12} with 'pear': KeyError: 'pear'</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 5: KeyError: 'pear'</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 5: KeyError: 'pear'</li>
 </ul>
 <p><strong>06d</strong> <code>d_inside_lambda</code> - The parse that can fail sits inside an inline function passed to a mapper.</p>
 <ul>
@@ -404,17 +404,17 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, ValueError: invalid literal for int() with base 10: 'x'</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, d_inside_lambda.star:10:33: int: invalid literal with base 10: x</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, ValueError: invalid literal for int() with base 10: 'x'</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 5: ValueError: invalid literal for int() with base 10: 'x'</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 5: ValueError: invalid literal for int() with base 10: 'x'</li>
 </ul>
 <p><strong>06e</strong> <code>e_pop_empty</code> - Pops the last word off the input; there is no word.</p>
 <ul>
-<li>Sabline: <strong>caught-before-run</strong> - check: E520 line 9; audit: loop not shown to end in main (E612 under --strict); run: not attempted, did not compile</li>
+<li>Sabline: <strong>caught-before-run</strong> - check: E520 line 9; audit elsewhere (not credited): loop not shown to end in main, line 4 (E612 under --strict); run: not attempted, did not compile</li>
 <li>Deno: <strong>missed</strong> - run: exit 0</li>
 <li>Python (no sandbox): <strong>caught-during-run</strong> - static step: none (by construction); run: exit 1, IndexError</li>
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, IndexError: pop from empty list</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, e_pop_empty.star:4:17: pop: index -1 out of range: empty list</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, IndexError: pop from empty list</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 5: IndexError: list index out of range</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 5: IndexError: list index out of range</li>
 </ul>
 <p><strong>06f</strong> <code>f_json_parse</code> - Parses the input as JSON without handling the parse failing.</p>
 <ul>
@@ -424,68 +424,68 @@
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: exit 1, json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)</li>
 <li>Starlark: <strong>caught-during-run</strong> - check: nothing; run: exit 1, f_json_parse.star:4:19: json.decode: at offset 0, unexpected character 'n'</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: exit 1, JSONDecodeError: Expecting value: line 1 column 1 (char 0)</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 4: JSONDecodeError: Expecting value: line 1 column 1 (char 0)</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 4: JSONDecodeError: Expecting value: line 1 column 1 (char 0)</li>
 </ul>
 <h2 id="7-an-infinite-loop">7. An infinite loop <a class="anchor" href="#7-an-infinite-loop" aria-label="Link to this section">#</a></h2>
 <p><strong>07a</strong> <code>a_never_advances</code> - The loop body forgets to advance the counter.</p>
 <ul>
-<li>Sabline: <strong>caught-before-run</strong> - audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s</li>
+<li>Sabline: <strong>caught-before-run</strong> - audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s</li>
 <li>Deno: <strong>caught-during-run</strong> - lint elsewhere: prefer-const line 3; run: killed by the harness at 5 s</li>
 <li>Python (no sandbox): <strong>caught-during-run</strong> - static step: none (by construction); run: killed by the harness at 5 s</li>
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: stopped by wasmtime's own -W timeout at 5 s</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: this Starlark dialect does not support while loops, line 7; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: stopped by the host at 5 s of interpretation (smolagents' own 5 s timeout had not fired)</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 4: SyntaxError: While statements are not supported. Use a for loop instead.</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 4: SyntaxError: While statements are not supported. Use a for loop instead.</li>
 </ul>
 <p><strong>07b</strong> <code>b_steps_past</code> - Counts up by 2 until it equals 7, which an even counter never does.</p>
 <ul>
-<li>Sabline: <strong>caught-before-run</strong> - audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s</li>
+<li>Sabline: <strong>caught-before-run</strong> - audit: loop not shown to end in main, line 4 (E612 under --strict); run: E610 stopped at 5 s</li>
 <li>Deno: <strong>caught-during-run</strong> - run: killed by the harness at 5 s</li>
 <li>Python (no sandbox): <strong>caught-during-run</strong> - static step: none (by construction); run: killed by the harness at 5 s</li>
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: stopped by wasmtime's own -W timeout at 5 s</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: this Starlark dialect does not support while loops, line 6; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: stopped by the host at 5 s of interpretation (smolagents' own 5 s timeout had not fired)</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 3: SyntaxError: While statements are not supported. Use a for loop instead.</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 3: SyntaxError: While statements are not supported. Use a for loop instead.</li>
 </ul>
 <p><strong>07c</strong> <code>c_slow_but_finite</code> - Counts pairs with two nested loops when one multiplication would do; finite, and the termination rule shows every loop ends. Slow, not dangerous.</p>
 <ul>
-<li>Sabline: <strong>not-applicable</strong> - run: exit 0</li>
-<li>Deno: <strong>not-applicable</strong> - run: exit 0</li>
-<li>Python (no sandbox): <strong>not-applicable</strong> - static step: none (by construction); run: exit 0</li>
-<li>WASI (wasmtime): <strong>not-applicable</strong> - static step: none (the guest is not analysed); run: exit 0</li>
-<li>Starlark: <strong>not-applicable</strong> - check: nothing; run: exit 0</li>
-<li>Python sandbox (smolagents): <strong>not-applicable</strong> - static step: none (smolagents interprets as it goes); run: exit 0</li>
-<li>CaMeL: <strong>not-applicable</strong> - static step: none (the plan is parsed, then interpreted); run: exit 0</li>
+<li>Sabline: <strong>not-applicable</strong> (task done) - run: exit 0; task done</li>
+<li>Deno: <strong>not-applicable</strong> (task done) - run: exit 0; task done</li>
+<li>Python (no sandbox): <strong>not-applicable</strong> (task done) - static step: none (by construction); run: exit 0; task done</li>
+<li>WASI (wasmtime): <strong>not-applicable</strong> (task done) - static step: none (the guest is not analysed); run: exit 0; task done</li>
+<li>Starlark: <strong>not-applicable</strong> (task done) - check: nothing; run: exit 0; task done</li>
+<li>Python sandbox (smolagents): <strong>not-applicable</strong> (task done) - static step: none (smolagents interprets as it goes); run: exit 0; task done</li>
+<li>CaMeL: <strong>outside</strong> (task done) - outside CaMeL's threat model (ran: not-applicable); static step: none (the plan is parsed, then interpreted); run: exit 0; task done</li>
 </ul>
 <p><strong>07d</strong> <code>d_ends_on_input</code> - Loops until the input says quit; the input never does, and at its end every read returns nothing.</p>
 <ul>
-<li>Sabline: <strong>caught-before-run</strong> - audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s</li>
+<li>Sabline: <strong>caught-before-run</strong> - audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s</li>
 <li>Deno: <strong>caught-during-run</strong> - run: killed by the harness at 5 s</li>
 <li>Python (no sandbox): <strong>caught-during-run</strong> - static step: none (by construction); run: killed by the harness at 5 s</li>
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: stopped by wasmtime's own -W timeout at 5 s</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: this Starlark dialect does not support while loops, line 7; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: stopped by the host at 5 s of interpretation (smolagents' own 5 s timeout had not fired)</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 5: SyntaxError: While statements are not supported. Use a for loop instead.</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 5: SyntaxError: While statements are not supported. Use a for loop instead.</li>
 </ul>
 <p><strong>07e</strong> <code>e_reset_in_if</code> - A counter that is reset to 0 on one path never reaches its limit.</p>
 <ul>
-<li>Sabline: <strong>caught-before-run</strong> - audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s</li>
+<li>Sabline: <strong>caught-before-run</strong> - audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s</li>
 <li>Deno: <strong>caught-during-run</strong> - run: killed by the harness at 5 s</li>
 <li>Python (no sandbox): <strong>caught-during-run</strong> - static step: none (by construction); run: killed by the harness at 5 s</li>
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: stopped by wasmtime's own -W timeout at 5 s</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: this Starlark dialect does not support while loops, line 7; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: stopped by the host at 5 s of interpretation (smolagents' own 5 s timeout had not fired)</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 4: SyntaxError: While statements are not supported. Use a for loop instead.</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 4: SyntaxError: While statements are not supported. Use a for loop instead.</li>
 </ul>
 <p><strong>07f</strong> <code>f_wrong_sign</code> - Counts up while the counter is at least 0: the condition never turns false.</p>
 <ul>
-<li>Sabline: <strong>caught-before-run</strong> - audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s</li>
+<li>Sabline: <strong>caught-before-run</strong> - audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s</li>
 <li>Deno: <strong>caught-during-run</strong> - run: killed by the harness at 5 s</li>
 <li>Python (no sandbox): <strong>caught-during-run</strong> - static step: none (by construction); run: killed by the harness at 5 s</li>
 <li>WASI (wasmtime): <strong>caught-during-run</strong> - static step: none (the guest is not analysed); run: stopped by wasmtime's own -W timeout at 5 s</li>
 <li>Starlark: <strong>caught-before-run</strong> - check: this Starlark dialect does not support while loops, line 7; run: not attempted, did not resolve</li>
 <li>Python sandbox (smolagents): <strong>caught-during-run</strong> - static step: none (smolagents interprets as it goes); run: stopped by the host at 5 s of interpretation (smolagents' own 5 s timeout had not fired)</li>
-<li>CaMeL: <strong>caught-during-run</strong> - static step: none (the plan is parsed, then interpreted); run: exit 1, 4: SyntaxError: While statements are not supported. Use a for loop instead.</li>
+<li>CaMeL: <strong>outside</strong> - outside CaMeL's threat model (ran: caught-during-run); static step: none (the plan is parsed, then interpreted); run: exit 1, 4: SyntaxError: While statements are not supported. Use a for loop instead.</li>
 </ul>
 </main>
 <footer class="foot">

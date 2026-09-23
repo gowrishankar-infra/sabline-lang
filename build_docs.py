@@ -280,11 +280,12 @@ DOCUMENTS = [("TUTORIAL.md", "tutorial.html"), ("SPEC.md", "spec.html"),
 # a docs/*.md page's section; one not named here goes under Threat model,
 # those in DOCS_ORDER first and in that order, the rest by name
 DOCS_SECTION = {"floats.md": "Floats", "renamed.md": "Spec",
-                "embedding-limit.md": "Embedding"}
+                "embedding-limit.md": "Embedding", "receipts.md": "Embedding"}
 DOCS_ORDER = ["confinement.md", "runner.md", "eval.md",
               "structurally-impossible.md", "known-open.md", "incidents.md",
-              "agentdojo.md", "competitors.md", "competitors-evidence-1.md",
-              "competitors-evidence-2.md",
+              "agentdojo.md", "competitors.md", "competitors-scenarios.md",
+              "competitors-evidence-1.md",
+              "competitors-evidence-2.md", "competitors-evidence-3.md",
               "crosswalk.md"]
 MISSING: list[str] = []         # links to a repository file that is not here
 

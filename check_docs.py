@@ -105,7 +105,10 @@ from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_docs")
 SABLINE_PY = str(HERE / "sabline.py")
-DOCS = ("README.md", "SPEC.md", "EMBEDDING.md", "TUTORIAL.md")
+# docs/receipts.md is two sections of EMBEDDING.md, moved to fit the page
+# budget (8.7), and its blocks are held as they were there
+DOCS = ("README.md", "SPEC.md", "EMBEDDING.md", "TUTORIAL.md",
+        "docs/receipts.md")
 CODE_DOCS = (["SPEC.md", "README.md", "EMBEDDING.md", "LLM.md", "TUTORIAL.md"]
              + sorted(f"docs/{p.name}" for p in (HERE / "docs").glob("*.md")))
 

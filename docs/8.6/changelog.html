@@ -44,10 +44,10 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
-<ul><li><a href="embedding-limit.html">The embedding limit</a></li></ul>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
 </li>
 <li><span class="sec-label">Spec</span>
 <ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
@@ -121,6 +121,32 @@ the table grows every time a gap is recorded honestly, so it was moved
 rather than trimmed and the budget stays where it was. THREAT_MODEL.md
 keeps its Known open heading, which links to the page, and every word of
 the table and the section is where it was moved to.</p>
+<p><strong>Competitor scoring</strong> (<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/benchmark/competitors/README.md">benchmark/competitors/</a>,
+<a href="competitors.html">/competitors.html</a>): the comparison
+benchmark run through Deno, CPython's WASI build under wasmtime, Starlark,
+smolagents' Python sandbox and CaMeL's reference implementation, each in its
+own pinned runtime, every cell's command and output recorded, and a CI leg
+that re-derives the table and fails if a cell moves. Its first version had
+Sabline ahead or level on every row, which said more about the benchmark
+than the tools, so it was corrected before it was published. <strong>Five
+categories were added (16 to 20, 102 programs now)</strong> where a competitor
+should win or Sabline should lose: a leak through a granted channel, one
+legitimate subprocess, correct programs Sabline's rules refuse (a loop
+until the input ends, Euclid's algorithm, 25! and a product modulo
+2^61 - 1), danger below the language in a granted library or its native
+code, and rows that check the task's legitimate work still got done. <strong>The
+scoring changed for every column alike:</strong> the outcome first and the timing
+only on a tie; a <code>task</code> check, so a runtime that stops everything scores as
+a catch with the task broken; before-running credit only where a tool's
+design has a static step; Sabline's audit credited only on the marked
+dangerous line, as Deno's lint always was; CaMeL scored only on the rows its
+threat model claims; and a scenario a runtime cannot express recorded with
+the reason. Sabline now loses rows, and the page says which first.
+<code>benchmark/results.json</code> is re-recorded at this checkout. Corpus 13a's
+JavaScript no longer calls <code>require</code>, which Deno does not define, so Deno's
+catch there is now its permission check. The receipt sections of
+EMBEDDING.md moved to <a href="receipts.html">docs/receipts.md</a>, to keep the
+embedding page inside the page budget.</p>
 <h2 id="9x">9.x <a class="anchor" href="#9x" aria-label="Link to this section">#</a></h2>
 <ul><li><a href="changelog-9.html#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li>
 <li><a href="changelog-9.html#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li>
