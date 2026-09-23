@@ -354,6 +354,26 @@ jobs:
       - name: Lint and type-check the package and every script
         run: python check_lint.py
 
+  # AgentDojo, with Sabline in the loop, offline and at no cost (plan/8.7.md).
+  # It pins one AgentDojo version, replaces the agent with AgentDojo's own
+  # ground truth, and re-derives every number in evals/agentdojo/results.json.
+  # No model, no API key: the agent-writes-the-program half is behind a flag,
+  # off by default, and is not run here.
+  agentdojo:
+    name: AgentDojo, with Sabline in the loop, offline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install pinned AgentDojo (no model, no key)
+        run: pip install -r requirements/agentdojo.txt
+      - name: The recorded score re-derives, program for program
+        run: python agentdojo_eval.py --check
+      - name: The published page is what the record says
+        run: python build_agentdojo_page.py --check
+
   # Two suites at once, from one checkout, as two local configurations run
   # side by side: every suite writes to a directory of its own
   # (suite_dirs.py), so neither may see the other's files. Each pair runs

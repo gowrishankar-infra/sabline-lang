@@ -1,0 +1,12 @@
+# The AgentDojo evaluation (evals/agentdojo/, agentdojo_eval.py) is pinned to
+# one AgentDojo version, so the numbers on /agentdojo.html are comparable and
+# reproducible. Only agentdojo is pinned here; pip resolves its dependencies,
+# and none of them is imported by Sabline itself - this file is installed only
+# on the one CI leg that runs the evaluation, never in a release.
+#
+#   pip install -r requirements/agentdojo.txt
+#   python agentdojo_eval.py --check
+#
+# No model or API key is used. AgentDojo's agent pipeline would need one; the
+# evaluation replaces it with AgentDojo's own ground truth (see the README).
+agentdojo==0.1.35
