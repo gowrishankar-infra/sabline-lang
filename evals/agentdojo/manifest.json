@@ -1,0 +1,231 @@
+{
+  "schema": "sabline.tools/1",
+  "description": "AgentDojo slack suite (v1), agentdojo 0.1.35.",
+  "tools": {
+    "add_user_to_channel": {
+      "description": "Add a user to a given channel.",
+      "arguments": {
+        "properties": {
+          "user": {
+            "description": "The user to add to the channel.",
+            "title": "User",
+            "type": "string"
+          },
+          "channel": {
+            "description": "The channel to add the user to.",
+            "title": "Channel",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "channel"
+        ],
+        "title": "Input schema for `add_user_to_channel`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "get_channels": {
+      "description": "Get the list of channels in the slack.",
+      "arguments": {
+        "properties": {},
+        "title": "Input schema for `get_channels`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "get_users_in_channel": {
+      "description": "Get the list of users in the given channel.",
+      "arguments": {
+        "properties": {
+          "channel": {
+            "description": "The channel to get the users from.",
+            "title": "Channel",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel"
+        ],
+        "title": "Input schema for `get_users_in_channel`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "get_webpage": {
+      "description": "Returns the content of the webpage at a given URL.",
+      "arguments": {
+        "properties": {
+          "url": {
+            "description": "The URL of the webpage.",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "Input schema for `get_webpage`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "invite_user_to_slack": {
+      "description": "Invites a user to the Slack workspace.",
+      "arguments": {
+        "properties": {
+          "user": {
+            "description": "The user to invite.",
+            "title": "User",
+            "type": "string"
+          },
+          "user_email": {
+            "description": "The user email where invite should be sent.",
+            "title": "User Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "user_email"
+        ],
+        "title": "Input schema for `invite_user_to_slack`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "post_webpage": {
+      "description": "Posts a webpage at a given URL with the given content.",
+      "arguments": {
+        "properties": {
+          "url": {
+            "description": "The URL of the webpage.",
+            "title": "Url",
+            "type": "string"
+          },
+          "content": {
+            "description": "The content of the webpage.",
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "content"
+        ],
+        "title": "Input schema for `post_webpage`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "read_channel_messages": {
+      "description": "Read the messages from the given channel.",
+      "arguments": {
+        "properties": {
+          "channel": {
+            "description": "The channel to read the messages from.",
+            "title": "Channel",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel"
+        ],
+        "title": "Input schema for `read_channel_messages`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "read_inbox": {
+      "description": "Read the messages from the given user inbox.",
+      "arguments": {
+        "properties": {
+          "user": {
+            "description": "The user whose inbox to read.",
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "title": "Input schema for `read_inbox`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "remove_user_from_slack": {
+      "description": "Remove a user from the Slack workspace.",
+      "arguments": {
+        "properties": {
+          "user": {
+            "description": "The user to remove.",
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "title": "Input schema for `remove_user_from_slack`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "send_channel_message": {
+      "description": "Send a channel message from `author` to `channel` with the given `content`.",
+      "arguments": {
+        "properties": {
+          "channel": {
+            "description": "The channel to send the message to.",
+            "title": "Channel",
+            "type": "string"
+          },
+          "body": {
+            "description": "The body of the message.",
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel",
+          "body"
+        ],
+        "title": "Input schema for `send_channel_message`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "send_direct_message": {
+      "description": "Send a direct message from `author` to `recipient` with the given `content`.",
+      "arguments": {
+        "properties": {
+          "recipient": {
+            "description": "The recipient of the message.",
+            "title": "Recipient",
+            "type": "string"
+          },
+          "body": {
+            "description": "The body of the message.",
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipient",
+          "body"
+        ],
+        "title": "Input schema for `send_direct_message`",
+        "type": "object"
+      },
+      "cost": 1
+    }
+  },
+  "allow": [],
+  "ceiling": {
+    "calls": 100,
+    "cost": 100,
+    "unit": "calls"
+  }
+}
