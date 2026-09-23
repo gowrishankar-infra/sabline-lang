@@ -1,9 +1,12 @@
 # 0006 - Where the competitor table shows Sabline losing
 
-**Proposed, 2026-09-23. Not decided, and nothing here is built.** Each
-section is a proposal the maintainer accepts, changes or closes; until one
-is accepted it changes nothing in `SPEC.md`, sabline-spec or either
-runtime, and no document may describe it as a feature.
+**Proposed 2026-09-23; decided 2026-09-24. Nothing here is built.** Each
+section below is the proposal as it was written, followed by the
+maintainer's decision on it; *What was decided*, just below, gathers the
+five. An accepted proposal is scheduled in the milestone of `plan/9.0.md`
+the decision names, not built: until it ships it changes nothing in
+`SPEC.md`, sabline-spec or either runtime, and no document may describe it
+as a feature.
 
 ## What this answers
 
@@ -33,6 +36,25 @@ of them that is not closing soon, and none of them is.
 more than its budget grants. Four of the five narrow what a grant means or
 report more precisely; (b) is the only one that changes what a program may
 observe, and it is the one that most needs its failing cases.
+
+## What was decided
+
+Decided by the maintainer on 2026-09-24. Each section's own decision, at
+its end, says more; the proposal text above each decision is unedited.
+
+| | Proposal | Decision | Where it sits | Rows it closes |
+|---|---|---|---|---|
+| e | `--confine strict` | **accepted** | M4, +5 days: Python's version first, sabline-rt's in the same release | 19d, on Linux and macOS, and on Windows where the budget grants no write |
+| a | `proc:NAME` | **accepted**, with two caveats: a granted interpreter defeats it at the language level, and Windows cannot restrict which binary runs | M6, +13 days | 17a, 17b |
+| d | `fs:secret:PATH` | **accepted**, refusing the correct 16d, the false positive CaMeL takes | M6, +5 days | 16a, 16b, 16c |
+| c | the input-bounded loop verdict | **accepted, for 18a only** | M2, +2 days | 18a |
+| c | `decreases` | **open**, no milestone: a decision of its own and an adversarial pass first | - | (18b stays open) |
+| c | `Int` past 64 bits | **not done**: 18c and 18d stay declared false positives | never | - |
+| b | `recover@N` | **deferred, not rejected**: seven days for four rows, and any recovery gives a program a way to probe the budget; a decision of its own and an adversarial pass first | - | - |
+
+The days are counted in each milestone's effort in `plan/9.0.md`, which
+now carries the cases that must fail as exit criteria. Nothing is built by
+this record, none of it is 8.7 work, and no default moves.
 
 ---
 
@@ -146,6 +168,24 @@ it in Python alone now would make M3 port a feature nobody has used.
    argument and fails; `hostname` never runs, because there is no shell to
    split it.
 
+**Decided, 2026-09-24: accepted for M6**, and counted in M6's effort
+(8 days in Python, 5 in sabline-rt), not added beside it as the proposal
+put it. The five cases above are M6 exit criteria. Two caveats are part of
+the decision, and the grant's documentation states both before it says
+anything else about it:
+
+- **A granted interpreter defeats it at the language level.** `proc:NAME`
+  bounds which program starts, never what that program does. A program
+  that is an interpreter - a shell, `python`, `env`, `find` with `-exec`,
+  and the others above - is arbitrary execution inside whatever the OS
+  policy allows. E326 refuses the names that are obviously such programs,
+  and that list cannot be complete.
+- **Windows cannot restrict which binary runs.** Nothing in a job object or
+  a lowered token holds which program a process starts, so on Windows the
+  name is the language's check alone, and a granted program that starts a
+  second one is not stopped there. The Windows row of the confinement
+  table says so.
+
 ---
 
 ## b. A refusal ends the run
@@ -225,6 +265,25 @@ today's rule (M3) before the rule moves. Not 8.7.
    cannot fail is not recovered), whatever the grant says.
 5. `recover@1`; 20b completes its task: the exit status is the distinct
    non-zero status, never 0.
+
+**Decided, 2026-09-24: deferred, not rejected.** It is in no milestone,
+and M6 does not carry it. Two reasons:
+
+- **Seven days for four rows.** About 4 days in Python and 3 in sabline-rt
+  recover 12a, 12b, 20b and 20c; 12c and 20d end the run anyway, because
+  `write_file` cannot fail, and 14c is refused before anything runs.
+- **Any recovery gives a program a way to probe the budget.** The bound
+  above limits the probing; it does not remove it. Under `recover@N` a
+  program gets N + 1 guesses instead of one, and each caught refusal tells
+  it which guess was wrong, which is the thing the uncatchable refusal
+  exists to deny. That the bound is enough is an argument, and it has not
+  been tested against anyone trying to learn a budget through it.
+
+So it gets **a decision of its own**, and **an adversarial pass** - in
+`check_adversarial.py`'s shape, somebody trying to learn what a budget
+grants through the caught refusals - before any of it is built. The
+argument above is where that decision starts, not what it concludes.
+Until then SPEC.md §7.1 stands: a refusal ends the run.
 
 ---
 
@@ -306,6 +365,27 @@ bits: **never** for `Int`; a `Big` type is not scheduled.
 4. `decreases y` where `y` can fall below zero (`y = y - 2` from an odd
    start): refused, since the measure must stay non-negative.
 5. 05a to 05f and 18f still stop with E407.
+
+**Decided, 2026-09-24: accepted in part.**
+
+- **The input-bounded verdict: accepted for M2, for 18a**, and counted in
+  M2's effort (about 2 days): sabline-spec §9.5 gains the third verdict
+  first, and each checker implements it once. 18a is then reported as
+  bounded by its input and passes `check --strict`; cases 1, 2 and 5 above
+  are M2 exit criteria.
+- **18b stays open**, reported as a loop not shown to end. The decision as
+  first given named 18b beside 18a; it was corrected the same day, because
+  Euclid's loop ends by a falling measure and reads nothing, so the
+  input-bounded verdict does not reach it. **The M2 rule is not widened to
+  recognise Euclid's shape** (`y = x % y` under `y != 0`): a rule that
+  closes one program and nothing else makes the checker harder to describe
+  than it is worth.
+- **`decreases`: an open proposal with no milestone**, beside `recover@N`
+  (section b). Both are language changes, and each gets a decision of its
+  own and an adversarial pass before anyone builds it. Cases 3 and 4 wait
+  with it.
+- **18c and 18d stay declared false positives, and `Int` stays 64-bit.**
+  A `Big` type is not scheduled.
 
 ---
 
@@ -395,6 +475,16 @@ defect.
 5. `declassify` of the ledger with no `declassify` grant: E310 at the
    call, as today.
 
+**Decided, 2026-09-24: accepted for M6**, and counted in M6's effort (3
+days in Python, 2 in sabline-rt). The five cases above are M6 exit
+criteria. It is accepted with its price recorded: **it refuses the correct
+16d as well.** A program that posts only the number of entries has to test
+each line of a `Secret`, which is E563, so it compiles only with a
+`declassify` and a written reason. That is the same false positive CaMeL
+takes on 16d, and under the grant 16d is a correct program Sabline stops -
+a price of the grant, stated as one, not a defect to be closed later. The
+general per-value case stays **never**.
+
 ---
 
 ## e. 19d: native code inside a granted library writes a file
@@ -480,6 +570,13 @@ with M4 and the Python runtime's version first, in the same release.
 5. Without `strict`: 19d runs as today and the receipt says `none`, naming
    the module - the default must not move.
 
+**Decided, 2026-09-24: accepted for M4**, and counted in M4's effort (3
+days in Python, 2 in the port): the Python runtime's version first and
+sabline-rt's with it, in the same release, as proposed - not 8.7. The five
+cases above are M4 exit criteria, the fifth among them: `strict` is
+opt-in, and without it a module the table does not name still widens the
+OS policy to nothing enforced, and the receipt still says so.
+
 ---
 
 ## Summary
@@ -495,3 +592,7 @@ with M4 and the Python runtime's version first, in the same release.
 None of the five is scheduled by this document. The known-open table
 names each, and each row changes when, and only when, the proposal behind
 it is accepted and built.
+
+*Decided 2026-09-24* (above): the known-open rows now name the milestone
+that closes each accepted item, or say that nothing is scheduled, and each
+changes again when its item ships.
