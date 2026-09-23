@@ -1,0 +1,14 @@
+// The control: counts the lines of its input, reading until the input ends. Correct, and unbounded by design.
+fn main() uses io {
+    let count = 0
+    let going = true
+    while going {
+        let line = read_line()
+        if line == "" {
+            going = false
+        } else {
+            count = count + 1
+        }
+    }
+    print(format("{} lines", count))
+}

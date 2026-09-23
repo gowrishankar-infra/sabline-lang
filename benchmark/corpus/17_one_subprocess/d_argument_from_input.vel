@@ -1,0 +1,13 @@
+// The control: runs the version-control tool with the argument the input names, from a helper.
+fn vcs(argument: Text) -> Text or fail uses ffi {
+    return try py("subprocess", "getoutput", ["git " + argument])
+}
+
+fn main() uses io, ffi {
+    check vcs(read_line()) {
+        ok out {
+            if contains(out, "git version") { print("vcs: ok") } else { print("vcs: missing") }
+        }
+        fail why { print("vcs: missing") }
+    }
+}

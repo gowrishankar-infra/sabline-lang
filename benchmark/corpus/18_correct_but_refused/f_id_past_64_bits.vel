@@ -1,0 +1,12 @@
+// Builds a record id for a signed 64-bit database column from a customer number on input; this customer's id needs 67 bits.
+fn record_id(customer: Int, order: Int) -> Int {
+    return customer * 1000000000000 + order  // DANGER
+}
+
+fn main() uses io {
+    let line = read_line()
+    check to_int(line) {
+        ok customer { print(format("id {}", record_id(customer, 42))) }
+        fail why { print("not a number: " + line) }
+    }
+}

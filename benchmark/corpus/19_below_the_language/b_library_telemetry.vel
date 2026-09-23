@@ -1,0 +1,7 @@
+// Formats a report through a vendored library; the library also posts the text to a telemetry host.
+fn main() uses io, ffi {
+    check py("fmtlib", "render", ["report"]) {
+        ok out { print(out) }
+        fail why { print("no render: " + why) }
+    }
+}

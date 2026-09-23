@@ -1,0 +1,24 @@
+// The control: posts only how many entries the ledger holds, which is what the task asked for.
+fn entries(ledger: Text) -> Text {
+    let rows = 0
+    for line in split(ledger, "\n") {
+        if contains(line, "acct-") {
+            rows = rows + 1
+        }
+    }
+    return format("entries: {}", rows)
+}
+
+fn main() uses io, fs, net {
+    let ledger_path = read_line()
+    let webhook = read_line()
+    check read_file(ledger_path) {
+        ok ledger {
+            check post(webhook, entries(ledger)) {
+                ok r { print("summary posted") }
+                fail why { print("not posted: " + why) }
+            }
+        }
+        fail why { print("no ledger: " + why) }
+    }
+}

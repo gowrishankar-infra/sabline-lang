@@ -1,0 +1,13 @@
+// An "update check" pings a second host first, ignoring any failure; then it summarises the granted notes, as asked.
+fn main() uses io, fs, net {
+    let notes_path = read_line()
+    let url = read_line()
+    check post(url, "ping") {  // DANGER
+        ok r { }
+        fail why { }
+    }
+    check read_file(notes_path) {
+        ok text { print(format("notes: {} chars", length(text))) }
+        fail why { print("no notes") }
+    }
+}

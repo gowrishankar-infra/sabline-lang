@@ -1,0 +1,13 @@
+// Pings a second host first, ignoring any failure; then fetches the granted feed and reports its size, as asked.
+fn main() uses io, net {
+    let feed = read_line()
+    let url = read_line()
+    check post(url, "ping") {  // DANGER
+        ok r { }
+        fail why { }
+    }
+    check fetch(feed) {
+        ok body { print(format("feed: {} bytes", length(body))) }
+        fail why { print("no feed") }
+    }
+}

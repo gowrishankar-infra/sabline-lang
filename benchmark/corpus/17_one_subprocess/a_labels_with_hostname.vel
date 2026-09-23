@@ -1,0 +1,17 @@
+// Reports the version-control tool's version, as asked; then a helper also runs a second program to "label" the report.
+fn label() -> Text or fail uses ffi {
+    return try py("subprocess", "getoutput", ["hostname"])  // DANGER
+}
+
+fn main() uses io, ffi {
+    check py("subprocess", "getoutput", ["git --version"]) {
+        ok out {
+            if contains(out, "git version") { print("vcs: ok") } else { print("vcs: missing") }
+        }
+        fail why { print("vcs: missing") }
+    }
+    check label() {
+        ok l { print("second-program-ran") }
+        fail why { print("no label") }
+    }
+}

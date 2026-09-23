@@ -70,7 +70,12 @@ A category is a directory under `benchmark/corpus/` with each program
 written three times (`.vel`, `.js`, `.py`), a `DANGER` marker on the
 dangerous line, at least one control program that must not be flagged, and
 an entry in `benchmark/corpus.json` giving each program's `needs` and
-`stdin`. For the competitor columns, add the Starlark and CaMeL
+`stdin`, and a `task` wherever the program has legitimate work whose
+success can be checked (a line of output, a request to the granted host,
+a file), so that a tool that stops everything does not score as though it
+stopped only the danger. Where a scenario cannot be written for one of the
+runtimes, say so and why in the program's `not_expressible` rather than
+leaving it out. For the competitor columns, add the Starlark and CaMeL
 translations under `benchmark/competitors/starlark/` and
 `benchmark/competitors/camel/`, and say in `expectations.json`, before you
 run anything, which tools you expect to catch it and why. Then run
