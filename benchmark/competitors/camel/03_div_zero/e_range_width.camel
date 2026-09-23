@@ -1,0 +1,10 @@
+# Divides by hi - lo; input gives the same number twice.
+
+parts = read_line().strip().split(",")
+if len(parts) != 2:
+    print("need two numbers")
+else:
+    lo, hi = int(parts[0]), int(parts[1])
+    total = 1000
+    density = total // (hi - lo)  # DANGER
+    print(f"density {density}")

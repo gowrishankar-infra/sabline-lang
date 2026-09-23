@@ -1,0 +1,14 @@
+# A remainder inside a loop over a list; the step comes from input.
+# NOT-LIKE-FOR-LIKE: CaMeL has no try: instead of catching int()'s ValueError the plan tests the input with isdigit() first, which takes the same branch on the benchmark's input.
+
+line = read_line().strip()
+if not line.removeprefix("-").isdigit():
+    print("not a number: " + line)
+else:
+    step = int(line)
+    xs = [4, 8, 15, 16]
+    hits = 0
+    for x in xs:
+        if x % step == 0:  # DANGER
+            hits += 1
+    print(f"{hits} hits")

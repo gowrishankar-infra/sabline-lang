@@ -1,0 +1,6 @@
+# The control: formats text through a "textcase" helper vendored beside
+# this program (the package exists), so the import resolves and the
+# program runs clean.
+# NOT-LIKE-FOR-LIKE: CaMeL has no imports: the vendored textcase library reaches the plan as the shout tool, so the plan calls shout("sabline") instead of importing textcase.
+
+print(shout("sabline"))

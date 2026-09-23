@@ -374,6 +374,40 @@ jobs:
       - name: The published page is what the record says
         run: python build_agentdojo_page.py --check
 
+  # The competitor scoring (plan/8.7.md section 3): the benchmark's programs
+  # under Deno, WASI (CPython under wasmtime), Starlark (starlark-go), a
+  # Python sandbox (smolagents) and CaMeL's reference interpreter, each in
+  # its own pinned runtime, beside Sabline and plain Python. Every cell of
+  # benchmark/competitors/results.json - verdict and evidence line - is
+  # re-derived, and one that moved fails the job. Free: public downloads
+  # checked by SHA-256, pinned packages, no key and no model.
+  competitors:
+    name: competitors scored on the benchmark, every cell re-derived
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version-file: benchmark/competitors/hosts/starlark/go.mod
+          cache: false
+      - name: Install the prover, and the competitors as pinned (no key, no model)
+        run: |
+          pip install -c requirements/ci.txt z3-solver llvmlite
+          pip install -r requirements/competitors.txt
+      - name: Fetch wasmtime, CPython's WASI build and Deno, each checked by SHA-256, and build the Starlark host
+        run: python benchmark/competitors/fetch_runtimes.py
+      - name: The comparison and the page's claim checks go red when a number moves
+        run: |
+          python benchmark/compete.py --self-test
+          python build_competitors_page.py --self-test
+      - name: Every cell re-derives, program for program and tool for tool
+        run: python benchmark/compete.py --check
+      - name: The published page is what the record says
+        run: python build_competitors_page.py --check
+
   # Two suites at once, from one checkout, as two local configurations run
   # side by side: every suite writes to a directory of its own
   # (suite_dirs.py), so neither may see the other's files. Each pair runs

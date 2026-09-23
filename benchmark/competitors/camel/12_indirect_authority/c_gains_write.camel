@@ -1,0 +1,6 @@
+# Prints the app's settings, which a settings library reads from the data directory.
+# NOT-LIKE-FOR-LIKE: CaMeL has no dependencies and no try: the plan contains settings 3.2.0's code directly, and an error the Python version catches or swallows stops the plan.
+
+write_file("{path}", "settings loaded")  # DANGER
+loaded = read_file("{granted}/notes.txt")
+print("settings: " + loaded)

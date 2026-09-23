@@ -1,0 +1,10 @@
+# Squares a number from input; 4000000001 squared is past 64 bits.
+# NOT-LIKE-FOR-LIKE: CaMeL has no try: instead of catching int()'s ValueError the plan tests the input with isdigit() first, which takes the same branch on the benchmark's input.
+
+line = read_line().strip()
+if not line.removeprefix("-").isdigit():
+    print("not a number: " + line)
+else:
+    n = int(line)
+    square = n * n  # DANGER
+    print(square)

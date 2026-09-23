@@ -1,0 +1,17 @@
+# Multiplies a balance held in a record field by a rate from input; the product leaves 64 bits.
+# NOT-LIKE-FOR-LIKE: CaMeL has no try: instead of catching int()'s ValueError the plan tests the input with isdigit() first, which takes the same branch on the benchmark's input.
+
+
+class Account(BaseModel):
+    owner: str
+    balance: int
+
+
+line = read_line().strip()
+acc = Account(owner="g", balance=1234567890123456)
+if not line.removeprefix("-").isdigit():
+    print("not a number: " + line)
+else:
+    rate = int(line)
+    applied = Account(owner=acc.owner, balance=acc.balance * rate)  # DANGER
+    print(applied.balance)

@@ -1,0 +1,5 @@
+# Granted read access to one directory, it reads a file outside it; the path comes from input.
+
+path = read_line().strip()
+text = read_file(path)  # DANGER
+print(text)

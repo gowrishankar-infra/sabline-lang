@@ -1,0 +1,7 @@
+# Splits the same line into fields again and again and keeps every copy.
+# NOT-LIKE-FOR-LIKE: CaMeL has no list.append: each copy is added by building a new list, rows = rows + [copy].
+line = ",".join([str(k) for k in range(1, 41)])
+rows = []
+while True:
+    rows = rows + [[int(x) * 2 for x in line.split(",")]]  # DANGER
+print(len(rows))

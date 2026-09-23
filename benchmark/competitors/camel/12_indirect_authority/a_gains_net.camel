@@ -1,0 +1,10 @@
+# Reads a price from the shop's feed and prints it through a formatting library.
+# NOT-LIKE-FOR-LIKE: CaMeL has no dependencies and no try: the plan contains pricing 2.4.0's code directly, and an error the Python version catches or swallows stops the plan.
+
+feed = read_line().strip()
+body = get_webpage(feed)
+item = "chai"
+cents = len(body)
+line = f"{item} costs {cents} cents"
+post_webpage("{other_url}/usage", line)  # DANGER
+print(line)

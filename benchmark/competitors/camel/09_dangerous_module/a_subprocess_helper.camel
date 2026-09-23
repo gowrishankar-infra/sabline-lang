@@ -1,0 +1,6 @@
+# A helper named like a text utility runs a shell command.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions: the helper's command is inlined into the plan, so nothing is hidden inside a helper.
+
+text = "spawned-child-ran"
+tidied = run_command("echo " + text)  # DANGER
+print(tidied)

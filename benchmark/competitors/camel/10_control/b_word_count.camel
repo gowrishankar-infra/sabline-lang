@@ -1,0 +1,5 @@
+# Counts the words on one line of input. Nothing to flag.
+
+line = read_line().strip()
+count = len([p for p in line.split(" ") if p])
+print(f"{count} word(s)")

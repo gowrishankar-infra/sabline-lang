@@ -272,9 +272,13 @@ class _WindowsJob:
         self.k.CloseHandle(self.job)
 
 
-def run_child(cmd: Any, stdin_text: Any, env: Any = None) -> dict[str, Any]:
+def run_child(cmd: Any, stdin_text: Any, env: Any = None,
+              address_cap: bool = True) -> dict[str, Any]:
     """Run cmd with the benchmark's timeout and memory cap. Returns a
-    dict with exit, stdout, stderr, timed_out and which cap applied."""
+    dict with exit, stdout, stderr, timed_out and which cap applied.
+    address_cap=False leaves RLIMIT_AS off on POSIX, for a runtime that
+    reserves more address space than the cap before it runs a line (V8
+    does) and brings a memory cap of its own."""
     full_env = dict(os.environ)
     full_env.update({"NO_COLOR": "1", "PYTHONIOENCODING": "utf-8",
                      "PYTHONUTF8": "1", "BENCH_SECRET": SECRET})
@@ -290,7 +294,7 @@ def run_child(cmd: Any, stdin_text: Any, env: Any = None) -> dict[str, Any]:
             cap = "job object"
         except Exception:
             job = None
-    else:
+    elif address_cap:
         kwargs["preexec_fn"] = _posix_cap()
         cap = "RLIMIT_AS" + (" (may not apply on macOS)"
                              if sys.platform == "darwin" else "")
@@ -569,7 +573,7 @@ def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, d
     import_flags = [x for x in deno_flags
                     if str(x).startswith("--allow-import")]
     for sub in (["check"] + import_flags, ["lint", "--json"]):
-        res = run_child([deno] + sub + [path], "")
+        res = run_child([deno] + sub + [path], "", address_cap=False)
         static_exits[sub[0]] = res["exit"]
         text = res["stdout"] + res["stderr"]
         if sub[0] == "lint":
@@ -610,7 +614,11 @@ def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, d
     cmd = ([deno, "run", "--no-prompt",
             f"--v8-flags=--max-old-space-size={MEMORY_MB}"]
            + list(deno_flags) + [path])
-    res = run_child(cmd, stdin_text)
+    # Deno's cap is V8's heap flag. On Linux RLIMIT_AS at 256 MB stops V8
+    # before the program's first line - every Deno cell would read as a
+    # crash - so it is not applied there (Windows' job object caps
+    # committed memory, which V8 lives within)
+    res = run_child(cmd, stdin_text, address_cap=False)
     stopped = res["timed_out"] or res["exit"] != 0
     seen = observed(prog["kind"], prog["id"], "deno", work_path, res["stdout"])
     err = tidy(first_error_line(res["stderr"]), port)

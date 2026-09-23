@@ -1,0 +1,9 @@
+# Compares each item with the next one; the last item has no next.
+# NOT-LIKE-FOR-LIKE: CaMeL has no while: the counted loop is a for over range(0, len(xs)), which takes the same steps and reads xs[i + 1] one past the end exactly as the while did.
+
+xs = [2500, 45000, 12000]
+count = 0
+for i in range(0, len(xs)):
+    if xs[i + 1] > xs[i]:  # DANGER
+        count += 1
+print(count)

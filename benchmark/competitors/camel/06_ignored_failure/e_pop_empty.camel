@@ -1,0 +1,7 @@
+# Pops the last word off the input; there is no word.
+# NOT-LIKE-FOR-LIKE: CaMeL has no list.pop: the plan reads the last word with words[-1] and rebuilds the list without it, and on empty input words[-1] raises IndexError where pop() does.
+
+words = [p for p in read_line().strip().split(" ") if p]
+last = words[-1]  # DANGER
+words = [words[i] for i in range(len(words) - 1)]
+print(f"{len(words)} words left; last was {last}")

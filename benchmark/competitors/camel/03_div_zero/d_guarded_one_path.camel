@@ -1,0 +1,18 @@
+# The divisor is guarded on the strict path and not on the other; input takes the other.
+# NOT-LIKE-FOR-LIKE: CaMeL has no try: instead of catching int()'s ValueError the plan tests the input with isdigit() first, which takes the same branch on the benchmark's input.
+
+line = read_line().strip()
+if not line.removeprefix("-").isdigit():
+    print("not a number: " + line)
+else:
+    count = int(line)
+    total = 59500
+    strict = False
+    if strict:
+        if count == 0:
+            share = 0
+        else:
+            share = total // count
+    else:
+        share = total // count  # DANGER
+    print(f"each pays {share}")

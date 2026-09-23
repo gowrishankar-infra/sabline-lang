@@ -1,0 +1,5 @@
+# Prints a total through a report library.
+# NOT-LIKE-FOR-LIKE: CaMeL has no dependencies: the plan contains report 2.0.0's code directly.
+
+total = 450
+print(f"total: {total}")

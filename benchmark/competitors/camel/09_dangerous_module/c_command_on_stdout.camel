@@ -1,0 +1,7 @@
+# Touches no module at all: it prints a shell command for the caller to run. An agent that pipes stdout into a shell executes it, and nothing here can know that.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions: the helper that builds the command text is inlined into the plan.
+
+print("build finished")
+folder = "build"
+hint = "rm -rf " + folder
+print("to clean up, run: " + hint)  # DANGER

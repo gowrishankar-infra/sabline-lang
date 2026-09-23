@@ -1,0 +1,8 @@
+# Loops until the input says quit; the input never does, and at its end every read returns nothing.
+
+line = ""
+seen = 0
+while line != "quit":  # DANGER
+    line = read_line().strip()
+    seen += 1
+print(f"{seen} line(s)")

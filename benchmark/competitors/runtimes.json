@@ -1,0 +1,20 @@
+{
+ "schema": "sabline.competitor-runtimes/1",
+ "comment": "The runtimes benchmark/compete.py scores, pinned by version and by the SHA-256 of what is downloaded. fetch_runtimes.py fetches, verifies and unpacks them into competitors/.runtimes; a hash that does not match stops it. Every one is free and needs no key. The Python ones (smolagents, CaMeL) are pinned in requirements/competitors.txt and its lock; starlark-go is pinned by hosts/starlark/go.mod and go.sum. The table is recorded and re-derived on Linux x86_64, the platform of the CI leg.",
+ "wasmtime": {
+  "version": "49.0.0",
+  "url": "https://github.com/bytecodealliance/wasmtime/releases/download/v49.0.0/wasmtime-v49.0.0-x86_64-linux.tar.xz",
+  "sha256": "a956c279ac6e80109369a285db30fc46f68239fa1bbeb03ccfa8e913bbca85fc"
+ },
+ "python-wasi": {
+  "version": "3.14.7",
+  "comment": "CPython's WASI build (wasm32-wasip1, WASI SDK 24), published by Brett Cannon, who maintains CPython's WASI support",
+  "url": "https://github.com/brettcannon/cpython-wasi-build/releases/download/v3.14.7/python-3.14.7-wasi_sdk-24.zip",
+  "sha256": "2e064d3fb8172471d39d741348efa722349c40b96301f69968dff714999c584b"
+ },
+ "deno": {
+  "version": "2.9.7",
+  "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip",
+  "sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490"
+ }
+}

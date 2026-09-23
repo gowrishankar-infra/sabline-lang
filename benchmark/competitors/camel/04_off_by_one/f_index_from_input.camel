@@ -1,0 +1,11 @@
+# Reads the position given on input from a three-item list; input says 3.
+# NOT-LIKE-FOR-LIKE: CaMeL has no try: instead of catching int()'s ValueError the plan tests the input with isdigit() first, which takes the same branch on the benchmark's input.
+
+line = read_line().strip()
+if not line.removeprefix("-").isdigit():
+    print("not a number: " + line)
+else:
+    at = int(line)
+    xs = [2500, 45000, 12000]
+    picked = xs[at]  # DANGER
+    print(picked)

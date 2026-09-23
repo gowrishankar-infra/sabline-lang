@@ -76,6 +76,8 @@ module = [
     "crewai", "crewai.*", "langchain_core", "langchain_core.*",
     "pytest", "pytest.*", "sigstore", "sigstore.*",
     "agentdojo", "agentdojo.*",
+    # the competitor scoring's hosts (benchmark/competitors/hosts/)
+    "camel", "camel.*", "smolagents", "smolagents.*",
 ]
 follow_imports = "skip"
 ignore_missing_imports = true

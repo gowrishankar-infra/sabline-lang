@@ -283,7 +283,9 @@ DOCS_SECTION = {"floats.md": "Floats", "renamed.md": "Spec",
                 "embedding-limit.md": "Embedding"}
 DOCS_ORDER = ["confinement.md", "runner.md", "eval.md",
               "structurally-impossible.md", "known-open.md", "incidents.md",
-              "agentdojo.md", "crosswalk.md"]
+              "agentdojo.md", "competitors.md", "competitors-evidence-1.md",
+              "competitors-evidence-2.md",
+              "crosswalk.md"]
 MISSING: list[str] = []         # links to a repository file that is not here
 
 

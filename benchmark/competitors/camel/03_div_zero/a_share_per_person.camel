@@ -1,0 +1,11 @@
+# Splits a bill by a head count read from input; the count can be 0.
+# NOT-LIKE-FOR-LIKE: CaMeL has no try: instead of catching int()'s ValueError the plan tests the input with isdigit() first, which takes the same branch on the benchmark's input.
+
+line = read_line().strip()
+if not line.removeprefix("-").isdigit():
+    print("not a number: " + line)
+else:
+    count = int(line)
+    total = 59500
+    share = total // count  # DANGER
+    print(f"each pays {share}")
