@@ -484,7 +484,7 @@ knows: the value appears nowhere and nothing connects anywhere.
 ## Known open
 
 > [!KNOWN-OPEN]
-> The gaps this model does not close are in their own table: **[docs/known-open.md](docs/known-open.md)**. Each is a stated limit of what the effect budget is, not a defect to be reported under SECURITY.md's challenge, and several were written from the real incidents in [incidents/](incidents/README.md). The table has a page of its own because it grows each time a gap is recorded honestly.
+> The gaps this model does not close are in their own table: **[docs/known-open.md](docs/known-open.md)**. Each is a stated limit of what the effect budget is, not a defect to be reported under SECURITY.md's challenge, and several were written from the real incidents in [incidents/](incidents/README.md), and three from the places the [competitor table](docs/competitors.md) shows another tool doing better ([decisions/0006](decisions/0006-where-sabline-loses.md)). The table has a page of its own because it grows each time a gap is recorded honestly.
 
 ## Residual risks, and what to do about each
 
