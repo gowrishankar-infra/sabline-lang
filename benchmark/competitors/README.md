@@ -60,6 +60,12 @@ notes.
 | Python sandbox | the same `.py` in smolagents' `LocalPythonExecutor` | `hosts/sandbox_host.py` | an import allowlist and passed-in functions only: `sys` for input; `open` for a read grant (unscoped); `urllib.request` for a network grant (unscoped); the vendored module in categories 12 and 15 | the host's watchdog, 5 s of interpretation (smolagents' own cannot fire before the program ends; see below) | the harness's `RLIMIT_AS` |
 | CaMeL | a translation (a plan), in CaMeL's reference interpreter | `hosts/camel_host.py` | not per task: one tool set for the whole benchmark, and CaMeL's own policies decide | the host's, **30 s** of interpretation (CaMeL has none of its own; see below) | none: the host's imports alone reserve more than 256 MB of address space |
 
+Deno is given no dynamic-loader variable (`LD_LIBRARY_PATH` and its kind,
+`run.py`'s `LOADER_VARS`): it needs none, and when the machine has one set -
+CI's `setup-python` sets `LD_LIBRARY_PATH` - Deno still refuses to spawn a
+process, but names the variable in its message, and the record would then
+describe the machine instead of the program.
+
 A runtime with a limit of its own (Sabline, WASI, Starlark) is given 5 s of
 it, and the harness waits 10 s before it kills the process, so the limit
 that fires is the runtime's. smolagents' limit cannot fire before the

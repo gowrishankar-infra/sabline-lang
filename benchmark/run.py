@@ -272,14 +272,26 @@ class _WindowsJob:
         self.k.CloseHandle(self.job)
 
 
+LOADER_VARS = ("LD_LIBRARY_PATH", "LD_PRELOAD", "DYLD_LIBRARY_PATH",
+               "DYLD_INSERT_LIBRARIES", "DYLD_FALLBACK_LIBRARY_PATH")
+
+
 def run_child(cmd: Any, stdin_text: Any, env: Any = None,
-              address_cap: bool = True) -> dict[str, Any]:
+              address_cap: bool = True,
+              bare_loader: bool = False) -> dict[str, Any]:
     """Run cmd with the benchmark's timeout and memory cap. Returns a
     dict with exit, stdout, stderr, timed_out and which cap applied.
     address_cap=False leaves RLIMIT_AS off on POSIX, for a runtime that
     reserves more address space than the cap before it runs a line (V8
-    does) and brings a memory cap of its own."""
+    does) and brings a memory cap of its own. bare_loader=True passes no
+    dynamic-loader variable (LOADER_VARS), for a runtime that needs none and
+    answers differently when one is set: Deno refuses to spawn a process
+    either way, but names the variable when the machine has one set (CI's
+    setup-python sets LD_LIBRARY_PATH), and the machine is not the test."""
     full_env = dict(os.environ)
+    if bare_loader:
+        for name in LOADER_VARS:
+            full_env.pop(name, None)
     full_env.update({"NO_COLOR": "1", "PYTHONIOENCODING": "utf-8",
                      "PYTHONUTF8": "1", "BENCH_SECRET": SECRET})
     full_env.update(env or {})
@@ -573,7 +585,8 @@ def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, d
     import_flags = [x for x in deno_flags
                     if str(x).startswith("--allow-import")]
     for sub in (["check"] + import_flags, ["lint", "--json"]):
-        res = run_child([deno] + sub + [path], "", address_cap=False)
+        res = run_child([deno] + sub + [path], "", address_cap=False,
+                        bare_loader=True)
         static_exits[sub[0]] = res["exit"]
         text = res["stdout"] + res["stderr"]
         if sub[0] == "lint":
@@ -618,7 +631,7 @@ def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, d
     # before the program's first line - every Deno cell would read as a
     # crash - so it is not applied there (Windows' job object caps
     # committed memory, which V8 lives within)
-    res = run_child(cmd, stdin_text, address_cap=False)
+    res = run_child(cmd, stdin_text, address_cap=False, bare_loader=True)
     stopped = res["timed_out"] or res["exit"] != 0
     seen = observed(prog["kind"], prog["id"], "deno", work_path, res["stdout"])
     err = tidy(first_error_line(res["stderr"]), port)

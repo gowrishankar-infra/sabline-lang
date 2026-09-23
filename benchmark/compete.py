@@ -27,11 +27,13 @@ benchmark/run.py applies (verdict_for, observed, the DANGER line), the same
 5 second deadline and, where the runtime can take one, the same 256 MB cap.
 A runtime that brings its own limit (Sabline, WASI, Starlark) is given
 5 s of it, and the harness waits BACKSTOP seconds before killing it, so the
-limit that fires is the runtime's own; one whose limit cannot fire first
-(smolagents) or that has none is killed by the harness at 5 s, as Deno and
-Python are - except CaMeL, whose host counts its 5 s from the start of
-interpretation, since importing CaMeL takes seconds first. For each cell the record keeps the commands that ran and
-what they printed, masked of machine-specific paths and ports, so every
+limit that fires is the runtime's own; Deno and plain Python are killed by
+the harness at 5 s. smolagents' own limit cannot fire before a program
+ends, so its host's watchdog stops it 5 s after interpretation begins.
+CaMeL has none; its host gives the plan 30 s of interpretation, because
+its interpreter's speed would otherwise decide a correct program's verdict
+(camel_cell says why). For each cell the record keeps the commands that ran
+and what they printed, masked of machine-specific paths and ports, so every
 number can be re-derived by hand. competitors/README.md has the rules and
 what each column is and is not.
 """
@@ -561,8 +563,9 @@ _run_child = bench.run_child
 
 
 def _recording_run_child(cmd: Any, stdin_text: Any, env: Any = None,
-                         address_cap: bool = True) -> dict[str, Any]:
-    res = _run_child(cmd, stdin_text, env, address_cap)
+                         address_cap: bool = True,
+                         bare_loader: bool = False) -> dict[str, Any]:
+    res = _run_child(cmd, stdin_text, env, address_cap, bare_loader)
     CALLS.append((list(cmd), res, stdin_text))
     return res
 
