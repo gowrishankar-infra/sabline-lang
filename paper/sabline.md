@@ -1077,7 +1077,8 @@ benchmark's and the confinement figures of section 6: the benchmark
 figures of the abstract, sections 4.1 and 4.2, Tables 1 and 2 and the
 conclusion are from `benchmark/results.json` and
 `benchmark/competitors/results.json` at the commit that added the
-benchmark's categories 16 to 20 (8.7, not released), and section 6's counts
+benchmark's categories 16 to 20 (pull request #105; 8.7, not released),
+and section 6's counts
 of escape attempts stopped by the kernel are from
 `tests/confine/kernel-linux.json` and `kernel-windows.json` at the same
 tag. Releases after 4.2.1
