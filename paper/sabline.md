@@ -36,12 +36,13 @@ which the program still compiles and still needs it, until a person
 edits the baseline. The claim is not about which function an effect is
 attributed to: a function renamed in the change that gives it an effect
 its program already had escapes the function-level rule. On a benchmark
-of 76 programs, 66 with one defect and 10 correct, each written in
-Sabline, in JavaScript for Deno and in Python, Sabline caught 64 of the
-66 defects, 52 of them before running;
-Deno caught 42 and Python 31; none of the three flagged a correct
-program. One of Sabline's two misses is a logic error with no contract;
-the other no tool should catch. The capability format is published
+of 102 programs, 80 with one defect and 22 correct, each written in
+Sabline, in JavaScript for Deno and in Python, Sabline caught 70 of the
+80 defects, 54 of them before running; Deno caught 51 and Python 32.
+Sabline stopped 4 of the correct programs, the others none; eight of its
+ten misses are in five categories written for it to lose; and against
+five more tools, each in its own runtime, one or another does better
+than Sabline on 18 programs. The capability format is published
 separately, under CC0, with a conformance corpus of 456 cases that an
 implementation in any language can run.
 
@@ -133,7 +134,7 @@ c9       1000, and the baseline edited to 1000:
 Figure 1: (a) `examples/effects.vel`: what a signature declares, what
 the audit reports before the program runs, a budget its operator
 writes, and the refusal of the write that budget does not grant. (b)
-the second history of section 4.3, from `check_ratchet.py`: c1 raises a
+the second history of section 4.4, from `check_ratchet.py`: c1 raises a
 count and is merged, c2 is an unrelated change, and the check compares
 every commit with the baseline committed at c0, never with the commit
 before it, which is what a review compares.
@@ -293,7 +294,7 @@ and read baselines and classify widening against narrowing for every
 kind of scope. L2 and L3 each require L1; L3 does not require L2, so a
 tool with no runtime can conform at L1 and L3. No level requires a
 prover. Conformance is shown by running a corpus of JSON cases,
-described in section 4.2. sabline-spec also defines an in-toto predicate
+described in section 4.3. sabline-spec also defines an in-toto predicate
 type that binds an audit to the digests of the files audited, so that a
 signed statement can say which source an audit describes; sabline-lang
 4.2.0 writes such statements, unsigned (`sabline attest`), and leaves
@@ -339,11 +340,11 @@ the stakes warrant one.
 
 ### 4.1 A benchmark against Deno and Python
 
-The benchmark is 76 small programs, each written three times with the
+The benchmark is 102 small programs, each written three times with the
 same behaviour: in Sabline, in JavaScript for Deno, and in Python.
-Sixty-six contain one deliberate defect, on one line marked in all three
-sources; ten are correct controls. They fall in fifteen categories: a
-file write hidden in a helper, a network call hidden in a helper,
+Eighty contain one deliberate defect, on one line marked in all three
+sources; twenty-two are correct controls. They fall in twenty categories:
+a file write hidden in a helper, a network call hidden in a helper,
 division by a value that can be zero, a read past the end of a list,
 integer overflow, an ignored failure, an infinite loop, runaway memory,
 reaching a dangerous module, correct programs that must not be flagged,
@@ -351,17 +352,31 @@ a grant narrower than the effect, indirect authority - a caller
 that does not change while a dependency's declared budget widens
 between two versions - a TrapDoor, a program whose stated purpose
 and behaviour differ, a skill script whose helper reads a credential and
-sends it elsewhere, and an import of a library that does not exist where
-its program names it. One harness runs every program
+sends it elsewhere, an import of a library that does not exist where
+its program names it, and five categories added when the comparison of
+section 4.2 found a benchmark Sabline could not lose: a leak through a
+channel the task is granted, one legitimate subprocess beside a second
+one, correct programs Sabline's rules refuse, danger in a granted
+library or its native code, and programs whose legitimate work must
+still succeed. One harness runs every program
 through every tool with the same rules: a 5-second timeout, a 256 MB
 memory cap, and for Sabline the narrowest budget each task needs. Each
 program gets one verdict per tool - caught before running, caught while
 running, missed, or, for a control, clean or a false positive - and
 after every run the harness observes whether the dangerous effect
 actually happened: a file created, a request received by a local
-listener, a subprocess's sentinel printed. The committed results were
-produced by Sabline 8.4.0, Deno 2.9.6 and Python 3.13.13 on Windows 11;
-every program kept the verdict it had at Sabline 8.3.0, where ten
+listener, a subprocess's sentinel printed. Where a program has
+legitimate work to do, the harness also checks that it got done, by the
+output, request or file the work leaves; a control whose work did not
+get done is a false positive. A static flag counts only on the marked
+line, for Sabline's audit as for Deno's lint. The committed results were
+produced by Sabline 8.6.0, Deno 2.9.6 and Python 3.13.13 on Windows 11,
+at the commit that added the five categories. Of the 76 earlier
+programs, one verdict moved: in 08f Sabline's audit flags the loop that
+drives the memory growth, two helpers above the line that grows, and
+under the marked-line rule that is no longer credited, so its catch
+moved from before running to while running. At Sabline 8.4.0 every
+program kept the verdict it had at Sabline 8.3.0, where ten
 consecutive runs had written identical files, and the 68 programs
 of the first thirteen categories kept every verdict they had at Sabline
 8.2.0. Before that, the 67 programs of the first twelve categories kept
@@ -373,14 +388,16 @@ Sabline 3.0.0, with the same Deno and Python on the same platform, had
 produced that table before 4.1.0, every verdict and every line of
 evidence.
 
-| Tool | Caught before running | Caught while running | Missed | False positives (10 controls) |
+| Tool | Caught before running | Caught while running | Missed | False positives (22 controls) |
 |---|---|---|---|---|
-| Sabline | 52 | 12 | 2 | 0 |
-| Deno | 8 | 34 | 24 | 0 |
-| Python | 0 | 31 | 35 | 0 |
+| Sabline | 54 | 16 | 10 | 4 |
+| Deno | 8 | 43 | 29 | 0 |
+| Python | 0 | 32 | 48 | 0 |
 
-Table 1: the 66 dangerous programs and the 10 controls, from
-`benchmark/results.json` at Sabline 8.4.0.
+Table 1: the 80 dangerous programs and the 22 controls, from
+`benchmark/results.json` at the commit that added categories 16 to 20.
+Seven of Sabline's 70 catches stopped the program's legitimate work too;
+none of Deno's or Python's did.
 
 Where the catches come from differs by tool. Sabline's catches before
 running come from effects in signatures (the file, network and module
@@ -391,8 +408,9 @@ failures), from a comparison of two versions of a dependency's declared
 surface (category 12), and from its termination rule, which flags a
 loop whose
 counter does not move one step toward an unchanging limit. That rule
-flagged the eleven infinite and memory-growth programs before running;
-it claims nothing about whether such a loop ends, and each of these
+flagged ten of the eleven infinite and memory-growth programs on the
+marked line before running, and 08f's loop two helpers above it; it
+claims nothing about whether such a loop ends, and each of these
 happened not to. Deno's catches are almost all at the moment of the
 call, through its permission flags; nothing in `deno check` or
 `deno lint` reads a file write or a fetch as a problem. In one network
@@ -442,7 +460,31 @@ remainder inside a loop, a division in `main` on `n - 1`, and a read at
 `i + 1` in a loop bounded by the list's length. The prover did not
 settle those, and the runtime checks stopped them.
 
-Sabline missed two programs, both included on purpose so that the table
+Sabline missed ten programs. Eight are in the categories added so that
+it could lose. In three (16a to 16c) the task is to read a private
+ledger and post a summary of it to the one host it is granted, and the
+program posts the ledger itself: every grant Sabline has allows the read
+and the send, and nothing in it follows the data from one to the other.
+In two (17a, 17b) the task runs `git` and the program runs a second
+program too: Sabline grants the `subprocess` module whole, where Deno's
+`--allow-run=git` grants one program and refused the second. In three
+(19a, 19b, 19d) a vendored library the program is granted as a module
+writes a file or makes a request of its own, in Python or in native
+code, below anything a Sabline budget reaches; Deno refused the two
+JavaScript libraries' I/O, and nothing refused the native write.
+
+Sabline stopped four correct programs, the only false positives in the
+table: a loop that reads until its input ends and Euclid's algorithm,
+whose loops its termination rule cannot show to end, and 25! and a
+product modulo 2^61 - 1, which need whole numbers past 64 bits (E407).
+And in seven of its catches (12a to 12c, 14c and 20b to 20d) the
+program's legitimate work was stopped with the danger: a Sabline
+refusal ends the run and cannot be caught, and a program that does not
+compile does not run at all. In all seven Deno refused the same
+operation, the program caught the denial as an ordinary exception, and
+its task still got done.
+
+The other two misses were included on purpose so that the table
 is not a list of what the language was built to do. In `04c` a loop
 stops one item early: no read is out of range and the function has no
 contract, so a wrong total is indistinguishable from a right one. In
@@ -456,19 +498,105 @@ caller does with the text.
 **What this benchmark does not show.** The programs were written for it
 by this project; in the first ten categories, three of each six were
 written after the first three, against the tools, to hide the same
-defects better. It is small. The inputs were chosen to trigger each
+defects better, and the last five categories were written, after a first
+comparison, for Sabline to lose. It is small. The inputs were chosen to trigger each
 defect. The committed run is one machine's. Category 12's dependencies
 were written for it rather than taken from published packages, and its
 Sabline catches come from comparing declared surfaces, which a package
 in another language does not have. And it measures programs,
-not the ratchet, which section 4.3 treats separately. The harness is
+not the ratchet, which section 4.4 treats separately. The harness is
 in the repository, its rules are one function each, and the evidence
 for every cell is recorded next to the verdict, so a reader who
 disagrees with a row can change the rule and rerun it.
 `benchmark/run.py --check` reruns the whole table and fails if any
 verdict differs from the committed `benchmark/results.json`.
 
-### 4.2 The suites, and a conformance corpus
+### 4.2 The same programs against five other tools
+
+Deno and Python are not the only tools that claim part of what Sabline
+claims. The same 102 programs were run through five more, each in its
+own runtime, pinned by hash or commit and recorded on Linux: Deno 2.9.7;
+the corpus's Python in CPython 3.14.7's WASI build under wasmtime
+49.0.0; a translation into Starlark, run by starlark-go; the corpus's
+Python in smolagents 1.26.0's `LocalPythonExecutor`, the sandbox that
+framework runs a model's code in by default; and a translation into a
+CaMeL plan, run by CaMeL's reference implementation under its own
+policies [@debenedetti2025camel]. Each gets the narrowest grant that still
+lets the task's work run, derived from the program's needs by one rule
+per tool. A scenario a tool cannot express - a network request under a
+WASI build with no sockets, a library's own I/O in Starlark - is recorded
+with the reason and not scored; and CaMeL, whose threat model trusts the
+plan, is scored only on the twelve programs where a value a tool
+returned reaches another tool on the marked line.
+
+The first version of this comparison had no competitor ahead of Sabline
+on any program. That was the benchmark, not the tools: its correct
+programs were written in the shapes Sabline's rules accept, no program
+checked whether its legitimate work still got done, a catch before
+running outranked one while running, and Sabline's audit was credited
+for a flag anywhere in a program where the other static steps were
+credited only on the marked line. The corrections are those of section
+4.1 and three more, applied to every column alike. A program is compared
+first on the outcome - the danger stopped with the task's work intact,
+stopped with the work broken too, or missed; for a control, run clean or
+not - and on timing only where two tools achieved the same. A catch that
+the record says came from a failure that would have stopped the task as
+well counts as one with the task broken. And the five categories of
+section 4.1 were added, with a prediction for each tool committed before
+any of them ran.
+
+| Competitor | Better than Sabline | Same outcome | Worse | Not scored |
+|---|---|---|---|---|
+| Deno | 15 | 64 | 23 | 0 |
+| WASI | 10 | 70 | 7 | 15 |
+| Starlark | 4 | 83 | 10 | 5 |
+| Python sandbox | 7 | 75 | 20 | 0 |
+| CaMeL | 3 | 4 | 4 | 91 |
+
+Table 2: each competitor against Sabline, program by program, from
+`benchmark/competitors/results.json` at the commit that added
+categories 16 to 20. *Same outcome* includes the programs where both
+caught the defect and Sabline did so before running and the competitor
+while running: 29 for Deno, 49 for WASI, 19 for Starlark, 47 for the
+sandbox and 2 for CaMeL. No competitor caught one earlier than Sabline.
+
+A competitor did better than Sabline on 18 of the 102 programs. Deno did
+on fifteen: 17a and 17b, where `--allow-run=git` let the task run `git`
+and refused the second program, which Sabline cannot express because it
+grants the `subprocess` module whole; 19a and 19b, where a vendored
+library's own write and request were refused by the permissions that
+hold every line of JavaScript in the process; the four correct programs
+of category 18, which Sabline stops; and 12a to 12c, 14c and 20b to 20d,
+where both refused the dangerous operation but only the Deno program
+went on to finish its task. WASI did on ten: the same four correct
+programs, 19a and 19b, where the library ran inside the guest and
+reached only what was preopened, and 12c, 14c, 20b and 20d. CaMeL did
+on 16a to 16c, the only tool to stop a private ledger leaving through the
+channel its task was granted; on the same programs it refused 16d, a
+correct program that posts only how many entries the ledger holds, and
+allowed 12a, whose dependency posts the length of a private page, which
+its reference interpreter treats as public. Starlark did on four: 17a
+and 17b, its host granting one program, and 18c and 18d, its integers
+not wrapping. The Python sandbox did on seven: the four correct
+programs of category 18, and 16a to 16c, where it refused nothing -
+smolagents 1.26.0 cannot make any request through `urllib.request`, the
+task's own included - and the table marks those three as such.
+
+No tool stopped 19d, where a vendored library's native code writes a
+file: Sabline grants the module whole, Deno grants its foreign function
+interface whole, and neither WASI nor Starlark can load native code at
+all. Sabline alone stopped the six overflow programs and 18f, a record
+id too wide for its 64-bit column, where every other tool computes the
+arithmetically right, larger number; section 4.1 says a reader may
+discount those rows. The comparison's weaknesses are the benchmark's,
+and two more: the Starlark and CaMeL translations were written by AI
+agents under the author's direction, and CaMeL is run without the model
+that writes its plans, so its column measures its interpreter and
+policies, not an attack on it. The page that publishes the table lists
+where each tool is stronger by design, whatever this corpus shows, and
+where the comparison is still unfair and to whom.
+
+### 4.3 The suites, and a conformance corpus
 
 Each guarantee has a suite that asserts it, and each suite runs on
 every push on Linux, Windows and macOS, with Python 3.10 and 3.12, with
@@ -516,7 +644,7 @@ specification said neither could happen. sabline-lang 4.1.0 fixes the
 implementation, and sabline-spec 0.4 corrects the text that had claimed
 more than the implementation did.
 
-### 4.3 The ratchet
+### 4.4 The ratchet
 
 `check_ratchet.py` builds scratch trees and real git histories and
 asserts what the check says at every step. In its gradual case, a
@@ -892,7 +1020,8 @@ These are stated as sabline-lang's THREAT_MODEL.md states them.
   ratchet also guards nothing if the check is not required, and an edit
   to the baseline is an accepted widening whose review is the control.
 - **The evaluation.** Section 4.1's benchmark was written by this
-  project and is small; no user study has been done; the ratchet's
+  project and is small, and section 4.2's translations of it were
+  written by AI agents for this project; no user study has been done; the ratchet's
   properties rest on its definition and its cases, not on a measured
   detection rate.
 - **No evaluation against an adversary.** The benchmark counts defects
@@ -913,11 +1042,14 @@ outside a budget its operator wrote, in a way the program cannot catch;
 proves contracts where the prover can; and holds a repository's
 declared capability surface to a baseline that only an edit can widen.
 The first three can be tested program by program, and on the first
-eleven categories and the thirteenth to fifteenth of a 76-program
+eleven categories and the thirteenth to fifteenth of a 102-program
 benchmark they caught 61 of 63 defects; the fourth's comparison,
 applied to two versions of a
 dependency, caught the three defects of the twelfth; and no correct
-program was flagged. The fourth is a property, not a rate: under a required check,
+program of those categories was flagged. Five categories written for it
+to lose did what they were written for: it missed eight of their
+fourteen defects, stopped four of their twelve correct programs, and
+five other tools each did better than it somewhere. The fourth is a property, not a rate: under a required check,
 the declared surface does not widen without the check failing, however
 the change is divided among commits. What it does not do - attribute an
 effect to the right function across a rename, see into a granted module,
@@ -942,8 +1074,10 @@ that are recorded in its changelog.
 This paper describes Sabline 4.2.1 and sabline-spec 0.5.1, and every
 number in it was verified against those two tags except the
 benchmark's and the confinement figures of section 6: the benchmark
-figures of the abstract, section 4.1, Table 1 and the conclusion are
-from `benchmark/results.json` at Sabline 8.4.0, and section 6's counts
+figures of the abstract, sections 4.1 and 4.2, Tables 1 and 2 and the
+conclusion are from `benchmark/results.json` and
+`benchmark/competitors/results.json` at the commit that added the
+benchmark's categories 16 to 20 (8.7, not released), and section 6's counts
 of escape attempts stopped by the kernel are from
 `tests/confine/kernel-linux.json` and `kernel-windows.json` at the same
 tag. Releases after 4.2.1
@@ -1012,7 +1146,7 @@ at their tags:
     sabline audit examples/effects.vel
     sabline examples/effects.vel --allow io,clock,rand,fs:read:./data
 
-    # section 4.2 and 4.3
+    # sections 4.3 and 4.4
     python check_sandbox.py
     python check_library.py
     python check_ratchet.py
@@ -1032,7 +1166,9 @@ Where each number comes from:
 
 | Number | File |
 |---|---|
-| 76 programs, 66 dangerous, 10 controls, fifteen categories; 52/12/2, 8/34/24, 0/31/35; 0 false positives; Sabline 8.4.0, Deno 2.9.6, Python 3.13.13, Windows 11; 5 s timeout, 256 MB cap; the misses `04c` and `09c`; 61 of 63 in categories 1 to 11 and 13 to 15; category 12's three upgrades and one control; category 13's program, its verdicts and E318; categories 14 and 15 | `benchmark/results.json` at v8.4.0 |
+| 102 programs, 80 dangerous, 22 controls, twenty categories; 54/16/10, 8/43/29, 0/32/48; 4, 0 and 0 false positives; seven Sabline catches with the task broken; Sabline 8.6.0, Deno 2.9.6, Python 3.13.13, Windows 11; 5 s timeout, 256 MB cap; the misses `04c`, `09c` and eight in categories 16 to 20; 61 of 63 in categories 1 to 11 and 13 to 15; category 12's three upgrades and one control; category 13's program, its verdicts and E318; categories 14 to 20; 08f's catch moved to while running | `benchmark/results.json` at the commit that added categories 16 to 20 |
+| Table 2 and section 4.2: the five competitors, their versions, grants and verdicts; 18 programs where one does better; 12 programs in CaMeL's scope; 19d stopped by none | `benchmark/competitors/results.json` at the same commit, and `docs/competitors.md` built from it |
+| the same table at 8.4.0: 76 programs, 66 dangerous, 10 controls, fifteen categories; 52/12/2, 8/34/24, 0/31/35; 0 false positives | `benchmark/results.json` at v8.4.0 |
 | three of each six programs written against the tools; about four minutes for a full run, five to eight on a slower machine | `benchmark/README.md` at v8.4.0 |
 | the 68 programs of categories 1 to 13 unchanged in verdict since 8.2.0; ten identical runs at 8.3.0; categories 14 and 15 added in 8.3; every verdict unchanged at 8.4.0 | `benchmark/results.json` at v8.2.0, v8.3.0 and v8.4.0, and `CHANGELOG.md`, 8.3 and 8.4 entries |
 | the runtime's own five attempts and what each system refuses; 19 of 39 and 8 of 38 escape attempts stopped at the kernel with the budget checks removed | `check_confine.py`, and `tests/confine/kernel-linux.json` and `kernel-windows.json`, at v8.4.0 |

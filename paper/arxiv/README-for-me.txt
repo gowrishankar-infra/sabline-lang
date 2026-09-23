@@ -55,18 +55,19 @@ Gowri Shankar Palakurthi
   family name. The PDF's byline, from sabline.md, reads "Palakurthi
   Gowri Shankar"; arXiv does not require the two to match.)
 
-Abstract (1730 characters, one line, plain ASCII; the limit is 1920;
+Abstract (1832 characters, one line, plain ASCII; the limit is 1920;
 no character needed replacing - the abstract has none outside ASCII.
 CORRECTED 2026-09-22: this field had been left at 8.2.0's text, which
 said 68 programs, 60 with one defect and 8 correct, Sabline 58 of 60
-and 46 before running, Deno 36, Python 28. sabline.md's abstract has
-said 76/66/10 and 64/52/42/31 since 8.3.0 added the benchmark's
-fourteenth and fifteenth categories. The text below is now copied
-from sabline.md and the count is of that text):
-Code written by language models is increasingly run by people who have not read it. Sabline is a small programming language for that situation. A function's signature declares which of seven effects it may perform, and the compiler checks the declaration across the whole call graph. A runtime refuses any operation outside a budget the operator writes - before the operation happens, and in a way the program cannot catch. Contracts are checked by the Z3 prover where it can settle them, and at run time where it cannot. A repository can commit a baseline of the capability surface its programs need, and a check fails any change that needs more. The central claim is about that surface. Suppose a repository's Sabline programs are held to a committed baseline by a required check. If a change makes a program need an effect, path, host, module or operation count the baseline does not grant, the check fails. It goes on failing at every later commit at which the program still compiles and still needs it, until a person edits the baseline. The claim is not about which function an effect is attributed to: a function renamed in the change that gives it an effect its program already had escapes the function-level rule. On a benchmark of 76 programs, 66 with one defect and 10 correct, each written in Sabline, in JavaScript for Deno and in Python, Sabline caught 64 of the 66 defects, 52 of them before running; Deno caught 42 and Python 31; none of the three flagged a correct program. One of Sabline's two misses is a logic error with no contract; the other no tool should catch. The capability format is published separately, under CC0, with a conformance corpus of 456 cases that an implementation in any language can run.
+and 46 before running, Deno 36, Python 28. UPDATED 2026-09-23 for the
+benchmark's categories 16 to 20 and the competitor comparison: 102/80/22,
+70/54/51/32, 4 false positives, 18 programs where a competitor does
+better. The text below is copied from sabline.md and the count is of
+that text):
+Code written by language models is increasingly run by people who have not read it. Sabline is a small programming language for that situation. A function's signature declares which of seven effects it may perform, and the compiler checks the declaration across the whole call graph. A runtime refuses any operation outside a budget the operator writes - before the operation happens, and in a way the program cannot catch. Contracts are checked by the Z3 prover where it can settle them, and at run time where it cannot. A repository can commit a baseline of the capability surface its programs need, and a check fails any change that needs more. The central claim is about that surface. Suppose a repository's Sabline programs are held to a committed baseline by a required check. If a change makes a program need an effect, path, host, module or operation count the baseline does not grant, the check fails. It goes on failing at every later commit at which the program still compiles and still needs it, until a person edits the baseline. The claim is not about which function an effect is attributed to: a function renamed in the change that gives it an effect its program already had escapes the function-level rule. On a benchmark of 102 programs, 80 with one defect and 22 correct, each written in Sabline, in JavaScript for Deno and in Python, Sabline caught 70 of the 80 defects, 54 of them before running; Deno caught 51 and Python 32. Sabline stopped 4 of the correct programs, the others none; eight of its ten misses are in five categories written for it to lose; and against five more tools, each in its own runtime, one or another does better than Sabline on 18 programs. The capability format is published separately, under CC0, with a conformance corpus of 456 cases that an implementation in any language can run.
 
 Comments:
-16 pages, 1 figure, 2 tables. Code: https://github.com/gowrishankar-infra/sabline-lang ; format and conformance corpus: https://github.com/gowrishankar-infra/sabline-spec
+18 pages, 1 figure, 3 tables. Code: https://github.com/gowrishankar-infra/sabline-lang ; format and conformance corpus: https://github.com/gowrishankar-infra/sabline-spec
 
 Primary category:
 cs.CR (Cryptography and Security)
@@ -355,3 +356,25 @@ REBUILT 2026-09-13 (sabline-lang 7.1.0: the benchmark's twelfth category)
   sabline.bbl alone in an empty folder, MiKTeX pdflatex three times, no
   bibtex, give 13 pages, no undefined reference, no overfull box. Read
   the PDF arXiv builds before confirming.
+
+
+REBUILT 2026-09-23 (the benchmark's categories 16 to 20, and the
+competitor comparison; 8.7, not released)
+  The benchmark grew to 102 programs, and a first comparison against five
+  other tools had shown a corpus Sabline could not lose, so five
+  categories were added for it to lose and the scoring was corrected for
+  every tool alike. sabline.md changes in the abstract, section 4.1 and
+  Table 1 (the re-recorded benchmark), a new section 4.2 and Table 2 (the
+  competitors), the renumbered sections 4.3 and 4.4, one limitation, the
+  conclusion, and the reproducibility section, which pins the new numbers
+  to the commit that added the categories. The abstract field above is
+  copied again and counted again (1832 characters).
+
+  sabline.tex is pandoc output and was regenerated, not edited, with
+  pandoc 3.11 and the command of step 1. sabline.bbl is unchanged: the
+  one new citation is to an entry already cited. Checked as step 3
+  (the two files alone, pdflatex three times, no bibtex, MiKTeX 25.12):
+  18 pages - two more, from section 4.2 - so the Comments field now reads
+  18 pages and 3 tables. No undefined citation or reference, no overfull
+  or underfull box, no error; the same one harmless caption warning. Both
+  files are pure ASCII.
