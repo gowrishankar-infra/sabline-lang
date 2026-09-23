@@ -111,6 +111,8 @@ PASS = FAIL = SKIPPED = 0
 KEPT = ["CNAME", "capability/v1/schema.json", "receipt/v1/schema.json"]
 SCREENSHOT_PAGES = ["index.html", "tutorial.html", "spec.html", "errors.html"]
 WIDTHS = {360: 800, 768: 1024, 1280: 800, 1920: 1080}
+# a page with less than this left under build_docs.PAGE_BUDGET is listed
+NEAR_BUDGET = 2_000
 
 
 def say(text: str) -> None:
@@ -510,9 +512,23 @@ def check_pages(out: Path, built: build_docs.Built) -> dict[str, Strict]:
 
     sizes = sorted(((n, t.prefix + p) for t in built.trees for p, n in t.files.items()
                     if p.endswith(".html") and p != "playground.html"), reverse=True)
-    over = [f"{name} {n}" for n, name in sizes if n > build_docs.PAGE_BUDGET]
-    ok(f"every page is at most {build_docs.PAGE_BUDGET:,} bytes (the largest: "
-       + ", ".join(f"{name} {n:,}" for n, name in sizes[:4]) + ")", not over, over)
+    # headroom is what a page has left under the budget, negative when it is
+    # over. Every page gains a link each time the sidebar does, so a page
+    # close to the budget fails on somebody else's change; the failure says
+    # how far over each page is and which are next, so they are split on
+    # purpose rather than on the next new page
+    budget = build_docs.PAGE_BUDGET
+    headroom = [(budget - n, name) for n, name in sizes]
+    over = [f"{name} {budget - room:,} bytes, {-room:,} over"
+            for room, name in headroom if room < 0]
+    near = [f"{name} {budget - room:,} bytes, {room:,} left"
+            for room, name in headroom if 0 <= room < NEAR_BUDGET]
+    ok(f"every page is at most {budget:,} bytes (the largest: "
+       + ", ".join(f"{name} {n:,}" for n, name in sizes[:4]) + ")", not over,
+       over + [f"within {NEAR_BUDGET:,} bytes of it: {n}" for n in near])
+    if near:
+        say(f"  listed  {len(near)} page(s) within {NEAR_BUDGET:,} bytes of "
+            f"the budget, the next to split: " + "; ".join(near))
     play = built.trees[0].files.get("playground.html")
     if play:
         say(f"  listed  playground.html is {play:,} bytes: it carries the "

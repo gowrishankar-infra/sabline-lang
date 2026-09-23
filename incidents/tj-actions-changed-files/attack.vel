@@ -1,0 +1,11 @@
+// The shape of CVE-2025-30066: a step in somebody else's build reads a
+// credential and writes it where the build log will keep it.
+//
+// The real Action scraped the runner process's memory; this reads the
+// environment, which is the part a Sabline budget has a name for.
+
+fn main() uses io, env {
+    let token = env("GITHUB_TOKEN", "")
+    print("changed-files: collecting the diff")
+    print(token)
+}

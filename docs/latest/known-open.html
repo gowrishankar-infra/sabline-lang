@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Known open - Sabline 8.6.0</title>
+<meta name="description" content="This is the known-open table of the threat model, on a page of its own so that each gap recorded here does not push the threat model past the size a page of ...">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/known-open.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html" aria-current="page">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li></ul>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="known-open">Known open</h1>
+<p>This is the known-open table of the <a href="threat-model.html">threat model</a>, on a page of its own so that each gap recorded here does not push the threat model past the size a page of the site may be.</p>
+<p>The gaps this model does not close, kept as a table so the list is one
+place and stays current. None is a defect to be reported under
+SECURITY.md's challenge; each is a stated limit of what the effect
+budget is. A finding that a guarantee above is <em>broken</em> - a "proven"
+promise that breaks at run time, or an effect performed outside the
+budget - is a different thing, and SECURITY.md says how it is handled.</p>
+<p>Seven of the rows below were written from real incidents rather than from
+first principles. <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/README.md">incidents/</a> is a catalogue of
+publicly reported attacks in this lane, each with the shape of the attack
+written as a Sabline program, the command, and what the runtime actually
+printed; where the answer was "nothing here refuses this", the sentence
+saying so is a row here. Nothing in that catalogue is a claim that adopting
+Sabline would have prevented the real event, and every entry says which
+part of its incident is outside Sabline entirely.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Open</th><th>What it is</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>Timing and other side channels</td><td>How long a run takes, how much CPU or cache it uses, the size or timing of its output - none is measured or bounded, and a program can signal through any of them. Not a non-interference result (7.0 bounds a secret's <em>value</em>, not the run's timing).</td><td>Do not run code whose timing you must not leak on shared hardware; if one bit per run matters, do not grant <code>env</code>.</td></tr>
+<tr><td>A granted <code>ffi</code> module</td><td>Within a granted module, that module's full behaviour is granted; <code>ffi:os</code> is the operating system as the current user. The allow-list narrows which module a call reaches, not what it does.</td><td>Grant <code>ffi</code> only when the task needs it, name the modules, and treat the grant as trust in those modules. Never grant <code>ffi:os</code>, <code>ffi:subprocess</code> or plain <code>ffi</code> to code you have not read.</td></tr>
+<tr><td>Native code</td><td>A granted module may be or ship a compiled extension with no source and no runtime bound. <code>sabline.audit/1</code>'s <code>ffi_native</code> reports where it is found (8.0), and never claims a module is free of it.</td><td>Read <code>ffi_native</code>; grant a native module only when you would grant the machine.</td></tr>
+<tr><td>Secrets arriving another way</td><td><code>Secret of T</code> marks the results of <code>env()</code> and <code>read_file_secret()</code> only. A value read through <code>read_line</code>, passed in through <code>args()</code>, fetched over <code>net</code>, returned by a granted <code>ffi</code> module, or hard-coded is an ordinary value with no protection.</td><td>Run agent-written programs with a clean environment; do not treat a secret from another source as protected.</td></tr>
+<tr><td>Confinement on Linux: what it leaves</td><td>Full confinement holds files, the network and processes to the budget. It does not hold: a host named in a <code>net:</code> grant (the kernel holds ports at most, with Landlock ABI 4 or later, and the level says partial); a credential location under a broad grant (E318 is the language's alone); <code>env</code>, which is the process's own memory; a hard link or a bind mount that was inside a granted path before the run, which is that path's content; a Unix socket the process was started holding, and any a granted Python module that widens the policy to any host then opens; the temporary directories of the same user's other confined command-line runs, which share one parent; files on a kernel older than 5.13, which has no Landlock; and sockets and processes where seccomp has no table (anything but x86_64 and aarch64) - the level says partial or none there, and why. It is the kernel's guarantee and no better.</td><td>Read <code>confinement</code> in the receipt, or <code>sabline doctor</code>; give every <code>net:</code> grant a port; run on a kernel with Landlock ABI 4 or later.</td></tr>
+<tr><td>Confinement on macOS: partial</td><td>Writes, the network and fork/exec are held by a sandbox profile. Reads are refused only under the home directory and /Volumes, not held to exactly the grants - and the names in the working directory and in each directory above it stay readable, since <code>getcwd</code> reads them - because a Python that must read its own installation cannot be started under a deny-all read rule that is also portable; a <code>net:</code> grant allows the whole network; signals are not held, and neither is input pushed at the terminal the run was started from (TIOCSTI), which the profile language has no rule for; and Apple has deprecated sandbox profiles (<code>sandbox-exec</code> and <code>sandbox_init</code> alike), so a later macOS may stop honouring them, at which point the level says none.</td><td>Treat macOS as partial; keep what must not be read outside the home directory's reach, or run on Linux.</td></tr>
+<tr><td>Confinement on Windows: partial</td><td>A job object refuses a second process, the clipboard and the desktop; every privilege is removed from the token; and a budget with no write grant runs at the low integrity level, which refuses a write to anything of the user's. Not held: any read; the network; input written to the console the run was started from, which a process attached to a console may always do; and every write once the budget holds a write grant, because lowering the integrity level would then need the granted directory relabelled. Reads and the network need an AppContainer, which is not used: a process cannot enter one after starting, and a <code>python.exe</code> started in one cannot read its own installation unless that was made readable to ALL APPLICATION PACKAGES, which python.org's, the Store's and a virtual environment's are not.</td><td>Treat Windows as partial; for code whose reads or network reach matter, run on Linux, or in a container or a virtual machine.</td></tr>
+<tr><td>Runs that are not confined</td><td>An in-process <code>sabline.run()</code> with no <code>timeout</code> and no <code>max_memory_mb</code> runs in the caller's process, which Sabline must not confine; the REPL, <code>sabline test</code> and <code>sabline bench</code> run many programs in one process; and a budget that grants <code>ffi:os</code>, <code>ffi:subprocess</code>, plain <code>ffi</code> or a module the table does not name widens the OS policy to nothing enforced. Each says <code>"confinement": "none"</code> and why. And a confined process is still a process of the user's: what the budget grants, it does with the user's own rights.</td><td>Give <code>run()</code> a timeout, or use a <code>Pool</code>, so the run has a process of its own; name <code>ffi</code> modules the table knows; run code you have not read as a different user, or in a container or a virtual machine, when the stakes warrant it.</td></tr>
+<tr><td>The fault-injection hook</td><td><code>SABLINE_FAULT_INJECT</code>, read from the environment a run was started with, makes the runtime attempt one fixed effect (a read, a write, a connection, a process, a signal, a mount) so the honesty test can show the kernel refusing it. It performs nothing the person who set it could not do themselves, and a program cannot set it.</td><td>Do not start Sabline with an environment someone else controls - which was already true of <code>PATH</code> and <code>PYTHONPATH</code>.</td></tr>
+<tr><td>What a receipt shows that is not a value</td><td>A receipt (8.1) keeps out every value a program handled, but holds its exit status, where it stopped, its counts and its wall time - which a program that declassified something can choose from it.</td><td>Do not grant <code>declassify</code> to code whose receipts you will share.</td></tr>
+<tr><td>Writes to where Python imports from</td><td>A write grant to a directory on some Python's import path lets a program leave code the next Python process runs. Sabline does not look for this on a plain run; an ejected launcher refuses such a budget where it is launched.</td><td>Grant writes to data directories only; run Python with <code>-I</code> where you can.</td></tr>
+<tr><td>An ejected directory</td><td>It keeps the Sabline it was ejected with; no fix reaches it, and its launcher cannot check itself.</td><td>Eject again after an upgrade; check <code>SHA256SUMS</code> when the directory could have been written by someone else.</td></tr>
+<tr><td>A program that stalls a review</td><td><code>sabline review</code> compiles every program under the directory, at the ref and in the working tree, in its own process, with none of the ceiling <code>check</code> and <code>audit</code> have had since 8.0 and <code>capabilities check</code> has had since 8.2.1: a program built to exhaust the type checker holds it, and the Action's pull-request comment step, which runs it, until the job's own timeout (known open in 8.2.1).</td><td>Give a job that comments on other people's pull requests a <code>timeout-minutes</code>.</td></tr>
+<tr><td>A predicate type is a name on a domain</td><td><code>https://sabline.dev/capability/v1</code> and <code>https://sabline.dev/receipt/v1</code> name a domain, and a domain can change hands: whoever holds sabline.dev decides what those pages say, and a lapsed registration would let someone else publish a different description at the same addresses. A type is an identifier, not a signature; nothing is fetched from it to verify a Statement. A reader accepts three names for each type - the two earlier addresses this project used are listed in <a href="renamed.html">docs/renamed.md</a> - and none is ever dropped, so each move widens the set of domains a verifier trusts the maintainer to keep. Neither <code>velaris.dev</code> nor <code>velaris.io</code> has ever been this project's, and a type under either is refused.</td><td>Trust a Statement by its signature, its signer's identity and its subjects' digests, never by what its type's page says; accept a fixed list of types, as <code>sabline verify</code> does.</td></tr>
+<tr><td>The user running sabline</td><td>The user running sabline is trusted; anything running as that user is that user - the receipts, everything. Such a process can edit the program, the budget, a receipt after it is written, or the installed Sabline itself. The proof cache, which such a process could once write, was removed in 8.2; that does not make anything else the user can write trustworthy.</td><td>Run code you have not read as a different user, or in a container or a virtual machine. Do not rely on a report made in an account something else controls.</td></tr>
+<tr><td>Code that is not Sabline</td><td>Sabline bounds programs written in Sabline and run by <code>sabline</code>. An npm post-install script, a pip build hook, a shell command an agent runs, an IDE extension's own tools - none of them is a Sabline program, and a budget is not near any of them. Most of the incidents in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/README.md">incidents/</a> are of exactly this kind, and their entries say so rather than claiming a refusal. <em>Closed by:</em> nothing - no milestone brings a post-install script, a build hook, a shell command or an extension's own tools into a budget's reach; the incidents of this shape (nx-s1ngularity, amazon-q-extension-wiper, circleci-oauth-token-theft, shai-hulud-npm-worm) are out of scope on purpose.</td><td>Where an agent writes code you must run, have it write Sabline and run it with <code>sabline</code>; for everything else the answer is not here, and is a container, a separate user or a different machine.</td></tr>
+<tr><td>How an artefact was built</td><td>A budget starts existing when a program starts running. Nothing here inspects a build, a cache, a workflow trigger, a tarball or a compiled extension, and this repository's own releases are built by a pipeline with the same shape as the ones that were attacked. An attestation attests to the bytes it was given, whatever they are. <em>Closed by:</em> nothing - no milestone makes a budget inspect a build, a cache, a workflow trigger or a compiled artefact; ultralytics-pypi-cache-poisoning and xz-utils-backdoor are out of scope on purpose.</td><td>Verify a release's signature and its attestation, pin by digest, and read <code>sabline audit</code>'s <code>ffi_native</code> for granted modules; do not read an attestation as evidence that what it covers is clean.</td></tr>
+<tr><td>A flow between two granted places</td><td>A grant names a resource - an effect, a host, a port, a path, a Python module, a tool, a count - and never a relation between two of them. Nothing can say that data read from one granted place may not be written to another. <code>Secret of T</code> is the one place a value's destination is tracked, and it marks the results of <code>env()</code> and <code>read_file_secret()</code> only, not what came back from a granted read or a granted request. <em>Closed by:</em> M6 in part - <code>Untrusted of T</code> (planned) makes a tool result <code>Untrusted</code> and a tool's arguments a sink, so when the agent is a Sabline program, private content cannot become a tool call's argument without an audited <code>trust</code>; a value reaching <code>post</code>'s body is not a sink by design, so that flow stays open, and the general per-value case is ChainCaps', which Sabline does not implement. A coarse guard-mode session latch (github-mcp-toxic-agent-flow) would close a slice of it and is built only if guard mode gets users.</td><td>Where two granted resources must not meet, separate them into two runs with two budgets, and read each run's receipt; do not expect one budget to express the rule.</td></tr>
+<tr><td>What an operation means inside a granted effect</td><td>A grant decides whether a program may reach something, not what it does once it can. <code>fs:write:./data</code> is any write to that directory, including deleting what is there; <code>ffi:sqlite3</code> is any statement that module will run, <code>DROP TABLE</code> among them; a <code>net:</code> host grant is any request to that host, whatever its method. The counts (<code>@100</code>) bound how many operations a run makes, not which. <em>Closed by:</em> M6 in part - a planned <code>db</code> effect (<code>db:read</code>/<code>db:write</code>) replaces the three-module <code>ffi</code> grant for a database, and a planned <code>fs:delete</code> makes deletion a direction of its own; but <code>db:write</code> would still allow <code>DROP</code>, which a planned <code>db:schema</code> grant, classified through SQLite's authorizer, would separate. The general limit - a grant names reach, not what is done with it - is closed by no milestone.</td><td>Grant the narrowest directory, module and host the task needs, and put anything irreversible behind something outside Sabline: a replica, a backup, a read-only credential.</td></tr>
+<tr><td>What a host does with a call it was given</td><td>A <code>tool:</code> grant holds the arguments the <em>program</em> passes - <code>tool:send_email:to=*@corp.com</code> refuses a recipient outside the pattern before the host hears of the call. It says nothing about what the host does with the call afterwards: a header the server adds, a copy it keeps, a second request it makes. <code>sabline mcp-verify</code> checks a signed manifest, and only Sabline's own. <em>Closed by:</em> nothing - no rule a caller applies can see inside another process's handling of a call, and guard mode (M5) is blind in the same way; postmark-mcp-bcc-exfiltration is out of scope for this reason.</td><td>Treat a tool's implementation as trusted code, the way <code>ffi:</code> modules are treated; read the receipt's tool calls for what was asked, not for what happened.</td></tr>
+<tr><td>A module name a model invented</td><td><code>ffi:NAME</code> names a module in the Python environment <code>sabline</code> was started in. Sabline does not install it, does not ask where it came from, and has no way to know the name was hallucinated by the model that wrote the program and registered by somebody else. A Sabline import is a path into the project and has no such exposure; a Python grant does. <em>Closed by:</em> an <code>ffi</code> lock - a distribution and a hash recorded per granted module in <code>sabline.lock</code>, refused at import on any change - which is deferred past the 9.0 release candidate on cost; until it lands, package-hallucination stays <code>PARTIAL</code>.</td><td>Read every <code>ffi:</code> grant as the name of a package you are vouching for; run <code>sabline audit</code> before granting one, and install into an environment you control.</td></tr>
+<tr><td>Nothing here reads a tool description</td><td>An MCP tool's description, its name and its schema are text a model reads and a person usually does not, and a poisoned one steers the model rather than the program. Sabline is not an MCP client: it neither reads those descriptions nor notices when one changes. Its own MCP server's <code>--max-allow</code> bounds what a steered model may ask <em>this</em> server for, and nothing more. <em>Closed by:</em> M5 in part - guard mode puts an existing server's calls under a budget, so a poisoned description can only steer the model into calls the budget already allows; pinning each upstream tool's description and refusing calls after a change (a planned M5 addition) would catch a rug-pull. Judging whether a description is malicious is a natural-language judgement Sabline does not make, and no milestone closes it.</td><td>Leave <code>sabline mcp</code> at the narrowest <code>--max-allow</code> the task needs, and keep the review of other servers' tool descriptions outside Sabline, where it belongs.</td></tr>
+</tbody></table></div>
+<h2 id="every-known-open-item-and-where-it-lands">Every known-open item, and where it lands <a class="anchor" href="#every-known-open-item-and-where-it-lands" aria-label="Link to this section">#</a></h2>
+<p>Each row of the table above, with the controls on the <a href="crosswalk.html">crosswalk</a> that it leaves open. None of these rows is a broken guarantee; each is a stated limit.</p>
+<h3 id="timing-and-other-side-channels">Timing and other side channels <a class="anchor" href="#timing-and-other-side-channels" aria-label="Link to this section">#</a></h3>
+<p>How long a run takes, its CPU and cache use, and the size and timing of its output are not measured or bounded, and a program can signal through any of them.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI03 (partial)</li>
+<li>AIUC-1: A006 (partial), A008 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.10 (not addressed)</li>
+</ul>
+<h3 id="a-granted-ffi-module">A granted <code>ffi</code> module <a class="anchor" href="#a-granted-ffi-module" aria-label="Link to this section">#</a></h3>
+<p>Within a granted module, that module's whole behaviour is granted; the allow-list narrows which module a call reaches, not what the module does.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI02 (partial), ASI04 (partial), ASI05 (partial), ASI10 (partial)</li>
+<li>AIUC-1: A003 (partial), A005 (partial), B006 (partial), D003 (partial), F001 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.7 (partial), MANAGE 3.1 (partial)</li>
+</ul>
+<h3 id="native-code">Native code <a class="anchor" href="#native-code" aria-label="Link to this section">#</a></h3>
+<p>A granted module may be or ship compiled code with no source and no bound; the audit's <code>ffi_native</code> reports it where it is found.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI02 (partial), ASI04 (partial), ASI05 (partial)</li>
+<li>AIUC-1: B006 (partial), D003 (partial)</li>
+<li>NIST AI RMF: MANAGE 3.1 (partial)</li>
+</ul>
+<h3 id="secrets-arriving-another-way">Secrets arriving another way <a class="anchor" href="#secrets-arriving-another-way" aria-label="Link to this section">#</a></h3>
+<p><code>Secret of T</code> marks only what <code>env()</code> and <code>read_file_secret()</code> return; a secret from anywhere else is an ordinary value.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI03 (partial)</li>
+<li>AIUC-1: A006 (partial), A008 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.10 (not addressed)</li>
+</ul>
+<h3 id="confinement-on-linux-what-it-leaves">Confinement on Linux: what it leaves <a class="anchor" href="#confinement-on-linux-what-it-leaves" aria-label="Link to this section">#</a></h3>
+<p>Full confinement holds files, the network and processes to the budget. It does not hold a host named in a <code>net:</code> grant, a credential location under a broad grant, <code>env</code>, or a hard link or bind mount that was inside a granted path before the run; and it is no better than the kernel.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI05 (partial), ASI10 (partial)</li>
+<li>AIUC-1: B006 (partial), B008 (partial), D003 (partial), F001 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.7 (partial)</li>
+</ul>
+<h3 id="confinement-on-macos-partial">Confinement on macOS: partial <a class="anchor" href="#confinement-on-macos-partial" aria-label="Link to this section">#</a></h3>
+<p>Writes, the network and new processes are held by a sandbox profile; reads are refused only under the home directory and /Volumes; and Apple has deprecated the mechanism.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI05 (partial), ASI10 (partial)</li>
+<li>AIUC-1: B006 (partial), B008 (partial), D003 (partial), F001 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.7 (partial)</li>
+</ul>
+<h3 id="confinement-on-windows-partial">Confinement on Windows: partial <a class="anchor" href="#confinement-on-windows-partial" aria-label="Link to this section">#</a></h3>
+<p>A second process is refused, every privilege is removed from the token, and a budget with no write grant can write nothing of the user's. Reads, the network, and writes under a budget that grants any, are not held.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI05 (partial), ASI10 (partial)</li>
+<li>AIUC-1: B006 (partial), B008 (partial), D003 (partial), F001 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.7 (partial)</li>
+</ul>
+<h3 id="runs-that-are-not-confined">Runs that are not confined <a class="anchor" href="#runs-that-are-not-confined" aria-label="Link to this section">#</a></h3>
+<p>An in-process <code>sabline.run()</code> with no limit, the REPL, <code>sabline test</code> and <code>sabline bench</code> are not confined, and a budget that grants <code>ffi:os</code>, <code>ffi:subprocess</code>, plain <code>ffi</code> or a module the table does not name widens the OS policy to nothing enforced. A confined process still runs as the user.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI05 (partial), ASI10 (partial)</li>
+<li>AIUC-1: B006 (partial), B008 (partial), D003 (partial), F001 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.7 (partial)</li>
+</ul>
+<h3 id="the-fault-injection-hook">The fault-injection hook <a class="anchor" href="#the-fault-injection-hook" aria-label="Link to this section">#</a></h3>
+<p><code>SABLINE_FAULT_INJECT</code>, read from the environment a run was started with, makes the runtime attempt one fixed effect so the honesty test can show the kernel refusing it. A program cannot set it, and it performs nothing the person who set it could not.</p>
+<p>It leaves open:</p>
+<ul>
+<li>AIUC-1: B008 (partial)</li>
+</ul>
+<h3 id="what-a-receipt-shows-that-is-not-a-value">What a receipt shows that is not a value <a class="anchor" href="#what-a-receipt-shows-that-is-not-a-value" aria-label="Link to this section">#</a></h3>
+<p>A receipt keeps out every value, but holds the exit status, where the run stopped, its counts and its wall time, which a program that declassified something can choose.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI10 (partial)</li>
+<li>AIUC-1: A006 (partial), A008 (partial), B009 (not addressed), E015 (partial)</li>
+</ul>
+<h3 id="writes-to-where-python-imports-from">Writes to where Python imports from <a class="anchor" href="#writes-to-where-python-imports-from" aria-label="Link to this section">#</a></h3>
+<p>A write grant to a directory on some Python's import path lets a program leave code the next Python process runs.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI05 (partial)</li>
+<li>AIUC-1: B006 (partial)</li>
+</ul>
+<h3 id="an-ejected-directory">An ejected directory <a class="anchor" href="#an-ejected-directory" aria-label="Link to this section">#</a></h3>
+<p>An ejected directory keeps the Sabline it was ejected with, and its launcher cannot check itself.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI04 (partial)</li>
+<li>AIUC-1: B008 (partial)</li>
+<li>NIST AI RMF: MANAGE 3.1 (partial)</li>
+</ul>
+<h3 id="a-program-that-stalls-a-review">A program that stalls a review <a class="anchor" href="#a-program-that-stalls-a-review" aria-label="Link to this section">#</a></h3>
+<p><code>sabline review</code> compiles every program with no ceiling, so a program built to exhaust the type checker holds it, and the Action's comment step, until the job times out.</p>
+<p>It leaves open:</p>
+<ul>
+<li>AIUC-1: C002 (partial), C007 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.7 (partial)</li>
+</ul>
+<h3 id="a-predicate-type-is-a-name-on-a-domain">A predicate type is a name on a domain <a class="anchor" href="#a-predicate-type-is-a-name-on-a-domain" aria-label="Link to this section">#</a></h3>
+<p>The two predicate types name sabline.dev; whoever holds a domain decides what its pages say, and a type is an identifier, not a signature.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI04 (partial)</li>
+<li>AIUC-1: B008 (partial)</li>
+</ul>
+<h3 id="the-user-running-sabline">The user running sabline <a class="anchor" href="#the-user-running-sabline" aria-label="Link to this section">#</a></h3>
+<p>Anything running as the user who runs Sabline can edit the program, the budget, a receipt after it is written, or Sabline itself.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI03 (partial), ASI10 (partial)</li>
+<li>AIUC-1: B008 (partial), E015 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.4 (partial)</li>
+</ul>
+<h3 id="code-that-is-not-sabline">Code that is not Sabline <a class="anchor" href="#code-that-is-not-sabline" aria-label="Link to this section">#</a></h3>
+<p>Sabline bounds programs written in Sabline and run by <code>sabline</code>; a post-install script, a build hook, a shell command an agent runs and an extension's own tools are none of them near a budget.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI02 (partial), ASI04 (partial), ASI05 (partial), ASI10 (partial)</li>
+<li>AIUC-1: B006 (partial), B010 (partial), D003 (partial)</li>
+<li>NIST AI RMF: MANAGE 3.1 (partial), MEASURE 2.7 (partial)</li>
+</ul>
+<h3 id="how-an-artefact-was-built">How an artefact was built <a class="anchor" href="#how-an-artefact-was-built" aria-label="Link to this section">#</a></h3>
+<p>Nothing here inspects a build, a cache, a workflow trigger, a tarball or a compiled extension, and an attestation attests to the bytes it was given.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI04 (partial), ASI05 (partial)</li>
+<li>AIUC-1: B008 (partial), D003 (partial)</li>
+<li>NIST AI RMF: MANAGE 3.1 (partial), MEASURE 2.7 (partial)</li>
+</ul>
+<h3 id="a-flow-between-two-granted-places">A flow between two granted places <a class="anchor" href="#a-flow-between-two-granted-places" aria-label="Link to this section">#</a></h3>
+<p>A grant names a resource and never a relation between two of them: nothing can say that data read from one granted place may not be written to another.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI02 (partial), ASI03 (partial)</li>
+<li>AIUC-1: A003 (partial), A005 (partial), A008 (partial), D003 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.7 (partial)</li>
+</ul>
+<h3 id="what-an-operation-means-inside-a-granted-effect">What an operation means inside a granted effect <a class="anchor" href="#what-an-operation-means-inside-a-granted-effect" aria-label="Link to this section">#</a></h3>
+<p>A grant decides whether a program may reach something, not what it does once it can: <code>fs:write:</code> includes deleting, <code>ffi:sqlite3</code> includes <code>DROP TABLE</code>, and a <code>net:</code> host grant is any method.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI02 (partial), ASI08 (partial)</li>
+<li>AIUC-1: A003 (partial), B006 (partial), D003 (partial)</li>
+<li>NIST AI RMF: MANAGE 2.2 (partial), MEASURE 2.6 (partial)</li>
+</ul>
+<h3 id="what-a-host-does-with-a-call-it-was-given">What a host does with a call it was given <a class="anchor" href="#what-a-host-does-with-a-call-it-was-given" aria-label="Link to this section">#</a></h3>
+<p>A <code>tool:</code> grant holds the arguments the program passes and says nothing about what the host does with the call afterwards - a header it adds, a copy it keeps, a second request it makes.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI02 (partial), ASI04 (partial)</li>
+<li>AIUC-1: D003 (partial), E009 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.7 (partial)</li>
+</ul>
+<h3 id="a-module-name-a-model-invented">A module name a model invented <a class="anchor" href="#a-module-name-a-model-invented" aria-label="Link to this section">#</a></h3>
+<p><code>ffi:NAME</code> names a module in the Python environment Sabline was started in; Sabline does not install it, does not ask where it came from, and cannot know the name was hallucinated.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI04 (partial), ASI05 (partial)</li>
+<li>AIUC-1: B006 (partial), D001 (not addressed), D003 (partial)</li>
+<li>NIST AI RMF: MANAGE 3.1 (partial)</li>
+</ul>
+<h3 id="nothing-here-reads-a-tool-description">Nothing here reads a tool description <a class="anchor" href="#nothing-here-reads-a-tool-description" aria-label="Link to this section">#</a></h3>
+<p>An MCP tool's name, description and schema are text a model reads and a person usually does not; Sabline is not an MCP client and neither reads them nor notices when one changes.</p>
+<p>It leaves open:</p>
+<ul>
+<li>OWASP Agentic Top 10: ASI01 (not addressed), ASI04 (partial)</li>
+<li>AIUC-1: B002 (not addressed), D003 (partial)</li>
+<li>NIST AI RMF: MEASURE 2.7 (partial)</li>
+</ul>
+<p>No known-open item lands on an ACS row, since every ACS row is not addressed for a reason that comes first: Sabline implements none of ACS.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/known-open.md">docs/known-open.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#every-known-open-item-and-where-it-lands">Every known-open item, and where it lands</a><ul><li><a href="#timing-and-other-side-channels">Timing and other side channels</a></li><li><a href="#a-granted-ffi-module">A granted ffi module</a></li><li><a href="#native-code">Native code</a></li><li><a href="#secrets-arriving-another-way">Secrets arriving another way</a></li><li><a href="#confinement-on-linux-what-it-leaves">Confinement on Linux: what it leaves</a></li><li><a href="#confinement-on-macos-partial">Confinement on macOS: partial</a></li><li><a href="#confinement-on-windows-partial">Confinement on Windows: partial</a></li><li><a href="#runs-that-are-not-confined">Runs that are not confined</a></li><li><a href="#the-fault-injection-hook">The fault-injection hook</a></li><li><a href="#what-a-receipt-shows-that-is-not-a-value">What a receipt shows that is not a value</a></li><li><a href="#writes-to-where-python-imports-from">Writes to where Python imports from</a></li><li><a href="#an-ejected-directory">An ejected directory</a></li><li><a href="#a-program-that-stalls-a-review">A program that stalls a review</a></li><li><a href="#a-predicate-type-is-a-name-on-a-domain">A predicate type is a name on a domain</a></li><li><a href="#the-user-running-sabline">The user running sabline</a></li><li><a href="#code-that-is-not-sabline">Code that is not Sabline</a></li><li><a href="#how-an-artefact-was-built">How an artefact was built</a></li><li><a href="#a-flow-between-two-granted-places">A flow between two granted places</a></li><li><a href="#what-an-operation-means-inside-a-granted-effect">What an operation means inside a granted effect</a></li><li><a href="#what-a-host-does-with-a-call-it-was-given">What a host does with a call it was given</a></li><li><a href="#a-module-name-a-model-invented">A module name a model invented</a></li><li><a href="#nothing-here-reads-a-tool-description">Nothing here reads a tool description</a></li></ul></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

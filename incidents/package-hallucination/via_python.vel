@@ -1,0 +1,14 @@
+// The same invented name, reached the way a Sabline program actually can
+// reach the Python environment: by asking for it, with the operator
+// granting exactly the module the model named.
+
+fn main() uses io, ffi {
+    check py("huggingface_cli", "whoami", ["--token"]) {
+        ok who {
+            print(who)
+        }
+        fail why {
+            print("the call failed: " + why)
+        }
+    }
+}

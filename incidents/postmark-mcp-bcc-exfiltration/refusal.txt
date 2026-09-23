@@ -1,0 +1,13 @@
+# the mail goes to an address outside the granted domain
+$ python examples/runner/host.py examples/runner/digest_outside.vel
+call 1: search {"query": "release checklist"}
+program: found: bump the six version files; write the CHANGELOG entry; ask the gate
+exit 1: 1 call(s), 1 of 40 credits
+mail sent: 0
+error[E321] 'tool' calls tool 'send_email' outside this run's budget: argument 'to' does not match '*@corp.com'
+  --> examples/runner/digest_outside.vel, line 10
+  how to fix (pick one):
+    1. call it with arguments the grant allows
+    2. or allow it: --allow tool:send_email (any arguments), or tool:send_email:ARGUMENT=PATTERN
+  reference: https://sabline.dev/llms.txt
+exit 1

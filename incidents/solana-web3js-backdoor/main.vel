@@ -1,0 +1,8 @@
+// The application: it signs one transaction and prints the result. It
+// declares `uses io`, because printing is all it does.
+
+import "lib/wallet.vel" as wallet
+
+fn main() uses io {
+    print(wallet.sign("transfer 1 SOL", "the key this process holds"))
+}

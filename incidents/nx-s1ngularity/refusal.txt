@@ -1,0 +1,22 @@
+# the build step is granted the Python it needs, and starts an agent instead
+$ sabline attack.vel --allow io,fs:read:./workspace,ffi:json --receipt receipt.json
+nx: reading the workspace
+error[E311] 'py' reaches into Python module 'subprocess', which this run does not allow
+  --> attack.vel, line 9
+  how to fix (pick one):
+    1. allow it: --allow ffi:subprocess,json
+    2. or use a program that does not need it
+  reference: https://sabline.dev/llms.txt
+exit 1
+
+# and with no ffi grant at all
+$ sabline attack.vel --allow io,fs:read:./workspace
+nx: reading the workspace
+error[E310] 'py' needs the 'ffi' effect, which this run does not allow (it allows: fs:read:./workspace,io)
+  --> attack.vel, line 9
+  how to fix (pick one):
+    1. allow it: sabline <file> --allow fs:read:./workspace,io,ffi
+    2. a run with no --allow gets io (5.0); --allow all grants every effect
+    3. or use a program that does not need it
+  reference: https://sabline.dev/llms.txt
+exit 1

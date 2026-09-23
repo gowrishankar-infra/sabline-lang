@@ -1,0 +1,56 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "attack.vel",
+      "digest": {
+        "sha256": "ad5bf3e735d1f364597e0677f80fe1a8c58ec3ce2c74ebfd7c90c38e6fa1fe38"
+      }
+    }
+  ],
+  "predicateType": "https://sabline.dev/receipt/v1",
+  "predicate": {
+    "schema": "sabline.receipt/1",
+    "producer": {
+      "name": "sabline-lang",
+      "uri": "https://github.com/gowrishankar-infra/sabline-lang",
+      "version": "<version>"
+    },
+    "specification": "sabline-spec <version>",
+    "startedAt": "<varies>",
+    "wall_time_ms": "<varies>",
+    "budget": "fs:read:.,io,net:webhook.example.net:443",
+    "run_parameters": {
+      "seed": null,
+      "freeze_time": null,
+      "timeout": null,
+      "max_memory_mb": null,
+      "max_read_bytes": 67108864,
+      "confinement": "<varies by operating system>",
+      "confinement_reason": "<varies by operating system>",
+      "confinement_layers": "<varies by operating system>",
+      "os_policy_sha256": "<varies by operating system>"
+    },
+    "effects_used": {
+      "io": 1,
+      "fs": 1
+    },
+    "grants_used": [],
+    "refusals": [
+      {
+        "code": "E318",
+        "effect": "fs",
+        "line": 13,
+        "stopped": true,
+        "times": 1
+      }
+    ],
+    "declassifications": [],
+    "exit": {
+      "status": 1,
+      "outcome": "refused",
+      "code": "E318"
+    },
+    "complete": true
+  }
+}

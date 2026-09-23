@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Incidents - Sabline 8.6.0</title>
+<meta name="description" content="Real, publicly reported incidents from 2023 onward in the lane Sabline is written for: AI agent failures and software supply-chain attacks where code ran ...">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/incidents.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html" aria-current="page">Incidents</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li></ul>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="incidents">Incidents</h1>
+<p>Real, publicly reported incidents from 2023 onward in the lane Sabline is written for: AI agent failures and software supply-chain attacks where code ran with more authority than it should have. For each one, whether a program of the same <strong>shape</strong>, written in Sabline and run under a budget, is refused.</p>
+<div class="callout callout-note" role="note"><p class="callout-title">Note</p>
+<p><strong>These are the shapes of the attacks. This is not a claim that adopting Sabline would have prevented the real events.</strong> None of them involved a Sabline program. Every one happened in a language, a package manager, a build system or an agent framework that Sabline neither runs nor bounds. What an entry shows is narrower and checkable: given the same shape, here is the program, the command, what the runtime actually printed, and the one line of budget that did the work. Where nothing here addresses the shape, the entry says so, and the reason is in the <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/known-open.html">known-open table</a>.</p>
+</div>
+<h2 id="the-counts">The counts <a class="anchor" href="#the-counts" aria-label="Link to this section">#</a></h2>
+<p>13 incidents in scope, and 2 listed as out of scope. Every entry links the report it was written from.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Verdict</th><th>Count</th><th>What it means</th></tr></thead>
+<tbody>
+<tr><td><code>STOPPED</code></td><td>2</td><td>the shape, written in Sabline and run under a budget granting what the task needs, is refused - and the refusal is recorded and re-run on every push</td></tr>
+<tr><td><code>PARTIAL</code></td><td>6</td><td>part of the shape is refused and part is not; both halves are recorded</td></tr>
+<tr><td><code>NOT COVERED</code></td><td>5</td><td>nothing in Sabline addresses this shape</td></tr>
+<tr><td><code>UNVERIFIED</code></td><td>0</td><td>it may be covered; no repro was built, so nothing is claimed</td></tr>
+<tr><td><code>OUT OF SCOPE</code></td><td>2</td><td>prompt injection where no code ran - listed so the boundary is visible, not counted as a gap</td></tr>
+</tbody></table></div>
+<div class="callout callout-known-open" role="note"><p class="callout-title">Known open</p>
+<p><strong>15 of 15 summaries have not been checked against their sources by a person</strong>, so they are not published. Each is named below with its verdict and its sources, and its summary is withheld until someone reads those sources and sets <code>verified: true</code> in the entry. The counts above are of entries, not of checked entries. What is published for a withheld entry is the part a machine checks - the verdict, which <code>check_incidents.py</code> re-runs, and the links - and what is withheld is the part only a person can check: the account of what happened.</p>
+</div>
+<p>A verdict is never <code>STOPPED</code> on reasoning: <code>check_incidents.py</code> re-runs every recorded command on every push, and an entry whose program stops refusing fails the build before a release is made from it.</p>
+<h2 id="how-these-were-chosen">How these were chosen <a class="anchor" href="#how-these-were-chosen" aria-label="Link to this section">#</a></h2>
+<p>This is a selection, not a survey. An incident is here only if it is <strong>from 2023 onward</strong>, <strong>in the lane</strong> - code that ran with more authority than it should have - and <strong>backed by a primary source</strong>: a vendor post-mortem, a CVE record, or the researcher's own write-up. Nothing goes in without one.</p>
+<p><strong>These are not all the incidents in this lane, and the counts are not a measurement of the field.</strong> A verdict count is a count of what is in this catalogue, not a claim about how common each shape is. What is left out on purpose: anything before 2023; prompt injection where no code ran, which is <code>OUT OF SCOPE</code> rather than a gap and is why EchoLeak and CamoLeak are listed that way; and anything that cannot be sourced to a primary report - one incident, an agent that deleted a production database (Replit, July 2025), was dropped for exactly that reason.</p>
+<h2 id="stopped">STOPPED <a class="anchor" href="#stopped" aria-label="Link to this section">#</a></h2>
+<p>The shape, written in Sabline and run under a budget granting what the task needs, is refused - and the refusal is recorded and re-run on every push.</p>
+<h3 id="the-solanaweb3js-backdoor-1956-and-1957">The @solana/web3.js backdoor, 1.95.6 and 1.95.7 <a class="anchor" href="#the-solanaweb3js-backdoor-1956-and-1957" aria-label="Link to this section">#</a></h3>
+<p>2024-12-03 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/solana-web3js-backdoor/">incidents/solana-web3js-backdoor/</a> - the line that does the work: <code>sabline.lock</code></p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/solana-web3js-backdoor/incident.md">incidents/solana-web3js-backdoor/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://github.com/solana-labs/solana-web3.js/security/advisories/GHSA-jcxm-7wvp-g6p5">GHSA-jcxm-7wvp-g6p5</a> - the maintainers' own advisory: the compromised publish account, the affected versions, and what the injected code did.</li>
+<li><a href="https://www.anza.xyz/blog/web3-js-exploit-root-cause-analysis">web3.js Exploit: Root Cause Analysis</a> - Anza's post-mortem: the window the versions were live, and the exfiltration path.</li>
+</ul>
+<h3 id="mcp-remote-cve-2025-6514">mcp-remote, CVE-2025-6514 <a class="anchor" href="#mcp-remote-cve-2025-6514" aria-label="Link to this section">#</a></h3>
+<p>2025-07-09 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/mcp-remote-command-injection/">incidents/mcp-remote-command-injection/</a> - the line that does the work: <code>ffi:json</code></p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/mcp-remote-command-injection/incident.md">incidents/mcp-remote-command-injection/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://research.jfrog.com/vulnerabilities/mcp-remote-command-injection-rce-jfsa-2025-001290844/">OS command injection in mcp-remote when connecting to untrusted MCP servers (JFSA-2025-001290844)</a> - JFrog's own research advisory, which found and reported it.</li>
+<li><a href="https://jfrog.com/blog/2025-6514-critical-mcp-remote-rce-vulnerability/">CVE-2025-6514: Critical mcp-remote RCE Vulnerability</a> - JFrog's own blog write-up (Or Peles, 9 July 2025): what mcp-remote is, the OAuth metadata path, the client (Claude Desktop), and which platforms allow arbitrary commands. The two advisories link it; the four sentences above that the advisories do not carry come from here.</li>
+<li><a href="https://github.com/advisories/GHSA-6xpm-ggf7-wc3p">GHSA-6xpm-ggf7-wc3p / CVE-2025-6514</a> - the advisory record: affected versions, severity, and the fixed release.</li>
+</ul>
+<h2 id="partial">PARTIAL <a class="anchor" href="#partial" aria-label="Link to this section">#</a></h2>
+<p>Part of the shape is refused and part is not; both halves are recorded.</p>
+<h3 id="hallucinated-packages-and-squatting-on-them">Hallucinated packages, and squatting on them <a class="anchor" href="#hallucinated-packages-and-squatting-on-them" aria-label="Link to this section">#</a></h3>
+<p>2024-03-28 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/package-hallucination/">incidents/package-hallucination/</a> - the line that does the work: <code>import "lib/..."</code></p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/package-hallucination/incident.md">incidents/package-hallucination/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://www.lasso.security/blog/ai-package-hallucinations">Diving Deeper into AI Package Hallucinations</a> - Bar Lanyado's own write-up, 28 March 2024: the <code>huggingface-cli</code> test, the more than 30,000 downloads in three months, and the Alibaba README.</li>
+<li><a href="https://www.usenix.org/conference/usenixsecurity25/presentation/spracklen">We Have a Package for You! A Comprehensive Analysis of Package Hallucinations by Code Generating LLMs</a> - USENIX Security 2025: the rates, the sample size, and the 205,474 names.</li>
+<li><a href="https://github.com/Spracks/PackageHallucination">Spracks/PackageHallucination</a> - the paper's published code and data.</li>
+</ul>
+<h3 id="tj-actionschanged-files-cve-2025-30066">tj-actions/changed-files, CVE-2025-30066 <a class="anchor" href="#tj-actionschanged-files-cve-2025-30066" aria-label="Link to this section">#</a></h3>
+<p>2025-03-14 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/tj-actions-changed-files/">incidents/tj-actions-changed-files/</a> - the line that does the work: <code>env</code></p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/tj-actions-changed-files/incident.md">incidents/tj-actions-changed-files/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://github.com/advisories/ghsa-mrrh-fwg8-r2c3">GHSA-mrrh-fwg8-r2c3 / CVE-2025-30066</a> - the GitHub advisory record: affected versions, the malicious commit <code>0e58ed8</code> the tags were moved to, the disclosure of secrets through action logs, and the fixed version.</li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2025/03/18/supply-chain-compromise-third-party-tj-actionschanged-files-cve-2025-30066-and-reviewdogaction">Supply Chain Compromise of Third-Party tj-actions/changed-files (CVE-2025-30066) and reviewdog/action-setup@v1 (CVE-2025-30154)</a> - CISA's alert, 18 March 2025.</li>
+<li><a href="https://www.wiz.io/blog/github-action-tj-actions-changed-files-supply-chain-attack-cve-2025-30066">GitHub Action tj-actions/changed-files supply chain attack</a> - Wiz's analysis: the memory scrape, the double-base64 encoding, and the dozens of affected public repositories it found.</li>
+</ul>
+<h3 id="mcp-tool-poisoning">MCP tool poisoning <a class="anchor" href="#mcp-tool-poisoning" aria-label="Link to this section">#</a></h3>
+<p>2025-04-01 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/mcp-tool-poisoning/">incidents/mcp-tool-poisoning/</a> - the line that does the work: <code>--max-allow io</code></p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/mcp-tool-poisoning/incident.md">incidents/mcp-tool-poisoning/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks">MCP Security Notification: Tool Poisoning Attacks</a> - the researchers' own write-up, 1 April 2025: the technique, the Cursor demonstration, the files read, and the hidden argument.</li>
+<li><a href="https://github.com/invariantlabs-ai/mcp-injection-experiments">invariantlabs-ai/mcp-injection-experiments</a> - the published reproduction code.</li>
+</ul>
+<h3 id="nx-s1ngularity">Nx "s1ngularity" <a class="anchor" href="#nx-s1ngularity" aria-label="Link to this section">#</a></h3>
+<p>2025-08-26 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/nx-s1ngularity/">incidents/nx-s1ngularity/</a> - the line that does the work: <code>ffi:json</code></p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/nx-s1ngularity/incident.md">incidents/nx-s1ngularity/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://nx.dev/blog/s1ngularity-postmortem">S1ngularity - What Happened, How We Responded, What We Learned</a> - Nx's own postmortem: the date, the four-hour window, and what the post-install script did.</li>
+<li><a href="https://github.com/nrwl/nx/security/advisories/GHSA-cxm3-wv7p-598c">GHSA-cxm3-wv7p-598c</a> - the maintainer's advisory listing the malicious versions.</li>
+<li><a href="https://www.stepsecurity.io/blog/supply-chain-security-alert-popular-nx-build-system-package-compromised-with-data-stealing-malware">s1ngularity: Popular Nx Build System Package Compromised with Data-Stealing Malware</a> - StepSecurity's analysis: the AI CLI invocations and their flags.</li>
+<li><a href="https://blog.gitguardian.com/the-nx-s1ngularity-attack-inside-the-credential-leak/">The Nx "s1ngularity" Attack: Inside the Credential Leak</a> - GitGuardian's count of the credentials and systems affected.</li>
+</ul>
+<h3 id="the-shai-hulud-npm-worm">The Shai-Hulud npm worm <a class="anchor" href="#the-shai-hulud-npm-worm" aria-label="Link to this section">#</a></h3>
+<p>2025-09-14 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/shai-hulud-npm-worm/">incidents/shai-hulud-npm-worm/</a> - the line that does the work: <code>fs:read:.</code></p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/shai-hulud-npm-worm/incident.md">incidents/shai-hulud-npm-worm/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://github.blog/security/supply-chain-security/our-plan-for-a-more-secure-npm-supply-chain/">Our plan for a more secure npm supply chain</a> - GitHub's own post, 22 September 2025: the notification date, the description of the worm, and the 500+ packages removed.</li>
+<li><a href="https://www.stepsecurity.io/blog/ctrl-tinycolor-and-40-npm-packages-compromised">Shai-Hulud: Self-Replicating Worm Compromises 500+ NPM Packages</a> - StepSecurity's analysis of the payload: TruffleHog, the cloud metadata and Secrets Manager calls, the injected workflow file, and the self-propagation.</li>
+</ul>
+<h3 id="postmark-mcp-the-bcc-in-an-authorised-tool">postmark-mcp, the BCC in an authorised tool <a class="anchor" href="#postmark-mcp-the-bcc-in-an-authorised-tool" aria-label="Link to this section">#</a></h3>
+<p>2025-09-25 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/postmark-mcp-bcc-exfiltration/">incidents/postmark-mcp-bcc-exfiltration/</a> - the line that does the work: <code>tool:send_email:to=*@corp.com</code></p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/postmark-mcp-bcc-exfiltration/incident.md">incidents/postmark-mcp-bcc-exfiltration/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://snyk.io/blog/malicious-mcp-server-on-npm-postmark-mcp-harvests-emails/">Malicious MCP Server on npm: postmark-mcp harvests emails</a> - Snyk's analysis by Liran Tal, 25 September 2025: the affected versions, the BCC address, and what was exposed.</li>
+<li><a href="https://postmarkapp.com/blog/information-regarding-malicious-postmark-mcp-package">Information regarding malicious "postmark-mcp" package</a> - Postmark's own statement, 25 September 2025: that the package was an unofficial one impersonating Postmark, and that the backdoor was added in version 1.0.16.</li>
+<li><a href="https://www.theregister.com/security/2025/09/29/fake-postmark-mcp-npm-package-stole-emails-with-one-liner/509095">Fake Postmark MCP npm package stole emails with one-liner</a> - contemporaneous reporting, for the install counts and the timeline.</li>
+</ul>
+<blockquote>
+<p>Koi Security discovered the package and wrote it up on 25 September 2025.
+That post no longer resolves - the address now redirects away from the
+article - so it is not linked here; an archived copy survives at the
+Wayback Machine. Snyk's write-up carries the same technical detail with the
+code shown.</p>
+</blockquote>
+<h2 id="not-covered">NOT COVERED <a class="anchor" href="#not-covered" aria-label="Link to this section">#</a></h2>
+<p>Nothing in Sabline addresses this shape.</p>
+<h3 id="the-circleci-january-2023-incident">The CircleCI January 2023 incident <a class="anchor" href="#the-circleci-january-2023-incident" aria-label="Link to this section">#</a></h3>
+<p>2022-12-22 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/circleci-oauth-token-theft/">incidents/circleci-oauth-token-theft/</a> - the line that does the work: no budget line: nothing here refuses it</p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/circleci-oauth-token-theft/incident.md">incidents/circleci-oauth-token-theft/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://circleci.com/blog/jan-4-2023-incident-report/">CircleCI Jan 4, 2023 security incident report</a> - CircleCI's own post-mortem: the malware, the stolen session, what was exfiltrated, and the rotation timeline.</li>
+<li><a href="https://circleci.com/blog/january-4-2023-security-alert/">CircleCI security alert: Rotate any secrets stored in CircleCI</a> - the customer-facing alert of 4 January 2023.</li>
+</ul>
+<h3 id="the-xz-utils-backdoor-cve-2024-3094">The xz-utils backdoor, CVE-2024-3094 <a class="anchor" href="#the-xz-utils-backdoor-cve-2024-3094" aria-label="Link to this section">#</a></h3>
+<p>2024-03-29 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/xz-utils-backdoor/">incidents/xz-utils-backdoor/</a> - the line that does the work: no budget line: nothing here refuses it</p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/xz-utils-backdoor/incident.md">incidents/xz-utils-backdoor/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://www.openwall.com/lists/oss-security/2024/03/29/4">backdoor in upstream xz/liblzma leading to ssh server compromise</a> - Andres Freund's original oss-security post, 29 March 2024, which is the public disclosure.</li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2024-3094">CVE-2024-3094</a> - the CVE record.</li>
+</ul>
+<h3 id="ultralytics-8341-and-8342-on-pypi">Ultralytics 8.3.41 and 8.3.42 on PyPI <a class="anchor" href="#ultralytics-8341-and-8342-on-pypi" aria-label="Link to this section">#</a></h3>
+<p>2024-12-04 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/ultralytics-pypi-cache-poisoning/">incidents/ultralytics-pypi-cache-poisoning/</a> - the line that does the work: no budget line: nothing here refuses it</p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/ultralytics-pypi-cache-poisoning/incident.md">incidents/ultralytics-pypi-cache-poisoning/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://blog.pypi.org/posts/2024-12-11-ultralytics-attack-analysis/">Supply-chain attack analysis: Ultralytics</a> - the PyPI blog's analysis, 11 December 2024: the cache poisoning and the two publishing paths. It defers the technical path to William Woodruff's analysis, which it links.</li>
+<li><a href="https://www.wiz.io/blog/ultralytics-ai-library-hacked-via-github-for-cryptomining">Ultralytics AI Library Hacked via GitHub for Cryptomining</a> - Wiz's analysis: the branch-name injection in the "Publish Docs" workflow, and the XMRig payload.</li>
+</ul>
+<h3 id="private-repositories-leaked-through-the-github-mcp-server">Private repositories leaked through the GitHub MCP server <a class="anchor" href="#private-repositories-leaked-through-the-github-mcp-server" aria-label="Link to this section">#</a></h3>
+<p>2025-05-26 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/github-mcp-toxic-agent-flow/">incidents/github-mcp-toxic-agent-flow/</a> - the line that does the work: no budget line: nothing here refuses it</p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/github-mcp-toxic-agent-flow/incident.md">incidents/github-mcp-toxic-agent-flow/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://invariantlabs.ai/blog/mcp-github-vulnerability">GitHub MCP Exploited: Accessing private repositories via MCP</a> - the researchers' own write-up, 26 May 2025: the injection vector, the agent used, what leaked, and where they place responsibility.</li>
+</ul>
+<h3 id="amazon-q-developer-for-vs-code-1840-cve-2025-8217">Amazon Q Developer for VS Code 1.84.0, CVE-2025-8217 <a class="anchor" href="#amazon-q-developer-for-vs-code-1840-cve-2025-8217" aria-label="Link to this section">#</a></h3>
+<p>2025-07-17 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/amazon-q-extension-wiper/">incidents/amazon-q-extension-wiper/</a> - the line that does the work: no budget line: nothing here refuses it</p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/amazon-q-extension-wiper/incident.md">incidents/amazon-q-extension-wiper/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://aws.amazon.com/security/security-bulletins/AWS-2025-015/">Security Update for Amazon Q Developer Extension for Visual Studio Code (Version #1.84)</a> - AWS's own security bulletin (AWS-2025-015): the token scoping, the affected version, the syntax error, and the fix.</li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2025-8217">CVE-2025-8217</a> - the CVE record.</li>
+<li><a href="https://www.bleepingcomputer.com/news/security/amazon-ai-coding-agent-hacked-to-inject-data-wiping-commands/">Amazon AI coding agent hacked to inject data wiping commands</a> - reporting on what the payload said, which the bulletin does not quote.</li>
+</ul>
+<h2 id="out-of-scope">OUT OF SCOPE <a class="anchor" href="#out-of-scope" aria-label="Link to this section">#</a></h2>
+<p>Prompt injection where no code ran - listed so the boundary is visible, not counted as a gap.</p>
+<h3 id="echoleak-cve-2025-32711">EchoLeak, CVE-2025-32711 <a class="anchor" href="#echoleak-cve-2025-32711" aria-label="Link to this section">#</a></h3>
+<p>2025-06-11 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/echoleak-m365-copilot/">incidents/echoleak-m365-copilot/</a> - the line that does the work: no budget line: nothing here refuses it</p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/echoleak-m365-copilot/incident.md">incidents/echoleak-m365-copilot/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-32711">CVE-2025-32711</a> - Microsoft's advisory and CVE record (Microsoft is the CNA): the CVE id, the CVSS score, the acknowledgement of Aim Labs, the server-side fix, and that there was no exploitation in the wild.</li>
+<li><a href="https://www.aim.security/lp/aim-labs-echoleak-blogpost">Breaking down 'EchoLeak', the first zero-click AI vulnerability enabling data exfiltration in Microsoft 365 Copilot</a> - Aim Labs' own report, which describes the vector and the scope-violation framing. <strong>The page has not served the article since August 2025</strong> (it answers HTTP 403 now); it is cited as an archived copy, read through the Wayback Machine, and every sentence below that rests on it alone is marked as such.</li>
+</ul>
+<h3 id="camoleak-in-github-copilot-chat">CamoLeak, in GitHub Copilot Chat <a class="anchor" href="#camoleak-in-github-copilot-chat" aria-label="Link to this section">#</a></h3>
+<p>2025-10-08 - <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/camoleak-copilot-chat/">incidents/camoleak-copilot-chat/</a> - the line that does the work: no budget line: nothing here refuses it</p>
+<p><em>The summary of this incident is written and not yet checked against the sources below, so it is not published. It is in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/camoleak-copilot-chat/incident.md">incidents/camoleak-copilot-chat/incident.md</a>.</em></p>
+<ul>
+<li><a href="https://www.legitsecurity.com/blog/camoleak-critical-github-copilot-vulnerability-leaks-private-source-code">CamoLeak: Critical GitHub Copilot Vulnerability Leaks Private Source Code</a> - the researcher's own write-up: the injection, the Camo encoding, what was extracted, and the fix date.</li>
+</ul>
+<h2 id="adding-one-and-checking-one">Adding one, and checking one <a class="anchor" href="#adding-one-and-checking-one" aria-label="Link to this section">#</a></h2>
+<p>The entries live in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/">incidents/</a> in this repository, one directory each, with <code>incidents/TEMPLATE.md</code> for a new one. <code>incidents/README.md</code> gives the rules: what counts as a source, what each verdict means, and exactly what is normalised in a recorded refusal so the same bytes appear on every machine. <code>python incident_evidence.py</code> re-runs the evidence, <code>python check_incidents.py</code> is what CI runs, and <code>python build_incidents.py</code> writes this page.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/incidents.md">docs/incidents.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#the-counts">The counts</a></li><li><a href="#how-these-were-chosen">How these were chosen</a></li><li><a href="#stopped">STOPPED</a><ul><li><a href="#the-solanaweb3js-backdoor-1956-and-1957">The @solana/web3.js backdoor, 1.95.6 and 1.95.7</a></li><li><a href="#mcp-remote-cve-2025-6514">mcp-remote, CVE-2025-6514</a></li></ul></li><li><a href="#partial">PARTIAL</a><ul><li><a href="#hallucinated-packages-and-squatting-on-them">Hallucinated packages, and squatting on them</a></li><li><a href="#tj-actionschanged-files-cve-2025-30066">tj-actions/changed-files, CVE-2025-30066</a></li><li><a href="#mcp-tool-poisoning">MCP tool poisoning</a></li><li><a href="#nx-s1ngularity">Nx &quot;s1ngularity&quot;</a></li><li><a href="#the-shai-hulud-npm-worm">The Shai-Hulud npm worm</a></li><li><a href="#postmark-mcp-the-bcc-in-an-authorised-tool">postmark-mcp, the BCC in an authorised tool</a></li></ul></li><li><a href="#not-covered">NOT COVERED</a><ul><li><a href="#the-circleci-january-2023-incident">The CircleCI January 2023 incident</a></li><li><a href="#the-xz-utils-backdoor-cve-2024-3094">The xz-utils backdoor, CVE-2024-3094</a></li><li><a href="#ultralytics-8341-and-8342-on-pypi">Ultralytics 8.3.41 and 8.3.42 on PyPI</a></li><li><a href="#private-repositories-leaked-through-the-github-mcp-server">Private repositories leaked through the GitHub MCP server</a></li><li><a href="#amazon-q-developer-for-vs-code-1840-cve-2025-8217">Amazon Q Developer for VS Code 1.84.0, CVE-2025-8217</a></li></ul></li><li><a href="#out-of-scope">OUT OF SCOPE</a><ul><li><a href="#echoleak-cve-2025-32711">EchoLeak, CVE-2025-32711</a></li><li><a href="#camoleak-in-github-copilot-chat">CamoLeak, in GitHub Copilot Chat</a></li></ul></li><li><a href="#adding-one-and-checking-one">Adding one, and checking one</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

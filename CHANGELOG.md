@@ -25,6 +25,47 @@ one, and terminates the door only once its last line is in. The new form
 also catches things the old one could not: which endpoint a line names,
 and which outcome, are now part of the golden.
 
+An **incident catalogue**, in [incidents/](incidents/README.md) and on
+[/incidents.html](https://sabline.dev/incidents.html). Fifteen publicly
+reported incidents from 2023 onward in this project's lane - AI agent
+failures and supply-chain attacks where code ran with more authority than
+it should have - each with the primary report it was written from, and a
+verdict on whether a program of the same *shape* is refused: STOPPED,
+PARTIAL, NOT COVERED, UNVERIFIED, or OUT OF SCOPE where nothing ran. A
+STOPPED or PARTIAL entry carries a real program, the command, the refusal
+the runtime printed and the receipt, recorded by `incident_evidence.py`
+and re-run by `check_incidents.py` on every push, so no release is made
+from a tree where one has stopped refusing. It is not a claim that adopting
+Sabline would have prevented any of the real events, and every entry says
+which part of its incident is outside Sabline entirely; the seven new rows
+in the known-open table are where those sentences went, each now naming the
+milestone that would close it or saying nothing will. A "How these were
+chosen" section states the window, the lane and the primary-source rule, and
+that this is a selection and not a survey. Every summary carries
+`verified: false` until a person has checked it against its sources, and
+`build_incidents.py` will not publish one that does. One candidate, an agent
+that deleted a production database (Replit, July 2025), was dropped for lack
+of any primary source - its record is participants' posts and the news that
+quoted them - and `incidents/FACTCHECK.md` keeps every source's evidence,
+row by row, behind the summaries.
+
+`tj-actions-changed-files` gains a Linux-only evidence step: under full
+confinement (8.4) the runtime is refused a read of another process's memory
+and the run ends with E319. A step may now name `platforms`; it runs and is
+checked only where it applies, held to its assertions and recorded in no
+`refusal.txt`, so a refusal one operating system makes and another does not
+is evidence here without making the recorded bytes differ from machine to
+machine.
+
+The known-open table has a page of its own,
+[docs/known-open.md](docs/known-open.md), with the crosswalk's section that
+lands each of its rows on a framework's controls. Those seven rows took
+threat-model.html and crosswalk.html past the 100,000-byte page budget, and
+the table grows every time a gap is recorded honestly, so it was moved
+rather than trimmed and the budget stays where it was. THREAT_MODEL.md
+keeps its Known open heading, which links to the page, and every word of
+the table and the section is where it was moved to.
+
 ## 9.0.0-alpha.4 - The job that was read, and then run
 
 9.0.0-alpha.3 published its crate and made no GitHub release. The two

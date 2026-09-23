@@ -1,0 +1,25 @@
+# the invented dependency resolves to nothing, not to somebody else's package
+$ sabline hallucinated.vel --allow io --receipt receipt.json
+error[E512] cannot find imported file 'lib/huggingface_cli.vel'
+  --> hallucinated.vel, line 4
+  how to fix (pick one):
+    1. check the path in the import line
+    2. paths are relative to the importing file
+  reference: https://sabline.dev/llms.txt
+exit 1
+
+# the same name reached through Python, with no ffi grant
+$ sabline via_python.vel --allow io
+error[E310] 'py' needs the 'ffi' effect, which this run does not allow (it allows: io)
+  --> via_python.vel, line 6
+  how to fix (pick one):
+    1. allow it: sabline <file> --allow io,ffi
+    2. a run with no --allow gets io (5.0); --allow all grants every effect
+    3. or use a program that does not need it
+  reference: https://sabline.dev/llms.txt
+exit 1
+
+# and with the grant the model's own instructions would ask for
+$ sabline via_python.vel --allow io,ffi:huggingface_cli
+the call failed: cannot import 'huggingface_cli'
+exit 0

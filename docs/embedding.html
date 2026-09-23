@@ -44,9 +44,10 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html" aria-current="page">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li></ul>
 </li>
 <li><span class="sec-label">Spec</span>
 <ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
@@ -470,21 +471,7 @@ when the incoming bytes are different, and prints both digests;
 <code>--force</code> replaces it. A project made before 3.1 has no lock, and
 <code>deps --verify</code> says so and falls back to checking <code>sabline.toml</code>.</p>
 <h2 id="the-embedding-limit">The embedding limit <a class="anchor" href="#the-embedding-limit" aria-label="Link to this section">#</a></h2>
-<p>Sabline embeds natively in one language and one only: Python. <code>import sabline</code> runs the compiler and the program in your process, and the
-three calls above return in microseconds to milliseconds - no process,
-no serialization. From any other language the boundary is a process:
-<code>sabline serve</code> (below) puts the same three calls behind a local HTTP
-door, and the CrewAI and LangChain tools, being Python, stay on the
-native library. The cost of the process boundary is real - a request to
-the door pays HTTP framing and a JSON round trip, on the order of a
-millisecond on loopback plus whatever the run itself takes, where the
-in-process call pays neither - which is why an agent framework written
-in Python should call the library, and why the door and the MCP server
-keep a worker pool (above) so they do not also pay an interpreter
-startup on every call. There is no in-process embedding for Node, Go or
-Rust, and there will not be one until the compiler is something other
-than a Python package; the process boundary is the supported way, and it is
-the boundary the OS enforces, which is stronger than the language's.</p>
+<p>Why Sabline embeds in-process from Python and only Python, and what the process boundary costs from every other language, is on a page of its own: <a href="embedding-limit.html">docs/embedding-limit.md</a>.</p>
 <h2 id="from-a-language-that-is-not-python">From a language that is not Python <a class="anchor" href="#from-a-language-that-is-not-python" aria-label="Link to this section">#</a></h2>
 <p><code>sabline serve</code> opens a local HTTP door, so a Node service, a Go tool,
 a Rust agent or a shell script can use the same three calls.</p>

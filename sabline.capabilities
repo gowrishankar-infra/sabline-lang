@@ -10,6 +10,7 @@
       "ffi:base64",
       "ffi:builtins",
       "ffi:datetime",
+      "ffi:huggingface_cli",
       "ffi:math",
       "ffi:os",
       "ffi:sqlite3",

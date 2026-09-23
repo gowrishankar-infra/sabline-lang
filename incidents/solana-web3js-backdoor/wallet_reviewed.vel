@@ -1,0 +1,6 @@
+// The library as it was reviewed and vendored: it signs a transaction,
+// and it reaches nothing. Its signature says so - no `uses` clause at all.
+
+fn sign(message: Text, key: Text) -> Text {
+    return "signed:" + message
+}

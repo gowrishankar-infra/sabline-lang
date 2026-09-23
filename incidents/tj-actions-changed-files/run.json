@@ -1,0 +1,32 @@
+{
+  "schema": "sabline.incident-run/1",
+  "steps": [
+    {
+      "name": "the credential the Action printed into the build log",
+      "env": {"GITHUB_TOKEN": "CANARY-tj-actions-this-is-not-a-real-token"},
+      "command": ["sabline", "attack.vel", "--allow", "io,env"],
+      "expect_exit": 1,
+      "expect": ["error[E560]", "argument 1 of 'print' is Secret of Text",
+                 "It came from env()"],
+      "expect_absent": ["CANARY-tj-actions-this-is-not-a-real-token"],
+      "receipt": "receipt.json"
+    },
+    {
+      "name": "the same program with the token used and not shown",
+      "env": {"GITHUB_TOKEN": "CANARY-tj-actions-this-is-not-a-real-token"},
+      "command": ["sabline", "same_program_kept.vel", "--allow", "io,env"],
+      "expect_exit": 0,
+      "expect": ["an authorization header was built"],
+      "expect_absent": ["CANARY-tj-actions-this-is-not-a-real-token"],
+      "receipt": "receipt-kept.json"
+    },
+    {
+      "name": "on Linux, the kernel refuses the runtime a read of another process's memory",
+      "platforms": ["linux"],
+      "env": {"SABLINE_FAULT_INJECT": "read:/proc/1/mem"},
+      "command": ["sabline", "same_program_kept.vel", "--allow", "io,env"],
+      "expect_exit": 1,
+      "expect": ["error[E319]", "the operating system refused it", "confinement:"]
+    }
+  ]
+}

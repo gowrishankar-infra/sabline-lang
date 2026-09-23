@@ -1,0 +1,21 @@
+# the credentials the worm scanned for, and the send it would have made
+$ sabline attack.vel --allow io,fs:read:.,net:webhook.example.net:443 --receipt receipt.json
+scanning the build directory for credentials
+error[E318] 'read_file' reaches '.env' (resolved: ./.env), a documented credential location; a plain read returns ordinary text that can be printed or sent
+  --> attack.vel, line 13
+  how to fix (pick one):
+    1. read it with read_file_secret, which returns a Secret the compiler will not let escape
+    2. and grant its exact path: --allow fs:read:./.env
+  reference: https://sabline.dev/llms.txt
+exit 1
+
+# the workflow it left behind to print the repository's secrets
+$ sabline inject_workflow.vel --allow io,fs:write:./dist
+adding a workflow
+error[E313] 'write_file' reaches '.github/workflows/shai-hulud-workflow.yml' (resolved: ./.github/workflows/shai-hulud-workflow.yml), which this run's fs grants do not cover
+  --> inject_workflow.vel, line 7
+  how to fix (pick one):
+    1. allow it: --allow fs:write:./.github/workflows
+    2. or use a program that stays inside the granted paths
+  reference: https://sabline.dev/llms.txt
+exit 1

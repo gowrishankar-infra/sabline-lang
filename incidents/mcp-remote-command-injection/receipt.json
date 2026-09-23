@@ -1,0 +1,62 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "attack.vel",
+      "digest": {
+        "sha256": "f9fe5ab701a6863d3c2a246723b538ce7952fd86e8205ba77f56fcd906ed0afb"
+      }
+    }
+  ],
+  "predicateType": "https://sabline.dev/receipt/v1",
+  "predicate": {
+    "schema": "sabline.receipt/1",
+    "producer": {
+      "name": "sabline-lang",
+      "uri": "https://github.com/gowrishankar-infra/sabline-lang",
+      "version": "<version>"
+    },
+    "specification": "sabline-spec <version>",
+    "startedAt": "<varies>",
+    "wall_time_ms": "<varies>",
+    "budget": "ffi:json,fs:read:.,io",
+    "run_parameters": {
+      "seed": null,
+      "freeze_time": null,
+      "timeout": null,
+      "max_memory_mb": null,
+      "max_read_bytes": 67108864,
+      "confinement": "<varies by operating system>",
+      "confinement_reason": "<varies by operating system>",
+      "confinement_layers": "<varies by operating system>",
+      "os_policy_sha256": "<varies by operating system>"
+    },
+    "effects_used": {
+      "fs": 1,
+      "io": 1,
+      "ffi": 1
+    },
+    "grants_used": [
+      {
+        "grant": "fs:read:.",
+        "times": 1
+      }
+    ],
+    "refusals": [
+      {
+        "code": "E311",
+        "effect": "ffi",
+        "line": 10,
+        "stopped": true,
+        "times": 1
+      }
+    ],
+    "declassifications": [],
+    "exit": {
+      "status": 1,
+      "outcome": "refused",
+      "code": "E311"
+    },
+    "complete": true
+  }
+}

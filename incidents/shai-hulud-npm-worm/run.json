@@ -1,0 +1,26 @@
+{
+  "schema": "sabline.incident-run/1",
+  "steps": [
+    {
+      "name": "the credentials the worm scanned for, and the send it would have made",
+      "setup": {
+        ".env": "NPM_TOKEN=CANARY-shai-hulud-this-is-not-a-real-token\n"
+      },
+      "command": ["sabline", "attack.vel", "--allow",
+                  "io,fs:read:.,net:webhook.example.net:443"],
+      "expect_exit": 1,
+      "expect": ["error[E318]", "'read_file' reaches '.env'",
+                 "a documented credential location"],
+      "expect_absent": ["CANARY-shai-hulud-this-is-not-a-real-token"],
+      "receipt": "receipt.json"
+    },
+    {
+      "name": "the workflow it left behind to print the repository's secrets",
+      "command": ["sabline", "inject_workflow.vel", "--allow",
+                  "io,fs:write:./dist"],
+      "expect_exit": 1,
+      "expect": ["error[E313]",
+                 "'write_file' reaches '.github/workflows/shai-hulud-workflow.yml'"]
+    }
+  ]
+}

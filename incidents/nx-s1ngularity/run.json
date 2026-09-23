@@ -1,0 +1,27 @@
+{
+  "schema": "sabline.incident-run/1",
+  "steps": [
+    {
+      "name": "the build step is granted the Python it needs, and starts an agent instead",
+      "setup": {
+        "workspace/package.json": "{\"name\": \"a-workspace\", \"version\": \"1.0.0\"}\n"
+      },
+      "command": ["sabline", "attack.vel", "--allow",
+                  "io,fs:read:./workspace,ffi:json"],
+      "expect_exit": 1,
+      "expect": ["error[E311]",
+                 "'py' reaches into Python module 'subprocess'"],
+      "receipt": "receipt.json"
+    },
+    {
+      "name": "and with no ffi grant at all",
+      "setup": {
+        "workspace/package.json": "{\"name\": \"a-workspace\", \"version\": \"1.0.0\"}\n"
+      },
+      "command": ["sabline", "attack.vel", "--allow",
+                  "io,fs:read:./workspace"],
+      "expect_exit": 1,
+      "expect": ["error[E310]", "'py' needs the 'ffi' effect"]
+    }
+  ]
+}

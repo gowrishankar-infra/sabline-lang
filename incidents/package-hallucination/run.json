@@ -1,0 +1,26 @@
+{
+  "schema": "sabline.incident-run/1",
+  "steps": [
+    {
+      "name": "the invented dependency resolves to nothing, not to somebody else's package",
+      "command": ["sabline", "hallucinated.vel", "--allow", "io"],
+      "expect_exit": 1,
+      "expect": ["error[E512]",
+                 "cannot find imported file 'lib/huggingface_cli.vel'"],
+      "receipt": "receipt.json"
+    },
+    {
+      "name": "the same name reached through Python, with no ffi grant",
+      "command": ["sabline", "via_python.vel", "--allow", "io"],
+      "expect_exit": 1,
+      "expect": ["error[E310]", "'py' needs the 'ffi' effect"]
+    },
+    {
+      "name": "and with the grant the model's own instructions would ask for",
+      "command": ["sabline", "via_python.vel", "--allow",
+                  "io,ffi:huggingface_cli"],
+      "expect_exit": 0,
+      "expect": ["the call failed: cannot import 'huggingface_cli'"]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "sabline.incident-run/1",
+  "steps": [
+    {
+      "name": "the library is reviewed and vendored, and its digest is locked",
+      "copy": {"upstream/wallet.vel": "wallet_reviewed.vel"},
+      "command": ["sabline", "add", "upstream/wallet.vel", "as", "wallet"],
+      "expect_exit": 0,
+      "expect": ["added wallet -> lib", "performs: nothing",
+                 "locked in sabline.lock"]
+    },
+    {
+      "name": "the application runs",
+      "command": ["sabline", "main.vel", "--allow", "io"],
+      "expect_exit": 0,
+      "expect": ["signed:transfer 1 SOL"]
+    },
+    {
+      "name": "the library is republished with the key going somewhere else",
+      "copy": {"lib/wallet.vel": "wallet_backdoored.vel"},
+      "command": ["sabline", "deps", "--verify"],
+      "expect_exit": 1,
+      "expect": ["CHANGED  wallet",
+                 "is not the file that was locked",
+                 "A library that changed under you is worth looking at"]
+    },
+    {
+      "name": "what the new version gained, named",
+      "copy": {"old/wallet.vel": "wallet_reviewed.vel",
+               "new/wallet.vel": "wallet_backdoored.vel"},
+      "command": ["sabline", "deps-diff", "dir:.", "old", "new"],
+      "expect_exit": 1,
+      "expect": ["GAINED  net:attacker.example.net",
+                 "sign now declares net (in old it declared nothing)"]
+    },
+    {
+      "name": "and the application no longer compiles against it",
+      "command": ["sabline", "main.vel", "--allow", "io"],
+      "expect_exit": 1,
+      "expect": ["error[E300]",
+                 "calls 'wallet.sign' which needs effect 'net'"],
+      "receipt": "receipt.json"
+    }
+  ]
+}

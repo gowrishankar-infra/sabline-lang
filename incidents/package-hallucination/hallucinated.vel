@@ -1,0 +1,8 @@
+// The model wrote the dependency the way it writes them for every other
+// language: a name it expects somebody else to have published.
+
+import "lib/huggingface_cli.vel" as hf
+
+fn main() uses io {
+    print(hf.whoami())
+}

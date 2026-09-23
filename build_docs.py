@@ -279,9 +279,11 @@ DOCUMENTS = [("TUTORIAL.md", "tutorial.html"), ("SPEC.md", "spec.html"),
              ("SECURITY.md", "security.html")]
 # a docs/*.md page's section; one not named here goes under Threat model,
 # those in DOCS_ORDER first and in that order, the rest by name
-DOCS_SECTION = {"floats.md": "Floats", "renamed.md": "Spec"}
+DOCS_SECTION = {"floats.md": "Floats", "renamed.md": "Spec",
+                "embedding-limit.md": "Embedding"}
 DOCS_ORDER = ["confinement.md", "runner.md", "eval.md",
-              "structurally-impossible.md", "crosswalk.md"]
+              "structurally-impossible.md", "known-open.md", "incidents.md",
+              "crosswalk.md"]
 MISSING: list[str] = []         # links to a repository file that is not here
 
 
@@ -995,6 +997,8 @@ def collect(out: Path) -> tuple[list[Page], list[Section], dict[str, str]]:
               if DOCS_SECTION.get(name, "Threat model") == "Threat model"]
     floats = [p.path for name, p in docs_pages
               if DOCS_SECTION.get(name) == "Floats"]
+    embedding = [(p.path, p.title) for name, p in docs_pages
+                 if DOCS_SECTION.get(name) == "Embedding"]
     sections: list[Section] = [
         ("Start here", "index.html", []),
         ("Tutorial", "tutorial.html", [("playground.html", "Playground")]),
@@ -1005,7 +1009,7 @@ def collect(out: Path) -> tuple[list[Page], list[Section], dict[str, str]]:
         ("Floats", floats[0] if floats else None, []),
         ("Threat model", "threat-model.html",
          threat + [("security.html", by_path["security.html"].title)]),
-        ("Embedding", "embedding.html", []),
+        ("Embedding", "embedding.html", embedding),
         ("Spec", None, [("stability.html", "Stability"),
                         ("renamed.html", "Renamed from Velaris"),
                         ("capability/v1/index.html", "capability/v1"),

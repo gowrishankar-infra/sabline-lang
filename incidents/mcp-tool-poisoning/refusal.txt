@@ -1,0 +1,24 @@
+# the model is steered into asking the server for more than its ceiling
+$ python ask_for_more.py
+the client asked for: io, fs:read:.
+the server answered:
+{
+  "error": "this server does not grant fs",
+  "max_allow": [
+    "io"
+  ],
+  "max_memory_mb": 512,
+  "max_timeout": 30
+}
+the invocation log recorded: outcome=ceiling, refusals=[{"by": "ceiling", "what": "this server does not grant fs"}]
+exit 0
+
+# and the key cannot leave in an argument, even to a granted host
+$ sabline attack.vel --allow io,fs:read:./id_rsa.pem,net:calculator.example.com:443 --receipt receipt.json
+error[E560] argument 2 of 'post' is Secret of Text, and 'post' performs net - a Secret cannot be printed, written, sent or passed to Python. It came from read_file_secret(), line 10
+  --> attack.vel, line 14
+  how to fix (pick one):
+    1. build what you emit out of values that are not secret
+    2. or let it out on purpose: declassify(x, "why this is safe to emit") needs "uses declassify", is named in the audit with that reason, and an operator can refuse to grant it
+  reference: https://sabline.dev/llms.txt
+exit 1
