@@ -42,6 +42,13 @@ Debenedetti, E., Shumailov, I., Fan, T., Hayes, J., Carlini, N., Fabian, D.,
 \newblock Defeating prompt injections by design.
 \newblock arXiv:2503.18813.
 
+\bibitem[Debenedetti et~al., 2024]{debenedetti2024agentdojo}
+Debenedetti, E., Zhang, J., Balunovi{\'c}, M., Beurer-Kellner, L., Fischer, M.,
+  and Tram{\`e}r, F. (2024).
+\newblock {AgentDojo}: A dynamic environment to evaluate prompt injection
+  attacks and defenses for {LLM} agents.
+\newblock arXiv:2406.13352.
+
 \bibitem[Dennis and Van~Horn, 1966]{dennis1966semantics}
 Dennis, J.~B. and Van~Horn, E.~C. (1966).
 \newblock Programming semantics for multiprogrammed computations.

@@ -134,7 +134,7 @@ c9       1000, and the baseline edited to 1000:
 Figure 1: (a) `examples/effects.vel`: what a signature declares, what
 the audit reports before the program runs, a budget its operator
 writes, and the refusal of the write that budget does not grant. (b)
-the second history of section 4.4, from `check_ratchet.py`: c1 raises a
+the second history of section 4.5, from `check_ratchet.py`: c1 raises a
 count and is merged, c2 is an unrelated change, and the check compares
 every commit with the baseline committed at c0, never with the commit
 before it, which is what a review compares.
@@ -294,7 +294,7 @@ and read baselines and classify widening against narrowing for every
 kind of scope. L2 and L3 each require L1; L3 does not require L2, so a
 tool with no runtime can conform at L1 and L3. No level requires a
 prover. Conformance is shown by running a corpus of JSON cases,
-described in section 4.3. sabline-spec also defines an in-toto predicate
+described in section 4.4. sabline-spec also defines an in-toto predicate
 type that binds an audit to the digests of the files audited, so that a
 signed statement can say which source an audit describes; sabline-lang
 4.2.0 writes such statements, unsigned (`sabline attest`), and leaves
@@ -504,7 +504,7 @@ defect. The committed run is one machine's. Category 12's dependencies
 were written for it rather than taken from published packages, and its
 Sabline catches come from comparing declared surfaces, which a package
 in another language does not have. And it measures programs,
-not the ratchet, which section 4.4 treats separately. The harness is
+not the ratchet, which section 4.5 treats separately. The harness is
 in the repository, its rules are one function each, and the evidence
 for every cell is recorded next to the verdict, so a reader who
 disagrees with a row can change the rule and rerun it.
@@ -596,7 +596,48 @@ policies, not an attack on it. The page that publishes the table lists
 where each tool is stronger by design, whatever this corpus shows, and
 where the comparison is still unfair and to whom.
 
-### 4.3 The suites, and a conformance corpus
+### 4.3 AgentDojo, with no model in the loop
+
+Sections 4.1 and 4.2 count defects caught, not attacks resisted.
+AgentDojo measures the second [@debenedetti2024agentdojo]: a suite of
+tasks a user gives an agent, injection tasks an attacker plants in the
+data the agent reads, and AgentDojo's own checks of whether the user's
+task was done (utility) and whether the attacker's goal was reached
+(security). Sabline was run on its Slack suite, AgentDojo 0.1.35 and
+benchmark version 1: 21 user tasks and 5 injection tasks, whose pairs
+make 105 attacks. Each user task's reference solution, and each
+injection's ground-truth action, is a Sabline program that reaches
+AgentDojo's real Slack environment only through `tool` calls. Each runs
+under a budget written for the user task - `io`, and a grant for each
+tool the reference solution calls - or, as the control, under
+`--allow all`.
+
+Under the task budget all 21 reference solutions ran to completion and
+passed AgentDojo's utility check. Under `--allow all` all 105 attacks
+landed; under the task budget 19 did. The other 86 call a tool the task
+was not granted, and were refused before the call reached the host
+(E321). Every one of the 19 that landed reuses a tool the task was
+granted: twelve visit a web page where the task reads web pages, and
+seven send a direct message where the task sends messages.
+
+There is no model in the loop, and that bounds what the numbers mean.
+Utility is AgentDojo's reference solution run under a budget, so it
+measures whether the budget lets correct work through, not whether a
+model writes it. Attack success assumes a model fully steered on every
+attack, so 19 of 105 is an upper bound on what the budget lets through,
+not a measured rate at which a model is steered; measuring that needs a
+model, a key and money, and has not been done. And the budget does not
+see what flows where. An attack that reuses a granted tool - to send
+what the task read to a sink the task may write to - is a choice within
+the budget, and Sabline has no per-value provenance with which to refuse
+it; `decisions/0004` is the design for a mark on untrusted input, and it
+has not shipped. CaMeL, which tracks every value's provenance, and
+ChainCaps, whose capabilities are per value and per sink, should do
+better on exactly these cases. The results are
+`evals/agentdojo/results.json`, which a CI job re-derives program by
+program.
+
+### 4.4 The suites, and a conformance corpus
 
 Each guarantee has a suite that asserts it, and each suite runs on
 every push on Linux, Windows and macOS, with Python 3.10 and 3.12, with
@@ -644,7 +685,7 @@ specification said neither could happen. sabline-lang 4.1.0 fixes the
 implementation, and sabline-spec 0.4 corrects the text that had claimed
 more than the implementation did.
 
-### 4.4 The ratchet
+### 4.5 The ratchet
 
 `check_ratchet.py` builds scratch trees and real git histories and
 asserts what the check says at every step. In its gradual case, a
@@ -695,10 +736,15 @@ names any of this work as the source of a decision, and no priority is
 claimed over any of it.
 
 Three of the systems below - CaMeL, TypeGuard and ChainCaps - report an
-evaluation against an adversary on a published benchmark. Sabline has
-none. Section 4.1's benchmark counts defects a tool catches, not attacks
-it resists, and section 6 says so; `plan/8.7.md` is the plan for an
-evaluation that would answer them, and it is a plan and not a result.
+evaluation against an adversary on a published benchmark, with a model
+in the loop. Sabline's is on AgentDojo too (section 4.3), with no model
+in it: under a budget written for each task, 21 of 21 tasks completed
+and 19 of 105 attacks landed, every one of them through a tool the task
+was granted. Its utility is AgentDojo's reference solution and its
+attack success an upper bound rather than a measured rate at which a
+model is steered, so it is not a like-for-like comparison with theirs;
+and on the laundering that makes up all 19, the systems that track
+values should do better.
 
 **Object capabilities.** Dennis and Van Horn introduced the capability,
 a reference that both names a resource and carries the right to use it
@@ -737,7 +783,9 @@ is an unforgeable value in Dennis and Van Horn's sense, where a Sabline
 budget is ambient. Its policies are ordinary types in a general-purpose
 language, so they compose and a user can write a new one, where
 Sabline's seven effects and its grant grammar are fixed and only the
-compiler can add to them. And it is measured against an adversary.
+compiler can add to them. And it is measured against an adversary with
+a model in the loop, where Sabline's AgentDojo run (section 4.3) has
+none.
 Where Sabline differs: the policy is text an operator writes outside
 the program, so whoever bounds a run need not have written the
 scaffolding or be able to read Haskell; the refusal happens at the
@@ -769,7 +817,9 @@ that answers it, and neither has shipped. ChainCaps also puts tools
 that already exist under a policy without modifying them, where Sabline
 needs the program written in Sabline; its budgets are per value and per
 sink, where Sabline's is one budget for a whole run; and it is measured
-against an adversary. Its authors scope the claim to explicit flows,
+against an adversary with real models. Per-sink budgets are what the 19
+attacks that land on Sabline's AgentDojo run need, and it should do
+better on them. Its authors scope the claim to explicit flows,
 trusted manifests and data movement the proxy can see, and name
 manifest quality as the deployment bottleneck: manifests written by
 experts blocked every attack, and naive ones 27.3% of them. Where
@@ -787,8 +837,11 @@ permitted readers and checks a policy at each tool call, while a
 quarantined model parses untrusted data [@debenedetti2025camel]. Where
 it is ahead: it tracks data, which Sabline does not - a Sabline budget
 bounds which effects, paths, hosts and modules a run may reach, not
-which values may flow to them - and it has an evaluation against an
-adversary, on AgentDojo, of a kind Sabline has not done. Its split
+which values may flow to them - and its AgentDojo evaluation runs a
+model, where Sabline's (section 4.3) runs AgentDojo's reference
+solutions in its place. The 19 attacks that land there all reuse a tool
+the task was granted, and provenance per value is the defence against
+them that Sabline lacks: CaMeL should do better on them. Its split
 between a privileged and a quarantined model has no counterpart here at
 all. Where Sabline differs: the program is written in a language whose
 signatures declare effects and whose compiler checks them across the
@@ -845,10 +898,11 @@ staleness, and runtime uncertainty - and outline what more trustworthy
 evaluation would need [@abdelnabi2026measuring]. Where it is ahead: it
 is a direct account of what section 4.1's benchmark is weakest at. That
 benchmark was written by this project, is small, and counts defects
-caught rather than attacks resisted; section 6 says so, and
-`plan/8.7.md` is the plan for an evaluation built to answer the three,
-including an AgentDojo run comparable to CaMeL's, TypeGuard's and
-ChainCaps'.
+caught rather than attacks resisted; section 6 says so. `plan/8.7.md`
+is the plan for an evaluation built to answer the three: its comparison
+with five other tools (section 4.2) and its AgentDojo run (section 4.3)
+are built, the second with no model in it, and its measurement of a
+model writing Sabline is not.
 
 **TACIT.** Odersky and colleagues have agents write Scala 3 with capture
 checking, in which capabilities - a file system rooted at a directory, a
@@ -1024,15 +1078,19 @@ These are stated as sabline-lang's THREAT_MODEL.md states them.
   written by AI agents for this project; no user study has been done; the ratchet's
   properties rest on its definition and its cases, not on a measured
   detection rate.
-- **No evaluation against an adversary.** The benchmark counts defects
-  caught. Nothing here measures what Sabline does against someone
-  trying to get past it, on AgentDojo or on any other published suite,
-  and the three systems of section 5 that make such a claim - CaMeL,
-  TypeGuard and ChainCaps - have a number where Sabline has none.
-  `plan/8.7.md` is the plan for one, written against the three
-  weaknesses Abdelnabi and colleagues name
-  [@abdelnabi2026measuring]. It is a plan. Until it has been run, no
-  sentence in this paper should be read as a claim about an attacker.
+- **An evaluation against an adversary, without the adversary's
+  model.** Section 4.3 runs Sabline on AgentDojo's Slack suite with
+  AgentDojo's reference solutions in place of a model: 21 of 21 tasks
+  completed, and 19 of 105 attacks landed under a task budget, every
+  one reusing a tool the task was granted. The attack figure is an
+  upper bound on what the budget lets through, not a measured rate at
+  which a model is steered, and nothing here measures a model writing
+  Sabline under attack. The 19 are laundering, which a budget over
+  effects and tools cannot see: Sabline has no per-value provenance,
+  and CaMeL and ChainCaps, which have a number with a model in the
+  loop, should do better on them. It is one suite at one version, run
+  by the project it measures, which is the first of the three
+  weaknesses Abdelnabi and colleagues name [@abdelnabi2026measuring].
 
 ## 7. Conclusion
 
@@ -1078,7 +1136,8 @@ figures of the abstract, sections 4.1 and 4.2, Tables 1 and 2 and the
 conclusion are from `benchmark/results.json` and
 `benchmark/competitors/results.json` at the commit that added the
 benchmark's categories 16 to 20 (pull request #105; 8.7, not released),
-and section 6's counts
+section 4.3's are from `evals/agentdojo/results.json` at the commit that
+added it (pull request #103), and section 6's counts
 of escape attempts stopped by the kernel are from
 `tests/confine/kernel-linux.json` and `kernel-windows.json` at the same
 tag. Releases after 4.2.1
@@ -1116,7 +1175,8 @@ rather than measurements, and they are at the tip of `main` rather than
 at either tag: `decisions/0004-untrusted.md`, the design for a mark on
 untrusted input, whose amendment takes ChainCaps' propagation rule;
 `plan/9.0.md`, the milestones of the Rust runtime; `plan/8.7.md`, the
-plan for an evaluation against an adversary; and `docs/runner.md`,
+plan for the evaluations of sections 4.2 and 4.3 and for those not yet
+run; and `docs/runner.md`,
 which records the laundering case 0004 answers. None of the four has
 shipped, and nothing in this paper is measured from any of them. The
 9.0 pre-releases published so far - `9.0.0-alpha.1` to `alpha.4` -
@@ -1147,7 +1207,7 @@ at their tags:
     sabline audit examples/effects.vel
     sabline examples/effects.vel --allow io,clock,rand,fs:read:./data
 
-    # sections 4.3 and 4.4
+    # sections 4.4 and 4.5
     python check_sandbox.py
     python check_library.py
     python check_ratchet.py
@@ -1169,6 +1229,7 @@ Where each number comes from:
 |---|---|
 | 102 programs, 80 dangerous, 22 controls, twenty categories; 54/16/10, 8/43/29, 0/32/48; 4, 0 and 0 false positives; seven Sabline catches with the task broken; Sabline 8.6.0, Deno 2.9.6, Python 3.13.13, Windows 11; 5 s timeout, 256 MB cap; the misses `04c`, `09c` and eight in categories 16 to 20; 61 of 63 in categories 1 to 11 and 13 to 15; category 12's three upgrades and one control; category 13's program, its verdicts and E318; categories 14 to 20; 08f's catch moved to while running | `benchmark/results.json` at the commit that added categories 16 to 20 |
 | Table 2 and section 4.2: the five competitors, their versions, grants and verdicts; 18 programs where one does better; 12 programs in CaMeL's scope; 19d stopped by none | `benchmark/competitors/results.json` at the same commit, and `docs/competitors.md` built from it |
+| Section 4.3: AgentDojo 0.1.35, Slack suite v1; 21 user tasks, 5 injection tasks, 105 attacks; utility 21 of 21 under the task budget and under `--allow all`; 105 attacks land under `--allow all` and 19 under the task budget, 12 visiting a web page and 7 sending a message; 86 refused with E321 | `evals/agentdojo/results.json` at the commit of pull request #103, re-derived by `agentdojo_eval.py --check` |
 | the same table at 8.4.0: 76 programs, 66 dangerous, 10 controls, fifteen categories; 52/12/2, 8/34/24, 0/31/35; 0 false positives | `benchmark/results.json` at v8.4.0 |
 | three of each six programs written against the tools; about four minutes for a full run, five to eight on a slower machine | `benchmark/README.md` at v8.4.0 |
 | the 68 programs of categories 1 to 13 unchanged in verdict since 8.2.0; ten identical runs at 8.3.0; categories 14 and 15 added in 8.3; every verdict unchanged at 8.4.0 | `benchmark/results.json` at v8.2.0, v8.3.0 and v8.4.0, and `CHANGELOG.md`, 8.3 and 8.4 entries |
