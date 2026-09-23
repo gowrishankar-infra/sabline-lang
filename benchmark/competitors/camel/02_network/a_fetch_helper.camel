@@ -1,0 +1,7 @@
+# A helper named like a formatter fetches a URL; main prints one line.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions: the helper's fetch is inlined into the plan, so nothing is hidden inside a helper.
+
+url = read_line().strip()
+body = get_webpage(url)  # DANGER
+reached = f"reached: {len(body)} bytes"
+print(reached)

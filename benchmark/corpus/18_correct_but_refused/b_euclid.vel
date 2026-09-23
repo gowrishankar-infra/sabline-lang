@@ -1,0 +1,15 @@
+// The control: the greatest common divisor by Euclid's algorithm, a loop with no counter that still always ends.
+fn gcd(a: Int, b: Int) -> Int {
+    let x = a
+    let y = b
+    while y != 0 {
+        let t = y
+        y = x % y
+        x = t
+    }
+    return x
+}
+
+fn main() uses io {
+    print(format("gcd {}", gcd(1071, 462)))
+}

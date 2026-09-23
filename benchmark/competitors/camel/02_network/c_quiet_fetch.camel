@@ -1,0 +1,6 @@
+# The helper swallows every error and prints "done" whatever happened.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions and no try: the helper's fetch is inlined into the plan, so nothing is hidden inside a helper, and an error the Python version swallows stops the plan.
+
+url = read_line().strip()
+get_webpage(url)  # DANGER
+print("done")

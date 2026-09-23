@@ -1,9 +1,11 @@
 # The comparison benchmark
 
-Seventy-six small programs, each written three times with the same behaviour -
-in Sabline, in JavaScript for Deno, and in Python - and one harness that
-runs every program through every tool and records what was caught before
-running, what was caught while running, and what was missed. The result
+A hundred and two small programs, each written three times with the same
+behaviour - in Sabline, in JavaScript for Deno, and in Python - and one
+harness that runs every program through every tool and records what was
+caught before running, what was caught while running, what was missed,
+and, where the program has legitimate work to do, whether that work still
+got done. The result
 is `RESULTS.md` and `results.json`, regenerated with one command:
 
     python benchmark/run.py
@@ -17,17 +19,19 @@ command that produced it are all here; change one and rerun.
 
 | Tool | Before running | While running |
 |---|---|---|
-| Sabline 7.1 | `sabline check` (types, effects, unhandled failures, and the prover's E705/E706) and `sabline audit` (which effects, Python modules, paths and hosts the program names, and which loops the termination rule cannot show to end - `loops_unshown`, E612 under `--strict`); in category 12, also `sabline deps-diff` on the dependency's two versions; in category 15, `sabline check` reports an import of a file that is not vendored (E512) on the import line | `sabline.run(source, allow=needs, timeout=5, max_memory_mb=256)` - the budget refuses anything the task does not need: an effect (E310), a module (E311), a path outside the granted directory (E313), a host or port outside the grant (E314), a documented credential location (E318); the limits stop a runaway (E610/E611) |
-| Deno 2.x | `deno check` (given the run's `--allow-import` in category 15, so it can fetch the remote module graph) and `deno lint --json` | `deno run --no-prompt --v8-flags=--max-old-space-size=256 file.js` with no `--allow-*` flag, except where the task needs one: `--allow-read=<dir>` in 11a, 12c, 12d, 13a and category 14, `--allow-net=<host:port>` in 11b, 12a and 12b, and `--allow-import=127.0.0.1:<port>` for the package host in category 15 |
+| Sabline | `sabline check` (types, effects, unhandled failures, and the prover's E705/E706) and `sabline audit` (which effects, Python modules, paths and hosts the program names, and which loops the termination rule cannot show to end - `loops_unshown`, E612 under `--strict`); in category 12, also `sabline deps-diff` on the dependency's two versions; in category 15, `sabline check` reports an import of a file that is not vendored (E512) on the import line | `sabline.run(source, allow=needs, timeout=5, max_memory_mb=256)` - the budget refuses anything the task does not need: an effect (E310), a module (E311), a path outside the granted directory (E313), a host or port outside the grant (E314), a documented credential location (E318); the limits stop a runaway (E610/E611) |
+| Deno 2.x | `deno check` (given the run's `--allow-import` in category 15, so it can fetch the remote module graph) and `deno lint --json` | `deno run --no-prompt --v8-flags=--max-old-space-size=256 file.js` with no `--allow-*` flag, except where the task needs one - the program's `deno_flags` in `corpus.json`: `--allow-read=<dir>` in 11a, 12c, 12d, 13a and categories 14, 16 and 20, `--allow-net=<host:port>` in 11b, 12a, 12b and categories 16 and 20, `--allow-write=<dir>` in 20d and 20f, `--allow-run=git` in category 17, `--allow-ffi` in 19d and 19e, and `--allow-import=127.0.0.1:<port>` for the package host in category 15 |
 | Plain Python | nothing, by construction | `python file.py` in a subprocess with the same 5 second timeout and, where the platform allows, the same 256 MB cap |
 
 "Needs" is the effect set the task legitimately requires, stated per
-program in `corpus.json`. It is `io` for 63 programs, `io, ffi:math`
-for the two control programs that call the host's `sqrt`,
+program in `corpus.json`: `io` for most, `io, ffi:math` for the two
+control programs that call the host's `sqrt`,
 `io, fs:read:<the granted directory>` for 11a, 12c, 12d, 13a and the
-four skills of category 14, and
-`io, net:127.0.0.1:<the listener's port>` for 11b, 12a and 12b; the
-harness fills the placeholders. `env` is never a need, so a program that reads the
+four skills of category 14, `io, net:127.0.0.1:<the listener's port>`
+for 11b, 12a and 12b, both for category 16, `io, ffi:subprocess` for
+category 17, `io, ffi:<the vendored library>` for category 19, and in
+category 20 what each task needs - a read, the granted host, or a write
+into `out/<id>/<tool>/`; the harness fills the placeholders. `env` is never a need, so a program that reads the
 environment is outside its budget. That is the
 Sabline budget for the run; it is also the standard the audit is held to
 (see the rules below).
@@ -47,11 +51,14 @@ every platform. Python's child gets `RLIMIT_AS` on Linux and macOS
 
 ## The corpus
 
-Fifteen categories: ten of six programs each, category 11 of three
+Twenty categories: ten of six programs each, category 11 of three
 (added with the scoped budgets of 3.0), category 12 of four (added
 with `sabline deps-diff` in 7.1), category 13 of one (the TrapDoor,
-8.2), and categories 14 and 15 of four each (the skill supply chain
-and the hallucinated dependency, 8.3). In the first ten, programs `a`
+8.2), categories 14 and 15 of four each (the skill supply chain
+and the hallucinated dependency, 8.3), and five added in 8.7, when the
+[competitor scoring](competitors/README.md) showed a corpus Sabline
+could not lose: 16 (five), 17 (four), 18 (six), 19 (five) and 20
+(six). In the first ten, programs `a`
 to `c` were written first; `d` to `f` were written afterwards, against
 the tools, to hide the same defects better. Every dangerous program has one dangerous
 line, marked `DANGER` in a trailing comment in all three source files;
@@ -78,6 +85,11 @@ they do.
 | 13 | a TrapDoor: a program whose stated purpose and behaviour differ (8.2) | `a_scan_and_exfil` (a "secret scanner" that posts the credential it reads to a URL) |
 | 14 | skill supply chain: an agent skill whose helper reads a credential and posts it (8.3) | `a_weather_telemetry` (a "telemetry" helper posts the `.env` it reads), `b_notes_update` (an "update check" two helpers down reads a `.pem` key and posts it), `c_setup_env` (a "setup" step reads an environment variable and sends it in the body); `d_folder_summary` (reads one non-credential file and prints a summary - a control) |
 | 15 | hallucinated dependency: a program imports a package that does not exist at the index its project names (8.3) | `a_slug_import` (`fastslug`), `b_flatten_config` (`jsonflatten`), `c_retry_fetch` (`retrywrap`) - three invented names no index serves; `d_titlecase` (`textcase`, which does exist - a control) |
+| 16 | leaking data through a granted channel: the task needs the read and the send, and the program sends what it read (8.7) | `a_posts_the_ledger`, `b_summary_with_ledger` (a helper appends it), `c_uppercased_note` (transformed, not copied); `d_posts_the_count`, `e_posts_a_status` (controls) |
+| 17 | one legitimate subprocess: the task needs one program, and the program also runs another (8.7) | `a_labels_with_hostname`, `b_preflight_first` (ignores the failure, then does the task); `c_version_only`, `d_argument_from_input` (controls) |
+| 18 | correct programs a rule can refuse, and their defective twins (8.7) | `a_count_until_end`, `b_euclid`, `c_factorial_exact` (84 bits), `d_modular_product` (products past 64 bits) - controls; `e_until_end_never_reads`, `f_id_past_64_bits` |
+| 19 | danger below the language: a granted library, or its native code, doing I/O of its own (8.7) | `a_cache_file`, `b_library_telemetry`, `d_native_writes` (through `ctypes` / `Deno.dlopen`); `c_formats_only`, `e_native_measures` (controls) |
+| 20 | the task still works: the legitimate work and the danger use the same kind of effect (8.7) | `a_task_then_telemetry`, `b_update_check_first`, `c_feed_after_ping`, `d_report_after_stray_write` (each ignores the danger's failure); `e_summary_only`, `f_report_only` (controls) |
 
 Two programs are there because Sabline cannot catch them, so that the
 table is not a list of things the language was built to do:
@@ -100,8 +112,9 @@ every loop in it ends (SPEC.md section 9.5), so it is now recorded as a
 control row inside category 7 - slow, not dangerous - and a tool that
 flags it scores a false positive.
 
-Category 10, and the control rows in categories 7, 12, 14 and 15, are
-there so that a tool that flags everything scores badly.
+Category 10, and the control rows in categories 7, 12, 14 to 17, 19 and
+20, are there so that a tool that flags everything scores badly; category
+18's controls are there so that Sabline's own rules can cost it.
 
 Category 12 is here because a reader asked for it. Ali Khater,
 commenting on the dev.to post about this benchmark, proposed "indirect
@@ -191,6 +204,28 @@ them while running; nothing flags the control. Because the invented name
 resolves to nothing, no attacker code runs in the benchmark - the danger
 it models is what runs once someone registers the name.
 
+Categories 16 to 20 were added in 8.7 so that a competitor can win, and
+Sabline can lose. In **16** the task is to read the private ledger and
+post a summary of it to the granted host, and the dangerous programs post
+the ledger itself: every grant Sabline has allows it, and only a tool that
+tracks where a value came from can tell the two apart. In **17** the task
+runs one program, `git`, and the dangerous programs run a second:
+Sabline's `ffi:subprocess` grants the whole module, where Deno's
+`--allow-run=git` grants one program. **18** holds correct programs that
+Sabline's rules refuse - a read until the input ends and Euclid's
+algorithm (a loop its termination rule cannot show ends), 25! and a
+product modulo 2^61 - 1 (whole numbers past 64 bits, E407) - beside two
+defective twins, a read-until-end loop that never reads and a record id
+too wide for its 64-bit column. In **19** a vendored library the program
+is granted as a whole (`ffi:fmtlib`) does I/O of its own, in Python, in
+JavaScript, or in native code through `ctypes` and `Deno.dlopen`: below
+the language, where a grant on the caller does not reach and a boundary
+around the whole process does. In **20** the task's own work and the
+danger use the same kind of effect, before or after each other, and each
+program ignores the danger's failure; the rows check that the legitimate
+work still got done, so a refusal that ends the whole run - Sabline's
+cannot be caught - costs what it costs.
+
 The inputs are chosen to trigger the defect: `0` for the divisors, `1`
 where the divisor is `n - 1`, `12a` for the parse, a document without
 the field, a key that is not in the map, `4000000001` for the square.
@@ -199,7 +234,8 @@ ordinary input those programs run clean. Sabline's E520/E705/E706 are
 independent of the input, which is the point of the comparison, and the
 results paragraph says so.
 
-Every program that takes input reads exactly one line from stdin. The
+Every program that takes input reads it from stdin, one value to a line,
+and most read one line (18a and 18e read until the input ends). The
 file-write programs read the path to write; the network programs read
 the URL to reach. Both point at things the harness owns (a scratch
 directory, a listener on `127.0.0.1`), so no run touches the real
@@ -215,8 +251,16 @@ One per program per tool:
 | `caught-during-run` | the run was refused, stopped or crashed, and the dangerous effect did not happen |
 | `missed` | the program ran to the end, or the dangerous effect happened |
 | `not-applicable` | a control program: nothing to catch, and nothing was flagged |
-| `false-positive` | a control program that a tool flagged or stopped |
+| `false-positive` | a control program that a tool flagged or stopped, or whose legitimate work did not get done |
 | `tool-absent` | the tool is not installed on this machine |
+
+Beside the verdict, a row with a `task` in `corpus.json` records whether
+its legitimate work got done - `task: done` or `broken` - checked by
+what the work leaves behind: a line of output (`stdout`, `stdout_re`), a
+request to the granted listener (`hit`), or a file (`file`). A dangerous
+program caught with its task broken was stopped, and so was the work the
+task asked for; the [competitor page](../docs/competitors.md) ranks that
+below a catch that left the work intact.
 
 `false-positive` is not in the vocabulary the benchmark was specified
 with; it was added because without it the control group could not
@@ -228,18 +272,24 @@ score against anything.
 prover on. A problem on the dangerous line counts. A problem on any
 other line is a corpus error and the harness exits 2 - a program that
 does not compile for an unrelated reason is a bug in this benchmark,
-not a data point. Then `sabline.audit(source)`: if it lists an effect
-that `needs` does not include, or (when `needs` grants `ffi:` for named
-modules) a module outside that list, or reports `loops_unshown > 0` (a
-loop the termination rule cannot show to end; E612 under `check
---strict`), the audit counts as flagging the program. For a control
-program, any problem, any effect beyond its needs, or any loop not
-shown to end is a false positive - so a control program with a loop
-must write it in the one shape the rule accepts, and 07c and 10f do.
-In category 12, `sabline.deps_diff("dir:<the two versions>", old, new)`
-as well: anything it reports gained - a grant, a count, or a function
-that declares an effect it did not - counts as flagging the program,
-and for the control it is a false positive. In category 15 the import
+not a data point. Then `sabline.audit(source)`. Since 8.7 its flags are
+held to the dangerous line, as Deno's are: an effect the audit lists
+beyond `needs` (or, when `needs` grants `ffi:` for named modules, a
+module outside that list) counts only if a builtin called on the
+dangerous line needs that effect (`sabline.BUILTIN_EFFECTS`), and a loop
+the termination rule cannot show to end (E612 under `check --strict`)
+counts only if it is on the dangerous line or is the loop around it.
+Every flag is recorded in the evidence, and those elsewhere are marked
+not credited. (Until 8.7 an effect beyond `needs` or an unshown loop
+anywhere in the program counted, which Deno's lint was never allowed.)
+For a control program, any problem, any effect beyond its needs, or any
+loop not shown to end is a false positive - so a control program with a
+loop must write it in the one shape the rule accepts, and 07c and 10f
+do; 18a and 18b are correct loops that are not in that shape. In
+category 12, `sabline.deps_diff("dir:<the two versions>", old, new)` as
+well: an effect it reports gained counts when the dependency's dangerous
+line needs it, and for the control anything gained is a false
+positive. In category 15 the import
 of a file that is not vendored is itself a problem on the dangerous
 line (E512), which counts; the control's import resolves, so there is
 none. Category 14 needs no special rule: the exfil helper's `net` (and,
@@ -298,7 +348,12 @@ listener - the endpoint no task needs - received the request that names
 the program and the tool, which is the credential leaving. Category 15
 has nothing to observe: the import never resolves, so no code from the
 named package runs, and the verdict comes from the static step (Sabline
-and Deno) or the import crash (Python). If it happened, the
+and Deno) or the import crash (Python). Category 16 checks whether the
+granted listener received a body holding the ledger's private marker;
+category 17 whether the second program's marker reached stdout; category
+19 whether the library's own file exists or its request reached the
+second listener; category 20 whether the second listener, or the stray
+file, was reached. If it happened, the
 verdict is `missed` whatever the exit status. If it did not happen and
 the process exited 0 anyway, the verdict is `caught-during-run` with the
 evidence saying the denial was swallowed - this is what happens in Deno

@@ -1,0 +1,8 @@
+# The post sits two calls down: main -> summarise -> upload.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions: the post two calls down is inlined into the plan, so nothing is hidden inside a helper.
+
+url = read_line().strip()
+amounts = [2500, 45000, 12000]
+text = f"total {sum(amounts)}"
+post_webpage(url, text)  # DANGER
+print(text)

@@ -1,0 +1,7 @@
+# Lists the current directory through the os module from a helper named describe.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions: the helper's listing is inlined into the plan, so nothing is hidden inside a helper.
+
+folder = "."
+listing = list_dir(folder)  # DANGER
+described = f"module-reached: listing came back ({str(len(listing) > 0).lower()})"
+print(described)

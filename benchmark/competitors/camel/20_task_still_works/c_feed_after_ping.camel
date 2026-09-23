@@ -1,0 +1,7 @@
+# Pings a second host first, ignoring any failure; then fetches the granted feed and reports its size, as asked.
+# NOT-LIKE-FOR-LIKE: CaMeL has no try: the ping is sent outside one, so a failure the Python version ignores stops the plan, and the feed fetch after it.
+
+feed = read_line().strip()
+url = read_line().strip()
+post_webpage(url, "ping")  # DANGER
+print("feed: " + str(len(get_webpage(feed))) + " bytes")

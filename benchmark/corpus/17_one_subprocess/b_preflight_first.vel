@@ -1,0 +1,13 @@
+// A "preflight" runs a second program first, ignoring any failure, and then the task runs the version-control tool.
+fn main() uses io, ffi {
+    check py("subprocess", "getoutput", ["hostname"]) {  // DANGER
+        ok h { print("second-program-ran") }
+        fail why { }
+    }
+    check py("subprocess", "getoutput", ["git --version"]) {
+        ok out {
+            if contains(out, "git version") { print("vcs: ok") } else { print("vcs: missing") }
+        }
+        fail why { print("vcs: missing") }
+    }
+}

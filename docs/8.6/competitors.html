@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Competitors - Sabline 8.6.0</title>
+<meta name="description" content="Sabline&#x27;s comparison benchmark - 102 programs, 80 with one defect and 22 correct, in 20 categories - run through five tools that claim part of what Sabline ...">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/competitors.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="competitors.html" aria-current="page">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="competitors">Competitors</h1>
+<p>Sabline's <a href="index.html">comparison benchmark</a> - 102 programs, 80 with one defect and 22 correct, in 20 categories - run through five tools that claim part of what Sabline claims, each in its own real runtime, beside Sabline and unsandboxed Python. Every verdict comes from a program that ran; none is scored from documentation. This page is generated from <code>benchmark/competitors/results.json</code>, which <code>benchmark/compete.py</code> records and a CI leg re-derives on every push: a verdict or an evidence line that moves fails the build.</p>
+<div class="callout callout-note" role="note"><p class="callout-title">Note</p>
+<p><strong>Measured</strong> 2026-09-23 on Linux x86_64. <strong>Sabline</strong> 8.6.0, prover present · <strong>Deno</strong> 2.9.7 · <strong>Python (no sandbox)</strong> 3.12.3 · <strong>WASI (wasmtime)</strong> 49.0.0, CPython 3.14.7 WASI build · <strong>Starlark</strong> v0.0.0-20260908191801-89a6a09411d5 · <strong>Python sandbox (smolagents)</strong> 1.26.0 · <strong>CaMeL</strong> 1.0.0, commit f083b6b396399d3b3c7f2ddaf613a5945eaf32d8. A 5 s deadline for every tool but CaMeL, which gets 30 s of interpretation, and a 256 MB cap where the runtime can take one (<a href="#how-each-column-was-run">how each column is run</a>).</p>
+</div>
+<h2 id="where-a-competitor-is-ahead">Where a competitor is ahead <a class="anchor" href="#where-a-competitor-is-ahead" aria-label="Link to this section">#</a></h2>
+<p>Each row is compared first on what a tool achieved, and only then on when: stopping the danger with the task's legitimate work intact beats stopping it with the work broken too, which beats missing it, and on a correct program running it clean beats flagging it. Only where two tools achieved the same does the timing count - before running or while. A row a tool cannot express, or one outside CaMeL's threat model, is not compared.</p>
+<ul>
+<li><strong>Deno</strong>, 15 row(s): stopped the danger with the task's work intact, where Sabline's refusal ended the run and the task with it (12a, 12b, 12c, 14c, 20b, 20c, 20d); caught what Sabline missed (17a, 17b, 19a, 19b); ran the correct program clean, where Sabline stopped or flagged it (18a, 18b, 18c, 18d).</li>
+<li><strong>WASI (wasmtime)</strong>, 10 row(s): stopped the danger with the task's work intact, where Sabline's refusal ended the run and the task with it (12c, 14c, 20b, 20d); ran the correct program clean, where Sabline stopped or flagged it (18a, 18b, 18c, 18d); caught what Sabline missed (19a, 19b).</li>
+<li><strong>Starlark</strong>, 4 row(s): caught what Sabline missed (17a); caught what Sabline missed, though with the task broken (17b); ran the correct program clean, where Sabline stopped or flagged it (18c, 18d).</li>
+<li><strong>Python sandbox (smolagents)</strong>, 7 row(s): stopped what Sabline missed, by a failure that is not a refusal and would have stopped the task too (†) (16a, 16b, 16c); ran the correct program clean, where Sabline stopped or flagged it (18a, 18b, 18c, 18d).</li>
+<li><strong>CaMeL</strong>, 3 row(s): caught what Sabline missed (16a, 16b, 16c).</li>
+</ul>
+<p>Against Sabline, row by row. <em>Tie</em> is the same outcome at the same time; <em>earlier</em> and <em>later</em> mean the same outcome, one before running and one while running. <em>Not compared</em> counts the rows a tool cannot express, and for CaMeL the rows outside its threat model.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Competitor</th><th class="al-right">Ahead</th><th class="al-right">Earlier</th><th class="al-right">Tie</th><th class="al-right">Later</th><th class="al-right">Behind</th><th class="al-right">Not compared</th></tr></thead>
+<tbody>
+<tr><td>Deno</td><td class="al-right">15</td><td class="al-right">0</td><td class="al-right">35</td><td class="al-right">29</td><td class="al-right">23</td><td class="al-right">0</td></tr>
+<tr><td>WASI (wasmtime)</td><td class="al-right">10</td><td class="al-right">0</td><td class="al-right">21</td><td class="al-right">49</td><td class="al-right">7</td><td class="al-right">15</td></tr>
+<tr><td>Starlark</td><td class="al-right">4</td><td class="al-right">0</td><td class="al-right">64</td><td class="al-right">19</td><td class="al-right">10</td><td class="al-right">5</td></tr>
+<tr><td>Python sandbox (smolagents)</td><td class="al-right">7</td><td class="al-right">0</td><td class="al-right">28</td><td class="al-right">47</td><td class="al-right">20</td><td class="al-right">0</td></tr>
+<tr><td>CaMeL</td><td class="al-right">3</td><td class="al-right">0</td><td class="al-right">2</td><td class="al-right">2</td><td class="al-right">4</td><td class="al-right">91</td></tr>
+</tbody></table></div>
+<p>Nothing caught 04c, 09c, 19d.</p>
+<h3 id="where-each-is-stronger-by-design">Where each is stronger by design <a class="anchor" href="#where-each-is-stronger-by-design" aria-label="Link to this section">#</a></h3>
+<p>A score on this corpus is not what any of these tools is for. What each is actually built to do, and where that makes it stronger than Sabline whatever this table says:</p>
+<ul>
+<li><strong>Deno.</strong> A permission system for a language people already write, enforced by the runtime at the moment of the call, for JavaScript and TypeScript and everything npm ships. It can grant one program to run (<code>--allow-run=git</code>), which Sabline cannot express: Sabline's <code>ffi:</code> grants a whole host module, and it has no model of a subprocess. It needs no new language and no rewrite.</li>
+<li><strong>WASI (wasmtime).</strong> A boundary made by the virtual machine, not by the language: whatever code runs inside - interpreted Python, compiled C, a native extension - reaches only the handles the host passed in, one by one. Sabline's first guard is its own interpreter, with OS confinement (8.4) under it as a second; but a granted <code>ffi:</code> module runs as host code, and the OS policy is widened to what that module can do - for <code>ffi:os</code> or <code>ffi:subprocess</code>, nothing is enforced. Where the code is not Sabline, or the threat is a flaw in the interpreter, a boundary that hands out capabilities one handle at a time is the stronger design.</li>
+<li><strong>Starlark.</strong> Determinism and termination by construction: no <code>while</code>, no recursion, no I/O but what the host predeclares, and the same result on every run. That is exactly what a build or configuration language needs, and it makes a whole class of defect - an unbounded loop, a hidden effect - impossible to write, where Sabline's termination rule only reports what it cannot show. The cost is that programs that need an unbounded loop cannot be written.</li>
+<li><strong>Python sandbox (smolagents).</strong> Nothing new to learn: the model writes the Python it already writes, and the agent framework runs it. Its restrictions are an import allowlist and a short list of permitted functions, enforced by an interpreter of its own inside the host process - which is why it is convenient, and why its own documentation says it is not a security boundary: an authorised module runs as ordinary Python. It is stronger than Sabline only in that sense: it runs the code people already have.</li>
+<li><strong>CaMeL.</strong> Information flow per value: every value carries where it came from and who may read it, and a policy decides at each tool call whether <em>this data</em> may go <em>there</em>. That stops the laundering Sabline has no answer to - read something with a granted read, send it with a granted send - and it is the reason CaMeL leads on AgentDojo. Its threat model is prompt injection into a trusted plan, not an untrusted program, which is why most of this corpus is outside what it tries to stop.</li>
+</ul>
+<h2 id="the-table">The table <a class="anchor" href="#the-table" aria-label="Link to this section">#</a></h2>
+<p>Per category: caught before running / caught while running / missed, with how many of the catches broke the task's legitimate work too; for the correct programs, clean / false positive; and the rows a tool cannot express, or that are outside CaMeL's threat model, which are not scored. The per-program rows follow, each with its notes.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Category</th><th>Sabline</th><th>Deno</th><th>Python (no sandbox)</th><th>WASI (wasmtime)</th><th>Starlark</th><th>Python sandbox (smolagents)</th><th>CaMeL</th></tr></thead>
+<tbody>
+<tr><td>1. A file write hidden inside a helper function</td><td>6/0/0</td><td>0/6/0</td><td>0/0/6</td><td>0/6/0</td><td>6/0/0</td><td>0/6/0</td><td>6 outside</td></tr>
+<tr><td>2. A network call hidden inside a helper</td><td>6/0/0</td><td>0/6/0</td><td>0/0/6</td><td>0/6/0</td><td>6/0/0</td><td>0/6/0</td><td>6 outside</td></tr>
+<tr><td>3. Division by a value that comes from input and can be zero</td><td>3/3/0</td><td>0/0/6</td><td>0/6/0</td><td>0/6/0</td><td>0/6/0</td><td>0/6/0</td><td>6 outside</td></tr>
+<tr><td>4. An off-by-one read past the end of a list</td><td>4/1/1</td><td>0/0/6</td><td>0/5/1</td><td>0/5/1</td><td>0/5/1</td><td>0/5/1</td><td>6 outside</td></tr>
+<tr><td>5. Integer overflow</td><td>0/6/0</td><td>0/0/6</td><td>0/0/6</td><td>0/0/6</td><td>0/0/6</td><td>0/1/5</td><td>6 outside</td></tr>
+<tr><td>6. An ignored failure (a parse that can fail, not handled)</td><td>6/0/0</td><td>0/1/5</td><td>0/6/0</td><td>0/6/0</td><td>0/6/0</td><td>0/6/0</td><td>6 outside</td></tr>
+<tr><td>7. An infinite loop</td><td>5/0/0; 1 clean</td><td>0/5/0; 1 clean</td><td>0/5/0; 1 clean</td><td>0/5/0; 1 clean</td><td>5/0/0; 1 clean</td><td>0/5/0; 1 clean</td><td>6 outside</td></tr>
+<tr><td>8. Runaway memory growth</td><td>5/1/0</td><td>5/1/0</td><td>0/6/0</td><td>0/6/0</td><td>5/1/0</td><td>0/6/0</td><td>6 outside</td></tr>
+<tr><td>9. Reaching a dangerous module (subprocess / child_process / os.system)</td><td>5/0/1</td><td>0/5/1</td><td>0/0/6</td><td>0/5/1</td><td>5/0/1</td><td>0/5/1</td><td>6 outside</td></tr>
+<tr><td>10. A plain correct program that must NOT be flagged</td><td>6 clean</td><td>6 clean</td><td>6 clean</td><td>6 clean</td><td>6 clean</td><td>6 clean</td><td>6 outside</td></tr>
+<tr><td>11. A grant narrower than the effect: one directory, one host, no secrets (3.0)</td><td>1/2/0</td><td>0/3/0</td><td>0/0/3</td><td>0/2/0; 1 not expressible</td><td>1/2/0</td><td>0/2/1</td><td>3 outside</td></tr>
+<tr><td>12. Indirect authority: the caller is unchanged, and a dependency's declared budget widened between versions (7.1)</td><td>3/0/0 (3 task broken); 1 clean</td><td>0/3/0; 1 clean</td><td>0/0/3; 1 clean</td><td>0/1/0; 1 clean; 2 not expressible</td><td>0/3/0 (3 task broken); 1 clean</td><td>0/1/2 (1 task broken); 1 clean</td><td>0/0/1; 3 outside</td></tr>
+<tr><td>13. A TrapDoor: a program whose stated purpose and behaviour differ</td><td>1/0/0</td><td>0/1/0</td><td>0/0/1</td><td>0/1/0</td><td>1/0/0</td><td>0/1/0</td><td>0/1/0</td></tr>
+<tr><td>14. Skill supply chain: an agent skill whose helper reads a credential and posts it</td><td>3/0/0 (1 task broken); 1 clean</td><td>0/3/0; 1 clean</td><td>0/0/3; 1 clean</td><td>0/3/0; 1 clean</td><td>3/0/0 (3 task broken); 1 clean</td><td>0/3/0 (3 task broken); 1 clean</td><td>0/3/0 (3 task broken); 1 clean</td></tr>
+<tr><td>15. Hallucinated dependency: a program that imports a package that does not exist</td><td>3/0/0; 1 clean</td><td>3/0/0; 1 clean</td><td>0/3/0; 1 clean</td><td>0/3/0; 1 clean</td><td>0/3/0; 1 clean</td><td>0/3/0; 1 clean</td><td>4 outside</td></tr>
+<tr><td>16. Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read</td><td>0/0/3; 2 clean</td><td>0/0/3; 2 clean</td><td>0/0/3; 2 clean</td><td>5 not expressible</td><td>0/0/3; 2 clean</td><td>0/3/0; 0 clean, <strong>2 FP</strong></td><td>0/3/0; 1 clean, <strong>1 FP</strong></td></tr>
+<tr><td>17. One legitimate subprocess: the task needs one program, and the program also runs another</td><td>0/0/2; 2 clean</td><td>0/2/0; 2 clean</td><td>0/0/2; 2 clean</td><td>4 not expressible</td><td>0/2/0 (1 task broken); 2 clean</td><td>0/0/2; 2 clean</td><td>4 outside</td></tr>
+<tr><td>18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins</td><td>1/1/0; 0 clean, <strong>4 FP</strong></td><td>0/1/1; 4 clean</td><td>0/1/1; 4 clean</td><td>0/1/1; 4 clean</td><td>1/0/1; 2 clean, <strong>2 FP</strong></td><td>0/1/1; 4 clean</td><td>6 outside</td></tr>
+<tr><td>19. Danger below the language: a granted library, or its native code, doing I/O of its own</td><td>0/0/3; 2 clean</td><td>0/2/1; 2 clean</td><td>0/0/3; 2 clean</td><td>0/2/0; 1 clean; 2 not expressible</td><td>5 not expressible</td><td>0/0/3; 2 clean</td><td>5 outside</td></tr>
+<tr><td>20. The task still works: the legitimate work and the danger use the same kind of effect, before or after each other</td><td>2/2/0 (3 task broken); 2 clean</td><td>0/4/0; 2 clean</td><td>0/0/4; 2 clean</td><td>0/3/0; 2 clean; 1 not expressible</td><td>2/2/0 (4 task broken); 2 clean</td><td>0/3/1 (3 task broken); 2 clean</td><td>6 outside</td></tr>
+<tr><td><strong>Caught, of the dangerous rows scored</strong></td><td><strong>70</strong> of 80 (54 before; 7 with the task broken)</td><td><strong>51</strong> of 80 (8 before; 0 with the task broken)</td><td><strong>32</strong> of 80 (0 before; 0 with the task broken)</td><td><strong>61</strong> of 70 (0 before; 0 with the task broken)</td><td><strong>65</strong> of 77 (35 before; 11 with the task broken)</td><td><strong>63</strong> of 80 (0 before; 7 with the task broken)</td><td><strong>7</strong> of 8 (0 before; 3 with the task broken)</td></tr>
+<tr><td><strong>False positives, of the correct programs scored</strong></td><td><strong>4</strong> of 22</td><td><strong>0</strong> of 22</td><td><strong>0</strong> of 22</td><td><strong>0</strong> of 17</td><td><strong>2</strong> of 20</td><td><strong>2</strong> of 22</td><td><strong>1</strong> of 3</td></tr>
+<tr><td><strong>Not expressible / outside the threat model</strong></td><td>0 / 0</td><td>0 / 0</td><td>0 / 0</td><td>15 / 0</td><td>5 / 0</td><td>0 / 0</td><td>0 / 91</td></tr>
+<tr><td><strong>Catches the row itself says were not a refusal</strong></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>10</td><td>0</td></tr>
+</tbody></table></div>
+<p>A catch with the task broken stopped the danger and the program's legitimate work with it - a refusal that ends the whole run, a program that did not compile or resolve, a runtime that cannot make the task's own request. The last row counts catches the benchmark's rule credits but whose row note says the program was stopped by something other than a refusal of its danger. Read each column's catches net of both.</p>
+<h2 id="every-scenario">Every scenario <a class="anchor" href="#every-scenario" aria-label="Link to this section">#</a></h2>
+<p>Every program's row, with the verdict for all seven tools and every place a row is not like-for-like, is on a page of its own: <a href="competitors-scenarios.html">every scenario</a>. Every cell's evidence line is on the evidence pages (<a href="competitors-evidence-1.html">part 1</a>, <a href="competitors-evidence-2.html">part 2</a>, <a href="competitors-evidence-3.html">part 3</a>).</p>
+<h2 id="expected-and-what-happened">Expected, and what happened <a class="anchor" href="#expected-and-what-happened" aria-label="Link to this section">#</a></h2>
+<p><code>benchmark/competitors/expectations.json</code> was committed before the harness ran anything, and its categories 16 to 20 before any competitor ran on them (countermeasure 1 in plan/8.7.md). Here it is beside the record, for the four columns it predicted; <em>as expected</em> means every dangerous row of the category landed in the predicted class, and anything else is shown as it happened. The predictions for categories 1 to 15 were written under the first rules and are left as they were.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Category</th><th>WASI (wasmtime)</th><th>Starlark</th><th>Python sandbox (smolagents)</th><th>CaMeL</th></tr></thead>
+<tbody>
+<tr><td>1. a file write hidden inside a helper</td><td>as expected</td><td>as expected</td><td>as expected</td><td>outside, not scored (predicted missed)</td></tr>
+<tr><td>2. a network call hidden inside a helper</td><td>as expected</td><td>as expected</td><td>as expected</td><td>outside, not scored (predicted missed)</td></tr>
+<tr><td>3. division by a value from input that can be zero</td><td>as expected</td><td>as expected</td><td>as expected</td><td>outside, not scored (predicted during)</td></tr>
+<tr><td>4. an off-by-one read past the end of a list</td><td>as expected; 04c missed</td><td>as expected; 04c missed</td><td>as expected; 04c missed</td><td>outside, not scored (predicted during); 04c outside</td></tr>
+<tr><td>5. integer overflow</td><td>as expected</td><td>as expected</td><td>expected missed; got 1 during, 5 missed</td><td>outside, not scored (predicted missed)</td></tr>
+<tr><td>6. an ignored failure</td><td>as expected</td><td>as expected</td><td>as expected</td><td>outside, not scored (predicted during)</td></tr>
+<tr><td>7. an infinite loop</td><td>as expected</td><td>as expected</td><td>as expected</td><td>outside, not scored (predicted during)</td></tr>
+<tr><td>8. runaway memory growth</td><td>as expected</td><td>expected before; got 5 before, 1 during</td><td>as expected</td><td>outside, not scored (predicted during)</td></tr>
+<tr><td>9. reaching a dangerous module</td><td>as expected; 09c missed; 09f during</td><td>as expected; 09c missed; 09f before</td><td>as expected; 09c missed; 09f during</td><td>outside, not scored (predicted during); 09c outside; 09f outside</td></tr>
+<tr><td>11. a grant narrower than the effect</td><td>expected during; got 2 during, 1 not expressible</td><td>expected during (11c before); got 1 before, 2 during</td><td>expected 11a missed, 11b missed, 11c during; got 2 during, 1 missed</td><td>outside, not scored (predicted missed)</td></tr>
+<tr><td>12. indirect authority: a dependency widened between versions</td><td>expected during; got 1 during, 2 not expressible; controls: 1 clean</td><td>expected during; got 3 during (task broken); controls: 1 clean</td><td>expected missed; got 1 during (task broken), 2 missed; controls: 1 clean</td><td>expected 12a during, 12b missed, 12c missed; got 1 missed, 2 outside; controls: 1 outside</td></tr>
+<tr><td>13. a TrapDoor</td><td>as expected</td><td>as expected</td><td>as expected</td><td>as expected</td></tr>
+<tr><td>14. skill supply chain</td><td>as expected</td><td>expected before; got 3 before (task broken); controls: 1 clean</td><td>expected during; got 3 during (task broken); controls: 1 clean</td><td>expected during; got 3 during (task broken); controls: 1 clean</td></tr>
+<tr><td>15. hallucinated dependency</td><td>as expected</td><td>as expected</td><td>as expected</td><td>outside, not scored (predicted during)</td></tr>
+<tr><td>16. leaking data through a granted channel</td><td>expected not-expressible; got 3 not expressible; controls: 2 not expressible</td><td>as expected</td><td>expected during, by the urllib defect (not a refusal); got 3 during; controls: 2 false positive</td><td>expected during (controls clean); got 3 during; controls: 1 clean, 1 false positive</td></tr>
+<tr><td>17. one legitimate subprocess</td><td>expected not-expressible; got 2 not expressible; controls: 2 not expressible</td><td>expected during (a: task done; b: task broken, Starlark has no try); got 1 during, 1 during (task broken); controls: 2 clean</td><td>as expected</td><td>as expected</td></tr>
+<tr><td>18. correct programs a rule can refuse</td><td>expected controls clean; e during, f missed; got 1 during, 1 missed; controls: 4 clean</td><td>expected a and b false positives (no while), c and d clean; e before, f missed; got 1 before, 1 missed; controls: 2 clean, 2 false positive</td><td>expected controls clean; e during, f missed; got 1 during, 1 missed; controls: 4 clean</td><td>as expected</td></tr>
+<tr><td>19. danger below the language</td><td>expected a and b during with the task done; d and e not-expressible; got 2 during, 1 not expressible; controls: 1 clean, 1 not expressible</td><td>expected not-expressible; got 3 not expressible; controls: 2 not expressible</td><td>as expected</td><td>as expected</td></tr>
+<tr><td>20. the task still works</td><td>expected a, b, d during with the task done; c not-expressible; got 3 during, 1 not expressible; controls: 2 clean</td><td>expected a and b before with the task broken; c and d during, task broken; got 2 before (task broken), 2 during (task broken); controls: 2 clean</td><td>expected a, b: during with the task broken (the urllib import is refused before the task); c: during by the defect; d: missed; got 3 during (task broken), 1 missed; controls: 2 clean</td><td>as expected</td></tr>
+</tbody></table></div>
+<p>The rows named as exceptions in advance, and what the file said of them: <strong>04c</strong>: missed by every tool: the loop stops early and nothing reads out of range; <strong>09c</strong>: missed by every tool: it only prints text; <strong>09f</strong>: uncertain for wasi (listing '.' inside the guest may succeed on a preopened directory) and expected missed for camel (a directory listing is a read, which CaMeL does not police).</p>
+<p>Where an expectation was wrong it is left wrong in the file, and the difference is the finding. The predictions assumed each runtime would stop a program for the reason the category is about; where the record differs, the notes in the scenario rows say what did stop it - most often something other than a refusal of the danger (a smolagents defect, or a language with no try that stops at the first refusal and takes the task with it), which the benchmark's rule credits as a catch and this page ranks as a catch with the task broken.</p>
+<h3 id="categories-no-competitor-catches">Categories no competitor catches <a class="anchor" href="#categories-no-competitor-catches" aria-label="Link to this section">#</a></h3>
+<p>Countermeasure 2: a category that only Sabline catches is either a real property or a rigged question, and is reviewed before it is published. A catch whose own row says it was not a refusal is not counted here. Categories caught by no competitor: 5 (Integer overflow).</p>
+<ul>
+<li><strong>5. Integer overflow.</strong> Reviewed, and kept, as a judgement call rather than a win. Sabline's whole numbers are 64-bit and arithmetic that leaves the range stops the program (E407); every competitor computes the arithmetically right, larger number, because Python's, JavaScript's (as a double) and Starlark's integers do not wrap. Nothing in the corpus says the result must fit 64 bits, so the category counts a correct answer as a miss. A reader who disagrees can discount its six rows. The other side is category 18: 18c and 18d need numbers past 64 bits, are correct, and Sabline stops both.</li>
+</ul>
+<p>Rows only Sabline catches: 05a, 05b, 05c, 05d, 05e, 05f, 18f.</p>
+<h2 id="what-changed-in-the-scoring-and-why">What changed in the scoring, and why <a class="anchor" href="#what-changed-in-the-scoring-and-why" aria-label="Link to this section">#</a></h2>
+<p>The first version of this table (pull request #104, never published) had
+Sabline ahead or level on every row. That was the benchmark, not the tools,
+and these are the corrections, each applied to every column alike.</p>
+<ul>
+<li><em>The outcome comes first; the timing only breaks a tie.</em> A row is scored
+on what a tool achieved: the danger stopped with the task's legitimate
+work intact, stopped with the work broken too, or missed - and on a
+correct program, run clean or not. Before, catching a danger <em>before
+running</em> outranked catching it while running, so a design with no static
+step (WASI, the Python sandbox, CaMeL) could never be ahead of one with
+a static step, whatever it did.</li>
+<li><em>Whether the legitimate work still succeeded is checked,</em> on every row
+that has work to check: the output the task asked for, the request it
+was granted, the file it was to write. A runtime that stops everything
+now scores as a catch with the task broken, not as though it had stopped
+only the danger - and a Sabline refusal, which ends the run and cannot be
+caught, is scored the same way. Where a row's own note says a catch came
+from a failure that would have stopped the task as well (a runtime
+without sockets, a defect in smolagents, a deadline), it is scored the
+same way even where there is no task line to check.</li>
+<li><em>"Caught before running" is credited only where the tool's own design has
+that step:</em> Sabline's check, audit and deps-diff, Deno's type check and
+lint, Starlark's resolver. The others are scored on what happened when
+the program ran.</li>
+<li><em>A static flag counts only on the marked dangerous line, for every tool.</em>
+Before, Sabline's audit was credited for an effect or an unbounded loop
+anywhere in the program, while Deno's lint and Starlark's resolver were
+credited only on the dangerous line. Now Sabline's audit is credited only
+for an effect that a call on the dangerous line needs, or a loop its
+termination rule names on that line or on the loop around it; a flag
+anywhere else is recorded and not credited.</li>
+<li><em>CaMeL is scored only where its threat model makes a claim:</em> where a
+value that came from a tool (a file read, a web page, the environment)
+reaches another tool on the dangerous line. Its plan is trusted by
+design, so a hidden write or a runaway loop in the plan is outside what
+it tries to stop. Those cells still ran and say what happened; they read
+<em>outside</em> and are not counted.</li>
+<li><em>A scenario a runtime cannot express is recorded as such, with the reason,</em>
+rather than scored or skipped: WASI has no sockets and no processes,
+a Starlark module has no I/O of its own, a native library cannot be
+loaded into a WebAssembly guest.</li>
+<li><em>Five categories were added where a competitor should win or Sabline
+should lose</em> (16 to 20), and their predictions were committed before any
+competitor ran them.</li>
+</ul>
+<h2 id="where-the-benchmark-is-still-unfair">Where the benchmark is still unfair <a class="anchor" href="#where-the-benchmark-is-still-unfair" aria-label="Link to this section">#</a></h2>
+<p><strong>In Sabline's favour.</strong></p>
+<ul>
+<li><em>Most rows of categories 1 to 11 have no task check.</em> Their dangerous
+programs do nothing but the dangerous thing, so there is no legitimate
+work to measure, and a refusal that ends the run costs nothing there.
+That favours the designs that end the program at the first refusal -
+Sabline, Starlark and CaMeL - over the ones whose programs can catch a
+denial and go on, as Deno's do. Category 20 measures exactly this, and
+Sabline loses it.</li>
+<li><em>The corpus is about hidden effects, which is what an effect system is
+for.</em> Categories 1, 2 and 9 test a write, a request or a process call
+hidden in a helper, and Sabline finds each one before it runs (09c,
+which only prints text, is no hidden effect).</li>
+<li><em>Categories 5 and 18f count a correct, larger number as a miss</em>
+(reviewed above, under the categories no competitor catches).</li>
+<li><em>Every program was written by Sabline's author, and every translation by
+agents working for them.</em> The rows are small, and each is built to
+show one property.</li>
+</ul>
+<p><strong>Against Sabline, and for the competitors.</strong></p>
+<ul>
+<li><em>A catch by an unrelated failure still ranks above a miss.</em> The Python
+sandbox "catches" rows whose task needs the network because smolagents
+1.26.0 cannot run <code>urllib.request.urlopen</code> at all; each such row says so,
+and scores as a catch with the task broken - still ahead of a Sabline
+miss.</li>
+<li><em>A swallowed denial counts.</em> Where a Deno program catches the permission
+error and goes on, the harness credits the catch because it watched the
+socket or the file. A caller reading the exit status would have seen
+success.</li>
+<li><em>Crashes on chosen input count.</em> Categories 3 and 6 are caught by every
+Python-shaped runtime because the harness feeds the input that makes the
+defect fire; with ordinary input they run clean. Sabline's E706 and E520
+do not depend on the input.</li>
+</ul>
+<h2 id="what-the-benchmark-is-still-missing">What the benchmark is still missing <a class="anchor" href="#what-the-benchmark-is-still-missing" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>A model in the loop.</strong> Every CaMeL plan here is a hand translation; CaMeL
+exists to constrain plans a model writes from untrusted input, and the
+<a href="agentdojo.html">AgentDojo evaluation</a> is where that is measured (Sabline:
+19 of 105 attacks land under a task budget).</li>
+<li><strong>An operating-system sandbox column</strong> - bubblewrap, nsjail, gVisor, a
+container - which would stop 19d, where native code in a granted library
+writes a file of its own and no column here stops it. Sabline's own OS
+confinement (8.4) is not in its column: a granted <code>ffi:</code> module runs as
+host code and the policy is widened to what the module can do.</li>
+<li><strong>More correct programs Sabline refuses:</strong> a legitimate read of a
+credential file (E318), a safe division the prover cannot show is safe
+(E706), a loop over a structure that shrinks.</li>
+<li><strong>Task checks on categories 1 to 11,</strong> so that ending the run at the
+first refusal costs something there too.</li>
+<li><strong>Other platforms.</strong> Everything was recorded on one Linux machine; how
+Deno, wasmtime and the others behave on Windows or macOS is not measured.</li>
+</ul>
+<h2 id="how-each-column-was-run">How each column was run <a class="anchor" href="#how-each-column-was-run" aria-label="Link to this section">#</a></h2>
+<p>Each tool gets the narrowest grant that still lets the task's legitimate work run, derived from the program's <code>needs</code> by one rule per tool, never tuned per program. The full rules, and why this Python sandbox, are in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/benchmark/competitors/README.md">benchmark/competitors/README.md</a>.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Column</th><th>Runtime</th><th>Grant</th><th>Time limit</th><th>Memory cap</th></tr></thead>
+<tbody>
+<tr><td>Sabline</td><td>this checkout</td><td><code>allow=needs</code></td><td>its own, 5 s</td><td>its own, 256 MB</td></tr>
+<tr><td>Deno</td><td>Deno, pinned</td><td><code>--allow-read=&lt;dir&gt;</code>, <code>--allow-write=&lt;dir&gt;</code>, <code>--allow-net=&lt;host:port&gt;</code>, <code>--allow-run=&lt;program&gt;</code>, <code>--allow-ffi</code>, or none</td><td>the harness's, 5 s</td><td>its own, <code>--max-old-space-size=256</code></td></tr>
+<tr><td>Python (no sandbox)</td><td>CPython, no sandbox</td><td>none: no budget exists</td><td>the harness's, 5 s</td><td>the harness's <code>RLIMIT_AS</code></td></tr>
+<tr><td>WASI (wasmtime)</td><td>the same <code>.py</code>, in CPython's WASI build under wasmtime</td><td><code>--dir &lt;dir&gt;</code> for a read or a write (no read-only form); <strong>a network grant, a process or a native library cannot be expressed</strong>; no environment</td><td>its own, <code>-W timeout=5s</code></td><td>its own, <code>-W max-memory-size</code></td></tr>
+<tr><td>Starlark</td><td>a translation, in starlark-go</td><td>a predeclared function per grant, refusing any other path, host or program; nothing else</td><td>its own (the host cancels the thread)</td><td>none: the Go runtime cannot start under a 256 MB address limit</td></tr>
+<tr><td>Python sandbox (smolagents)</td><td>the same <code>.py</code>, in smolagents' LocalPythonExecutor</td><td>an import allowlist and passed-in functions; <code>open</code> and <code>urllib.request</code> cannot be scoped</td><td>the host's watchdog, 5 s of interpretation (smolagents' own cannot fire first)</td><td>the harness's <code>RLIMIT_AS</code></td></tr>
+<tr><td>CaMeL</td><td>a translation (a plan), in CaMeL's reference interpreter</td><td>CaMeL's tool set and its own policies, the same for every program; scored only on the rows its threat model claims</td><td>the host's, <strong>30 s</strong> of interpretation (not like-for-like: see 07c)</td><td>none: its imports alone exceed a 256 MB address limit</td></tr>
+</tbody></table></div>
+<h2 id="reproducing-it">Reproducing it <a class="anchor" href="#reproducing-it" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>python benchmark/competitors/fetch_runtimes.py   # pinned by SHA-256; builds the Starlark host
+pip install -r requirements/competitors.txt      # smolagents and CaMeL, pinned all the way down
+python benchmark/compete.py --check              # every cell, re-derived
+python benchmark/compete.py --only 13a,14c       # a few cells, printed</code></pre></div>
+<p>Nothing costs money: public downloads, pinned packages, no key, no model. A runtime that is not installed reads NOT RUN in every cell rather than an estimate.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/competitors.md">docs/competitors.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#where-a-competitor-is-ahead">Where a competitor is ahead</a><ul><li><a href="#where-each-is-stronger-by-design">Where each is stronger by design</a></li></ul></li><li><a href="#the-table">The table</a></li><li><a href="#every-scenario">Every scenario</a></li><li><a href="#expected-and-what-happened">Expected, and what happened</a><ul><li><a href="#categories-no-competitor-catches">Categories no competitor catches</a></li></ul></li><li><a href="#what-changed-in-the-scoring-and-why">What changed in the scoring, and why</a></li><li><a href="#where-the-benchmark-is-still-unfair">Where the benchmark is still unfair</a></li><li><a href="#what-the-benchmark-is-still-missing">What the benchmark is still missing</a></li><li><a href="#how-each-column-was-run">How each column was run</a></li><li><a href="#reproducing-it">Reproducing it</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

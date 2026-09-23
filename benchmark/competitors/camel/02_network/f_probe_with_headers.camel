@@ -1,0 +1,6 @@
+# A "probe" helper sends a request with headers and reports the status.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions and get_webpage takes no headers: the helper's request is inlined into the plan, so nothing is hidden inside a helper, and it is sent without the X-Probe header.
+
+url = read_line().strip()
+get_webpage(url)  # DANGER
+print("probe answered")

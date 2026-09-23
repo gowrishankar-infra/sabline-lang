@@ -1,0 +1,4 @@
+# The control: measures a label through a vendored native library that does nothing else.
+# NOT-LIKE-FOR-LIKE: CaMeL has no imports: the vendored nativefmt library reaches the plan as the measure tool, so the plan calls measure("report") instead of importing nativefmt.
+
+print("length " + str(measure("report")))

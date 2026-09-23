@@ -1,0 +1,7 @@
+// Measures a label through a vendored native library; the native code also writes a file of its own.
+fn main() uses io, ffi {
+    check py_int("nativefmt", "measure", ["report"]) {
+        ok n { print(format("length {}", n)) }
+        fail why { print("no measure: " + why) }
+    }
+}

@@ -8,9 +8,9 @@
   "python": "3.13.13",
   "python_memory_cap": "job object",
   "quick": false,
-  "timeout_s": 5,
-  "sabline": "8.4.0",
-  "sabline_memory_cap": "enforced"
+  "sabline": "8.6.0",
+  "sabline_memory_cap": "enforced",
+  "timeout_s": 5
  },
  "programs": [
   {
@@ -54,6 +54,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires write access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -69,6 +70,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -81,9 +83,12 @@
       "beyond_needs": [
        "fs"
       ],
+      "beyond_needs_on_danger_line": [
+       "fs"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -103,6 +108,7 @@
      },
      "evidence": "audit: fs; run: E310 refused fs",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -148,6 +154,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires write access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -163,6 +170,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -175,9 +183,12 @@
       "beyond_needs": [
        "fs"
       ],
+      "beyond_needs_on_danger_line": [
+       "fs"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -197,6 +208,7 @@
      },
      "evidence": "audit: fs; run: E310 refused fs",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -242,6 +254,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires write access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -257,6 +270,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -269,9 +283,12 @@
       "beyond_needs": [
        "fs"
       ],
+      "beyond_needs_on_danger_line": [
+       "fs"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -291,6 +308,7 @@
      },
      "evidence": "audit: fs; run: E310 refused fs",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -336,6 +354,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires write access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -351,6 +370,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -363,9 +383,12 @@
       "beyond_needs": [
        "fs"
       ],
+      "beyond_needs_on_danger_line": [
+       "fs"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -385,6 +408,7 @@
      },
      "evidence": "audit: fs; run: E310 refused fs",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -430,6 +454,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires write access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -445,6 +470,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -457,9 +483,12 @@
       "beyond_needs": [
        "fs"
       ],
+      "beyond_needs_on_danger_line": [
+       "fs"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -479,6 +508,7 @@
      },
      "evidence": "audit: fs; run: E310 refused fs",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -524,6 +554,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires write access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -539,6 +570,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -551,9 +583,12 @@
       "beyond_needs": [
        "fs"
       ],
+      "beyond_needs_on_danger_line": [
+       "fs"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -573,6 +608,7 @@
      },
      "evidence": "audit: fs; run: E310 refused fs",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -618,6 +654,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires net access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -633,6 +670,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -645,9 +683,12 @@
       "beyond_needs": [
        "net"
       ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -667,6 +708,7 @@
      },
      "evidence": "audit: net; run: E310 refused net",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -712,6 +754,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires net access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -727,6 +770,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -739,9 +783,12 @@
       "beyond_needs": [
        "net"
       ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -761,6 +808,7 @@
      },
      "evidence": "audit: net; run: E310 refused net",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -806,6 +854,7 @@
      },
      "evidence": "run: exit 0; effect did not happen (denial swallowed by the program)",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -821,6 +870,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -833,9 +883,12 @@
       "beyond_needs": [
        "net"
       ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -855,6 +908,7 @@
      },
      "evidence": "audit: net; run: E310 refused net",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -900,6 +954,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires net access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -915,6 +970,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -927,9 +983,12 @@
       "beyond_needs": [
        "net"
       ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -949,6 +1008,7 @@
      },
      "evidence": "audit: net; run: E310 refused net",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -994,6 +1054,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires net access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -1009,6 +1070,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -1021,9 +1083,12 @@
       "beyond_needs": [
        "net"
       ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1043,6 +1108,7 @@
      },
      "evidence": "audit: net; run: E310 refused net",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -1088,6 +1154,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires net access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -1103,6 +1170,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -1115,9 +1183,12 @@
       "beyond_needs": [
        "net"
       ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1137,6 +1208,7 @@
      },
      "evidence": "audit: net; run: E310 refused net",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -1182,6 +1254,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -1197,6 +1270,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ZeroDivisionError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -1206,6 +1280,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E706",
@@ -1213,8 +1288,8 @@
         "message": "this can divide by zero: count = 0 - proven without running the program"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1223,6 +1298,7 @@
      },
      "evidence": "check: E706 line 3; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -1268,6 +1344,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -1283,6 +1360,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ZeroDivisionError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -1292,6 +1370,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E706",
@@ -1299,8 +1378,8 @@
         "message": "this can take the remainder of zero: size = 0 - proven without running the program"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1309,6 +1388,7 @@
      },
      "evidence": "check: E706 line 3; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -1331,6 +1411,7 @@
    "needs": [
     "io"
    ],
+   "sabline_note": "a division in main on n - 1, with n from to_int inside a check, is not flagged before running; E403 at runtime",
    "stdin": "1\n",
    "tools": {
     "deno": {
@@ -1354,6 +1435,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -1369,6 +1451,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ZeroDivisionError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -1378,9 +1461,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1400,10 +1484,10 @@
      },
      "evidence": "run: E403",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     }
-   },
-   "sabline_note": "a division in main on n - 1, with n from to_int inside a check, is not flagged before running; E403 at runtime"
+   }
   },
   {
    "category": 3,
@@ -1423,6 +1507,7 @@
    "needs": [
     "io"
    ],
+   "sabline_note": "the same division on the unguarded path is not flagged before running when another path guards it; E403 at runtime",
    "stdin": "0\n",
    "tools": {
     "deno": {
@@ -1446,6 +1531,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -1461,6 +1547,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ZeroDivisionError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -1470,9 +1557,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1492,10 +1580,10 @@
      },
      "evidence": "run: E403",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     }
-   },
-   "sabline_note": "the same division on the unguarded path is not flagged before running when another path guards it; E403 at runtime"
+   }
   },
   {
    "category": 3,
@@ -1538,6 +1626,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -1553,6 +1642,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ZeroDivisionError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -1562,6 +1652,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E706",
@@ -1569,8 +1660,8 @@
         "message": "this can divide by zero: hi = 0, lo = 0 - proven without running the program"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1579,6 +1670,7 @@
      },
      "evidence": "check: E706 line 3; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -1601,6 +1693,7 @@
    "needs": [
     "io"
    ],
+   "sabline_note": "a remainder inside a loop body is not flagged before running; E403 at runtime",
    "stdin": "0\n",
    "tools": {
     "deno": {
@@ -1624,6 +1717,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -1639,6 +1733,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ZeroDivisionError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -1648,9 +1743,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1670,10 +1766,10 @@
      },
      "evidence": "run: E403",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     }
-   },
-   "sabline_note": "a remainder inside a loop body is not flagged before running; E403 at runtime"
+   }
   },
   {
    "category": 4,
@@ -1716,6 +1812,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -1731,6 +1828,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, IndexError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -1740,6 +1838,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E705",
@@ -1747,8 +1846,8 @@
         "message": "this 'get' can reach position 0, but the list has 0 item(s) - proven without running the program"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1757,6 +1856,7 @@
      },
      "evidence": "check: E705 line 6; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -1802,6 +1902,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -1817,6 +1918,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, IndexError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -1826,6 +1928,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E705",
@@ -1833,8 +1936,8 @@
         "message": "this 'get' can reach position 0, but the list has 0 item(s) - proven without running the program"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1843,6 +1946,7 @@
      },
      "evidence": "check: E705 line 3; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -1865,6 +1969,7 @@
    "needs": [
     "io"
    ],
+   "sabline_miss_reason": "no read is out of range and the function carries no contract, so there is nothing for the prover to refuse; a wrong total is indistinguishable from a right one without a promise about it",
    "stdin": "",
    "tools": {
     "deno": {
@@ -1888,6 +1993,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -1903,6 +2009,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -1912,9 +2019,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -1929,10 +2037,10 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     }
-   },
-   "sabline_miss_reason": "no read is out of range and the function carries no contract, so there is nothing for the prover to refuse; a wrong total is indistinguishable from a right one without a promise about it"
+   }
   },
   {
    "category": 4,
@@ -1975,6 +2083,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -1990,6 +2099,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, IndexError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -1999,6 +2109,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E705",
@@ -2006,18 +2117,22 @@
         "message": "this 'get' can reach position -1, but the list has 0 item(s) - proven without running the program"
        }
       ],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 8
+       }
       ],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
       "ran": false,
       "reason": "did not compile"
      },
-     "evidence": "check: E705 line 3; audit: loop not shown to end in main (E612 under --strict); run: not attempted, did not compile",
+     "evidence": "check: E705 line 3; audit elsewhere (not credited): loop not shown to end in main, line 8 (E612 under --strict); run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -2040,6 +2155,7 @@
    "needs": [
     "io"
    ],
+   "sabline_note": "a read at i + 1 inside a loop bounded by length(xs) is not flagged before running; E602 at runtime",
    "stdin": "",
    "tools": {
     "deno": {
@@ -2063,6 +2179,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2078,6 +2195,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, IndexError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -2087,9 +2205,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -2109,10 +2228,10 @@
      },
      "evidence": "run: E602",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     }
-   },
-   "sabline_note": "a read at i + 1 inside a loop bounded by length(xs) is not flagged before running; E602 at runtime"
+   }
   },
   {
    "category": 4,
@@ -2155,6 +2274,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2170,6 +2290,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, IndexError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -2179,6 +2300,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E705",
@@ -2186,8 +2308,8 @@
         "message": "this 'get' can reach position -1, but the list has 0 item(s) - proven without running the program"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -2196,6 +2318,7 @@
      },
      "evidence": "check: E705 line 3; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -2241,6 +2364,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2256,6 +2380,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -2265,9 +2390,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -2287,6 +2413,7 @@
      },
      "evidence": "run: E407",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     }
    }
@@ -2332,6 +2459,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2347,6 +2475,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -2356,9 +2485,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -2378,6 +2508,7 @@
      },
      "evidence": "run: E407",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     }
    }
@@ -2423,6 +2554,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2438,6 +2570,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -2447,9 +2580,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -2469,6 +2603,7 @@
      },
      "evidence": "run: E407",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     }
    }
@@ -2514,6 +2649,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2529,6 +2665,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -2538,9 +2675,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -2560,6 +2698,7 @@
      },
      "evidence": "run: E407",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     }
    }
@@ -2605,6 +2744,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2620,6 +2760,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -2629,9 +2770,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -2651,6 +2793,7 @@
      },
      "evidence": "run: E407",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     }
    }
@@ -2696,6 +2839,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2711,6 +2855,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -2720,9 +2865,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -2742,6 +2888,7 @@
      },
      "evidence": "run: E407",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     }
    }
@@ -2787,6 +2934,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2802,6 +2950,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ValueError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -2811,6 +2960,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E520",
@@ -2818,8 +2968,8 @@
         "message": "'to_int' can fail - that cannot be ignored"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -2828,6 +2978,7 @@
      },
      "evidence": "check: E520 line 4; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -2873,6 +3024,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2888,6 +3040,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, KeyError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -2897,6 +3050,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E520",
@@ -2904,8 +3058,8 @@
         "message": "'json_int' can fail - that cannot be ignored"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -2914,6 +3068,7 @@
      },
      "evidence": "check: E520 line 4; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -2959,6 +3114,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -2974,6 +3130,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, KeyError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -2983,6 +3140,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E520",
@@ -2990,8 +3148,8 @@
         "message": "'get' on a map can fail - the key may be missing, and that cannot be ignored"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -3000,6 +3158,7 @@
      },
      "evidence": "check: E520 line 7; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -3045,6 +3204,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -3060,6 +3220,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ValueError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -3069,6 +3230,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E520",
@@ -3076,8 +3238,8 @@
         "message": "'to_int' can fail - that cannot be ignored"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -3086,6 +3248,7 @@
      },
      "evidence": "check: E520 line 7; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -3131,6 +3294,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -3146,6 +3310,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, IndexError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -3155,6 +3320,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E520",
@@ -3162,18 +3328,22 @@
         "message": "'pop' can fail - that cannot be ignored"
        }
       ],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 4
+       }
       ],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
       "ran": false,
       "reason": "did not compile"
      },
-     "evidence": "check: E520 line 9; audit: loop not shown to end in main (E612 under --strict); run: not attempted, did not compile",
+     "evidence": "check: E520 line 9; audit elsewhere (not credited): loop not shown to end in main, line 4 (E612 under --strict); run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -3219,6 +3389,7 @@
      },
      "evidence": "run: exit 1, error: Uncaught (in promise) SyntaxError: Unexpected token 'o', \"not json\" is not valid JSON",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -3234,6 +3405,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, raise JSONDecodeError(\"Expecting value\", s, err.value) from None",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -3243,6 +3415,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E520",
@@ -3250,8 +3423,8 @@
         "message": "'json_get' can fail - that cannot be ignored"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -3260,6 +3433,7 @@
      },
      "evidence": "check: E520 line 4; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -3313,6 +3487,7 @@
      },
      "evidence": "lint elsewhere: prefer-const line 3; run: killed by the harness at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -3328,6 +3503,7 @@
      },
      "evidence": "static step: none (by construction); run: killed by the harness at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -3337,10 +3513,16 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 5
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       5
       ],
       "proven_functions": []
      },
@@ -3359,8 +3541,9 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -3407,6 +3590,7 @@
      },
      "evidence": "run: killed by the harness at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -3422,6 +3606,7 @@
      },
      "evidence": "static step: none (by construction); run: killed by the harness at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -3431,10 +3616,16 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 4
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       4
       ],
       "proven_functions": []
      },
@@ -3453,8 +3644,9 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit: loop not shown to end in main, line 4 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -3478,6 +3670,9 @@
     "io"
    ],
    "stdin": "",
+   "task": {
+    "stdout": "90000"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -3496,8 +3691,9 @@
       "stdout": "90000",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "python": {
@@ -3511,8 +3707,9 @@
       "stdout": "90000",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0",
+     "evidence": "static step: none (by construction); run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "sabline": {
@@ -3522,9 +3719,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -3537,8 +3735,9 @@
       "stdout": "90000",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     }
    }
@@ -3585,6 +3784,7 @@
      },
      "evidence": "run: killed by the harness at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -3600,6 +3800,7 @@
      },
      "evidence": "static step: none (by construction); run: killed by the harness at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -3609,10 +3810,16 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 5
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       5
       ],
       "proven_functions": []
      },
@@ -3631,8 +3838,9 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -3679,6 +3887,7 @@
      },
      "evidence": "run: killed by the harness at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -3694,6 +3903,7 @@
      },
      "evidence": "static step: none (by construction); run: killed by the harness at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -3703,10 +3913,16 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 5
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       5
       ],
       "proven_functions": []
      },
@@ -3725,8 +3941,9 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -3773,6 +3990,7 @@
      },
      "evidence": "run: killed by the harness at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -3788,6 +4006,7 @@
      },
      "evidence": "static step: none (by construction); run: killed by the harness at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -3797,10 +4016,16 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 5
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       5
       ],
       "proven_functions": []
      },
@@ -3819,8 +4044,9 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -3882,6 +4108,7 @@
      },
      "evidence": "lint: no-unreachable line 8; run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     },
     "python": {
@@ -3897,6 +4124,7 @@
      },
      "evidence": "static step: none (by construction); run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -3906,10 +4134,16 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 9
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       9
       ],
       "proven_functions": []
      },
@@ -3928,8 +4162,9 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit: loop not shown to end in main, line 9 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -3991,6 +4226,7 @@
      },
      "evidence": "lint: no-unreachable line 8; run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     },
     "python": {
@@ -4006,6 +4242,7 @@
      },
      "evidence": "static step: none (by construction); run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -4015,10 +4252,16 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 10
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       10
       ],
       "proven_functions": []
      },
@@ -4037,8 +4280,9 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit: loop not shown to end in main, line 10 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -4100,6 +4344,7 @@
      },
      "evidence": "lint: no-unreachable line 7; run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     },
     "python": {
@@ -4115,6 +4360,7 @@
      },
      "evidence": "static step: none (by construction); run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -4124,10 +4370,16 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 8
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       8
       ],
       "proven_functions": []
      },
@@ -4146,8 +4398,9 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit: loop not shown to end in main, line 8 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -4209,6 +4462,7 @@
      },
      "evidence": "lint: no-unreachable line 8; run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     },
     "python": {
@@ -4224,6 +4478,7 @@
      },
      "evidence": "static step: none (by construction); run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -4233,10 +4488,16 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 5
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       5
       ],
       "proven_functions": []
      },
@@ -4255,8 +4516,9 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -4318,6 +4580,7 @@
      },
      "evidence": "lint: no-unreachable line 8; run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     },
     "python": {
@@ -4333,6 +4596,7 @@
      },
      "evidence": "static step: none (by construction); run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -4342,10 +4606,16 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 5
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       5
       ],
       "proven_functions": []
      },
@@ -4364,8 +4634,9 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -4418,6 +4689,7 @@
      },
      "evidence": "lint elsewhere: no-unreachable line 17; run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -4433,6 +4705,7 @@
      },
      "evidence": "static step: none (by construction); run: stopped (memory cap or 5 s deadline, whichever came first)",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -4442,11 +4715,15 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 1,
-      "loops_unshown_in": [
-       "main"
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 13
+       }
       ],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -4464,9 +4741,10 @@
       "stdout": "",
       "timed_out": true
      },
-     "evidence": "audit: loop not shown to end in main (E612 under --strict); run: E610 stopped at 5 s",
+     "evidence": "audit elsewhere (not credited): loop not shown to end in main, line 13 (E612 under --strict); run: E610 stopped at 5 s",
      "observed": null,
-     "verdict": "caught-before-run"
+     "task": null,
+     "verdict": "caught-during-run"
     }
    }
   },
@@ -4511,6 +4789,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires run access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -4526,6 +4805,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -4540,9 +4820,12 @@
       "beyond_needs": [
        "ffi"
       ],
+      "beyond_needs_on_danger_line": [
+       "ffi"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -4562,6 +4845,7 @@
      },
      "evidence": "audit: ffi; run: E310 refused ffi",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -4607,6 +4891,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires env access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -4622,6 +4907,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -4636,9 +4922,12 @@
       "beyond_needs": [
        "ffi"
       ],
+      "beyond_needs_on_danger_line": [
+       "ffi"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -4658,6 +4947,7 @@
      },
      "evidence": "audit: ffi; run: E310 refused ffi",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -4680,6 +4970,7 @@
    "needs": [
     "io"
    ],
+   "sabline_miss_reason": "the only effect is io, which the task needs; the danger is in what a caller does with the text, and no effect system or permission flag sees stdout as dangerous - 10d prints the same words harmlessly, and no tool can tell the two apart",
    "stdin": "",
    "tools": {
     "deno": {
@@ -4703,6 +4994,7 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "python": {
@@ -4718,6 +5010,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -4727,9 +5020,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -4744,10 +5038,10 @@
      },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
      "verdict": "missed"
     }
-   },
-   "sabline_miss_reason": "the only effect is io, which the task needs; the danger is in what a caller does with the text, and no effect system or permission flag sees stdout as dangerous - 10d prints the same words harmlessly, and no tool can tell the two apart"
+   }
   },
   {
    "category": 9,
@@ -4790,6 +5084,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires run access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -4805,6 +5100,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -4819,9 +5115,12 @@
       "beyond_needs": [
        "ffi"
       ],
+      "beyond_needs_on_danger_line": [
+       "ffi"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -4841,6 +5140,7 @@
      },
      "evidence": "audit: ffi; run: E310 refused ffi",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -4886,6 +5186,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires run access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -4901,6 +5202,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -4915,9 +5217,12 @@
       "beyond_needs": [
        "ffi"
       ],
+      "beyond_needs_on_danger_line": [
+       "ffi"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -4937,6 +5242,7 @@
      },
      "evidence": "audit: ffi; run: E310 refused ffi",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -4982,6 +5288,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires read access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -4997,6 +5304,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -5011,9 +5319,12 @@
       "beyond_needs": [
        "ffi"
       ],
+      "beyond_needs_on_danger_line": [
+       "ffi"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -5033,6 +5344,7 @@
      },
      "evidence": "audit: ffi; run: E310 refused ffi",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -5056,6 +5368,9 @@
     "io"
    ],
    "stdin": "",
+   "task": {
+    "stdout": "3 expense(s), total 59500"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -5074,8 +5389,9 @@
       "stdout": "3 expense(s), total 59500",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "python": {
@@ -5089,8 +5405,9 @@
       "stdout": "3 expense(s), total 59500",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0",
+     "evidence": "static step: none (by construction); run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "sabline": {
@@ -5100,9 +5417,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": [
        "total_of"
       ]
@@ -5117,8 +5435,9 @@
       "stdout": "3 expense(s), total 59500",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     }
    }
@@ -5142,6 +5461,9 @@
     "io"
    ],
    "stdin": "the quick brown fox\n",
+   "task": {
+    "stdout": "4 word(s)"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -5160,8 +5482,9 @@
       "stdout": "4 word(s)",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "python": {
@@ -5175,8 +5498,9 @@
       "stdout": "4 word(s)",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0",
+     "evidence": "static step: none (by construction); run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "sabline": {
@@ -5186,9 +5510,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": [
        "count_words"
       ]
@@ -5203,8 +5528,9 @@
       "stdout": "4 word(s)",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     }
    }
@@ -5229,6 +5555,9 @@
     "ffi:math"
    ],
    "stdin": "",
+   "task": {
+    "stdout": "sqrt(2) is about 1414"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -5247,8 +5576,9 @@
       "stdout": "sqrt(2) is about 1414",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "python": {
@@ -5262,8 +5592,9 @@
       "stdout": "sqrt(2) is about 1414",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0",
+     "evidence": "static step: none (by construction); run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "sabline": {
@@ -5276,9 +5607,10 @@
        "math"
       ],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -5291,8 +5623,9 @@
       "stdout": "sqrt(2) is about 1414",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     }
    }
@@ -5316,6 +5649,9 @@
     "io"
    ],
    "stdin": "",
+   "task": {
+    "stdout": "build finished"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -5334,8 +5670,9 @@
       "stdout": "build finished\nnever run rm -rf on build - it holds the only copy",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "python": {
@@ -5349,8 +5686,9 @@
       "stdout": "build finished\nnever run rm -rf on build - it holds the only copy",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0",
+     "evidence": "static step: none (by construction); run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "sabline": {
@@ -5360,9 +5698,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -5375,8 +5714,9 @@
       "stdout": "build finished\nnever run rm -rf on build - it holds the only copy",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     }
    }
@@ -5400,6 +5740,9 @@
     "io"
    ],
    "stdin": "",
+   "task": {
+    "stdout": "0 argument(s)"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -5418,8 +5761,9 @@
       "stdout": "0 argument(s)",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "python": {
@@ -5433,8 +5777,9 @@
       "stdout": "0 argument(s)",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0",
+     "evidence": "static step: none (by construction); run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "sabline": {
@@ -5444,9 +5789,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -5459,8 +5805,9 @@
       "stdout": "0 argument(s)",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     }
    }
@@ -5485,6 +5832,9 @@
     "ffi:math"
    ],
    "stdin": "",
+   "task": {
+    "stdout": "about 22468"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -5503,8 +5853,9 @@
       "stdout": "about 22468",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "python": {
@@ -5518,8 +5869,9 @@
       "stdout": "about 22468",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0",
+     "evidence": "static step: none (by construction); run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "sabline": {
@@ -5532,9 +5884,10 @@
        "math"
       ],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -5547,8 +5900,9 @@
       "stdout": "about 22468",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     }
    }
@@ -5597,6 +5951,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires read access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -5612,6 +5967,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -5622,9 +5978,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -5644,6 +6001,7 @@
      },
      "evidence": "run: E313 refused fs:<a path outside the grant>",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     }
    }
@@ -5692,6 +6050,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires net access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -5707,6 +6066,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -5717,9 +6077,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -5739,6 +6100,7 @@
      },
      "evidence": "run: E314 refused net:127.0.0.1",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     }
    }
@@ -5784,6 +6146,7 @@
      },
      "evidence": "run: exit 1, NotCapable: Requires env access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -5799,6 +6162,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -5811,6 +6175,9 @@
       "beyond_needs": [
        "env"
       ],
+      "beyond_needs_on_danger_line": [
+       "env"
+      ],
       "check": [
        {
         "code": "E503",
@@ -5818,8 +6185,8 @@
         "message": "'config' promises to return Text but this returns Secret of Text"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -5828,6 +6195,7 @@
      },
      "evidence": "check: E503 line 3; audit: env; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -5859,6 +6227,9 @@
     "net:127.0.0.1:{port}"
    ],
    "stdin": "<url>\n",
+   "task": {
+    "stdout": "chai costs"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -5877,8 +6248,9 @@
       "stdout": "chai costs 3 cents",
       "timed_out": false
      },
-     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program)",
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
      "observed": false,
+     "task": "done",
      "verdict": "caught-during-run"
     },
     "python": {
@@ -5892,8 +6264,9 @@
       "stdout": "chai costs 3 cents",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
      "observed": true,
+     "task": "done",
      "verdict": "missed"
     },
     "sabline": {
@@ -5904,6 +6277,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
       "deps_diff": {
        "capability": "derived",
@@ -5912,10 +6286,13 @@
         "price_line gained net"
        ],
        "gained": true,
-       "narrowed": []
+       "narrowed": [],
+       "on_danger_line": [
+        "net"
+       ]
       },
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -5933,8 +6310,9 @@
       "stdout": "",
       "timed_out": false
      },
-     "evidence": "deps-diff pricing 2.3.0 -> 2.4.0: net:127.0.0.1:<port> (a new effect); price_line gained net; run: E314 refused net:127.0.0.1",
+     "evidence": "deps-diff pricing 2.3.0 -> 2.4.0: net:127.0.0.1:<port> (a new effect); price_line gained net; run: E314 refused net:127.0.0.1; task broken",
      "observed": false,
+     "task": "broken",
      "verdict": "caught-before-run"
     }
    }
@@ -5966,6 +6344,9 @@
     "net:127.0.0.1:{port}"
    ],
    "stdin": "customer@example.com\n",
+   "task": {
+    "hit": "/send"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -5984,8 +6365,9 @@
       "stdout": "sent to customer@example.com",
       "timed_out": false
      },
-     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program)",
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
      "observed": false,
+     "task": "done",
      "verdict": "caught-during-run"
     },
     "python": {
@@ -5999,8 +6381,9 @@
       "stdout": "sent to customer@example.com",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
      "observed": true,
+     "task": "done",
      "verdict": "missed"
     },
     "sabline": {
@@ -6011,6 +6394,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
       "deps_diff": {
        "capability": "derived",
@@ -6019,10 +6403,13 @@
         "net operations 1 -> 2"
        ],
        "gained": true,
-       "narrowed": []
+       "narrowed": [],
+       "on_danger_line": [
+        "net"
+       ]
       },
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -6040,8 +6427,9 @@
       "stdout": "",
       "timed_out": false
      },
-     "evidence": "deps-diff mailer 1.4.0 -> 1.5.0: net:127.0.0.1:<port> (not in 1.4.0); net operations 1 -> 2; run: E314 refused net:127.0.0.1",
+     "evidence": "deps-diff mailer 1.4.0 -> 1.5.0: net:127.0.0.1:<port> (not in 1.4.0); net operations 1 -> 2; run: E314 refused net:127.0.0.1; task broken",
      "observed": false,
+     "task": "broken",
      "verdict": "caught-before-run"
     }
    }
@@ -6073,6 +6461,9 @@
     "fs:read:{granted}"
    ],
    "stdin": "",
+   "task": {
+    "stdout": "settings: granted-notes"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -6091,8 +6482,9 @@
       "stdout": "settings: granted-notes",
       "timed_out": false
      },
-     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program)",
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
      "observed": false,
+     "task": "done",
      "verdict": "caught-during-run"
     },
     "python": {
@@ -6106,8 +6498,9 @@
       "stdout": "settings: granted-notes",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
      "observed": true,
+     "task": "done",
      "verdict": "missed"
     },
     "sabline": {
@@ -6118,6 +6511,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
       "deps_diff": {
        "capability": "derived",
@@ -6126,10 +6520,13 @@
         "fs operations 1 -> 2"
        ],
        "gained": true,
-       "narrowed": []
+       "narrowed": [],
+       "on_danger_line": [
+        "fs"
+       ]
       },
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -6147,8 +6544,9 @@
       "stdout": "",
       "timed_out": false
      },
-     "evidence": "deps-diff settings 3.1.0 -> 3.2.0: fs:write:<workdir>/12c.sabline.txt (not in 3.1.0); fs operations 1 -> 2; run: E313 refused fs:<a path outside the grant>",
+     "evidence": "deps-diff settings 3.1.0 -> 3.2.0: fs:write:<workdir>/12c.sabline.txt (not in 3.1.0); fs operations 1 -> 2; run: E313 refused fs:<a path outside the grant>; task broken",
      "observed": false,
+     "task": "broken",
      "verdict": "caught-before-run"
     }
    }
@@ -6180,6 +6578,9 @@
     "fs:read:{granted}"
    ],
    "stdin": "",
+   "task": {
+    "stdout": "total: 450"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -6198,8 +6599,9 @@
       "stdout": "total: 450",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "python": {
@@ -6213,8 +6615,9 @@
       "stdout": "total: 450",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0",
+     "evidence": "static step: none (by construction); run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "sabline": {
@@ -6225,6 +6628,7 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
       "deps_diff": {
        "capability": "derived",
@@ -6233,10 +6637,11 @@
        "narrowed": [
         "surface: \"fs:read:<workdir>/granted/notes.txt\" is no longer needed",
         "report.vel: total_line no longer declares fs"
-       ]
+       ],
+       "on_danger_line": []
       },
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -6249,8 +6654,9 @@
       "stdout": "total: 450",
       "timed_out": false
      },
-     "evidence": "deps-diff report 1.0.0 -> 2.0.0: nothing gained, narrowed; run: exit 0",
+     "evidence": "deps-diff report 1.0.0 -> 2.0.0: nothing gained, narrowed; run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     }
    }
@@ -6260,7 +6666,7 @@
    "category_key": "13_trapdoor/",
    "category_title": "A TrapDoor: a program whose stated purpose and behaviour differ",
    "danger_line": {
-    "deno": 6,
+    "deno": 5,
     "python": 6,
     "sabline": 12
    },
@@ -6281,7 +6687,7 @@
     "deno": {
      "before": {
       "accepted_lines": [
-       6
+       5
       ],
       "diagnostics": [],
       "exit": {
@@ -6293,12 +6699,13 @@
      "during": {
       "exit": 1,
       "memory_cap": "--max-old-space-size=256",
-      "stderr": "error: Uncaught (in promise) ReferenceError: require is not defined",
+      "stderr": "error: Uncaught (in promise) NotCapable: Requires net access to \"127.0.0.1:<port>\", run again with the --allow-net flag",
       "stdout": "",
       "timed_out": false
      },
-     "evidence": "run: exit 1, error: Uncaught (in promise) ReferenceError: require is not defined",
+     "evidence": "run: exit 1, NotCapable: Requires net access",
      "observed": false,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "python": {
@@ -6314,6 +6721,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 0; effect happened",
      "observed": true,
+     "task": null,
      "verdict": "missed"
     },
     "sabline": {
@@ -6327,9 +6735,12 @@
       "beyond_needs": [
        "net"
       ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -6349,6 +6760,7 @@
      },
      "evidence": "audit: net; run: E318 refused fs:<a credential location>",
      "observed": false,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -6375,6 +6787,9 @@
     "fs:read:{granted}"
    ],
    "stdin": "<notes>\n<dotenv>\n<other-url>\n",
+   "task": {
+    "stdout_re": "forecast: \\d+ bytes"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -6395,8 +6810,9 @@
       "stdout": "forecast: 15 bytes\ntelemetry off",
       "timed_out": false
      },
-     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program)",
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
      "observed": false,
+     "task": "done",
      "verdict": "caught-during-run"
     },
     "python": {
@@ -6410,8 +6826,9 @@
       "stdout": "forecast: 14 bytes\ntelemetry sent",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
      "observed": true,
+     "task": "done",
      "verdict": "missed"
     },
     "sabline": {
@@ -6425,9 +6842,12 @@
       "beyond_needs": [
        "net"
       ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -6445,8 +6865,9 @@
       "stdout": "forecast: 14 bytes",
       "timed_out": false
      },
-     "evidence": "audit: net; run: E318 refused fs:<a credential location>",
+     "evidence": "audit: net; run: E318 refused fs:<a credential location>; task done",
      "observed": false,
+     "task": "done",
      "verdict": "caught-before-run"
     }
    }
@@ -6473,6 +6894,9 @@
     "fs:read:{granted}"
    ],
    "stdin": "<notes>\n<cred>\n<other-url>\n",
+   "task": {
+    "stdout_re": "notes: \\d+ chars"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -6493,8 +6917,9 @@
       "stdout": "notes: 15 chars\nupdate check skipped",
       "timed_out": false
      },
-     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program)",
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
      "observed": false,
+     "task": "done",
      "verdict": "caught-during-run"
     },
     "python": {
@@ -6508,8 +6933,9 @@
       "stdout": "notes: 14 chars\nup to date",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
      "observed": true,
+     "task": "done",
      "verdict": "missed"
     },
     "sabline": {
@@ -6523,9 +6949,12 @@
       "beyond_needs": [
        "net"
       ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -6543,8 +6972,9 @@
       "stdout": "notes: 14 chars",
       "timed_out": false
      },
-     "evidence": "audit: net; run: E318 refused fs:<a credential location>",
+     "evidence": "audit: net; run: E318 refused fs:<a credential location>; task done",
      "observed": false,
+     "task": "done",
      "verdict": "caught-before-run"
     }
    }
@@ -6571,6 +7001,9 @@
     "fs:read:{granted}"
    ],
    "stdin": "<notes>\n<other-url>\n",
+   "task": {
+    "stdout_re": "notes: \\d+ chars"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -6591,8 +7024,9 @@
       "stdout": "notes: 15 chars\nsetup skipped",
       "timed_out": false
      },
-     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program)",
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
      "observed": false,
+     "task": "done",
      "verdict": "caught-during-run"
     },
     "python": {
@@ -6606,8 +7040,9 @@
       "stdout": "notes: 14 chars\nconfigured",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
      "observed": true,
+     "task": "done",
      "verdict": "missed"
     },
     "sabline": {
@@ -6623,6 +7058,9 @@
        "env",
        "net"
       ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
       "check": [
        {
         "code": "E560",
@@ -6630,16 +7068,17 @@
         "message": "argument 2 of 'post' is Secret of Text, and 'post' performs net - a Secret cannot be printed, written, sent or passed to Python. It came from env(), line 7"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
       "ran": false,
       "reason": "did not compile"
      },
-     "evidence": "check: E560 line 8; audit: env, net; run: not attempted, did not compile",
+     "evidence": "check: E560 line 8; audit: net; audit elsewhere (not credited): env; run: not attempted, did not compile; task broken",
      "observed": null,
+     "task": "broken",
      "verdict": "caught-before-run"
     }
    }
@@ -6666,6 +7105,9 @@
     "fs:read:{granted}"
    ],
    "stdin": "<notes>\n",
+   "task": {
+    "stdout_re": "notes: \\d+ chars"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -6684,8 +7126,9 @@
       "stdout": "notes: 15 chars",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "python": {
@@ -6699,8 +7142,9 @@
       "stdout": "notes: 14 chars",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0",
+     "evidence": "static step: none (by construction); run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "sabline": {
@@ -6711,9 +7155,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -6726,8 +7171,9 @@
       "stdout": "notes: 14 chars",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     }
    }
@@ -6789,6 +7235,7 @@
      },
      "evidence": "check: cannot resolve the import, line 3; run: exit 1, error: Module not found \"htt<path>\".",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     },
     "python": {
@@ -6804,6 +7251,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ModuleNotFoundError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -6811,6 +7259,7 @@
       "audit_effects": [],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E512",
@@ -6818,8 +7267,8 @@
         "message": "cannot find imported file '<path>'"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -6828,6 +7277,7 @@
      },
      "evidence": "check: E512 line 4; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -6889,6 +7339,7 @@
      },
      "evidence": "check: cannot resolve the import, line 3; run: exit 1, error: Module not found \"htt<path>\".",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     },
     "python": {
@@ -6904,6 +7355,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ModuleNotFoundError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -6911,6 +7363,7 @@
       "audit_effects": [],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E512",
@@ -6918,8 +7371,8 @@
         "message": "cannot find imported file '<path>'"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -6928,6 +7381,7 @@
      },
      "evidence": "check: E512 line 4; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -6989,6 +7443,7 @@
      },
      "evidence": "check: cannot resolve the import, line 3; run: exit 1, error: Module not found \"htt<path>\".",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     },
     "python": {
@@ -7004,6 +7459,7 @@
      },
      "evidence": "static step: none (by construction); run: exit 1, ModuleNotFoundError",
      "observed": null,
+     "task": null,
      "verdict": "caught-during-run"
     },
     "sabline": {
@@ -7011,6 +7467,7 @@
       "audit_effects": [],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [
        {
         "code": "E512",
@@ -7018,8 +7475,8 @@
         "message": "cannot find imported file '<path>'"
        }
       ],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -7028,6 +7485,7 @@
      },
      "evidence": "check: E512 line 3; run: not attempted, did not compile",
      "observed": null,
+     "task": null,
      "verdict": "caught-before-run"
     }
    }
@@ -7053,6 +7511,9 @@
     "io"
    ],
    "stdin": "",
+   "task": {
+    "stdout": "SABLINE"
+   },
    "tools": {
     "deno": {
      "before": {
@@ -7071,8 +7532,9 @@
       "stdout": "SABLINE",
       "timed_out": false
      },
-     "evidence": "run: exit 0",
+     "evidence": "run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "python": {
@@ -7086,8 +7548,9 @@
       "stdout": "SABLINE",
       "timed_out": false
      },
-     "evidence": "static step: none (by construction); run: exit 0",
+     "evidence": "static step: none (by construction); run: exit 0; task done",
      "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     },
     "sabline": {
@@ -7097,9 +7560,10 @@
       ],
       "audit_ffi_modules": [],
       "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": 0,
-      "loops_unshown_in": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
      "during": {
@@ -7112,8 +7576,2557 @@
       "stdout": "SABLINE",
       "timed_out": false
      },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    }
+   }
+  },
+  {
+   "category": 16,
+   "category_key": "16_granted_leak/",
+   "category_title": "Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read",
+   "danger_line": {
+    "deno": 4,
+    "python": 9,
+    "sabline": 7
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-read={granted}",
+    "--allow-net=127.0.0.1:{port}"
+   ],
+   "description": "Asked to post a summary of the ledger to the team's webhook, it posts the ledger itself.",
+   "id": "16a",
+   "kind": "leak",
+   "name": "a_posts_the_ledger",
+   "needs": [
+    "io",
+    "fs:read:{granted}",
+    "net:127.0.0.1:{port}"
+   ],
+   "stdin": "<ledger>\n<url>\n",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       4
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened",
+     "observed": true,
+     "task": null,
+     "verdict": "missed"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "observed": true,
+     "task": null,
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened",
+     "observed": true,
+     "task": null,
+     "verdict": "missed"
+    }
+   }
+  },
+  {
+   "category": 16,
+   "category_key": "16_granted_leak/",
+   "category_title": "Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read",
+   "danger_line": {
+    "deno": 10,
+    "python": 17,
+    "sabline": 21
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-read={granted}",
+    "--allow-net=127.0.0.1:{port}"
+   ],
+   "description": "A helper builds the summary line and appends the whole ledger to it, so the post to the webhook carries both.",
+   "id": "16b",
+   "kind": "leak",
+   "name": "b_summary_with_ledger",
+   "needs": [
+    "io",
+    "fs:read:{granted}",
+    "net:127.0.0.1:{port}"
+   ],
+   "stdin": "<ledger>\n<url>\n",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       10
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened",
+     "observed": true,
+     "task": null,
+     "verdict": "missed"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "observed": true,
+     "task": null,
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened",
+     "observed": true,
+     "task": null,
+     "verdict": "missed"
+    }
+   }
+  },
+  {
+   "category": 16,
+   "category_key": "16_granted_leak/",
+   "category_title": "Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read",
+   "danger_line": {
+    "deno": 7,
+    "python": 13,
+    "sabline": 11
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-read={granted}",
+    "--allow-net=127.0.0.1:{port}"
+   ],
+   "description": "The post carries the ledger upper-cased inside a note field - a transformation, not a copy.",
+   "id": "16c",
+   "kind": "leak",
+   "name": "c_uppercased_note",
+   "needs": [
+    "io",
+    "fs:read:{granted}",
+    "net:127.0.0.1:{port}"
+   ],
+   "stdin": "<ledger>\n<url>\n",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       7
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened",
+     "observed": true,
+     "task": null,
+     "verdict": "missed"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened",
+     "observed": true,
+     "task": null,
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened",
+     "observed": true,
+     "task": null,
+     "verdict": "missed"
+    }
+   }
+  },
+  {
+   "category": 16,
+   "category_key": "16_granted_leak/",
+   "category_title": "Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [
+    "--allow-read={granted}",
+    "--allow-net=127.0.0.1:{port}"
+   ],
+   "description": "The control: posts only how many entries the ledger holds, which is what the task asked for.",
+   "id": "16d",
+   "kind": "none",
+   "name": "d_posts_the_count",
+   "needs": [
+    "io",
+    "fs:read:{granted}",
+    "net:127.0.0.1:{port}"
+   ],
+   "stdin": "<ledger>\n<url>\n",
+   "task": {
+    "hit": ""
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    }
+   }
+  },
+  {
+   "category": 16,
+   "category_key": "16_granted_leak/",
+   "category_title": "Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [
+    "--allow-read={granted}",
+    "--allow-net=127.0.0.1:{port}"
+   ],
+   "description": "The control: reads the ledger to check it is there and posts a fixed status line.",
+   "id": "16e",
+   "kind": "none",
+   "name": "e_posts_a_status",
+   "needs": [
+    "io",
+    "fs:read:{granted}",
+    "net:127.0.0.1:{port}"
+   ],
+   "stdin": "<ledger>\n<url>\n",
+   "task": {
+    "hit": ""
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "summary posted",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    }
+   }
+  },
+  {
+   "category": 17,
+   "category_key": "17_one_subprocess/",
+   "category_title": "One legitimate subprocess: the task needs one program, and the program also runs another",
+   "danger_line": {
+    "deno": 3,
+    "python": 6,
+    "sabline": 3
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-run=git"
+   ],
+   "description": "Reports the version-control tool's version, as asked; then a helper also runs a second program to \"label\" the report.",
+   "id": "17a",
+   "kind": "run-other",
+   "name": "a_labels_with_hostname",
+   "needs": [
+    "io",
+    "ffi:subprocess"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "vcs: ok"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       3
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 1,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "error: Uncaught (in promise) NotCapable: Requires run access to \"hostname\", run again with the --allow-run flag",
+      "stdout": "vcs: ok",
+      "timed_out": false
+     },
+     "evidence": "run: exit 1, NotCapable: Requires run access; task done",
+     "observed": false,
+     "task": "done",
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "vcs: ok\nsecond-program-ran",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "ffi",
+       "io"
+      ],
+      "audit_ffi_modules": [
+       "subprocess"
+      ],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "vcs: ok\nsecond-program-ran",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    }
+   }
+  },
+  {
+   "category": 17,
+   "category_key": "17_one_subprocess/",
+   "category_title": "One legitimate subprocess: the task needs one program, and the program also runs another",
+   "danger_line": {
+    "deno": 3,
+    "python": 5,
+    "sabline": 3
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-run=git"
+   ],
+   "description": "A \"preflight\" runs a second program first, ignoring any failure, and then the task runs the version-control tool.",
+   "id": "17b",
+   "kind": "run-other",
+   "name": "b_preflight_first",
+   "needs": [
+    "io",
+    "ffi:subprocess"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "vcs: ok"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       3
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "vcs: ok",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
+     "observed": false,
+     "task": "done",
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "second-program-ran\nvcs: ok",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "ffi",
+       "io"
+      ],
+      "audit_ffi_modules": [
+       "subprocess"
+      ],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "second-program-ran\nvcs: ok",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    }
+   }
+  },
+  {
+   "category": 17,
+   "category_key": "17_one_subprocess/",
+   "category_title": "One legitimate subprocess: the task needs one program, and the program also runs another",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [
+    "--allow-run=git"
+   ],
+   "description": "The control: runs the version-control tool once and reports it, which is all the task needs.",
+   "id": "17c",
+   "kind": "none",
+   "name": "c_version_only",
+   "needs": [
+    "io",
+    "ffi:subprocess"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "vcs: ok"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "vcs: ok",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "vcs: ok",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "ffi",
+       "io"
+      ],
+      "audit_ffi_modules": [
+       "subprocess"
+      ],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "vcs: ok",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    }
+   }
+  },
+  {
+   "category": 17,
+   "category_key": "17_one_subprocess/",
+   "category_title": "One legitimate subprocess: the task needs one program, and the program also runs another",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [
+    "--allow-run=git"
+   ],
+   "description": "The control: runs the version-control tool with the argument the input names, from a helper.",
+   "id": "17d",
+   "kind": "none",
+   "name": "d_argument_from_input",
+   "needs": [
+    "io",
+    "ffi:subprocess"
+   ],
+   "stdin": "--version\n",
+   "task": {
+    "stdout": "vcs: ok"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "vcs: ok",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "vcs: ok",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "ffi",
+       "io"
+      ],
+      "audit_ffi_modules": [
+       "subprocess"
+      ],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "vcs: ok",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    }
+   }
+  },
+  {
+   "category": 18,
+   "category_key": "18_correct_but_refused/",
+   "category_title": "Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [],
+   "description": "The control: counts the lines of its input, reading until the input ends. Correct, and unbounded by design.",
+   "id": "18a",
+   "kind": "none",
+   "name": "a_count_until_end",
+   "needs": [
+    "io"
+   ],
+   "stdin": "alpha\nbeta\ngamma\n",
+   "task": {
+    "stdout": "3 lines"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "3 lines",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "3 lines",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 5
+       }
+      ],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "3 lines",
+      "timed_out": false
+     },
+     "evidence": "audit: loop not shown to end in main, line 5 (E612 under --strict); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "false-positive"
+    }
+   }
+  },
+  {
+   "category": 18,
+   "category_key": "18_correct_but_refused/",
+   "category_title": "Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [],
+   "description": "The control: the greatest common divisor by Euclid's algorithm, a loop with no counter that still always ends.",
+   "id": "18b",
+   "kind": "none",
+   "name": "b_euclid",
+   "needs": [
+    "io"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "gcd 21"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "gcd 21",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "gcd 21",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [
+       {
+        "in": "gcd",
+        "line": 5
+       }
+      ],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "gcd 21",
+      "timed_out": false
+     },
+     "evidence": "audit: loop not shown to end in gcd, line 5 (E612 under --strict); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "false-positive"
+    }
+   }
+  },
+  {
+   "category": 18,
+   "category_key": "18_correct_but_refused/",
+   "category_title": "Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [],
+   "description": "The control: 25! exactly. The answer needs 84 bits, and it is the right answer.",
+   "id": "18c",
+   "kind": "none",
+   "name": "c_factorial_exact",
+   "needs": [
+    "io"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "15511210043330985984000000"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "15511210043330985984000000",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "15511210043330985984000000",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 1,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E407",
+        "message": "this '*' made a number too big to hold (whole numbers go from -9223372036854775808 to 9223372036854775807)"
+       }
+      ],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "run: E407; task broken",
+     "observed": null,
+     "task": "broken",
+     "verdict": "false-positive"
+    }
+   }
+  },
+  {
+   "category": 18,
+   "category_key": "18_correct_but_refused/",
+   "category_title": "Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [],
+   "description": "The control: a running product modulo the prime 2**61 - 1, as a hash does. Every product passes 64 bits on the way; every result fits.",
+   "id": "18d",
+   "kind": "none",
+   "name": "d_modular_product",
+   "needs": [
+    "io"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "product 918216663340941152"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "product 918216663340941152",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "product 918216663340941152",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 1,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E407",
+        "message": "this '*' made a number too big to hold (whole numbers go from -9223372036854775808 to 9223372036854775807)"
+       }
+      ],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "run: E407; task broken",
+     "observed": null,
+     "task": "broken",
+     "verdict": "false-positive"
+    }
+   }
+  },
+  {
+   "category": 18,
+   "category_key": "18_correct_but_refused/",
+   "category_title": "Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins",
+   "danger_line": {
+    "deno": 5,
+    "python": 6,
+    "sabline": 5
+   },
+   "dangerous": true,
+   "deno_flags": [],
+   "description": "Counts lines until the input ends, but reads once before the loop and never inside it: on any input it never ends.",
+   "id": "18e",
+   "kind": "loop",
+   "name": "e_until_end_never_reads",
+   "needs": [
+    "io"
+   ],
+   "stdin": "alpha\n",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       5,
+       8
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 1,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "",
+      "timed_out": true
+     },
+     "evidence": "run: killed by the harness at 5 s",
+     "observed": null,
+     "task": null,
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 1,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "",
+      "timed_out": true
+     },
+     "evidence": "static step: none (by construction); run: killed by the harness at 5 s",
+     "observed": null,
+     "task": null,
+     "verdict": "caught-during-run"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [
+       {
+        "in": "main",
+        "line": 5
+       }
+      ],
+      "loops_unshown_on_danger_line": [
+       5
+      ],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 124,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E610",
+        "message": "the program ran longer than 5 second(s) and was stopped"
+       }
+      ],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "",
+      "timed_out": true
+     },
+     "evidence": "audit: loop not shown to end in main, line 5 (E612 under --strict); run: E610 stopped at 5 s",
+     "observed": null,
+     "task": null,
+     "verdict": "caught-before-run"
+    }
+   }
+  },
+  {
+   "category": 18,
+   "category_key": "18_correct_but_refused/",
+   "category_title": "Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins",
+   "danger_line": {
+    "deno": 3,
+    "python": 6,
+    "sabline": 3
+   },
+   "dangerous": true,
+   "deno_flags": [],
+   "description": "Builds a record id for a signed 64-bit database column from a customer number on input; this customer's id needs 67 bits.",
+   "id": "18f",
+   "kind": "overflow",
+   "name": "f_id_past_64_bits",
+   "needs": [
+    "io"
+   ],
+   "stdin": "99999999\n",
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       3
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "id 99999999000000000000",
+      "timed_out": false
+     },
      "evidence": "run: exit 0",
      "observed": null,
+     "task": null,
+     "verdict": "missed"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "id 99999999000000000042",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0",
+     "observed": null,
+     "task": null,
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 1,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E407",
+        "message": "this arithmetic made a number too big to hold (whole numbers go from -9223372036854775808 to 9223372036854775807)"
+       }
+      ],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "run: E407",
+     "observed": null,
+     "task": null,
+     "verdict": "caught-during-run"
+    }
+   }
+  },
+  {
+   "category": 19,
+   "category_key": "19_below_the_language/",
+   "category_title": "Danger below the language: a granted library, or its native code, doing I/O of its own",
+   "danger_line": {
+    "deno": 4,
+    "python": 4,
+    "sabline": 4
+   },
+   "dangerous": true,
+   "deno_flags": [],
+   "description": "Formats a report through a vendored library; the library also writes a cache file of its own.",
+   "id": "19a",
+   "kind": "below-write",
+   "name": "a_cache_file",
+   "needs": [
+    "io",
+    "ffi:fmtlib"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "[report]"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "[report]",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
+     "observed": false,
+     "task": "done",
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "[report]",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "ffi",
+       "io"
+      ],
+      "audit_ffi_modules": [
+       "fmtlib"
+      ],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "[report]",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    }
+   }
+  },
+  {
+   "category": 19,
+   "category_key": "19_below_the_language/",
+   "category_title": "Danger below the language: a granted library, or its native code, doing I/O of its own",
+   "danger_line": {
+    "deno": 3,
+    "python": 7,
+    "sabline": 7
+   },
+   "dangerous": true,
+   "deno_flags": [],
+   "description": "Formats a report through a vendored library; the library also posts the text to a telemetry host.",
+   "id": "19b",
+   "kind": "below-net",
+   "name": "b_library_telemetry",
+   "needs": [
+    "io",
+    "ffi:fmtlib"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "[report]"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "[report]",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
+     "observed": false,
+     "task": "done",
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "[report]",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "ffi",
+       "io"
+      ],
+      "audit_ffi_modules": [
+       "fmtlib"
+      ],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "[report]",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    }
+   }
+  },
+  {
+   "category": 19,
+   "category_key": "19_below_the_language/",
+   "category_title": "Danger below the language: a granted library, or its native code, doing I/O of its own",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [],
+   "description": "The control: formats a report through a vendored library that does nothing else.",
+   "id": "19c",
+   "kind": "none",
+   "name": "c_formats_only",
+   "needs": [
+    "io",
+    "ffi:fmtlib"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "[report]"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "[report]",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "[report]",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "ffi",
+       "io"
+      ],
+      "audit_ffi_modules": [
+       "fmtlib"
+      ],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "[report]",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    }
+   }
+  },
+  {
+   "category": 19,
+   "category_key": "19_below_the_language/",
+   "category_title": "Danger below the language: a granted library, or its native code, doing I/O of its own",
+   "danger_line": {
+    "deno": 13,
+    "python": 22,
+    "sabline": 22
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-ffi"
+   ],
+   "description": "Measures a label through a vendored native library; the native code also writes a file of its own.",
+   "id": "19d",
+   "kind": "below-write",
+   "name": "d_native_writes",
+   "needs": [
+    "io",
+    "ffi:nativefmt"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "length 6"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "length 6",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "length 6",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "ffi",
+       "io"
+      ],
+      "audit_ffi_modules": [
+       "nativefmt"
+      ],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "length 6",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    }
+   }
+  },
+  {
+   "category": 19,
+   "category_key": "19_below_the_language/",
+   "category_title": "Danger below the language: a granted library, or its native code, doing I/O of its own",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [
+    "--allow-ffi"
+   ],
+   "description": "The control: measures a label through a vendored native library that does nothing else.",
+   "id": "19e",
+   "kind": "none",
+   "name": "e_native_measures",
+   "needs": [
+    "io",
+    "ffi:nativefmt"
+   ],
+   "stdin": "",
+   "task": {
+    "stdout": "length 6"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "length 6",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "length 6",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "ffi",
+       "io"
+      ],
+      "audit_ffi_modules": [
+       "nativefmt"
+      ],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "length 6",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    }
+   }
+  },
+  {
+   "category": 20,
+   "category_key": "20_task_still_works/",
+   "category_title": "The task still works: the legitimate work and the danger use the same kind of effect, before or after each other",
+   "danger_line": {
+    "deno": 5,
+    "python": 9,
+    "sabline": 9
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-read={granted}"
+   ],
+   "description": "Summarises the granted notes, as asked; then a telemetry ping, whose failure it ignores, goes to a second host.",
+   "id": "20a",
+   "kind": "second-host",
+   "name": "a_task_then_telemetry",
+   "needs": [
+    "io",
+    "fs:read:{granted}"
+   ],
+   "stdin": "<notes>\n<other-url>\n",
+   "task": {
+    "stdout_re": "notes: \\d+ chars"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       5
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "notes: 15 chars",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
+     "observed": false,
+     "task": "done",
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "notes: 14 chars",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [
+       "net"
+      ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 1,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E310",
+        "message": "'post' needs the 'net' effect, which this run does not allow (it allows: fs:read:<path>)"
+       }
+      ],
+      "ran": true,
+      "refused_effect": "net",
+      "stdout": "notes: 14 chars",
+      "timed_out": false
+     },
+     "evidence": "audit: net; run: E310 refused net; task done",
+     "observed": false,
+     "task": "done",
+     "verdict": "caught-before-run"
+    }
+   }
+  },
+  {
+   "category": 20,
+   "category_key": "20_task_still_works/",
+   "category_title": "The task still works: the legitimate work and the danger use the same kind of effect, before or after each other",
+   "danger_line": {
+    "deno": 4,
+    "python": 8,
+    "sabline": 5
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-read={granted}"
+   ],
+   "description": "An \"update check\" pings a second host first, ignoring any failure; then it summarises the granted notes, as asked.",
+   "id": "20b",
+   "kind": "second-host",
+   "name": "b_update_check_first",
+   "needs": [
+    "io",
+    "fs:read:{granted}"
+   ],
+   "stdin": "<notes>\n<other-url>\n",
+   "task": {
+    "stdout_re": "notes: \\d+ chars"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       4
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "notes: 15 chars",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
+     "observed": false,
+     "task": "done",
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "notes: 14 chars",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [
+       "net"
+      ],
+      "beyond_needs_on_danger_line": [
+       "net"
+      ],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 1,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E310",
+        "message": "'post' needs the 'net' effect, which this run does not allow (it allows: fs:read:<path>)"
+       }
+      ],
+      "ran": true,
+      "refused_effect": "net",
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "audit: net; run: E310 refused net; task broken",
+     "observed": false,
+     "task": "broken",
+     "verdict": "caught-before-run"
+    }
+   }
+  },
+  {
+   "category": 20,
+   "category_key": "20_task_still_works/",
+   "category_title": "The task still works: the legitimate work and the danger use the same kind of effect, before or after each other",
+   "danger_line": {
+    "deno": 4,
+    "python": 8,
+    "sabline": 5
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-net=127.0.0.1:{port}"
+   ],
+   "description": "Pings a second host first, ignoring any failure; then fetches the granted feed and reports its size, as asked.",
+   "id": "20c",
+   "kind": "second-host",
+   "name": "c_feed_after_ping",
+   "needs": [
+    "io",
+    "net:127.0.0.1:{port}"
+   ],
+   "stdin": "<url>\n<other-url>\n",
+   "task": {
+    "stdout_re": "feed: \\d+ bytes"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       4
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "feed: 3 bytes",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
+     "observed": false,
+     "task": "done",
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "feed: 3 bytes",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "io",
+       "net"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 1,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E314",
+        "message": "'post' reaches host '127.0.0.1', which this run does not allow: host 127.0.0.1:<port> is not in this run's net grants (allow it: --allow net:127.0.0.1:<port>)"
+       }
+      ],
+      "ran": true,
+      "refused_effect": "net:127.0.0.1",
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "run: E314 refused net:127.0.0.1; task broken",
+     "observed": false,
+     "task": "broken",
+     "verdict": "caught-during-run"
+    }
+   }
+  },
+  {
+   "category": 20,
+   "category_key": "20_task_still_works/",
+   "category_title": "The task still works: the legitimate work and the danger use the same kind of effect, before or after each other",
+   "danger_line": {
+    "deno": 4,
+    "python": 7,
+    "sabline": 5
+   },
+   "dangerous": true,
+   "deno_flags": [
+    "--allow-write={outdir}"
+   ],
+   "description": "Writes a stray file outside the granted output folder first, ignoring any failure; then writes the report there, as asked.",
+   "id": "20d",
+   "kind": "fs",
+   "name": "d_report_after_stray_write",
+   "needs": [
+    "io",
+    "fs:write:{outdir}"
+   ],
+   "stdin": "<outdir>\n<path>\n",
+   "task": {
+    "file": "{outdir}/report.txt"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [
+       4
+      ],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "report written",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; effect did not happen (denial swallowed by the program); task done",
+     "observed": false,
+     "task": "done",
+     "verdict": "caught-during-run"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "report written",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; effect happened; task done",
+     "observed": true,
+     "task": "done",
+     "verdict": "missed"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 1,
+      "ok": false,
+      "out_of_memory": false,
+      "problems": [
+       {
+        "code": "E313",
+        "message": "'write_file' reaches '<path>' (resolved: <path>), which this run's fs grants do not cover"
+       }
+      ],
+      "ran": true,
+      "refused_effect": "fs:<path>",
+      "stdout": "",
+      "timed_out": false
+     },
+     "evidence": "run: E313 refused fs:<a path outside the grant>; task broken",
+     "observed": false,
+     "task": "broken",
+     "verdict": "caught-during-run"
+    }
+   }
+  },
+  {
+   "category": 20,
+   "category_key": "20_task_still_works/",
+   "category_title": "The task still works: the legitimate work and the danger use the same kind of effect, before or after each other",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [
+    "--allow-read={granted}"
+   ],
+   "description": "The control: summarises the granted notes, and does nothing else.",
+   "id": "20e",
+   "kind": "none",
+   "name": "e_summary_only",
+   "needs": [
+    "io",
+    "fs:read:{granted}"
+   ],
+   "stdin": "<notes>\n",
+   "task": {
+    "stdout_re": "notes: \\d+ chars"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "notes: 15 chars",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "notes: 14 chars",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "notes: 14 chars",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    }
+   }
+  },
+  {
+   "category": 20,
+   "category_key": "20_task_still_works/",
+   "category_title": "The task still works: the legitimate work and the danger use the same kind of effect, before or after each other",
+   "danger_line": {
+    "deno": null,
+    "python": null,
+    "sabline": null
+   },
+   "dangerous": false,
+   "deno_flags": [
+    "--allow-write={outdir}"
+   ],
+   "description": "The control: writes the report into the granted output folder, and nothing else.",
+   "id": "20f",
+   "kind": "none",
+   "name": "f_report_only",
+   "needs": [
+    "io",
+    "fs:write:{outdir}"
+   ],
+   "stdin": "<outdir>\n",
+   "task": {
+    "file": "{outdir}/report.txt"
+   },
+   "tools": {
+    "deno": {
+     "before": {
+      "accepted_lines": [],
+      "diagnostics": [],
+      "exit": {
+       "check": 0,
+       "lint": 0
+      },
+      "on_target": []
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "--max-old-space-size=256",
+      "stderr": "",
+      "stdout": "report written",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "python": {
+     "before": {
+      "static": "none"
+     },
+     "during": {
+      "exit": 0,
+      "memory_cap": "job object",
+      "stderr": "",
+      "stdout": "report written",
+      "timed_out": false
+     },
+     "evidence": "static step: none (by construction); run: exit 0; task done",
+     "observed": null,
+     "task": "done",
+     "verdict": "not-applicable"
+    },
+    "sabline": {
+     "before": {
+      "audit_effects": [
+       "fs",
+       "io"
+      ],
+      "audit_ffi_modules": [],
+      "beyond_needs": [],
+      "beyond_needs_on_danger_line": [],
+      "check": [],
+      "loops_unshown": [],
+      "loops_unshown_on_danger_line": [],
+      "proven_functions": []
+     },
+     "during": {
+      "exit": 0,
+      "ok": true,
+      "out_of_memory": false,
+      "problems": [],
+      "ran": true,
+      "refused_effect": null,
+      "stdout": "report written",
+      "timed_out": false
+     },
+     "evidence": "run: exit 0; task done",
+     "observed": null,
+     "task": "done",
      "verdict": "not-applicable"
     }
    }
@@ -7352,8 +10365,8 @@
      "tool-absent": 0
     },
     "sabline": {
-     "caught-before-run": 6,
-     "caught-during-run": 0,
+     "caught-before-run": 5,
+     "caught-during-run": 1,
      "false-positive": 0,
      "missed": 0,
      "not-applicable": 0,
@@ -7570,31 +10583,181 @@
      "tool-absent": 0
     }
    }
+  },
+  {
+   "number": 16,
+   "title": "Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read",
+   "tools": {
+    "deno": {
+     "caught-before-run": 0,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 3,
+     "not-applicable": 2,
+     "tool-absent": 0
+    },
+    "python": {
+     "caught-before-run": 0,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 3,
+     "not-applicable": 2,
+     "tool-absent": 0
+    },
+    "sabline": {
+     "caught-before-run": 0,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 3,
+     "not-applicable": 2,
+     "tool-absent": 0
+    }
+   }
+  },
+  {
+   "number": 17,
+   "title": "One legitimate subprocess: the task needs one program, and the program also runs another",
+   "tools": {
+    "deno": {
+     "caught-before-run": 0,
+     "caught-during-run": 2,
+     "false-positive": 0,
+     "missed": 0,
+     "not-applicable": 2,
+     "tool-absent": 0
+    },
+    "python": {
+     "caught-before-run": 0,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 2,
+     "not-applicable": 2,
+     "tool-absent": 0
+    },
+    "sabline": {
+     "caught-before-run": 0,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 2,
+     "not-applicable": 2,
+     "tool-absent": 0
+    }
+   }
+  },
+  {
+   "number": 18,
+   "title": "Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins",
+   "tools": {
+    "deno": {
+     "caught-before-run": 0,
+     "caught-during-run": 1,
+     "false-positive": 0,
+     "missed": 1,
+     "not-applicable": 4,
+     "tool-absent": 0
+    },
+    "python": {
+     "caught-before-run": 0,
+     "caught-during-run": 1,
+     "false-positive": 0,
+     "missed": 1,
+     "not-applicable": 4,
+     "tool-absent": 0
+    },
+    "sabline": {
+     "caught-before-run": 1,
+     "caught-during-run": 1,
+     "false-positive": 4,
+     "missed": 0,
+     "not-applicable": 0,
+     "tool-absent": 0
+    }
+   }
+  },
+  {
+   "number": 19,
+   "title": "Danger below the language: a granted library, or its native code, doing I/O of its own",
+   "tools": {
+    "deno": {
+     "caught-before-run": 0,
+     "caught-during-run": 2,
+     "false-positive": 0,
+     "missed": 1,
+     "not-applicable": 2,
+     "tool-absent": 0
+    },
+    "python": {
+     "caught-before-run": 0,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 3,
+     "not-applicable": 2,
+     "tool-absent": 0
+    },
+    "sabline": {
+     "caught-before-run": 0,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 3,
+     "not-applicable": 2,
+     "tool-absent": 0
+    }
+   }
+  },
+  {
+   "number": 20,
+   "title": "The task still works: the legitimate work and the danger use the same kind of effect, before or after each other",
+   "tools": {
+    "deno": {
+     "caught-before-run": 0,
+     "caught-during-run": 4,
+     "false-positive": 0,
+     "missed": 0,
+     "not-applicable": 2,
+     "tool-absent": 0
+    },
+    "python": {
+     "caught-before-run": 0,
+     "caught-during-run": 0,
+     "false-positive": 0,
+     "missed": 4,
+     "not-applicable": 2,
+     "tool-absent": 0
+    },
+    "sabline": {
+     "caught-before-run": 2,
+     "caught-during-run": 2,
+     "false-positive": 0,
+     "missed": 0,
+     "not-applicable": 2,
+     "tool-absent": 0
+    }
+   }
   }
  ],
  "totals": {
   "deno": {
    "caught-before-run": 8,
-   "caught-during-run": 34,
+   "caught-during-run": 43,
    "false-positive": 0,
-   "missed": 24,
-   "not-applicable": 10,
+   "missed": 29,
+   "not-applicable": 22,
    "tool-absent": 0
   },
   "python": {
    "caught-before-run": 0,
-   "caught-during-run": 31,
+   "caught-during-run": 32,
    "false-positive": 0,
-   "missed": 35,
-   "not-applicable": 10,
+   "missed": 48,
+   "not-applicable": 22,
    "tool-absent": 0
   },
   "sabline": {
-   "caught-before-run": 52,
-   "caught-during-run": 12,
-   "false-positive": 0,
-   "missed": 2,
-   "not-applicable": 10,
+   "caught-before-run": 54,
+   "caught-during-run": 16,
+   "false-positive": 4,
+   "missed": 10,
+   "not-applicable": 18,
    "tool-absent": 0
   }
  }

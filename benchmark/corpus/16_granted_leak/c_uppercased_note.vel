@@ -1,0 +1,18 @@
+// The post carries the ledger upper-cased inside a note field - a transformation, not a copy.
+fn note(ledger: Text) -> Text {
+    return "{\"note\": \"" + upper(ledger) + "\"}"
+}
+
+fn main() uses io, fs, net {
+    let ledger_path = read_line()
+    let webhook = read_line()
+    check read_file(ledger_path) {
+        ok ledger {
+            check post(webhook, note(ledger)) {  // DANGER: the private ledger leaves
+                ok r { print("summary posted") }
+                fail why { print("not posted: " + why) }
+            }
+        }
+        fail why { print("no ledger: " + why) }
+    }
+}

@@ -1,0 +1,6 @@
+# Opens a pipe to a shell command as a handle and reads from it.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions and no pipe handles: the helper's popen, read and close are one run_command call inlined into the plan, so nothing is hidden inside a helper.
+
+cmd = "echo spawned-child-ran"
+out = run_command(cmd)  # DANGER
+print(out.strip())

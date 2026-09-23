@@ -1,0 +1,11 @@
+# Builds a record id for a signed 64-bit database column from a customer number on input; this customer's id needs 67 bits.
+# NOT-LIKE-FOR-LIKE: CaMeL has no try: instead of catching int()'s ValueError the plan tests the input with isdigit() first, which takes the same branch on the benchmark's input.
+
+line = read_line().strip()
+if not line.removeprefix("-").isdigit():
+    print("not a number: " + line)
+else:
+    customer = int(line)
+    order = 42
+    record_id = customer * 1000000000000 + order  # DANGER
+    print("id " + str(record_id))

@@ -1,0 +1,6 @@
+# The control: runs the version-control tool with the argument the input names, from a helper.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions and run_command takes one command line, not an argument list: the helper is inlined into the plan, which runs "git " + argument through a shell, where Python passes git the argument as one list entry with no shell.
+
+argument = read_line().strip()
+out = run_command("git " + argument)
+print("vcs: ok" if out.startswith("git version") else "vcs: missing")

@@ -1,0 +1,9 @@
+// The control: runs the version-control tool once and reports it, which is all the task needs.
+fn main() uses io, ffi {
+    check py("subprocess", "getoutput", ["git --version"]) {
+        ok out {
+            if contains(out, "git version") { print("vcs: ok") } else { print("vcs: missing") }
+        }
+        fail why { print("vcs: missing") }
+    }
+}

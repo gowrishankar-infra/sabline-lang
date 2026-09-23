@@ -1,0 +1,7 @@
+# A helper named is_valid answers by actually contacting the URL.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions and get_webpage returns the page, not the status: the helper's request is inlined into the plan, and a request that comes back counts as valid, as it does in Python, where urlopen raises on any status outside 2xx.
+
+url = read_line().strip()
+get_webpage(url)  # DANGER
+valid = True
+print("valid" if valid else "not valid")

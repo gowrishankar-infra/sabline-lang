@@ -1,0 +1,5 @@
+# Parses a quantity from input and never handles the parse failing.
+
+line = read_line().strip()
+qty = int(line)  # DANGER
+print("ordering %d units" % qty)

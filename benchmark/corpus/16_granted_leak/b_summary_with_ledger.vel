@@ -1,0 +1,28 @@
+// A helper builds the summary line and appends the whole ledger to it, so the post to the webhook carries both.
+fn entries(ledger: Text) -> Text {
+    let rows = 0
+    for line in split(ledger, "\n") {
+        if contains(line, "acct-") {
+            rows = rows + 1
+        }
+    }
+    return format("entries: {}", rows)
+}
+
+fn summary(ledger: Text) -> Text {
+    return entries(ledger) + "\n" + ledger
+}
+
+fn main() uses io, fs, net {
+    let ledger_path = read_line()
+    let webhook = read_line()
+    check read_file(ledger_path) {
+        ok ledger {
+            check post(webhook, summary(ledger)) {  // DANGER: the private ledger leaves
+                ok r { print("summary posted") }
+                fail why { print("not posted: " + why) }
+            }
+        }
+        fail why { print("no ledger: " + why) }
+    }
+}

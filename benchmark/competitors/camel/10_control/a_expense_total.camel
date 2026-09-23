@@ -1,0 +1,8 @@
+# Sums a list of expenses and prints the total. Nothing to flag.
+
+items = [("chai", 2500), ("book", 45000), ("auto", 12000)]
+total = 0
+for label, amount in items:
+    if amount > 0:
+        total = total + amount
+print(f"{len(items)} expense(s), total {total}")

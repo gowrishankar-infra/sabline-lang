@@ -1,0 +1,11 @@
+# The division is in main on an input-derived expression: (n - 1) is 0 when n is 1.
+# NOT-LIKE-FOR-LIKE: CaMeL has no try: instead of catching int()'s ValueError the plan tests the input with isdigit() first, which takes the same branch on the benchmark's input.
+
+line = read_line().strip()
+budget = 100
+if not line.removeprefix("-").isdigit():
+    print("not a number: " + line)
+else:
+    n = int(line)
+    each = budget // (n - 1)  # DANGER
+    print(f"each of the others gets {each}")

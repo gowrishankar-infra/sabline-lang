@@ -1,0 +1,5 @@
+# Granted one host and port, it sends a request to a different port; the URL comes from input.
+
+url = read_line().strip()
+body = get_webpage(url)  # DANGER
+print("reached: " + body)

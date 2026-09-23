@@ -1,0 +1,7 @@
+// The control: measures a label through a vendored native library that does nothing else.
+fn main() uses io, ffi {
+    check py_int("nativefmt", "measure", ["report"]) {
+        ok n { print(format("length {}", n)) }
+        fail why { print("no measure: " + why) }
+    }
+}

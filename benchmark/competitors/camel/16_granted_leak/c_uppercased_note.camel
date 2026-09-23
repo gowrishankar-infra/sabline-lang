@@ -1,0 +1,8 @@
+# The post carries the ledger upper-cased inside a note field - a transformation, not a copy.
+
+ledger_path = read_line().strip()
+webhook = read_line().strip()
+ledger = read_file(ledger_path)
+note = '{"note": "' + ledger.upper().replace("\n", " ") + '"}'
+post_webpage(webhook, note)  # DANGER: the private ledger leaves
+print("summary posted")

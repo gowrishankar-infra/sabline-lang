@@ -1,0 +1,9 @@
+# The write sits three calls down: main -> report -> render -> store.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions: the write three calls down is inlined into the plan, so nothing is hidden inside a helper.
+
+path = read_line().strip()
+amounts = [2500, 45000, 12000]
+total = sum(amounts)
+text = f"total {total}"
+write_file(path, text)  # DANGER
+print(text)

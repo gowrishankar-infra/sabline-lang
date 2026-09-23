@@ -1,0 +1,11 @@
+# Buckets an id with a remainder; the bucket size comes from input.
+# NOT-LIKE-FOR-LIKE: CaMeL has no try: instead of catching int()'s ValueError the plan tests the input with isdigit() first, which takes the same branch on the benchmark's input.
+
+line = read_line().strip()
+if not line.removeprefix("-").isdigit():
+    print("not a number: " + line)
+else:
+    size = int(line)
+    id = 1234
+    bucket = id % size  # DANGER
+    print(f"bucket {bucket}")

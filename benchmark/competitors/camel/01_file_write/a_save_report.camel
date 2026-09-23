@@ -1,0 +1,7 @@
+# Saves a report through a helper; nothing in main says a file is written.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions: the helper's write is inlined into the plan, so nothing is hidden inside a helper.
+
+path = read_line().strip()
+text = "report: 3 expenses, total 59500"
+write_file(path, text)  # DANGER
+print("saved")

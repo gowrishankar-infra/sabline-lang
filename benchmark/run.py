@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The Sabline comparison benchmark.
 
-    python benchmark/run.py            # all 76 programs -> RESULTS.md, results.json
+    python benchmark/run.py            # all 102 programs -> RESULTS.md, results.json
     python benchmark/run.py --quick    # one program per category, table on stdout
     python benchmark/run.py --check    # also compare verdicts with results.json
     python benchmark/run.py --only 03a,10c
@@ -51,6 +51,8 @@ EXT = {"sabline": ".vel", "deno": ".js", "python": ".py"}
 
 sys.path.insert(0, ROOT)
 import sabline  # noqa: E402  (the checkout being benchmarked)
+from sabline.editor import inspect_source  # noqa: E402
+from sabline.lexer import lex  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 isolate("benchmark")                  # its own directory
@@ -84,8 +86,17 @@ def load_corpus() -> tuple[Any, ...]:
                     CORPUS, cat["key"], p["name"], dep[side],
                     dep["module"] + EXT[t]) for side in ("old", "new")}
                     for t in TOOLS}
+            mod = p.get("module")
+            if mod:
+                # category 19: a vendored library beside the caller. Sabline
+                # reaches a host library through ffi, so its library is the
+                # Python one; the danger is inside the library, not the caller
+                p["module_files"] = {t: os.path.join(
+                    CORPUS, cat["key"], p["name"],
+                    mod + (".js" if t == "deno" else ".py")) for t in TOOLS}
             for t, path in p["files"].items():
                 more = list(p["dep_files"][t].values()) if dep else []
+                more += [p["module_files"][t]] if mod else []
                 for need in [path] + more:
                     if not os.path.exists(need):
                         raise CorpusError(f"{p['id']}: missing {need}")
@@ -108,6 +119,13 @@ def marker_line(prog: Any, tool: Any) -> Any:
                                       f"not carry a DANGER marker; it goes "
                                       f"in the new version of the dependency")
         where = prog["dep_files"][tool]["new"]
+    if prog.get("module"):
+        with open(where, encoding="utf-8") as f:
+            if any("DANGER" in line for line in f):
+                raise CorpusError(f"{prog['id']} ({tool}): {where} must not "
+                                  f"carry a DANGER marker; it goes in the "
+                                  f"vendored library")
+        where = prog["module_files"][tool]
     with open(where, encoding="utf-8") as f:
         hits = [i for i, line in enumerate(f, 1) if "DANGER" in line]
     if prog["dangerous"] and len(hits) != 1:
@@ -153,6 +171,7 @@ def loop_span(path: Any, danger_line: Any) -> tuple[Any, ...] | None:
 class Hits(BaseHTTPRequestHandler):
     paths: list[Any] = []
     by_port: list[Any] = []           # (the listener's port, path), category 12
+    bodies: list[Any] = []            # (port, path, body text), category 16
     # the small package index (category 15): the one library that exists.
     # A GET under /pkg/ is served the module or a 404; it is not recorded
     # as a hit, so it never counts as a net effect and no run touches the
@@ -181,13 +200,15 @@ class Hits(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         n = int(self.headers.get("Content-Length") or 0)
-        self.rfile.read(n)
-        self._hit()
+        self._hit(self.rfile.read(n))
 
-    def _hit(self) -> None:
+    def _hit(self, body_in: bytes = b"") -> None:
+        port = cast("tuple[str, int]", self.server.server_address)[1]
         Hits.paths.append(self.path)
-        Hits.by_port.append((cast("tuple[str, int]",
-                                  self.server.server_address)[1], self.path))
+        Hits.by_port.append((port, self.path))
+        # what arrived, for category 16: whether the private ledger left
+        Hits.bodies.append((port, self.path,
+                            body_in.decode("utf-8", "replace")))
         body = b"ok\n"
         self.send_response(200)
         self.send_header("Content-Length", str(len(body)))
@@ -272,10 +293,26 @@ class _WindowsJob:
         self.k.CloseHandle(self.job)
 
 
-def run_child(cmd: Any, stdin_text: Any, env: Any = None) -> dict[str, Any]:
+LOADER_VARS = ("LD_LIBRARY_PATH", "LD_PRELOAD", "DYLD_LIBRARY_PATH",
+               "DYLD_INSERT_LIBRARIES", "DYLD_FALLBACK_LIBRARY_PATH")
+
+
+def run_child(cmd: Any, stdin_text: Any, env: Any = None,
+              address_cap: bool = True,
+              bare_loader: bool = False) -> dict[str, Any]:
     """Run cmd with the benchmark's timeout and memory cap. Returns a
-    dict with exit, stdout, stderr, timed_out and which cap applied."""
+    dict with exit, stdout, stderr, timed_out and which cap applied.
+    address_cap=False leaves RLIMIT_AS off on POSIX, for a runtime that
+    reserves more address space than the cap before it runs a line (V8
+    does) and brings a memory cap of its own. bare_loader=True passes no
+    dynamic-loader variable (LOADER_VARS), for a runtime that needs none and
+    answers differently when one is set: Deno refuses to spawn a process
+    either way, but names the variable when the machine has one set (CI's
+    setup-python sets LD_LIBRARY_PATH), and the machine is not the test."""
     full_env = dict(os.environ)
+    if bare_loader:
+        for name in LOADER_VARS:
+            full_env.pop(name, None)
     full_env.update({"NO_COLOR": "1", "PYTHONIOENCODING": "utf-8",
                      "PYTHONUTF8": "1", "BENCH_SECRET": SECRET})
     full_env.update(env or {})
@@ -290,7 +327,7 @@ def run_child(cmd: Any, stdin_text: Any, env: Any = None) -> dict[str, Any]:
             cap = "job object"
         except Exception:
             job = None
-    else:
+    elif address_cap:
         kwargs["preexec_fn"] = _posix_cap()
         cap = "RLIMIT_AS" + (" (may not apply on macOS)"
                              if sys.platform == "darwin" else "")
@@ -400,7 +437,71 @@ def observed(kind: Any, prog_id: Any, tool: Any, work_path: Any, stdout: Any) ->
     if kind == "hallucinated":               # nothing runs to observe: the
         return None                          # import is the danger, and it
         # never resolves at any tool
+    if kind == "leak":                       # category 16: the private ledger
+        prefix = f"/{prog_id}/{tool}"        # reached the granted host itself
+        granted = PORTS_IN_USE[0]
+        return any(port == granted and p.startswith(prefix)
+                   and LEDGER_MARK in body.lower()
+                   for port, p, body in Hits.bodies)
+    if kind == "run-other":                  # category 17: a second program
+        return OTHER_PROGRAM_MARK in stdout  # ran and came back
+    if kind == "below-write":                # category 19: the library wrote
+        return os.path.exists(work_path)     # a file of its own
+    if kind in ("below-net", "second-host"):  # categories 19 and 20: the
+        prefix = f"/{prog_id}/{tool}"        # host no task needs was reached
+        other = PORTS_IN_USE[1]
+        return any(port == other and p.startswith(prefix)
+                   for port, p in Hits.by_port)
     return None
+
+
+LEDGER_MARK = "private-ledger-5b2c"       # a line of the private ledger (16)
+OTHER_PROGRAM_MARK = "second-program-ran"  # printed after a second program (17)
+LEDGER_TEXT = ("ledger 2026-09\nacct-7731 4500\nacct-9182 1200\n"
+               "note private-ledger-5b2c\n")
+
+
+def task_outcome(prog: Any, tool: Any, stdout: Any, ran: Any,
+                 filled: Any) -> bool | None:
+    """Did the program's legitimate work get done (8.7)? None when the corpus
+    names no legitimate work apart from the danger. A program that did not
+    run did not do its work. `filled` fills a path's placeholders."""
+    task = prog.get("task")
+    if not task:
+        return None
+    if not ran:
+        return False
+    if "stdout" in task:
+        return str(task["stdout"]) in stdout
+    if "stdout_re" in task:
+        return re.search(str(task["stdout_re"]), stdout) is not None
+    if "hit" in task:                        # a request reached the granted
+        prefix = f"/{prog['id']}/{tool}{task['hit']}"   # host, where the
+        granted = PORTS_IN_USE[0]                        # task sends it
+        return any(port == granted and p.startswith(prefix)
+                   for port, p in Hits.by_port)
+    if "file" in task:
+        return os.path.exists(filled(task["file"]))
+    raise CorpusError(f"{prog['id']}: a task names stdout, stdout_re, hit "
+                      f"or file")
+
+
+def apply_task(prog: Any, tool: Any, result: Any, stdout: Any, ran: Any,
+               filled: Any) -> Any:
+    """Record whether the task's legitimate work got done, beside the
+    verdict. A control that did not do its work under a tool counts against
+    the tool, like one it stopped: a runtime that blocks everything must not
+    score as though it blocked only the danger."""
+    done = task_outcome(prog, tool, stdout, ran, filled)
+    result["task"] = (None if done is None else ("done" if done else "broken"))
+    if done is None:
+        return result
+    result["evidence"] = "; ".join(
+        b for b in (result["evidence"], f"task {result['task']}") if b)
+    if not prog["dangerous"] and not done \
+            and result["verdict"] == "not-applicable":
+        result["verdict"] = "false-positive"
+    return result
 
 
 def verdict_for(prog: Any, absent: Any, flagged_before: Any, stopped: Any, seen: Any) -> Any:
@@ -448,19 +549,43 @@ def sabline_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
     modules = list(aud.ffi_modules or [])
     if "ffi" in aud.effects and "ffi" in need_effects and need_modules:
         beyond += [f"ffi:{m}" for m in modules if m not in need_modules]
-    # a loop whose end the termination rule cannot show (SPEC 9.5) is
-    # reported by the audit and is E612 under check --strict
-    unshown_in = [f["name"] for f in aud.functions if f.get("loops_unshown")]
+    # a loop whose end the termination rule cannot show (SPEC 9.5): the
+    # audit counts it, and check --strict reports it as E612 on its line,
+    # which is where it is held to the dangerous line below
+    report = inspect_source(path, source)
+    unshown = [(f["name"], lp["line"]) for f in report["functions"]
+               for lp in f.get("loops", []) if lp["verdict"] == "unshown"]
+    unshown += [("an inline function", lp["line"])
+                for lp in report.get("inline_loops", [])
+                if lp["verdict"] == "unshown"]
+    # 8.7: a static flag is credited on a dangerous program only where it is
+    # about the marked line, for Sabline as for Deno and Starlark: an effect
+    # beyond the task's needs that a builtin called on the DANGER line
+    # needs (BUILTIN_EFFECTS), a loop E612 names on that line or on the
+    # header of the loop around it. A flag elsewhere is recorded and not
+    # credited. On a control any flag, anywhere, is a false positive.
+    on_line = danger_effects(prog)
+    # the loops are the caller's; where the dangerous line is in another file
+    # (a dependency, a vendored library) no loop of the caller is on it
+    own_line = danger and not (prog.get("dependency") or prog.get("module"))
+    accepted = ({danger} | set(x for x in (loop_span(path, danger) or ())
+                               if x)) if own_line else set()
+    credited_beyond = [e for e in beyond if e.split(":")[0] in on_line]
+    credited_loops = [lp for lp in unshown if lp[1] in accepted]
     before = {"check": problems, "audit_effects": list(aud.effects),
               "audit_ffi_modules": modules, "beyond_needs": beyond,
-              "loops_unshown": aud.loops_unshown,
-              "loops_unshown_in": unshown_in,
+              "beyond_needs_on_danger_line": credited_beyond,
+              "loops_unshown": [{"in": n, "line": ln} for n, ln in unshown],
+              "loops_unshown_on_danger_line": [ln for _, ln in credited_loops],
               "proven_functions": list(chk.proven)}
-    flagged_before = bool(problems or beyond or aud.loops_unshown)
+    if prog["dangerous"]:
+        flagged_before = bool(problems or credited_beyond or credited_loops)
+    else:
+        flagged_before = bool(problems or beyond or unshown)
 
     # category 12: the dependency's two versions, compared before running
     deps = None
-    if placed:
+    if placed and prog.get("dependency"):
         dep = prog["dependency"]
         found = sabline.deps_diff("dir:" + placed["versions"], dep["old"],
                                   dep["new"])
@@ -486,14 +611,37 @@ def sabline_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
                 "narrowed": [tidy(placed["mask"](n), paths=False)
                              for n in vel["narrowed"]]}
         before["deps_diff"] = deps
-        flagged_before = flagged_before or found["gained"]
+        # what the new version gained, held to the dependency's DANGER line
+        gained: set[str] = set()
+        for f in vel["findings"]:
+            if f["kind"] == "grant":
+                gained.add(str(f["grant"]).split(":")[0])
+            elif f["kind"] == "count":
+                gained.add(str(f["effect"]))
+            else:
+                gained.update(str(g) for g in f["gained"])
+        deps["on_danger_line"] = sorted(gained & on_line)
+        flagged_before = flagged_before or (
+            bool(gained & on_line) if prog["dangerous"] else found["gained"])
 
     during: dict[str, Any] = {"ran": False}
     stopped = False
     seen = None
     if chk.ok:
-        r = sabline.run(source, path=path, allow=needs, stdin=stdin_text,
-                        timeout=TIMEOUT, max_memory_mb=MEMORY_MB)
+        # a vendored library (category 19) is imported by Sabline's ffi from
+        # the Python path; the project puts its directory there
+        saved_path = os.environ.get("PYTHONPATH")
+        if placed and placed.get("pythonpath"):
+            os.environ["PYTHONPATH"] = placed["pythonpath"]
+        try:
+            r = sabline.run(source, path=path, allow=needs, stdin=stdin_text,
+                            timeout=TIMEOUT, max_memory_mb=MEMORY_MB)
+        finally:
+            if placed and placed.get("pythonpath"):
+                if saved_path is None:
+                    os.environ.pop("PYTHONPATH", None)
+                else:
+                    os.environ["PYTHONPATH"] = saved_path
         during = {"ran": True, "ok": r.ok, "exit": r.exit_code,
                   "refused_effect": (tidy(r.refused_effect)
                                      if r.refused_effect else None),
@@ -513,8 +661,12 @@ def sabline_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
     if problems:
         bits.append("check: " + ", ".join(f"{p['code']} line {p['line']}"
                                           for p in problems))
-    if beyond:
-        bits.append("audit: " + ", ".join(beyond))
+    loose = [e for e in beyond if e not in credited_beyond]
+    if credited_beyond or (beyond and not prog["dangerous"]):
+        bits.append("audit: " + ", ".join(credited_beyond
+                                          if prog["dangerous"] else beyond))
+    if loose and prog["dangerous"]:
+        bits.append("audit elsewhere (not credited): " + ", ".join(loose))
     if deps:
         dep = prog["dependency"]
         head = f"deps-diff {dep['module']} {dep['old']} -> {dep['new']}: "
@@ -523,10 +675,12 @@ def sabline_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
         else:
             bits.append(head + "nothing gained"
                         + (", narrowed" if deps["narrowed"] else ""))
-    if aud.loops_unshown:
-        bits.append("audit: loop not shown to end in "
-                    + ", ".join(unshown_in or ["an inline function"])
-                    + " (E612 under --strict)")
+    for name, line in unshown:
+        where = f"loop not shown to end in {name}, line {line} (E612 under --strict)"
+        if not prog["dangerous"] or (name, line) in credited_loops:
+            bits.append("audit: " + where)
+        else:
+            bits.append("audit elsewhere (not credited): " + where)
     if during.get("ran"):
         if r.refused_effect:
             what = r.refused_effect
@@ -551,7 +705,28 @@ def sabline_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
         bits.append("effect did not happen")
     verdict = verdict_for(prog, False, flagged_before, stopped, seen)
     return {"verdict": verdict, "evidence": "; ".join(bits),
-            "before": before, "during": during, "observed": seen}
+            "before": before, "during": during, "observed": seen,
+            "_stdout": r.output if during.get("ran") else "",
+            "_ran": bool(during.get("ran"))}
+
+
+def danger_effects(prog: Any) -> set[str]:
+    """The effects the builtin calls on Sabline's DANGER line need, read
+    with Sabline's own lexer and sabline.BUILTIN_EFFECTS. Empty for a
+    control, and for a program whose dangerous line is not Sabline's (a
+    vendored Python library reached through ffi, category 19)."""
+    if not prog["dangerous"] or prog.get("module"):
+        return set()
+    path = (prog["dep_files"]["sabline"]["new"] if prog.get("dependency")
+            else prog["files"]["sabline"])
+    line = prog["danger_line"]["sabline"]
+    with open(path, encoding="utf-8") as f:
+        toks = lex(f.read())
+    found: set[str] = set()
+    for a, b in zip(toks, toks[1:]):
+        if a.line == line and a.kind == "IDENT" and b.text == "(":
+            found.update(sabline.BUILTIN_EFFECTS.get(a.text, ()))
+    return found
 
 
 def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, deno_flags: Any = (),
@@ -569,7 +744,8 @@ def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, d
     import_flags = [x for x in deno_flags
                     if str(x).startswith("--allow-import")]
     for sub in (["check"] + import_flags, ["lint", "--json"]):
-        res = run_child([deno] + sub + [path], "")
+        res = run_child([deno] + sub + [path], "", address_cap=False,
+                        bare_loader=True)
         static_exits[sub[0]] = res["exit"]
         text = res["stdout"] + res["stderr"]
         if sub[0] == "lint":
@@ -610,7 +786,11 @@ def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, d
     cmd = ([deno, "run", "--no-prompt",
             f"--v8-flags=--max-old-space-size={MEMORY_MB}"]
            + list(deno_flags) + [path])
-    res = run_child(cmd, stdin_text)
+    # Deno's cap is V8's heap flag. On Linux RLIMIT_AS at 256 MB stops V8
+    # before the program's first line - every Deno cell would read as a
+    # crash - so it is not applied there (Windows' job object caps
+    # committed memory, which V8 lives within)
+    res = run_child(cmd, stdin_text, address_cap=False, bare_loader=True)
     stopped = res["timed_out"] or res["exit"] != 0
     seen = observed(prog["kind"], prog["id"], "deno", work_path, res["stdout"])
     err = tidy(first_error_line(res["stderr"]), port)
@@ -639,6 +819,10 @@ def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, d
     elif diagnostics and prog["dangerous"]:
         bits.append("lint elsewhere: " + ", ".join(
             f"{d['code']} line {d['line']}" for d in diagnostics))
+    elif diagnostics:
+        # on a control any diagnostic is the flag the verdict counts: say it
+        bits.append("flagged: " + ", ".join(
+            f"{d['code']} line {d['line']}" for d in diagnostics))
     if res["timed_out"]:
         bits.append("run: killed by the harness at 5 s")
     elif res["exit"] != 0:
@@ -656,7 +840,8 @@ def deno_row(prog: Any, stdin_text: Any, work_path: Any, deno: Any, port: Any, d
         bits.append("effect did not happen (denial swallowed by the program)")
     verdict = verdict_for(prog, False, flagged_before, stopped, seen)
     return {"verdict": verdict, "evidence": "; ".join(bits),
-            "before": before, "during": during, "observed": seen}
+            "before": before, "during": during, "observed": seen,
+            "_stdout": res["stdout"], "_ran": True}
 
 
 def python_row(prog: Any, stdin_text: Any, work_path: Any, port: Any, placed: Any = None) -> dict[str, Any]:
@@ -688,7 +873,8 @@ def python_row(prog: Any, stdin_text: Any, work_path: Any, port: Any, placed: An
         bits.append("effect did not happen")
     verdict = verdict_for(prog, False, False, stopped, seen)
     return {"verdict": verdict, "evidence": "; ".join(bits),
-            "before": {"static": "none"}, "during": during, "observed": seen}
+            "before": {"static": "none"}, "during": during, "observed": seen,
+            "_stdout": res["stdout"], "_ran": True}
 
 
 # --------------------------------------------------------------- driver
@@ -739,7 +925,13 @@ def fill(text: Any, work_path: Any, workdir: Any, port: Any, other: Any, prog_id
              "{cred}": os.path.join(workdir, "granted", "service.pem"),
              # a .env inside the granted dir (category 14): another
              # documented credential location a broad fs:read misses (8.0)
-             "{dotenv}": os.path.join(workdir, "granted", ".env")}
+             "{dotenv}": os.path.join(workdir, "granted", ".env"),
+             # a private ledger inside the granted dir (category 16): no
+             # credential location, so any read grant covers it
+             "{ledger}": os.path.join(workdir, "granted", "ledger.txt"),
+             # an output folder of the tool's own (category 20), which a
+             # fs:write grant names
+             "{outdir}": os.path.join(workdir, "out", prog_id, tool)}
     if slashes:
         paths = {k: v.replace("\\", "/") for k, v in paths.items()}
     return (text.replace("{path}", paths["{path}"])
@@ -751,6 +943,8 @@ def fill(text: Any, work_path: Any, workdir: Any, port: Any, other: Any, prog_id
             .replace("{notes}", paths["{notes}"])
             .replace("{cred}", paths["{cred}"])
             .replace("{dotenv}", paths["{dotenv}"])
+            .replace("{ledger}", paths["{ledger}"])
+            .replace("{outdir}", paths["{outdir}"])
             .replace("{port}", str(port)).replace("{other}", str(other)))
 
 
@@ -789,6 +983,26 @@ def place_dependency(prog: Any, tool: Any, workdir: Any, filled: Any) -> dict[st
     return {"caller": caller, "versions": versions, "mask": mask}
 
 
+def place_module(prog: Any, tool: Any, workdir: Any, filled: Any) -> dict[str, Any]:
+    """Category 19: the caller and the vendored library it uses, side by
+    side in a scratch directory, placeholders filled. The Python and Deno
+    programs import the library from beside them; Sabline reaches it
+    through ffi, as a host Python module, so its run gets that directory on
+    the Python path (`pythonpath`), as a project that vendors one would."""
+    here = os.path.join(workdir, prog["id"], tool)
+    os.makedirs(here, exist_ok=True)
+    lib = prog["module_files"][tool]
+    caller = os.path.join(here, prog["name"] + EXT[tool])
+    for src, dest in ((prog["files"][tool], caller),
+                      (lib, os.path.join(here, os.path.basename(lib)))):
+        with open(src, encoding="utf-8") as fh:
+            text = fh.read()
+        with open(dest, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(filled(text))
+    return {"caller": caller, "dir": here,
+            "pythonpath": here if tool == "sabline" else None}
+
+
 def _place_deno_remote(prog: Any, workdir: Any, filled: Any) -> Any:
     """Category 15: the Deno program imports a remote module whose port
     only the run knows. Write a copy of the .js with the placeholders
@@ -819,8 +1033,12 @@ def run_program(prog: Any, deno: Any, port: Any, other: Any, workdir: Any) -> An
                     .replace("{notes}", "<notes>")
                     .replace("{cred}", "<cred>")
                     .replace("{dotenv}", "<dotenv>")
+                    .replace("{ledger}", "<ledger>")
+                    .replace("{outdir}", "<outdir>")
                     .replace("{granted}", "<granted>"))
     row["deno_flags"] = prog.get("deno_flags", [])
+    if prog.get("task"):
+        row["task"] = prog["task"]
     row["tools"] = {}
     for tool in TOOLS:
         work_path = os.path.join(workdir, f"{prog['id']}.{tool}.txt")
@@ -833,29 +1051,48 @@ def run_program(prog: Any, deno: Any, port: Any, other: Any, workdir: Any) -> An
         stdin_text = f(prog["stdin"])
         needs = [f(n) for n in prog["needs"]]
         deno_flags = [f(x) for x in prog.get("deno_flags", [])]
-        placed = None
-        if prog.get("dependency"):
-            placed = place_dependency(
-                prog, tool, workdir,
-                lambda t, tool=tool, work_path=work_path: fill(
-                    t, work_path, workdir, port, other, prog["id"], tool,
-                    slashes=True))
+        os.makedirs(f("{outdir}"), exist_ok=True)
+        placed = place_for(prog, tool, workdir, port, other, work_path)
         if tool == "sabline":
-            row["tools"][tool] = sabline_row(prog, stdin_text, work_path,
-                                             needs, placed)
+            result = sabline_row(prog, stdin_text, work_path, needs, placed)
         elif tool == "deno":
             deno_path = None
             if any(str(x).startswith("--allow-import") for x in deno_flags):
                 deno_path = _place_deno_remote(prog, workdir, f)
-            row["tools"][tool] = settle_memory_row(
+            result = settle_memory_row(
                 prog, deno_row(prog, stdin_text, work_path, deno, port,
                                deno_flags, placed, deno_path))
         else:
-            row["tools"][tool] = settle_memory_row(
+            result = settle_memory_row(
                 prog, python_row(prog, stdin_text, work_path, port, placed))
+        row["tools"][tool] = finish(prog, tool, result, f)
         if os.path.exists(work_path):
             os.remove(work_path)
     return row
+
+
+def place_for(prog: Any, tool: Any, workdir: Any, port: Any, other: Any,
+              work_path: Any) -> Any:
+    """Where a program with a library of its own (categories 12 and 19)
+    runs from, placeholders filled with / in paths; None for the rest."""
+    def filled(t: Any) -> Any:
+        return fill(t, work_path, workdir, port, other, prog["id"], tool,
+                    slashes=True)
+
+    if prog.get("dependency"):
+        return place_dependency(prog, tool, workdir, filled)
+    if prog.get("module"):
+        return place_module(prog, tool, workdir, filled)
+    return None
+
+
+def finish(prog: Any, tool: Any, result: Any, filled: Any) -> Any:
+    """The task check beside the verdict, and the private fields gone."""
+    stdout = result.pop("_stdout", "")
+    ran = result.pop("_ran", False)
+    if result["verdict"] == "tool-absent":
+        return result
+    return apply_task(prog, tool, result, stdout, ran, filled)
 
 
 def summarise(categories: Any, rows: Any) -> Any:
@@ -1388,6 +1625,11 @@ def main(argv: Any = None) -> int:
     with open(os.path.join(workdir, "granted", "service.pem"), "w") as fh:
         fh.write("-----BEGIN PRIVATE KEY-----\nbench-not-a-real-key\n"
                  "-----END PRIVATE KEY-----\n")
+    # a private ledger inside the granted dir, for the leak through a granted
+    # channel (category 16): not a credential location, so a read grant
+    # covers it; the task may post a summary of it, not the ledger itself
+    with open(os.path.join(workdir, "granted", "ledger.txt"), "w") as fh:
+        fh.write(LEDGER_TEXT)
     os.environ["BENCH_SECRET"] = SECRET      # sabline.run's child inherits
     try:
         import z3  # noqa: F401

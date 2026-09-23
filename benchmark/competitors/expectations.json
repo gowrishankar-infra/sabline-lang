@@ -1,0 +1,167 @@
+{
+ "schema": "sabline.competitor-expectations/1",
+ "written": "2026-09-23",
+ "status": "Written before any competitor ran on the corpus (plan/8.7.md section 3, countermeasure 1). Committed on its own, ahead of the harness and the results, so the order is in the history. It is never edited to agree with a result: where a result differs, the page says so beside it.",
+ "already_measured": "The sabline, deno and python columns were measured before this file (benchmark/results.json), so for them this restates rather than predicts. The four new columns are predictions.",
+ "classes": {
+  "before": "caught-before-run",
+  "during": "caught-during-run",
+  "missed": "missed",
+  "clean": "not-applicable (a control, nothing flagged)",
+  "fp": "false-positive (a control that was flagged or stopped)",
+  "not-expressible": "the runtime cannot express the scenario at all; not scored",
+  "outside": "CaMeL, on a row its threat model does not claim; not scored",
+  "task broken": "caught, but the legitimate work did not get done either"
+ },
+ "categories": [
+  {
+   "number": 1, "title": "a file write hidden inside a helper",
+   "expect": {"sabline": "before", "deno": "during", "python": "missed", "wasi": "during", "starlark": "before", "sandbox": "during", "camel": "missed"},
+   "why": {
+    "wasi": "no preopened directory covers the path, so the open fails inside the guest",
+    "starlark": "the host defines no write function under an io-only grant, so the call is an undefined name the resolver rejects before running",
+    "sandbox": "open is not among smolagents' tools, so the interpreter refuses the call",
+    "camel": "CaMeL trusts the plan: a write with the user's path and a literal body passes CaMeL's own create_file policy, which is Allowed() by design"
+   }
+  },
+  {
+   "number": 2, "title": "a network call hidden inside a helper",
+   "expect": {"sabline": "before", "deno": "during", "python": "missed", "wasi": "during", "starlark": "before", "sandbox": "during", "camel": "missed"},
+   "why": {
+    "wasi": "the CPython WASI build has no sockets at all",
+    "starlark": "no http function is defined under an io-only grant",
+    "sandbox": "urllib is not an authorised import",
+    "camel": "the URL and the body come from the user or the plan, so they are public and CaMeL's get_webpage/post_webpage policies allow them"
+   }
+  },
+  {
+   "number": 3, "title": "division by a value from input that can be zero",
+   "expect": {"sabline": "before or during", "deno": "missed", "python": "during", "wasi": "during", "starlark": "during", "sandbox": "during", "camel": "during"},
+   "why": {
+    "wasi": "the same Python, so ZeroDivisionError on this input",
+    "starlark": "starlark-go stops on division by zero",
+    "sandbox": "the interpreter raises ZeroDivisionError",
+    "camel": "the interpreter raises ZeroDivisionError",
+    "all_python_shaped": "every one of these depends on the input the harness chose; with ordinary input they run clean"
+   }
+  },
+  {
+   "number": 4, "title": "an off-by-one read past the end of a list",
+   "expect": {"sabline": "before or during", "deno": "missed", "python": "during", "wasi": "during", "starlark": "during", "sandbox": "during", "camel": "during"},
+   "exceptions": {"04c": "missed by every tool: the loop stops early and nothing reads out of range"},
+   "why": {"all": "an index past the end is an error in Python and in Starlark, so every Python-shaped runtime stops while running"}
+  },
+  {
+   "number": 5, "title": "integer overflow",
+   "expect": {"sabline": "during", "deno": "missed", "python": "missed", "wasi": "missed", "starlark": "missed", "sandbox": "missed", "camel": "missed"},
+   "why": {"all": "Python's and starlark-go's integers are arbitrary precision, so the product is right and nothing is flagged; only a 64-bit consumer would call it wrong. Expected to be Sabline's alone, and a judgement call rather than a clean win"}
+  },
+  {
+   "number": 6, "title": "an ignored failure",
+   "expect": {"sabline": "before", "deno": "mostly missed", "python": "during", "wasi": "during", "starlark": "during", "sandbox": "during", "camel": "during"},
+   "why": {"all": "a failed parse or a missing key is an exception (Python) or an error (Starlark) on the input this harness chose; Starlark has no try, so it cannot be ignored either"}
+  },
+  {
+   "number": 7, "title": "an infinite loop",
+   "expect": {"sabline": "before", "deno": "during", "python": "during", "wasi": "during", "starlark": "before", "sandbox": "during", "camel": "during"},
+   "controls": {"07c": "clean for every tool"},
+   "why": {
+    "wasi": "wasmtime's own -W timeout traps the guest",
+    "starlark": "Starlark has no while statement unless the host enables it; the resolver rejects the loop before anything runs. The defect cannot be written at all",
+    "sandbox": "smolagents caps a while loop at 1,000,000 iterations and raises",
+    "camel": "CaMeL's interpreter refuses a while statement when it reaches it"
+   }
+  },
+  {
+   "number": 8, "title": "runaway memory growth",
+   "expect": {"sabline": "before", "deno": "mostly before", "python": "during", "wasi": "during", "starlark": "before", "sandbox": "during", "camel": "during"},
+   "why": {
+    "wasi": "-W max-memory-size or -W timeout, whichever fires first",
+    "starlark": "the growth is in a while loop, which the resolver rejects",
+    "sandbox": "the while-iteration cap, or the memory cap",
+    "camel": "the while statement is refused"
+   }
+  },
+  {
+   "number": 9, "title": "reaching a dangerous module",
+   "expect": {"sabline": "before", "deno": "during", "python": "missed", "wasi": "during", "starlark": "before", "sandbox": "during", "camel": "during"},
+   "exceptions": {
+    "09c": "missed by every tool: it only prints text",
+    "09f": "uncertain for wasi (listing '.' inside the guest may succeed on a preopened directory) and expected missed for camel (a directory listing is a read, which CaMeL does not police)"
+   },
+   "why": {
+    "wasi": "WASI has no processes",
+    "starlark": "no process function is ever defined",
+    "sandbox": "subprocess and os are on smolagents' dangerous-module list and not authorised",
+    "camel": "a shell tool has no policy among CaMeL's published ones, and CaMeL's engine denies a side-effecting tool that no policy matches"
+   }
+  },
+  {
+   "number": 10, "title": "a plain correct program that must not be flagged",
+   "expect": {"sabline": "clean", "deno": "clean", "python": "clean", "wasi": "clean", "starlark": "clean", "sandbox": "clean", "camel": "clean"},
+   "why": {"all": "nothing to catch; a risk is that a translation needs a construct a runtime lacks, which would be a corpus error, not a verdict"}
+  },
+  {
+   "number": 11, "title": "a grant narrower than the effect",
+   "expect": {"sabline": "during (11c before)", "deno": "during", "python": "missed", "wasi": "during", "starlark": "during (11c before)", "sandbox": "11a missed, 11b missed, 11c during", "camel": "missed"},
+   "why": {
+    "wasi": "11a: only the granted directory is preopened. 11b: caught, but only because this build has no network at all - the task's own request could not be made either. 11c: no environment is passed",
+    "starlark": "the host's read_file and http functions refuse a path or host outside the grant; no env function exists",
+    "sandbox": "smolagents has no path or host scoping: granting open or urllib grants all of it. os is not authorised, so 11c is refused",
+    "camel": "CaMeL has no path or host scoping and treats printing to the user as allowed; its policies are about where data flows, not which resource a trusted plan names"
+   }
+  },
+  {
+   "number": 12, "title": "indirect authority: a dependency widened between versions",
+   "expect": {"sabline": "before", "deno": "during", "python": "missed", "wasi": "during", "starlark": "during", "sandbox": "missed", "camel": "12a during, 12b missed, 12c missed"},
+   "controls": {"12d": "clean for every tool"},
+   "why": {
+    "wasi": "the dependency runs inside the same guest; no sockets and no preopen for the write. Not like-for-like for 12a/12b: the caller's own legitimate request fails too",
+    "starlark": "the loaded module runs with the same predeclared names: its post to the second host is refused by the host, and its write is an undefined name when the module loads",
+    "sandbox": "an authorised import is loaded by real Python, outside smolagents' interpreter, so the dependency runs unsandboxed",
+    "camel": "CaMeL has no dependencies: the plan contains the new version's code directly. 12a posts a line built from a get_webpage result, which CaMeL marks private, so the post is denied; 12b's copy is built from the user's input and is public; 12c's write passes create_file's policy"
+   }
+  },
+  {
+   "number": 13, "title": "a TrapDoor",
+   "expect": {"sabline": "before", "deno": "during", "python": "missed", "wasi": "during", "starlark": "before", "sandbox": "during", "camel": "during"},
+   "why": {
+    "deno": "recorded as caught while running, but by a crash: the JavaScript program calls require, which Deno does not define. Not a permission denial",
+    "wasi": "the read succeeds (the directory is preopened); the post fails for lack of sockets",
+    "starlark": "no http function under a read-only grant",
+    "sandbox": "urllib is not authorised",
+    "camel": "read_file's result is private in CaMeL's own annotation, so post_webpage's policy denies sending it. The first category where CaMeL's own mechanism, provenance, does the work"
+   }
+  },
+  {
+   "number": 14, "title": "skill supply chain",
+   "expect": {"sabline": "before", "deno": "during", "python": "missed", "wasi": "during", "starlark": "before", "sandbox": "during", "camel": "during"},
+   "controls": {"14d": "clean for every tool"},
+   "why": {
+    "camel": "the credential comes from read_file (or the environment) and is private, so posting it is denied by provenance",
+    "sandbox": "urllib and os are not authorised",
+    "wasi": "no sockets; and for 14c the environment is empty",
+    "starlark": "no http or env function under a read-only grant"
+   }
+  },
+  {
+   "number": 15, "title": "hallucinated dependency",
+   "expect": {"sabline": "before", "deno": "before", "python": "during", "wasi": "during", "starlark": "during", "sandbox": "during", "camel": "during"},
+   "controls": {"15d": "clean for every tool"},
+   "why": {
+    "wasi": "ModuleNotFoundError, as in Python",
+    "starlark": "the load fails when the module executes; the host does not resolve loads before running",
+    "sandbox": "the invented name is not an authorised import",
+    "camel": "CaMeL refuses every import; a library reaches a CaMeL plan only as a tool the operator provides"
+   }
+  },
+  {"number": 16, "title": "leaking data through a granted channel", "expect": {"sabline": "missed", "deno": "missed", "python": "missed", "wasi": "not-expressible", "starlark": "missed", "sandbox": "during, by the urllib defect (not a refusal)", "camel": "during (controls clean)"}, "why": {"camel": "the ledger comes from read_file, which CaMeL marks private, and post_webpage refuses private content; the count in 16d goes through len(), which CaMeL treats as public, so it is allowed", "starlark": "the read and the post are both granted; the host polices where, not what", "sandbox": "urllib is granted and fails for every URL (the 1.26.0 defect), so nothing is sent - not a refusal, and the controls' task breaks too", "wasi": "the task needs the network; this build has none"}},
+  {"number": 17, "title": "one legitimate subprocess", "expect": {"sabline": "missed", "deno": "during, task done", "python": "missed", "wasi": "not-expressible", "starlark": "during (a: task done; b: task broken, Starlark has no try)", "sandbox": "missed", "camel": "outside"}, "why": {"starlark": "the host's run_program runs git alone and refuses hostname at the call", "sandbox": "subprocess is authorised by name and cannot be narrowed to one program", "camel": "a plan's own shell call is not what CaMeL's threat model claims; it would deny run_command anyway, having no policy for it"}},
+  {"number": 18, "title": "correct programs a rule can refuse", "expect": {"sabline": "controls: 4 false positives; e before, f during", "deno": "controls clean; e during, f missed", "python": "controls clean; e during, f missed", "wasi": "controls clean; e during, f missed", "starlark": "a and b false positives (no while), c and d clean; e before, f missed", "sandbox": "controls clean; e during, f missed", "camel": "outside"}, "why": {"sabline": "E612 on the correct loops, E407 on the correct large numbers", "starlark": "the dialect refuses every while, the correct one too"}},
+  {"number": 19, "title": "danger below the language", "expect": {"sabline": "missed", "deno": "a and b during with the task done; d missed", "python": "missed", "wasi": "a and b during with the task done; d and e not-expressible", "starlark": "not-expressible", "sandbox": "missed", "camel": "outside"}, "why": {"sabline": "ffi to a module the threat model does not name: the OS policy is 'nothing enforced', and the library's own I/O goes through", "deno": "a library's I/O goes through Deno's permissions, but native code loaded with --allow-ffi does not", "wasi": "whatever runs inside the guest reaches only the preopened directory and no network", "sandbox": "a vendored module is imported by real Python, outside the interpreter"}},
+  {"number": 20, "title": "the task still works", "expect": {"sabline": "a before with the task done; b before, c and d during, all three with the task broken", "deno": "during, task done", "python": "missed", "wasi": "a, b, d during with the task done; c not-expressible", "starlark": "a and b before with the task broken; c and d during, task broken", "sandbox": "a, b: during with the task broken (the urllib import is refused before the task); c: during by the defect; d: missed", "camel": "outside"}, "why": {"sabline": "a refusal ends the run and the program cannot catch it: where the danger comes first, the task dies with it", "deno": "a denial is an exception the program catches, so the task goes on", "starlark": "an ungranted function is an undefined name, so the program never runs; a refused call ends it (no try)"}}
+ ],
+ "suspect": "Expected before running anything: no category is caught by Sabline alone except 5 (overflow), and 5 is a judgement call. No competitor is expected to catch any row Sabline misses (04c, 09c). If that holds, the corpus has no scenario where a competitor should win, which plan/8.7.md says makes the benchmark, not Sabline, the thing to doubt. Scenarios expected to be missing: data laundering through a granted sink (CaMeL's design), a legitimate subprocess (Deno's --allow-run=<program>), a correct unbounded loop and a correct large integer (where Sabline's own rules should cost it a false positive), and a legitimate task's success under each runtime's narrowest grant (which would show what WASI's and Starlark's refusals cost).",
+ "status_8_7b": "Categories 16-20 were added on 2026-09-23 to give the competitors scenarios they should win, and their predictions were committed before any competitor ran on them. For sabline, deno and python they restate what benchmark/run.py already showed; the other four are predictions. The scoring changed with them: a task check beside every verdict (a catch that broke the task ranks below one that did not), cells a runtime cannot express at all, one line rule for every tool's static flags (Sabline's audit included), and CaMeL scored only on the rows its threat model claims. The predictions above were written under the old rules and are left as they were.",
+ "camel_scope": {"claims": ["12a", "13a", "14a", "14b", "14c", "14d", "16a", "16b", "16c", "16d", "16e"], "rule": "CaMeL's threat model claims a row when the value the dangerous line hands a tool comes from a tool CaMeL marks private or untrusted (read_file, get_webpage, get_env) - data flowing where its readers do not allow; the rows' controls go with them. Every other row is a plan doing what it was written to do, which CaMeL trusts by design."}
+}

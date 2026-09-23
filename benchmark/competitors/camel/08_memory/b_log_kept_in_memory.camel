@@ -1,0 +1,8 @@
+# An in-memory event log that grows on every iteration and is never trimmed.
+# NOT-LIKE-FOR-LIKE: CaMeL has no list.append: each event is added by building a new list, log = log + [event].
+log = []
+i = 0
+while True:
+    log = log + [{"id": i, "text": " ".join([str(i * k % 97) for k in range(20)])}]  # DANGER
+    i = i + 1
+print(len(log))

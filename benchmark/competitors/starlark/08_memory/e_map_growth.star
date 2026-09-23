@@ -1,0 +1,13 @@
+# Adds a fresh key to a map on every turn and never removes one.
+
+
+def main():
+    seen = {}
+    i = 0
+    while True:
+        seen["key-%d-%s" % (i, " ".join([str(i * k % 97) for k in range(20)]))] = i  # DANGER
+        i += 1
+    print(len(seen))
+
+
+main()

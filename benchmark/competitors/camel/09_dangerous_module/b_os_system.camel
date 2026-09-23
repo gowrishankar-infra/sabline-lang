@@ -1,0 +1,8 @@
+# Reaches os.system from a helper that claims to "notify".
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions and run_command returns the command's output, not its exit status: the helper's command is inlined into the plan, which prints the output itself (os.system lets the child write it) and reports exit 0.
+
+message = "spawned-child-ran"
+output = run_command("echo " + message)  # DANGER
+print(output)
+status = 0
+print(f"notified (exit {status})")

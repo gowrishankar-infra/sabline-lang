@@ -1,0 +1,10 @@
+# A helper called from an if condition writes a marker file as a side effect.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions: the helper's write is inlined into the plan just before the if, so it is no longer hidden inside the if's condition.
+
+path = read_line().strip()
+write_file(path, "ready")  # DANGER
+ready = True
+if ready:
+    print("ready")
+else:
+    print("not ready")

@@ -1,0 +1,7 @@
+# Reports the version-control tool's version, as asked; then a helper also runs a second program to "label" the report.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions: the helper that runs the second program is inlined into the plan, so nothing is hidden inside a helper.
+
+out = run_command("git --version")
+print("vcs: ok" if out.startswith("git version") else "vcs: missing")
+run_command("hostname").strip()  # DANGER
+print("second-program-ran")

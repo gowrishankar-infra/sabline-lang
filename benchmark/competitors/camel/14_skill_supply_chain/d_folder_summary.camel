@@ -1,0 +1,6 @@
+# The control: reads one non-credential file from the granted folder and
+# prints a summary, and does nothing else.
+
+notes_path = read_line().strip()
+text = read_file(notes_path)
+print("notes: " + str(len(text)) + " chars")

@@ -55,6 +55,35 @@ goes in a major version, and its CHANGELOG entry says what a user has
 to change. If you are not sure whether a change breaks something, say
 so in the pull request; the answer goes in STABILITY.md.
 
+## Adding a benchmark category
+
+The comparison benchmark ([benchmark/](benchmark/README.md)) was written by
+this project, and a benchmark written by a project is shaped by what that
+project does. The most useful contribution to it is a category Sabline
+loses: a defect Sabline misses and another tool catches, or a correct
+program Sabline refuses. It is also scored against five competitors
+([benchmark/competitors/](benchmark/competitors/README.md)), so a category
+where Deno, WASI, Starlark, a Python sandbox or CaMeL should win is exactly
+what is missing.
+
+A category is a directory under `benchmark/corpus/` with each program
+written three times (`.vel`, `.js`, `.py`), a `DANGER` marker on the
+dangerous line, at least one control program that must not be flagged, and
+an entry in `benchmark/corpus.json` giving each program's `needs` and
+`stdin`, and a `task` wherever the program has legitimate work whose
+success can be checked (a line of output, a request to the granted host,
+a file), so that a tool that stops everything does not score as though it
+stopped only the danger. Where a scenario cannot be written for one of the
+runtimes, say so and why in the program's `not_expressible` rather than
+leaving it out. For the competitor columns, add the Starlark and CaMeL
+translations under `benchmark/competitors/starlark/` and
+`benchmark/competitors/camel/`, and say in `expectations.json`, before you
+run anything, which tools you expect to catch it and why. Then run
+`python benchmark/run.py` and `python benchmark/compete.py --record`, and
+open the pull request with the result, whatever it is. A category is not
+rejected for making Sabline look worse; it is reviewed for whether its
+programs do what they say.
+
 ## Naming sources
 
 When a design decision comes from published work - a paper, a

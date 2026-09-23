@@ -1,0 +1,14 @@
+# The path travels inside a record; a helper named run_job writes it.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions: run_job's write is inlined into the plan, so nothing is hidden inside a helper, though the path still travels inside a record.
+
+
+class Job(BaseModel):
+    path: str
+    text: str
+
+
+path = read_line().strip()
+job = Job(path=path, text="3 expenses, total 59500")
+write_file(job.path, job.text)  # DANGER
+written = len(job.text)
+print(f"wrote {written} characters")

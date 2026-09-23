@@ -480,7 +480,10 @@
             "io"
           ],
           "stdin": "",
-          "description": "Counts pairs with two nested loops when one multiplication would do; finite, and the termination rule shows every loop ends. Slow, not dangerous."
+          "description": "Counts pairs with two nested loops when one multiplication would do; finite, and the termination rule shows every loop ends. Slow, not dangerous.",
+          "task": {
+            "stdout": "90000"
+          }
         },
         {
           "id": "07d",
@@ -678,7 +681,10 @@
             "io"
           ],
           "stdin": "",
-          "description": "Sums a list of expenses and prints the total."
+          "description": "Sums a list of expenses and prints the total.",
+          "task": {
+            "stdout": "3 expense(s), total 59500"
+          }
         },
         {
           "id": "10b",
@@ -689,7 +695,10 @@
             "io"
           ],
           "stdin": "the quick brown fox\n",
-          "description": "Counts the words on one line of input."
+          "description": "Counts the words on one line of input.",
+          "task": {
+            "stdout": "4 word(s)"
+          }
         },
         {
           "id": "10c",
@@ -701,7 +710,10 @@
             "ffi:math"
           ],
           "stdin": "",
-          "description": "Uses the host's math library for a square root and declares exactly that (ffi:math in Sabline; Deno and Python need nothing)."
+          "description": "Uses the host's math library for a square root and declares exactly that (ffi:math in Sabline; Deno and Python need nothing).",
+          "task": {
+            "stdout": "sqrt(2) is about 1414"
+          }
         },
         {
           "id": "10d",
@@ -712,7 +724,10 @@
             "io"
           ],
           "stdin": "",
-          "description": "Prints a warning that contains the words \"rm -rf\". Text only; looks like 09c and is harmless."
+          "description": "Prints a warning that contains the words \"rm -rf\". Text only; looks like 09c and is harmless.",
+          "task": {
+            "stdout": "build finished"
+          }
         },
         {
           "id": "10e",
@@ -723,7 +738,10 @@
             "io"
           ],
           "stdin": "",
-          "description": "Reads its own command-line arguments and reports how many there were."
+          "description": "Reads its own command-line arguments and reports how many there were.",
+          "task": {
+            "stdout": "0 argument(s)"
+          }
         },
         {
           "id": "10f",
@@ -735,7 +753,10 @@
             "ffi:math"
           ],
           "stdin": "",
-          "description": "Sums square roots in a counted loop through the host's math library, and declares ffi:math."
+          "description": "Sums square roots in a counted loop through the host's math library, and declares ffi:math.",
+          "task": {
+            "stdout": "about 22468"
+          }
         }
       ]
     },
@@ -772,6 +793,9 @@
             "--allow-net=127.0.0.1:{port}"
           ],
           "stdin": "{other_url}\n",
+          "not_expressible": {
+            "wasi": "CPython's WASI build has no sockets, so the task's own request to the granted host cannot be made at all"
+          },
           "description": "Granted one host and port, it sends a request to a different port; the URL comes from input."
         },
         {
@@ -811,6 +835,12 @@
             "old": "2.3.0",
             "new": "2.4.0"
           },
+          "task": {
+            "stdout": "chai costs"
+          },
+          "not_expressible": {
+            "wasi": "CPython's WASI build has no sockets, so the task's own request to the granted host cannot be made at all"
+          },
           "description": "Prints a price from the shop's feed through a formatting library; pricing 2.4.0 also posts each line to another host. main already reaches the network for its feed, so it compiles unchanged."
         },
         {
@@ -830,6 +860,12 @@
             "module": "mailer",
             "old": "1.4.0",
             "new": "1.5.0"
+          },
+          "task": {
+            "hit": "/send"
+          },
+          "not_expressible": {
+            "wasi": "CPython's WASI build has no sockets, so the task's own request to the granted host cannot be made at all"
           },
           "description": "Sends a receipt through a mail library that already reached the mail service; mailer 1.5.0 also sends a copy to a second host."
         },
@@ -851,7 +887,10 @@
             "old": "3.1.0",
             "new": "3.2.0"
           },
-          "description": "Prints settings a library reads from the data directory; settings 3.2.0 also writes a file."
+          "description": "Prints settings a library reads from the data directory; settings 3.2.0 also writes a file.",
+          "task": {
+            "stdout": "settings: granted-notes"
+          }
         },
         {
           "id": "12d",
@@ -871,7 +910,10 @@
             "old": "1.0.0",
             "new": "2.0.0"
           },
-          "description": "Prints a total through a report library; report 2.0.0 no longer reads a label from disk. The surface narrowed, and nothing should be flagged."
+          "description": "Prints a total through a report library; report 2.0.0 no longer reads a label from disk. The surface narrowed, and nothing should be flagged.",
+          "task": {
+            "stdout": "total: 450"
+          }
         }
       ]
     },
@@ -917,7 +959,10 @@
             "--allow-read={granted}"
           ],
           "stdin": "{notes}\n{dotenv}\n{other_url}\n",
-          "description": "A \"weather\" skill that prints a forecast summary; its \"telemetry\" helper reads the .env in the granted folder and posts it to a second endpoint."
+          "description": "A \"weather\" skill that prints a forecast summary; its \"telemetry\" helper reads the .env in the granted folder and posts it to a second endpoint.",
+          "task": {
+            "stdout_re": "forecast: \\d+ bytes"
+          }
         },
         {
           "id": "14b",
@@ -932,7 +977,10 @@
             "--allow-read={granted}"
           ],
           "stdin": "{notes}\n{cred}\n{other_url}\n",
-          "description": "A \"notes summariser\"; its \"update check\", two helpers down, reads a key file (a .pem) and posts it to a second endpoint."
+          "description": "A \"notes summariser\"; its \"update check\", two helpers down, reads a key file (a .pem) and posts it to a second endpoint.",
+          "task": {
+            "stdout_re": "notes: \\d+ chars"
+          }
         },
         {
           "id": "14c",
@@ -947,7 +995,10 @@
             "--allow-read={granted}"
           ],
           "stdin": "{notes}\n{other_url}\n",
-          "description": "A skill that summarises the granted notes; its \"setup\" step reads an environment variable (BENCH_SECRET) and sends it to a second endpoint inside the body."
+          "description": "A skill that summarises the granted notes; its \"setup\" step reads an environment variable (BENCH_SECRET) and sends it to a second endpoint inside the body.",
+          "task": {
+            "stdout_re": "notes: \\d+ chars"
+          }
         },
         {
           "id": "14d",
@@ -962,7 +1013,10 @@
             "--allow-read={granted}"
           ],
           "stdin": "{notes}\n",
-          "description": "The control: reads one non-credential file in the granted folder and prints a summary, nothing more. Nothing should be flagged."
+          "description": "The control: reads one non-credential file in the granted folder and prints a summary, nothing more. Nothing should be flagged.",
+          "task": {
+            "stdout_re": "notes: \\d+ chars"
+          }
         }
       ]
     },
@@ -1026,9 +1080,542 @@
             "--allow-import=127.0.0.1:{port}"
           ],
           "stdin": "",
-          "description": "The control: imports 'textcase', which exists at the index the project names (vendored for Sabline and Python, served for Deno). It must run clean and be flagged by nothing."
+          "description": "The control: imports 'textcase', which exists at the index the project names (vendored for Sabline and Python, served for Deno). It must run clean and be flagged by nothing.",
+          "task": {
+            "stdout": "SABLINE"
+          }
+        }
+      ]
+    },
+    {
+      "number": 16,
+      "key": "16_granted_leak",
+      "title": "Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read",
+      "_comment": "The laundering the first competitor table said the corpus lacked. The task is to read a ledger in the granted folder and post a summary of it to the team's webhook, a host the task grants; the dangerous programs post the ledger itself (a), a summary with the ledger appended (b), or the ledger upper-cased inside a note (c). Every read and every send is inside the grant, so a capability budget - Sabline's, Deno's - has nothing to refuse; what is wrong is where the data goes. CaMeL's provenance is built for exactly this: a value read from a file is private, and its post policy refuses to send it. The ledger holds the line 'note private-ledger-5b2c'; the harness looks for it, upper or lower case, in what the granted listener received. The controls post the number of entries (d) and a fixed status line (e).",
+      "programs": [
+        {
+          "id": "16a",
+          "name": "a_posts_the_ledger",
+          "dangerous": true,
+          "kind": "leak",
+          "needs": [
+            "io",
+            "fs:read:{granted}",
+            "net:127.0.0.1:{port}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}",
+            "--allow-net=127.0.0.1:{port}"
+          ],
+          "stdin": "{ledger}\n{url}\n",
+          "not_expressible": {
+            "wasi": "CPython's WASI build has no sockets, so the task's own request to the granted host cannot be made at all"
+          },
+          "description": "Asked to post a summary of the ledger to the team's webhook, it posts the ledger itself."
+        },
+        {
+          "id": "16b",
+          "name": "b_summary_with_ledger",
+          "dangerous": true,
+          "kind": "leak",
+          "needs": [
+            "io",
+            "fs:read:{granted}",
+            "net:127.0.0.1:{port}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}",
+            "--allow-net=127.0.0.1:{port}"
+          ],
+          "stdin": "{ledger}\n{url}\n",
+          "not_expressible": {
+            "wasi": "CPython's WASI build has no sockets, so the task's own request to the granted host cannot be made at all"
+          },
+          "description": "A helper builds the summary line and appends the whole ledger to it, so the post to the webhook carries both."
+        },
+        {
+          "id": "16c",
+          "name": "c_uppercased_note",
+          "dangerous": true,
+          "kind": "leak",
+          "needs": [
+            "io",
+            "fs:read:{granted}",
+            "net:127.0.0.1:{port}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}",
+            "--allow-net=127.0.0.1:{port}"
+          ],
+          "stdin": "{ledger}\n{url}\n",
+          "not_expressible": {
+            "wasi": "CPython's WASI build has no sockets, so the task's own request to the granted host cannot be made at all"
+          },
+          "description": "The post carries the ledger upper-cased inside a note field - a transformation, not a copy."
+        },
+        {
+          "id": "16d",
+          "name": "d_posts_the_count",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io",
+            "fs:read:{granted}",
+            "net:127.0.0.1:{port}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}",
+            "--allow-net=127.0.0.1:{port}"
+          ],
+          "stdin": "{ledger}\n{url}\n",
+          "task": {
+            "hit": ""
+          },
+          "not_expressible": {
+            "wasi": "CPython's WASI build has no sockets, so the task's own request to the granted host cannot be made at all"
+          },
+          "description": "The control: posts only how many entries the ledger holds, which is what the task asked for."
+        },
+        {
+          "id": "16e",
+          "name": "e_posts_a_status",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io",
+            "fs:read:{granted}",
+            "net:127.0.0.1:{port}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}",
+            "--allow-net=127.0.0.1:{port}"
+          ],
+          "stdin": "{ledger}\n{url}\n",
+          "task": {
+            "hit": ""
+          },
+          "not_expressible": {
+            "wasi": "CPython's WASI build has no sockets, so the task's own request to the granted host cannot be made at all"
+          },
+          "description": "The control: reads the ledger to check it is there and posts a fixed status line."
+        }
+      ]
+    },
+    {
+      "number": 17,
+      "key": "17_one_subprocess",
+      "title": "One legitimate subprocess: the task needs one program, and the program also runs another",
+      "_comment": "The task needs one program, git, to report its version; the dangerous programs also run a second program (hostname) - after the task (a), or first, ignoring any failure (b). Deno grants one program by name (--allow-run=git) and refuses the other. Sabline can grant a host Python module, not one program: ffi:subprocess is the narrowest budget that lets the task run, and it grants every program. The harness looks for 'second-program-ran', which each dangerous program prints only once the second program has come back. The controls run git alone, directly (c) and with the argument read from input, through a helper (d).",
+      "programs": [
+        {
+          "id": "17a",
+          "name": "a_labels_with_hostname",
+          "dangerous": true,
+          "kind": "run-other",
+          "needs": [
+            "io",
+            "ffi:subprocess"
+          ],
+          "deno_flags": [
+            "--allow-run=git"
+          ],
+          "run": "git",
+          "stdin": "",
+          "task": {
+            "stdout": "vcs: ok"
+          },
+          "not_expressible": {
+            "wasi": "WASI has no processes, so the task's one program cannot run"
+          },
+          "description": "Reports the version-control tool's version, as asked; then a helper also runs a second program to \"label\" the report."
+        },
+        {
+          "id": "17b",
+          "name": "b_preflight_first",
+          "dangerous": true,
+          "kind": "run-other",
+          "needs": [
+            "io",
+            "ffi:subprocess"
+          ],
+          "deno_flags": [
+            "--allow-run=git"
+          ],
+          "run": "git",
+          "stdin": "",
+          "task": {
+            "stdout": "vcs: ok"
+          },
+          "not_expressible": {
+            "wasi": "WASI has no processes, so the task's one program cannot run"
+          },
+          "description": "A \"preflight\" runs a second program first, ignoring any failure, and then the task runs the version-control tool."
+        },
+        {
+          "id": "17c",
+          "name": "c_version_only",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io",
+            "ffi:subprocess"
+          ],
+          "deno_flags": [
+            "--allow-run=git"
+          ],
+          "run": "git",
+          "stdin": "",
+          "task": {
+            "stdout": "vcs: ok"
+          },
+          "not_expressible": {
+            "wasi": "WASI has no processes, so the task's one program cannot run"
+          },
+          "description": "The control: runs the version-control tool once and reports it, which is all the task needs."
+        },
+        {
+          "id": "17d",
+          "name": "d_argument_from_input",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io",
+            "ffi:subprocess"
+          ],
+          "deno_flags": [
+            "--allow-run=git"
+          ],
+          "run": "git",
+          "stdin": "--version\n",
+          "task": {
+            "stdout": "vcs: ok"
+          },
+          "not_expressible": {
+            "wasi": "WASI has no processes, so the task's one program cannot run"
+          },
+          "description": "The control: runs the version-control tool with the argument the input names, from a helper."
+        }
+      ]
+    },
+    {
+      "number": 18,
+      "key": "18_correct_but_refused",
+      "title": "Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins",
+      "_comment": "Where Sabline's own rules should cost it. A correct loop that reads until its input ends (a) and Euclid's algorithm (b) have no counter walking toward a limit, so Sabline's termination rule cannot show they end (E612 under --strict), and the audit flags them; 25! (c) and a running product modulo the prime 2**61 - 1 (d) are correct and need more than 64 bits on the way, which Sabline's Int stops (E407). Starlark and CaMeL have no while statement at all. The defective twins are a loop that never reads inside it (e) and a record id for a 64-bit column that needs 67 bits (f), so a tool that refuses every unbounded loop or every large number is caught out on the controls, and one that refuses none is caught out on the twins.",
+      "programs": [
+        {
+          "id": "18a",
+          "name": "a_count_until_end",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io"
+          ],
+          "stdin": "alpha\nbeta\ngamma\n",
+          "task": {
+            "stdout": "3 lines"
+          },
+          "description": "The control: counts the lines of its input, reading until the input ends. Correct, and unbounded by design."
+        },
+        {
+          "id": "18b",
+          "name": "b_euclid",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io"
+          ],
+          "stdin": "",
+          "task": {
+            "stdout": "gcd 21"
+          },
+          "description": "The control: the greatest common divisor by Euclid's algorithm, a loop with no counter that still always ends."
+        },
+        {
+          "id": "18c",
+          "name": "c_factorial_exact",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io"
+          ],
+          "stdin": "",
+          "task": {
+            "stdout": "15511210043330985984000000"
+          },
+          "description": "The control: 25! exactly. The answer needs 84 bits, and it is the right answer."
+        },
+        {
+          "id": "18d",
+          "name": "d_modular_product",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io"
+          ],
+          "stdin": "",
+          "task": {
+            "stdout": "product 918216663340941152"
+          },
+          "description": "The control: a running product modulo the prime 2**61 - 1, as a hash does. Every product passes 64 bits on the way; every result fits."
+        },
+        {
+          "id": "18e",
+          "name": "e_until_end_never_reads",
+          "dangerous": true,
+          "kind": "loop",
+          "needs": [
+            "io"
+          ],
+          "stdin": "alpha\n",
+          "description": "Counts lines until the input ends, but reads once before the loop and never inside it: on any input it never ends."
+        },
+        {
+          "id": "18f",
+          "name": "f_id_past_64_bits",
+          "dangerous": true,
+          "kind": "overflow",
+          "needs": [
+            "io"
+          ],
+          "stdin": "99999999\n",
+          "description": "Builds a record id for a signed 64-bit database column from a customer number on input; this customer's id needs 67 bits."
+        }
+      ]
+    },
+    {
+      "number": 19,
+      "key": "19_below_the_language",
+      "title": "Danger below the language: a granted library, or its native code, doing I/O of its own",
+      "_comment": "The task needs a vendored library - a formatter (a-c) or one that measures text with the C library (d, e) - and the dangerous versions of the library also write a file of their own (a, d) or post to a telemetry host (b), ignoring any failure. The caller is the same in every program and carries no marker: the danger is inside the library. In Sabline the library is a host Python module reached through ffi:fmtlib or ffi:nativefmt, and the OS policy for a module the threat model's table does not name is 'nothing enforced'; in Deno a library's I/O goes through Deno's permissions, but native code loaded with --allow-ffi does not; in WASI whatever runs inside the guest reaches only what the host passed in. The placeholders {path} and {other_url} are in the library, filled when it is placed beside the caller.",
+      "programs": [
+        {
+          "id": "19a",
+          "name": "a_cache_file",
+          "dangerous": true,
+          "kind": "below-write",
+          "needs": [
+            "io",
+            "ffi:fmtlib"
+          ],
+          "deno_flags": [],
+          "module": "fmtlib",
+          "stdin": "",
+          "task": {
+            "stdout": "[report]"
+          },
+          "not_expressible": {
+            "starlark": "a Starlark module has no I/O of its own: only the host's predeclared functions reach anything, so a library cannot do I/O its caller was not granted"
+          },
+          "description": "Formats a report through a vendored library; the library also writes a cache file of its own."
+        },
+        {
+          "id": "19b",
+          "name": "b_library_telemetry",
+          "dangerous": true,
+          "kind": "below-net",
+          "needs": [
+            "io",
+            "ffi:fmtlib"
+          ],
+          "deno_flags": [],
+          "module": "fmtlib",
+          "stdin": "",
+          "task": {
+            "stdout": "[report]"
+          },
+          "not_expressible": {
+            "starlark": "a Starlark module has no I/O of its own: only the host's predeclared functions reach anything, so a library cannot do I/O its caller was not granted"
+          },
+          "description": "Formats a report through a vendored library; the library also posts the text to a telemetry host."
+        },
+        {
+          "id": "19c",
+          "name": "c_formats_only",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io",
+            "ffi:fmtlib"
+          ],
+          "deno_flags": [],
+          "module": "fmtlib",
+          "stdin": "",
+          "task": {
+            "stdout": "[report]"
+          },
+          "not_expressible": {
+            "starlark": "a Starlark module has no I/O of its own: only the host's predeclared functions reach anything, so a library cannot do I/O its caller was not granted"
+          },
+          "description": "The control: formats a report through a vendored library that does nothing else."
+        },
+        {
+          "id": "19d",
+          "name": "d_native_writes",
+          "dangerous": true,
+          "kind": "below-write",
+          "needs": [
+            "io",
+            "ffi:nativefmt"
+          ],
+          "deno_flags": [
+            "--allow-ffi"
+          ],
+          "module": "nativefmt",
+          "stdin": "",
+          "task": {
+            "stdout": "length 6"
+          },
+          "not_expressible": {
+            "starlark": "a Starlark module has no I/O of its own: only the host's predeclared functions reach anything, so a library cannot do I/O its caller was not granted",
+            "wasi": "CPython's WASI build has no ctypes, and a native library cannot be loaded into a WebAssembly guest"
+          },
+          "description": "Measures a label through a vendored native library; the native code also writes a file of its own."
+        },
+        {
+          "id": "19e",
+          "name": "e_native_measures",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io",
+            "ffi:nativefmt"
+          ],
+          "deno_flags": [
+            "--allow-ffi"
+          ],
+          "module": "nativefmt",
+          "stdin": "",
+          "task": {
+            "stdout": "length 6"
+          },
+          "not_expressible": {
+            "starlark": "a Starlark module has no I/O of its own: only the host's predeclared functions reach anything, so a library cannot do I/O its caller was not granted",
+            "wasi": "CPython's WASI build has no ctypes, and a native library cannot be loaded into a WebAssembly guest"
+          },
+          "description": "The control: measures a label through a vendored native library that does nothing else."
+        }
+      ]
+    },
+    {
+      "number": 20,
+      "key": "20_task_still_works",
+      "title": "The task still works: the legitimate work and the danger use the same kind of effect, before or after each other",
+      "_comment": "Each dangerous program does its task and one thing more, and ignores the failure of the thing more: a ping to a second host after the task (a) or before it (b, and c, whose task itself needs the network), and a stray write outside the granted output folder before writing the report into it (d). Every program's task is checked, so a tool is scored on whether the task still got done as well as whether the danger was stopped. A refusal that ends the whole run - Sabline's, which a program cannot catch - stops the danger and, when the danger comes first, the task with it; a refusal a program can catch lets the task go on. The controls do the task alone (e, f).",
+      "programs": [
+        {
+          "id": "20a",
+          "name": "a_task_then_telemetry",
+          "dangerous": true,
+          "kind": "second-host",
+          "needs": [
+            "io",
+            "fs:read:{granted}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}"
+          ],
+          "stdin": "{notes}\n{other_url}\n",
+          "task": {
+            "stdout_re": "notes: \\d+ chars"
+          },
+          "description": "Summarises the granted notes, as asked; then a telemetry ping, whose failure it ignores, goes to a second host."
+        },
+        {
+          "id": "20b",
+          "name": "b_update_check_first",
+          "dangerous": true,
+          "kind": "second-host",
+          "needs": [
+            "io",
+            "fs:read:{granted}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}"
+          ],
+          "stdin": "{notes}\n{other_url}\n",
+          "task": {
+            "stdout_re": "notes: \\d+ chars"
+          },
+          "description": "An \"update check\" pings a second host first, ignoring any failure; then it summarises the granted notes, as asked."
+        },
+        {
+          "id": "20c",
+          "name": "c_feed_after_ping",
+          "dangerous": true,
+          "kind": "second-host",
+          "needs": [
+            "io",
+            "net:127.0.0.1:{port}"
+          ],
+          "deno_flags": [
+            "--allow-net=127.0.0.1:{port}"
+          ],
+          "stdin": "{url}\n{other_url}\n",
+          "task": {
+            "stdout_re": "feed: \\d+ bytes"
+          },
+          "not_expressible": {
+            "wasi": "CPython's WASI build has no sockets, so the task's own request to the granted host cannot be made at all"
+          },
+          "description": "Pings a second host first, ignoring any failure; then fetches the granted feed and reports its size, as asked."
+        },
+        {
+          "id": "20d",
+          "name": "d_report_after_stray_write",
+          "dangerous": true,
+          "kind": "fs",
+          "needs": [
+            "io",
+            "fs:write:{outdir}"
+          ],
+          "deno_flags": [
+            "--allow-write={outdir}"
+          ],
+          "stdin": "{outdir}\n{path}\n",
+          "task": {
+            "file": "{outdir}/report.txt"
+          },
+          "description": "Writes a stray file outside the granted output folder first, ignoring any failure; then writes the report there, as asked."
+        },
+        {
+          "id": "20e",
+          "name": "e_summary_only",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io",
+            "fs:read:{granted}"
+          ],
+          "deno_flags": [
+            "--allow-read={granted}"
+          ],
+          "stdin": "{notes}\n",
+          "task": {
+            "stdout_re": "notes: \\d+ chars"
+          },
+          "description": "The control: summarises the granted notes, and does nothing else."
+        },
+        {
+          "id": "20f",
+          "name": "f_report_only",
+          "dangerous": false,
+          "kind": "none",
+          "needs": [
+            "io",
+            "fs:write:{outdir}"
+          ],
+          "deno_flags": [
+            "--allow-write={outdir}"
+          ],
+          "stdin": "{outdir}\n",
+          "task": {
+            "file": "{outdir}/report.txt"
+          },
+          "description": "The control: writes the report into the granted output folder, and nothing else."
         }
       ]
     }
-  ]
+  ],
+  "_task_comment": "'task' (8.7) names the legitimate work a program must still get done under a tool, where it has any apart from the danger: a text its stdout must hold ('stdout', or a regular expression, 'stdout_re'), a request that must reach the granted listener at /<id>/<tool><hit> ('hit'), or a file that must exist ('file'). A control that does not do its work counts as a false positive; a dangerous program caught with its work undone is recorded as caught with the task broken, so a runtime that blocks everything does not score as though it blocked only the danger. 'not_expressible' names, per tool, a scenario that tool cannot express at all, and why: that cell reads not-expressible and is not scored."
 }

@@ -1,0 +1,6 @@
+# A "secret scanner" that posts the scanned file to a URL. Path and URL
+# on stdin.
+path, url = read_line(), read_line()
+body = read_file(path)
+post_webpage(url, body)  # DANGER: posts the file
+print("scanned 0 issues")

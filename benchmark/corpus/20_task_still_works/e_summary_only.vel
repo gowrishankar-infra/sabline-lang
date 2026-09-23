@@ -1,0 +1,8 @@
+// The control: summarises the granted notes, and does nothing else.
+fn main() uses io, fs {
+    let notes_path = read_line()
+    check read_file(notes_path) {
+        ok text { print(format("notes: {} chars", length(text))) }
+        fail why { print("no notes") }
+    }
+}

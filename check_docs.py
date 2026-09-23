@@ -105,7 +105,10 @@ from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_docs")
 SABLINE_PY = str(HERE / "sabline.py")
-DOCS = ("README.md", "SPEC.md", "EMBEDDING.md", "TUTORIAL.md")
+# docs/receipts.md is two sections of EMBEDDING.md, moved to fit the page
+# budget (8.7), and its blocks are held as they were there
+DOCS = ("README.md", "SPEC.md", "EMBEDDING.md", "TUTORIAL.md",
+        "docs/receipts.md")
 CODE_DOCS = (["SPEC.md", "README.md", "EMBEDDING.md", "LLM.md", "TUTORIAL.md"]
              + sorted(f"docs/{p.name}" for p in (HERE / "docs").glob("*.md")))
 
@@ -1303,6 +1306,8 @@ OLD_HOST_ALLOWED = {
     "PROVENANCE.md": "what was published under the earlier name",
     "SECURITY.md": "what a verifier of an earlier Statement should expect",
     "EMBEDDING.md": "the predicate types a consumer of Statements accepts",
+    "docs/receipts.md": "the receipt's predicate type, in the two sections "
+                        "moved there from EMBEDDING.md (8.7)",
     "docs/renamed.md": "the page that lists every address and where it "
                        "now points",
     "docs/crosswalk.md": "the predicate types, under every spelling",
@@ -1320,6 +1325,7 @@ OLD_HOST_ALLOWED = {
 # allowed in whichever tree it lands in.
 OLD_HOST_ALLOWED_PAGES = (
     "index.html", "renamed.html", "crosswalk.html", "embedding.html",
+    "receipts.html",
     "stability.html", "threat-model.html", "security.html", "spec.html",
     "playground.html", "search-index.json", "library.html",
     "capability/v1/index.html", "receipt/v1/index.html",

@@ -1,0 +1,9 @@
+# A "log" helper called from a loop writes to disk on every item.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions and no append mode: the helper's write is inlined into the loop, so nothing is hidden inside a helper, and each write replaces the file where Python's appends to it.
+
+path = read_line().strip()
+items = ["chai", "book", "auto"]
+for item in items:
+    line = "processed " + item
+    write_file(path, line + "\n")  # DANGER
+print(f"{len(items)} items")

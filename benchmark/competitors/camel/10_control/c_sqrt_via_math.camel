@@ -1,0 +1,6 @@
+# Uses the host's math library for a square root, and says so: it needs math and nothing more.
+# NOT-LIKE-FOR-LIKE: CaMeL has no round(): the plan rounds with int(x + 0.5), which gives the same whole number for this positive value.
+
+x = 2
+root = sqrt(x)
+print(f"sqrt(2) is about {int(root * 1000.0 + 0.5)}")

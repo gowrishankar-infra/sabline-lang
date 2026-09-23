@@ -44,10 +44,10 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html" aria-current="page">Embedding</a>
-<ul><li><a href="embedding-limit.html">The embedding limit</a></li></ul>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
 </li>
 <li><span class="sec-label">Spec</span>
 <ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
@@ -962,80 +962,7 @@ needs the key that made it, so check it with cosign and pass
 claim anyone could write. <code>sabline verify</code> with no file is still the older
 spelling of <code>sabline deps --verify</code>. <code>sabline.verify/1</code> is provisional.</p>
 <h2 id="a-receipt-of-what-one-run-did-81">A receipt of what one run did (8.1) <a class="anchor" href="#a-receipt-of-what-one-run-did-81" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline examples/effects.vel \
-    --allow clock,fs:read:report.txt,fs:write:report.txt,io,rand \
-    --receipt effects.receipt.json</code></pre></div>
-<div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>result = sabline.run(source, allow={"io"})
-result.receipt               # the same Statement, as a dict</code></pre></div>
-<p>An attestation says what a program may do. A receipt says what one run of
-it did. It is an in-toto Statement of the predicate type
-<code>https://velaris-lang.dev/receipt/v1</code>
-(sabline-spec section 8.7), whose predicate is <code>sabline.receipt/1</code>:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"_type": "https://in-toto.io/Statement/v1",
- "subject": [{"name": "examples/effects.vel", "digest": {"sha256": "e483..."}}],
- "predicateType": "https://velaris-lang.dev/receipt/v1",
- "predicate": {
-   "schema": "sabline.receipt/1",
-   "producer": {"name": "sabline-lang", "version": "8.1.0", "uri": "..."},
-   "startedAt": "2026-09-14T09:12:03.418Z", "wall_time_ms": 41.7,
-   "budget": "clock,fs:read:/work/report.txt,fs:write:/work/report.txt,io,rand",
-   "run_parameters": {"seed": null, "freeze_time": null, "timeout": null,
-                      "max_memory_mb": null, "max_read_bytes": 67108864,
-                      "confinement": "none",
-                      "confinement_reason": "a run in the caller's own process is not confined: ...",
-                      "confinement_layers": [],
-                      "os_policy_sha256": "9f2c..."},
-   "effects_used": {"clock": 1, "fs": 2, "io": 4, "rand": 1},
-   "refusals": [],
-   "declassifications": [],
-   "exit": {"status": 0, "outcome": "ok", "code": null},
-   "complete": true}}</code></pre></div>
-<div class="table-wrap" tabindex="0"><table>
-<thead><tr><th>Field</th><th>What it holds</th></tr></thead>
-<tbody>
-<tr><td><code>subject</code></td><td>the program by the sha256 of the text that ran - named as given, or <code>&lt;source&gt;</code> - then each file it imported: the subjects <code>sabline attest</code> writes for the same bytes, so an attestation and a receipt of one program match by digest</td></tr>
-<tr><td><code>budget</code></td><td>the budget the run had, in the budget grammar, paths absolute</td></tr>
-<tr><td><code>run_parameters</code></td><td><code>seed</code> and <code>freeze_time</code>; <code>timeout</code> and <code>max_memory_mb</code>, null when there were none; <code>max_read_bytes</code>; and, from 8.4, what the operating system held of the run: <code>confinement</code> - <code>"full"</code>, <code>"partial"</code>, or <code>"none"</code> when the budget was the only boundary - <code>confinement_reason</code>, <code>confinement_layers</code> and <code>os_policy_sha256</code> (<a href="confinement.html">docs/confinement.md</a>). Until 8.4 <code>confinement</code> was <code>"none"</code> everywhere but under <code>sabline eval</code>, where it named a mechanism</td></tr>
-<tr><td><code>effects_used</code></td><td>each effect and how many operations the budget let through; null when the run was killed before it could say</td></tr>
-<tr><td><code>refusals</code></td><td><code>{"code", "effect", "line", "stopped", "times"}</code> for each place the budget refused - <code>stopped</code> is false for a refused redirect, which the program is told about and may carry on from</td></tr>
-<tr><td><code>grants_used</code></td><td><code>{"grant", "times"}</code>: what each grant let through, by the grant's own text (8.5; <code>sabline receipt show</code> reads it as a page)</td></tr>
-<tr><td><code>declassifications</code></td><td><code>{"reason", "line", "times"}</code> for each place the program declassified; an hmac call is one, with the reason <code>hmac signature</code> and a <code>key_fingerprint</code> (8.5)</td></tr>
-<tr><td><code>tool_calls</code>, <code>tool_ceiling</code></td><td>under <code>--tools</code>: each call site, and the ceiling (8.5)</td></tr>
-<tr><td><code>exit</code></td><td><code>status</code>, <code>outcome</code> - <code>ok</code>, <code>refused</code>, <code>failed</code>, <code>did_not_compile</code>, <code>timeout</code> or <code>out_of_memory</code> - and the <code>code</code> that ended the run</td></tr>
-<tr><td><code>complete</code></td><td>false when the run was stopped from outside: what is listed happened, and each <code>times</code> is at least that</td></tr>
-</tbody></table></div>
-<p><code>run()</code> and <code>Pool.run()</code> always return one. The HTTP door and the MCP
-server return one when a request says <code>"receipt": true</code>. A run the clock or
-the memory cap stopped has one too, marked <code>complete: false</code>, holding what
-its worker reported before it was killed.</p>
-<p><strong>What is never in a receipt</strong> is a value the program handled: not its
-output, input, arguments or environment; not an error message, which can
-quote one; not the path, host or module a refused operation named, which
-the program may have built from something it declassified; not a
-declassified value. A refusal is its code, its effect and its line, and a
-declassification is the reason written in the program. <strong>What is in it</strong>,
-and is the program's to choose, is everything that is not a value: its exit
-status, where it stopped, how often it did something, how long it took. A
-program that has declassified a value can choose those from it; do not
-grant <code>declassify</code> to code whose receipts you will share.</p>
-<p><strong>Signing and verifying</strong> is the attestation's recipe with the receipt's
-type:</p>
-<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>cosign attest-blob --yes --statement effects.receipt.json \
-    --bundle effects.receipt.sigstore.json
-cosign verify-blob-attestation --bundle effects.receipt.sigstore.json \
-    --type https://velaris-lang.dev/receipt/v1 \
-    --certificate-identity you@example.com \
-    --certificate-oidc-issuer https://github.com/login/oauth \
-    examples/effects.vel</code></pre></div>
-<p>or sigstore-python's <code>sign_dsse</code> and <code>Verifier.verify_dsse</code>, as shown for
-the attestation; <code>verify-blob-attestation</code> fails unless the file named is
-the receipt's first subject, by digest. Every release carries
-<code>sabline-receipt-X.Y.Z.intoto.json</code> for one run of <code>examples/effects.vel</code>,
-signed both ways and verified in the release workflow before it is attached
-(<a href="security.html">SECURITY.md</a>).</p>
-<p>A signed receipt says its signer ran this Sabline on these bytes, under
-this budget, and saw this run. It is no stronger than the machine it ran
-on, and it says nothing about any other run.</p>
+<p>A run with <code>--receipt</code>, or <code>result.receipt</code> from <code>run()</code>, gives an in-toto Statement of what one run did - the budget it had, how often it used each effect, where the budget refused, how it ended - and never a value the program handled. What it holds, field by field, and how to sign and verify one, is on a page of its own: <a href="receipts.html">docs/receipts.md</a>.</p>
 <h2 id="hosting-a-run-that-calls-tools-85">Hosting a run that calls tools (8.5) <a class="anchor" href="#hosting-a-run-that-calls-tools-85" aria-label="Link to this section">#</a></h2>
 <p><code>sabline run</code> with <code>--tools</code> lets a host offer a program tools, held by the
 budget: <a href="runner.html">docs/runner.md</a>. Provisional.</p>
@@ -1072,36 +999,7 @@ the system holds none of it (8.4); and a receipt always,
 outside every grant or sent to a URL. <a href="eval.html">docs/eval.md</a> says
 exactly what it guarantees and what it does not.</p>
 <h2 id="a-receipt-compared-and-a-run-made-again-83">A receipt compared, and a run made again (8.3) <a class="anchor" href="#a-receipt-compared-and-a-run-made-again-83" aria-label="Link to this section">#</a></h2>
-<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline receipts diff run.json --audit task.vel          # against the program's audit
-sabline receipts diff run.json --against receipts/       # against earlier runs of the same bytes
-sabline replay run.json --max-allow io,fs:read --expect-output run.out</code></pre></div>
-<p><code>sabline receipts diff</code> names what a run did that its program's audit
-does not say - an effect it used or was refused, a host, path or module its
-budget granted that the audit does not name, a declassification the audit
-does not record, a count past the audit's bound, bytes other than the
-audited ones - and, against earlier receipts of the same bytes, what is new:
-a host, a path, a module, a count above the earlier maximum, a first
-declassification. A receipt names no path or host a run reached, only what
-its budget granted, so that is what is compared. It exits 0 when nothing
-differs, 1 when something does, and 2 when it could not compare;
-<code>sabline.receipts-diff/1</code> is provisional.</p>
-<p><code>sabline replay</code> makes the run again from its receipt: each subject is read
-from disk under <code>--root</code>, held to its digest - a subject that is missing,
-different, or named by an absolute path or one that leaves the directory is
-refused before anything runs - and copied into a directory of its own, to
-which imports are held. The run gets the receipt's budget, no wider than
-<code>--max-allow</code> (<code>io</code> unless raised, since a receipt is text from somewhere
-else), its seed, frozen clock, time and memory limits, and eval's profile
-when the receipt says it ran under it. The new receipt is compared with the
-recorded one and every difference is named. A receipt holds no output or
-input: give the input again (<code>--stdin FILE</code>, and words after <code>--</code>), and the
-output with <code>--expect-output FILE</code> to have it compared.</p>
-<p>A program that calls tools reaches them through Python. <code>sabline program.vel --record-responses FILE</code> records what each <code>py</code>, <code>py_int</code>,
-<code>py_float</code> and <code>py_json</code> call gave back, in order, and <code>sabline replay --responses FILE</code> gives those back in place of calling Python - after the
-budget and the module grants are checked, as for any call. A call that is not
-the one recorded in its place stops the run with E616. Handles are not
-recorded, and a recording holds values the program handled, so keep it as
-you would its output.</p>
+<p><code>sabline receipts diff</code> compares a receipt with the program's audit or with earlier runs of the same bytes, and <code>sabline replay</code> makes the run again from it: <a href="receipts.html">docs/receipts.md</a>.</p>
 <h2 id="promises-exercised-on-the-inputs-they-allow-83">Promises exercised on the inputs they allow (8.3) <a class="anchor" href="#promises-exercised-on-the-inputs-they-allow-83" aria-label="Link to this section">#</a></h2>
 <div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline test pricing.vel --from-contracts --count 20</code></pre></div>
 <p>For each function with a <code>requires</code>, the prover is asked for up to

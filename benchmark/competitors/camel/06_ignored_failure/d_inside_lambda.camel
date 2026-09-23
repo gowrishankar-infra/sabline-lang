@@ -1,0 +1,6 @@
+# The parse that can fail sits inside an inline function passed to a mapper.
+# NOT-LIKE-FOR-LIKE: CaMeL has no lambda: the inline function passed to map becomes a list comprehension, so the parse is no longer inside an inline function.
+
+items = read_line().strip().split(",")
+numbers = [int(t) for t in items]  # DANGER
+print(f"{len(numbers)} numbers")

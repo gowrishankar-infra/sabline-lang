@@ -1,0 +1,8 @@
+// The control: 25! exactly. The answer needs 84 bits, and it is the right answer.
+fn main() uses io {
+    let product = 1
+    for i in 1 to 26 {
+        product = product * i
+    }
+    print(product)
+}

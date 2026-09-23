@@ -1,0 +1,10 @@
+# The growth sits two helpers down: main -> remember -> append.
+# NOT-LIKE-FOR-LIKE: CaMeL has no functions and no list.append: the two helpers are inlined into the loop, so the growth is no longer two helpers down, and each entry is added by building a new list, log = log + [entry].
+
+log = []
+i = 0
+while True:
+    entry = f"event {i} happened at tick {' '.join([str(i * k % 97) for k in range(20)])}"
+    log = log + [entry]  # DANGER
+    i += 1
+print(len(log))

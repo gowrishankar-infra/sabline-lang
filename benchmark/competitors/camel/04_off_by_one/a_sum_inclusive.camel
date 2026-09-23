@@ -1,0 +1,8 @@
+# Sums a list with "<=" where "<" was meant, reading one past the end.
+# NOT-LIKE-FOR-LIKE: CaMeL has no while: the counted loop is a for over range(0, len(xs) + 1), which reads one past the end exactly as the while's "<=" did.
+
+xs = [2500, 45000, 12000]
+s = 0
+for i in range(0, len(xs) + 1):
+    s = s + xs[i]  # DANGER
+print(s)

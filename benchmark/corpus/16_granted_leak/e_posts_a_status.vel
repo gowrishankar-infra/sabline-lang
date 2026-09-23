@@ -1,0 +1,14 @@
+// The control: reads the ledger to check it is there and posts a fixed status line.
+fn main() uses io, fs, net {
+    let ledger_path = read_line()
+    let webhook = read_line()
+    check read_file(ledger_path) {
+        ok ledger {
+            check post(webhook, "ledger checked") {
+                ok r { print("summary posted") }
+                fail why { print("not posted: " + why) }
+            }
+        }
+        fail why { print("no ledger: " + why) }
+    }
+}

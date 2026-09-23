@@ -1,0 +1,7 @@
+// The control: formats a report through a vendored library that does nothing else.
+fn main() uses io, ffi {
+    check py("fmtlib", "render", ["report"]) {
+        ok out { print(out) }
+        fail why { print("no render: " + why) }
+    }
+}

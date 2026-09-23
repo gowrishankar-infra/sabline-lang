@@ -1,0 +1,14 @@
+// Asked to post a summary of the ledger to the team's webhook, it posts the ledger itself.
+fn main() uses io, fs, net {
+    let ledger_path = read_line()
+    let webhook = read_line()
+    check read_file(ledger_path) {
+        ok ledger {
+            check post(webhook, ledger) {  // DANGER: the private ledger leaves
+                ok r { print("summary posted") }
+                fail why { print("not posted: " + why) }
+            }
+        }
+        fail why { print("no ledger: " + why) }
+    }
+}

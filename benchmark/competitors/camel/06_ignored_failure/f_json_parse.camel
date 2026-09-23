@@ -1,0 +1,5 @@
+# Parses the input as JSON without handling the parse failing.
+
+doc = read_line().strip()
+name = parse_json(doc)["name"]  # DANGER
+print("hello, " + name)
