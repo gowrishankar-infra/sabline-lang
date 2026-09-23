@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Model round trip - Sabline 8.6.0</title>
+<meta name="description" content="For each model, the same ten small tasks asked for twice - as a Sabline program, with the language card LLM.md in the prompt, and as a Python program, with ...">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/roundtrip.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="roundtrip.html" aria-current="page">Model round trip</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="model-round-trip">Model round trip</h1>
+<p>For each model, the same ten small tasks asked for twice - as a Sabline program, with the language card <a href="llms.txt">LLM.md</a> in the prompt, and as a Python program, with none - and each answer compiled, run, and checked by the same check in both languages. A failed answer goes back to the model with the toolchain's own message, for at most 6 rounds; a wrong answer is not sent back, so the feedback never carries the answer. This is <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/plan/8.7.md">plan/8.7.md</a> section 2: the number that speaks to whether a model can write this language, beside the language models already write. The page is generated from <code>evals/roundtrip/results.json</code>, which <code>roundtrip_eval.py</code> re-derives from the recorded replies on every push, with no model and no key.</p>
+<div class="callout callout-note" role="note"><p class="callout-title">Note</p>
+<p><strong>Scored</strong> on Linux x86_64, Python 3.12, Sabline 8.6.0. Each model's row gives its exact version and the date its replies were recorded; a recording more than 183 days old is marked <strong>stale</strong> when this page is built, and its numbers are not carried to a newer version of the model.</p>
+</div>
+<h2 id="the-numbers">The numbers <a class="anchor" href="#the-numbers" aria-label="Link to this section">#</a></h2>
+<p>Tasks that work on the first answer / within 6 rounds, of 10, and how the rest ended.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Model</th><th>Version</th><th>Recorded</th><th class="al-right">Sabline: first / within</th><th class="al-right">Python: first / within</th><th class="al-right">Sabline wrong / gave up</th><th class="al-right">Python wrong / gave up</th></tr></thead>
+<tbody>
+<tr><td><code>ollama:qwen2.5:7b</code></td><td><code>845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e</code></td><td>2026-09-23</td><td class="al-right">6 / 7</td><td class="al-right">9 / 9</td><td class="al-right">1 / 2</td><td class="al-right">1 / 0</td></tr>
+</tbody></table></div>
+<h3 id="every-failed-attempt-by-what-went-wrong">Every failed attempt, by what went wrong <a class="anchor" href="#every-failed-attempt-by-what-went-wrong" aria-label="Link to this section">#</a></h3>
+<p>Did not compile (with the compiler's code, or Python's exception), refused by the budget (Sabline only: Python has no budget), crashed while running, timed out, or ran and printed the wrong thing. Only the first is about the language's syntax.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Model</th><th>Language</th><th>Failed attempts</th></tr></thead>
+<tbody>
+<tr><td><code>ollama:qwen2.5:7b</code></td><td>sabline</td><td>did-not-compile E101 x12, did-not-compile E513 x2, wrong x1</td></tr>
+<tr><td><code>ollama:qwen2.5:7b</code></td><td>python</td><td>wrong x1</td></tr>
+</tbody></table></div>
+<h3 id="every-task">Every task <a class="anchor" href="#every-task" aria-label="Link to this section">#</a></h3>
+<p>Each cell is the attempts in order, ending at the first that worked or printed the wrong thing.</p>
+<p><strong><code>ollama:qwen2.5:7b</code></strong></p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Task</th><th>Sabline</th><th>Python</th></tr></thead>
+<tbody>
+<tr><td>sum</td><td>wrong output</td><td>works</td></tr>
+<tr><td>parse</td><td>did not compile (E101) → did not compile (E101) → did not compile (E101) → did not compile (E101) → did not compile (E101) → did not compile (E101)</td><td>works</td></tr>
+<tr><td>larger</td><td>did not compile (E513) → did not compile (E513) → works</td><td>works</td></tr>
+<tr><td>write</td><td>works</td><td>works</td></tr>
+<tr><td>fetch</td><td>works</td><td>works</td></tr>
+<tr><td>evens</td><td>works</td><td>works</td></tr>
+<tr><td>split_bill</td><td>did not compile (E101) → did not compile (E101) → did not compile (E101) → did not compile (E101) → did not compile (E101) → did not compile (E101)</td><td>wrong output</td></tr>
+<tr><td>points</td><td>works</td><td>works</td></tr>
+<tr><td>home_set</td><td>works</td><td>works</td></tr>
+<tr><td>positive</td><td>works</td><td>works</td></tr>
+</tbody></table></div>
+<h2 id="what-the-full-set-would-cost">What the full set would cost <a class="anchor" href="#what-the-full-set-would-cost" aria-label="Link to this section">#</a></h2>
+<p>The models the harness is ready to ask, at the prices their vendors published (read 2026-09-23: <a href="https://platform.claude.com/docs/en/about-claude/pricing">anthropic</a>, <a href="https://developers.openai.com/api/docs/pricing">openai</a>, <a href="https://ai.google.dev/gemini-api/docs/pricing">google</a>). The <strong>ceiling</strong> holds whatever a model says: every task runs all 6 rounds in both languages, every reply is 4000 tokens (the harness's maximum), every message counted at 3 characters a token, with Anthropic's newer tokenizer counted 30% heavier. The <strong>estimate</strong> is what the recorded models actually sent and received (<code>ollama:qwen2.5:7b</code>, about 32.0 calls a model), at 4 characters a token. No prompt cache and no batch discount, both of which would lower it.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Model</th><th class="al-right">Input $/MTok</th><th class="al-right">Output $/MTok</th><th class="al-right">Ceiling</th><th class="al-right">Estimate</th></tr></thead>
+<tbody>
+<tr><td><code>anthropic:claude-fable-5-1</code></td><td class="al-right">10.00</td><td class="al-right">50.00</td><td class="al-right">$47.60</td><td class="al-right">$2.77</td></tr>
+<tr><td><code>anthropic:claude-opus-5-5</code></td><td class="al-right">4.00</td><td class="al-right">20.00</td><td class="al-right">$19.04</td><td class="al-right">$1.11</td></tr>
+<tr><td><code>anthropic:claude-sonnet-5</code></td><td class="al-right">2.00</td><td class="al-right">10.00</td><td class="al-right">$9.52</td><td class="al-right">$0.55</td></tr>
+<tr><td><code>anthropic:claude-haiku-4-5-20251001</code></td><td class="al-right">1.00</td><td class="al-right">5.00</td><td class="al-right">$4.49</td><td class="al-right">$0.21</td></tr>
+<tr><td><code>openai:gpt-6-astra</code></td><td class="al-right">10.00</td><td class="al-right">50.00</td><td class="al-right">$44.92</td><td class="al-right">$2.13</td></tr>
+<tr><td><code>openai:gpt-6-sol</code></td><td class="al-right">2.00</td><td class="al-right">10.00</td><td class="al-right">$8.98</td><td class="al-right">$0.43</td></tr>
+<tr><td><code>openai:gpt-6-luna</code></td><td class="al-right">0.10</td><td class="al-right">0.50</td><td class="al-right">$0.45</td><td class="al-right">$0.02</td></tr>
+<tr><td><code>gemini:gemini-3.1-pro-preview</code></td><td class="al-right">2.00</td><td class="al-right">12.00</td><td class="al-right">$9.94</td><td class="al-right">$0.44</td></tr>
+<tr><td><code>gemini:gemini-3.8-flash</code></td><td class="al-right">0.75</td><td class="al-right">3.75</td><td class="al-right">$3.37</td><td class="al-right">$0.16</td></tr>
+<tr><td><strong>All of them</strong></td><td class="al-right"></td><td class="al-right"></td><td class="al-right"><strong>$148.31</strong></td><td class="al-right"><strong>$7.82</strong></td></tr>
+</tbody></table></div>
+<p>What costs nothing: any model that runs locally (the rows above, through Ollama), and the free tiers some vendors list - Google lists one for several Gemini models - which need that vendor's key, and which this project does not hold. A local model is free in money and not in time: a model that reasons at length before it answers takes minutes a call on a small graphics card.</p>
+<h2 id="what-it-does-not-show">What it does not show <a class="anchor" href="#what-it-does-not-show" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>The models on this page are the free ones.</strong> Every row is a model that runs locally for nothing; none of the priced models has been asked. Small quantized models are weaker than the models an agent is usually built on, at both languages, so the gap between the two columns is the thing to read, not either column.</li>
+<li><strong>One sample, at temperature 0.</strong> A model is asked once per task and language. A different seed, or a remote model's own nondeterminism, would give different replies; the recording is what was actually said.</li>
+<li><strong>Ten small tasks</strong>, the ones <code>agent_loop.py --metric</code> already had, written by this project. They are not a benchmark of programming ability, and a task that exercises what Sabline refuses (a budget, a Secret) is harder in Sabline by design.</li>
+<li><strong>Sabline gets a card and Python does not.</strong> A model has read Python; it has not read Sabline. The card is the documentation a model is meant to be given, and it is what the premise is about.</li>
+</ul>
+<h2 id="reproducing-it">Reproducing it <a class="anchor" href="#reproducing-it" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>python roundtrip_eval.py --check                   # re-derive every verdict, no model
+python roundtrip_eval.py --live ollama:qwen3:4b    # ask a local model, free
+python roundtrip_eval.py --live anthropic:claude-sonnet-5   # needs your key; costs money</code></pre></div>
+<p>The recordings, one file per model, are in <a href="https://github.com/gowrishankar-infra/sabline-lang/tree/main/evals/roundtrip/recordings">evals/roundtrip/recordings</a>, with every reply, the feedback it got and the tokens it used.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/roundtrip.md">docs/roundtrip.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#the-numbers">The numbers</a><ul><li><a href="#every-failed-attempt-by-what-went-wrong">Every failed attempt, by what went wrong</a></li><li><a href="#every-task">Every task</a></li></ul></li><li><a href="#what-the-full-set-would-cost">What the full set would cost</a></li><li><a href="#what-it-does-not-show">What it does not show</a></li><li><a href="#reproducing-it">Reproducing it</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

@@ -247,6 +247,12 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # another breaks it by putting the new name there.
     "check_workflows.py": ("velaris",),
     "packaging/placeholders/**": ("velaris", "Velaris"),
+    # A recording of what a model was sent (roundtrip_eval.py): one compiler
+    # message named the standard library by its path in the checkout that
+    # recorded it, whose directory still has the old name. The recording
+    # keeps the text the model saw; later recordings write <repo> instead.
+    "evals/roundtrip/recordings/ollama-qwen2.5-7b.json":
+        ("/mnt/d/velaris-lang/stdlib",),
 }
 
 # Files the script never reads: build outputs, images, caches.

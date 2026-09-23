@@ -283,7 +283,8 @@ DOCS_SECTION = {"floats.md": "Floats", "renamed.md": "Spec",
                 "embedding-limit.md": "Embedding", "receipts.md": "Embedding"}
 DOCS_ORDER = ["confinement.md", "runner.md", "eval.md",
               "structurally-impossible.md", "known-open.md", "incidents.md",
-              "agentdojo.md", "competitors.md", "competitors-scenarios.md",
+              "agentdojo.md", "roundtrip.md", "competitors.md",
+              "competitors-scenarios.md",
               "competitors-evidence-1.md",
               "competitors-evidence-2.md", "competitors-evidence-3.md",
               "crosswalk.md"]

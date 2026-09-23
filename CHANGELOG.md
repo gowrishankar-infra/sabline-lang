@@ -93,6 +93,21 @@ catch there is now its permission check. The receipt sections of
 EMBEDDING.md moved to [docs/receipts.md](docs/receipts.md), to keep the
 embedding page inside the page budget.
 
+**The model round trip** (`roundtrip_eval.py`,
+[evals/roundtrip/](evals/roundtrip/README.md),
+[/roundtrip.html](https://sabline.dev/roundtrip.html)): for each model, ten
+small tasks asked for in Sabline, with the language card, and in Python,
+each answer compiled, run and checked by one check for both languages, with
+the toolchain's own messages sent back for up to six rounds and never the
+answer. A failed attempt is reported as one of four things - did not
+compile, refused by the budget, crashed, wrong output - per model with its
+exact version and date. Asking a model is `--live`, off by default and
+refused under CI; every reply is recorded, and a CI job re-derives every
+verdict from the recordings with no model and no key. One free model is
+recorded: `qwen2.5:7b`, locally, makes 7 of 10 tasks work in Sabline (6 on
+the first answer) and 9 of 10 in Python. The page publishes what asking
+every priced model would cost, from the vendors' published prices.
+
 ## 9.0.0-alpha.4 - The job that was read, and then run
 
 9.0.0-alpha.3 published its crate and made no GitHub release. The two
