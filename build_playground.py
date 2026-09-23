@@ -3,9 +3,22 @@
 
 Run after any change to the sabline package:   python build_playground.py
 Open playground/index.html in a browser - no install, no server needed.
+
+    python build_playground.py --check    fail if the committed page is not
+                                          what this package would write
+
+The page is committed, and so is docs/playground.html, build_docs.py's copy
+of it, which is what sabline.dev serves. Every workflow that needs the page
+builds it first, so no suite ever ran the committed one, and it went a whole
+release behind the package without anything failing: 9.0.0-alpha.1 added
+ast_dump.py, and twelve modules changed after 8.6, and the page kept 8.6's.
+--check is the step in test.yml that notices.
 """
 import json
+import re
+import sys
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 # every module of the package, by file name (8.2: until then one file)
@@ -378,6 +391,50 @@ inspectBtn.onclick = inspect;
 
 html = TEMPLATE.replace("__SRC__", json.dumps(SRC)) \
                .replace("__EXAMPLES__", json.dumps(EXAMPLES))
+
+
+def _embedded(page: str) -> dict[str, Any]:
+    """The package a committed page carries, by module file name."""
+    found = re.search(r"const SABLINE_FILES = (\{.*?\});\n", page, re.S)
+    return json.loads(found.group(1)) if found else {}
+
+
+if "--check" in sys.argv:
+    # line ends aside: the page is written in text mode, so a Windows
+    # checkout or build has CRLF where the committed bytes have LF
+    want = html.encode("utf-8")
+    stale = []
+    for rel in ("playground/index.html", "docs/playground.html"):
+        page = HERE / rel
+        have = page.read_bytes().replace(b"\r\n", b"\n") if page.exists() else b""
+        if have != want:
+            stale.append(rel)
+    if not stale:
+        print(f"playground/index.html and docs/playground.html are what this "
+              f"package writes ({len(SRC)} modules)")
+        sys.exit(0)
+    committed = _embedded((HERE / "playground" / "index.html")
+                          .read_text(encoding="utf-8")
+                          if (HERE / "playground" / "index.html").exists()
+                          else "")
+    missing = sorted(set(SRC) - set(committed))
+    extra = sorted(set(committed) - set(SRC))
+    differ = sorted(k for k in set(SRC) & set(committed)
+                    if SRC[k] != committed[k])
+    print(f"{' and '.join(stale)} {'is' if len(stale) == 1 else 'are'} not "
+          f"what build_playground.py writes from this package:")
+    for label, names in (("missing from the page", missing),
+                         ("on the page and no longer in the package", extra),
+                         ("different on the page", differ)):
+        if names:
+            print(f"  {label}: {', '.join(names)}")
+    if not (missing or extra or differ):
+        print("  the package is the same; the page's own template or "
+              "examples differ, or docs/playground.html is an older copy")
+    print("run: python build_playground.py && python build_docs.py, and "
+          "commit playground/index.html and docs/playground.html")
+    sys.exit(1)
+
 outdir = HERE / "playground"
 outdir.mkdir(exist_ok=True)
 # written beside the page and renamed over it, so a reader at the same

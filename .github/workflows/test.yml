@@ -205,6 +205,12 @@ jobs:
       - name: Formatter check (repo is canonically formatted)
         shell: bash
         run: sabline fmt examples/*.vel examples/lib/*.vel stdlib/*.vel --check
+      # before the build, which writes over the committed page: every step
+      # after this one sees a fresh playground, so this is the only place
+      # the committed one (and docs/playground.html, which sabline.dev
+      # serves) is held to the package
+      - name: The committed playground is the one this package builds
+        run: python build_playground.py --check
       - name: Playground builds
         run: python build_playground.py
       - name: Docs site builds
