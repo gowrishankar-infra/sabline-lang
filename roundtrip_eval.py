@@ -511,14 +511,30 @@ def digest(path: Path) -> str:
                           ).hexdigest()
 
 
+def compiler_digest() -> str:
+    """SHA-256 of the sabline package's source - every .py file, in path
+    order, each line end as LF - which is the compiler whose messages a
+    model is sent. A changed message changes what the model is told as much
+    as a changed card does, so from the E101 rerun (2026-09-24) a recording
+    names it beside the card; one made before then does not."""
+    h = hashlib.sha256()
+    for path in sorted((HERE / "sabline").rglob("*.py")):
+        h.update(path.relative_to(HERE).as_posix().encode("utf-8") + b"\0")
+        h.update(path.read_bytes().replace(b"\r\n", b"\n") + b"\0")
+    return h.hexdigest()
+
+
 def recording_name(spec: str, record: dict[str, Any], run: int = 1) -> str:
-    """One file per model, card, task set and run. A model asked again with
-    the same card and tasks is a second run, never a replacement: a local
-    model at temperature 0 with a fixed seed does not answer a 9,000-token
-    prompt the same way twice (Ollama 0.24, qwen2.5:7b, 2026-09-24), so
-    the spread between runs is part of the result."""
+    """One file per model, card, task set, compiler and run. A model asked
+    again with the same card, tasks and compiler is a second run, never a
+    replacement: a local model at temperature 0 with a fixed seed does not
+    answer a 9,000-token prompt the same way twice (Ollama 0.24,
+    qwen2.5:7b, 2026-09-24), so the spread between runs is part of the
+    result. A recording that names no compiler predates the field."""
+    compiler = record.get("sabline_sha256")
     return (f"{slug(spec)}.card-{record['card_sha256'][:8]}"
             f".tasks-{record['tasks_sha256'][:8]}"
+            + (f".sabline-{compiler[:8]}" if compiler else "")
             + (f".run-{run}" if run > 1 else "") + ".json")
 
 
@@ -563,7 +579,7 @@ def live(specs: list[str]) -> int:
     for spec in specs:
         ask, ident = model_for(spec)
         print(f"asking {spec} ({ident.get('version')}) ...", flush=True)
-        started = time.time()
+        started, compiler = time.time(), compiler_digest()
 
         def logged(messages: list[dict[str, str]]) -> Reply:
             reply, meta = ask(messages)
@@ -576,6 +592,7 @@ def live(specs: list[str]) -> int:
             "recorded": datetime.date.today().isoformat(),
             "rounds": ROUNDS, "max_tokens": MAX_TOKENS,
             "card_sha256": digest(CARD), "tasks_sha256": digest(TASKS),
+            "sabline_sha256": compiler,
             "platform": f"{platform.system()} {platform.machine()}",
             "minutes": round((time.time() - started) / 60, 1),
             "conversations": {
@@ -722,6 +739,10 @@ def derive(write: bool) -> int:
             "card_is_current": rec["card_sha256"] == card,
             "tasks_sha256": rec["tasks_sha256"],
             "tasks_are_current": rec["tasks_sha256"] == taskset,
+            # not held against today's compiler, or every change to the
+            # package would make every recording stale: it says which
+            # compiler's messages the model was sent
+            "sabline_sha256": rec.get("sabline_sha256"),
             "asked_every_task": all(f"{lang}:{t['id']}" in asks
                                     for lang in LANGS for t in tasks),
             "summary": summarise(convs, tasks),
@@ -847,6 +868,11 @@ LABEL = {"works": "works", "wrong": "wrong output", "did-not-compile":
          "recording-exhausted": "recording exhausted"}
 
 
+def compiler_of(m: dict[str, Any]) -> str:
+    named = m.get("sabline_sha256")
+    return f"`{named[:8]}`" if named else "not recorded"
+
+
 def page(result: dict[str, Any], today: datetime.date) -> str:
     w: list[str] = []
     p = w.append
@@ -876,7 +902,12 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
       "written and committed before it, by the person who then made it, so "
       "they are held out from the edit and not from its author. A row is "
       "one recording: a model, the card it was given and the task set it "
-      "was asked, each named by the first eight hex digits of its SHA-256. "
+      "was asked, each named by the first eight hex digits of its SHA-256, "
+      "and the compiler whose messages it was sent back: the SHA-256 of the "
+      "sabline package's source, recorded from the E101 rerun on, since a "
+      "changed message changes what a model is told as much as a changed "
+      "card does. A recording that names no compiler was sent the messages "
+      "from before E101 said what a keyword is for. "
       f"The current card is `{result['card_sha256'][:8]}` and the current "
       f"task set `{result['tasks_sha256'][:8]}`; a recording is scored on "
       "the tasks it was asked, by today's checks.")
@@ -905,10 +936,10 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
         p(f"Tasks that work on the first answer / within {result['rounds']} "
           f"rounds, of {len(result['tasks'][name])}, and how the rest ended.")
         p("")
-        p("| Model | Version | Card | Tasks | Recorded | Run | Sabline: "
-          "first / within | Python: first / within | Sabline wrong / gave "
-          "up | Python wrong / gave up |")
-        p("|---|---|---|---|---|---:|---:|---:|---:|---:|")
+        p("| Model | Version | Card | Tasks | Compiler | Recorded | Run | "
+          "Sabline: first / within | Python: first / within | Sabline wrong "
+          "/ gave up | Python wrong / gave up |")
+        p("|---|---|---|---|---|---|---:|---:|---:|---:|---:|")
         for m in rows:
             s = m["summary"][name]
             age = (today - datetime.date.fromisoformat(m["recorded"])).days
@@ -924,7 +955,8 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
                      for lang in LANGS] + [
                 f"{s[lang]['wrong']} / {s[lang]['gave_up']}" for lang in LANGS]
             p(f"| `{m['model']['spec']}` | `{ver}` | {card} | {tasks} | "
-              f"{m['recorded']}{stale} | {run} | " + " | ".join(cells) + " |")
+              f"{compiler_of(m)} | {m['recorded']}{stale} | {run} | "
+              + " | ".join(cells) + " |")
         p("")
     if models:
         p("### Every failed attempt, by what went wrong")
@@ -934,14 +966,16 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
           "budget), crashed while running, timed out, or ran and printed the "
           "wrong thing. Only the first is about the language's syntax.")
         p("")
-        p("| Model | Card | Run | Set | Language | Failed attempts |")
-        p("|---|---|---:|---|---|---|")
+        p("| Model | Card | Compiler | Run | Set | Language | Failed "
+          "attempts |")
+        p("|---|---|---|---:|---|---|---|")
         for m in models:
             for name, s in m["summary"].items():
                 for lang in LANGS:
                     fa = s[lang]["failed_attempts"]
                     p(f"| `{m['model']['spec']}` | `{m['card_sha256'][:8]}` "
-                      f"| {run_of(m['recording'])} | {name} | {lang} | " + (
+                      f"| {compiler_of(m)} | {run_of(m['recording'])} "
+                      f"| {name} | {lang} | " + (
                           ", ".join(f"{k} x{v}" for k, v in fa.items())
                           or "none") + " |")
         p("")
@@ -953,8 +987,8 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
         p("")
         for m in models:
             p(f"**`{m['model']['spec']}`, card `{m['card_sha256'][:8]}`, "
-              f"tasks `{m['tasks_sha256'][:8]}`, run "
-              f"{run_of(m['recording'])}**")
+              f"tasks `{m['tasks_sha256'][:8]}`, compiler {compiler_of(m)}, "
+              f"run {run_of(m['recording'])}**")
             p("")
             p("| Task | Set | Sabline | Python |")
             p("|---|---|---|---|")
