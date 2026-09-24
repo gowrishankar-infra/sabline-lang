@@ -89,16 +89,23 @@ path for `ffi:sqlite3` or `ffi:pathlib`, any host for `ffi:socket` or
 and any module the table in THREAT_MODEL.md does not name. The audit says
 which, and a run under such a budget says `none` and why.
 
-A module the table does not name widens it whether or not the program
-imports it, and whether or not it exists: the grant is what is read, and
-nothing is imported to find out. So from 8.7 a command-line run whose budget
-names one says so on stderr, once, as the program is about to run:
+The grant is what is read, not the use: such a module widens the policy
+whether or not the program imports it, and one the table does not name does
+so whether or not it exists, since nothing is imported to find out. So from
+8.7 a command-line run whose grants turn the operating system layer off says
+so on stderr, once, as the program is about to run - one line, whenever the
+budget's OS policy (the one `sabline audit` prints, and the receipt's
+`os_policy_sha256` names) is `enforced: false`:
 
+    sabline: plain ffi grants any module, so the operating system layer is off for this run: the budget is the only boundary
+    sabline: ffi:os is granted, so the operating system layer is off for this run: the budget is the only boundary
     sabline: ffi:nosuchmod is not in the confinement table, so the operating system layer is off for this run: the budget is the only boundary
 
-`--no-confine` says its own line instead. `ffi:os` and `ffi:subprocess`,
-which the table names as widening to nothing enforced, and plain `ffi`,
-which names no module, say nothing more than the receipt does.
+A grant of several says them together, on the same one line. `--no-confine`
+says its own line instead. Nothing else changes: the run, its exit status
+and its receipt are what they were, and `sabline.run()`, `sabline replay`,
+a `Pool` and `sabline serve` write nothing new - the receipt is where they
+say it.
 
 ## What is not confined
 

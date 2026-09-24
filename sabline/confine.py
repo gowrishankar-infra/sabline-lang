@@ -293,22 +293,31 @@ def _restricted(policy: dict[str, Any]) -> list[str]:
     return asks
 
 
-def not_in_table(budget: Any) -> list[str]:
-    """The ffi modules a budget names that FFI_WIDENS does not: each widens
-    the OS policy to nothing enforced. A name that is no module at all is
-    among them - nothing here imports it to find out. Plain `ffi` names
-    none, and is not here."""
-    if "ffi" not in budget.effects or budget.modules is None:
-        return []
-    return sorted(m for m in budget.modules if m not in FFI_WIDENS)
+def off_by_grant(budget: Any) -> str | None:
+    """The one line the command line writes to stderr, as a run starts, when
+    what its budget grants turns the operating system layer off - None when
+    it does not (8.7). One condition, the receipt's own: the budget's OS
+    policy is not enforced. Plain `ffi`, a module the table widens to "all"
+    (`ffi:os`, `ffi:subprocess`) and a module the table does not name - even
+    one that does not exist, since nothing here imports it to find out - all
+    meet it; a module the table names as widening to less does not."""
+    policy = os_policy(budget)
+    off = [w for w in policy["widened_by"] if "all" in w["widens"]]
+    if policy["enforced"] or not off:
+        return None
 
-
-def not_in_table_warning(modules: list[str]) -> str:
-    """The one line the command line writes to stderr for them (8.7)."""
-    names = ", ".join(f"ffi:{m}" for m in modules)
-    return (f"sabline: {names} {'is' if len(modules) == 1 else 'are'} not in "
-            f"the confinement table, so the operating system layer is off "
-            f"for this run: the budget is the only boundary")
+    def are(names: list[str]) -> str:
+        return ", ".join(names) + (" is" if len(names) == 1 else " are")
+    if any(w["module"] == "*" for w in off):
+        why = ["plain ffi grants any module"]
+    else:
+        named = [f"ffi:{w['module']}" for w in off if w["known"]]
+        unnamed = [f"ffi:{w['module']}" for w in off if not w["known"]]
+        why = ([f"{are(named)} granted"] if named else []) + (
+            [f"{are(unnamed)} not in the confinement table"] if unnamed
+            else [])
+    return (f"sabline: {' and '.join(why)}, so the operating system layer "
+            f"is off for this run: the budget is the only boundary")
 
 
 def _why_not_enforced(policy: dict[str, Any]) -> str:

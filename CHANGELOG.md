@@ -122,16 +122,21 @@ Both parsers say the same words - sabline-rt's too, which the agreement
 gate compares - and `tests/error_messages` holds them: a golden entry may
 now hold its fixes, and four E101 cases do.
 
-**A granted module the confinement table does not name is said on stderr.**
-Such a grant - even of a module that does not exist - turns the operating
-system layer off for the whole run, which until now only the receipt and
-`sabline audit` said. A command-line run now writes one line, as the
-program is about to run: `sabline: ffi:NAME is not in the confinement
-table, so the operating system layer is off for this run: the budget is
-the only boundary`. Nothing else changes: the run, its exit status and its
-receipt are what they were, and `--no-confine` says its own line instead.
-The package-hallucination incident's recording shows it, for the invented
-`huggingface_cli`.
+**A run whose grants turn the operating system layer off says so on
+stderr.** Plain `ffi`, `ffi:os`, `ffi:subprocess` and the other modules the
+confinement table widens to nothing enforced, and a module the table does
+not name - even one that does not exist - each turn the layer off for the
+whole run, which until now only the receipt and `sabline audit` said. A
+command-line run now writes one line as the program is about to run, on
+one condition, the receipt's: its OS policy is not enforced because of
+what the budget grants. The line says which grant: `sabline: ffi:os is
+granted, so the operating system layer is off for this run: the budget is
+the only boundary`, or `plain ffi grants any module`, or `ffi:NAME is not
+in the confinement table`. Nothing else changes: the run, its exit status
+and its receipt are what they were, `sabline.run()`, `sabline replay`,
+`sabline serve` and a `Pool` write nothing new, and `--no-confine` says its
+own line instead. The package-hallucination incident's recording shows it,
+for the invented `huggingface_cli`.
 
 **The card changed where the round trip pointed, and did not move the
 number.** Three fixes to LLM.md, and nothing else: the example to imitate

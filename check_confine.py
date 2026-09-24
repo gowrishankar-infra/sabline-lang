@@ -589,23 +589,41 @@ def reported_cases() -> None:
        in b.get("confinement_reason", "") and b.get("confinement_layers") == []
        and b.get("os_policy_sha256") == confine.policy_sha256(
            confine.os_policy(io, confine=False)), b)
-    # 8.7: a granted module the table does not name - one that exists and
-    # one that does not - turns the layer off, and stderr says so once
-    line = "not in the confinement table, so the operating system layer " \
-        "is off for this run"
-    _, out, err = cli(hello, "--allow", "io,ffi:a_module_nobody_listed,"
-                      "ffi:json")
-    ok("an ffi grant of a module the table does not name, even one that "
-       "does not exist, says on stderr, once, that the OS layer is off",
-       err.count(line) == 1 and "ffi:a_module_nobody_listed" in err
-       and "ffi:json" not in err and "ran to the end" in out, err)
-    _, _, quiet = cli(hello, "--allow", "io,ffi:json")
-    _, _, said = cli(hello, "--allow", "io,ffi:a_module_nobody_listed",
-                     "--no-confine")
-    ok("...and nothing is said for a module the table names, or under "
-       "--no-confine, which says it on its own",
-       line not in quiet and line not in said and "--no-confine" in said,
-       [quiet, said])
+    # 8.7: a run whose grants turn the OS layer off says so on stderr, once,
+    # as it starts. One condition, the receipt's: the budget's OS policy is
+    # not enforced. Plain ffi, a module the table widens to nothing enforced,
+    # and one it does not name - even one that does not exist - meet it; a
+    # module the table widens to less does not.
+    line = "so the operating system layer is off for this run"
+    rec = WORK / "grant.json"
+    for spec, why in (
+            ("io,ffi", "plain ffi grants any module"),
+            ("io,ffi:os", "ffi:os is granted"),
+            ("io,ffi:subprocess,ffi:json", "ffi:subprocess is granted"),
+            ("io,ffi:a_module_nobody_listed,ffi:json",
+             "ffi:a_module_nobody_listed is not in the confinement table"),
+            ("io,ffi:os,ffi:a_module_nobody_listed", "ffi:os is granted and "
+             "ffi:a_module_nobody_listed is not in the confinement table"),
+            ("io,ffi:json", None), ("io,ffi:pathlib", None),
+            ("io,ffi:socket", None), ("io", None)):
+        _, out, err = cli(hello, "--allow", spec, "--receipt", str(rec))
+        p = json.loads(rec.read_text(encoding="utf-8"))["predicate"][
+            "run_parameters"]
+        is_off = not confine.os_policy(Budget.parse(spec))["enforced"]
+        ok(f"--allow {spec}: "
+           + ("stderr says, once, that the OS layer is off, and why" if why
+              else "stderr says nothing of the OS layer")
+           + " - as the receipt's policy does",
+           is_off == (why is not None)
+           and err.count(line) == int(is_off)
+           and (why is None or f"sabline: {why}, {line}" in err)
+           and "ffi:json" not in err and "ran to the end" in out
+           and (p.get("confinement") == "none"
+                and "nothing enforced" in p.get("confinement_reason", ""))
+           == is_off, [err, p])
+    _, _, said = cli(hello, "--allow", "io,ffi:os", "--no-confine")
+    ok("...and under --no-confine only its own line is said",
+       line not in said and "--no-confine" in said, said)
     r = sabline.run(HELLO)
     params = parameters_of(r)
     ok("a run in the caller's own process says none, and that it is "
