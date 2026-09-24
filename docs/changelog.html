@@ -173,14 +173,18 @@ it as a call does not make it one. The message and the code are unchanged.
 Both parsers say the same words - sabline-rt's too, which the agreement
 gate compares - and <code>tests/error_messages</code> holds them: a golden entry may
 now hold its fixes, and four E101 cases do.</p>
-<p><strong>A granted module the confinement table does not name is said on stderr.</strong>
-Such a grant - even of a module that does not exist - turns the operating
-system layer off for the whole run, which until now only the receipt and
-<code>sabline audit</code> said. A command-line run now writes one line, as the
-program is about to run: <code>sabline: ffi:NAME is not in the confinement table, so the operating system layer is off for this run: the budget is the only boundary</code>. Nothing else changes: the run, its exit status and its
-receipt are what they were, and <code>--no-confine</code> says its own line instead.
-The package-hallucination incident's recording shows it, for the invented
-<code>huggingface_cli</code>.</p>
+<p><strong>A run whose grants turn the operating system layer off says so on
+stderr.</strong> Plain <code>ffi</code>, <code>ffi:os</code>, <code>ffi:subprocess</code> and the other modules the
+confinement table widens to nothing enforced, and a module the table does
+not name - even one that does not exist - each turn the layer off for the
+whole run, which until now only the receipt and <code>sabline audit</code> said. A
+command-line run now writes one line as the program is about to run, on
+one condition, the receipt's: its OS policy is not enforced because of
+what the budget grants. The line says which grant: <code>sabline: ffi:os is granted, so the operating system layer is off for this run: the budget is the only boundary</code>, or <code>plain ffi grants any module</code>, or <code>ffi:NAME is not in the confinement table</code>. Nothing else changes: the run, its exit status
+and its receipt are what they were, <code>sabline.run()</code>, <code>sabline replay</code>,
+<code>sabline serve</code> and a <code>Pool</code> write nothing new, and <code>--no-confine</code> says its
+own line instead. The package-hallucination incident's recording shows it,
+for the invented <code>huggingface_cli</code>.</p>
 <p><strong>The card changed where the round trip pointed, and did not move the
 number.</strong> Three fixes to LLM.md, and nothing else: the example to imitate
 no longer imports <code>std.vel</code> (six of ten first answers copied that line, and

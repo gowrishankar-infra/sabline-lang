@@ -1490,16 +1490,17 @@ def main() -> int:
         print("sabline: --no-confine: the operating system is not asked to "
               "hold this run; the budget is the only boundary",
               file=sys.stderr)
-    # A granted module the confinement table does not name turns the
-    # operating system's layer off for the whole run, whether or not the
-    # program imports it and whether or not it exists; the receipt says so,
-    # and from 8.7 so does stderr, once, when the program is about to run.
-    unlisted = [] if "--no-confine" in sys.argv else \
-        _confine.not_in_table(budget)
+    # A budget whose grants turn the operating system's layer off - plain
+    # ffi, ffi:os, ffi:subprocess, a module the confinement table does not
+    # name - turns it off for the whole run, whether or not the program
+    # imports anything; the receipt says so, and from 8.7 so does stderr,
+    # once, when the program is about to run.
+    warning = None if "--no-confine" in sys.argv else \
+        _confine.off_by_grant(budget)
 
     def before_first_statement() -> Any:
-        if unlisted:
-            print(_confine.not_in_table_warning(unlisted), file=sys.stderr)
+        if warning:
+            print(warning, file=sys.stderr)
         return _confine.confine_this_run(
             budget, files=list(_state.PROGRAM_FILES))
     vars(_state)["BEFORE_FIRST_STATEMENT"] = before_first_statement
