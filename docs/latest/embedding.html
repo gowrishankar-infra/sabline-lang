@@ -82,7 +82,7 @@ print(report.warnings)       # ffi cannot be contained by a budget
 
 run = sabline.run(source, allow={"io"})
 print(run.ok, run.output, run.refused_effect)</code></pre></div>
-<p><code>sabline.card()</code> returns the language in about 5,100 words - paste it
+<p><code>sabline.card()</code> returns the language in about 5,300 words - paste it
 into a model before asking for Sabline.</p>
 <h2 id="limits-time-and-memory">Limits: time and memory <a class="anchor" href="#limits-time-and-memory" aria-label="Link to this section">#</a></h2>
 <div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>run = sabline.run(source, allow={"io"}, timeout=30, max_memory_mb=512)
