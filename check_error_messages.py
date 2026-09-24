@@ -11,7 +11,11 @@ someone deciding that it should.
 What is compared is the problem's code, its line (where the case has
 one) and Problem.message: the one-line message a SablineError carries,
 without the "how to fix" list or the `reference:` line that human()
-adds around it. Only what is not the message's own is normalised first:
+adds around it. A case whose golden entry also holds "fixes" has that
+list compared too, in order: the fixes are what a model is shown when
+its program is refused (agent_loop.complain shows the first two), and a
+case holds them where the words were chosen for that reason (E101's
+keyword cases, 8.7). Only what is not the message's own is normalised first:
 the case's scratch directory and program path become <dir> and <file>
 (in every spelling the compiler gives them - resolved, case-folded,
 either separator), the separators in the rest of such a path become /,
@@ -240,11 +244,11 @@ def inside(case_dir: Path) -> Iterator[Any]:
 # reaching a case
 # ---------------------------------------------------------------------------
 def first(problems: Any) -> tuple[Any, ...]:
-    """(code, line, message) of the first problem."""
+    """(code, line, message, fixes) of the first problem."""
     if not problems:
         raise CaseError("no problem was reported")
     p = problems[0]
-    return p.code, p.line, p.message
+    return p.code, p.line, p.message, list(p.fixes)
 
 
 def via_check(how: Any, case_dir: Any, program: Any) -> Any:
@@ -311,7 +315,8 @@ def via_cli(how: Any, case_dir: Any, program: Any) -> tuple[Any, ...]:
                         f"problem; it printed "
                         + (repr(said[-300:]) if said else "nothing"))
     p = problems[0]
-    return p.get("code"), p.get("line"), p.get("message")
+    return p.get("code"), p.get("line"), p.get("message"), \
+        list(p.get("fixes") or [])
 
 
 def _doctor_self_test(how: Any, case_dir: Any, program: Any) -> tuple[Any, ...]:
@@ -347,7 +352,7 @@ def _doctor_self_test(how: Any, case_dir: Any, program: Any) -> tuple[Any, ...]:
     ours = [e for e in made if e.code == "E999"]
     if not ours:
         raise CaseError("doctor() failed without raising E999")
-    return ours[0].code, ours[0].line, ours[0].message
+    return ours[0].code, ours[0].line, ours[0].message, list(ours[0].fixes)
 
 
 # A "library" case names one of these as its "call".
@@ -457,8 +462,9 @@ def main(argv: Any) -> int:
         started = time.monotonic()
         try:
             case_dir, program = prepare(case_id, how)
-            code, line, message = reach(how, case_dir, program)
+            code, line, message, fixes = reach(how, case_dir, program)
             message = normalise(message, case_dir, program)
+            fixes = [normalise(f, case_dir, program) for f in fixes]
         except (CaseError, OSError, subprocess.SubprocessError) as e:
             print(f"  WRONG {want_code} {case_id}: {ascii_only(e)}")
             failed += 1
@@ -472,7 +478,8 @@ def main(argv: Any) -> int:
             failed += 1
             continue
         same = (entry.get("message") == message
-                and entry.get("line") == line)
+                and entry.get("line") == line
+                and ("fixes" not in entry or entry["fixes"] == fixes))
         if same:
             print(f"  ok    {code} {case_id}{slow}")
             passed += 1
@@ -481,12 +488,17 @@ def main(argv: Any) -> int:
             print(f"        was: {shown(want_code, entry.get('line'), entry.get('message'))}")
             print(f"        now: {shown(code, line, message)}")
             entry["message"], entry["line"] = message, line
+            if "fixes" in entry:
+                entry["fixes"] = fixes
             changed += 1
             passed += 1
         else:
             print(f"  WRONG {code} {case_id}")
             print(f"        expected: {shown(want_code, entry.get('line'), entry.get('message'))}")
             print(f"        actual:   {shown(code, line, message)}")
+            if "fixes" in entry and entry["fixes"] != fixes:
+                print(f"        fixes expected: {ascii_only(entry['fixes'])}")
+                print(f"        fixes actual:   {ascii_only(fixes)}")
             failed += 1
     if update and changed:
         save_golden(golden)

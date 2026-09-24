@@ -136,6 +136,14 @@ path for <code>ffi:sqlite3</code> or <code>ffi:pathlib</code>, any host for <cod
 <code>ffi:urllib</code>, and nothing enforced for <code>ffi:os</code>, <code>ffi:subprocess</code>, plain <code>ffi</code>
 and any module the table in THREAT_MODEL.md does not name. The audit says
 which, and a run under such a budget says <code>none</code> and why.</p>
+<p>A module the table does not name widens it whether or not the program
+imports it, and whether or not it exists: the grant is what is read, and
+nothing is imported to find out. So from 8.7 a command-line run whose budget
+names one says so on stderr, once, as the program is about to run:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code>sabline: ffi:nosuchmod is <span class="k">not</span> in the confinement table, so the operating system layer is off <span class="k">for</span> this run: the budget is the only boundary</code></pre></div>
+<p><code>--no-confine</code> says its own line instead. <code>ffi:os</code> and <code>ffi:subprocess</code>,
+which the table names as widening to nothing enforced, and plain <code>ffi</code>,
+which names no module, say nothing more than the receipt does.</p>
 <h2 id="what-is-not-confined">What is not confined <a class="anchor" href="#what-is-not-confined" aria-label="Link to this section">#</a></h2>
 <ul>
 <li><strong>An in-process <code>sabline.run()</code></strong> - one with no <code>timeout</code> and no

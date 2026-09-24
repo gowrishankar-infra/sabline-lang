@@ -964,14 +964,51 @@ impl Parser {
             }
             return Ok(Expr::Var { name: t.text, line: t.line });
         }
-        Err(SablineError::with_fixes(
-            "E101",
-            format!("unexpected '{}'", t.text),
-            t.line,
-            &["expected a number, string, variable, or function call"],
-        ))
+        Err(self.unexpected(&t))
+    }
+
+    /// E101: a token that cannot start a value. A keyword is told what it
+    /// is for, and never that a call was expected: told that, a model
+    /// wrote `fail(...)` for six rounds (evals/roundtrip, 8.7). The words
+    /// are `sabline/parser.py`'s `_unexpected`, and the agreement gate
+    /// compares them.
+    fn unexpected(&self, t: &Token) -> SablineError {
+        let before = self.i.checked_sub(2).and_then(|j| self.toks.get(j));
+        let keyword = t.kind == Kind::Keyword;
+        let after_or = before.is_some_and(|b| b.kind == Kind::Keyword && b.text == "or");
+        let fixes: Vec<String> = if keyword && t.text == "fail" && after_or {
+            E101_OR_FAIL.iter().map(|f| (*f).to_string()).collect()
+        } else if keyword && t.text == "invariant" {
+            E101_INVARIANT.iter().map(|f| (*f).to_string()).collect()
+        } else if keyword {
+            vec![format!(
+                "'{}' is a keyword: it cannot be used as a value, and writing it as a \
+                 call does not make it one",
+                t.text
+            )]
+        } else {
+            vec!["expected a number, string, variable, or function call".to_string()]
+        };
+        let fixes: Vec<&str> = fixes.iter().map(String::as_str).collect();
+        SablineError::with_fixes("E101", format!("unexpected '{}'", t.text), t.line, &fixes)
     }
 }
+
+/// E101's fixes for the two keywords a model most put where a value goes
+/// (evals/roundtrip, 8.7), most useful first: `agent_loop` shows a model
+/// the first two. `sabline/parser.py` holds the same words.
+const E101_OR_FAIL: [&str; 2] = [
+    "to handle the failure here, write: check to_int(text) { ok n { ... } fail why { ... } }",
+    "'or fail' goes only in a function's signature, after its return type - fn parse(text: \
+     Text) -> Int or fail - and inside such a function try to_int(text) passes a failure up; \
+     main cannot fail",
+];
+const E101_INVARIANT: [&str; 2] = [
+    "'invariant' is a clause of a loop, written after the loop's header and before its '{': \
+     while i < n invariant total >= 0 { ... }",
+    "a promise about what a function returns is 'ensures', in its signature: fn f(n: Int) -> \
+     Int ensures result >= 0 { ... }",
+];
 
 /// `int(text)` as decimal text, or `None` where CPython refuses to convert.
 ///

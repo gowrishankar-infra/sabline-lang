@@ -293,6 +293,24 @@ def _restricted(policy: dict[str, Any]) -> list[str]:
     return asks
 
 
+def not_in_table(budget: Any) -> list[str]:
+    """The ffi modules a budget names that FFI_WIDENS does not: each widens
+    the OS policy to nothing enforced. A name that is no module at all is
+    among them - nothing here imports it to find out. Plain `ffi` names
+    none, and is not here."""
+    if "ffi" not in budget.effects or budget.modules is None:
+        return []
+    return sorted(m for m in budget.modules if m not in FFI_WIDENS)
+
+
+def not_in_table_warning(modules: list[str]) -> str:
+    """The one line the command line writes to stderr for them (8.7)."""
+    names = ", ".join(f"ffi:{m}" for m in modules)
+    return (f"sabline: {names} {'is' if len(modules) == 1 else 'are'} not in "
+            f"the confinement table, so the operating system layer is off "
+            f"for this run: the budget is the only boundary")
+
+
 def _why_not_enforced(policy: dict[str, Any]) -> str:
     names = [("plain ffi" if w["module"] == "*" else "ffi:" + w["module"])
              + ("" if w.get("known", True) else " (not in the table of "

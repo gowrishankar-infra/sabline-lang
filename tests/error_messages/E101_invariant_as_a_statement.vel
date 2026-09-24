@@ -1,0 +1,5 @@
+fn main() uses io {
+    let parts: List of Int = [3, 4]
+    invariant length(parts) == 2
+    print(length(parts))
+}

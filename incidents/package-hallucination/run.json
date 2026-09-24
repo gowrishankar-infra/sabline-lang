@@ -20,7 +20,8 @@
       "command": ["sabline", "via_python.vel", "--allow",
                   "io,ffi:huggingface_cli"],
       "expect_exit": 0,
-      "expect": ["the call failed: cannot import 'huggingface_cli'"]
+      "expect": ["the call failed: cannot import 'huggingface_cli'",
+                 "ffi:huggingface_cli is not in the confinement table"]
     }
   ]
 }

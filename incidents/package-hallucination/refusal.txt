@@ -22,4 +22,5 @@ exit 1
 # and with the grant the model's own instructions would ask for
 $ sabline via_python.vel --allow io,ffi:huggingface_cli
 the call failed: cannot import 'huggingface_cli'
+sabline: ffi:huggingface_cli is not in the confinement table, so the operating system layer is off for this run: the budget is the only boundary
 exit 0
