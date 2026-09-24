@@ -50,6 +50,24 @@ EXPR_NEST_LIMIT = 1000        # bracket / unary nesting depth
 BLOCK_NEST_LIMIT = 4000       # blocks in blocks, and else-if chains (8.2):
                               # 3,000 deep runs on every leg; 12,000 did not
 
+# E101's fixes for the two keywords a model most put where a value goes
+# (evals/roundtrip, 8.7). agent_loop shows a model the first two fixes, so
+# each list is two, most useful first. rt/crates/sabline-rt/src/parser.rs
+# holds the same words, and the agreement gate compares them.
+E101_OR_FAIL = (
+    "to handle the failure here, write: check to_int(text) { ok n { ... } "
+    "fail why { ... } }",
+    "'or fail' goes only in a function's signature, after its return type "
+    "- fn parse(text: Text) -> Int or fail - and inside such a function "
+    "try to_int(text) passes a failure up; main cannot fail",
+)
+E101_INVARIANT = (
+    "'invariant' is a clause of a loop, written after the loop's header and "
+    "before its '{': while i < n invariant total >= 0 { ... }",
+    "a promise about what a function returns is 'ensures', in its "
+    "signature: fn f(n: Int) -> Int ensures result >= 0 { ... }",
+)
+
 
 class Parser:
     lambda_n = 0
@@ -647,8 +665,26 @@ class Parser:
                 self.expect("OP", ")")
                 return Call(t.text, args, t.line)
             return Var(t.text, t.line)
-        raise SablineError("E101", f"unexpected '{t.text}'", t.line,
-                          fixes=["expected a number, string, variable, or function call"])
+        raise self._unexpected(t)
+
+    def _unexpected(self, t: Token) -> SablineError:
+        """E101: a token that cannot start a value. A keyword is told what
+        it is for, and never that a call was expected: told that, a model
+        wrote `fail(...)` for six rounds (evals/roundtrip, 8.7).
+        sabline-rt's parser says the same words (the agreement gate)."""
+        before = self.toks[self.i - 2] if self.i >= 2 else None
+        if (t.kind == "KEYWORD" and t.text == "fail" and before is not None
+                and before.kind == "KEYWORD" and before.text == "or"):
+            fixes = list(E101_OR_FAIL)
+        elif t.kind == "KEYWORD" and t.text == "invariant":
+            fixes = list(E101_INVARIANT)
+        elif t.kind == "KEYWORD":
+            fixes = [f"'{t.text}' is a keyword: it cannot be used as a "
+                     f"value, and writing it as a call does not make it one"]
+        else:
+            fixes = ["expected a number, string, variable, or function call"]
+        return SablineError("E101", f"unexpected '{t.text}'", t.line,
+                            fixes=fixes)
 
 
 def nice_name(name: str) -> str:

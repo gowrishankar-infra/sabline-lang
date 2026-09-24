@@ -1,0 +1,5 @@
+fn main() uses io {
+    let text = read_line()
+    let n = try to_int(text) or fail "not a number"
+    print(n + 1)
+}

@@ -1,0 +1,4 @@
+fn main() uses io {
+    let n = check to_int("3") { ok v { print(v) } fail why { print(why) } }
+    print(n)
+}

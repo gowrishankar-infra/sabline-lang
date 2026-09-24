@@ -589,6 +589,23 @@ def reported_cases() -> None:
        in b.get("confinement_reason", "") and b.get("confinement_layers") == []
        and b.get("os_policy_sha256") == confine.policy_sha256(
            confine.os_policy(io, confine=False)), b)
+    # 8.7: a granted module the table does not name - one that exists and
+    # one that does not - turns the layer off, and stderr says so once
+    line = "not in the confinement table, so the operating system layer " \
+        "is off for this run"
+    _, out, err = cli(hello, "--allow", "io,ffi:a_module_nobody_listed,"
+                      "ffi:json")
+    ok("an ffi grant of a module the table does not name, even one that "
+       "does not exist, says on stderr, once, that the OS layer is off",
+       err.count(line) == 1 and "ffi:a_module_nobody_listed" in err
+       and "ffi:json" not in err and "ran to the end" in out, err)
+    _, _, quiet = cli(hello, "--allow", "io,ffi:json")
+    _, _, said = cli(hello, "--allow", "io,ffi:a_module_nobody_listed",
+                     "--no-confine")
+    ok("...and nothing is said for a module the table names, or under "
+       "--no-confine, which says it on its own",
+       line not in quiet and line not in said and "--no-confine" in said,
+       [quiet, said])
     r = sabline.run(HELLO)
     params = parameters_of(r)
     ok("a run in the caller's own process says none, and that it is "

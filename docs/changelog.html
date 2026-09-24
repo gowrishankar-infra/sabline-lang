@@ -161,6 +161,26 @@ verdict from the recordings with no model and no key. One free model is
 recorded: <code>qwen2.5:7b</code>, locally, makes 7 of 10 tasks work in Sabline (6 on
 the first answer) and 9 of 10 in Python. The page publishes what asking
 every priced model would cost, from the vendors' published prices.</p>
+<p><strong>E101 says what a keyword is for.</strong> A keyword where a value belongs used
+to get the fix "expected a number, string, variable, or function call"; in
+the round trip's recording a model read that as an instruction, wrote
+<code>fail(...)</code> as a call, and sent the same program back until its six rounds
+ran out. Now <code>fail</code> after <code>or</code> is told that <code>or fail</code> belongs in a
+signature and how to handle or pass up a failure (<code>check ... { ok ... fail ... }</code>, or <code>try</code> inside an <code>or fail</code> function); <code>invariant</code> in a function
+body is told it is a loop clause, and that a promise about a result is
+<code>ensures</code>; any other keyword is told it cannot be a value, and that writing
+it as a call does not make it one. The message and the code are unchanged.
+Both parsers say the same words - sabline-rt's too, which the agreement
+gate compares - and <code>tests/error_messages</code> holds them: a golden entry may
+now hold its fixes, and four E101 cases do.</p>
+<p><strong>A granted module the confinement table does not name is said on stderr.</strong>
+Such a grant - even of a module that does not exist - turns the operating
+system layer off for the whole run, which until now only the receipt and
+<code>sabline audit</code> said. A command-line run now writes one line, as the
+program is about to run: <code>sabline: ffi:NAME is not in the confinement table, so the operating system layer is off for this run: the budget is the only boundary</code>. Nothing else changes: the run, its exit status and its
+receipt are what they were, and <code>--no-confine</code> says its own line instead.
+The package-hallucination incident's recording shows it, for the invented
+<code>huggingface_cli</code>.</p>
 <h2 id="9x">9.x <a class="anchor" href="#9x" aria-label="Link to this section">#</a></h2>
 <ul><li><a href="changelog-9.html#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li>
 <li><a href="changelog-9.html#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li>

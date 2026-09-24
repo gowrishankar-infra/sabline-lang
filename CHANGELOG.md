@@ -108,6 +108,31 @@ recorded: `qwen2.5:7b`, locally, makes 7 of 10 tasks work in Sabline (6 on
 the first answer) and 9 of 10 in Python. The page publishes what asking
 every priced model would cost, from the vendors' published prices.
 
+**E101 says what a keyword is for.** A keyword where a value belongs used
+to get the fix "expected a number, string, variable, or function call"; in
+the round trip's recording a model read that as an instruction, wrote
+`fail(...)` as a call, and sent the same program back until its six rounds
+ran out. Now `fail` after `or` is told that `or fail` belongs in a
+signature and how to handle or pass up a failure (`check ... { ok ... fail
+... }`, or `try` inside an `or fail` function); `invariant` in a function
+body is told it is a loop clause, and that a promise about a result is
+`ensures`; any other keyword is told it cannot be a value, and that writing
+it as a call does not make it one. The message and the code are unchanged.
+Both parsers say the same words - sabline-rt's too, which the agreement
+gate compares - and `tests/error_messages` holds them: a golden entry may
+now hold its fixes, and four E101 cases do.
+
+**A granted module the confinement table does not name is said on stderr.**
+Such a grant - even of a module that does not exist - turns the operating
+system layer off for the whole run, which until now only the receipt and
+`sabline audit` said. A command-line run now writes one line, as the
+program is about to run: `sabline: ffi:NAME is not in the confinement
+table, so the operating system layer is off for this run: the budget is
+the only boundary`. Nothing else changes: the run, its exit status and its
+receipt are what they were, and `--no-confine` says its own line instead.
+The package-hallucination incident's recording shows it, for the invented
+`huggingface_cli`.
+
 ## 9.0.0-alpha.4 - The job that was read, and then run
 
 9.0.0-alpha.3 published its crate and made no GitHub release. The two

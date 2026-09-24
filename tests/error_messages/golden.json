@@ -35,8 +35,46 @@
     "line": 2,
     "message": "expected ':' but found 'Int'"
   },
+  "E101_invariant_as_a_statement": {
+    "code": "E101",
+    "fixes": [
+      "'invariant' is a clause of a loop, written after the loop's header and before its '{': while i < n invariant total >= 0 { ... }",
+      "a promise about what a function returns is 'ensures', in its signature: fn f(n: Int) -> Int ensures result >= 0 { ... }"
+    ],
+    "how": {
+      "via": "check"
+    },
+    "line": 3,
+    "message": "unexpected 'invariant'"
+  },
+  "E101_keyword_as_a_value": {
+    "code": "E101",
+    "fixes": [
+      "'check' is a keyword: it cannot be used as a value, and writing it as a call does not make it one"
+    ],
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "unexpected 'check'"
+  },
+  "E101_or_fail_after_a_value": {
+    "code": "E101",
+    "fixes": [
+      "to handle the failure here, write: check to_int(text) { ok n { ... } fail why { ... } }",
+      "'or fail' goes only in a function's signature, after its return type - fn parse(text: Text) -> Int or fail - and inside such a function try to_int(text) passes a failure up; main cannot fail"
+    ],
+    "how": {
+      "via": "check"
+    },
+    "line": 3,
+    "message": "unexpected 'fail'"
+  },
   "E101_unexpected_token": {
     "code": "E101",
+    "fixes": [
+      "expected a number, string, variable, or function call"
+    ],
     "how": {
       "via": "check"
     },

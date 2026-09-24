@@ -1490,8 +1490,19 @@ def main() -> int:
         print("sabline: --no-confine: the operating system is not asked to "
               "hold this run; the budget is the only boundary",
               file=sys.stderr)
-    vars(_state)["BEFORE_FIRST_STATEMENT"] = lambda: _confine.confine_this_run(
-        budget, files=list(_state.PROGRAM_FILES))
+    # A granted module the confinement table does not name turns the
+    # operating system's layer off for the whole run, whether or not the
+    # program imports it and whether or not it exists; the receipt says so,
+    # and from 8.7 so does stderr, once, when the program is about to run.
+    unlisted = [] if "--no-confine" in sys.argv else \
+        _confine.not_in_table(budget)
+
+    def before_first_statement() -> Any:
+        if unlisted:
+            print(_confine.not_in_table_warning(unlisted), file=sys.stderr)
+        return _confine.confine_this_run(
+            budget, files=list(_state.PROGRAM_FILES))
+    vars(_state)["BEFORE_FIRST_STATEMENT"] = before_first_statement
     # args() is the program's arguments - never the flags this command
     # took for itself. Until 2.62 `--allow io` leaked in as two words.
     FLAGS = {"--json", "--no-native", "--time", "--check", "--no-confine"}

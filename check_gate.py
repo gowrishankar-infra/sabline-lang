@@ -79,10 +79,8 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "an error code",
         "rt/crates/sabline-rt/src/parser.rs",
-        '''        Err(SablineError::with_fixes(
-            "E101",''',
-        '''        Err(SablineError::with_fixes(
-            "E102",''',
+        '''SablineError::with_fixes("E101", format!("unexpected '{}'", t.text), t.line, &fixes)''',
+        '''SablineError::with_fixes("E102", format!("unexpected '{}'", t.text), t.line, &fixes)''',
     ),
     (
         "an error message",
