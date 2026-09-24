@@ -1,0 +1,8 @@
+fn share(total: Int, people: Int) -> Int {
+    requires people > 0
+    return total / people
+}
+
+fn main() uses io {
+    print(share(10, 2))
+}

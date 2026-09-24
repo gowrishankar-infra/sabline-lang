@@ -50,7 +50,7 @@ EXPR_NEST_LIMIT = 1000        # bracket / unary nesting depth
 BLOCK_NEST_LIMIT = 4000       # blocks in blocks, and else-if chains (8.2):
                               # 3,000 deep runs on every leg; 12,000 did not
 
-# E101's fixes for the two keywords a model most put where a value goes
+# E101's fixes for the keywords a model most put where a value goes
 # (evals/roundtrip, 8.7). agent_loop shows a model the first two fixes, so
 # each list is two, most useful first. rt/crates/sabline-rt/src/parser.rs
 # holds the same words, and the agreement gate compares them.
@@ -66,6 +66,24 @@ E101_INVARIANT = (
     "before its '{': while i < n invariant total >= 0 { ... }",
     "a promise about what a function returns is 'ensures', in its "
     "signature: fn f(n: Int) -> Int ensures result >= 0 { ... }",
+)
+# requires and ensures inside a body: in the round trip a model moved the
+# '{' above its requires and was told only that a keyword is not a value
+E101_CLAUSES = (
+    "a signature's clauses follow its return type - uses and or fail first, "
+    "then requires and ensures - all before the '{' that opens the body; "
+    "inside a body, test a value with if")
+E101_REQUIRES = (
+    "'requires' is a clause of a function's signature, written after its "
+    "return type and before its '{': fn half(n: Int) -> Int requires "
+    "n >= 0 { ... }",
+    E101_CLAUSES,
+)
+E101_ENSURES = (
+    "'ensures' is a clause of a function's signature, written after its "
+    "return type and before its '{', where 'result' is what the function "
+    "returns: fn double(n: Int) -> Int ensures result == n * 2 { ... }",
+    E101_CLAUSES,
 )
 
 
@@ -678,6 +696,10 @@ class Parser:
             fixes = list(E101_OR_FAIL)
         elif t.kind == "KEYWORD" and t.text == "invariant":
             fixes = list(E101_INVARIANT)
+        elif t.kind == "KEYWORD" and t.text == "requires":
+            fixes = list(E101_REQUIRES)
+        elif t.kind == "KEYWORD" and t.text == "ensures":
+            fixes = list(E101_ENSURES)
         elif t.kind == "KEYWORD":
             fixes = [f"'{t.text}' is a keyword: it cannot be used as a "
                      f"value, and writing it as a call does not make it one"]

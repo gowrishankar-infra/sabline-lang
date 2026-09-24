@@ -980,6 +980,10 @@ impl Parser {
             E101_OR_FAIL.iter().map(|f| (*f).to_string()).collect()
         } else if keyword && t.text == "invariant" {
             E101_INVARIANT.iter().map(|f| (*f).to_string()).collect()
+        } else if keyword && t.text == "requires" {
+            E101_REQUIRES.iter().map(|f| (*f).to_string()).collect()
+        } else if keyword && t.text == "ensures" {
+            E101_ENSURES.iter().map(|f| (*f).to_string()).collect()
         } else if keyword {
             vec![format!(
                 "'{}' is a keyword: it cannot be used as a value, and writing it as a \
@@ -994,7 +998,7 @@ impl Parser {
     }
 }
 
-/// E101's fixes for the two keywords a model most put where a value goes
+/// E101's fixes for the keywords a model most put where a value goes
 /// (evals/roundtrip, 8.7), most useful first: `agent_loop` shows a model
 /// the first two. `sabline/parser.py` holds the same words.
 const E101_OR_FAIL: [&str; 2] = [
@@ -1008,6 +1012,23 @@ const E101_INVARIANT: [&str; 2] = [
      while i < n invariant total >= 0 { ... }",
     "a promise about what a function returns is 'ensures', in its signature: fn f(n: Int) -> \
      Int ensures result >= 0 { ... }",
+];
+/// `requires` and `ensures` inside a body: in the round trip a model moved
+/// the `{` above its `requires` and was told only that a keyword is not a
+/// value.
+const E101_CLAUSES: &str = "a signature's clauses follow its return type - uses and or fail \
+                            first, then requires and ensures - all before the '{' that opens \
+                            the body; inside a body, test a value with if";
+const E101_REQUIRES: [&str; 2] = [
+    "'requires' is a clause of a function's signature, written after its return type and \
+     before its '{': fn half(n: Int) -> Int requires n >= 0 { ... }",
+    E101_CLAUSES,
+];
+const E101_ENSURES: [&str; 2] = [
+    "'ensures' is a clause of a function's signature, written after its return type and \
+     before its '{', where 'result' is what the function returns: fn double(n: Int) -> Int \
+     ensures result == n * 2 { ... }",
+    E101_CLAUSES,
 ];
 
 /// `int(text)` as decimal text, or `None` where CPython refuses to convert.

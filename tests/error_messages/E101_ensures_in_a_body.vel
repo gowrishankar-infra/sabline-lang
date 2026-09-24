@@ -1,0 +1,8 @@
+fn double(n: Int) -> Int {
+    ensures result == n * 2
+    return n * 2
+}
+
+fn main() uses io {
+    print(double(21))
+}
