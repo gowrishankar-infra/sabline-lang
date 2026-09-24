@@ -1,5 +1,5 @@
 {
-  "about": "The ten tasks of agent_loop.py --metric (tests/agent_loop/tasks.json), made checkable offline and in both languages. Each has the budget a Sabline run gets, the input it is given, and a check of what it printed or wrote, applied to the Sabline program and the Python program alike; the task text is the same for both. A URL arrives on standard input and is a local listener, so no run reaches the network, and HOME is a sentinel the check looks for. The wording differs from agent_loop's where a check needed it to be unambiguous (\"and nothing else\", \"only the x\"), and was fixed before any model was asked. Two changes were made after the first recording, which was discarded and asked again: \"parse\" gets \"42\" on standard input, because \"read the text\" reads as reading input and both languages' programs did; and every prompt says that standard output is what is checked, because one program gave its answer through a log on standard error.",
+  "about": "The ten tasks of agent_loop.py --metric (tests/agent_loop/tasks.json), made checkable offline and in both languages. Each has the budget a Sabline run gets, the input it is given, and a check of what it printed or wrote, applied to the Sabline program and the Python program alike; the task text is the same for both. A URL arrives on standard input and is a local listener, so no run reaches the network, and HOME is a sentinel the check looks for. The wording differs from agent_loop's where a check needed it to be unambiguous (\"and nothing else\", \"only the x\"), and was fixed before any model was asked. Two changes were made after the first recording, which was discarded and asked again: \"parse\" gets \"42\" on standard input, because \"read the text\" reads as reading input and both languages' programs did; and every prompt says that standard output is what is checked, because one program gave its answer through a log on standard error. After the first recording (2026-09-23), and before LLM.md was changed in answer to it: \"parse\" names no number in its text and is run on a second input, 1041, because the first recording's Sabline program for it compared the input with \"42\" and printed a fixed 43, which a check on 42 alone would have passed had it compiled; and five held-out tasks were added (\"set\": \"held-out\") - two whole-number ranges, a whole number read from standard input and checked on two inputs, and two helper functions a model might give a standard-library name - written and committed before the card was edited, by the person about to edit it, so they are held out from the edit, not from its author. Their numbers are reported apart from the original ten.",
   "tasks": [
     {
       "id": "sum",
@@ -9,10 +9,11 @@
     },
     {
       "id": "parse",
-      "task": "Read the text \"42\" as a whole number and print one more than it, saying why if the text is not a number.",
+      "task": "Read a line of standard input as a whole number and print one more than it, saying why if the text is not a number.",
       "budget": "io",
       "stdin": "42\n",
-      "check": {"last_number": "43"}
+      "check": {"last_number": "43"},
+      "more": [{"stdin": "1041\n", "check": {"last_number": "1042"}}]
     },
     {
       "id": "larger",
@@ -64,6 +65,43 @@
       "budget": "io",
       "check": {"stdout_re": "(?i)\\b(false|no|not positive|negative)\\b",
                 "stdout_not_re": "(?i)\\btrue\\b"}
+    },
+    {
+      "id": "squares",
+      "set": "held-out",
+      "task": "Print the squares of the whole numbers from 1 to 5, one per line, and nothing else.",
+      "budget": "io",
+      "check": {"numbers": ["1", "4", "9", "16", "25"]}
+    },
+    {
+      "id": "factorial",
+      "set": "held-out",
+      "task": "Print the product of the whole numbers from 1 to 6, and nothing else.",
+      "budget": "io",
+      "check": {"last_number": "720"}
+    },
+    {
+      "id": "months",
+      "set": "held-out",
+      "task": "Read a whole number of years from standard input and print how many months that is, saying why if the text is not a number.",
+      "budget": "io",
+      "stdin": "3\n",
+      "check": {"last_number": "36"},
+      "more": [{"stdin": "12\n", "check": {"last_number": "144"}}]
+    },
+    {
+      "id": "total",
+      "set": "held-out",
+      "task": "Write a function that adds up a list of whole numbers, and print what it gives for the list 4, 8 and 15.",
+      "budget": "io",
+      "check": {"last_number": "27"}
+    },
+    {
+      "id": "smallest",
+      "set": "held-out",
+      "task": "Write a function that returns the smallest number in a list of whole numbers, and print what it gives for the list 9, 4 and 7.",
+      "budget": "io",
+      "check": {"last_number": "4"}
     }
   ]
 }

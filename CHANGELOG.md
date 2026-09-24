@@ -133,6 +133,29 @@ receipt are what they were, and `--no-confine` says its own line instead.
 The package-hallucination incident's recording shows it, for the invented
 `huggingface_cli`.
 
+**The card changed where the round trip pointed, and did not move the
+number.** Three fixes to LLM.md, and nothing else: the example to imitate
+no longer imports `std.vel` (six of ten first answers copied that line, and
+in one it was the whole failure), `a to b` stopping before `b` is said first
+among the rules, and `or fail` gets a wrong-then-right pair. Before the card
+was touched, five held-out tasks were committed (two ranges, a number read
+from standard input, two helpers a model might give a standard-library
+name) and `parse` got a second input, because the first recording's answer
+compared its input with "42" and printed a fixed 43. qwen2.5:7b, three runs
+of each card on the fifteen tasks: the original ten, Sabline 7, 6 and 6 on
+the first answer with the old card and 6, 6 and 6 with the new, 7 within
+six rounds every time; the held-out five, 0 on the first answer and 1
+within with the old card, 1 and 1 with the new; Python 9 of 10 and 5 of 5
+throughout. That is a one-task move, and it is read as noise. Under it, the
+card fixed `parse`, `larger` and the held-out `total` and broke `write` and
+`home_set` - the example's first line is now `import "log.vel" as log`,
+which the model copies instead - while the range rule fixed none of the
+three range tasks and over-corrected one. The same card, model build and
+options do not give the same answers twice: against the first recording,
+seven of nine unchanged Sabline first answers differed, which is why every
+run is kept (`.run-2`, `.run-3`) and reported. `results.json` is
+`sabline.roundtrip/2`, with the held-out set apart.
+
 ## 9.0.0-alpha.4 - The job that was read, and then run
 
 9.0.0-alpha.3 published its crate and made no GitHub release. The two

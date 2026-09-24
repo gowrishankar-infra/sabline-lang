@@ -1,21 +1,32 @@
 {
- "schema": "sabline.roundtrip/1",
+ "schema": "sabline.roundtrip/2",
  "platform": "Linux x86_64",
  "python": "3.12",
  "sabline": "8.6.0",
  "rounds": 6,
- "tasks": [
-  "sum",
-  "parse",
-  "larger",
-  "write",
-  "fetch",
-  "evens",
-  "split_bill",
-  "points",
-  "home_set",
-  "positive"
- ],
+ "card_sha256": "37fda3ac94c6324e139b7817f8d22081065849299abc8339d00ce9a3639bd73e",
+ "tasks_sha256": "297f3d3425deb6a05873c0fb5ebbaf5b610beddfa2e1c6d6ce79bcd7d0cb10d3",
+ "tasks": {
+  "original": [
+   "sum",
+   "parse",
+   "larger",
+   "write",
+   "fetch",
+   "evens",
+   "split_bill",
+   "points",
+   "home_set",
+   "positive"
+  ],
+  "held-out": [
+   "squares",
+   "factorial",
+   "months",
+   "total",
+   "smallest"
+  ]
+ },
  "models": [
   {
    "model": {
@@ -42,36 +53,2049 @@
      "think": null
     }
    },
-   "recorded": "2026-09-23",
-   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.json",
-   "card_sha256": "a5c6ea50447919fc525425ef05618c94cf27104a513d24ec1be31c5b4fc66c60",
+   "recorded": "2026-09-24",
+   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-221344ba.tasks-297f3d34.json",
+   "card_sha256": "221344ba7d0da6c59cd14e37745dd8243d3782a7f00228d24faa768e983927fe",
+   "card_is_current": false,
+   "tasks_sha256": "297f3d3425deb6a05873c0fb5ebbaf5b610beddfa2e1c6d6ce79bcd7d0cb10d3",
+   "tasks_are_current": true,
+   "asked_every_task": true,
    "summary": {
-    "sabline": {
-     "tasks": 10,
-     "works_first": 6,
-     "works": 7,
-     "wrong": 1,
-     "gave_up": 2,
-     "mean_rounds_to_work": 1.29,
-     "failed_attempts": {
-      "did-not-compile E101": 12,
-      "did-not-compile E513": 2,
-      "wrong": 1
+    "original": {
+     "sabline": {
+      "tasks": 10,
+      "works_first": 7,
+      "works": 7,
+      "wrong": 1,
+      "gave_up": 2,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "did-not-compile E100": 6,
+       "did-not-compile E101": 6,
+       "wrong": 1
+      }
      },
+     "python": {
+      "tasks": 10,
+      "works_first": 9,
+      "works": 9,
+      "wrong": 1,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "wrong": 1
+      }
+     }
+    },
+    "held-out": {
+     "sabline": {
+      "tasks": 5,
+      "works_first": 0,
+      "works": 1,
+      "wrong": 2,
+      "gave_up": 2,
+      "mean_rounds_to_work": 3.0,
+      "failed_attempts": {
+       "did-not-compile E100": 5,
+       "did-not-compile E101": 5,
+       "did-not-compile E501,E503,E506": 2,
+       "did-not-compile E513": 2,
+       "wrong": 2
+      }
+     },
+     "python": {
+      "tasks": 5,
+      "works_first": 5,
+      "works": 5,
+      "wrong": 0,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {}
+     }
+    }
+   },
+   "usage": {
+    "sabline": {
+     "calls": 37,
+     "sent_chars": 1289600,
+     "reply_chars": 23969
+    },
+    "python": {
+     "calls": 15,
+     "sent_chars": 4865,
+     "reply_chars": 3274
+    }
+   },
+   "tasks": {
+    "sabline": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The sum is 45\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The larger of 3 and 7 is 7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,fs:write:./out.txt",
+        "exit": 0,
+        "stdout": "wrote to ./out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,net:127.0.0.1",
+        "exit": 0,
+        "stdout": "fetched 1216 characters\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "There are 3 even numbers.\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 5: [E101] unexpected '->'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 5: [E101] unexpected '->'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'requires'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'requires'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'requires'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'requires'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,env,declassify",
+        "exit": 0,
+        "stdout": "HOME is set\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "false\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "1\n4\n9\n16\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The product is: 120\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 5: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'sum_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-total-1/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'sum_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-total-2/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 3,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "Sum is 27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'requires'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'ensures'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'ensures'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'ensures'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E501,E503,E506",
+       "evidence": {
+        "compiler": "line 4: [E506] cannot tell what an empty list holds\n    possible fix: put at least one item in it, e.g. [0]\nline 9: [E501] '<' compares two Ints, two Floats, or two Texts, but this is Int < List of Int\n    possible fix: make both sides the same number type\n    possible fix: convert with to_float(x), or round(x) for an Int\nline 13: [E503] 'smallest_of' promises to return Int but this returns List of Int\n    possible fix: return a Int value\n    possible fix: or change the signature to '-> List of Int'"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E501,E503,E506",
+       "evidence": {
+        "compiler": "line 4: [E506] cannot tell what an empty list holds\n    possible fix: put at least one item in it, e.g. [0]\nline 9: [E501] '<' compares two Ints, two Floats, or two Texts, but this is Int < List of Int\n    possible fix: make both sides the same number type\n    possible fix: convert with to_float(x), or round(x) for an Int\nline 13: [E503] 'smallest_of' promises to return Int but this returns List of Int\n    possible fix: return a Int value\n    possible fix: or change the signature to '-> List of Int'"
+       }
+      }
+     ]
+    },
+    "python": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "55\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "43\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "hello was written to out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1216\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "Each person should pay: 33.33 INR\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "False\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1\n4\n9\n16\n25\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "720\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3 year(s) is 36 month(s).\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "model": {
+    "spec": "ollama:qwen2.5:7b",
+    "provider": "ollama",
+    "name": "qwen2.5:7b",
+    "version": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "details": {
+     "parent_model": "",
+     "format": "gguf",
+     "family": "qwen2",
+     "families": [
+      "qwen2"
+     ],
+     "parameter_size": "7.6B",
+     "quantization_level": "Q4_K_M"
+    },
+    "server": "0.24.0",
+    "options": {
+     "temperature": 0,
+     "seed": 7,
+     "num_ctx": 16384,
+     "num_predict": 4000,
+     "think": null
+    }
+   },
+   "recorded": "2026-09-24",
+   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-221344ba.tasks-297f3d34.run-2.json",
+   "card_sha256": "221344ba7d0da6c59cd14e37745dd8243d3782a7f00228d24faa768e983927fe",
+   "card_is_current": false,
+   "tasks_sha256": "297f3d3425deb6a05873c0fb5ebbaf5b610beddfa2e1c6d6ce79bcd7d0cb10d3",
+   "tasks_are_current": true,
+   "asked_every_task": true,
+   "summary": {
+    "original": {
+     "sabline": {
+      "tasks": 10,
+      "works_first": 6,
+      "works": 7,
+      "wrong": 1,
+      "gave_up": 2,
+      "mean_rounds_to_work": 1.14,
+      "failed_attempts": {
+       "did-not-compile E100": 6,
+       "did-not-compile E200": 2,
+       "did-not-compile E401": 1,
+       "did-not-compile E513": 1,
+       "did-not-compile E520": 3,
+       "wrong": 1
+      }
+     },
+     "python": {
+      "tasks": 10,
+      "works_first": 9,
+      "works": 9,
+      "wrong": 1,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "wrong": 1
+      }
+     }
+    },
+    "held-out": {
+     "sabline": {
+      "tasks": 5,
+      "works_first": 0,
+      "works": 1,
+      "wrong": 2,
+      "gave_up": 2,
+      "mean_rounds_to_work": 3.0,
+      "failed_attempts": {
+       "did-not-compile E100": 5,
+       "did-not-compile E101": 5,
+       "did-not-compile E501,E503,E520": 1,
+       "did-not-compile E501,E503,E523": 1,
+       "did-not-compile E513": 2,
+       "wrong": 2
+      }
+     },
+     "python": {
+      "tasks": 5,
+      "works_first": 5,
+      "works": 5,
+      "wrong": 0,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {}
+     }
+    }
+   },
+   "usage": {
+    "sabline": {
+     "calls": 38,
+     "sent_chars": 1325382,
+     "reply_chars": 24375
+    },
+    "python": {
+     "calls": 15,
+     "sent_chars": 4865,
+     "reply_chars": 3274
+    }
+   },
+   "tasks": {
+    "sabline": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The sum is 45\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'max_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-larger-1/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 2,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The larger of 3 and 7 is 7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,fs:write:./out.txt",
+        "exit": 0,
+        "stdout": "wrote to ./out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,net:127.0.0.1",
+        "exit": 0,
+        "stdout": "fetched 1216 characters\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "There are 3 even numbers.\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E520",
+       "evidence": {
+        "compiler": "line 8: [E520] 'divide_or_fail' can fail - that cannot be ignored\n    possible fix: handle it: check divide_or_fail(...) { ok v { ... } fail reason { ... } }\n    possible fix: or pass it up (inside a fallible function): try divide_or_fail(...)"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 14: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: names in scope: money"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 14: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: names in scope: money"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E520",
+       "evidence": {
+        "compiler": "line 12: [E520] 'sub_or_fail' can fail - that cannot be ignored\n    possible fix: handle it: check sub_or_fail(...) { ok v { ... } fail reason { ... } }\n    possible fix: or pass it up (inside a fallible function): try sub_or_fail(...)"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 12: [E401] 'sub_or_fail' expects 2 argument(s) but got 3\n    possible fix: pass exactly 2 argument(s)"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E520",
+       "evidence": {
+        "compiler": "line 12: [E520] 'sub_or_fail' can fail - that cannot be ignored\n    possible fix: handle it: check sub_or_fail(...) { ok v { ... } fail reason { ... } }\n    possible fix: or pass it up (inside a fallible function): try sub_or_fail(...)"
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,env,declassify",
+        "exit": 0,
+        "stdout": "HOME is set\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "false\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "1\n4\n9\n16\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The product is: 120\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 5: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'sum_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-total-1/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'sum_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-total-2/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 3,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "Sum is 27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'requires'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'ensures'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'ensures'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'ensures'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E501,E503,E523",
+       "evidence": {
+        "compiler": "line 5: [E523] 'fail' is used, but 'smallest_of' does not declare it can fail\n    possible fix: add 'or fail' to the signature of 'smallest_of'\nline 9: [E501] '<' compares two Ints, two Floats, or two Texts, but this is Int < List of Int\n    possible fix: make both sides the same number type\n    possible fix: convert with to_float(x), or round(x) for an Int\nline 13: [E503] 'smallest_of' promises to return Int but this returns List of Int\n    possible fix: return a Int value\n    possible fix: or change the signature to '-> List of Int'"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E501,E503,E520",
+       "evidence": {
+        "compiler": "line 9: [E501] '<' compares two Ints, two Floats, or two Texts, but this is Int < List of Int\n    possible fix: make both sides the same number type\n    possible fix: convert with to_float(x), or round(x) for an Int\nline 13: [E503] 'smallest_of' promises to return Int but this returns List of Int\n    possible fix: return a Int value\n    possible fix: or change the signature to '-> List of Int'\nline 18: [E520] 'smallest_of' can fail - that cannot be ignored\n    possible fix: handle it: check smallest_of(...) { ok v { ... } fail reason { ... } }\n    possible fix: or pass it up (inside a fallible"
+       }
+      }
+     ]
+    },
+    "python": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "55\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "43\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "hello was written to out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1216\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "Each person should pay: 33.33 INR\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "False\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1\n4\n9\n16\n25\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "720\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3 year(s) is 36 month(s).\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "model": {
+    "spec": "ollama:qwen2.5:7b",
+    "provider": "ollama",
+    "name": "qwen2.5:7b",
+    "version": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "details": {
+     "parent_model": "",
+     "format": "gguf",
+     "family": "qwen2",
+     "families": [
+      "qwen2"
+     ],
+     "parameter_size": "7.6B",
+     "quantization_level": "Q4_K_M"
+    },
+    "server": "0.24.0",
+    "options": {
+     "temperature": 0,
+     "seed": 7,
+     "num_ctx": 16384,
+     "num_predict": 4000,
+     "think": null
+    }
+   },
+   "recorded": "2026-09-24",
+   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-221344ba.tasks-297f3d34.run-3.json",
+   "card_sha256": "221344ba7d0da6c59cd14e37745dd8243d3782a7f00228d24faa768e983927fe",
+   "card_is_current": false,
+   "tasks_sha256": "297f3d3425deb6a05873c0fb5ebbaf5b610beddfa2e1c6d6ce79bcd7d0cb10d3",
+   "tasks_are_current": true,
+   "asked_every_task": true,
+   "summary": {
+    "original": {
+     "sabline": {
+      "tasks": 10,
+      "works_first": 6,
+      "works": 7,
+      "wrong": 1,
+      "gave_up": 2,
+      "mean_rounds_to_work": 1.14,
+      "failed_attempts": {
+       "did-not-compile E100": 6,
+       "did-not-compile E200": 2,
+       "did-not-compile E401": 1,
+       "did-not-compile E513": 1,
+       "did-not-compile E520": 3,
+       "wrong": 1
+      }
+     },
+     "python": {
+      "tasks": 10,
+      "works_first": 9,
+      "works": 9,
+      "wrong": 1,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "wrong": 1
+      }
+     }
+    },
+    "held-out": {
+     "sabline": {
+      "tasks": 5,
+      "works_first": 0,
+      "works": 1,
+      "wrong": 2,
+      "gave_up": 2,
+      "mean_rounds_to_work": 3.0,
+      "failed_attempts": {
+       "did-not-compile E100": 5,
+       "did-not-compile E101": 5,
+       "did-not-compile E501,E503,E520": 1,
+       "did-not-compile E501,E503,E523": 1,
+       "did-not-compile E513": 2,
+       "wrong": 2
+      }
+     },
+     "python": {
+      "tasks": 5,
+      "works_first": 5,
+      "works": 5,
+      "wrong": 0,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {}
+     }
+    }
+   },
+   "usage": {
+    "sabline": {
+     "calls": 38,
+     "sent_chars": 1325382,
+     "reply_chars": 24375
+    },
+    "python": {
+     "calls": 15,
+     "sent_chars": 4865,
+     "reply_chars": 3274
+    }
+   },
+   "tasks": {
+    "sabline": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The sum is 45\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'max_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-larger-1/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 2,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The larger of 3 and 7 is 7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,fs:write:./out.txt",
+        "exit": 0,
+        "stdout": "wrote to ./out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,net:127.0.0.1",
+        "exit": 0,
+        "stdout": "fetched 1216 characters\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "There are 3 even numbers.\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E520",
+       "evidence": {
+        "compiler": "line 8: [E520] 'divide_or_fail' can fail - that cannot be ignored\n    possible fix: handle it: check divide_or_fail(...) { ok v { ... } fail reason { ... } }\n    possible fix: or pass it up (inside a fallible function): try divide_or_fail(...)"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 14: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: names in scope: money"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 14: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: names in scope: money"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E520",
+       "evidence": {
+        "compiler": "line 12: [E520] 'sub_or_fail' can fail - that cannot be ignored\n    possible fix: handle it: check sub_or_fail(...) { ok v { ... } fail reason { ... } }\n    possible fix: or pass it up (inside a fallible function): try sub_or_fail(...)"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 12: [E401] 'sub_or_fail' expects 2 argument(s) but got 3\n    possible fix: pass exactly 2 argument(s)"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E520",
+       "evidence": {
+        "compiler": "line 12: [E520] 'sub_or_fail' can fail - that cannot be ignored\n    possible fix: handle it: check sub_or_fail(...) { ok v { ... } fail reason { ... } }\n    possible fix: or pass it up (inside a fallible function): try sub_or_fail(...)"
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,env,declassify",
+        "exit": 0,
+        "stdout": "HOME is set\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "false\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "1\n4\n9\n16\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The product is: 120\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 5: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'sum_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-total-1/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'sum_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-total-2/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 3,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "Sum is 27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'requires'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'ensures'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'ensures'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 4: [E101] unexpected 'ensures'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E501,E503,E523",
+       "evidence": {
+        "compiler": "line 5: [E523] 'fail' is used, but 'smallest_of' does not declare it can fail\n    possible fix: add 'or fail' to the signature of 'smallest_of'\nline 9: [E501] '<' compares two Ints, two Floats, or two Texts, but this is Int < List of Int\n    possible fix: make both sides the same number type\n    possible fix: convert with to_float(x), or round(x) for an Int\nline 13: [E503] 'smallest_of' promises to return Int but this returns List of Int\n    possible fix: return a Int value\n    possible fix: or change the signature to '-> List of Int'"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E501,E503,E520",
+       "evidence": {
+        "compiler": "line 9: [E501] '<' compares two Ints, two Floats, or two Texts, but this is Int < List of Int\n    possible fix: make both sides the same number type\n    possible fix: convert with to_float(x), or round(x) for an Int\nline 13: [E503] 'smallest_of' promises to return Int but this returns List of Int\n    possible fix: return a Int value\n    possible fix: or change the signature to '-> List of Int'\nline 18: [E520] 'smallest_of' can fail - that cannot be ignored\n    possible fix: handle it: check smallest_of(...) { ok v { ... } fail reason { ... } }\n    possible fix: or pass it up (inside a fallible"
+       }
+      }
+     ]
+    },
+    "python": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "55\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "43\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "hello was written to out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1216\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "Each person should pay: 33.33 INR\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "False\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1\n4\n9\n16\n25\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "720\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3 year(s) is 36 month(s).\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "model": {
+    "spec": "ollama:qwen2.5:7b",
+    "provider": "ollama",
+    "name": "qwen2.5:7b",
+    "version": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "details": {
+     "parent_model": "",
+     "format": "gguf",
+     "family": "qwen2",
+     "families": [
+      "qwen2"
+     ],
+     "parameter_size": "7.6B",
+     "quantization_level": "Q4_K_M"
+    },
+    "server": "0.24.0",
+    "options": {
+     "temperature": 0,
+     "seed": 7,
+     "num_ctx": 16384,
+     "num_predict": 4000,
+     "think": null
+    }
+   },
+   "recorded": "2026-09-23",
+   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-221344ba.tasks-5d8906d1.json",
+   "card_sha256": "221344ba7d0da6c59cd14e37745dd8243d3782a7f00228d24faa768e983927fe",
+   "card_is_current": false,
+   "tasks_sha256": "5d8906d1c55670b89a3016d694162a0deaca4080d95ee1907a8f97392f27ef0b",
+   "tasks_are_current": false,
+   "asked_every_task": false,
+   "summary": {
+    "original": {
+     "sabline": {
+      "tasks": 10,
+      "works_first": 6,
+      "works": 7,
+      "wrong": 1,
+      "gave_up": 2,
+      "mean_rounds_to_work": 1.29,
+      "failed_attempts": {
+       "did-not-compile E101": 12,
+       "did-not-compile E513": 2,
+       "wrong": 1
+      }
+     },
+     "python": {
+      "tasks": 10,
+      "works_first": 9,
+      "works": 9,
+      "wrong": 1,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "wrong": 1
+      }
+     }
+    }
+   },
+   "usage": {
+    "sabline": {
      "calls": 22,
      "sent_chars": 764289,
      "reply_chars": 14743
     },
     "python": {
-     "tasks": 10,
-     "works_first": 9,
-     "works": 9,
-     "wrong": 1,
-     "gave_up": 0,
-     "mean_rounds_to_work": 1.0,
-     "failed_attempts": {
-      "wrong": 1
-     },
      "calls": 10,
      "sent_chars": 3240,
      "reply_chars": 2468
@@ -433,6 +2457,2085 @@
      ]
     }
    }
+  },
+  {
+   "model": {
+    "spec": "ollama:qwen2.5:7b",
+    "provider": "ollama",
+    "name": "qwen2.5:7b",
+    "version": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "details": {
+     "parent_model": "",
+     "format": "gguf",
+     "family": "qwen2",
+     "families": [
+      "qwen2"
+     ],
+     "parameter_size": "7.6B",
+     "quantization_level": "Q4_K_M"
+    },
+    "server": "0.24.0",
+    "options": {
+     "temperature": 0,
+     "seed": 7,
+     "num_ctx": 16384,
+     "num_predict": 4000,
+     "think": null
+    }
+   },
+   "recorded": "2026-09-24",
+   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-37fda3ac.tasks-297f3d34.json",
+   "card_sha256": "37fda3ac94c6324e139b7817f8d22081065849299abc8339d00ce9a3639bd73e",
+   "card_is_current": true,
+   "tasks_sha256": "297f3d3425deb6a05873c0fb5ebbaf5b610beddfa2e1c6d6ce79bcd7d0cb10d3",
+   "tasks_are_current": true,
+   "asked_every_task": true,
+   "summary": {
+    "original": {
+     "sabline": {
+      "tasks": 10,
+      "works_first": 6,
+      "works": 7,
+      "wrong": 1,
+      "gave_up": 2,
+      "mean_rounds_to_work": 1.14,
+      "failed_attempts": {
+       "did-not-compile E100": 6,
+       "did-not-compile E300": 1,
+       "did-not-compile E401": 4,
+       "did-not-compile E560": 1,
+       "did-not-compile E563": 1,
+       "wrong": 1
+      }
+     },
+     "python": {
+      "tasks": 10,
+      "works_first": 9,
+      "works": 9,
+      "wrong": 1,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "wrong": 1
+      }
+     }
+    },
+    "held-out": {
+     "sabline": {
+      "tasks": 5,
+      "works_first": 1,
+      "works": 1,
+      "wrong": 1,
+      "gave_up": 3,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "did-not-compile E000": 1,
+       "did-not-compile E100": 5,
+       "did-not-compile E101": 2,
+       "did-not-compile E200": 3,
+       "did-not-compile E402": 5,
+       "did-not-compile E513": 2,
+       "wrong": 1
+      }
+     },
+     "python": {
+      "tasks": 5,
+      "works_first": 5,
+      "works": 5,
+      "wrong": 0,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {}
+     }
+    }
+   },
+   "usage": {
+    "sabline": {
+     "calls": 41,
+     "sent_chars": 1503732,
+     "reply_chars": 35039
+    },
+    "python": {
+     "calls": 15,
+     "sent_chars": 4865,
+     "reply_chars": 3274
+    }
+   },
+   "tasks": {
+    "sabline": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The sum is 45\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "43\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The larger of 3 and 7 is 7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E300",
+       "evidence": {
+        "compiler": "line 5: [E300] function 'main' calls 'write_file' which needs effect 'fs', but 'main' only declares 'uses io'\n    possible fix: add 'uses fs' to the signature of 'main'\n    possible fix: remove the call to 'write_file'"
+       }
+      },
+      {
+       "round": 2,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,fs:write:./out.txt",
+        "exit": 0,
+        "stdout": "wrote to out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,net:127.0.0.1",
+        "exit": 0,
+        "stdout": "fetched 1216 characters\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "There are 3 even numbers.\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E563",
+       "evidence": {
+        "compiler": "line 5: [E563] 'if' would branch on Secret of Bool, which came from env(), line 4 - a program does not choose what to do by looking at a secret. A comparison over one gives a Secret of Bool exactly so that this is refused: in a loop it would read the secret out a character at a time\n    possible fix: say so and branch on the answer: declassify(key == \"\", \"whether a key is set is not the key\") needs \"uses declassify\", is named in the audit with that reason, and an operator can refuse to grant it\n    possible fix: or decide without looking: build what you do out of values that are not secret"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 5: [E401] 'declassify' expects 2 argument(s) but got 1\n    possible fix: pass the secret and a reason: declassify(key, \"the vendor needs it\")"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 8: [E401] 'log.info' expects 1 argument(s) but got 2\n    possible fix: pass exactly 1 argument(s)"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 8: [E401] 'log.info' expects 1 argument(s) but got 2\n    possible fix: pass exactly 1 argument(s)"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 8: [E401] 'log.info' expects 1 argument(s) but got 2\n    possible fix: pass exactly 1 argument(s)"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E560",
+       "evidence": {
+        "compiler": "line 8: [E560] argument 2 of 'print' is Secret of Text, and 'print' performs io - a Secret cannot be printed, written, sent or passed to Python. It came from env(), line 4\n    possible fix: build what you emit out of values that are not secret\n    possible fix: or let it out on purpose: declassify(x, \"why this is safe to emit\") needs \"uses declassify\", is named in the audit with that reason, and an operator can refuse to grant it"
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "false\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "0 squared is 0\n1 squared is 1\n2 squared is 4\n3 squared is 9\n4 squared is 16\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 18: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: an import only gets a name if you write 'as'"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 5: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "sum is 27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'min_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-smallest-1/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'min_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-smallest-2/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 23: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: an import only gets a name if you write 'as'"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E000",
+       "evidence": {
+        "compiler": "line 17: [E000] unexpected character '#'\n    possible fix: remove or replace this character"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 17: [E101] unexpected 'import'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 23: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: an import only gets a name if you write 'as'"
+       }
+      }
+     ]
+    },
+    "python": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "55\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "43\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "hello was written to out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1216\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "Each person should pay: 33.33 INR\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "False\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1\n4\n9\n16\n25\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "720\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3 year(s) is 36 month(s).\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "model": {
+    "spec": "ollama:qwen2.5:7b",
+    "provider": "ollama",
+    "name": "qwen2.5:7b",
+    "version": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "details": {
+     "parent_model": "",
+     "format": "gguf",
+     "family": "qwen2",
+     "families": [
+      "qwen2"
+     ],
+     "parameter_size": "7.6B",
+     "quantization_level": "Q4_K_M"
+    },
+    "server": "0.24.0",
+    "options": {
+     "temperature": 0,
+     "seed": 7,
+     "num_ctx": 16384,
+     "num_predict": 4000,
+     "think": null
+    }
+   },
+   "recorded": "2026-09-24",
+   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-37fda3ac.tasks-297f3d34.run-2.json",
+   "card_sha256": "37fda3ac94c6324e139b7817f8d22081065849299abc8339d00ce9a3639bd73e",
+   "card_is_current": true,
+   "tasks_sha256": "297f3d3425deb6a05873c0fb5ebbaf5b610beddfa2e1c6d6ce79bcd7d0cb10d3",
+   "tasks_are_current": true,
+   "asked_every_task": true,
+   "summary": {
+    "original": {
+     "sabline": {
+      "tasks": 10,
+      "works_first": 6,
+      "works": 7,
+      "wrong": 1,
+      "gave_up": 2,
+      "mean_rounds_to_work": 1.14,
+      "failed_attempts": {
+       "did-not-compile E100": 6,
+       "did-not-compile E300": 1,
+       "did-not-compile E401": 4,
+       "did-not-compile E560": 1,
+       "did-not-compile E563": 1,
+       "wrong": 1
+      }
+     },
+     "python": {
+      "tasks": 10,
+      "works_first": 9,
+      "works": 9,
+      "wrong": 1,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "wrong": 1
+      }
+     }
+    },
+    "held-out": {
+     "sabline": {
+      "tasks": 5,
+      "works_first": 1,
+      "works": 1,
+      "wrong": 1,
+      "gave_up": 3,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "did-not-compile E000": 1,
+       "did-not-compile E100": 5,
+       "did-not-compile E101": 2,
+       "did-not-compile E200": 3,
+       "did-not-compile E402": 5,
+       "did-not-compile E513": 2,
+       "wrong": 1
+      }
+     },
+     "python": {
+      "tasks": 5,
+      "works_first": 5,
+      "works": 5,
+      "wrong": 0,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {}
+     }
+    }
+   },
+   "usage": {
+    "sabline": {
+     "calls": 41,
+     "sent_chars": 1503732,
+     "reply_chars": 35039
+    },
+    "python": {
+     "calls": 15,
+     "sent_chars": 4865,
+     "reply_chars": 3274
+    }
+   },
+   "tasks": {
+    "sabline": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The sum is 45\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "43\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The larger of 3 and 7 is 7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E300",
+       "evidence": {
+        "compiler": "line 5: [E300] function 'main' calls 'write_file' which needs effect 'fs', but 'main' only declares 'uses io'\n    possible fix: add 'uses fs' to the signature of 'main'\n    possible fix: remove the call to 'write_file'"
+       }
+      },
+      {
+       "round": 2,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,fs:write:./out.txt",
+        "exit": 0,
+        "stdout": "wrote to out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,net:127.0.0.1",
+        "exit": 0,
+        "stdout": "fetched 1216 characters\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "There are 3 even numbers.\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E563",
+       "evidence": {
+        "compiler": "line 5: [E563] 'if' would branch on Secret of Bool, which came from env(), line 4 - a program does not choose what to do by looking at a secret. A comparison over one gives a Secret of Bool exactly so that this is refused: in a loop it would read the secret out a character at a time\n    possible fix: say so and branch on the answer: declassify(key == \"\", \"whether a key is set is not the key\") needs \"uses declassify\", is named in the audit with that reason, and an operator can refuse to grant it\n    possible fix: or decide without looking: build what you do out of values that are not secret"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 5: [E401] 'declassify' expects 2 argument(s) but got 1\n    possible fix: pass the secret and a reason: declassify(key, \"the vendor needs it\")"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 8: [E401] 'log.info' expects 1 argument(s) but got 2\n    possible fix: pass exactly 1 argument(s)"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 8: [E401] 'log.info' expects 1 argument(s) but got 2\n    possible fix: pass exactly 1 argument(s)"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 8: [E401] 'log.info' expects 1 argument(s) but got 2\n    possible fix: pass exactly 1 argument(s)"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E560",
+       "evidence": {
+        "compiler": "line 8: [E560] argument 2 of 'print' is Secret of Text, and 'print' performs io - a Secret cannot be printed, written, sent or passed to Python. It came from env(), line 4\n    possible fix: build what you emit out of values that are not secret\n    possible fix: or let it out on purpose: declassify(x, \"why this is safe to emit\") needs \"uses declassify\", is named in the audit with that reason, and an operator can refuse to grant it"
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "false\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "0 squared is 0\n1 squared is 1\n2 squared is 4\n3 squared is 9\n4 squared is 16\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 18: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: an import only gets a name if you write 'as'"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 5: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "sum is 27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'min_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-smallest-1/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'min_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-smallest-2/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 23: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: an import only gets a name if you write 'as'"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E000",
+       "evidence": {
+        "compiler": "line 17: [E000] unexpected character '#'\n    possible fix: remove or replace this character"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 17: [E101] unexpected 'import'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 23: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: an import only gets a name if you write 'as'"
+       }
+      }
+     ]
+    },
+    "python": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "55\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "43\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "hello was written to out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1216\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "Each person should pay: 33.33 INR\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "False\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1\n4\n9\n16\n25\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "720\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3 year(s) is 36 month(s).\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "model": {
+    "spec": "ollama:qwen2.5:7b",
+    "provider": "ollama",
+    "name": "qwen2.5:7b",
+    "version": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "details": {
+     "parent_model": "",
+     "format": "gguf",
+     "family": "qwen2",
+     "families": [
+      "qwen2"
+     ],
+     "parameter_size": "7.6B",
+     "quantization_level": "Q4_K_M"
+    },
+    "server": "0.24.0",
+    "options": {
+     "temperature": 0,
+     "seed": 7,
+     "num_ctx": 16384,
+     "num_predict": 4000,
+     "think": null
+    }
+   },
+   "recorded": "2026-09-24",
+   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-37fda3ac.tasks-297f3d34.run-3.json",
+   "card_sha256": "37fda3ac94c6324e139b7817f8d22081065849299abc8339d00ce9a3639bd73e",
+   "card_is_current": true,
+   "tasks_sha256": "297f3d3425deb6a05873c0fb5ebbaf5b610beddfa2e1c6d6ce79bcd7d0cb10d3",
+   "tasks_are_current": true,
+   "asked_every_task": true,
+   "summary": {
+    "original": {
+     "sabline": {
+      "tasks": 10,
+      "works_first": 6,
+      "works": 7,
+      "wrong": 1,
+      "gave_up": 2,
+      "mean_rounds_to_work": 1.14,
+      "failed_attempts": {
+       "did-not-compile E100": 6,
+       "did-not-compile E300": 1,
+       "did-not-compile E401": 4,
+       "did-not-compile E560": 1,
+       "did-not-compile E563": 1,
+       "wrong": 1
+      }
+     },
+     "python": {
+      "tasks": 10,
+      "works_first": 9,
+      "works": 9,
+      "wrong": 1,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "wrong": 1
+      }
+     }
+    },
+    "held-out": {
+     "sabline": {
+      "tasks": 5,
+      "works_first": 1,
+      "works": 1,
+      "wrong": 1,
+      "gave_up": 3,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "did-not-compile E000": 1,
+       "did-not-compile E100": 5,
+       "did-not-compile E101": 2,
+       "did-not-compile E200": 3,
+       "did-not-compile E402": 5,
+       "did-not-compile E513": 2,
+       "wrong": 1
+      }
+     },
+     "python": {
+      "tasks": 5,
+      "works_first": 5,
+      "works": 5,
+      "wrong": 0,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {}
+     }
+    }
+   },
+   "usage": {
+    "sabline": {
+     "calls": 41,
+     "sent_chars": 1503732,
+     "reply_chars": 35039
+    },
+    "python": {
+     "calls": 15,
+     "sent_chars": 4865,
+     "reply_chars": 3274
+    }
+   },
+   "tasks": {
+    "sabline": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The sum is 45\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "43\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "The larger of 3 and 7 is 7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E300",
+       "evidence": {
+        "compiler": "line 5: [E300] function 'main' calls 'write_file' which needs effect 'fs', but 'main' only declares 'uses io'\n    possible fix: add 'uses fs' to the signature of 'main'\n    possible fix: remove the call to 'write_file'"
+       }
+      },
+      {
+       "round": 2,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,fs:write:./out.txt",
+        "exit": 0,
+        "stdout": "wrote to out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io,net:127.0.0.1",
+        "exit": 0,
+        "stdout": "fetched 1216 characters\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "There are 3 even numbers.\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 9: [E100] expected 'ident' but found '.'\n    possible fix: insert 'ident' here"
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E563",
+       "evidence": {
+        "compiler": "line 5: [E563] 'if' would branch on Secret of Bool, which came from env(), line 4 - a program does not choose what to do by looking at a secret. A comparison over one gives a Secret of Bool exactly so that this is refused: in a loop it would read the secret out a character at a time\n    possible fix: say so and branch on the answer: declassify(key == \"\", \"whether a key is set is not the key\") needs \"uses declassify\", is named in the audit with that reason, and an operator can refuse to grant it\n    possible fix: or decide without looking: build what you do out of values that are not secret"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 5: [E401] 'declassify' expects 2 argument(s) but got 1\n    possible fix: pass the secret and a reason: declassify(key, \"the vendor needs it\")"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 8: [E401] 'log.info' expects 1 argument(s) but got 2\n    possible fix: pass exactly 1 argument(s)"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 8: [E401] 'log.info' expects 1 argument(s) but got 2\n    possible fix: pass exactly 1 argument(s)"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E401",
+       "evidence": {
+        "compiler": "line 8: [E401] 'log.info' expects 1 argument(s) but got 2\n    possible fix: pass exactly 1 argument(s)"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E560",
+       "evidence": {
+        "compiler": "line 8: [E560] argument 2 of 'print' is Secret of Text, and 'print' performs io - a Secret cannot be printed, written, sent or passed to Python. It came from env(), line 4\n    possible fix: build what you emit out of values that are not secret\n    possible fix: or let it out on purpose: declassify(x, \"why this is safe to emit\") needs \"uses declassify\", is named in the audit with that reason, and an operator can refuse to grant it"
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "false\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "0 squared is 0\n1 squared is 1\n2 squared is 4\n3 squared is 9\n4 squared is 16\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 18: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: an import only gets a name if you write 'as'"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E402",
+       "evidence": {
+        "compiler": "line 20: [E402] unknown variable 'std'\n    possible fix: declare it first: let std = ..."
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 5: [E101] unexpected 'fail'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E100",
+       "evidence": {
+        "compiler": "line 5: [E100] expected '{' but found '->'\n    possible fix: insert '{' here"
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "sabline <workdir>/program.vel --allow io",
+        "exit": 0,
+        "stdout": "sum is 27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'min_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-smallest-1/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 2,
+       "class": "did-not-compile",
+       "code": "E513",
+       "evidence": {
+        "compiler": "line 3: [E513] function 'min_of' is defined in both '<repo>/stdlib/std.vel' and '<workdir>/sabline-smallest-2/program.vel'\n    possible fix: rename one of them"
+       }
+      },
+      {
+       "round": 3,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 23: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: an import only gets a name if you write 'as'"
+       }
+      },
+      {
+       "round": 4,
+       "class": "did-not-compile",
+       "code": "E000",
+       "evidence": {
+        "compiler": "line 17: [E000] unexpected character '#'\n    possible fix: remove or replace this character"
+       }
+      },
+      {
+       "round": 5,
+       "class": "did-not-compile",
+       "code": "E101",
+       "evidence": {
+        "compiler": "line 17: [E101] unexpected 'import'\n    possible fix: expected a number, string, variable, or function call"
+       }
+      },
+      {
+       "round": 6,
+       "class": "did-not-compile",
+       "code": "E200",
+       "evidence": {
+        "compiler": "line 23: [E200] no import is named 'log'\n    possible fix: name an import: import \"lib.vel\" as log\n    possible fix: an import only gets a name if you write 'as'"
+       }
+      }
+     ]
+    },
+    "python": {
+     "sum": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "55\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "parse": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "43\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "larger": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "7\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "write": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "hello was written to out.txt\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "fetch": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1216\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "evens": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "split_bill": [
+      {
+       "round": 1,
+       "class": "wrong",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "Each person should pay: 33.33 INR\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "points": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "home_set": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "positive": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "False\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "squares": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "1\n4\n9\n16\n25\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "factorial": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "720\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "months": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "3 year(s) is 36 month(s).\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "total": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "27\n",
+        "stderr": ""
+       }
+      }
+     ],
+     "smallest": [
+      {
+       "round": 1,
+       "class": "works",
+       "code": null,
+       "evidence": {
+        "command": "python <workdir>/program.py",
+        "exit": 0,
+        "stdout": "4\n",
+        "stderr": ""
+       }
+      }
+     ]
+    }
+   }
   }
  ],
  "cost": {
@@ -449,76 +4552,81 @@
    "ceiling_chars_per_token": 3,
    "estimate_chars_per_token": 4,
    "estimate_from": [
-    "ollama:qwen2.5:7b"
+    "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-221344ba.tasks-297f3d34.json",
+    "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-221344ba.tasks-297f3d34.run-2.json",
+    "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-221344ba.tasks-297f3d34.run-3.json",
+    "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-37fda3ac.tasks-297f3d34.json",
+    "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-37fda3ac.tasks-297f3d34.run-2.json",
+    "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-37fda3ac.tasks-297f3d34.run-3.json"
    ],
-   "estimate_calls_per_model": 32.0
+   "estimate_calls_per_model": 54.3
   },
   "models": [
    {
     "spec": "anthropic:claude-fable-5-1",
     "input": 10.0,
     "output": 50.0,
-    "ceiling_usd": 47.6,
-    "estimate_usd": 2.77
+    "ceiling_usd": 71.95,
+    "estimate_usd": 5.13
    },
    {
     "spec": "anthropic:claude-opus-5-5",
     "input": 4.0,
     "output": 20.0,
-    "ceiling_usd": 19.04,
-    "estimate_usd": 1.11
+    "ceiling_usd": 28.78,
+    "estimate_usd": 2.05
    },
    {
     "spec": "anthropic:claude-sonnet-5",
     "input": 2.0,
     "output": 10.0,
-    "ceiling_usd": 9.52,
-    "estimate_usd": 0.55
+    "ceiling_usd": 14.39,
+    "estimate_usd": 1.03
    },
    {
     "spec": "anthropic:claude-haiku-4-5-20251001",
     "input": 1.0,
     "output": 5.0,
-    "ceiling_usd": 4.49,
-    "estimate_usd": 0.21
+    "ceiling_usd": 6.78,
+    "estimate_usd": 0.39
    },
    {
     "spec": "openai:gpt-6-astra",
     "input": 10.0,
     "output": 50.0,
-    "ceiling_usd": 44.92,
-    "estimate_usd": 2.13
+    "ceiling_usd": 67.8,
+    "estimate_usd": 3.95
    },
    {
     "spec": "openai:gpt-6-sol",
     "input": 2.0,
     "output": 10.0,
-    "ceiling_usd": 8.98,
-    "estimate_usd": 0.43
+    "ceiling_usd": 13.56,
+    "estimate_usd": 0.79
    },
    {
     "spec": "openai:gpt-6-luna",
     "input": 0.1,
     "output": 0.5,
-    "ceiling_usd": 0.45,
-    "estimate_usd": 0.02
+    "ceiling_usd": 0.68,
+    "estimate_usd": 0.04
    },
    {
     "spec": "gemini:gemini-3.1-pro-preview",
     "input": 2.0,
     "output": 12.0,
-    "ceiling_usd": 9.94,
-    "estimate_usd": 0.44
+    "ceiling_usd": 15.0,
+    "estimate_usd": 0.81
    },
    {
     "spec": "gemini:gemini-3.8-flash",
     "input": 0.75,
     "output": 3.75,
-    "ceiling_usd": 3.37,
-    "estimate_usd": 0.16
+    "ceiling_usd": 5.09,
+    "estimate_usd": 0.3
    }
   ],
-  "ceiling_usd": 148.31,
-  "estimate_usd": 7.82
+  "ceiling_usd": 224.03,
+  "estimate_usd": 14.49
  }
 }

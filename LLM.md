@@ -64,7 +64,7 @@ fn main() uses io {
     let ages: Map of Text to Int = {}   // annotate empty [] and {}
     let scores = [3, 1, 2]
 
-    for i in 0 to 3 { print(i) }
+    for i in 0 to 3 { print(i) }   // 0, 1, 2: `to` stops before 3
     for s in scores { print(s) }
 
     let i = 0
@@ -87,6 +87,39 @@ a currency: `fn fee(m: Money of C) -> Money of C for any C`.
 ## Rules a model gets wrong
 
 These are the mistakes that actually happen. Read them twice.
+
+**Two come first, because models get them wrong most.**
+
+**`a to b` stops before `b`.** `for i in 0 to 3` runs with `i` as 0, 1
+and 2 - never 3. To include the end, go one past it: the days 1 to 7 of a
+week are `for day in 1 to 8`. Written `1 to 7`, the loop stops at 6, and
+it compiles, runs and prints a wrong answer that no error will point out.
+
+**`or fail` is only ever part of a signature**, after the return type.
+There is no `x or fail y`, no `?`, no `catch`: a failure is handled with
+`check`, or passed up with `try` inside a function whose signature says
+`or fail`.
+
+```
+// wrong: E101 - `or fail` is not an operator
+let price = try get(prices, "tea") or fail "no price for tea"
+```
+
+```
+// right: `or fail` in the signature, `try` in the body
+fn price_of(prices: Map of Text to Int, item: Text) -> Int or fail {
+    return try get(prices, item)
+}
+
+// right: main cannot fail, so it handles the failure where it happens
+fn main() uses io {
+    let prices: Map of Text to Int = {"tea": 20}
+    check price_of(prices, "tea") {
+        ok price { print(format("tea is {}", price)) }
+        fail why { print(format("no price: {}", why)) }
+    }
+}
+```
 
 1. **Every effect must be declared.** `print` needs `uses io`. A
    function without `uses` is pure and cannot call one that has
@@ -344,6 +377,11 @@ apply_to_each (maps T -> T, same type only)
 count_where sum_of max_of min_of is_sorted insert_sorted sort
 insert_by sort_by (keys must be Int) join range_list
 ```
+
+Import `std.vel` only to call one of these. While it is imported its
+names are taken: a function of your own named `max_of`, or anything else
+in the list above, is E513 - call the library's, name yours differently,
+or leave the import out.
 
 `max_of` and `min_of` require a non-empty list. `sort` promises
 `is_sorted(result)`.
@@ -677,7 +715,6 @@ them as structured data for a fix loop.
 ## A complete program to imitate
 
 ```
-import "std.vel"
 import "csv.vel" as csv
 import "log.vel" as log
 

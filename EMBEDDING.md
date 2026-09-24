@@ -32,7 +32,7 @@ run = sabline.run(source, allow={"io"})
 print(run.ok, run.output, run.refused_effect)
 ```
 
-`sabline.card()` returns the language in about <!-- count:card-words -->5,100<!-- /count --> words - paste it
+`sabline.card()` returns the language in about <!-- count:card-words -->5,300<!-- /count --> words - paste it
 into a model before asking for Sabline.
 
 ## Limits: time and memory
