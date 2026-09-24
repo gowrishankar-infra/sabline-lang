@@ -251,7 +251,7 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # message named the standard library by its path in the checkout that
     # recorded it, whose directory still has the old name. The recording
     # keeps the text the model saw; later recordings write <repo> instead.
-    "evals/roundtrip/recordings/ollama-qwen2.5-7b.json":
+    "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-221344ba.tasks-5d8906d1.json":
         ("/mnt/d/velaris-lang/stdlib",),
 }
 

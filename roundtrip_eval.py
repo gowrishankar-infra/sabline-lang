@@ -7,11 +7,15 @@
     python roundtrip_eval.py --live SPEC [SPEC]   ask each model, record it, then --record
     python roundtrip_eval.py --self-test          show --check failing when a verdict moves
 
-WHAT THIS MEASURES. For each model, the same ten small tasks
+WHAT THIS MEASURES. For each model, the same small tasks
 (evals/roundtrip/tasks.json) are asked for twice: as a Sabline program, with
 the language card LLM.md in the prompt, and as a Python program, with none.
 Each answer is compiled and run, and a check of what it printed or wrote,
-the same check for both languages, says whether it works. A program that does
+the same check for both languages, says whether it works; a task with
+`more` is run again on each further input, and works only if every run
+does. The tasks are in two sets, reported apart: the original ten, and a
+held-out set written before the card was changed in answer to the first
+recording. A program that does
 not compile, or fails when run, goes back to the model with the toolchain's
 own message - `sabline check`'s errors, the refusal or runtime error, Python's
 traceback - for at most six rounds. A program that runs and prints the wrong
@@ -29,7 +33,11 @@ page when the page is built.
 
 EVIDENCE, AND WHAT COSTS MONEY. Asking a model is --live, off by default, and
 refused under CI. With --live the model's replies are written to
-evals/roundtrip/recordings/, one file per model; everything else - the
+evals/roundtrip/recordings/, one file per model, card and task set (the
+file's name carries the first eight hex digits of LLM.md's and tasks.json's
+SHA-256, so asking again after either changed adds a recording and never
+replaces one); a recording is replayed for the tasks it was asked, and a
+task it was not asked is not scored for it. Everything else - the
 compiler, the runs, the checks, the numbers - is re-derived from those
 replies by --record and held to results.json by --check, with no model, no
 key and no network, which is what CI runs. Anyone with their own key (or a
@@ -94,8 +102,9 @@ STALE_DAYS = 183
 HOME_NAME = "roundtrip-home-7c1d"        # HOME, a directory the check looks for
 BODY = "sabline round trip\n" * 64          # 1216 characters, for "fetch"
 REFUSALS = re.compile(r"E3[12]\d")          # E310-E329: the budget's refusals
-SCHEMA = "sabline.roundtrip/1"
+SCHEMA = "sabline.roundtrip/2"
 RECORDING_SCHEMA = "sabline.roundtrip-recording/1"
+SETS = ("original", "held-out")
 REPO = "https://github.com/gowrishankar-infra/sabline-lang"
 
 Reply = tuple[str, dict[str, Any]]
@@ -246,10 +255,24 @@ def last_number(text: str) -> str | None:
     return found[-1] if found else None
 
 
-def works(task: dict[str, Any], stdout: str, cwd: Path) -> bool:
-    """The task's check, the same for both languages."""
-    c = task["check"]
+def runs_of(task: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    """Each run of a task: (standard input, check). The first is the task's
+    own; `more` adds one for each further input."""
+    return [(task.get("stdin") or "", task["check"])] + [
+        (m.get("stdin") or "", m["check"]) for m in task.get("more", [])]
+
+
+def set_of(task: dict[str, Any]) -> str:
+    return str(task.get("set", "original"))
+
+
+def works(c: dict[str, Any], stdout: str, cwd: Path) -> bool:
+    """One run's check, the same for both languages."""
     ok = True
+    if "numbers" in c:
+        printed = re.findall(r"-?\d+(?:\.\d+)?", stdout)
+        ok = ok and [Decimal(g) for g in printed] == \
+            [Decimal(n) for n in c["numbers"]]
     if "stdout_re" in c:
         ok = ok and re.search(c["stdout_re"], stdout) is not None
     if "stdout_not_re" in c:
@@ -289,32 +312,42 @@ def attempt(lang: str, task: dict[str, Any], code: str, cwd: Path,
         return ({"class": "did-not-compile", "code": ccode,
                  "evidence": {"compiler": mask(said)[:600]}},
                 feedback(lang, "compile", mask(said)))
-    stdin = (task.get("stdin") or "").replace("{url}", url)
     cmd = ([sys.executable, str(SABLINE), str(path), "--allow", task["budget"]]
            if lang == "sabline" else [sys.executable, "-I", "-S", str(path)])
-    res = run(cmd, cwd, stdin, home)
     shown = (["sabline", "<workdir>/program.vel", "--allow", task["budget"]]
              if lang == "sabline" else ["python", "<workdir>/program.py"])
-    ev = {"command": " ".join(shown), "exit": res["exit"],
-          "stdout": mask(res["stdout"])[:300],
-          "stderr": mask(res["stderr"])[-400:]}
-    if res["timed_out"]:
-        return ({"class": "timeout", "code": None, "evidence": ev},
-                feedback(lang, "run", f"stopped after {RUN_TIMEOUT} s: it "
-                                      f"did not finish"))
-    if res["exit"] != 0:
-        if lang == "sabline":
-            rc = sabline_code(res["stderr"])
-            cls = "refused" if rc and REFUSALS.fullmatch(rc) else "crashed"
-        else:
-            rc = python_exception(res["stderr"])
-            cls = "crashed"
-        return ({"class": cls, "code": rc or f"exit {res['exit']}",
-                 "evidence": ev},
-                feedback(lang, "run", mask(res["stderr"]) or
-                         f"it exited with status {res['exit']}"))
-    return ({"class": "works" if works(task, res["stdout"], cwd) else "wrong",
-             "code": None, "evidence": ev}, None)
+    first: dict[str, Any] = {}
+    for n, (given, check) in enumerate(runs_of(task), start=1):
+        stdin = given.replace("{url}", url)
+        res = run(cmd, cwd, stdin, home)
+        ev = {"command": " ".join(shown), "exit": res["exit"],
+              "stdout": mask(res["stdout"])[:300],
+              "stderr": mask(res["stderr"])[-400:]}
+        # a run after the first names itself, and is named to the model:
+        # the input it was given is in the task's terms, never the answer
+        again = ""
+        if n > 1:
+            ev["run"] = n
+            again = f"(run again, with {stdin.strip()!r} on standard input)\n\n"
+        if res["timed_out"]:
+            return ({"class": "timeout", "code": None, "evidence": ev},
+                    feedback(lang, "run", again + f"stopped after "
+                             f"{RUN_TIMEOUT} s: it did not finish"))
+        if res["exit"] != 0:
+            if lang == "sabline":
+                rc = sabline_code(res["stderr"])
+                cls = "refused" if rc and REFUSALS.fullmatch(rc) else "crashed"
+            else:
+                rc = python_exception(res["stderr"])
+                cls = "crashed"
+            return ({"class": cls, "code": rc or f"exit {res['exit']}",
+                     "evidence": ev},
+                    feedback(lang, "run", again + (mask(res["stderr"]) or
+                             f"it exited with status {res['exit']}")))
+        if not works(check, res["stdout"], cwd):
+            return {"class": "wrong", "code": None, "evidence": ev}, None
+        first = first or ev
+    return {"class": "works", "code": None, "evidence": first}, None
 
 
 def converse(lang: str, task: dict[str, Any], ask: Ask, root: Path, card: str,
@@ -472,7 +505,16 @@ def slug(spec: str) -> str:
 
 
 def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """SHA-256 of a text file with its line ends as LF, so a Windows
+    checkout (CRLF) and a Linux one name the same card the same way."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")
+                          ).hexdigest()
+
+
+def recording_name(spec: str, record: dict[str, Any]) -> str:
+    """One file per model, card and task set."""
+    return (f"{slug(spec)}.card-{record['card_sha256'][:8]}"
+            f".tasks-{record['tasks_sha256'][:8]}.json")
 
 
 def run_model(tasks: list[dict[str, Any]], asks: dict[str, Ask],
@@ -489,6 +531,11 @@ def run_model(tasks: list[dict[str, Any]], asks: dict[str, Ask],
             for lang in LANGS:
                 out[lang] = {}
                 for t in tasks:
+                    # a recording is scored on the tasks it was asked, and
+                    # only those: one made before a task existed has no
+                    # answer to it, which is not the same as giving up
+                    if f"{lang}:{t['id']}" not in asks:
+                        continue
                     out[lang][t["id"]] = converse(
                         lang, t, asks[f"{lang}:{t['id']}"], root, card, url,
                         mask)
@@ -528,7 +575,11 @@ def live(specs: list[str]) -> int:
                                   for x in conv["exchanges"]]
                 for lang, byid in convs.items()
                 for tid, conv in byid.items()}}
-        path = RECORDINGS / f"{slug(spec)}.json"
+        path = RECORDINGS / recording_name(spec, record)
+        if path.exists():
+            raise SystemExit(f"{path.relative_to(HERE)} exists: this model "
+                             f"was already asked with this card and these "
+                             f"tasks, and a recording is never replaced")
         path.write_text(json.dumps(record, indent=1, ensure_ascii=False) + "\n",
                         encoding="utf-8", newline="\n")
         print(f"wrote {path.relative_to(HERE)}")
@@ -538,35 +589,53 @@ def live(specs: list[str]) -> int:
 # ---- the record ------------------------------------------------------------------
 
 def summarise(convs: dict[str, dict[str, Any]],
-              rec: dict[str, Any]) -> dict[str, Any]:
+              tasks: list[dict[str, Any]]) -> dict[str, Any]:
+    """{set: {lang: the numbers}}, for each set the recording was asked
+    any task of."""
+    sets = {t["id"]: set_of(t) for t in tasks}
     out: dict[str, Any] = {}
-    for lang, byid in convs.items():
-        finals = {tid: c["attempts"][-1]["class"] for tid, c in byid.items()}
-        failed: dict[str, int] = {}
-        for c in byid.values():
-            for a in c["attempts"]:
-                if a["class"] != "works":
-                    key = a["class"] + (f" {a['code']}" if a.get("code") else "")
-                    failed[key] = failed.get(key, 0) + 1
-        rounds = [len(c["attempts"]) for c in byid.values()
-                  if c["attempts"][-1]["class"] == "works"]
+    for name in SETS:
+        for lang, all_byid in convs.items():
+            byid = {tid: c for tid, c in all_byid.items()
+                    if sets.get(tid) == name}
+            if not byid:
+                continue
+            finals = {tid: c["attempts"][-1]["class"]
+                      for tid, c in byid.items()}
+            failed: dict[str, int] = {}
+            for c in byid.values():
+                for a in c["attempts"]:
+                    if a["class"] != "works":
+                        key = a["class"] + (f" {a['code']}" if a.get("code")
+                                            else "")
+                        failed[key] = failed.get(key, 0) + 1
+            rounds = [len(c["attempts"]) for c in byid.values()
+                      if c["attempts"][-1]["class"] == "works"]
+            out.setdefault(name, {})[lang] = {
+                "tasks": len(byid),
+                "works_first": sum(1 for c in byid.values()
+                                   if c["attempts"][0]["class"] == "works"),
+                "works": sum(1 for v in finals.values() if v == "works"),
+                "wrong": sum(1 for v in finals.values() if v == "wrong"),
+                "gave_up": sum(1 for v in finals.values()
+                               if v not in ("works", "wrong")),
+                "mean_rounds_to_work": round(sum(rounds) / len(rounds), 2)
+                if rounds else None,
+                "failed_attempts": dict(sorted(failed.items())),
+            }
+    return out
+
+
+def usage(rec: dict[str, Any]) -> dict[str, Any]:
+    """What a recording sent and received, per language, for the cost."""
+    out: dict[str, Any] = {}
+    for lang in LANGS:
         calls = [x for k, conv in rec["conversations"].items()
                  if k.startswith(lang + ":") for x in conv]
-        out[lang] = {
-            "tasks": len(byid),
-            "works_first": sum(1 for c in byid.values()
-                               if c["attempts"][0]["class"] == "works"),
-            "works": sum(1 for v in finals.values() if v == "works"),
-            "wrong": sum(1 for v in finals.values() if v == "wrong"),
-            "gave_up": sum(1 for v in finals.values()
-                           if v not in ("works", "wrong")),
-            "mean_rounds_to_work": round(sum(rounds) / len(rounds), 2)
-            if rounds else None,
-            "failed_attempts": dict(sorted(failed.items())),
-            "calls": len(calls),
-            "sent_chars": sum(x.get("sent_chars") or 0 for x in calls),
-            "reply_chars": sum(len(x["reply"]) for x in calls),
-        }
+        out[lang] = {"calls": len(calls),
+                     "sent_chars": sum(x.get("sent_chars") or 0
+                                       for x in calls),
+                     "reply_chars": sum(len(x["reply"]) for x in calls)}
     return out
 
 
@@ -591,8 +660,9 @@ def cost(models: list[dict[str, Any]], tasks: list[dict[str, Any]]
             ceil_out_tokens += len(tasks) * MAX_TOKENS
     ceil_reply_tokens_in = sum(len(tasks) * (r - 1) * MAX_TOKENS
                                for r in range(1, ROUNDS + 1)) * len(LANGS)
-    # estimate: the mean over the recorded models of what they sent and got
-    measured = [m["summary"] for m in models]
+    # estimate: the mean of what the recordings asked every current task
+    # sent and got (one asked fewer tasks would understate it)
+    measured = [m["usage"] for m in models if m["asked_every_task"]]
     if measured:
         est_in = sum(s[lang]["sent_chars"] for s in measured
                      for lang in LANGS) / len(measured)
@@ -617,7 +687,8 @@ def cost(models: list[dict[str, Any]], tasks: list[dict[str, Any]]
                 "rounds": ROUNDS, "max_tokens": MAX_TOKENS,
                 "feedback_cap_chars": FEEDBACK_CAP,
                 "ceiling_chars_per_token": 3, "estimate_chars_per_token": 4,
-                "estimate_from": [m["model"]["spec"] for m in models],
+                "estimate_from": [m["recording"] for m in models
+                                  if m["asked_every_task"]],
                 "estimate_calls_per_model": round(est_calls, 1)},
             "models": rows,
             "ceiling_usd": round(sum(r["ceiling_usd"] for r in rows), 2),
@@ -628,20 +699,24 @@ def derive(write: bool) -> int:
     """Replay every recording through the toolchain and build the record;
     write it, or hold the committed one to it."""
     tasks = json.loads(TASKS.read_text(encoding="utf-8"))["tasks"]
+    card, taskset = digest(CARD), digest(TASKS)
     models = []
     for path in sorted(RECORDINGS.glob("*.json")):
         rec = json.loads(path.read_text(encoding="utf-8"))
         asks = {k: replay([(x["reply"], x["meta"]) for x in v])
                 for k, v in rec["conversations"].items()}
-        for lang in LANGS:
-            for t in tasks:
-                asks.setdefault(f"{lang}:{t['id']}", replay([]))
         convs = run_model(tasks, asks)
         models.append({
             "model": rec["model"], "recorded": rec["recorded"],
             "recording": path.relative_to(HERE).as_posix(),
             "card_sha256": rec["card_sha256"],
-            "summary": summarise(convs, rec),
+            "card_is_current": rec["card_sha256"] == card,
+            "tasks_sha256": rec["tasks_sha256"],
+            "tasks_are_current": rec["tasks_sha256"] == taskset,
+            "asked_every_task": all(f"{lang}:{t['id']}" in asks
+                                    for lang in LANGS for t in tasks),
+            "summary": summarise(convs, tasks),
+            "usage": usage(rec),
             "tasks": {lang: {tid: c["attempts"] for tid, c in byid.items()}
                       for lang, byid in convs.items()}})
     import sabline
@@ -650,7 +725,9 @@ def derive(write: bool) -> int:
         "platform": f"{platform.system()} {platform.machine()}",
         "python": ".".join(platform.python_version_tuple()[:2]),
         "sabline": sabline.VERSION,
-        "rounds": ROUNDS, "tasks": [t["id"] for t in tasks],
+        "rounds": ROUNDS, "card_sha256": card, "tasks_sha256": taskset,
+        "tasks": {name: [t["id"] for t in tasks if set_of(t) == name]
+                  for name in SETS},
         "models": models,
         "cost": cost(models, tasks)}
     text = json.dumps(result, indent=1, ensure_ascii=False) + "\n"
@@ -673,10 +750,10 @@ def derive(write: bool) -> int:
 
 def verdicts(result: dict[str, Any]) -> dict[str, Any]:
     """What --check holds: each attempt's class, code, exit and stdout, per
-    model, language and task; the summaries; and the cost."""
+    recording, language and task; the summaries; and the cost."""
     out: dict[str, Any] = {}
     for m in result["models"]:
-        key = m["model"]["spec"]
+        key = m["recording"]
         for lang, byid in m["tasks"].items():
             for tid, atts in byid.items():
                 out[f"{key} {lang} {tid}"] = [
@@ -685,6 +762,7 @@ def verdicts(result: dict[str, Any]) -> dict[str, Any]:
                      (a.get("evidence") or {}).get("stdout"))
                     for a in atts]
         out[f"{key} summary"] = m["summary"]
+        out[f"{key} current"] = (m["card_is_current"], m["tasks_are_current"])
     out["cost"] = result["cost"]
     out["sabline"] = result["sabline"]
     out["python"] = result["python"]
@@ -703,10 +781,13 @@ def compare(recorded: dict[str, Any], now: dict[str, Any]) -> list[str]:
 
 def report(result: dict[str, Any]) -> None:
     for m in result["models"]:
-        s = m["summary"]
-        print(f"  {m['model']['spec']:<28}" + "  ".join(
-            f"{lang}: {s[lang]['works_first']}/{s[lang]['works']} of "
-            f"{s[lang]['tasks']} (first/within {ROUNDS})" for lang in LANGS))
+        print(f"  {m['model']['spec']}, card {m['card_sha256'][:8]}, tasks "
+              f"{m['tasks_sha256'][:8]}:")
+        for name, s in m["summary"].items():
+            print(f"    {name:<9} " + "  ".join(
+                f"{lang}: {s[lang]['works_first']}/{s[lang]['works']} of "
+                f"{s[lang]['tasks']}" for lang in LANGS if lang in s)
+                + f" (first/within {ROUNDS})")
     c = result["cost"]
     print(f"  the priced set: ceiling ${c['ceiling_usd']}, estimate "
           f"${c['estimate_usd']}")
@@ -730,7 +811,21 @@ def self_test() -> int:
     print(f"  {'ok   ' if caught else 'WRONG'} one attempt's class changed "
           f"({m['model']['spec']} {lang} {tid}): "
           f"{'refused' if caught else 'NOT refused'}")
-    good = same and caught
+    # a task's further inputs: an answer that prints what the first input
+    # needs, whatever it read, works on one run and not on two
+    tasks = json.loads(TASKS.read_text(encoding="utf-8"))["tasks"]
+    parse = next(t for t in tasks if t["id"] == "parse")
+    with tempfile.TemporaryDirectory(prefix="sabline-roundtrip-") as d:
+        root = Path(d).resolve()
+        mask = Masker(root, 0)
+        fixed, _ = attempt("python", parse, "input()\nprint(43)\n",
+                           root / "fixed", "", mask)
+        honest, _ = attempt("python", parse, "print(int(input()) + 1)\n",
+                            root / "honest", "", mask)
+    held = fixed["class"] == "wrong" and honest["class"] == "works"
+    print(f"  {'ok   ' if held else 'WRONG'} parse's second input: a fixed "
+          f"43 is {fixed['class']}, reading the input {honest['class']}")
+    good = same and caught and held
     print("roundtrip_eval.py --self-test: " + ("0 wrong" if good else "WRONG"))
     return 0 if good else 1
 
@@ -747,9 +842,11 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
     w: list[str] = []
     p = w.append
     models = result["models"]
+    names = {"original": "The original ten tasks",
+             "held-out": "The held-out tasks"}
     p("# Model round trip")
     p("")
-    p("For each model, the same ten small tasks asked for twice - as a "
+    p("For each model, the same small tasks asked for twice - as a "
       "Sabline program, with the language card "
       "[LLM.md](../LLM.md) in the prompt, and as a Python program, with none "
       "- and each answer compiled, run, and checked by the same check in "
@@ -763,9 +860,21 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
       "`evals/roundtrip/results.json`, which `roundtrip_eval.py` re-derives "
       "from the recorded replies on every push, with no model and no key.")
     p("")
+    p(f"The tasks are in two sets, reported apart: the original "
+      f"{len(result['tasks']['original'])}, which the card was changed in "
+      "answer to after the first recording, and "
+      f"{len(result['tasks']['held-out'])} held out from that change - "
+      "written and committed before it, by the person who then made it, so "
+      "they are held out from the edit and not from its author. A row is "
+      "one recording: a model, the card it was given and the task set it "
+      "was asked, each named by the first eight hex digits of its SHA-256. "
+      f"The current card is `{result['card_sha256'][:8]}` and the current "
+      f"task set `{result['tasks_sha256'][:8]}`; a recording is scored on "
+      "the tasks it was asked, by today's checks.")
+    p("")
     p("> [!NOTE]")
     p(f"> **Scored** on {result['platform']}, Python {result['python']}, "
-      f"Sabline {result['sabline']}. Each model's row gives its exact "
+      f"Sabline {result['sabline']}. Each row gives the model's exact "
       "version and the date its replies were recorded; a recording more "
       f"than {STALE_DAYS} days old is marked **stale** when this page is "
       "built, and its numbers are not carried to a newer version of the "
@@ -776,26 +885,38 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
     if not models:
         p("No model has been recorded.")
         p("")
-    else:
-        p("Tasks that work on the first answer / within "
-          f"{result['rounds']} rounds, of {len(result['tasks'])}, and how "
-          "the rest ended.")
+    for name in SETS if models else ():
+        rows = [m for m in models if name in m["summary"]]
+        p(f"### {names[name]}")
         p("")
-        p("| Model | Version | Recorded | Sabline: first / within | Python: "
-          "first / within | Sabline wrong / gave up | Python wrong / gave up |")
-        p("|---|---|---|---:|---:|---:|---:|")
-        for m in models:
-            s = m["summary"]
+        if not rows:
+            p("No recording has been asked these tasks yet.")
+            p("")
+            continue
+        p(f"Tasks that work on the first answer / within {result['rounds']} "
+          f"rounds, of {len(result['tasks'][name])}, and how the rest ended.")
+        p("")
+        p("| Model | Version | Card | Tasks | Recorded | Sabline: first / "
+          "within | Python: first / within | Sabline wrong / gave up | "
+          "Python wrong / gave up |")
+        p("|---|---|---|---|---|---:|---:|---:|---:|")
+        for m in rows:
+            s = m["summary"][name]
             age = (today - datetime.date.fromisoformat(m["recorded"])).days
             stale = " **stale**" if age > STALE_DAYS else ""
             ver = str(m["model"].get("version") or "?")
-            ver = ver[:19] if ver.startswith("sha256:") else ver
-            p(f"| `{m['model']['spec']}` | `{ver}` | {m['recorded']}{stale} | "
-              f"{s['sabline']['works_first']} / {s['sabline']['works']} | "
-              f"{s['python']['works_first']} / {s['python']['works']} | "
-              f"{s['sabline']['wrong']} / {s['sabline']['gave_up']} | "
-              f"{s['python']['wrong']} / {s['python']['gave_up']} |")
+            ver = ver[:19] if ver.startswith("sha256:") else ver[:12]
+            card = f"`{m['card_sha256'][:8]}`" + (
+                " (current)" if m["card_is_current"] else "")
+            tasks = f"`{m['tasks_sha256'][:8]}`" + (
+                "" if m["tasks_are_current"] else " (earlier)")
+            cells = [f"{s[lang]['works_first']} / {s[lang]['works']}"
+                     for lang in LANGS] + [
+                f"{s[lang]['wrong']} / {s[lang]['gave_up']}" for lang in LANGS]
+            p(f"| `{m['model']['spec']}` | `{ver}` | {card} | {tasks} | "
+              f"{m['recorded']}{stale} | " + " | ".join(cells) + " |")
         p("")
+    if models:
         p("### Every failed attempt, by what went wrong")
         p("")
         p("Did not compile (with the compiler's code, or Python's "
@@ -803,33 +924,40 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
           "budget), crashed while running, timed out, or ran and printed the "
           "wrong thing. Only the first is about the language's syntax.")
         p("")
-        p("| Model | Language | Failed attempts |")
-        p("|---|---|---|")
+        p("| Model | Card | Set | Language | Failed attempts |")
+        p("|---|---|---|---|---|")
         for m in models:
-            for lang in LANGS:
-                fa = m["summary"][lang]["failed_attempts"]
-                p(f"| `{m['model']['spec']}` | {lang} | " + (
-                    ", ".join(f"{k} x{v}" for k, v in fa.items()) or "none")
-                  + " |")
+            for name, s in m["summary"].items():
+                for lang in LANGS:
+                    fa = s[lang]["failed_attempts"]
+                    p(f"| `{m['model']['spec']}` | `{m['card_sha256'][:8]}` "
+                      f"| {name} | {lang} | " + (
+                          ", ".join(f"{k} x{v}" for k, v in fa.items())
+                          or "none") + " |")
         p("")
         p("### Every task")
         p("")
         p("Each cell is the attempts in order, ending at the first that "
-          "worked or printed the wrong thing.")
+          "worked or printed the wrong thing. A task a recording was not "
+          "asked is left out of its table.")
         p("")
         for m in models:
-            p(f"**`{m['model']['spec']}`**")
+            p(f"**`{m['model']['spec']}`, card `{m['card_sha256'][:8]}`, "
+              f"tasks `{m['tasks_sha256'][:8]}`**")
             p("")
-            p("| Task | Sabline | Python |")
-            p("|---|---|---|")
-            for tid in result["tasks"]:
-                cells = []
-                for lang in LANGS:
-                    cells.append(" → ".join(
-                        LABEL.get(a["class"], a["class"])
-                        + (f" ({a['code']})" if a.get("code") else "")
-                        for a in m["tasks"][lang][tid]))
-                p(f"| {tid} | {cells[0]} | {cells[1]} |")
+            p("| Task | Set | Sabline | Python |")
+            p("|---|---|---|---|")
+            for name in SETS:
+                for tid in result["tasks"][name]:
+                    if tid not in m["tasks"].get("sabline", {}):
+                        continue
+                    cells = []
+                    for lang in LANGS:
+                        cells.append(" → ".join(
+                            LABEL.get(a["class"], a["class"])
+                            + (f" ({a['code']})" if a.get("code") else "")
+                            for a in m["tasks"][lang][tid]))
+                    p(f"| {tid} | {name} | {cells[0]} | {cells[1]} |")
             p("")
     c = result["cost"]
     a = c["assumptions"]
@@ -874,11 +1002,15 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
     p("- **One sample, at temperature 0.** A model is asked once per task "
       "and language. A different seed, or a remote model's own "
       "nondeterminism, would give different replies; the recording is what "
-      "was actually said.")
-    p("- **Ten small tasks**, the ones `agent_loop.py --metric` already "
-      "had, written by this project. They are not a benchmark of "
-      "programming ability, and a task that exercises what Sabline refuses "
-      "(a budget, a Secret) is harder in Sabline by design.")
+      "was actually said. A changed card changes every prompt, so every "
+      "answer can change with it: a difference of one task between two "
+      "rows is noise, not a finding.")
+    p("- **Small tasks written by this project**: the ten "
+      "`agent_loop.py --metric` already had, and the held-out set. They are "
+      "not a benchmark of programming ability, and a task that exercises "
+      "what Sabline refuses (a budget, a Secret) is harder in Sabline by "
+      "design. The held-out tasks are held out from a card change, not "
+      "from the person who wrote both.")
     p("- **Sabline gets a card and Python does not.** A model has read "
       "Python; it has not read Sabline. The card is the documentation a "
       "model is meant to be given, and it is what the premise is about.")
@@ -889,7 +1021,8 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
     p("    python roundtrip_eval.py --live ollama:qwen3:4b    # ask a local model, free")
     p("    python roundtrip_eval.py --live anthropic:claude-sonnet-5   # needs your key; costs money")
     p("")
-    p(f"The recordings, one file per model, are in [evals/roundtrip/recordings]"
+    p(f"The recordings, one file per model, card and task set, are in "
+      f"[evals/roundtrip/recordings]"
       f"({REPO}/tree/main/evals/roundtrip/recordings), with every reply, the "
       "feedback it got and the tokens it used.")
     return "\n".join(w) + "\n"

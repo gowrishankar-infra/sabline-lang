@@ -13,13 +13,22 @@ same task in Python works. The published numbers are on
 
 ## What is here
 
-    tasks.json        ten tasks - agent_loop.py --metric's, made checkable
-                      offline - each with the budget a Sabline run gets, its
-                      input, and one check applied to both languages
-    recordings/       one file per model: every reply it gave, in order,
-                      with the feedback it was given after each, the tokens
-                      and seconds each call took, the model's exact version,
-                      the options it was asked with, and the date
+    tasks.json        the tasks, in two sets: the original ten -
+                      agent_loop.py --metric's, made checkable offline - and
+                      five held out, written before the card was changed in
+                      answer to the first recording; each with the budget a
+                      Sabline run gets, its input, and one check applied to
+                      both languages, and `more` for a task run again on a
+                      further input
+    recordings/       one file per model, card and task set, named
+                      MODEL.card-XXXXXXXX.tasks-YYYYYYYY.json from the first
+                      eight hex digits of LLM.md's and tasks.json's SHA-256
+                      (line ends as LF): every reply the model gave, in
+                      order, with the feedback it was given after each, the
+                      tokens and seconds each call took, its exact version,
+                      the options it was asked with, and the date. Asking
+                      again after the card or the tasks changed adds a file;
+                      none is ever replaced
     results.json      every attempt re-derived from the recordings: its
                       class, its code, the command, the exit status, what it
                       printed; the per-model summaries; and the cost
@@ -33,7 +42,10 @@ same task in Python works. The published numbers are on
   (`sabline program.vel --allow <budget>`); the Python prompt says `python
   program.py`, standard library only. Nothing else differs.
 - **Compiled, run, checked.** Sabline: `sabline check`, then the run under the
-  task's budget. Python: `python -I -S -m py_compile`, then `python -I -S`
+  task's budget. A task with `more` is run again on each further input and
+  works only if every run passes its check; a run after the first that
+  fails tells the model the input it was given, never what it should have
+  printed. Python: `python -I -S -m py_compile`, then `python -I -S`
   (isolated, no site-packages, so no machine's installed packages decide a
   verdict). Each run gets 20 s, its own directory, a local listener for the
   one task that fetches, and a HOME the check can look for.
@@ -51,7 +63,14 @@ same task in Python works. The published numbers are on
   (Sabline only; Python has no budget), crashed while running, or wrong
   output - with a timeout as a crash that did not end.
 - **Per model, never pooled**, each with its exact version: a local model's
-  digest, or the model string a hosted API returns.
+  digest, or the model string a hosted API returns. A row is one recording,
+  so one model asked with two cards is two rows, and each says which card
+  and which task set it was asked.
+- **Two sets, reported apart.** The held-out tasks were written and
+  committed before the card was changed in answer to the first recording,
+  by the person who then changed it: they are held out from the edit, not
+  from its author. A recording is scored on the tasks it was asked, by
+  today's checks; one made before a task existed is not scored on it.
 - **One sample per task and language**, at temperature 0 where the
   provider takes one, with a fixed seed for a local model.
 - **Stale after six months.** The page marks a recording older than 183

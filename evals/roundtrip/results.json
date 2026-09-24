@@ -1,21 +1,32 @@
 {
- "schema": "sabline.roundtrip/1",
+ "schema": "sabline.roundtrip/2",
  "platform": "Linux x86_64",
  "python": "3.12",
  "sabline": "8.6.0",
  "rounds": 6,
- "tasks": [
-  "sum",
-  "parse",
-  "larger",
-  "write",
-  "fetch",
-  "evens",
-  "split_bill",
-  "points",
-  "home_set",
-  "positive"
- ],
+ "card_sha256": "221344ba7d0da6c59cd14e37745dd8243d3782a7f00228d24faa768e983927fe",
+ "tasks_sha256": "297f3d3425deb6a05873c0fb5ebbaf5b610beddfa2e1c6d6ce79bcd7d0cb10d3",
+ "tasks": {
+  "original": [
+   "sum",
+   "parse",
+   "larger",
+   "write",
+   "fetch",
+   "evens",
+   "split_bill",
+   "points",
+   "home_set",
+   "positive"
+  ],
+  "held-out": [
+   "squares",
+   "factorial",
+   "months",
+   "total",
+   "smallest"
+  ]
+ },
  "models": [
   {
    "model": {
@@ -43,35 +54,47 @@
     }
    },
    "recorded": "2026-09-23",
-   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.json",
-   "card_sha256": "a5c6ea50447919fc525425ef05618c94cf27104a513d24ec1be31c5b4fc66c60",
+   "recording": "evals/roundtrip/recordings/ollama-qwen2.5-7b.card-221344ba.tasks-5d8906d1.json",
+   "card_sha256": "221344ba7d0da6c59cd14e37745dd8243d3782a7f00228d24faa768e983927fe",
+   "card_is_current": true,
+   "tasks_sha256": "5d8906d1c55670b89a3016d694162a0deaca4080d95ee1907a8f97392f27ef0b",
+   "tasks_are_current": false,
+   "asked_every_task": false,
    "summary": {
-    "sabline": {
-     "tasks": 10,
-     "works_first": 6,
-     "works": 7,
-     "wrong": 1,
-     "gave_up": 2,
-     "mean_rounds_to_work": 1.29,
-     "failed_attempts": {
-      "did-not-compile E101": 12,
-      "did-not-compile E513": 2,
-      "wrong": 1
+    "original": {
+     "sabline": {
+      "tasks": 10,
+      "works_first": 6,
+      "works": 7,
+      "wrong": 1,
+      "gave_up": 2,
+      "mean_rounds_to_work": 1.29,
+      "failed_attempts": {
+       "did-not-compile E101": 12,
+       "did-not-compile E513": 2,
+       "wrong": 1
+      }
      },
+     "python": {
+      "tasks": 10,
+      "works_first": 9,
+      "works": 9,
+      "wrong": 1,
+      "gave_up": 0,
+      "mean_rounds_to_work": 1.0,
+      "failed_attempts": {
+       "wrong": 1
+      }
+     }
+    }
+   },
+   "usage": {
+    "sabline": {
      "calls": 22,
      "sent_chars": 764289,
      "reply_chars": 14743
     },
     "python": {
-     "tasks": 10,
-     "works_first": 9,
-     "works": 9,
-     "wrong": 1,
-     "gave_up": 0,
-     "mean_rounds_to_work": 1.0,
-     "failed_attempts": {
-      "wrong": 1
-     },
      "calls": 10,
      "sent_chars": 3240,
      "reply_chars": 2468
@@ -448,77 +471,75 @@
    "feedback_cap_chars": 2000,
    "ceiling_chars_per_token": 3,
    "estimate_chars_per_token": 4,
-   "estimate_from": [
-    "ollama:qwen2.5:7b"
-   ],
-   "estimate_calls_per_model": 32.0
+   "estimate_from": [],
+   "estimate_calls_per_model": 0.0
   },
   "models": [
    {
     "spec": "anthropic:claude-fable-5-1",
     "input": 10.0,
     "output": 50.0,
-    "ceiling_usd": 47.6,
-    "estimate_usd": 2.77
+    "ceiling_usd": 71.39,
+    "estimate_usd": 0.0
    },
    {
     "spec": "anthropic:claude-opus-5-5",
     "input": 4.0,
     "output": 20.0,
-    "ceiling_usd": 19.04,
-    "estimate_usd": 1.11
+    "ceiling_usd": 28.56,
+    "estimate_usd": 0.0
    },
    {
     "spec": "anthropic:claude-sonnet-5",
     "input": 2.0,
     "output": 10.0,
-    "ceiling_usd": 9.52,
-    "estimate_usd": 0.55
+    "ceiling_usd": 14.28,
+    "estimate_usd": 0.0
    },
    {
     "spec": "anthropic:claude-haiku-4-5-20251001",
     "input": 1.0,
     "output": 5.0,
-    "ceiling_usd": 4.49,
-    "estimate_usd": 0.21
+    "ceiling_usd": 6.74,
+    "estimate_usd": 0.0
    },
    {
     "spec": "openai:gpt-6-astra",
     "input": 10.0,
     "output": 50.0,
-    "ceiling_usd": 44.92,
-    "estimate_usd": 2.13
+    "ceiling_usd": 67.38,
+    "estimate_usd": 0.0
    },
    {
     "spec": "openai:gpt-6-sol",
     "input": 2.0,
     "output": 10.0,
-    "ceiling_usd": 8.98,
-    "estimate_usd": 0.43
+    "ceiling_usd": 13.48,
+    "estimate_usd": 0.0
    },
    {
     "spec": "openai:gpt-6-luna",
     "input": 0.1,
     "output": 0.5,
-    "ceiling_usd": 0.45,
-    "estimate_usd": 0.02
+    "ceiling_usd": 0.67,
+    "estimate_usd": 0.0
    },
    {
     "spec": "gemini:gemini-3.1-pro-preview",
     "input": 2.0,
     "output": 12.0,
-    "ceiling_usd": 9.94,
-    "estimate_usd": 0.44
+    "ceiling_usd": 14.92,
+    "estimate_usd": 0.0
    },
    {
     "spec": "gemini:gemini-3.8-flash",
     "input": 0.75,
     "output": 3.75,
-    "ceiling_usd": 3.37,
-    "estimate_usd": 0.16
+    "ceiling_usd": 5.05,
+    "estimate_usd": 0.0
    }
   ],
-  "ceiling_usd": 148.31,
-  "estimate_usd": 7.82
+  "ceiling_usd": 222.47,
+  "estimate_usd": 0.0
  }
 }
