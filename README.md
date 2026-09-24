@@ -274,7 +274,7 @@ request into a restricted subset of Python and tags every value with its
 provenance and permitted readers, checking a policy at each tool call;
 [WASI](https://wasi.dev) gives a WebAssembly module only the resources
 its host hands it. Sabline is a small language a model learns from a
-card of about <!-- count:card-words -->5,100<!-- /count --> words, in which functions declare their effects, the runtime
+card of about <!-- count:card-words -->5,300<!-- /count --> words, in which functions declare their effects, the runtime
 enforces the operator's budget at each operation, and contracts are
 checked by the Z3 theorem prover. From 6.0 it also tracks one kind of
 data: `Secret of T`, which `env()` and `read_file_secret()` produce and
@@ -473,7 +473,7 @@ programs would need, without running them.
 ## Written by a model, audited by you, run in a box
 
 ```sh
-sabline card > card.md          # ~5,100 words: paste into any model
+sabline card > card.md          # ~5,300 words: paste into any model
 sabline audit script.vel        # what it can touch, before you run it
 sabline attest script.vel --output script.intoto.json   # the same, bound to its bytes
 sabline script.vel              # io, and nothing else, unless you say more
