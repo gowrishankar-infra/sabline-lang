@@ -35,6 +35,18 @@
     "line": 2,
     "message": "expected ':' but found 'Int'"
   },
+  "E101_ensures_in_a_body": {
+    "code": "E101",
+    "fixes": [
+      "'ensures' is a clause of a function's signature, written after its return type and before its '{', where 'result' is what the function returns: fn double(n: Int) -> Int ensures result == n * 2 { ... }",
+      "a signature's clauses follow its return type - uses and or fail first, then requires and ensures - all before the '{' that opens the body; inside a body, test a value with if"
+    ],
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "unexpected 'ensures'"
+  },
   "E101_invariant_as_a_statement": {
     "code": "E101",
     "fixes": [
@@ -69,6 +81,18 @@
     },
     "line": 3,
     "message": "unexpected 'fail'"
+  },
+  "E101_requires_in_a_body": {
+    "code": "E101",
+    "fixes": [
+      "'requires' is a clause of a function's signature, written after its return type and before its '{': fn half(n: Int) -> Int requires n >= 0 { ... }",
+      "a signature's clauses follow its return type - uses and or fail first, then requires and ensures - all before the '{' that opens the body; inside a body, test a value with if"
+    ],
+    "how": {
+      "via": "check"
+    },
+    "line": 2,
+    "message": "unexpected 'requires'"
   },
   "E101_unexpected_token": {
     "code": "E101",

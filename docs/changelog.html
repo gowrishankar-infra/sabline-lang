@@ -173,6 +173,18 @@ it as a call does not make it one. The message and the code are unchanged.
 Both parsers say the same words - sabline-rt's too, which the agreement
 gate compares - and <code>tests/error_messages</code> holds them: a golden entry may
 now hold its fixes, and four E101 cases do.</p>
+<p><strong>E101 says where <code>requires</code> and <code>ensures</code> go.</strong> In the round trip's E101
+rerun, a model moved a function's <code>{</code> above its <code>requires</code> and was told
+four times only that a keyword cannot be a value. Now <code>requires</code> or
+<code>ensures</code> where a statement belongs is told it is a clause of a function's
+signature, written after its return type and before its <code>{</code>, with an
+example (and, for <code>ensures</code>, that <code>result</code> is what the function returns).
+The second fix gives the order: <code>uses</code> and <code>or fail</code> first, then <code>requires</code>
+and <code>ensures</code>, all before the <code>{</code>; and inside a body, a value is tested with
+<code>if</code>. The message and the code are unchanged, both parsers say the same
+words, and two more golden cases hold them. The known-open list now says
+that <code>sabline replay</code> does not print the operating-system-layer line, and
+why.</p>
 <p><strong>A run whose grants turn the operating system layer off says so on
 stderr.</strong> Plain <code>ffi</code>, <code>ffi:os</code>, <code>ffi:subprocess</code> and the other modules the
 confinement table widens to nothing enforced, and a module the table does

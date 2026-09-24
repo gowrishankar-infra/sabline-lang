@@ -122,6 +122,19 @@ Both parsers say the same words - sabline-rt's too, which the agreement
 gate compares - and `tests/error_messages` holds them: a golden entry may
 now hold its fixes, and four E101 cases do.
 
+**E101 says where `requires` and `ensures` go.** In the round trip's E101
+rerun, a model moved a function's `{` above its `requires` and was told
+four times only that a keyword cannot be a value. Now `requires` or
+`ensures` where a statement belongs is told it is a clause of a function's
+signature, written after its return type and before its `{`, with an
+example (and, for `ensures`, that `result` is what the function returns).
+The second fix gives the order: `uses` and `or fail` first, then `requires`
+and `ensures`, all before the `{`; and inside a body, a value is tested with
+`if`. The message and the code are unchanged, both parsers say the same
+words, and two more golden cases hold them. The known-open list now says
+that `sabline replay` does not print the operating-system-layer line, and
+why.
+
 **A run whose grants turn the operating system layer off says so on
 stderr.** Plain `ffi`, `ffi:os`, `ffi:subprocess` and the other modules the
 confinement table widens to nothing enforced, and a module the table does
