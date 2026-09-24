@@ -20,18 +20,21 @@ same task in Python works. The published numbers are on
                       Sabline run gets, its input, and one check applied to
                       both languages, and `more` for a task run again on a
                       further input
-    recordings/       one file per model, card and task set, named
-                      MODEL.card-XXXXXXXX.tasks-YYYYYYYY.json from the first
-                      eight hex digits of LLM.md's and tasks.json's SHA-256
-                      (line ends as LF): every reply the model gave, in
-                      order, with the feedback it was given after each, the
-                      tokens and seconds each call took, its exact version,
-                      the options it was asked with, and the date. Asking
-                      again after the card or the tasks changed adds a file,
-                      and asking again with neither changed adds a second
-                      run (.run-2.json): none is ever replaced, and a local
-                      model at temperature 0 does not answer the card's long
-                      prompt the same way twice
+    recordings/       one file per model, card, task set and compiler,
+                      named MODEL.card-XXXXXXXX.tasks-YYYYYYYY
+                      .sabline-ZZZZZZZZ.json from the first eight hex digits
+                      of the SHA-256 of LLM.md, of tasks.json and of the
+                      sabline package's .py files (line ends as LF; the
+                      compiler is named from the E101 rerun on, and a file
+                      without it predates the field): every reply the model
+                      gave, in order, with the feedback it was given after
+                      each, the tokens and seconds each call took, its exact
+                      version, the options it was asked with, and the date.
+                      Asking again after the card, the tasks or the compiler
+                      changed adds a file, and asking again with none
+                      changed adds a second run (.run-2.json): none is ever
+                      replaced, and a local model at temperature 0 does not
+                      answer the card's long prompt the same way twice
     results.json      every attempt re-derived from the recordings: its
                       class, its code, the command, the exit status, what it
                       printed; the per-model summaries; and the cost
@@ -68,7 +71,8 @@ same task in Python works. The published numbers are on
 - **Per model, never pooled**, each with its exact version: a local model's
   digest, or the model string a hosted API returns. A row is one recording,
   so one model asked with two cards is two rows, and each says which card
-  and which task set it was asked.
+  and which task set it was asked, and which compiler's messages it was
+  sent back.
 - **Two sets, reported apart.** The held-out tasks were written and
   committed before the card was changed in answer to the first recording,
   by the person who then changed it: they are held out from the edit, not

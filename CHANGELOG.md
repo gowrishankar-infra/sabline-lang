@@ -161,6 +161,22 @@ seven of nine unchanged Sabline first answers differed, which is why every
 run is kept (`.run-2`, `.run-3`) and reported. `results.json` is
 `sabline.roundtrip/2`, with the held-out set apart.
 
+**E101's new hints, measured: the task they were written for now works.**
+qwen2.5:7b was run three more times, with the card, tasks and settings
+above and the compiler after the E101 change. The held-out `months` answer
+still puts `or fail` in `main`, and still gets E101. That E101 now offers
+`check ... { ok ... fail ... }`, and in all three runs the next answer is
+exactly that, and works. Before the change it never worked. Sabline, first
+answer / within six rounds: original 8/8, 6/7 and 6/7 (6/7 in every run
+before); held-out 2/3, 1/2 and 1/2 (1/1). Python was 9/9 and 5/5
+throughout. That is a one-task move, read as noise; the mechanism is in the
+record. No compiler message can reach a first answer, since the prompt is
+the same byte for byte, yet one run's first answers moved by two tasks.
+That is the noise, measured with the prompt held still. The other two runs
+match the earlier ones on every Sabline task but `months`. A recording now
+names the compiler whose messages it was sent (`sabline_sha256`, also in
+its file name), and the page has a Compiler column.
+
 ## 9.0.0-alpha.4 - The job that was read, and then run
 
 9.0.0-alpha.3 published its crate and made no GitHub release. The two
