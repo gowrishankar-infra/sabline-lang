@@ -27,8 +27,11 @@ same task in Python works. The published numbers are on
                       order, with the feedback it was given after each, the
                       tokens and seconds each call took, its exact version,
                       the options it was asked with, and the date. Asking
-                      again after the card or the tasks changed adds a file;
-                      none is ever replaced
+                      again after the card or the tasks changed adds a file,
+                      and asking again with neither changed adds a second
+                      run (.run-2.json): none is ever replaced, and a local
+                      model at temperature 0 does not answer the card's long
+                      prompt the same way twice
     results.json      every attempt re-derived from the recordings: its
                       class, its code, the command, the exit status, what it
                       printed; the per-model summaries; and the cost

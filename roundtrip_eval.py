@@ -511,10 +511,20 @@ def digest(path: Path) -> str:
                           ).hexdigest()
 
 
-def recording_name(spec: str, record: dict[str, Any]) -> str:
-    """One file per model, card and task set."""
+def recording_name(spec: str, record: dict[str, Any], run: int = 1) -> str:
+    """One file per model, card, task set and run. A model asked again with
+    the same card and tasks is a second run, never a replacement: a local
+    model at temperature 0 with a fixed seed does not answer a 9,000-token
+    prompt the same way twice (Ollama 0.24, qwen2.5:7b, 2026-09-24), so
+    the spread between runs is part of the result."""
     return (f"{slug(spec)}.card-{record['card_sha256'][:8]}"
-            f".tasks-{record['tasks_sha256'][:8]}.json")
+            f".tasks-{record['tasks_sha256'][:8]}"
+            + (f".run-{run}" if run > 1 else "") + ".json")
+
+
+def run_of(recording: str) -> int:
+    m = re.search(r"\.run-(\d+)\.json$", recording)
+    return int(m.group(1)) if m else 1
 
 
 def run_model(tasks: list[dict[str, Any]], asks: dict[str, Ask],
@@ -575,11 +585,10 @@ def live(specs: list[str]) -> int:
                                   for x in conv["exchanges"]]
                 for lang, byid in convs.items()
                 for tid, conv in byid.items()}}
-        path = RECORDINGS / recording_name(spec, record)
-        if path.exists():
-            raise SystemExit(f"{path.relative_to(HERE)} exists: this model "
-                             f"was already asked with this card and these "
-                             f"tasks, and a recording is never replaced")
+        run = 1
+        while (RECORDINGS / recording_name(spec, record, run)).exists():
+            run += 1
+        path = RECORDINGS / recording_name(spec, record, run)
         path.write_text(json.dumps(record, indent=1, ensure_ascii=False) + "\n",
                         encoding="utf-8", newline="\n")
         print(f"wrote {path.relative_to(HERE)}")
@@ -896,10 +905,10 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
         p(f"Tasks that work on the first answer / within {result['rounds']} "
           f"rounds, of {len(result['tasks'][name])}, and how the rest ended.")
         p("")
-        p("| Model | Version | Card | Tasks | Recorded | Sabline: first / "
-          "within | Python: first / within | Sabline wrong / gave up | "
-          "Python wrong / gave up |")
-        p("|---|---|---|---|---|---:|---:|---:|---:|")
+        p("| Model | Version | Card | Tasks | Recorded | Run | Sabline: "
+          "first / within | Python: first / within | Sabline wrong / gave "
+          "up | Python wrong / gave up |")
+        p("|---|---|---|---|---|---:|---:|---:|---:|---:|")
         for m in rows:
             s = m["summary"][name]
             age = (today - datetime.date.fromisoformat(m["recorded"])).days
@@ -908,13 +917,14 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
             ver = ver[:19] if ver.startswith("sha256:") else ver[:12]
             card = f"`{m['card_sha256'][:8]}`" + (
                 " (current)" if m["card_is_current"] else "")
+            run = run_of(m["recording"])
             tasks = f"`{m['tasks_sha256'][:8]}`" + (
                 "" if m["tasks_are_current"] else " (earlier)")
             cells = [f"{s[lang]['works_first']} / {s[lang]['works']}"
                      for lang in LANGS] + [
                 f"{s[lang]['wrong']} / {s[lang]['gave_up']}" for lang in LANGS]
             p(f"| `{m['model']['spec']}` | `{ver}` | {card} | {tasks} | "
-              f"{m['recorded']}{stale} | " + " | ".join(cells) + " |")
+              f"{m['recorded']}{stale} | {run} | " + " | ".join(cells) + " |")
         p("")
     if models:
         p("### Every failed attempt, by what went wrong")
@@ -924,14 +934,14 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
           "budget), crashed while running, timed out, or ran and printed the "
           "wrong thing. Only the first is about the language's syntax.")
         p("")
-        p("| Model | Card | Set | Language | Failed attempts |")
-        p("|---|---|---|---|---|")
+        p("| Model | Card | Run | Set | Language | Failed attempts |")
+        p("|---|---|---:|---|---|---|")
         for m in models:
             for name, s in m["summary"].items():
                 for lang in LANGS:
                     fa = s[lang]["failed_attempts"]
                     p(f"| `{m['model']['spec']}` | `{m['card_sha256'][:8]}` "
-                      f"| {name} | {lang} | " + (
+                      f"| {run_of(m['recording'])} | {name} | {lang} | " + (
                           ", ".join(f"{k} x{v}" for k, v in fa.items())
                           or "none") + " |")
         p("")
@@ -943,7 +953,8 @@ def page(result: dict[str, Any], today: datetime.date) -> str:
         p("")
         for m in models:
             p(f"**`{m['model']['spec']}`, card `{m['card_sha256'][:8]}`, "
-              f"tasks `{m['tasks_sha256'][:8]}`**")
+              f"tasks `{m['tasks_sha256'][:8]}`, run "
+              f"{run_of(m['recording'])}**")
             p("")
             p("| Task | Set | Sabline | Python |")
             p("|---|---|---|---|")
