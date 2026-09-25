@@ -1,0 +1,20 @@
+// C8 regression: two files. The entry file's own promise is proven and
+// holds; the E601 that stops the run is the imported helper's, which the
+// prover left to run time. A judge that asked the prover about the entry
+// file alone would see one promise, called proven, and an E601 in the
+// receipt, and would report a prover lie that never happened. The judge
+// asks about every file the submission brings, finds a promise left to run
+// time, and scores no lie: the claim holds.
+import "helper.vel" as helper
+
+fn double(n: Int) -> Int
+    requires n >= 0
+    ensures result >= n
+{
+    return n + n
+}
+
+fn main() uses io {
+    print(format("{}", double(21)))
+    print(format("{}", helper.tally(3)))
+}

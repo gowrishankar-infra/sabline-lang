@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """The Sabline CTF judge (8.7, plan/8.7.md section 4).
 
-    python -m ctf.judge run C1 <submission-dir> [--sabline CMD] [--runs 5]
-    python -m ctf.judge self-test --vulnerable <velaris-cmd>
+    python -m ctf.judge run C1 <submission-dir> --sabline CMD [--runs 5]
+    python -m ctf.judge self-test --sabline CMD --vulnerable <velaris-cmd>
     python -m ctf.judge claims
+
+`--sabline` is required and its program must be an absolute path: a judge
+that found its Sabline on `PATH` would score against whatever build a
+machine happened to have, and the point of the pinning is that it does
+not.
 
 A submission is a directory with a `submission.json`
 (`{"claim": "C1", "program": "attack.vel", "argv": [...], "note": "..."}`)
@@ -14,15 +19,24 @@ own. The judge:
 - hashes the submission before any canary exists, so it cannot hold one;
 - for each of `--runs` runs (five by default), builds a fresh set of
   canaries the claim forbids, copies the submission into a scratch
-  workspace, and runs it against the pinned, published Sabline under full
-  operating-system confinement - refusing to score a run that did not get
-  the confinement its claim needs, and refusing to run at all except on
-  Linux;
-- applies only the claim's own observers - file hashes, a listener's log,
-  a scan for a nonce, a second run that differs only in the nonce, the tool
-  door's transcript, the prover's answer against the run's receipt - and
-  never the submission's exit code or transcript. Every piece of evidence
-  comes from a channel the judge controls and the program cannot write to;
+  workspace, and runs it against the pinned, published Sabline under the
+  operating-system confinement that claim needs - `full` for the file, io
+  and ffi claims, `partial` where a net grant or the prover's threads make
+  full impossible, `none` for the runs scored by the tool door, which write
+  no receipt to read a level from (ctf/claims.py holds the level for each
+  claim). A run that did not get its claim's level is not scored, and the
+  judge refuses to run at all except on Linux;
+- applies only the claim's own observers - file hashes of every tree the
+  run can reach but its write grant, a listener's log, a scan for a nonce,
+  a second run that differs only in the nonce, the tool door's transcript,
+  the prover's answer against the run's receipt - and never the
+  submission's exit code or transcript. Every piece of evidence comes from
+  a channel the judge controls and the program cannot write to: the receipt
+  is written in a directory of the judge's own, outside the run's root
+  entirely, and checked afterwards for having been changed;
+- runs everything with `--no-native`, and refuses to score at all where
+  native compilation is available anyway, so that no answer of its depends
+  on whether llvmlite happens to be installed;
 - reports one of three answers: the claim held on every run, it was broken
   on k of the runs (with the evidence of each break), or it did not run.
 
@@ -38,6 +52,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import secrets
 import shutil
 import socket
@@ -57,9 +72,63 @@ DEFAULT_TIMEOUT = 30
 DEFAULT_MEMORY_MB = 512
 
 # the run's determinism parameters, fixed, so that two runs of a submission
-# differ only in what the judge changes between them (the planted nonces)
+# differ only in what the judge changes between them (the planted nonces).
+# `--no-native` is one of them: with llvmlite installed a pure function is
+# compiled and without it the interpreter runs it, and the judge's answers
+# must not turn on which machine it is on.
 SEED = "0"
 FROZEN_CLOCK = "2026-01-01T00:00:00Z"
+NO_NATIVE = "--no-native"
+
+# C7's door, in one place, so the claim, the manifest the judge hands the
+# run and the transcript rule the judge scores by cannot drift. The budget
+# grants `tool:send_email@3`; the manifest's own ceiling is 40 credits at
+# 15 a call, so the cost ceiling bites at the third call and the grant's
+# call ceiling at the fourth, and both are checked.
+EMAIL_PATTERN = "@corp.com"
+EMAIL_COST = 15
+EMAIL_CEILING: dict[str, Any] = {"calls": 25, "cost": 40,
+                                 "unit": "credits"}
+EMAIL_CALL_GRANT = 3
+
+# Lines the runtime writes to stderr that the judge knows the source of, so
+# that comparing two runs' stderr does not turn a note of Sabline's into a
+# "break". Nothing else is removed. The two notes below carry no free text
+# at all, so a program imitating one writes the same bytes on both runs and
+# removing them changes nothing; the prover's timing note does carry free
+# text, so it is normalised rather than dropped - the seconds, which are
+# what varies, become a placeholder and everything else in the line, the
+# function's name included, is still compared.
+_STDERR_DROP = (
+    "note: llvmlite is not installed - running fully interpreted "
+    "(for native speed: pip install llvmlite)",
+    "note: z3-solver is not installed, so promises are checked while "
+    "running instead of proven beforehand (install with: pip install "
+    "z3-solver)",
+)
+_PROOF_TIMED_OUT = re.compile(
+    r"^(note: the proof of \S+ ran out of time after )[0-9]+(?:\.[0-9]+)?"
+    r"(s and was abandoned - nothing was proven and nothing was refuted, "
+    r"so its promises are checked while running instead\. This is not "
+    r"'the prover found nothing wrong'\. Give it longer with "
+    r"--proof-timeout )[0-9]+( \(or SABLINE_PROOF_TIMEOUT=)[0-9]+(\)\.)$")
+
+
+def normalise_stderr(text: str) -> str:
+    """What two runs' stderr is compared as. Only lines the judge can point
+    at in the runtime's own source are touched, and only the part of them
+    that varies between two identical runs."""
+    out: list[str] = []
+    for line in text.splitlines():
+        if line in _STDERR_DROP:
+            continue
+        m = _PROOF_TIMED_OUT.match(line)
+        if m:
+            line = (m.group(1) + "<seconds>" + m.group(2)
+                    + "<seconds>" + m.group(3) + "<seconds>"
+                    + m.group(4))
+        out.append(line)
+    return "\n".join(out)
 
 
 @dataclass
@@ -197,6 +266,53 @@ class Listener:
             self._sock.close()
 
 
+def _digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+@dataclass
+class JudgeDir:
+    """The judge's own directory, made beside the run's root and never
+    under it: where the runtime is asked to write each receipt. A receipt
+    inside the run's root is a file under a tree the run can reach; here it
+    is not, whatever confinement the claim gets. The judge reads each
+    receipt, takes it out of the way under a name of its own - so that the
+    second run of a difference-judged claim is asked for its receipt at
+    exactly the same path as the first, and nothing the runtime prints
+    about that path can differ between them - and afterwards checks that
+    what it read is still what is on disk, and that nothing else appeared
+    here."""
+
+    where: Path
+    kept: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def receipt(self) -> Path:
+        return self.where / "receipt.json"
+
+    def keep(self) -> None:
+        if not self.receipt.is_file():
+            return
+        name = f"kept-{len(self.kept) + 1}.json"
+        self.receipt.rename(self.where / name)
+        self.kept[name] = _digest(self.where / name)
+
+    def intact(self) -> tuple[bool, str]:
+        for name, digest in self.kept.items():
+            here = self.where / name
+            if not here.is_file():
+                return False, f"the receipt the judge read ({name}) is gone"
+            if _digest(here) != digest:
+                return False, (f"the receipt the judge read ({name}) "
+                               "changed afterwards")
+        extra = sorted(q.name for q in self.where.iterdir()
+                       if q.name not in self.kept)
+        if extra:
+            return False, ("the judge's own directory holds files it did "
+                           f"not ask for ({', '.join(extra)})")
+        return True, "the receipts the judge read are the ones still on disk"
+
+
 @dataclass
 class Canaries:
     root: Path
@@ -204,7 +320,7 @@ class Canaries:
     read_dir: Path      # a directory a read claim may read (innocuous)
     write_dir: Path     # a directory a write claim may write
     outside: Path       # a tree outside every grant, hashed before/after
-    receipt: Path       # where the judge asks for the run's receipt
+    judge_dir: JudgeDir  # where the receipt goes: outside `root` entirely
     nonce_file: str     # the secret nonce, in a file (relative to work)
     nonce_env: str      # the secret nonce, in the environment
     nonce_out: str      # a nonce written into the outside tree, to detect read
@@ -215,17 +331,37 @@ class Canaries:
     listener: Listener | None = None
     decoy: Listener | None = None
 
+    @property
+    def receipt(self) -> Path:
+        return self.judge_dir.receipt
 
-def _tree_hashes(root: Path) -> dict[str, str]:
+
+def _tree_hashes(root: Path, skip: Path | None = None) -> dict[str, str]:
     out: dict[str, str] = {}
     for p in sorted(root.rglob("*")):
-        if p.is_file():
-            out[p.relative_to(root).as_posix()] = hashlib.sha256(
-                p.read_bytes()).hexdigest()
+        if not p.is_file():
+            continue
+        if skip is not None and p.is_relative_to(skip):
+            continue
+        out[p.relative_to(root).as_posix()] = _digest(p)
     return out
 
 
-def build_canaries(root: Path, sub: Submission) -> Canaries:
+def watched_hashes(can: Canaries, claim: Claim) -> dict[str, str]:
+    """Every tree the run can reach, hashed, but the one directory its
+    budget lets it write. The run's root holds them all - its working
+    directory, the directory a read claim may read, the tree outside every
+    grant - and a write appearing anywhere in it but the write grant is a
+    write the budget did not allow. Hashing the tree outside alone would
+    miss a write that escaped no further than the run's own directory,
+    which is outside the grant just the same. The judge's own directory is
+    not under the root, so it is not hashed here; JudgeDir.intact() holds
+    it instead."""
+    skip = can.write_dir if "{WRITE}" in claim.budget else None
+    return _tree_hashes(can.root, skip)
+
+
+def build_canaries(root: Path, sub: Submission, jd: JudgeDir) -> Canaries:
     work = root / "work"
     read_dir = work / "readable"
     write_dir = work / "writable"
@@ -247,7 +383,7 @@ def build_canaries(root: Path, sub: Submission) -> Canaries:
                                      encoding="utf-8")
     return Canaries(
         root=root, work=work, read_dir=read_dir, write_dir=write_dir,
-        outside=outside, receipt=root / "judge-receipt.json",
+        outside=outside, judge_dir=jd,
         nonce_file=nonce_file, nonce_env=nonce_env, nonce_out=nonce_out,
         planted=frozenset({"secret.txt"}),
     )
@@ -257,12 +393,12 @@ def rebuild_canaries(can: Canaries, sub: Submission) -> Canaries:
     """The same workspace again, at the same paths, with fresh nonces: what
     the second run of a difference-judged claim gets. Everything the first
     run wrote is gone, so it cannot carry anything over; the listeners stay
-    up, so a connection to either during either run counts."""
+    up, so a connection to either during either run counts; and the second
+    run is asked for its receipt at the same path as the first, the first
+    having been taken out of the way once the judge had read it."""
     for d in (can.work, can.outside):
         shutil.rmtree(d, ignore_errors=True)
-    if can.receipt.exists():
-        can.receipt.unlink()
-    fresh = build_canaries(can.root, sub)
+    fresh = build_canaries(can.root, sub, can.judge_dir)
     fresh.listener, fresh.decoy = can.listener, can.decoy
     return fresh
 
@@ -324,19 +460,31 @@ def _scan_written_files(can: Canaries) -> dict[str, str]:
     return out
 
 
-def obs_canary_diff(first_stdout: str, first_files: dict[str, str],
-                    second_stdout: str,
+def obs_canary_diff(first_stdout: str, first_stderr: str,
+                    first_files: dict[str, str],
+                    second_stdout: str, second_stderr: str,
                     second_files: dict[str, str]) -> list[Break]:
     """Two runs that differed only in the planted nonces - same paths, same
-    seed, same clock, same arguments: a difference in what they printed, or
-    in the files they wrote, is information flowing from the nonce, however
-    it was encoded."""
+    seed, same clock, same arguments, the same receipt path, everything
+    interpreted: a difference in what they printed, on either stream, or in
+    the files they wrote, is information flowing from the nonce, however it
+    was encoded. `log` writes to stderr, so a judge that compared stdout
+    alone would miss an encoded leak written with it; the stderr compared
+    here is what normalise_stderr leaves, which is every line but the two
+    notes of the runtime's that carry no free text and the timing in the
+    prover's abandoned-proof note."""
     breaks: list[Break] = []
     if first_stdout != second_stdout:
         breaks.append(Break(
             "canary_diff",
             "stdout differed between two runs that differed only in the "
             "planted secret, so information flowed from it"))
+    if normalise_stderr(first_stderr) != normalise_stderr(second_stderr):
+        breaks.append(Break(
+            "canary_diff",
+            "stderr differed between two runs that differed only in the "
+            "planted secret, so information flowed from it (the notes the "
+            "judge knows the source of were normalised out first)"))
     if first_files != second_files:
         changed = sorted(k for k in set(first_files) | set(second_files)
                          if first_files.get(k) != second_files.get(k))
@@ -357,7 +505,8 @@ def obs_outside_write(before: dict[str, str],
                     "removed" if path not in after else "changed")
             breaks.append(Break(
                 "outside_write",
-                f"a file outside every grant was {what}: {path}"))
+                f"a file the run's budget does not let it write was "
+                f"{what}: {path}"))
     return breaks
 
 
@@ -372,9 +521,23 @@ def obs_listener(can: Canaries) -> list[Break]:
 def obs_prover_lie(proven: list[str], unproven: list[str],
                    exit_: tuple[str, str | None]) -> RunResult:
     """The prover's answer against the run's receipt. `proven` and
-    `unproven` are the promise-carrying functions by the status the prover
-    gave them; `exit_` is the (outcome, code) the receipt records. Neither
-    is anything the program printed."""
+    `unproven` are the promise-carrying functions of every file the
+    submission brought - not the entry file alone, since the run checks
+    what it imports too - by the status the prover gave them; `exit_` is
+    the (outcome, code) the receipt records. Neither is anything the
+    program printed.
+
+    The receipt names the code that stopped the run and not the function,
+    so the E601 is attributed as far as the judge's own channels reach: to
+    the set of promises that could have raised it. Where that set is
+    entirely promises the prover called proven, one of them was broken and
+    the prover lied. Where it is not - where any promise in the program was
+    left to run time - the E601 may be that one's, the prover claimed
+    nothing about it, and nothing the judge can see is a lie. That is a
+    hold, not a run it could not score: the judge ran, its observer read
+    both channels, and no lie was there. A submission that adds a promise
+    the prover leaves to run time can hide a real lie this way; hiding it
+    costs the submitter the credit, so it is theirs to lose."""
     outcome, code = exit_
     if code != "E601":
         said = outcome + (f", {code}" if code else "")
@@ -382,17 +545,17 @@ def obs_prover_lie(proven: list[str], unproven: list[str],
                                        f"time (the receipt's exit: {said})")
     if unproven:
         return RunResult(
-            "did-not-run",
-            note="the receipt says an ensures broke at run time (E601), but "
-                 "the program also has promises the prover left to run time "
-                 f"({', '.join(unproven)}), and the receipt does not say "
-                 "whose; a prover lie is scored only when every promise in "
-                 "the program is one the prover called proven")
+            "holds",
+            note="the receipt says an ensures broke at run time (E601) and "
+                 "does not say whose; the program has promises the prover "
+                 f"left to run time ({', '.join(unproven)}), so the one "
+                 "that broke need not be any the prover called proven, and "
+                 "no lie is scored")
     return RunResult("broken", [Break(
         "prover_lie",
         f"the prover called {', '.join(proven)} proven, every promise in "
-        "the program is one it called proven, and the receipt says an "
-        "ensures broke at run time (E601)")])
+        "the program and in every file it brought is one it called proven, "
+        "and the receipt says an ensures broke at run time (E601)")])
 
 
 # --------------------------------------------------------------------------
@@ -483,9 +646,13 @@ def _plain_command(sub: Submission, sabline: list[str], can: Canaries,
     cmd = list(sabline)
     prog = (can.work / sub.program).as_posix()
     if sub.claim.runner == "eval":
+        # `sabline eval` refuses --no-native: it runs the program in a
+        # worker it starts itself and passes the flag there. The judge's
+        # native_available() check is what holds this claim to the
+        # interpreter, as it holds every other.
         cmd += ["eval", prog, "--allow", budget, "--timeout", str(timeout)]
     else:
-        cmd += ["run", prog]
+        cmd += ["run", prog, NO_NATIVE]
         # C1's budget is the documented default (io); a deployment that
         # forwards words after -- names no --allow, which is the shape
         # the double-dash advisory is about. Every other claim names it.
@@ -505,26 +672,32 @@ def _plain_command(sub: Submission, sabline: list[str], can: Canaries,
 def _plain_run(sub: Submission, sabline: list[str], can: Canaries,
                budget: str, timeout: int, memory_mb: int) -> Trace:
     claim = sub.claim
-    before = _tree_hashes(can.outside)
+    before = watched_hashes(can, claim)
     env = _base_env()
     env["CANARY"] = can.nonce_env
     proc = _spawn(_plain_command(sub, sabline, can, budget, timeout,
                                  memory_mb), can.work, env, timeout)
-    after = _tree_hashes(can.outside)
+    after = watched_hashes(can, claim)
     breaks: list[Break] = []
     if "outside_write" in claim.observers:
         breaks += obs_outside_write(before, after)
     if "nonce_in_output" in claim.observers:
         breaks += obs_nonce_in_output(can, proc.stdout, proc.stderr, claim)
-    return Trace(proc, _scan_written_files(can), _receipt_exit(can.receipt),
-                 _confinement_ok(can.receipt, claim.min_confinement), breaks)
+    trace = Trace(proc, _scan_written_files(can),
+                  _receipt_exit(can.receipt),
+                  _confinement_ok(can.receipt, claim.min_confinement),
+                  breaks)
+    # the receipt has been read: take it out of the way, so that a second
+    # run is asked for its receipt at the same path as this one
+    can.judge_dir.keep()
+    return trace
 
 
 def run_once(sub: Submission, sabline: list[str], root: Path,
-             timeout: int, memory_mb: int,
+             judge_dir: Path, timeout: int, memory_mb: int,
              require_confinement: bool = True) -> RunResult:
     claim = sub.claim
-    can = build_canaries(root, sub)
+    can = build_canaries(root, sub, JudgeDir(judge_dir))
     if "listener" in claim.observers:
         can.listener = Listener("127.0.0.1", 0)
         can.listener.start()
@@ -533,8 +706,8 @@ def run_once(sub: Submission, sabline: list[str], root: Path,
         if claim.runner == "tools":
             return _run_tools(sub, sabline, can, budget, timeout, memory_mb)
         if claim.runner == "prover":
-            return _run_prover_lie(sub, sabline, can, timeout, memory_mb,
-                                   require_confinement)
+            return _run_prover_lie(sub, sabline, can, budget, timeout,
+                                   memory_mb, require_confinement)
         first = _plain_run(sub, sabline, can, budget, timeout, memory_mb)
         traces = [first]
         if (not first.breaks and first.finished()
@@ -547,13 +720,16 @@ def run_once(sub: Submission, sabline: list[str], root: Path,
             traces.append(second)
             if not second.breaks and second.finished():
                 second.breaks += obs_canary_diff(
-                    first.proc.stdout, first.files,
-                    second.proc.stdout, second.files)
+                    first.proc.stdout, first.proc.stderr, first.files,
+                    second.proc.stdout, second.proc.stderr, second.files)
         breaks = [b for t in traces for b in t.breaks]
         if "listener" in claim.observers:
             breaks += obs_listener(can)
         if breaks:
             return RunResult("broken", breaks)
+        kept, why_kept = can.judge_dir.intact()
+        if not kept:
+            return RunResult("did-not-run", note=why_kept)
         if any(not t.finished() for t in traces):
             return RunResult("did-not-run",
                              note=f"the run did not finish within {timeout}s"
@@ -569,8 +745,8 @@ def run_once(sub: Submission, sabline: list[str], root: Path,
         note = why if ran else "the budget refused the run"
         if len(traces) == 2:
             note += ("; a second run, differing only in the planted secret, "
-                     "printed and wrote the same")
-        return RunResult("holds", note=note)
+                     "printed the same on both streams and wrote the same")
+        return RunResult("holds", note=f"{note}; {why_kept}")
     finally:
         if can.listener:
             can.listener.stop()
@@ -591,9 +767,9 @@ def _tool_manifest(kind: str, can: Canaries) -> dict[str, Any]:
                     "to": {"type": "string"},
                     "body": {"type": "string"}},
                     "required": ["to"]},
-                "cost": 1}},
+                "cost": EMAIL_COST}},
             "allow": [],
-            "ceiling": {"calls": 25, "cost": 40, "unit": "credits"},
+            "ceiling": dict(EMAIL_CEILING),
         }
     return {
         "schema": "sabline.tools/1",
@@ -601,7 +777,7 @@ def _tool_manifest(kind: str, can: Canaries) -> dict[str, Any]:
                             "arguments": {"type": "object"},
                             "result": "secret"}},
         "allow": [],
-        "ceiling": {"calls": 25, "cost": 40, "unit": "credits"},
+        "ceiling": dict(EMAIL_CEILING),
     }
 
 
@@ -613,29 +789,47 @@ def _run_tools(sub: Submission, sabline: list[str], can: Canaries,
     manifest = _tool_manifest(sub.claim.manifest, can)
     man_path = can.root / "tools.json"
     man_path.write_text(json.dumps(manifest), encoding="utf-8")
-    calls, _outputs, _ = _host_run(sub, sabline, can, budget, man_path,
-                                   timeout, memory_mb, secret="unused")
+    calls, _outputs, _err, finished = _host_run(
+        sub, sabline, can, budget, man_path, timeout, memory_mb,
+        secret="unused")
+    if not finished:
+        return RunResult("did-not-run",
+                         note=f"the run did not finish within {timeout}s, "
+                              "so there is nothing to judge")
     breaks = email_breaks(calls)
     return RunResult("broken", breaks) if breaks else RunResult(
         "holds", note=f"{len(calls)} call(s) reached the host, all allowed")
 
 
 def email_breaks(calls: list[dict[str, Any]]) -> list[Break]:
-    """C7's transcript rule: a send_email call the judge (the host) saw with
-    a recipient outside the granted pattern, or a fourth one, means Sabline
-    let past the door what it should have refused."""
+    """C7's transcript rule, against both ceilings the door promised and
+    the pattern the grant named. A send_email call the judge (the host) saw
+    with a recipient outside the pattern, a call past the grant's ceiling of
+    three, or calls spending more than the manifest's cost ceiling, means
+    Sabline let past the door what it should have refused. At 15 credits a
+    call against a ceiling of 40, the cost bites at the third call and the
+    grant's count at the fourth, so neither ceiling is one the judge states
+    and never checks."""
     breaks: list[Break] = []
     for c in calls:
         to = str(c.get("arguments", {}).get("to", ""))
-        if not to.endswith("@corp.com"):
+        if not to.endswith(EMAIL_PATTERN):
             breaks.append(Break(
                 "tool_transcript",
                 f"a call reached the host with to={to!r}, outside the "
                 "granted pattern"))
-    if len([c for c in calls if c.get("tool") == "send_email"]) > 3:
+    sent = [c for c in calls if c.get("tool") == "send_email"]
+    if len(sent) > EMAIL_CALL_GRANT:
         breaks.append(Break("tool_transcript",
-                            "more calls reached the host than the ceiling "
-                            "of 3 allows"))
+                            "more calls reached the host than the grant's "
+                            f"ceiling of {EMAIL_CALL_GRANT} allows"))
+    spent = EMAIL_COST * len(sent)
+    if spent > EMAIL_CEILING["cost"]:
+        breaks.append(Break(
+            "tool_transcript",
+            f"the calls that reached the host spent {spent} "
+            f"{EMAIL_CEILING['unit']}, past the manifest's ceiling of "
+            f"{EMAIL_CEILING['cost']}"))
     return breaks
 
 
@@ -647,27 +841,53 @@ def _run_secret_diff(sub: Submission, sabline: list[str], can: Canaries,
     man_path.write_text(json.dumps(manifest), encoding="utf-8")
     secret_a = "AAA-" + secrets.token_hex(16)
     secret_b = "BBB-" + secrets.token_hex(16)
-    _, out_a, _ = _host_run(sub, sabline, can, budget, man_path, timeout,
-                            memory_mb, secret=secret_a)
-    _, out_b, _ = _host_run(sub, sabline, can, budget, man_path, timeout,
-                            memory_mb, secret=secret_b)
+    _, out_a, err_a, fin_a = _host_run(sub, sabline, can, budget, man_path,
+                                       timeout, memory_mb, secret=secret_a)
+    _, out_b, err_b, fin_b = _host_run(sub, sabline, can, budget, man_path,
+                                       timeout, memory_mb, secret=secret_b)
+    if not (fin_a and fin_b):
+        return RunResult("did-not-run",
+                         note=f"the run did not finish within {timeout}s, "
+                              "so there is nothing to judge")
     if out_a != out_b:
         return RunResult("broken", [Break(
             "secret_diff",
-            "stdout differed when only the secret differed, so the secret "
-            "reached stdout")])
+            "what the program wrote differed when only the secret "
+            "differed, so the secret reached its output")])
+    if normalise_stderr(err_a) != normalise_stderr(err_b):
+        # `log` writes to stderr: a secret reaching it is as much a leak as
+        # one reaching stdout, and this observer would not see it if it
+        # compared the program's output alone
+        return RunResult("broken", [Break(
+            "secret_diff",
+            "stderr differed when only the secret differed, so the secret "
+            "reached stderr (the notes the judge knows the source of were "
+            "normalised out first)")])
     return RunResult("holds",
-                     note="stdout did not change with the secret")
+                     note="neither stream changed with the secret")
 
 
 def _host_run(sub: Submission, sabline: list[str], can: Canaries,
               budget: str, man_path: Path, timeout: int, memory_mb: int,
-              secret: str) -> tuple[list[dict[str, Any]], str, int]:
+              secret: str) -> tuple[list[dict[str, Any]], str, str, bool]:
     """Host the tool door for one run: log the calls, answer them, return
-    the calls seen, the program's output, and the exit status."""
+    the calls seen, the program's output, its stderr, and whether the run
+    came to its own end.
+
+    Both of the program's pipes are drained, stderr by a thread of its own.
+    A host that read stdout and left stderr to fill would wedge at the 64
+    KiB a pipe holds - the program blocked on a write nobody is reading,
+    the host blocked on a read that will never come - and a program need
+    only `log` enough to put the judge there. A deadline of the judge's own
+    ends the run whatever it is doing, and a run that reached it, or that a
+    signal ended, is a run that did not finish: there is nothing in it to
+    score, and it is reported did-not-run exactly as the plain runner
+    reports one.
+    """
     prog = (can.work / sub.program).as_posix()
     cmd = list(sabline) + ["run", prog, "--tools", man_path.as_posix(),
-                           "--allow", budget,
+                           "--allow", budget, NO_NATIVE,
+                           "--seed", SEED, "--freeze-time", FROZEN_CLOCK,
                            "--max-memory-mb", str(memory_mb)]
     if sub.argv:
         cmd += ["--", *sub.argv]
@@ -679,7 +899,26 @@ def _host_run(sub: Submission, sabline: list[str], can: Canaries,
         encoding="utf-8", errors="replace")
     calls: list[dict[str, Any]] = []
     outputs: list[str] = []
+    errs: list[str] = []
     assert proc.stdin is not None and proc.stdout is not None
+    assert proc.stderr is not None
+
+    def drain() -> None:
+        try:
+            errs.append(proc.stderr.read())          # type: ignore[union-attr]
+        except (OSError, ValueError):
+            pass
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+    overdue = threading.Event()
+
+    def stop() -> None:
+        overdue.set()
+        proc.kill()
+
+    deadline = threading.Timer(timeout + 10, stop)
+    deadline.start()
     try:
         for line in proc.stdout:
             line = line.strip()
@@ -700,50 +939,101 @@ def _host_run(sub: Submission, sabline: list[str], can: Canaries,
                     reply["secret"] = True
                 else:
                     reply["result"] = "ok"
-                proc.stdin.write(json.dumps(reply) + "\n")
-                proc.stdin.flush()
+                try:
+                    proc.stdin.write(json.dumps(reply) + "\n")
+                    proc.stdin.flush()
+                except (BrokenPipeError, OSError, ValueError):
+                    break
             elif kind == "exit":
                 break
-        proc.wait(timeout=timeout + 10)
-    except subprocess.TimeoutExpired:
-        proc.kill()
     finally:
+        deadline.cancel()
         if proc.stdin and not proc.stdin.closed:
-            proc.stdin.close()
-    return calls, "\n".join(outputs), proc.returncode or 0
+            try:
+                proc.stdin.close()
+            except (BrokenPipeError, OSError):
+                pass
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            overdue.set()
+            proc.kill()
+            proc.wait(timeout=10)
+        reader.join(timeout=10)
+    code = proc.returncode
+    finished = (not overdue.is_set()) and code is not None and code >= 0
+    return calls, "\n".join(outputs), "".join(errs), finished
 
 
 # --------------------------------------------------------------------------
 # the prover runner (C8)
 
+def _prover_answer(sub: Submission, sabline: list[str], can: Canaries,
+                   timeout: int) -> tuple[list[str], list[str]] | None:
+    """The prover's answer for the whole submission: every function that
+    carries a promise, in every file the submission brought, by the status
+    the prover gave it.
+
+    `sabline audit <file> --json` answers about that file and not about
+    what it imports, and the run checks an imported function's promises
+    like any other - so asking about the entry file alone leaves the
+    promises of an imported helper out of the answer, and an E601 raised by
+    one of those looks, from the entry file, like a promise called proven
+    that broke. The judge asks about each file. Where two files name the
+    same function, the weaker answer stands. A file whose audit cannot be
+    read at all is counted as a promise left to run time, which is what it
+    is to the judge: something it cannot say the prover settled. The entry
+    file is the exception - if the prover has no answer about that, there
+    is no answer to judge by, and None says so."""
+    settled: dict[str, bool] = {}
+    names = sorted(name for name in sub.files if name.endswith(".vel"))
+    if sub.program not in names:
+        names.append(sub.program)
+    for name in names:
+        audit = _spawn(list(sabline)
+                       + ["audit", (can.work / name).as_posix(), "--json"],
+                       can.work, _base_env(), timeout)
+        try:
+            report = json.loads(audit.stdout)
+            functions = list(report.get("functions") or [])
+        except (ValueError, AttributeError):
+            if name == sub.program:
+                return None
+            settled[f"{name} (no answer from the prover)"] = False
+            continue
+        for f in functions:
+            if not (f.get("requires") or f.get("ensures")):
+                continue
+            who = str(f.get("name"))
+            was = settled.get(who, True)
+            settled[who] = was and f.get("status") == "proven"
+    proven = sorted(k for k, ok in settled.items() if ok)
+    unproven = sorted(k for k, ok in settled.items() if not ok)
+    return proven, unproven
+
+
 def _run_prover_lie(sub: Submission, sabline: list[str], can: Canaries,
-                    timeout: int, memory_mb: int,
+                    budget: str, timeout: int, memory_mb: int,
                     require_confinement: bool) -> RunResult:
     """Two channels, both the judge's. The prover's answer is `sabline audit
     --json`, which runs no program code: which functions carry a promise,
-    and which of those it called proven. The run's exit is the receipt the
-    judge asked the runtime to write at a path outside every grant, which a
-    program under `io` cannot write. What the program printed is never
+    and which of those it called proven - over every file the submission
+    brought, not the entry file alone. The run's exit is the receipt the
+    judge asked the runtime to write in a directory of the judge's own,
+    outside the run's root entirely. What the program printed is never
     read, so printing "E601" is worth nothing."""
     prog = (can.work / sub.program).as_posix()
-    audit = _spawn(list(sabline) + ["audit", prog, "--json"], can.work,
-                   _base_env(), timeout)
-    try:
-        report = json.loads(audit.stdout)
-        functions = list(report.get("functions") or [])
-    except (ValueError, AttributeError):
+    answer = _prover_answer(sub, sabline, can, timeout)
+    if answer is None:
         return RunResult("did-not-run",
                          note="the prover's answer could not be read")
-    promising = [f for f in functions
-                 if f.get("requires") or f.get("ensures")]
-    proven = [str(f.get("name")) for f in promising
-              if f.get("status") == "proven"]
-    unproven = [str(f.get("name")) for f in promising
-                if f.get("status") != "proven"]
+    proven, unproven = answer
     if not proven:
         return RunResult("holds",
                          note="the prover settled no promise to break")
-    cmd = list(sabline) + ["run", prog, "--allow", "io",
+    # the budget is the claim's own, so plan/8.7.md's table, ctf/claims.py
+    # and the command the judge builds are one thing and cannot drift
+    cmd = list(sabline) + ["run", prog, "--allow", budget, NO_NATIVE,
                            "--seed", SEED, "--freeze-time", FROZEN_CLOCK,
                            "--receipt", can.receipt.as_posix(),
                            "--max-memory-mb", str(memory_mb)]
@@ -755,6 +1045,11 @@ def _run_prover_lie(sub: Submission, sabline: list[str], can: Canaries,
                          note=f"the run did not finish within {timeout}s, "
                               "so there is nothing to judge")
     exit_ = _receipt_exit(can.receipt)
+    ran, why = _confinement_ok(can.receipt, sub.claim.min_confinement)
+    can.judge_dir.keep()
+    kept, why_kept = can.judge_dir.intact()
+    if not kept:
+        return RunResult("did-not-run", note=why_kept)
     if exit_ is None:
         return RunResult("did-not-run",
                          note="no receipt was written, so the run's exit "
@@ -762,10 +1057,9 @@ def _run_prover_lie(sub: Submission, sabline: list[str], can: Canaries,
     result = obs_prover_lie(proven, unproven, exit_)
     if result.outcome != "holds":
         return result
-    ran, why = _confinement_ok(can.receipt, sub.claim.min_confinement)
     if require_confinement and not ran:
         return RunResult("did-not-run", note=f"{result.note}, but {why}")
-    return RunResult("holds", note=f"{result.note}; {why}")
+    return RunResult("holds", note=f"{result.note}; {why}; {why_kept}")
 
 
 # --------------------------------------------------------------------------
@@ -777,11 +1071,66 @@ def confinement_probe(sabline: list[str], root: Path) -> tuple[bool, str]:
     prog = root / "probe.vel"
     prog.write_text('fn main() uses io { print("ok") }\n', encoding="utf-8")
     receipt = root / "probe-receipt.json"
-    proc = _spawn(list(sabline) + ["run", prog.as_posix(), "--receipt",
-                                   receipt.as_posix()], root, _base_env(), 30)
+    proc = _spawn(list(sabline) + ["run", prog.as_posix(), NO_NATIVE,
+                                   "--receipt", receipt.as_posix()],
+                  root, _base_env(), 30)
     if proc.returncode != 0:
         return False, f"the probe run failed: {proc.stderr.strip()[:200]}"
     return _confinement_ok(receipt, "full")
+
+
+# a pure function of Int, which is what the native backend compiles, so the
+# probe reaches the point where the runtime either compiles it or says it
+# cannot: a program with nothing eligible is answered the same either way
+_NATIVE_PROBE = ('fn add(a: Int, b: Int) -> Int { return a + b }\n'
+                 'fn main() uses io { print(format("{}", add(1, 2))) }\n')
+
+
+def native_available(sabline: list[str], root: Path) -> tuple[bool, str]:
+    """Whether this machine would compile a function to machine code.
+
+    Every run the judge makes passes --no-native, so nothing it scores is
+    supposed to turn on the answer. It refuses to score where the answer is
+    yes all the same: a flag is a request, and a difference between running
+    a promise interpreted and running it compiled is one the judge cannot
+    see from the outside and so cannot rule out. The probe is a program of
+    the judge's own, and the note it reads for is the runtime's own, on the
+    judge's own capture of its stderr. Anything it cannot read as a plain
+    "llvmlite is not installed" it treats as available, so an answer it is
+    unsure of stops the scoring rather than colouring it."""
+    prog = root / "native-probe.vel"
+    prog.write_text(_NATIVE_PROBE, encoding="utf-8")
+    proc = _spawn(list(sabline) + ["run", prog.as_posix()], root,
+                  _base_env(), 30)
+    if proc.returncode != 0:
+        return True, ("the native probe did not run: "
+                      f"{proc.stderr.strip()[:160]}")
+    if _STDERR_DROP[0] in proc.stderr:
+        return False, "llvmlite is not installed, so nothing is compiled"
+    return True, ("a function was compiled to machine code, so llvmlite is "
+                  "installed here; uninstall it in the judge's environment")
+
+
+def sabline_refusal(sabline: list[str]) -> str:
+    """Why this Sabline command cannot be scored against, or "" if it can.
+
+    The command's program must be an absolute path to a file this judge can
+    run. A judge that let the name be looked up on PATH would score against
+    whatever build the machine happened to have that day, which is the one
+    thing the pinning by wheel hash exists to stop; and the directory that
+    won the lookup is not something the verdict records."""
+    if not sabline:
+        return "no Sabline command was given (--sabline is required)"
+    prog = sabline[0]
+    if not os.path.isabs(prog):
+        return (f"--sabline must name an absolute path, not {prog!r}: a "
+                "judge that looked its Sabline up on PATH would score "
+                "against whatever build the machine happened to have, and "
+                "the point of pinning the wheel by its hash is that it "
+                "does not")
+    if not (Path(prog).is_file() and os.access(prog, os.X_OK)):
+        return f"--sabline names {prog!r}, which is not a file to run"
+    return ""
 
 
 def judge(claim_id: str, submission_dir: Path, sabline: list[str],
@@ -795,6 +1144,9 @@ def judge(claim_id: str, submission_dir: Path, sabline: list[str],
                       error=f"the submission is for {sub.claim.id}, not "
                             f"{claim_id}; the scorer names the claim, and "
                             "a submission is scored under no other")
+    refused = sabline_refusal(sabline)
+    if refused:
+        return Report(claim_id, runs, "", "did not run", 0, error=refused)
     if sys.platform != "linux":
         return Report(claim_id, runs, "", "did not run", 0,
                       error="the judge runs on Linux only")
@@ -806,11 +1158,25 @@ def judge(claim_id: str, submission_dir: Path, sabline: list[str],
             return Report(claim_id, runs, digest, "did not run", 0,
                           error=f"this machine does not give full "
                                 f"confinement ({why})")
+    with tempfile.TemporaryDirectory(prefix="ctf-native-") as nd:
+        native, why_native = native_available(sabline, Path(nd))
+    if native:
+        return Report(claim_id, runs, digest, "did not run", 0,
+                      error="this judge scores nothing where native "
+                            f"compilation is available ({why_native}); "
+                            "every run it makes passes --no-native, and an "
+                            "answer that could still turn on the backend is "
+                            "not one to score a claim by")
     results: list[RunResult] = []
     for _ in range(runs):
-        with tempfile.TemporaryDirectory(prefix="ctf-run-") as rd:
-            results.append(run_once(sub, sabline, Path(rd), timeout,
-                                    memory_mb, require_confinement))
+        # the run's root and the judge's own directory are made side by
+        # side, never one inside the other: the receipt goes in the second,
+        # which is not a tree the run is given any grant over
+        with tempfile.TemporaryDirectory(prefix="ctf-run-") as rd, \
+                tempfile.TemporaryDirectory(prefix="ctf-judge-") as jd:
+            results.append(run_once(sub, sabline, Path(rd), Path(jd),
+                                    timeout, memory_mb,
+                                    require_confinement))
     broken = sum(1 for r in results if r.outcome == "broken")
     did_not = sum(1 for r in results if r.outcome == "did-not-run")
     if did_not and not broken:
@@ -879,13 +1245,16 @@ def main(argv: list[str]) -> int:
     r.add_argument("claim", choices=list(BY_ID),
                    help="the claim the submission is scored against")
     r.add_argument("submission")
-    r.add_argument("--sabline", default="sabline")
+    # required, and an absolute path: see sabline_refusal()
+    r.add_argument("--sabline", required=True,
+                   help="an absolute path to the pinned Sabline")
     r.add_argument("--runs", type=int, default=5)
     r.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     r.add_argument("--max-memory-mb", type=int, default=DEFAULT_MEMORY_MB)
     r.add_argument("--json", action="store_true")
     st = sub.add_parser("self-test", help="show the judge finds a real break")
-    st.add_argument("--sabline", default="sabline")
+    st.add_argument("--sabline", required=True,
+                    help="an absolute path to the pinned Sabline")
     st.add_argument("--vulnerable", default=None,
                     help="a command for a build with the 8.1.1 hole")
     sub.add_parser("claims", help="list the claims")

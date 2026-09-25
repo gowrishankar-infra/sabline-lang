@@ -1,0 +1,27 @@
+// C1 regression: the self-test's read, hex-encoded to *stderr* with `log`.
+// The nonce never appears literally, and it never reaches stdout or a file:
+// a judge that compared only stdout and the files written would call this a
+// hold. The judge compares stderr too, so the encoded line, which differs
+// between two runs that differ only in the planted nonce, is information
+// flowing from it. Under a fixed Sabline the read is refused (the claim
+// holds); under the 8.1.1 double-dash hole the forwarded `--allow all`
+// escalates the run, and the judge reports broken.
+fn hex(s: Text) -> Text {
+    let digits = chars("0123456789abcdef")
+    let i = 0
+    let out = ""
+    while i < length(s) {
+        let c = code_at(s, i)
+        let high = c / 16
+        out = out + get(digits, high) + get(digits, c - high * 16)
+        i = i + 1
+    }
+    return out
+}
+
+fn main() uses io, fs {
+    check read_file("secret.txt") {
+        ok contents { log(hex(contents)) }
+        fail reason { log("read refused") }
+    }
+}

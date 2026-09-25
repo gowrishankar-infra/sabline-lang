@@ -80,28 +80,30 @@
 <p><strong>A CTF that nobody attacks proves nothing, and this is not evidence that Sabline is secure.</strong> The budget is not a security boundary on its own (SPEC.md section 6), whatever the CTF shows. This is a way to find the next defect earlier than the adversarial passes found the last four - and every break becomes a <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/check_adversarial.py">test</a> the same week.</p>
 </div>
 <h2 id="the-claims">The claims <a class="anchor" href="#the-claims" aria-label="Link to this section">#</a></h2>
-<p>Each claim is a <strong>fixed budget</strong>, one thing <strong>no program under it can do</strong>, and a <strong>canary the judge controls</strong>. You write the program (and, where a deployment would forward them, the words after <code>--</code>); everything else is fixed. The first version runs on <strong>linux only</strong>, where confinement is <code>full</code>, against <strong>sabline-lang 8.6.0</strong> pinned by the hash of its wheel.</p>
+<p>Each claim is a <strong>fixed budget</strong>, one thing <strong>no program under it can do</strong>, and a <strong>canary the judge controls</strong>. You write the program (and, where a deployment would forward them, the words after <code>--</code>); everything else is fixed. The first version runs on <strong>linux only</strong>, against <strong>sabline-lang 8.6.0</strong> pinned by the hash of its wheel.</p>
+<p>The <strong>confinement</strong> column is the least operating-system confinement a scored run of that claim is held to, and a run that did not reach it is not scored. It is not <code>full</code> everywhere and the judge does not claim it is: a net grant names a host no kernel here holds by name, a program carrying a promise starts the prover's threads before the confinement is applied, and the runs scored by the tool door write no receipt to read a level from.</p>
 <div class="table-wrap" tabindex="0"><table>
-<thead><tr><th>Claim</th><th>Budget</th><th>No program under it</th><th>Status</th></tr></thead>
+<thead><tr><th>Claim</th><th>Budget</th><th>No program under it</th><th>Confinement</th><th>Status</th></tr></thead>
 <tbody>
-<tr><td>C1</td><td><code>io</code></td><td>reads any file of the user's</td><td>open</td></tr>
-<tr><td>C2</td><td><code>io,fs:read:{READ}</code></td><td>reads outside the one directory it may read</td><td>open</td></tr>
-<tr><td>C3</td><td><code>io,fs:write:{WRITE}</code></td><td>writes outside the one directory it may write</td><td>open</td></tr>
-<tr><td>C4</td><td><code>io,net:{HOST}</code></td><td>reaches any host but the one it was granted</td><td>open</td></tr>
-<tr><td>C5</td><td><code>io,fs:read:{READ}</code></td><td>reads the environment</td><td>open</td></tr>
-<tr><td>C6</td><td><code>io,tool:vault</code></td><td>changes its stdout with a secret it was given</td><td>open</td></tr>
-<tr><td>C7</td><td><code>io,tool:send_email:to=*@corp.com,tool:send_email@3</code></td><td>passes the tool door's argument pattern or its ceiling</td><td>open</td></tr>
-<tr><td>C8</td><td><code>io</code></td><td>has a promise reported proven that a run then breaks</td><td>open</td></tr>
-<tr><td>C9</td><td><code>io,ffi:gc</code></td><td>gets past the kernel's layers under an ffi grant that widens nothing</td><td>open</td></tr>
-<tr><td>C10</td><td><code>io,fs:read:{READ},fs:write:{WRITE}</code></td><td>gets past the eval profile</td><td>open</td></tr>
+<tr><td>C1</td><td><code>io</code></td><td>reads any file of the user's</td><td><code>full</code></td><td>open</td></tr>
+<tr><td>C2</td><td><code>io,fs:read:{READ}</code></td><td>reads outside the one directory it may read</td><td><code>full</code></td><td>open</td></tr>
+<tr><td>C3</td><td><code>io,fs:write:{WRITE}</code></td><td>writes outside the one directory it may write</td><td><code>full</code></td><td>open</td></tr>
+<tr><td>C4</td><td><code>io,net:{HOST}</code></td><td>connects to a second loopback listener the judge owns, on a port the budget does not name</td><td><code>partial</code></td><td>open</td></tr>
+<tr><td>C5</td><td><code>io,fs:read:{READ}</code></td><td>reads the environment</td><td><code>full</code></td><td>open</td></tr>
+<tr><td>C6</td><td><code>io,tool:vault</code></td><td>changes its stdout with a secret it was given</td><td><code>none</code></td><td>open</td></tr>
+<tr><td>C7</td><td><code>io,tool:send_email:to=*@corp.com,tool:send_email@3</code></td><td>passes the tool door's argument pattern, its call ceiling or its cost ceiling</td><td><code>none</code></td><td>open</td></tr>
+<tr><td>C8</td><td><code>io</code></td><td>has a promise reported proven that a run then breaks</td><td><code>partial</code></td><td>open</td></tr>
+<tr><td>C9</td><td><code>io,ffi:gc</code></td><td>gets past the kernel's layers under an ffi grant that widens nothing</td><td><code>full</code></td><td>open</td></tr>
+<tr><td>C10</td><td><code>io,fs:read:{READ},fs:write:{WRITE}</code></td><td>gets past the eval profile</td><td><code>full</code></td><td>open</td></tr>
 </tbody></table></div>
 <p>A claim broken through something <a href="known-open.html">docs/known-open.md</a> already lists was a wrong claim: the claim is fixed, and the finder is credited. C9 is the strongest - <code>ffi:gc</code> widens no OS policy, so a run under it is held to the same kernel confinement as <code>io</code> alone, and what holds it is Landlock and seccomp, not the language.</p>
 <h2 id="how-a-submission-is-judged">How a submission is judged <a class="anchor" href="#how-a-submission-is-judged" aria-label="Link to this section">#</a></h2>
 <p>The judge's code is <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/ctf/"><code>ctf/</code></a> in this repository, so anyone can read what scores a submission. A private companion repository pins it by commit and runs it; the safety rests on the per-run canaries and nonces, made fresh each run, not on secrecy.</p>
 <ul>
 <li>The submission is <strong>hashed before the canaries exist</strong>, so it cannot contain them, and run <strong>5 times</strong> with fresh canaries each time.</li>
-<li>Each run is made against the pinned, published package under full operating-system confinement; a run that does not get the confinement its claim needs is <strong>not scored</strong>.</li>
-<li><strong>Only the judge's own observers count</strong>: file hashes, a listener's log, a scan for a planted nonce, the tool door's transcript, and the prover's answer against the run's. A submission's own exit code and transcript are <strong>never</strong> evidence.</li>
+<li>Each run is made against the pinned, published package under the operating-system confinement <strong>its own claim needs</strong> - the column above - and a run that does not reach it is <strong>not scored</strong>.</li>
+<li>Every run passes <code>--no-native</code>, and the judge <strong>refuses to score at all</strong> on a machine where native compilation is available anyway, so that no answer of its turns on whether <code>llvmlite</code> happens to be installed.</li>
+<li><strong>Only the judge's own observers count</strong>: hashes of every tree the run can reach but the one directory its budget lets it write, a listener's log, a scan for a planted nonce, a second run that differs only in the nonce - compared on <strong>stdout, stderr and the files written</strong>, so a leak encoded, or written with <code>log</code>, counts - the tool door's transcript against both of its ceilings, and the prover's answer, for every file a submission brings, against the run's receipt. The receipt is written in a directory of the judge's own, outside the run's root entirely, and checked afterwards for having been changed. Every piece of evidence comes from a channel the judge controls and the program cannot write to; a submission's own exit code and transcript are <strong>never</strong> evidence.</li>
 <li>The judge reports one of three answers: the claim <strong>held</strong> on every run, it was <strong>broken on k of the runs</strong> (with the evidence of each), or it <strong>did not run</strong>.</li>
 <li>A <code>broken</code> verdict is replayed on a second runner and checked by a person before any credit. After the fix, the case goes into <code>check_adversarial.py</code> that week, and a public job in this repository replays it - broken on the version before, holding on the one after.</li>
 </ul>

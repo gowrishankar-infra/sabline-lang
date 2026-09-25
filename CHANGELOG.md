@@ -241,18 +241,33 @@ a crawler instead of a reader:
   the judge in [`ctf/`](ctf/). Ten claims (`C1`–`C10`), each a fixed budget
   and one thing no program under it may do; you write the program, the judge
   runs it five times with fresh canaries against the published package pinned
-  by the hash of its wheel, under full OS confinement on Linux, and sees a
-  break only through its own observers - file hashes, a listener, a nonce
-  scan, a second run differing only in the nonce (so an encoded leak
-  counts), the tool door's transcript, the prover's answer against the
-  run's receipt - never the submission's exit code or transcript, nor
-  anything else the program can write. The judge's code is published here
-  and pinned by commit from a private scoring repository, so it can be read
-  but not edited by a submission; the safety rests on the per-run canaries,
-  not on secrecy. Its self-test runs the C1 read submission against a build
-  with the 8.1.1 double-dash hole and must report it broken, and against the
-  pinned package it must hold; `check_ctf.py` runs the observers on every OS
-  and the live self-test in one Linux job. No money, no points:
+  by the hash of its wheel, on Linux and under the OS confinement that claim
+  can get - `full` for the file, io and ffi claims, `partial` for the net and
+  prover claims, `none` for the two scored through the tool door, stated per
+  claim on the page and in `ctf/status.json`, and a run that does not reach
+  its claim's level is not scored. It sees a break only through its own
+  observers - hashes of every tree the run can reach but the one directory
+  its budget lets it write, a listener, a nonce scan, a second run differing
+  only in the nonce and compared on stdout, stderr and the files written (so
+  an encoded leak counts, and one written with `log` counts as much as one
+  printed), the tool door's transcript against both of its ceilings, the
+  prover's answer for every file a submission brings against the run's
+  receipt - never the submission's exit code or transcript, nor anything else
+  the program can write. The receipt is written in a directory of the judge's
+  own, outside the run's root entirely, and checked afterwards for having
+  been changed; every run passes `--no-native`, and the judge refuses to
+  score at all where native compilation is available anyway; `--sabline` must
+  be an absolute path, never a name looked up on `PATH`. The judge's code is
+  published here and pinned by commit from a private scoring repository, so
+  it can be read but not edited by a submission; the safety rests on the
+  per-run canaries, not on secrecy. Its self-test runs the C1 read submission
+  against a build with the 8.1.1 double-dash hole and must report it broken,
+  and against the pinned package it must hold; `check_ctf.py` runs the
+  observers on every OS and, in one Linux job, the live self-test and a
+  regression for each finding of the two adversarial reviews of the judge -
+  a leak written with `log`, a write escaping into the run's own directory,
+  an E601 raised by an imported helper's runtime-checked promise, and a
+  program that floods the tool door's stderr. No money, no points:
   [HALL_OF_FAME.md](HALL_OF_FAME.md) names the finders.
 
 **E101's new hints, measured: the task they were written for now works.**

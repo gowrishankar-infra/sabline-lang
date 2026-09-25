@@ -113,9 +113,11 @@ The standing invitation to get past a Sabline budget, run on free
 runners, with the people who succeed named ([docs/ctf.md](docs/ctf.md),
 the claims and the rules; the judge is [`ctf/`](ctf/)). Ten claims, each
 a fixed budget and one thing no program under it may do, judged five runs
-a submission against the published package under full operating-system
-confinement on Linux. No money, no points, no ranking: each fix earns one
-entry, and the first private report of a break wins it.
+a submission against the published package on Linux, each claim under the
+operating-system confinement that claim can get - stated per claim on the
+page, and a run that does not reach its claim's level is not scored. No
+money, no points, no ranking: each fix earns one entry, and the first
+private report of a break wins it.
 
 Nothing has been broken yet. When something is, its line goes here: who,
 when, which claim, the fix commit, the advisory, and the public replay

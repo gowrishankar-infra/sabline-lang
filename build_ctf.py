@@ -57,15 +57,25 @@ def page() -> str:
       "do**, and a **canary the judge controls**. You write the program (and, "
       "where a deployment would forward them, the words after `--`); "
       "everything else is fixed. The first version runs on **"
-      f"{st['platform']} only**, where confinement is `{st['confinement']}`, "
-      f"against **{st['package']} {st['version']}** pinned by the hash of its "
-      "wheel.")
+      f"{st['platform']} only**, against **{st['package']} {st['version']}** "
+      "pinned by the hash of its wheel.")
     w("")
-    w("| Claim | Budget | No program under it | Status |")
-    w("|---|---|---|---|")
+    w("The **confinement** column is the least operating-system confinement "
+      "a scored run of that claim is held to, and a run that did not reach "
+      "it is not scored. It is not `full` everywhere and the judge does not "
+      "claim it is: a net grant names a host no kernel here holds by name, "
+      "a program carrying a promise starts the prover's threads before the "
+      "confinement is applied, and the runs scored by the tool door write "
+      "no receipt to read a level from.")
+    w("")
+    w("| Claim | Budget | No program under it | Confinement | Status |")
+    w("|---|---|---|---|---|")
     for c in CLAIMS:
-        status = _status_text(claims_status.get(c.id, {}))
-        w(f"| {c.id} | `{c.budget}` | {c.invariant} | {status} |")
+        entry = claims_status.get(c.id, {})
+        status = _status_text(entry)
+        level = entry.get("confinement", c.min_confinement)
+        w(f"| {c.id} | `{c.budget}` | {c.invariant} | `{level}` | "
+          f"{status} |")
     w("")
     w("A claim broken through something "
       "[docs/known-open.md](known-open.md) already lists was a wrong claim: "
@@ -86,16 +96,25 @@ def page() -> str:
     w(f"- The submission is **hashed before the canaries exist**, so it "
       f"cannot contain them, and run **{st['runs_per_submission']} times** "
       "with fresh canaries each time.")
-    w("- Each run is made against the pinned, published package under full "
-      "operating-system confinement; a run that does not get the confinement "
-      "its claim needs is **not scored**.")
-    w("- **Only the judge's own observers count**: file hashes, a listener's "
-      "log, a scan for a planted nonce, a second run that differs only in "
-      "the nonce (so an encoded leak counts), the tool door's transcript, "
-      "and the prover's answer against the run's receipt. Every piece of "
-      "evidence comes from a channel the judge controls and the program "
-      "cannot write to; a submission's own exit code and transcript are "
-      "**never** evidence.")
+    w("- Each run is made against the pinned, published package under the "
+      "operating-system confinement **its own claim needs** - the column "
+      "above - and a run that does not reach it is **not scored**.")
+    w("- Every run passes `--no-native`, and the judge **refuses to score "
+      "at all** on a machine where native compilation is available anyway, "
+      "so that no answer of its turns on whether `llvmlite` happens to be "
+      "installed.")
+    w("- **Only the judge's own observers count**: hashes of every tree the "
+      "run can reach but the one directory its budget lets it write, a "
+      "listener's log, a scan for a planted nonce, a second run that "
+      "differs only in the nonce - compared on **stdout, stderr and the "
+      "files written**, so a leak encoded, or written with `log`, counts - "
+      "the tool door's transcript against both of its ceilings, and the "
+      "prover's answer, for every file a submission brings, against the "
+      "run's receipt. The receipt is written in a directory of the judge's "
+      "own, outside the run's root entirely, and checked afterwards for "
+      "having been changed. Every piece of evidence comes from a channel "
+      "the judge controls and the program cannot write to; a submission's "
+      "own exit code and transcript are **never** evidence.")
     w("- The judge reports one of three answers: the claim **held** on every "
       "run, it was **broken on k of the runs** (with the evidence of each), "
       "or it **did not run**.")

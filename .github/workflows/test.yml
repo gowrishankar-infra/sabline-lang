@@ -482,11 +482,17 @@ jobs:
 
   # The CTF judge, shown to catch a real break (plan/8.7.md section 4). The
   # judge is this repository's code; it runs the published package, pinned by
-  # the hash of its wheel, in a venv of its own, under full OS confinement on
-  # Linux. Its self-test runs the C1 read submission against a build with the
-  # 8.1.1 double-dash hole - also pinned by hash - and must report it broken,
-  # and against the pinned package it must hold; then every claim's holds
-  # example is judged against the pinned package. No key, no model, no money.
+  # the hash of its wheel, in a venv of its own, on Linux under the OS
+  # confinement each claim needs. Its self-test runs the C1 read submission
+  # against a build with the 8.1.1 double-dash hole - also pinned by hash -
+  # and must report it broken, and against the pinned package it must hold;
+  # then every claim's holds example, and a regression for each finding of
+  # the two adversarial reviews of the judge, is judged against the pinned
+  # package. The venvs install --no-deps, so llvmlite is not in them: every
+  # run passes --no-native, and the judge refuses to score at all where
+  # native compilation is available anyway. Both SABLINE_CTF_* commands are
+  # absolute paths; the judge will not look its Sabline up on PATH. No key,
+  # no model, no money.
   ctf:
     name: the CTF judge, shown to catch a real break
     runs-on: ubuntu-latest

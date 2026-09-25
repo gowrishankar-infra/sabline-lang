@@ -1,0 +1,15 @@
+// The imported helper. Its promise is one the pinned prover leaves to run
+// time (it does not reason about the loop), and it breaks there: tally(3)
+// is 3, not more.
+fn tally(n: Int) -> Int
+    requires n >= 0
+    ensures result > n
+{
+    let acc = 0
+    let i = 0
+    while i < n {
+        acc = acc + 1
+        i = i + 1
+    }
+    return acc
+}

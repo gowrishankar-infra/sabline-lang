@@ -1,0 +1,5 @@
+{
+  "claim": "C3",
+  "program": "attack.vel",
+  "note": "A regression for the judge, not a finding. The program only writes inside its grant. Against ctf/escaping_runtime.py - a stand-in that passes the run through to the real Sabline but also writes a file into the run's working directory, outside the one directory C3 grants - the judge must report C3 broken. Against the pinned Sabline it holds."
+}

@@ -1,0 +1,10 @@
+// C3 regression: a program that writes inside its grant, run against a
+// stand-in runtime (ctf/escaping_runtime.py) that also writes a file into
+// the run's own working directory - outside the one directory C3 grants.
+// The judge hashes every tree the run can reach but its write grant, so the
+// escaped file is seen; against the pinned Sabline, which writes no such
+// file, the same submission holds.
+fn main() uses io, fs {
+    write_file("writable/out.txt", "work product")
+    print("wrote inside the grant")
+}
