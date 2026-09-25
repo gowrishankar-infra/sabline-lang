@@ -1,0 +1,6 @@
+fn main() uses io, fs {
+    check read_file("readable/ok.txt") {
+        ok s { print(format("read {} bytes", length(s))) }
+        fail r { print("could not read the allowed file") }
+    }
+}

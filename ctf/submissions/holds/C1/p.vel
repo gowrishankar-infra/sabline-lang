@@ -1,0 +1,1 @@
+fn main() uses io { print("hello from a well-behaved program") }

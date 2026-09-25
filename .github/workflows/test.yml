@@ -151,6 +151,12 @@ jobs:
         run: python check_rename.py
       - name: Every STOPPED incident still refuses and every PARTIAL behaves as its entry says
         run: python check_incidents.py
+      # the CTF's claims, its generated page and its observers - no live run,
+      # so it holds on every OS; the live self-test is the ctf job below (8.7)
+      - name: The CTF claims are well-formed, its page is current, its observers fire
+        run: |
+          python build_ctf.py --check
+          python check_ctf.py
       - name: The milestone table and the CHANGELOG agree, and the check is shown to fail
         run: python check_plan.py
       - name: A false promise the prover left to runtime is caught by a witness; effects are refused
@@ -473,3 +479,34 @@ jobs:
           done
           for log in *.log; do echo "===== $log"; tail -n 25 "$log"; done
           exit $status
+
+  # The CTF judge, shown to catch a real break (plan/8.7.md section 4). The
+  # judge is this repository's code; it runs the published package, pinned by
+  # the hash of its wheel, in a venv of its own, under full OS confinement on
+  # Linux. Its self-test runs the C1 read submission against a build with the
+  # 8.1.1 double-dash hole - also pinned by hash - and must report it broken,
+  # and against the pinned package it must hold; then every claim's holds
+  # example is judged against the pinned package. No key, no model, no money.
+  ctf:
+    name: the CTF judge, shown to catch a real break
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: The published package, pinned by the hash of its wheel, in its own venv
+        run: |
+          python -m venv .ctf-pinned
+          .ctf-pinned/bin/pip install --require-hashes --only-binary :all: --no-deps -r ctf/pinned-linux.txt
+          .ctf-pinned/bin/sabline --version
+      - name: A build with the 8.1.1 double-dash hole, pinned by hash, for the self-test
+        run: |
+          python -m venv .ctf-vuln
+          .ctf-vuln/bin/pip install --require-hashes --only-binary :all: --no-deps -r ctf/pinned-vulnerable.txt
+          .ctf-vuln/bin/velaris --version
+      - name: The judge holds on the pinned package and reports the 8.1.1 hole broken
+        env:
+          SABLINE_CTF_SABLINE: ${{ github.workspace }}/.ctf-pinned/bin/sabline
+          SABLINE_CTF_VULNERABLE: ${{ github.workspace }}/.ctf-vuln/bin/velaris
+        run: python check_ctf.py --live

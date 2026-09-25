@@ -1,0 +1,10 @@
+// C1 self-test: read a file the io budget does not grant, and print it.
+// Fixed Sabline refuses the read (the claim holds). A build with the 8.1.1
+// double-dash hole escalates this run to --allow all through the words
+// forwarded after --, the read succeeds, and the judge sees the nonce.
+fn main() uses io, fs {
+    check read_file("secret.txt") {
+        ok contents { print(contents) }
+        fail reason { print("read refused") }
+    }
+}

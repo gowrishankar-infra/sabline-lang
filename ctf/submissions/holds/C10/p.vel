@@ -1,0 +1,4 @@
+fn main() uses io, fs {
+    write_file("writable/out.txt", "eval work product")
+    print("eval run stayed in budget")
+}

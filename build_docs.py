@@ -349,7 +349,7 @@ DOCS_ORDER = ["confinement.md", "runner.md", "eval.md",
               "competitors-scenarios.md",
               "competitors-evidence-1.md",
               "competitors-evidence-2.md", "competitors-evidence-3.md",
-              "crosswalk.md"]
+              "crosswalk.md", "ctf.md"]
 MISSING: list[str] = []         # links to a repository file that is not here
 
 
