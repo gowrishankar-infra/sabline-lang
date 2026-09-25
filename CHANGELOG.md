@@ -237,6 +237,21 @@ a crawler instead of a reader:
   page leads with the same two sentences, says who Sabline is for and shows
   a refusal in one command; `/velaris` explains the rename to someone
   searching the old name.
+- **A capture-the-flag**, [docs/ctf.md](https://sabline.dev/ctf.html) and
+  the judge in [`ctf/`](ctf/). Ten claims (`C1`–`C10`), each a fixed budget
+  and one thing no program under it may do; you write the program, the judge
+  runs it five times with fresh canaries against the published package pinned
+  by the hash of its wheel, under full OS confinement on Linux, and sees a
+  break only through its own observers - file hashes, a listener, a nonce
+  scan, the tool door's transcript, the prover's answer - never the
+  submission's exit code or transcript. The judge's code is published here
+  and pinned by commit from a private scoring repository, so it can be read
+  but not edited by a submission; the safety rests on the per-run canaries,
+  not on secrecy. Its self-test runs the C1 read submission against a build
+  with the 8.1.1 double-dash hole and must report it broken, and against the
+  pinned package it must hold; `check_ctf.py` runs the observers on every OS
+  and the live self-test in one Linux job. No money, no points:
+  [HALL_OF_FAME.md](HALL_OF_FAME.md) names the finders.
 
 **E101's new hints, measured: the task they were written for now works.**
 qwen2.5:7b was run three more times, with the card, tasks and settings
