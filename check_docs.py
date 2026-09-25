@@ -1363,6 +1363,14 @@ OLD_HOST_ALLOWED = {
     "docs/renamed.md": "the page that lists every address and where it "
                        "now points",
     "docs/crosswalk.md": "the predicate types, under every spelling",
+    # 8.7: findability
+    "docs/velaris.md": "the page someone searching the old name lands on, "
+                       "whose table gives the old address and the new",
+    "plan/findability-research/findability-baseline.md":
+        "the record that the repository's homepage field still named it on "
+        "2026-09-25",
+    "plan/findability-research/measurement.md":
+        "the monthly check that it still redirects to sabline.dev",
     "packaging/farewell/README.md": "the last release under the old name",
     "playground/index.html": "it holds the sabline package's source, "
                              "predicates.py among it (build_playground.py)",
@@ -1377,7 +1385,7 @@ OLD_HOST_ALLOWED = {
 # allowed in whichever tree it lands in.
 OLD_HOST_ALLOWED_PAGES = (
     "index.html", "renamed.html", "crosswalk.html", "embedding.html",
-    "receipts.html",
+    "receipts.html", "velaris.html",
     "stability.html", "threat-model.html", "security.html", "spec.html",
     "playground.html", "search-index.json", "library.html",
     "capability/v1/index.html", "receipt/v1/index.html",
