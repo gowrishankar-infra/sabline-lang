@@ -682,7 +682,8 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="ctf.judge")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="judge one submission")
-    r.add_argument("claim")
+    r.add_argument("claim", help="the claim id, or 'auto' to read it from "
+                                 "the submission")
     r.add_argument("submission")
     r.add_argument("--sabline", default="sabline")
     r.add_argument("--runs", type=int, default=5)
@@ -704,7 +705,10 @@ def main(argv: list[str]) -> int:
     if args.cmd == "self-test":
         vuln = args.vulnerable.split() if args.vulnerable else None
         return self_test(args.sabline.split(), vuln)
-    rep = judge(args.claim, Path(args.submission), args.sabline.split(),
+    claim = args.claim
+    if claim == "auto":
+        claim = load_submission(Path(args.submission)).claim.id
+    rep = judge(claim, Path(args.submission), args.sabline.split(),
                 args.runs, args.timeout, args.max_memory_mb)
     if args.json:
         print(json.dumps(rep.to_json(), indent=2))
