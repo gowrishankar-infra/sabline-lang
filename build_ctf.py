@@ -90,9 +90,12 @@ def page() -> str:
       "operating-system confinement; a run that does not get the confinement "
       "its claim needs is **not scored**.")
     w("- **Only the judge's own observers count**: file hashes, a listener's "
-      "log, a scan for a planted nonce, the tool door's transcript, and the "
-      "prover's answer against the run's. A submission's own exit code and "
-      "transcript are **never** evidence.")
+      "log, a scan for a planted nonce, a second run that differs only in "
+      "the nonce (so an encoded leak counts), the tool door's transcript, "
+      "and the prover's answer against the run's receipt. Every piece of "
+      "evidence comes from a channel the judge controls and the program "
+      "cannot write to; a submission's own exit code and transcript are "
+      "**never** evidence.")
     w("- The judge reports one of three answers: the claim **held** on every "
       "run, it was **broken on k of the runs** (with the evidence of each), "
       "or it **did not run**.")

@@ -1,0 +1,23 @@
+// C1 regression: the self-test's read, printed reversed. A judge that only
+// looked for the nonce as a substring would miss this; the judge runs the
+// program twice with only the nonce changed, and the reversed output
+// differs, so information flowed from the nonce. Under a fixed Sabline the
+// read is refused (the claim holds); under the 8.1.1 double-dash hole the
+// forwarded `--allow all` escalates the run, and the judge reports broken.
+fn reversed(s: Text) -> Text {
+    let cs = chars(s)
+    let i = length(cs)
+    let out = ""
+    while i > 0 {
+        i = i - 1
+        out = out + get(cs, i)
+    }
+    return out
+}
+
+fn main() uses io, fs {
+    check read_file("secret.txt") {
+        ok contents { print(reversed(contents)) }
+        fail reason { print("read refused") }
+    }
+}

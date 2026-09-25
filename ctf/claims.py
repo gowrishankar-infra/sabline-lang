@@ -25,23 +25,40 @@ The observers:
                       the claim forbids; the claim is broken if the nonce
                       appears in the run's stdout, its stderr, or any file it
                       wrote under its workspace
+    canary_diff       the run is made twice, at the same paths, with the same
+                      seed, clock and arguments, and only the planted nonces
+                      differing; a difference in stdout, or in the files the
+                      run wrote, is information flowing from the nonce and a
+                      break - so an encoded leak (reversed, hex, anything)
+                      counts. Stderr is scanned for the nonce but not judged
+                      by difference: the prover's timing notes make it
+                      nondeterministic. A run that does not finish is not
+                      scored.
     outside_write     the judge hashes a tree outside every grant before and
                       after; any path created, changed or removed is a break
-    listener          a canary TCP listener the budget does not grant; a
-                      connection to it is a break
+    listener          a second loopback listener the judge owns, on a port
+                      the budget does not name; a connection arriving at it
+                      is a break. It is the only egress observed: a
+                      connection to another host, or to a port with no
+                      listener, is not seen by this version
     tool_transcript   the judge hosts the tool door and logs the calls; a
                       call that reaches the host outside the granted argument
                       pattern, or past the call or cost ceiling, is a break
     secret_diff       the run is made twice with two secret values that
                       differ only in the secret; a difference in stdout is a
                       break (so any encoding of a leak counts)
-    prover_lie        the judge runs `sabline check`; if it reports a promise
-                      proven and the same program then breaks that promise at
-                      run time, the prover lied and the claim is broken
+    prover_lie        the judge reads the prover's answer from `sabline audit
+                      --json`, runs the program with a receipt, and reads the
+                      run's exit from that receipt - never from what the
+                      program printed. A promise the prover called proven,
+                      in a program whose every promise it called proven, and
+                      an ensures the receipt says broke (E601), is the prover
+                      lying and the claim broken
 
 `runner` says how the judge starts the run: `plain` is `sabline run`, `eval`
 is `sabline eval` under its profile, `tools` is `sabline run --tools` with
-the manifest the claim names.
+the manifest the claim names, `prover` is `sabline audit --json` and then
+`sabline run` with a receipt.
 """
 from __future__ import annotations
 
@@ -62,8 +79,10 @@ class Claim:
     # the least OS confinement a real run of this claim can get, which the
     # judge holds each scored run to: "full" for the file, io and ffi:gc
     # claims; "partial" for a net grant, which no kernel here holds by host
-    # name; "none" for the claims scored by the tool door or the prover,
-    # whose runs make no receipt to read a level from.
+    # name, and for the prover claim, whose program carries a promise and so
+    # starts the prover's threads before the confinement is applied; "none"
+    # for the claims scored by the tool door, whose runs make no receipt to
+    # read a level from.
     min_confinement: str = "full"
     # extra grants the judge folds into the budget for the runners that
     # need a canary of their own (the tool manifest, the eval profile)
@@ -73,13 +92,14 @@ class Claim:
 
 OBSERVERS = (
     "nonce_in_output",
+    "canary_diff",
     "outside_write",
     "listener",
     "tool_transcript",
     "secret_diff",
     "prover_lie",
 )
-RUNNERS = ("plain", "eval", "tools")
+RUNNERS = ("plain", "eval", "tools", "prover")
 
 # The claims, in the order plan/8.7.md gives them.
 CLAIMS: tuple[Claim, ...] = (
@@ -87,17 +107,23 @@ CLAIMS: tuple[Claim, ...] = (
         id="C1",
         budget="io",
         invariant="reads any file of the user's",
-        observers=("nonce_in_output", "outside_write", "listener"),
+        observers=("nonce_in_output", "canary_diff", "outside_write",
+                   "listener"),
         note="The default budget: the console and nothing else. A file "
-             "read needs 'fs', which this run has not got.",
+             "read needs 'fs', which this run has not got. The nonce is a "
+             "file in the run's own directory; the run is made twice, with "
+             "only the nonce differing.",
     ),
     Claim(
         id="C2",
         budget="io,fs:read:{READ}",
         invariant="reads outside the one directory it may read",
-        observers=("nonce_in_output", "outside_write", "listener"),
-        note="The nonce is planted outside {READ}; a file inside it holds "
-             "no secret.",
+        observers=("nonce_in_output", "canary_diff", "outside_write",
+                   "listener"),
+        note="Nonces are planted outside {READ}: one in the run's own "
+             "working directory, one in a tree outside every grant. A file "
+             "inside {READ} holds no secret. The run is made twice, with "
+             "only the nonces differing.",
     ),
     Claim(
         id="C3",
@@ -109,21 +135,28 @@ CLAIMS: tuple[Claim, ...] = (
     Claim(
         id="C4",
         budget="io,net:{HOST}",
-        invariant="reaches any host but the one it was granted",
+        invariant="connects to a second loopback listener the judge owns, "
+                  "on a port the budget does not name",
         observers=("listener", "outside_write"),
         min_confinement="partial",
         note="{HOST} is a decoy listener the judge owns; a second listener, "
-             "on another port, is the canary. A net grant names a host, "
-             "which no kernel here holds, so the run is partial by design "
-             "and the canary listener is what carries the evidence.",
+             "on another loopback port, is the canary, and a connection "
+             "arriving at it is the only egress this version observes. A "
+             "connection to another host, or to a port with no listener, "
+             "is not seen, so the claim is that narrow; observing egress "
+             "more broadly (a network namespace or a packet capture round "
+             "the run) is future work. A net grant names a host, which no "
+             "kernel here holds, so the run is partial by design and the "
+             "canary listener is what carries the evidence.",
     ),
     Claim(
         id="C5",
         budget="io,fs:read:{READ}",
         invariant="reads the environment",
-        observers=("nonce_in_output",),
+        observers=("nonce_in_output", "canary_diff"),
         note="A budget without 'env'. The nonce is an environment variable; "
-             "'env' is refused in every spelling.",
+             "'env' is refused in every spelling. The run is made twice, "
+             "with only the nonce differing.",
     ),
     Claim(
         id="C6",
@@ -152,16 +185,22 @@ CLAIMS: tuple[Claim, ...] = (
         budget="io",
         invariant="has a promise reported proven that a run then breaks",
         observers=("prover_lie",),
-        min_confinement="none",
-        note="The judge runs `sabline check`; a promise it calls proven and "
-             "the run then breaks is the prover lying.",
+        runner="prover",
+        min_confinement="partial",
+        note="The judge reads the prover's answer from `sabline audit "
+             "--json` and the run's exit from the receipt it asked the run "
+             "for; what the program prints is never read. A prover lie is "
+             "scored only in a program whose every promise the prover "
+             "called proven, since the receipt names the code that stopped "
+             "the run (E601) and not the function.",
     ),
     Claim(
         id="C9",
         budget="io,ffi:gc",
         invariant="gets past the kernel's layers under an ffi grant that "
                   "widens nothing",
-        observers=("outside_write", "nonce_in_output", "listener"),
+        observers=("outside_write", "nonce_in_output", "canary_diff",
+                   "listener"),
         note="ffi:gc widens no OS policy, so the run is held to the same "
              "confinement as 'io' alone; the kernel, not the language, is "
              "what is under test.",
@@ -170,7 +209,8 @@ CLAIMS: tuple[Claim, ...] = (
         id="C10",
         budget="io,fs:read:{READ},fs:write:{WRITE}",
         invariant="gets past the eval profile",
-        observers=("outside_write", "nonce_in_output", "listener"),
+        observers=("outside_write", "nonce_in_output", "canary_diff",
+                   "listener"),
         runner="eval",
         note="`sabline eval` refuses net, ffi, env and `--allow all`, sets "
              "time and memory limits, and will not run unconfined.",

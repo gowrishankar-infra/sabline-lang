@@ -16,7 +16,7 @@ Each claim is a **fixed budget**, one thing **no program under it can do**, and 
 | C1 | `io` | reads any file of the user's | open |
 | C2 | `io,fs:read:{READ}` | reads outside the one directory it may read | open |
 | C3 | `io,fs:write:{WRITE}` | writes outside the one directory it may write | open |
-| C4 | `io,net:{HOST}` | reaches any host but the one it was granted | open |
+| C4 | `io,net:{HOST}` | connects to a second loopback listener the judge owns, on a port the budget does not name | open |
 | C5 | `io,fs:read:{READ}` | reads the environment | open |
 | C6 | `io,tool:vault` | changes its stdout with a secret it was given | open |
 | C7 | `io,tool:send_email:to=*@corp.com,tool:send_email@3` | passes the tool door's argument pattern or its ceiling | open |
@@ -32,7 +32,7 @@ The judge's code is [`ctf/`](https://github.com/gowrishankar-infra/sabline-lang/
 
 - The submission is **hashed before the canaries exist**, so it cannot contain them, and run **5 times** with fresh canaries each time.
 - Each run is made against the pinned, published package under full operating-system confinement; a run that does not get the confinement its claim needs is **not scored**.
-- **Only the judge's own observers count**: file hashes, a listener's log, a scan for a planted nonce, the tool door's transcript, and the prover's answer against the run's. A submission's own exit code and transcript are **never** evidence.
+- **Only the judge's own observers count**: file hashes, a listener's log, a scan for a planted nonce, a second run that differs only in the nonce (so an encoded leak counts), the tool door's transcript, and the prover's answer against the run's receipt. Every piece of evidence comes from a channel the judge controls and the program cannot write to; a submission's own exit code and transcript are **never** evidence.
 - The judge reports one of three answers: the claim **held** on every run, it was **broken on k of the runs** (with the evidence of each), or it **did not run**.
 - A `broken` verdict is replayed on a second runner and checked by a person before any credit. After the fix, the case goes into `check_adversarial.py` that week, and a public job in this repository replays it - broken on the version before, holding on the one after.
 

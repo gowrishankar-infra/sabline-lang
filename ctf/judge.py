@@ -7,17 +7,22 @@
 
 A submission is a directory with a `submission.json`
 (`{"claim": "C1", "program": "attack.vel", "argv": [...], "note": "..."}`)
-and the files it names. The judge:
+and the files it names. The scorer names the claim a submission is scored
+against; a submission that names another is refused, not scored under its
+own. The judge:
 
 - hashes the submission before any canary exists, so it cannot hold one;
 - for each of `--runs` runs (five by default), builds a fresh set of
   canaries the claim forbids, copies the submission into a scratch
   workspace, and runs it against the pinned, published Sabline under full
   operating-system confinement - refusing to score a run that did not get
-  full confinement, and refusing to run at all except on Linux;
+  the confinement its claim needs, and refusing to run at all except on
+  Linux;
 - applies only the claim's own observers - file hashes, a listener's log,
-  a scan for a nonce, the tool door's transcript, the prover's answer - and
-  never the submission's exit code or transcript;
+  a scan for a nonce, a second run that differs only in the nonce, the tool
+  door's transcript, the prover's answer against the run's receipt - and
+  never the submission's exit code or transcript. Every piece of evidence
+  comes from a channel the judge controls and the program cannot write to;
 - reports one of three answers: the claim held on every run, it was broken
   on k of the runs (with the evidence of each break), or it did not run.
 
@@ -34,6 +39,7 @@ import hashlib
 import json
 import os
 import secrets
+import shutil
 import socket
 import subprocess
 import sys
@@ -47,9 +53,13 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 from ctf.claims import BY_ID, CLAIMS, Claim  # noqa: E402
 
-# words a program prints only if it got the value the claim forbids
 DEFAULT_TIMEOUT = 30
 DEFAULT_MEMORY_MB = 512
+
+# the run's determinism parameters, fixed, so that two runs of a submission
+# differ only in what the judge changes between them (the planted nonces)
+SEED = "0"
+FROZEN_CLOCK = "2026-01-01T00:00:00Z"
 
 
 @dataclass
@@ -198,6 +208,10 @@ class Canaries:
     nonce_file: str     # the secret nonce, in a file (relative to work)
     nonce_env: str      # the secret nonce, in the environment
     nonce_out: str      # a nonce written into the outside tree, to detect read
+    # the exact paths (relative to `work`, posix) the judge planted a nonce
+    # at: the only files a scan of what the run wrote leaves out, so a file
+    # the run made with the same name anywhere else is scanned like any other
+    planted: frozenset[str] = frozenset()
     listener: Listener | None = None
     decoy: Listener | None = None
 
@@ -235,7 +249,22 @@ def build_canaries(root: Path, sub: Submission) -> Canaries:
         root=root, work=work, read_dir=read_dir, write_dir=write_dir,
         outside=outside, receipt=root / "judge-receipt.json",
         nonce_file=nonce_file, nonce_env=nonce_env, nonce_out=nonce_out,
+        planted=frozenset({"secret.txt"}),
     )
+
+
+def rebuild_canaries(can: Canaries, sub: Submission) -> Canaries:
+    """The same workspace again, at the same paths, with fresh nonces: what
+    the second run of a difference-judged claim gets. Everything the first
+    run wrote is gone, so it cannot carry anything over; the listeners stay
+    up, so a connection to either during either run counts."""
+    for d in (can.work, can.outside):
+        shutil.rmtree(d, ignore_errors=True)
+    if can.receipt.exists():
+        can.receipt.unlink()
+    fresh = build_canaries(can.root, sub)
+    fresh.listener, fresh.decoy = can.listener, can.decoy
+    return fresh
 
 
 def fill_budget(budget: str, can: Canaries) -> str:
@@ -260,10 +289,12 @@ def obs_nonce_in_output(can: Canaries, stdout: str, stderr: str,
     haystacks = {"stdout": stdout, "stderr": stderr, **wrote}
     # C5 forbids the environment nonce; the others forbid the file nonce.
     wanted = can.nonce_env if "C5" == claim.id else can.nonce_file
-    # a read claim that plants the secret outside the grant looks for that too
     targets = [wanted]
-    if claim.id in ("C2",):
-        targets = [can.nonce_out]
+    if claim.id == "C2":
+        # C2 may read {READ} and nothing else: the nonce in the tree outside
+        # every grant and the one in the run's own working directory are
+        # both outside it, and both forbidden
+        targets = [can.nonce_out, can.nonce_file]
     for where, text in haystacks.items():
         for t in targets:
             if t in text:
@@ -275,15 +306,46 @@ def obs_nonce_in_output(can: Canaries, stdout: str, stderr: str,
 
 
 def _scan_written_files(can: Canaries) -> dict[str, str]:
+    """Every file under the run's workspace but the ones the judge planted
+    there - left out by exact path, so a file the run made with a planted
+    file's name, anywhere else, is scanned like any other."""
     out: dict[str, str] = {}
     for p in sorted(can.work.rglob("*")):
-        if p.is_file() and p.name != "secret.txt":
-            try:
-                out[f"file:{p.relative_to(can.work).as_posix()}"] = \
-                    p.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                pass
+        if not p.is_file():
+            continue
+        rel = p.relative_to(can.work).as_posix()
+        if rel in can.planted:
+            continue
+        try:
+            out[f"file:{rel}"] = p.read_text(encoding="utf-8",
+                                             errors="replace")
+        except OSError:
+            pass
     return out
+
+
+def obs_canary_diff(first_stdout: str, first_files: dict[str, str],
+                    second_stdout: str,
+                    second_files: dict[str, str]) -> list[Break]:
+    """Two runs that differed only in the planted nonces - same paths, same
+    seed, same clock, same arguments: a difference in what they printed, or
+    in the files they wrote, is information flowing from the nonce, however
+    it was encoded."""
+    breaks: list[Break] = []
+    if first_stdout != second_stdout:
+        breaks.append(Break(
+            "canary_diff",
+            "stdout differed between two runs that differed only in the "
+            "planted secret, so information flowed from it"))
+    if first_files != second_files:
+        changed = sorted(k for k in set(first_files) | set(second_files)
+                         if first_files.get(k) != second_files.get(k))
+        breaks.append(Break(
+            "canary_diff",
+            "the files written differed between two runs that differed "
+            f"only in the planted secret ({', '.join(changed)}), so "
+            "information flowed from it"))
+    return breaks
 
 
 def obs_outside_write(before: dict[str, str],
@@ -302,9 +364,35 @@ def obs_outside_write(before: dict[str, str],
 def obs_listener(can: Canaries) -> list[Break]:
     if can.listener and can.listener.hits:
         return [Break("listener",
-                      f"a connection reached the canary host "
+                      f"a connection reached the canary listener "
                       f"({can.listener.hits[0]})")]
     return []
+
+
+def obs_prover_lie(proven: list[str], unproven: list[str],
+                   exit_: tuple[str, str | None]) -> RunResult:
+    """The prover's answer against the run's receipt. `proven` and
+    `unproven` are the promise-carrying functions by the status the prover
+    gave them; `exit_` is the (outcome, code) the receipt records. Neither
+    is anything the program printed."""
+    outcome, code = exit_
+    if code != "E601":
+        said = outcome + (f", {code}" if code else "")
+        return RunResult("holds", note="every proven promise held at run "
+                                       f"time (the receipt's exit: {said})")
+    if unproven:
+        return RunResult(
+            "did-not-run",
+            note="the receipt says an ensures broke at run time (E601), but "
+                 "the program also has promises the prover left to run time "
+                 f"({', '.join(unproven)}), and the receipt does not say "
+                 "whose; a prover lie is scored only when every promise in "
+                 "the program is one the prover called proven")
+    return RunResult("broken", [Break(
+        "prover_lie",
+        f"the prover called {', '.join(proven)} proven, every promise in "
+        "the program is one it called proven, and the receipt says an "
+        "ensures broke at run time (E601)")])
 
 
 # --------------------------------------------------------------------------
@@ -325,73 +413,24 @@ def _confinement_ok(receipt: Path, minimum: str) -> tuple[bool, str]:
     try:
         rec = json.loads(receipt.read_text(encoding="utf-8"))
         rp = rec["predicate"]["run_parameters"]
-    except (OSError, ValueError, KeyError):
+    except (OSError, ValueError, KeyError, TypeError):
         return False, "the receipt could not be read"
     level = str(rp.get("confinement"))
     ok = _LEVELS.get(level, -1) >= _LEVELS[minimum]
     return ok, f"confinement was {level!r} (needs {minimum})"
 
 
-def run_once(sub: Submission, sabline: list[str], root: Path,
-             timeout: int, memory_mb: int,
-             require_confinement: bool = True) -> RunResult:
-    claim = sub.claim
-    can = build_canaries(root, sub)
-    if "listener" in claim.observers:
-        can.listener = Listener("127.0.0.1", 0)
-        can.listener.start()
+def _receipt_exit(receipt: Path) -> tuple[str, str | None] | None:
+    """(outcome, code) from the run's receipt - written by the runtime to a
+    path outside every grant, which the program cannot write - or None when
+    there is no receipt to read."""
     try:
-        budget = fill_budget(claim.budget, can)
-        if claim.runner == "tools":
-            return _run_tools(sub, sabline, can, budget, timeout, memory_mb)
-        if claim.observers == ("prover_lie",):
-            return _run_prover_lie(sub, sabline, can)
-        before = _tree_hashes(can.outside)
-        env = _base_env()
-        env["CANARY"] = can.nonce_env
-        cmd = list(sabline)
-        prog = (can.work / sub.program).as_posix()
-        if claim.runner == "eval":
-            cmd += ["eval", prog, "--allow", budget,
-                    "--receipt", can.receipt.as_posix(),
-                    "--timeout", str(timeout),
-                    "--max-memory-mb", str(memory_mb)]
-        else:
-            cmd += ["run", prog]
-            # C1's budget is the documented default (io); a deployment that
-            # forwards words after -- names no --allow, which is the shape
-            # the double-dash advisory is about. Every other claim names it.
-            if budget != "io":
-                cmd += ["--allow", budget]
-            cmd += ["--receipt", can.receipt.as_posix(),
-                    "--max-memory-mb", str(memory_mb)]
-        if sub.argv:
-            cmd += ["--", *sub.argv]
-        proc = _spawn(cmd, can.work, env, timeout)
-        after = _tree_hashes(can.outside)
-        breaks: list[Break] = []
-        if "outside_write" in claim.observers:
-            breaks += obs_outside_write(before, after)
-        if "nonce_in_output" in claim.observers:
-            breaks += obs_nonce_in_output(can, proc.stdout, proc.stderr,
-                                          claim)
-        if "listener" in claim.observers:
-            breaks += obs_listener(can)
-        if breaks:
-            return RunResult("broken", breaks)
-        ran, why = _confinement_ok(can.receipt, claim.min_confinement)
-        if require_confinement and not ran and proc.returncode == 0:
-            # the program ran to success but the judge could not confirm the
-            # confinement this claim needs: it must not be scored as a hold
-            return RunResult("did-not-run",
-                             note=f"the run succeeded but {why}")
-        return RunResult("holds", note=(why if ran else
-                                        "the budget refused the run"))
-    finally:
-        if can.listener:
-            can.listener.stop()
-        if can.decoy:
-            can.decoy.stop()
+        rec = json.loads(receipt.read_text(encoding="utf-8"))
+        ex = rec["predicate"]["exit"]
+        code = ex.get("code")
+        return str(ex.get("outcome")), (str(code) if code else None)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
 
 
 @dataclass
@@ -413,6 +452,130 @@ def _spawn(cmd: list[str], cwd: Path, env: dict[str, str],
         out = e.stdout if isinstance(e.stdout, str) else ""
         err = e.stderr if isinstance(e.stderr, str) else ""
         return Proc(124, out, err + "\n[timed out]")
+
+
+@dataclass
+class Trace:
+    """What one run left in the judge's channels: the process the judge
+    spawned, the files it found under the workspace afterwards, the exit and
+    the confinement the receipt records, and the breaks the per-run
+    observers saw."""
+
+    proc: Proc
+    files: dict[str, str]
+    exit: tuple[str, str | None] | None
+    confined: tuple[bool, str]
+    breaks: list[Break]
+
+    def finished(self) -> bool:
+        """Whether the run came to its own end: not killed by the judge's
+        timeout, and not stopped by the runtime's time or memory ceiling.
+        A run that did not finish printed some prefix of what it would
+        have, which is nothing to judge by difference."""
+        if self.proc.returncode == 124:
+            return False
+        return not (self.exit and self.exit[0] in ("timeout",
+                                                   "out_of_memory"))
+
+
+def _plain_command(sub: Submission, sabline: list[str], can: Canaries,
+                   budget: str, timeout: int, memory_mb: int) -> list[str]:
+    cmd = list(sabline)
+    prog = (can.work / sub.program).as_posix()
+    if sub.claim.runner == "eval":
+        cmd += ["eval", prog, "--allow", budget, "--timeout", str(timeout)]
+    else:
+        cmd += ["run", prog]
+        # C1's budget is the documented default (io); a deployment that
+        # forwards words after -- names no --allow, which is the shape
+        # the double-dash advisory is about. Every other claim names it.
+        if budget != "io":
+            cmd += ["--allow", budget]
+    # the seed and the clock fixed, so a second run differs from the first
+    # only in what the judge changed between them; the receipt at a path
+    # outside every grant, where the runtime writes and the program cannot
+    cmd += ["--seed", SEED, "--freeze-time", FROZEN_CLOCK,
+            "--receipt", can.receipt.as_posix(),
+            "--max-memory-mb", str(memory_mb)]
+    if sub.argv:
+        cmd += ["--", *sub.argv]
+    return cmd
+
+
+def _plain_run(sub: Submission, sabline: list[str], can: Canaries,
+               budget: str, timeout: int, memory_mb: int) -> Trace:
+    claim = sub.claim
+    before = _tree_hashes(can.outside)
+    env = _base_env()
+    env["CANARY"] = can.nonce_env
+    proc = _spawn(_plain_command(sub, sabline, can, budget, timeout,
+                                 memory_mb), can.work, env, timeout)
+    after = _tree_hashes(can.outside)
+    breaks: list[Break] = []
+    if "outside_write" in claim.observers:
+        breaks += obs_outside_write(before, after)
+    if "nonce_in_output" in claim.observers:
+        breaks += obs_nonce_in_output(can, proc.stdout, proc.stderr, claim)
+    return Trace(proc, _scan_written_files(can), _receipt_exit(can.receipt),
+                 _confinement_ok(can.receipt, claim.min_confinement), breaks)
+
+
+def run_once(sub: Submission, sabline: list[str], root: Path,
+             timeout: int, memory_mb: int,
+             require_confinement: bool = True) -> RunResult:
+    claim = sub.claim
+    can = build_canaries(root, sub)
+    if "listener" in claim.observers:
+        can.listener = Listener("127.0.0.1", 0)
+        can.listener.start()
+    try:
+        budget = fill_budget(claim.budget, can)
+        if claim.runner == "tools":
+            return _run_tools(sub, sabline, can, budget, timeout, memory_mb)
+        if claim.runner == "prover":
+            return _run_prover_lie(sub, sabline, can, timeout, memory_mb,
+                                   require_confinement)
+        first = _plain_run(sub, sabline, can, budget, timeout, memory_mb)
+        traces = [first]
+        if (not first.breaks and first.finished()
+                and "canary_diff" in claim.observers):
+            # the nonce scan found nothing: the same run again, at the same
+            # paths, with only the planted nonces changed
+            again = rebuild_canaries(can, sub)
+            second = _plain_run(sub, sabline, again, budget, timeout,
+                                memory_mb)
+            traces.append(second)
+            if not second.breaks and second.finished():
+                second.breaks += obs_canary_diff(
+                    first.proc.stdout, first.files,
+                    second.proc.stdout, second.files)
+        breaks = [b for t in traces for b in t.breaks]
+        if "listener" in claim.observers:
+            breaks += obs_listener(can)
+        if breaks:
+            return RunResult("broken", breaks)
+        if any(not t.finished() for t in traces):
+            return RunResult("did-not-run",
+                             note=f"the run did not finish within {timeout}s"
+                                  ", so there is nothing to judge")
+        ran = all(t.confined[0] for t in traces)
+        why = traces[-1].confined[1]
+        if (require_confinement and not ran
+                and traces[-1].proc.returncode == 0):
+            # the program ran to success but the judge could not confirm the
+            # confinement this claim needs: it must not be scored as a hold
+            return RunResult("did-not-run",
+                             note=f"the run succeeded but {why}")
+        note = why if ran else "the budget refused the run"
+        if len(traces) == 2:
+            note += ("; a second run, differing only in the planted secret, "
+                     "printed and wrote the same")
+        return RunResult("holds", note=note)
+    finally:
+        if can.listener:
+            can.listener.stop()
+        if can.decoy:
+            can.decoy.stop()
 
 
 # --------------------------------------------------------------------------
@@ -551,32 +714,58 @@ def _host_run(sub: Submission, sabline: list[str], can: Canaries,
 
 
 # --------------------------------------------------------------------------
-# the prover-lie runner (C8)
+# the prover runner (C8)
 
-def _run_prover_lie(sub: Submission, sabline: list[str],
-                    can: Canaries) -> RunResult:
+def _run_prover_lie(sub: Submission, sabline: list[str], can: Canaries,
+                    timeout: int, memory_mb: int,
+                    require_confinement: bool) -> RunResult:
+    """Two channels, both the judge's. The prover's answer is `sabline audit
+    --json`, which runs no program code: which functions carry a promise,
+    and which of those it called proven. The run's exit is the receipt the
+    judge asked the runtime to write at a path outside every grant, which a
+    program under `io` cannot write. What the program printed is never
+    read, so printing "E601" is worth nothing."""
     prog = (can.work / sub.program).as_posix()
-    proofs = subprocess.run(
-        list(sabline) + ["proofs", prog, "--detail"],
-        cwd=str(can.work), capture_output=True, text=True,
-        encoding="utf-8", errors="replace", check=False)
-    # `sabline proofs --detail` marks each promise the prover settled
-    # `[proven`; check --json reports only problems, not what was proven.
-    if "[proven" not in proofs.stdout:
+    audit = _spawn(list(sabline) + ["audit", prog, "--json"], can.work,
+                   _base_env(), timeout)
+    try:
+        report = json.loads(audit.stdout)
+        functions = list(report.get("functions") or [])
+    except (ValueError, AttributeError):
+        return RunResult("did-not-run",
+                         note="the prover's answer could not be read")
+    promising = [f for f in functions
+                 if f.get("requires") or f.get("ensures")]
+    proven = [str(f.get("name")) for f in promising
+              if f.get("status") == "proven"]
+    unproven = [str(f.get("name")) for f in promising
+                if f.get("status") != "proven"]
+    if not proven:
         return RunResult("holds",
                          note="the prover settled no promise to break")
-    env = _base_env()
-    run = subprocess.run(
-        list(sabline) + ["run", prog, "--allow", "io"],
-        cwd=str(can.work), capture_output=True, text=True,
-        encoding="utf-8", errors="replace", env=env, check=False)
-    if "E601" in run.stdout + run.stderr:
-        return RunResult("broken", [Break(
-            "prover_lie",
-            "the prover reported a promise proven that the run then broke "
-            "at run time (E601)")])
-    return RunResult("holds",
-                     note="every proven promise held at run time")
+    cmd = list(sabline) + ["run", prog, "--allow", "io",
+                           "--seed", SEED, "--freeze-time", FROZEN_CLOCK,
+                           "--receipt", can.receipt.as_posix(),
+                           "--max-memory-mb", str(memory_mb)]
+    if sub.argv:
+        cmd += ["--", *sub.argv]
+    proc = _spawn(cmd, can.work, _base_env(), timeout)
+    if proc.returncode == 124:
+        return RunResult("did-not-run",
+                         note=f"the run did not finish within {timeout}s, "
+                              "so there is nothing to judge")
+    exit_ = _receipt_exit(can.receipt)
+    if exit_ is None:
+        return RunResult("did-not-run",
+                         note="no receipt was written, so the run's exit "
+                              "could not be read")
+    result = obs_prover_lie(proven, unproven, exit_)
+    if result.outcome != "holds":
+        return result
+    ran, why = _confinement_ok(can.receipt, sub.claim.min_confinement)
+    if require_confinement and not ran:
+        return RunResult("did-not-run", note=f"{result.note}, but {why}")
+    return RunResult("holds", note=f"{result.note}; {why}")
 
 
 # --------------------------------------------------------------------------
@@ -598,14 +787,17 @@ def confinement_probe(sabline: list[str], root: Path) -> tuple[bool, str]:
 def judge(claim_id: str, submission_dir: Path, sabline: list[str],
           runs: int, timeout: int, memory_mb: int,
           require_confinement: bool = True) -> Report:
+    sub = load_submission(submission_dir)
+    if sub.claim.id != claim_id:
+        # the scorer names the claim; a submission that names another is
+        # refused on every platform, before anything is run
+        return Report(claim_id, runs, "", "did not run", 0,
+                      error=f"the submission is for {sub.claim.id}, not "
+                            f"{claim_id}; the scorer names the claim, and "
+                            "a submission is scored under no other")
     if sys.platform != "linux":
         return Report(claim_id, runs, "", "did not run", 0,
                       error="the judge runs on Linux only")
-    sub = load_submission(submission_dir)
-    if sub.claim.id != claim_id:
-        return Report(claim_id, runs, "", "did not run", 0,
-                      error=f"the submission is for {sub.claim.id}, not "
-                            f"{claim_id}")
     digest = submission_digest(sub)
     if require_confinement:
         with tempfile.TemporaryDirectory(prefix="ctf-probe-") as pd:
@@ -682,8 +874,10 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="ctf.judge")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="judge one submission")
-    r.add_argument("claim", help="the claim id, or 'auto' to read it from "
-                                 "the submission")
+    # the scorer names the claim, never the submission: a submission whose
+    # submission.json names another claim is refused, not scored under it
+    r.add_argument("claim", choices=list(BY_ID),
+                   help="the claim the submission is scored against")
     r.add_argument("submission")
     r.add_argument("--sabline", default="sabline")
     r.add_argument("--runs", type=int, default=5)
@@ -705,10 +899,7 @@ def main(argv: list[str]) -> int:
     if args.cmd == "self-test":
         vuln = args.vulnerable.split() if args.vulnerable else None
         return self_test(args.sabline.split(), vuln)
-    claim = args.claim
-    if claim == "auto":
-        claim = load_submission(Path(args.submission)).claim.id
-    rep = judge(claim, Path(args.submission), args.sabline.split(),
+    rep = judge(args.claim, Path(args.submission), args.sabline.split(),
                 args.runs, args.timeout, args.max_memory_mb)
     if args.json:
         print(json.dumps(rep.to_json(), indent=2))

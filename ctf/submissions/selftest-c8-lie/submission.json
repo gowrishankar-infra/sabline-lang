@@ -1,0 +1,5 @@
+{
+  "claim": "C8",
+  "program": "p.vel",
+  "note": "A regression for the judge, not a finding. Its one promise is left to run time by the pinned prover and breaks there. Under the real prover it holds (no promise was called proven); under ctf/lying_prover.py, which calls every promise proven and runs the program for real, it is a genuine prover lie and must score broken."
+}
