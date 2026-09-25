@@ -1,6 +1,7 @@
 ---
 title: "Sabline: effects in signatures, budgets at run time, and a baseline for a repository's capability surface"
 author: "Palakurthi Gowri Shankar"
+thanks: "Palakurthi Gowri Shankar, ORCID iD <https://orcid.org/0009-0007-0004-2955>."
 date: "Draft of 2026-09-11 - not submitted"
 bibliography: references.bib
 link-citations: true
@@ -737,7 +738,8 @@ claimed over any of it.
 
 Three of the systems below - CaMeL, TypeGuard and ChainCaps - report an
 evaluation against an adversary on a published benchmark, with a model
-in the loop. Sabline's is on AgentDojo too (section 4.3), with no model
+in the loop, and a fourth, AgentBound, against published sets of
+malicious MCP servers. Sabline's is on AgentDojo too (section 4.3), with no model
 in it: under a budget written for each task, 21 of 21 tasks completed
 and 19 of 105 attacks landed, every one of them through a tool the task
 was granted. Its utility is AgentDojo's reference solution and its
@@ -792,6 +794,31 @@ scaffolding or be able to read Haskell; the refusal happens at the
 operation and cannot be caught by the program, rather than at a type
 check before the run; and the language is small enough to hand a model
 on a card.
+
+**ETAS.** Tan and colleagues make agents, model inference, tools,
+typed prompts, memory, approvals and effect handlers constructs of an
+effect-typed language [@tan2026etas]. Each computation carries the
+effects that escape it and an abstraction of the actions it may
+request; trace specifications of allow, deny and ordering rules - an
+approval before an email is sent, say - compile to finite monitors,
+which the checker proves where it can and otherwise leaves as explicit
+checks at run time, and a handler may mock an action without hiding
+that it was requested. Where it is ahead: a core calculus, with
+preservation, progress, effect soundness and policy safety stated and
+given proof sketches (a mechanised proof is future work), where Sabline
+has no calculus; policies over the order of actions, where a Sabline
+budget bounds each effect and its count and says nothing about order;
+the discipline of proving what it can and checking the rest at run time
+applied to authorisation, where Sabline applies it only to contracts;
+and a compiler and interpreter in Rust, where Sabline's Rust runtime is
+in progress. It also has secret handling, grants made at deployment, a
+report of a program's effects before it runs, and replay, so none of
+those distinguishes Sabline. Where they differ: ETAS is written for
+programmers who put model calls inside agent programs, and leaves a
+sandbox as an abstract predicate outside its core; Sabline bounds a
+script a model has written, under an operator's budget that the
+operating system also holds. ETAS's evaluation is four case studies,
+with no measurement.
 
 **ChainCaps.** Jiang and colleagues attach to every value a
 *sink-specific capability budget* - the set of `(operation, scope)`
@@ -874,6 +901,29 @@ Windows job object, and a defect in any of those is a defect in what a
 receipt claims. That is why section 3 says a run belongs inside a
 separate account or a virtual machine when the stakes warrant one, and
 why section 6 says the budget is not a security boundary.
+
+**AgentBound.** Bühler, Biagiola, Di Grazia and Salvaneschi give MCP
+servers Android-style permission manifests: a server declares generic
+capabilities, the user consents at launch to concrete paths,
+environment variables and hosts within them, and a container enforces
+the result with mounts, a whitelist of variables and firewall rules,
+without the server being modified [@buhler2026agentbound]. Where it is
+ahead: it confines unmodified third-party servers, whatever language
+they are written in, where Sabline bounds only programs written in
+Sabline; it writes a server's manifest from its source with a model,
+which developers judged correct for 80.9% of the manifests they
+answered about, among the 296 popular servers the paper studies; it is
+evaluated against published sets of malicious servers, blocking the
+nine attacks that reach system resources and naming the ones it does
+not; its overhead is measured on two platforms; and it is peer-reviewed,
+with an archived artifact. Where they differ: its boundary is a
+container around a process, Sabline's a check at each operation inside
+an interpreter with the operating system holding the same budget
+beneath it. Its paper says it "cannot prevent attacks that do not
+violate the declared policy", which is as true of a Sabline budget; for
+its own programs, Sabline also checks declared effects against the code
+and proves contracts inside the grant, where AgentBound leaves such
+issues to program analysis.
 
 **Sandbox platforms.** E2B runs every sandbox in its own Firecracker
 microVM with its own kernel, so that "isolation is at the hypervisor
@@ -1010,14 +1060,41 @@ budget is the operator's and may be narrower than the program declares.
 Vera makes `requires`, `ensures` and `effects` mandatory and sorts each
 obligation into Z3's decidable fragment or a compiled runtime guard,
 with a conformance corpus and a draft specification [@vera], but bounds
-no paths or hosts at run time and keeps no audit record. AILANG declares
-effects as rows in signatures and grants capability categories at the
-command line, not wideable from within [@ailang] - Sabline's
-arrangement, at the granularity of the category rather than the
-resource, and polymorphic in its rows where Sabline's `uses` is a fixed
-set. No entry combines all four of effects in signatures, an operator's
-budget refused against at the operation, a prover with a runtime
-fallback, and a published format for the declared surface.
+no paths or hosts at run time and keeps no audit record. AILANG, the
+closest of them, has a paragraph of its own below. No entry combines all
+four of effects in signatures, an operator's budget refused against at
+the operation, a prover with a runtime fallback, and a published format
+for the declared surface.
+
+**AILANG.** AILANG is a purely functional, effect-typed language for
+code a model writes, in which a function's effects are rows in its type
+and a run is granted capabilities at the command line [@ailang]. Read in
+full at version 0.42.0, its documentation describes more than the
+category grant this paper's earlier versions credited it with. Where it
+is ahead: labels for information flow with an open vocabulary -
+`<pii>`, `<email>`, a tenant's name - with a sink refusing a label and
+declassification an effect of its own, where Sabline has the one
+`Secret of T`; more effects, among them a process effect whose
+allowlist narrows to a subcommand (`git:status`) and an AI effect across
+providers, where Sabline's `ffi:` grants a whole module and it has no
+model of a subprocess; counts in the signature, per function and with a
+minimum, beside an operator's per-run ceiling in its policy mode; effect
+ceilings per package, checked by the compiler and by its registry; a Z3
+fragment covering strings, lists, records and bounded recursion, with a
+refuted contract blocking a package's publication; property-based tests;
+and a far larger public evaluation of how well models write it, against
+a Python baseline, losses included. Where they differ: its finer grants
+- a domain allowlist, one filesystem root, a process allowlist - belong
+to the invocation rather than the type, as Sabline's do, but a refused
+host or command comes back as an error value the program can handle,
+where a Sabline refusal ends the run; its documentation describes no
+confinement by the operating system beneath the interpreter, leaving
+CPU, memory and host isolation to a container, and no report of what a
+program can touch before it runs; its own audit found and fixed escapes
+from both its filesystem root and its domain allowlist in version 0.41.0
+(21 September 2026); and checking contracts at run time is a flag rather
+than a fallback, with effectful functions outside what its prover
+takes.
 
 ## 6. Limitations
 

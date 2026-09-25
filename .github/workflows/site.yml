@@ -5,7 +5,9 @@ name: site
 # error or has a dead menu, search or theme toggle fails; and Lighthouse CI
 # measures six pages on a phone profile against lighthouserc.json and
 # budget.json, and fails under 95 for performance, accessibility or best
-# practices. test.yml runs check_site.py on every leg without Chrome.
+# practices. test.yml runs check_site.py on every leg without Chrome, from a
+# shallow clone, where the check that sitemap.xml is current is skipped;
+# here it runs, with the whole history (8.7).
 # check_workflows.py holds this file to what it says.
 
 on:
@@ -24,6 +26,9 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
           persist-credentials: false
+          # the whole history: check_site.py reads it to tell whether a
+          # page's sources changed in a commit that left sitemap.xml alone
+          fetch-depth: 0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"

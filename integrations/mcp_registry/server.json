@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.gowrishankar-infra/sabline",
   "title": "Sabline",
-  "description": "Write Sabline, audit what it can touch, and run it under an effect budget.",
+  "description": "Run code an AI wrote without handing it everything you can reach.",
   "repository": {
     "url": "https://github.com/gowrishankar-infra/sabline-lang",
     "source": "github"

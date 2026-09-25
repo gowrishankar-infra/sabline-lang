@@ -1,0 +1,15 @@
+{
+  "built": "2026-09-25",
+  "engine": "MiKTeX-pdfTeX 4.23 (MiKTeX 25.12)",
+  "sources": {
+    "sabline.md": "5d9784e8abacc68573e0e8b4f3335df6ccb5df8ab265ff76f9d371d0dc90fd6e",
+    "references.bib": "962323d8cc1bbecf1cf360ac0d2135098b8b57f556a9d47b74dbc5fa6008fb37",
+    "scholar.tex": "785177f91b9eda007f8b9cfde66c26790c744fafe61cca6b1c74bae31744d6df"
+  },
+  "arxiv": {
+    "pages": 20
+  },
+  "site": {
+    "pages": 20
+  }
+}

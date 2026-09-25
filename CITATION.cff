@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: >-
-  If you use Sabline, please cite this repository as below. A preprint
-  describing it is forthcoming; until it is published, this entry is the
-  citation.
+  If you use Sabline, please cite it as below. The DOI is Zenodo's concept
+  DOI for the preprint that describes it, which resolves to its newest
+  version.
 title: "Sabline"
 abstract: >-
   A small programming language in which a function's signature declares
@@ -15,6 +15,8 @@ type: software
 authors:
   - family-names: Palakurthi
     given-names: Gowri Shankar
+    orcid: "https://orcid.org/0009-0007-0004-2955"
+doi: "10.5281/zenodo.22952528"
 repository-code: "https://github.com/gowrishankar-infra/sabline-lang"
 url: "https://sabline.dev/"
 license: MIT

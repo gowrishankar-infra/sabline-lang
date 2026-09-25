@@ -4,10 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Sabline documentation - Sabline 8.6.0</title>
-<meta name="description" content="Start here: one command, no arguments, no network, under a minute. It writes the kind of script an agent writes - read ./.env, post it to a webhook - runs ...">
+<title>Sabline: run code an AI wrote without handing it everything you can reach</title>
+<meta name="description" content="Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it&#x27;s tried.">
 <meta name="sabline-version" content="8.6.0">
 <link rel="canonical" href="https://sabline.dev/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Sabline">
+<meta property="og:title" content="Sabline: run code an AI wrote without handing it everything you can reach">
+<meta property="og:description" content="Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it&#x27;s tried.">
+<meta property="og:url" content="https://sabline.dev/">
+<meta property="og:image" content="https://sabline.dev/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Sabline","alternateName":"Velaris","description":"Run code an AI wrote without handing it everything you can reach. Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it's tried.","url":"https://sabline.dev/","codeRepository":"https://github.com/gowrishankar-infra/sabline-lang","programmingLanguage":"Python","license":"https://opensource.org/licenses/MIT","version":"8.6.0","author":{"@type":"Person","name":"Palakurthi Gowri Shankar"}}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
@@ -49,8 +57,17 @@
 <li><a href="embedding.html">Embedding</a>
 <ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
 </li>
+<li><span class="sec-label">Guides</span>
+<ul><li><a href="guide-network-access.html">Why should it have Internet access? Scripts that reach only the hosts you name</a></li><li><a href="guide-before-it-runs.html">Before I ever have a chance to inspect it: what a script will touch, before it runs</a></li><li><a href="guide-everything-or-nothing.html">Access to everything, or nothing? Giving an agent&#x27;s code only what the task needs</a></li><li><a href="guide-lethal-trifecta.html">The lethal trifecta, one run at a time: a script that reads private data but cannot send it</a></li><li><a href="guide-secrets-env.html">Secrets that should never leave my machine: running an agent&#x27;s scripts without your .env</a></li></ul>
+</li>
+<li><span class="sec-label">Compare</span>
+<ul><li><a href="compare-deno.html">Sabline compared with Deno&#x27;s permissions</a></li><li><a href="compare-wasi.html">Sabline compared with WASI (wasmtime)</a></li><li><a href="compare-camel.html">Sabline compared with CaMeL</a></li><li><a href="compare-python-sandbox.html">Sabline compared with a Python sandbox (smolagents)</a></li><li><a href="compare-ailang.html">Sabline compared with AILANG</a></li></ul>
+</li>
+<li><a href="../papers/sabline.html">Paper</a>
+<ul><li><a href="../papers/index.html">Papers</a></li></ul>
+</li>
 <li><span class="sec-label">Spec</span>
-<ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
 <ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
@@ -59,7 +76,13 @@
 <div class="col">
 <main id="content" class="doc wide" tabindex="-1">
 <h1 id="sabline">Sabline</h1>
-<p class="lead">Start here: one command, no arguments, no network, under a minute. It writes the kind of script an agent writes - read <code>./.env</code>, post it to a webhook - runs it, and shows the refusal, its line and the run's receipt; then the same task inside a budget, and what differs between the two receipts. It writes what it runs, and reads nothing of yours.</p>
+<p class="lead">Run code an AI wrote without handing it everything you can reach.</p>
+<p>Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it&#x27;s tried.</p>
+<p>Formerly <a href="velaris.html">Velaris</a>: the project was renamed in 8.6.0, and everything written for the old name still works in 8.x.</p>
+<h2 id="who-it-is-for">Who it is for <a class="anchor" href="#who-it-is-for" aria-label="Link to this section">#</a></h2>
+<p>The person about to run a program a model wrote - on a laptop, in CI, behind an MCP server - who wants what it can touch to be bounded by what they said, not by what the program says about itself. It bounds programs written in Sabline, not a Python or shell script the same model might write instead.</p>
+<h2 id="see-it-refuse-in-one-command">See it refuse, in one command <a class="anchor" href="#see-it-refuse-in-one-command" aria-label="Link to this section">#</a></h2>
+<p>No arguments, no network, under a minute. It writes the kind of script an agent writes - read <code>./.env</code>, post it to a webhook - runs it, and shows the refusal, its line and the run's receipt; then the same task inside a budget, and what differs between the two receipts. It writes what it runs, and reads nothing of yours.</p>
 <div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>pip install sabline-lang
 sabline demo</code></pre></div>
 <div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>1. A script that reads ./.env and posts it to a webhook. No budget is given, so it gets io:
@@ -74,13 +97,22 @@ sabline demo</code></pre></div>
    $ sabline inside_budget.vel --allow io,fs:read:settings.txt,fs:write:out --receipt allowed.receipt.json
    3 setting(s); the report is in out/report.txt
    exit 0. receipt: ok; grants used: fs:read:./settings.txt x1, fs:write:./out x1</code></pre></div>
-<p>A programming language in which a function's signature states the types it takes and gives, the effects it may perform, whether it can fail, and what it promises about its result. The compiler checks the effects and the failures before the program runs, the Z3 theorem prover proves the promises it can, and the runtime refuses every effect outside the budget the operator grants.</p>
 <p>It is not a security boundary by itself: an interpreter in the program's own process enforces the budget. From 8.4 the operating system is asked to hold the same budget under it - fully on Linux, partly on macOS and on Windows. The <a href="threat-model.html">threat model</a> says what that leaves open.</p>
 <div class="routes">
 <section class="route" aria-labelledby="try-it"><h2 id="try-it">Try it</h2><p>Install it and work through the tutorial, about an hour. The playground runs the same compiler in a browser, with nothing installed.</p><p class="route-links"><a href="tutorial.html">The tutorial</a><a href="../playground.html">The playground</a></p></section>
 <section class="route" aria-labelledby="review-it"><h2 id="review-it">Review it before running agent code</h2><p>For a person about to run a program a model wrote. The threat model says what Sabline defends against and what it does not; <code>sabline audit</code> says what one program can touch, before it runs.</p><p class="route-links"><a href="threat-model.html">The threat model</a><a href="embedding.html#the-audit-format">The audit</a></p></section>
 <section class="route" aria-labelledby="for-a-model"><h2 id="for-a-model">For a model</h2><p>The whole language as one plain-text page, written to be given to a model before it writes Sabline. Every compiler error names it.</p><p class="route-links"><a href="llms.txt">llms.txt</a></p></section>
 </div>
+<h2 id="guides">Guides <a class="anchor" href="#guides" aria-label="Link to this section">#</a></h2>
+<p>Each starts from how people describe the problem, says first what it does not do, and shows a refusal that runs on every push.</p>
+<ul><li><a href="guide-network-access.html">Why should it have Internet access? Scripts that reach only the hosts you name</a></li><li><a href="guide-before-it-runs.html">Before I ever have a chance to inspect it: what a script will touch, before it runs</a></li><li><a href="guide-everything-or-nothing.html">Access to everything, or nothing? Giving an agent&#x27;s code only what the task needs</a></li><li><a href="guide-lethal-trifecta.html">The lethal trifecta, one run at a time: a script that reads private data but cannot send it</a></li><li><a href="guide-secrets-env.html">Secrets that should never leave my machine: running an agent&#x27;s scripts without your .env</a></li></ul>
+<h2 id="compared-losses-first">Compared, losses first <a class="anchor" href="#compared-losses-first" aria-label="Link to this section">#</a></h2>
+<p>Each comparison opens with where the other tool is ahead of Sabline.</p>
+<ul><li><a href="compare-deno.html">Sabline compared with Deno&#x27;s permissions</a></li><li><a href="compare-wasi.html">Sabline compared with WASI (wasmtime)</a></li><li><a href="compare-camel.html">Sabline compared with CaMeL</a></li><li><a href="compare-python-sandbox.html">Sabline compared with a Python sandbox (smolagents)</a></li><li><a href="compare-ailang.html">Sabline compared with AILANG</a></li></ul>
+<h2 id="incidents">Incidents <a class="anchor" href="#incidents" aria-label="Link to this section">#</a></h2>
+<p>The <a href="incidents.html">incident catalogue</a>: publicly reported incidents in this lane, each with whether a program of the same shape is refused.</p>
+<h2 id="the-paper">The paper <a class="anchor" href="#the-paper" aria-label="Link to this section">#</a></h2>
+<p><a href="../papers/sabline.html">Sabline: effects in signatures, budgets at run time, and a baseline for a repository&#x27;s capability surface</a> - the design, the implementation, and where other work is ahead. <a href="../papers/sabline.pdf">PDF</a>.</p>
 <h2 id="install">Install <a class="anchor" href="#install" aria-label="Link to this section">#</a></h2>
 <div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>pip install sabline-lang
 sabline doctor
@@ -109,7 +141,7 @@ sabline new hello &amp;&amp; cd hello &amp;&amp; sabline main.vel</code></pre></
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/build_docs.py">build_docs.py</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#try-it">Try it</a></li><li><a href="#review-it">Review it before running agent code</a></li><li><a href="#for-a-model">For a model</a></li><li><a href="#install">Install</a></li><li><a href="#what-a-signature-says">What a signature says</a></li><li><a href="#where-things-are">Where things are</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#who-it-is-for">Who it is for</a></li><li><a href="#see-it-refuse-in-one-command">See it refuse, in one command</a></li><li><a href="#try-it">Try it</a></li><li><a href="#review-it">Review it before running agent code</a></li><li><a href="#for-a-model">For a model</a></li><li><a href="#guides">Guides</a></li><li><a href="#compared-losses-first">Compared, losses first</a></li><li><a href="#incidents">Incidents</a></li><li><a href="#the-paper">The paper</a></li><li><a href="#install">Install</a></li><li><a href="#what-a-signature-says">What a signature says</a></li><li><a href="#where-things-are">Where things are</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

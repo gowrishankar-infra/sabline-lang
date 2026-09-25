@@ -32,6 +32,19 @@ major.minor/, and never removes another major.minor/. The copies of a page
 differ only in where their links to the pages kept at the top alone point
 (the playground, the two predicate types, the version index), and every
 copy's canonical link names the page at the top.
+
+FOR SEARCH (8.7). Every page has its own <title> and meta description - a
+docs/*.md page gives its description in a `<!-- description: ... -->` line,
+and one that does not is described by its first paragraph - and a canonical
+link: a page at the top names itself, and its copies in latest/ and
+major.minor/ name it too, since they are the same page. The top alone also
+gets robots.txt, which lets the named crawlers and every other one in;
+sitemap.xml, every page at the top with the date its sources last changed in
+git (or today, for a source changed and not yet committed); the IndexNow key
+file, which indexnow.yml's ping is checked against; the paper, with a landing
+page carrying the citation_* tags Google Scholar reads; and the image
+OpenGraph cards show. check_site.py holds all of it, and fails when a page's
+sources change in a commit that does not also rewrite sitemap.xml.
 """
 from __future__ import annotations
 
@@ -41,9 +54,11 @@ import os
 import posixpath
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Callable, cast
@@ -72,7 +87,50 @@ VERSION_NAME = re.compile(r"^\d+\.\d+$")
 INTERNAL = "sabline-docs-internal:"
 ROOT_ONLY = {"playground.html", "versions.html", "capability/v1/index.html",
              "capability/v1/schema.json", "receipt/v1/index.html",
-             "receipt/v1/schema.json"}
+             "receipt/v1/schema.json", "papers/index.html",
+             "papers/sabline.html", "papers/sabline.pdf"}
+
+# The words every listing opens with (8.7): the homepage, README.md's first
+# screen, and each package's description. check_listings.py holds them all
+# to these two, so they cannot drift apart again.
+HEADLINE = "Run code an AI wrote without handing it everything you can reach."
+SUBLINE = ("Each function declares what it may touch. You grant the run one "
+           "folder, one host or a number of calls, and the runtime refuses "
+           "anything else the moment it's tried.")
+AUTHOR = "Palakurthi Gowri Shankar"
+
+# The guides and the comparisons, in the order the sidebar and the homepage
+# list them (8.7). A guide is docs/guide-*.md, read as a test by
+# check_docs.py; a comparison is docs/compare-*.md.
+GUIDES = ["guide-network-access.md", "guide-before-it-runs.md",
+          "guide-everything-or-nothing.md", "guide-lethal-trifecta.md",
+          "guide-secrets-env.md"]
+COMPARISONS = ["compare-deno.md", "compare-wasi.md", "compare-camel.md",
+               "compare-python-sandbox.md", "compare-ailang.md"]
+# the incident catalogue's flagship page, written by build_incidents.py only
+# once every entry has been checked against its sources by a person
+FLAGSHIP = "replayed.md"
+
+# The crawlers robots.txt names. Every other one is let in too, as it was
+# before robots.txt existed; naming these says the site means it.
+CRAWLERS = ("Googlebot", "Bingbot", "OAI-SearchBot", "PerplexityBot",
+            "ClaudeBot")
+# IndexNow (8.7): the key a ping from indexnow.yml is checked against. It is
+# public by design - the protocol proves ownership by the file at the site's
+# root holding it - so it is here, and written as <key>.txt at the top.
+INDEXNOW_KEY = "27f58369084ca5db3a8438eb1dfc254a"
+
+# The paper (8.7): paper/sabline.pdf is built from paper/arxiv/sabline.tex
+# (paper/SUBMITTING.md's pdflatex steps) and copied here to papers/, where
+# Google Scholar can find it beside a landing page. PAPER_DATE is the day
+# that PDF was built. PAPER_DOI is Zenodo's concept DOI for the paper, which
+# resolves to its newest version there, so it stays right when a rebuilt PDF
+# is uploaded as a new version (paper/SUBMITTING.md section 8); the landing
+# page carries it as citation_doi.
+PAPER_SOURCE = "paper/sabline.md"
+PAPER_PDF = "paper/sabline.pdf"
+PAPER_DATE = "2026-09-25"
+PAPER_DOI = "10.5281/zenodo.22952528"
 
 
 def earlier_sites() -> tuple[str, ...]:
@@ -267,6 +325,10 @@ class Page:
     toc_levels: tuple[int, ...] = (2, 3)
     root_only: bool = False
     wide: bool = False
+    description: str = ""       # its meta description; else its first paragraph
+    head_title: str = ""        # its <title>, where not "title - Sabline x.y.z"
+    head_extra: str = ""        # more of <head>: the paper's citation_* tags
+    sources: tuple[str, ...] = ()   # what its sitemap date is read from
 
 
 # (section, the page it opens on or None, [(page, label)])
@@ -345,11 +407,16 @@ def resolver(source: str, known: set[str]) -> Callable[[str], str]:
     return link
 
 
+DESCRIBED = re.compile(r"^<!--\s*description:\s*(.+?)\s*-->\s*$", re.M)
+
+
 def markdown_page(source: str, path: str, known: set[str]) -> Page:
     text = (HERE / source).read_text(encoding="utf-8")
     done = render(text, link=resolver(source, known), highlight=highlight)
     title = done.title or Path(source).stem
-    return Page(path, title, done.html, source)
+    m = DESCRIBED.search(text)
+    return Page(path, title, done.html, source,
+                description=m.group(1) if m else "")
 
 
 def changelog_pages(known: set[str]) -> tuple[list[Page], dict[str, str]]:
@@ -418,9 +485,14 @@ def changelog_pages(known: set[str]) -> tuple[list[Page], dict[str, str]]:
                      '<p class="lead">Every release of this major version, '
                      'newest first, as <a href="' + internal("changelog.html")
                      + '">CHANGELOG.md</a> records it.</p>')
+            span = (f"{part[0][0]}" if len(part) == 1
+                    else f"{part[-1][0]} to {part[0][0]}")
             pages.append(Page(path, title,
                               intro + "\n" + "\n".join(e[3] for e in part),
-                              "CHANGELOG.md", toc_levels=(2,)))
+                              "CHANGELOG.md", toc_levels=(2,),
+                              description=f"What changed in Sabline {span}, "
+                                          "release by release, newest first, "
+                                          "as CHANGELOG.md records it."))
             for e in part:
                 for _level, ident, _text in outline(e[3]).headings:
                     anchors[ident] = path
@@ -626,7 +698,10 @@ START_REFUSED = """error[E700] promise cannot be kept: 'discount' ensures result
 
 
 def start_page() -> Page:
-    """The landing page: one route for each of three readers."""
+    """The landing page (8.7): what Sabline is for in two sentences, who it is
+    for, one command that shows a refusal, and then one route for each of
+    three readers - with the guides, the comparisons, the paper and, once it
+    is published, the incident catalogue's flagship page linked from here."""
     slug = Slugger()
 
     def route(ident: str, title: str, text: str,
@@ -638,23 +713,41 @@ def start_page() -> Page:
                 f'<h2 id="{ident}">{html.escape(title)}</h2><p>{text}</p>'
                 f'<p class="route-links">{anchors}</p></section>')
 
+    def listed(names: list[str]) -> str:
+        items = []
+        for name in names:
+            source = HERE / "docs" / name
+            if not source.is_file():
+                continue
+            m = re.search(r"^# (.+)$", source.read_text(encoding="utf-8"), re.M)
+            title = m.group(1) if m else name
+            items.append(f'<li><a href="{internal(name[:-3] + ".html")}">'
+                         f"{html.escape(title)}</a></li>")
+        return "<ul>" + "".join(items) + "</ul>"
+
+    flagship = (HERE / "docs" / FLAGSHIP).is_file()
     body = [
         heading(1, "Sabline", slug),
-        '<p class="lead">Start here: one command, no arguments, no network, '
-        "under a minute. It writes the kind of script an agent writes - read "
-        "<code>./.env</code>, post it to a webhook - runs it, and shows the "
-        "refusal, its line and the run's receipt; then the same task inside "
-        "a budget, and what differs between the two receipts. It writes what "
-        "it runs, and reads nothing of yours.</p>",
+        f'<p class="lead">{html.escape(HEADLINE)}</p>',
+        f"<p>{html.escape(SUBLINE)}</p>",
+        f'<p>Formerly <a href="{internal("velaris.html")}">Velaris</a>: the '
+        "project was renamed in 8.6.0, and everything written for the old "
+        "name still works in 8.x.</p>",
+        heading(2, "Who it is for", slug),
+        "<p>The person about to run a program a model wrote - on a laptop, in "
+        "CI, behind an MCP server - who wants what it can touch to be bounded "
+        "by what they said, not by what the program says about itself. It "
+        "bounds programs written in Sabline, not a Python or shell script the "
+        "same model might write instead.</p>",
+        heading(2, "See it refuse, in one command", slug),
+        '<p>No arguments, no network, under a minute. It writes the kind of '
+        "script an agent writes - read <code>./.env</code>, post it to a "
+        "webhook - runs it, and shows the refusal, its line and the run's "
+        "receipt; then the same task inside a budget, and what differs between "
+        "the two receipts. It writes what it runs, and reads nothing of "
+        "yours.</p>",
         code_block("sh", START_DEMO),
         code_block("text", START_DEMO_OUTPUT),
-        '<p>A programming language in which a function\'s '
-        "signature states the types it takes and gives, the effects it may "
-        "perform, whether it can fail, and what it promises about its result. "
-        "The compiler checks the effects and the failures before the program "
-        "runs, the Z3 theorem prover proves the promises it can, and the "
-        "runtime refuses every effect outside the budget the operator "
-        "grants.</p>",
         "<p>It is not a security boundary by itself: an interpreter in the "
         "program's own process enforces the budget. From 8.4 the operating "
         "system is asked to hold the same budget under it - fully on Linux, "
@@ -681,6 +774,29 @@ def start_page() -> Page:
               "names it.",
               [(internal("llms.txt"), "llms.txt")]),
         "</div>",
+        heading(2, "Guides", slug),
+        "<p>Each starts from how people describe the problem, says first what "
+        "it does not do, and shows a refusal that runs on every push.</p>",
+        listed(GUIDES),
+        heading(2, "Compared, losses first", slug),
+        "<p>Each comparison opens with where the other tool is ahead of "
+        "Sabline.</p>",
+        listed(COMPARISONS),
+        heading(2, "Incidents", slug),
+        ("<p>Real incidents, replayed in Sabline - what a budget stopped, "
+         "what it did not, and what nothing here addresses: "
+         f'<a href="{internal(FLAGSHIP[:-3] + ".html")}">the incidents, '
+         "replayed</a>, and the "
+         f'<a href="{internal("incidents.html")}">catalogue</a>.</p>'
+         if flagship else
+         f'<p>The <a href="{internal("incidents.html")}">incident '
+         "catalogue</a>: publicly reported incidents in this lane, each with "
+         "whether a program of the same shape is refused.</p>"),
+        heading(2, "The paper", slug),
+        f'<p><a href="{internal("papers/sabline.html")}">'
+        f"{html.escape(paper_meta()['title'])}</a> - the design, the "
+        "implementation, and where other work is ahead. "
+        f'<a href="{internal("papers/sabline.pdf")}">PDF</a>.</p>',
         heading(2, "Install", slug),
         code_block("sh", START_INSTALL),
         "<p>A standalone executable for Windows, Linux and macOS is attached "
@@ -706,8 +822,93 @@ def start_page() -> Page:
         "change, and what did.</li>",
         "</ul>",
     ]
-    return Page("index.html", "Sabline documentation", "\n".join(body),
-                "build_docs.py", wide=True)
+    return Page("index.html", "Sabline", "\n".join(body),
+                "build_docs.py", wide=True, description=SUBLINE,
+                head_title=f"Sabline: {HEADLINE[0].lower()}{HEADLINE[1:-1]}",
+                sources=("build_docs.py",))
+
+
+# ---------------------------------------------------------------------------
+# the paper, where Google Scholar can find it (8.7)
+
+def paper_meta() -> dict[str, str]:
+    """The paper's title, author and abstract (as Markdown), read from
+    paper/sabline.md: its front matter and its `## Abstract` section."""
+    text = (HERE / PAPER_SOURCE).read_text(encoding="utf-8")
+    front = text.split("---", 2)[1]
+    title = re.search(r'^title:\s*"(.+)"\s*$', front, re.M)
+    author = re.search(r'^author:\s*"(.+)"\s*$', front, re.M)
+    abstract = re.search(r"^## Abstract\s*\n(.*?)(?=^## )", text, re.M | re.S)
+    if not (title and author and abstract):
+        raise SystemExit(f"{PAPER_SOURCE}: no title, author or ## Abstract")
+    return {"title": title.group(1), "author": author.group(1),
+            "abstract": abstract.group(1).strip()}
+
+
+def paper_pages(known: set[str]) -> list[Page]:
+    """papers/sabline.html, the landing page Google Scholar reads - its
+    citation_* tags, the title, the author, the abstract visible, and the PDF
+    beside it - and papers/index.html, which lists it."""
+    meta = paper_meta()
+    slug = Slugger()
+    abstract = render(meta["abstract"], link=resolver(PAPER_SOURCE, known),
+                      highlight=highlight).html
+    family, given = meta["author"].split(" ", 1)
+    scholar_date = PAPER_DATE.replace("-", "/")
+    tags = [("citation_title", meta["title"]),
+            ("citation_author", f"{family}, {given}"),
+            ("citation_publication_date", scholar_date),
+            ("citation_pdf_url", f"{SITE}/papers/sabline.pdf"),
+            ("citation_abstract_html_url", f"{SITE}/papers/sabline.html"),
+            ("citation_technical_report_institution", "sabline.dev"),
+            ("citation_language", "en")]
+    if PAPER_DOI:
+        tags.append(("citation_doi", PAPER_DOI))
+    head = "\n".join(f'<meta name="{n}" content="{html.escape(v)}">'
+                     for n, v in tags)
+    doi = (f'<li>DOI: <a href="https://doi.org/{html.escape(PAPER_DOI)}">'
+           f"{html.escape(PAPER_DOI)}</a></li>" if PAPER_DOI else "")
+    landing = [
+        heading(1, meta["title"], slug),
+        f'<p class="lead">{html.escape(meta["author"])}</p>',
+        f"<p>Preprint, {PAPER_DATE}. Not yet peer-reviewed or on arXiv.</p>",
+        f'<ul><li><a href="{internal("papers/sabline.pdf")}">The PDF</a></li>'
+        f'<li><a href="{REPO}/blob/main/{PAPER_SOURCE}">The source, on '
+        f"GitHub</a></li>{doi}</ul>",
+        heading(2, "Abstract", slug),
+        abstract,
+        heading(2, "Cite it", slug),
+        code_block("text",
+                   f"@techreport{{palakurthi2026sabline,\n"
+                   f"  author      = {{{family}, {given}}},\n"
+                   f"  title       = {{{meta['title']}}},\n"
+                   f"  institution = {{sabline.dev}},\n"
+                   f"  year        = {{{PAPER_DATE[:4]}}},\n"
+                   + (f"  doi         = {{{PAPER_DOI}}},\n" if PAPER_DOI
+                      else "")
+                   + f"  url         = {{{SITE}/papers/sabline.pdf}}\n}}"),
+    ]
+    index = [
+        heading(1, "Papers", slug),
+        "<p>Writing about Sabline by the people who build it, as PDFs with a "
+        "landing page each.</p>",
+        f'<ul><li><a href="{internal("papers/sabline.html")}">'
+        f"{html.escape(meta['title'])}</a>, {html.escape(meta['author'])}, "
+        f"preprint, {PAPER_DATE}.</li></ul>",
+    ]
+    first = re.sub(r"<[^>]+>", "", abstract)
+    first = html.unescape(" ".join(first.split()))
+    described = first if len(first) <= 160 else (
+        first[:157].rsplit(" ", 1)[0] + " ...")
+    return [Page("papers/sabline.html", meta["title"], "\n".join(landing),
+                 PAPER_SOURCE, root_only=True, description=described,
+                 head_extra=head, sources=(PAPER_SOURCE, PAPER_PDF)),
+            Page("papers/index.html", "Papers", "\n".join(index),
+                 PAPER_SOURCE, root_only=True,
+                 description="Papers about Sabline, each a PDF with a "
+                             "landing page: the design, the implementation "
+                             "and the evaluation.",
+                 sources=(PAPER_SOURCE,))]
 
 
 def type_note(types: tuple[str, ...], what: str, since: str) -> str:
@@ -818,7 +1019,11 @@ def capability_page() -> Page:
     ]
     return Page("capability/v1/index.html", "capability/v1 predicate type",
                 "\n".join(b for b in body if b), "build_docs.py",
-                root_only=True)
+                root_only=True,
+                description="The in-toto predicate type a Sabline capability "
+                            "attestation carries: what a program may touch, "
+                            "as its audit states it, bound to the source by "
+                            "digest.")
 
 
 def receipt_page() -> Page:
@@ -937,7 +1142,10 @@ def receipt_page() -> Page:
     ]
     return Page("receipt/v1/index.html", "receipt/v1 predicate type",
                 "\n".join(b for b in body if b), "build_docs.py",
-                root_only=True)
+                root_only=True,
+                description="The in-toto predicate type a Sabline receipt "
+                            "carries: one run of a program - its budget, what "
+                            "it used, what was refused and how it ended.")
 
 
 def built_versions(out: Path) -> list[tuple[str, str]]:
@@ -980,6 +1188,10 @@ def collect(out: Path) -> tuple[list[Page], list[Section], dict[str, str]]:
     known = set(documents.values()) | ROOT_ONLY | {
         "index.html", "library.html", "errors.html", "changelog.html",
         "llms.txt", "versions.html"}
+    # a guide or comparison is listed under its own section, not under
+    # Threat model with the rest of docs/
+    placed = {n: "Guides" for n in GUIDES} | {n: "Compare" for n in COMPARISONS}
+    placed["velaris.md"] = "Spec"
     pages = [start_page()]
     for source, path in DOCUMENTS:
         pages.append(markdown_page(source, path, known))
@@ -995,10 +1207,17 @@ def collect(out: Path) -> tuple[list[Page], list[Section], dict[str, str]]:
     pages += changelog
     pages += [capability_page(), receipt_page(),
               versions_page(built_versions(out))]
+    pages += paper_pages(known)
 
     by_path = {p.path: p for p in pages}
     threat = [(p.path, p.title) for name, p in docs_pages
-              if DOCS_SECTION.get(name, "Threat model") == "Threat model"]
+              if name not in placed
+              and DOCS_SECTION.get(name, "Threat model") == "Threat model"]
+    by_name = dict(docs_pages)
+    guides = [(by_name[n].path, by_name[n].title) for n in GUIDES
+              if n in by_name]
+    comparisons = [(by_name[n].path, by_name[n].title) for n in COMPARISONS
+                   if n in by_name]
     floats = [p.path for name, p in docs_pages
               if DOCS_SECTION.get(name) == "Floats"]
     embedding = [(p.path, p.title) for name, p in docs_pages
@@ -1014,7 +1233,11 @@ def collect(out: Path) -> tuple[list[Page], list[Section], dict[str, str]]:
         ("Threat model", "threat-model.html",
          threat + [("security.html", by_path["security.html"].title)]),
         ("Embedding", "embedding.html", embedding),
+        ("Guides", None, guides),
+        ("Compare", None, comparisons),
+        ("Paper", "papers/sabline.html", [("papers/index.html", "Papers")]),
         ("Spec", None, [("stability.html", "Stability"),
+                        ("velaris.html", "Formerly Velaris"),
                         ("renamed.html", "Renamed from Velaris"),
                         ("capability/v1/index.html", "capability/v1"),
                         ("receipt/v1/index.html", "receipt/v1")]),
@@ -1085,9 +1308,52 @@ def toc(page: Page, found: Outline) -> str:
     return "".join(out)
 
 
-def description(found: Outline) -> str:
+def description(found: Outline, page: Page | None = None) -> str:
+    if page is not None and page.description:
+        return page.description
     text = found.texts[0][1] if found.texts else ""
     return text if len(text) <= 160 else text[:157].rsplit(" ", 1)[0] + " ..."
+
+
+def page_title(page: Page) -> str:
+    return page.head_title or f"{page.title} - Sabline {VERSION}"
+
+
+def cards(page: Page, found: Outline) -> str:
+    """OpenGraph and a large-image card, so a link to a page shared somewhere
+    shows its title, its description and one image. Low value for search
+    itself - a card is what a link looks like in a feed, not what ranks it -
+    and kept small for that reason (tier B, 8.7)."""
+    tags = [("property", "og:type", "website"),
+            ("property", "og:site_name", "Sabline"),
+            ("property", "og:title", page_title(page)),
+            ("property", "og:description", description(found, page)),
+            ("property", "og:url", canonical(page.path)),
+            ("property", "og:image", f"{SITE}/assets/og.png"),
+            ("name", "twitter:card", "summary_large_image")]
+    return "\n".join(f'<meta {kind}="{name}" content="{html.escape(value)}">'
+                     for kind, name, value in tags)
+
+
+def structured(page: Page) -> str:
+    """One small JSON-LD block, on the landing page only: what the project is,
+    where its code is, its licence and its author. No rating, review or offer
+    - there are none to state. Low value (tier B, 8.7): search engines read it
+    as a hint at most, and it earns no rich result without the ratings it
+    deliberately leaves out. A data block, not a script: nothing executes it,
+    so the Content-Security-Policy has nothing to allow."""
+    if page.path != "index.html":
+        return ""
+    data = {"@context": "https://schema.org", "@type": "SoftwareSourceCode",
+            "name": "Sabline", "alternateName": "Velaris",
+            "description": f"{HEADLINE} {SUBLINE}", "url": f"{SITE}/",
+            "codeRepository": REPO, "programmingLanguage": "Python",
+            "license": "https://opensource.org/licenses/MIT",
+            "version": VERSION,
+            "author": {"@type": "Person", "name": AUTHOR}}
+    text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return ('<script type="application/ld+json">'
+            + text.replace("</", "<\\/") + "</script>")
 
 
 def canonical(path: str) -> str:
@@ -1099,16 +1365,19 @@ def shell(page: Page, sections: list[Section], found: Outline) -> str:
     source = (f'<a href="{REPO}/blob/main/{page.source}">{page.source}</a>'
               if (HERE / page.source).is_file() else html.escape(page.source))
     wide = " wide" if page.wide else ""
+    head = "\n".join(part for part in (cards(page, found), page.head_extra,
+                                        structured(page)) if part)
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="{CSP}">
-<title>{html.escape(page.title)} - Sabline {VERSION}</title>
-<meta name="description" content="{html.escape(description(found))}">
+<title>{html.escape(page_title(page))}</title>
+<meta name="description" content="{html.escape(description(found, page))}">
 <meta name="sabline-version" content="{VERSION}">
 <link rel="canonical" href="{canonical(page.path)}">
+{head}
 <link rel="icon" href="{FAVICON}">
 <link rel="stylesheet" href="{internal('assets/site.css')}">
 <script src="{internal('assets/site.js')}"></script>
@@ -1230,6 +1499,105 @@ def write_tree(dest: Path, prefix: str, pages: list[Page],
     return tree
 
 
+# ---------------------------------------------------------------------------
+# what the top of the site alone holds for search (8.7)
+
+def _git(*args: str) -> str | None:
+    try:
+        done = subprocess.run(["git", *args], cwd=HERE, capture_output=True,
+                              text=True, encoding="utf-8", errors="replace",
+                              timeout=120)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return done.stdout if done.returncode == 0 else None
+
+
+def page_sources(page: Page) -> tuple[str, ...]:
+    """The repository paths a page is made from, for its sitemap date: its
+    own `sources` where it names them, else the document it renders, else
+    what generates it. A path ending in / is a directory."""
+    if page.sources:
+        return page.sources
+    if page.source == "sabline.ERROR_TABLE":
+        return ("sabline/errors.py",)
+    if page.source.endswith("/") or (HERE / page.source).is_file():
+        return (page.source,)
+    return ("build_docs.py",)
+
+
+def _covers(source: str, path: str) -> bool:
+    return path == source or (source.endswith("/") and path.startswith(source))
+
+
+def source_dates(sources: set[str]) -> dict[str, str]:
+    """{source: YYYY-MM-DD}: the day of the last commit that changed it, or
+    today for one changed and not yet committed (or not known to git at
+    all, as in an export without its history)."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    ordered = sorted(sources)
+    found: dict[str, str] = {}
+    log = _git("log", "--format=%x00%cs", "--name-only", "--no-renames",
+               "--", *ordered)
+    day = ""
+    for line in (log or "").splitlines():
+        if line.startswith("\x00"):
+            day = line[1:]
+        elif line and day:
+            for s in ordered:
+                if s not in found and _covers(s, line):
+                    found[s] = day
+    dirty = _git("status", "--porcelain", "--untracked-files=all", "--",
+                 *ordered)
+    for line in (dirty or "").splitlines():
+        path = line[3:].strip().strip('"')
+        for s in ordered:
+            if _covers(s, path):
+                found[s] = today
+    return {s: found.get(s, today) for s in ordered}
+
+
+def sitemap(pages: list[Page]) -> bytes:
+    """sitemap.xml: every page at the top, canonical address and the day its
+    sources last changed; and the paper's PDF."""
+    wanted = {p.path: page_sources(p) for p in pages}
+    wanted["playground.html"] = ("playground/index.html",)
+    wanted["papers/sabline.pdf"] = (PAPER_PDF,)
+    dates = source_dates({s for ss in wanted.values() for s in ss})
+    rows = []
+    for path in sorted(wanted, key=lambda q: (q != "index.html", q)):
+        day = max(dates[s] for s in wanted[path])
+        rows.append(f"<url><loc>{html.escape(canonical(path))}</loc>"
+                    f"<lastmod>{day}</lastmod></url>")
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            + "\n".join(rows) + "\n</urlset>\n").encode("utf-8")
+
+
+def robots() -> bytes:
+    """robots.txt: the named crawlers, and every other, may read everything;
+    and where the sitemap is."""
+    groups = [f"User-agent: {name}\nAllow: /\n" for name in CRAWLERS]
+    groups.append("User-agent: *\nAllow: /\n")
+    return ("# sabline.dev, written by build_docs.py (8.7). Every crawler may "
+            "read\n# everything here; the named ones are named so that "
+            "saying so is\n# explicit.\n\n" + "\n".join(groups)
+            + f"\nSitemap: {SITE}/sitemap.xml\n").encode("utf-8")
+
+
+def write_top(out: Path, pages: list[Page], tree: Tree) -> None:
+    """What the top of the site alone holds for search: robots.txt,
+    sitemap.xml, the IndexNow key, OpenGraph's image, and the paper's PDF."""
+    files = {"robots.txt": robots(), "sitemap.xml": sitemap(pages),
+             f"{INDEXNOW_KEY}.txt": INDEXNOW_KEY.encode("ascii"),
+             "assets/og.png": (ASSETS / "og.png").read_bytes()}
+    pdf = HERE / PAPER_PDF
+    if pdf.is_file():
+        files["papers/sabline.pdf"] = pdf.read_bytes()
+    for name, data in files.items():
+        write_file(out / name, data)
+        tree.files[name] = len(data)
+
+
 def replace_dir(stage: Path, final: Path) -> None:
     old = final.with_name(f".{final.name}.old-{os.getpid()}")
     if final.exists():
@@ -1258,6 +1626,7 @@ def build(out: Path = OUT) -> Built:
     pages, sections, anchors = collect(out)
     versions = built_versions(out)
     trees = [write_tree(out, "", pages, sections, anchors)]
+    write_top(out, pages, trees[0])
     play = HERE / "playground" / "index.html"
     if play.is_file():
         write_file(out / "playground.html", lf_bytes(play))

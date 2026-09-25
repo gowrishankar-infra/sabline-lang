@@ -49,6 +49,25 @@ DESIGN     site.css: each contrast figure in its comment is the one its
            44px controls; the font stacks; :focus-visible;
            prefers-reduced-motion; the 960px break. site.js touches
            localStorage only inside try.
+SEARCH     (8.7) every page at the top has a title and a meta description
+           of its own - no two alike - and a canonical link naming itself;
+           every page carries OpenGraph's title, description, address and
+           image; the landing page alone carries one JSON-LD block, which
+           parses and states no rating, review or offer. robots.txt lets
+           each crawler build_docs.CRAWLERS names read everything and names
+           the sitemap; sitemap.xml lists exactly the pages at the top and
+           the paper, each with a date; the IndexNow key file holds the
+           key; the OpenGraph image is a PNG of 1280 by 640 under 1 MB. The
+           paper's landing page carries citation_title, citation_author,
+           citation_publication_date and a citation_pdf_url in its own
+           directory, beside a PDF under 5 MB. The landing page links every
+           guide, every comparison and the paper - and the incident
+           catalogue's flagship page once it exists.
+STALE      (8.7) sitemap.xml, as committed, is not stale: no page's sources
+           changed in a commit that left sitemap.xml alone later than the
+           page's date says. It reads git's history, so a shallow clone
+           (test.yml's legs) skips it, and --require-chrome (site.yml, which
+           checks out the whole history) makes that skip wrong.
 EARLIER    no page names an earlier address of the site more often than
            the document it is made from; a predicate type's page may name
            the earlier spelling of its type, in the line that says so.
@@ -183,6 +202,7 @@ class Strict(HTMLParser):
         self.stylesheets: list[str] = []
         self.scripts: list[str] = []
         self.inline: list[str] = []
+        self.data_blocks = 0        # <script type="application/ld+json">
         self.csp = ""
 
     def where(self) -> str:
@@ -238,6 +258,8 @@ class Strict(HTMLParser):
         if tag == "script":
             if "src" in a:
                 self.scripts.append(a["src"])
+            elif a.get("type") == "application/ld+json":
+                self.data_blocks += 1       # data, not a script: nothing runs it
             else:
                 self.inline.append(f"{self.where()}: an inline script")
         if tag == "link" and a.get("rel") == "stylesheet":
@@ -492,6 +514,9 @@ def check_pages(out: Path, built: build_docs.Built) -> dict[str, Strict]:
         if p.stylesheets != [want_css] or p.scripts != [want_js] or p.inline:
             wrong_assets.append(f"{rel}: css {p.stylesheets}, js {p.scripts}, "
                                 f"{p.inline[:2]}")
+        if p.data_blocks > (1 if inner == "index.html" else 0):
+            wrong_assets.append(f"{rel}: {p.data_blocks} JSON-LD block(s); the "
+                                "landing page may have one, no other page any")
         if "default-src 'none'" not in p.csp or "script-src 'self'" not in p.csp:
             wrong_assets.append(f"{rel}: CSP {p.csp!r}")
     ok("every page loads its tree's site.css and site.js and nothing else, "
@@ -590,15 +615,217 @@ def check_landing(out: Path, built: build_docs.Built, parsed: dict[str, Strict])
            all(routes.get(k) == v for k, v in want.items()), routes)
         ok(f"{tree.prefix}llms.txt is LLM.md byte for byte",
            (out / (tree.prefix + "llms.txt")).read_bytes() == card)
+        links = set(re.findall(r'href="([^"#]+)', text))
+        wanted = ([n[:-3] + ".html" for n in build_docs.GUIDES
+                   + build_docs.COMPARISONS]
+                  + [f"{up}papers/sabline.html"])
+        if (HERE / "docs" / build_docs.FLAGSHIP).is_file():
+            wanted.append(build_docs.FLAGSHIP[:-3] + ".html")
+        missing = [w for w in wanted if w not in links]
+        ok(f"{rel}: links every guide, every comparison and the paper"
+           + (", and the flagship" if len(wanted) > len(build_docs.GUIDES)
+              + len(build_docs.COMPARISONS) + 1 else ""), not missing, missing)
     section("the tutorial's code blocks")
     tree_ = ast.parse((HERE / "check_docs.py").read_text(encoding="utf-8"))
     docs: tuple[str, ...] = ()
     for node in tree_.body:
         if isinstance(node, ast.Assign) and any(
                 getattr(t, "id", "") == "DOCS" for t in node.targets):
-            docs = cast(tuple[str, ...], ast.literal_eval(node.value))
+            # DOCS is a literal tuple, and from 8.7 the guides added to it
+            value = node.value.left if isinstance(node.value, ast.BinOp) \
+                else node.value
+            docs = cast(tuple[str, ...], ast.literal_eval(value))
     ok("check_docs.py reads TUTORIAL.md, so every block in it runs or is "
        "marked with why", "TUTORIAL.md" in docs, docs)
+
+
+def head_value(text: str, pattern: str) -> str:
+    m = re.search(pattern, text, re.S)
+    return html.unescape(m.group(1)).strip() if m else ""
+
+
+def check_findable(out: Path, built: build_docs.Built) -> None:
+    """SEARCH: what a crawler and a link preview read (8.7)."""
+    section("for search: titles, descriptions, canonicals, cards, robots, "
+            "the sitemap, the paper")
+    top = built.trees[0]
+    titles: dict[str, list[str]] = {}
+    described: dict[str, list[str]] = {}
+    bad_canonical, no_card = [], []
+    for tree in built.trees:
+        for rel in html_files(out, tree):
+            if rel.endswith("playground.html"):
+                continue
+            text = (out / rel).read_text(encoding="utf-8")
+            inner = rel[len(tree.prefix):]
+            title = head_value(text, r"<title>(.*?)</title>")
+            desc = head_value(text, r'<meta name="description" content="([^"]*)"')
+            canon = head_value(text, r'<link rel="canonical" href="([^"]*)"')
+            if tree is top:
+                titles.setdefault(title, []).append(rel)
+                described.setdefault(desc, []).append(rel)
+            if canon != build_docs.canonical(inner):
+                bad_canonical.append(f"{rel}: {canon}")
+            cards = [n for n in ("og:title", "og:description", "og:url",
+                                 "og:image", "twitter:card")
+                     if f'"{n}" content="' not in text]
+            if cards:
+                no_card.append(f"{rel}: no {', '.join(cards)}")
+    empty = [f"title {k!r}: {v}" for k, v in titles.items() if not k] + \
+        [f"description {k!r}: {v}" for k, v in described.items() if not k]
+    twice = [f"{v}" for k, v in titles.items() if k and len(v) > 1] + \
+        [f"{v}" for k, v in described.items() if k and len(v) > 1]
+    ok(f"every page at the top has a title and a description ({len(titles)} "
+       "titles)", not empty, empty[:8])
+    ok("no two pages at the top share a title or a description", not twice,
+       twice[:8])
+    ok("every page's canonical link names the page at the top: itself there, "
+       "and the page it copies elsewhere", not bad_canonical, bad_canonical[:8])
+    ok("every page carries OpenGraph's title, description, address and image",
+       not no_card, no_card[:8])
+
+    blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>',
+                        (out / "index.html").read_text(encoding="utf-8"), re.S)
+    try:
+        data = json.loads(blocks[0].replace("<\\/", "</")) if len(blocks) == 1 else {}
+    except ValueError:
+        data = {}
+    flat = json.dumps(data)
+    ok("the landing page's one JSON-LD block parses, says what the project "
+       "is, and states no rating, review or offer",
+       data.get("@type") == "SoftwareSourceCode" and data.get("name") == "Sabline"
+       and not re.search(r"aggregateRating|review|offers", flat), flat[:200])
+
+    robots = (out / "robots.txt").read_text(encoding="utf-8")
+    groups = {m.group(1): m.group(2) for m in re.finditer(
+        r"User-agent: (\S+)\n((?:(?:Allow|Disallow): .*\n)*)", robots)}
+    shut = [name for name in build_docs.CRAWLERS + ("*",)
+            if groups.get(name, "").strip() != "Allow: /"]
+    ok(f"robots.txt lets {', '.join(build_docs.CRAWLERS)} and every other "
+       "crawler read everything, and names the sitemap",
+       not shut and f"Sitemap: {build_docs.SITE}/sitemap.xml" in robots, shut)
+
+    listed = sitemap_rows((out / "sitemap.xml").read_text(encoding="utf-8"))
+    pages = {build_docs.canonical(p) for p in top.pages} | {
+        build_docs.canonical("playground.html"),
+        build_docs.canonical("papers/sabline.pdf")}
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    undated = [u for u, d in listed.items()
+               if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", d) or d > today]
+    ok(f"sitemap.xml lists exactly the {len(pages)} pages at the top and the "
+       "paper, each with a date that is not in the future",
+       set(listed) == pages and not undated,
+       f"missing {sorted(pages - set(listed))[:5]}, extra "
+       f"{sorted(set(listed) - pages)[:5]}, undated {undated[:5]}")
+
+    key = build_docs.INDEXNOW_KEY
+    held = out / f"{key}.txt"
+    ok("the IndexNow key file at the root holds the key, and the key is 8 to "
+       "128 letters, digits or hyphens",
+       re.fullmatch(r"[A-Za-z0-9-]{8,128}", key) is not None
+       and held.is_file() and held.read_text(encoding="utf-8") == key)
+
+    png = (out / "assets" / "og.png").read_bytes()
+    width, height = struct.unpack(">II", png[16:24]) if len(png) > 24 else (0, 0)
+    ok(f"OpenGraph's image is a PNG of 1280 by 640 under 1 MB ({len(png):,} "
+       "bytes)", png[:8] == b"\x89PNG\r\n\x1a\n" and (width, height) ==
+       (1280, 640) and len(png) < 1_000_000, (width, height))
+
+    landing = (out / "papers" / "sabline.html").read_text(encoding="utf-8")
+    tags = {n: head_value(landing, rf'<meta name="{n}" content="([^"]*)"')
+            for n in ("citation_title", "citation_author",
+                      "citation_publication_date", "citation_pdf_url")}
+    pdf = out / "papers" / "sabline.pdf"
+    same_dir = tags["citation_pdf_url"] == f"{build_docs.SITE}/papers/sabline.pdf"
+    ok("the paper's landing page carries citation_title, citation_author, "
+       "citation_publication_date (YYYY/MM/DD) and a citation_pdf_url in its "
+       "own directory, shows its abstract, and the PDF is there, under 5 MB",
+       all(tags.values()) and same_dir
+       and re.fullmatch(r"\d{4}/\d{2}/\d{2}", tags["citation_publication_date"])
+       is not None and 'id="abstract"' in landing
+       and pdf.is_file() and pdf.stat().st_size < 5_000_000
+       and pdf.read_bytes()[:5] == b"%PDF-", tags)
+
+
+def sitemap_rows(xml: str) -> dict[str, str]:
+    return dict(re.findall(r"<url><loc>([^<]+)</loc><lastmod>([^<]*)</lastmod>"
+                           r"</url>", xml))
+
+
+def stale_pages(committed: dict[str, str], sources: dict[str, tuple[str, ...]],
+                commits: list[tuple[str, set[str]]]) -> list[str]:
+    """The addresses whose sources changed, in a commit that left
+    docs/sitemap.xml alone, on a day later than the committed sitemap's date
+    for them. `commits` is (day, files) for every commit in the history."""
+    last: dict[str, str] = {}
+    for day, files in commits:
+        if "docs/sitemap.xml" in files:
+            continue
+        for url, wanted in sources.items():
+            if any(f == s or (s.endswith("/") and f.startswith(s))
+                   for f in files for s in wanted):
+                last[url] = max(last.get(url, ""), day)
+    return sorted(f"{url}: its sources changed on {day}, the sitemap says "
+                  f"{committed.get(url, 'nothing')}"
+                  for url, day in last.items()
+                  if url not in committed or day > committed[url])
+
+
+def git(*args: str) -> str | None:
+    try:
+        done = subprocess.run(["git", *args], cwd=HERE, capture_output=True,
+                              text=True, encoding="utf-8", errors="replace",
+                              timeout=180)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return done.stdout if done.returncode == 0 else None
+
+
+def check_stale(built: build_docs.Built, require: bool) -> None:
+    """STALE: the sitemap as committed, against git's history (8.7)."""
+    section("sitemap.xml, as committed, against the history")
+    fake = {"https://x/a.html": "2026-09-20"}
+    shown = stale_pages(fake, {"https://x/a.html": ("docs/a.md",)},
+                        [("2026-09-22", {"docs/a.md"}),
+                         ("2026-09-21", {"docs/a.md", "docs/sitemap.xml"})])
+    fine = stale_pages(fake, {"https://x/a.html": ("docs/a.md",)},
+                       [("2026-09-22", {"docs/a.md", "docs/sitemap.xml"}),
+                        ("2026-09-19", {"docs/a.md"})])
+    ok("the rule itself: a source changed after its date, in a commit that "
+       "left the sitemap alone, is stale; one changed with the sitemap is not",
+       len(shown) == 1 and not fine, (shown, fine))
+    shallow = git("rev-parse", "--is-shallow-repository")
+    committed_xml = git("show", "HEAD:docs/sitemap.xml")
+    if shallow is None or shallow.strip() != "false" or committed_xml is None:
+        why = ("no git history here" if shallow is None else
+               "a shallow clone has no history to read"
+               if shallow.strip() != "false" else
+               "HEAD has no docs/sitemap.xml")
+        if require:
+            ok(f"the history is here to read ({why})", False)
+        else:
+            skip(f"whether sitemap.xml is stale: {why} (site.yml checks it)")
+        return
+    committed = sitemap_rows(committed_xml)
+    sources = {build_docs.canonical(p.path): build_docs.page_sources(p)
+               for p in built.pages}
+    sources[build_docs.canonical("playground.html")] = ("playground/index.html",)
+    sources[build_docs.canonical("papers/sabline.pdf")] = (build_docs.PAPER_PDF,)
+    wanted = sorted({s for ss in sources.values() for s in ss})
+    log = git("log", "--format=%x00%cs", "--name-only", "--no-renames", "HEAD",
+              "--", *wanted, "docs/sitemap.xml") or ""
+    commits: list[tuple[str, set[str]]] = []
+    for line in log.splitlines():
+        if line.startswith("\x00"):
+            commits.append((line[1:], set()))
+        elif line and commits:
+            commits[-1][1].add(line)
+    stale = stale_pages(committed, sources, commits)
+    missing = sorted(set(sources) - set(committed))
+    ok(f"sitemap.xml as committed lists every page and is not stale "
+       f"({len(commits)} commits read)", not stale and not missing,
+       "\n          ".join((stale + [f"not listed: {m}" for m in missing])[:10])
+       + "\n          (python build_docs.py, and commit docs/sitemap.xml)")
 
 
 CONTRAST = re.compile(r"^\s*(text|ui)\s+--([\w-]+) on --([\w-]+)\s+([\d.]+) light"
@@ -1099,6 +1326,8 @@ def main(argv: list[str]) -> int:
     parsed = check_pages(out, built)
     check_search(out, built, parsed)
     check_landing(out, built, parsed)
+    check_findable(out, built)
+    check_stale(built, args.require_chrome)
     check_design()
     check_earlier(out, built)
     if args.no_chrome and not (args.require_chrome or args.screenshots):

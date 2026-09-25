@@ -1,0 +1,33 @@
+name: indexnow
+
+# After GitHub Pages publishes a push to main, tell the search engines that
+# take IndexNow which pages that push changed (8.7): indexnow.py reads the
+# last commit's changes under docs/ and sends the pages' addresses, with the
+# key build_docs.py writes at the site's root. Low value next to the
+# sitemap, and harmless: public addresses to a public endpoint. It needs no
+# secret and may only read the repository. check_workflows.py holds this
+# file to what it says.
+
+on:
+  page_build
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: tell IndexNow which pages changed
+    if: github.repository == 'gowrishankar-infra/sabline-lang' && github.event.build.status == 'built'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+      # build_docs is imported for the key and the site's address; it needs
+      # nothing installed
+      - name: Send the changed pages to IndexNow
+        run: python indexnow.py

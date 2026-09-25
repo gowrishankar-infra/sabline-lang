@@ -8,6 +8,13 @@
 <meta name="description" content="Every release of Sabline, newest first, one page for each major version. The text is CHANGELOG.md&#x27;s.">
 <meta name="sabline-version" content="8.6.0">
 <link rel="canonical" href="https://sabline.dev/changelog.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Sabline">
+<meta property="og:title" content="Changelog - Sabline 8.6.0">
+<meta property="og:description" content="Every release of Sabline, newest first, one page for each major version. The text is CHANGELOG.md&#x27;s.">
+<meta property="og:url" content="https://sabline.dev/changelog.html">
+<meta property="og:image" content="https://sabline.dev/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
@@ -49,8 +56,17 @@
 <li><a href="embedding.html">Embedding</a>
 <ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
 </li>
+<li><span class="sec-label">Guides</span>
+<ul><li><a href="guide-network-access.html">Why should it have Internet access? Scripts that reach only the hosts you name</a></li><li><a href="guide-before-it-runs.html">Before I ever have a chance to inspect it: what a script will touch, before it runs</a></li><li><a href="guide-everything-or-nothing.html">Access to everything, or nothing? Giving an agent&#x27;s code only what the task needs</a></li><li><a href="guide-lethal-trifecta.html">The lethal trifecta, one run at a time: a script that reads private data but cannot send it</a></li><li><a href="guide-secrets-env.html">Secrets that should never leave my machine: running an agent&#x27;s scripts without your .env</a></li></ul>
+</li>
+<li><span class="sec-label">Compare</span>
+<ul><li><a href="compare-deno.html">Sabline compared with Deno&#x27;s permissions</a></li><li><a href="compare-wasi.html">Sabline compared with WASI (wasmtime)</a></li><li><a href="compare-camel.html">Sabline compared with CaMeL</a></li><li><a href="compare-python-sandbox.html">Sabline compared with a Python sandbox (smolagents)</a></li><li><a href="compare-ailang.html">Sabline compared with AILANG</a></li></ul>
+</li>
+<li><a href="papers/sabline.html">Paper</a>
+<ul><li><a href="papers/index.html">Papers</a></li></ul>
+</li>
 <li><span class="sec-label">Spec</span>
-<ul><li><a href="stability.html">Stability</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html" aria-current="page">Changelog</a>
 <ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
@@ -219,6 +235,67 @@ options do not give the same answers twice: against the first recording,
 seven of nine unchanged Sabline first answers differed, which is why every
 run is kept (<code>.run-2</code>, <code>.run-3</code>) and reported. <code>results.json</code> is
 <code>sabline.roundtrip/2</code>, with the held-out set apart.</p>
+<p><strong>Findable by someone with the problem, in their own words</strong> (8.7; the
+research is in <code>plan/findability-research/</code>). A search baseline taken
+2026-09-25 found Sabline in none of 33 searches for the problem it
+addresses, under either name, and no page of sabline.dev indexed at all.
+What changed, by legitimate means only - nothing hidden, nothing written for
+a crawler instead of a reader:</p>
+<ul>
+<li><strong>One description everywhere</strong>: "Run code an AI wrote without handing it
+everything you can reach." and the sentence after it open the homepage,
+README.md's first screen and every listing - PyPI, npm, crates.io, the VS
+Code Marketplace, the MCP bundle, and the MCP registry, whose 100-character
+limit takes the first sentence alone. <code>check_listings.py</code> holds them to
+it; <code>--github</code> checks the repository's description, homepage and topics.
+Keywords lead with the words people search with (ai-agents, mcp, secrets,
+sandbox, permissions, supply-chain-security, least-privilege).</li>
+<li><strong>Five guides</strong>, each titled from a phrasing people used about the
+problem, with the link, each saying near its top what it does not do:
+scripts that reach only the hosts you name; what a script will touch
+before it runs; between everything and nothing; the lethal trifecta, one
+run at a time; and secrets that should never leave your machine, which
+says in its first paragraph that it does not stop an agent's own shell
+reading <code>.env</code>. Every example is a file under <code>examples/guides/</code>;
+<code>check_docs.py</code> reads each guide as a test - a <code>&lt;!-- file: --&gt;</code> marker
+holds a block to its file, every guide must show a refusal, and each
+refusal line shown must be the one printed - so a guide whose example
+stops refusing fails the build.</li>
+<li><strong>Comparison pages, losses first</strong>: Deno, WASI, CaMeL and the Python
+sandbox, generated from the recorded benchmark by
+<code>build_competitors_page.py</code>, where a category the benchmark calls a
+judgement call says so beside the rows it would count as a win; and
+AILANG, written from its documentation read in full at 0.42.0.</li>
+<li><strong>Incident pages under the names people use</strong> ("Shai-Hulud",
+"tj-actions/changed-files", "the xz backdoor", "slopsquatting";
+<code>incidents/names.json</code>), and a flagship page, "We replayed 8 real
+incidents in Sabline". <code>build_incidents.py</code> writes an incident's page only
+once its entry says <code>verified: true</code>, and the flagship only once every
+entry does - none do yet, so none is published; <code>--drafts DIR</code> writes
+them to read, and <code>--check</code> fails if docs/ holds one early.</li>
+<li><strong>The paper where Google Scholar can find it</strong>: <code>build_paper.py</code> builds
+the PDF with the title and author sizes Scholar's guidelines ask for,
+served at <code>papers/sabline.pdf</code> beside a landing page carrying
+<code>citation_title</code>, <code>citation_author</code>, <code>citation_publication_date</code>,
+<code>citation_pdf_url</code> and <code>citation_doi</code>, and a <code>papers/</code> index; <code>--check</code>,
+in CI, fails when the paper changes and the PDF is not rebuilt. The
+preprint is on Zenodo: its concept DOI, 10.5281/zenodo.22952528, is the
+landing page's and <code>CITATION.cff</code>'s, which also gains the author's ORCID
+iD, as does the paper's title footnote. Related work gains AILANG (read in full), ETAS and AgentBound,
+each saying where it is ahead of Sabline; the arXiv source is regenerated.</li>
+<li><strong>The site, for search</strong>: a title and a description of its own on every
+page (<code>&lt;!-- description: --&gt;</code> in a document), canonical links, a
+<code>sitemap.xml</code> dated from git, <code>robots.txt</code>, the IndexNow key and
+<code>indexnow.yml</code>, which sends the pages a push to main changed once Pages
+has published it; low-value extras labelled so in the code - OpenGraph
+cards and one small JSON-LD block with no rating on the landing page.
+<code>check_site.py</code> fails on a missing or repeated title or description, and,
+in site.yml, which now checks out the whole history, on a sitemap left
+stale by a commit that changed a page's sources and not it. The landing
+page leads with the same two sentences, says who Sabline is for and shows
+a refusal in one command; <code>/velaris</code> explains the rename to someone
+searching the old name.</li>
+</ul>
 <p><strong>E101's new hints, measured: the task they were written for now works.</strong>
 qwen2.5:7b was run three more times, with the card, tasks and settings
 above and the compiler after the E101 change. The held-out <code>months</code> answer

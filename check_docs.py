@@ -46,9 +46,19 @@ PyPI do not show:
                                            above printed
   <!-- output: codes only; why -->         only its E-codes are held to that
   <!-- output of: sabline ... -->          each line is in what that prints
+  <!-- file: examples/guides/x.vel -->     a vel block is that file, byte for
+                                           byte, so what a page shows is what
+                                           its commands run (8.7)
 
 A line marked illustrative that runs `sabline` must still name a command
 Sabline has, and one that runs `python X.py` a file that is here.
+
+GUIDES (8.7). docs/guide-*.md are read as tests too, and held to more: each
+shows at least one refusal - a console block whose output carries an
+E-code - and every `error[...]` or `[E...]` line a guide's console block
+shows must be in what the command printed, with `<your folder>` standing for
+the scratch directory's path. A guide whose example stops refusing, or whose
+shown refusal stops being the one printed, fails.
 
 INLINE COMMANDS. A code span `sabline ...` in running text runs, in a scratch
 directory with FIXTURES, when it names a file, and must exit 0. Otherwise
@@ -108,7 +118,9 @@ SABLINE_PY = str(HERE / "sabline.py")
 # docs/receipts.md is two sections of EMBEDDING.md, moved to fit the page
 # budget (8.7), and its blocks are held as they were there
 DOCS = ("README.md", "SPEC.md", "EMBEDDING.md", "TUTORIAL.md",
-        "docs/receipts.md")
+        "docs/receipts.md") + tuple(
+    # the guides (8.7): each example runs, and each shows its refusal
+    sorted(f"docs/{p.name}" for p in (HERE / "docs").glob("guide-*.md")))
 CODE_DOCS = (["SPEC.md", "README.md", "EMBEDDING.md", "LLM.md", "TUTORIAL.md"]
              + sorted(f"docs/{p.name}" for p in (HERE / "docs").glob("*.md")))
 
@@ -193,6 +205,9 @@ PARAPHRASES = {
     ("LLM.md", "E602", "a list read went out"): "the card's shorter words",
     ("LLM.md", "E542", "a function value that does not fit"):
         "the card says when it is given: the table's words also fit E501",
+    ("README.md", "E310", "fs"):
+        "sabline demo's receipt line, printed as it is: the code, then the "
+        "effect it refused, not a description of the code (8.7)",
 }
 
 # (document, the text just before the list, the text just after): each
@@ -309,7 +324,7 @@ def shorten(text: str, n: int = 300) -> str:
 
 FENCE = re.compile(r"^```([A-Za-z0-9_+-]*)\s*$")
 COMMENT = re.compile(r"^<!--\s*(.*?)\s*-->\s*$")
-MARKER_WORDS = re.compile(r"^(illustrative|expect|output)\b")
+MARKER_WORDS = re.compile(r"^(illustrative|expect|output|file)\b")
 
 
 class Block:
@@ -323,6 +338,7 @@ class Block:
         self.expect_lines: dict[Any, Any] = {}
         self.output: str | None = None      # "lines" or "codes"
         self.output_of: str | None = None
+        self.file: str | None = None        # the file a vel block must be
         self.problems: list[Any] = []
         for text in markers:
             self._marker(text)
@@ -350,6 +366,10 @@ class Block:
         m = re.fullmatch(r"output of:\s*(.+)", text)
         if m:
             self.output_of = m.group(1)
+            return
+        m = re.fullmatch(r"file:\s*(\S+)", text)
+        if m:
+            self.file = m.group(1)
             return
         m = re.fullmatch(r"output(?::\s*(.+))?", text)
         if m:
@@ -713,6 +733,8 @@ def run_console(block: Block) -> Result:
         r.ran = True
         r.output += shown
         expect_exit(r, label, text, code, shown, sorted(set(codes)), None)
+        if block.doc.startswith("docs/guide-"):
+            shown_refusal(r, label, shown_lines, shown)
         if shown_doc.strip().startswith(("{", "[")) and code == 0:
             try:
                 same = json.loads(shown_doc) == json.loads(shown)
@@ -727,10 +749,40 @@ def run_console(block: Block) -> Result:
     return r
 
 
+def shown_refusal(r: Result, label: str, shown_lines: list[str],
+                  printed: str) -> None:
+    """Each refusal line a guide shows - `error[E...]` or `file:N: [E...]`
+    - is a line of what the command printed. `<your folder>` in the shown
+    line stands for any path: the scratch directory differs per machine,
+    and so does its separator."""
+    lines = [ln.replace("\\", "/") for ln in printed.splitlines()]
+    for want in shown_lines:
+        if not re.search(r"(^error\[E\d{3}\]|\[E\d{3}\])", want):
+            continue
+        pattern = ".*?".join(re.escape(part) for part in
+                             want.replace("\\", "/").split("<your folder>"))
+        if any(re.fullmatch(pattern, ln.rstrip()) for ln in lines):
+            r.ok(f"{label}: prints the refusal the guide shows")
+        else:
+            r.wrong(f"{label}: the guide shows a refusal the command did not "
+                    f"print:\n         {shorten(want)}")
+
+
 def run_vel(block: Block) -> Result:
     r = Result(block.label)
     where = Path(tempfile.mkdtemp(prefix="vel-", dir=WORK))
     source = "\n".join(block.body) + "\n"
+    if block.file:
+        held = HERE / block.file
+        if not held.is_file():
+            r.wrong(f"{block.label}: its file marker names {block.file}, "
+                    "which is not in this repository")
+        elif held.read_text(encoding="utf-8").replace("\r\n", "\n") != source:
+            r.wrong(f"{block.label}: the block is not {block.file} as it is "
+                    "in this repository - the page would show one program "
+                    "and its commands run another")
+        else:
+            r.ok(f"{block.label}: is {block.file}, byte for byte")
     if not re.search(r"^fn main\(", source, re.M):
         source += "\nfn main() {\n}\n"
     (where / "block.vel").write_text(source, encoding="utf-8")
@@ -1311,6 +1363,14 @@ OLD_HOST_ALLOWED = {
     "docs/renamed.md": "the page that lists every address and where it "
                        "now points",
     "docs/crosswalk.md": "the predicate types, under every spelling",
+    # 8.7: findability
+    "docs/velaris.md": "the page someone searching the old name lands on, "
+                       "whose table gives the old address and the new",
+    "plan/findability-research/findability-baseline.md":
+        "the record that the repository's homepage field still named it on "
+        "2026-09-25",
+    "plan/findability-research/measurement.md":
+        "the monthly check that it still redirects to sabline.dev",
     "packaging/farewell/README.md": "the last release under the old name",
     "playground/index.html": "it holds the sabline package's source, "
                              "predicates.py among it (build_playground.py)",
@@ -1325,7 +1385,7 @@ OLD_HOST_ALLOWED = {
 # allowed in whichever tree it lands in.
 OLD_HOST_ALLOWED_PAGES = (
     "index.html", "renamed.html", "crosswalk.html", "embedding.html",
-    "receipts.html",
+    "receipts.html", "velaris.html",
     "stability.html", "threat-model.html", "security.html", "spec.html",
     "playground.html", "search-index.json", "library.html",
     "capability/v1/index.html", "receipt/v1/index.html",
@@ -1549,6 +1609,16 @@ def main() -> int:
                     for s in spans if s not in INLINE_LISTED]
     for s in sorted(set(INLINE_LISTED) - set(spans)):
         setup.wrong(f"INLINE_LISTED has {s!r}, which no document has now")
+
+    for doc, (doc_blocks, _, _) in documents.items():
+        if doc.startswith("docs/guide-") and not any(
+                b.info == "console" and not b.illustrative
+                and re.search(r"\bE\d{3}\b", "\n".join(b.body))
+                for b in doc_blocks):
+            setup.wrong(f"{doc}: a guide shows no refusal - it needs a "
+                        "console block whose output carries an E-code")
+    if not any(doc.startswith("docs/guide-") for doc in documents):
+        setup.wrong("no docs/guide-*.md: the guides are gone")
 
     readme_blocks, readme_prose, _ = documents["README.md"]
     drift_tasks = [("domain", domain_check),

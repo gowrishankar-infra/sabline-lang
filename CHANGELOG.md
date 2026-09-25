@@ -174,6 +174,67 @@ seven of nine unchanged Sabline first answers differed, which is why every
 run is kept (`.run-2`, `.run-3`) and reported. `results.json` is
 `sabline.roundtrip/2`, with the held-out set apart.
 
+**Findable by someone with the problem, in their own words** (8.7; the
+research is in `plan/findability-research/`). A search baseline taken
+2026-09-25 found Sabline in none of 33 searches for the problem it
+addresses, under either name, and no page of sabline.dev indexed at all.
+What changed, by legitimate means only - nothing hidden, nothing written for
+a crawler instead of a reader:
+
+- **One description everywhere**: "Run code an AI wrote without handing it
+  everything you can reach." and the sentence after it open the homepage,
+  README.md's first screen and every listing - PyPI, npm, crates.io, the VS
+  Code Marketplace, the MCP bundle, and the MCP registry, whose 100-character
+  limit takes the first sentence alone. `check_listings.py` holds them to
+  it; `--github` checks the repository's description, homepage and topics.
+  Keywords lead with the words people search with (ai-agents, mcp, secrets,
+  sandbox, permissions, supply-chain-security, least-privilege).
+- **Five guides**, each titled from a phrasing people used about the
+  problem, with the link, each saying near its top what it does not do:
+  scripts that reach only the hosts you name; what a script will touch
+  before it runs; between everything and nothing; the lethal trifecta, one
+  run at a time; and secrets that should never leave your machine, which
+  says in its first paragraph that it does not stop an agent's own shell
+  reading `.env`. Every example is a file under `examples/guides/`;
+  `check_docs.py` reads each guide as a test - a `<!-- file: -->` marker
+  holds a block to its file, every guide must show a refusal, and each
+  refusal line shown must be the one printed - so a guide whose example
+  stops refusing fails the build.
+- **Comparison pages, losses first**: Deno, WASI, CaMeL and the Python
+  sandbox, generated from the recorded benchmark by
+  `build_competitors_page.py`, where a category the benchmark calls a
+  judgement call says so beside the rows it would count as a win; and
+  AILANG, written from its documentation read in full at 0.42.0.
+- **Incident pages under the names people use** ("Shai-Hulud",
+  "tj-actions/changed-files", "the xz backdoor", "slopsquatting";
+  `incidents/names.json`), and a flagship page, "We replayed 8 real
+  incidents in Sabline". `build_incidents.py` writes an incident's page only
+  once its entry says `verified: true`, and the flagship only once every
+  entry does - none do yet, so none is published; `--drafts DIR` writes
+  them to read, and `--check` fails if docs/ holds one early.
+- **The paper where Google Scholar can find it**: `build_paper.py` builds
+  the PDF with the title and author sizes Scholar's guidelines ask for,
+  served at `papers/sabline.pdf` beside a landing page carrying
+  `citation_title`, `citation_author`, `citation_publication_date`,
+  `citation_pdf_url` and `citation_doi`, and a `papers/` index; `--check`,
+  in CI, fails when the paper changes and the PDF is not rebuilt. The
+  preprint is on Zenodo: its concept DOI, 10.5281/zenodo.22952528, is the
+  landing page's and `CITATION.cff`'s, which also gains the author's ORCID
+  iD, as does the paper's title footnote. Related work gains AILANG (read in full), ETAS and AgentBound,
+  each saying where it is ahead of Sabline; the arXiv source is regenerated.
+- **The site, for search**: a title and a description of its own on every
+  page (`<!-- description: -->` in a document), canonical links, a
+  `sitemap.xml` dated from git, `robots.txt`, the IndexNow key and
+  `indexnow.yml`, which sends the pages a push to main changed once Pages
+  has published it; low-value extras labelled so in the code - OpenGraph
+  cards and one small JSON-LD block with no rating on the landing page.
+  `check_site.py` fails on a missing or repeated title or description, and,
+  in site.yml, which now checks out the whole history, on a sitemap left
+  stale by a commit that changed a page's sources and not it. The landing
+  page leads with the same two sentences, says who Sabline is for and shows
+  a refusal in one command; `/velaris` explains the rename to someone
+  searching the old name.
+
 **E101's new hints, measured: the task they were written for now works.**
 qwen2.5:7b was run three more times, with the card, tasks and settings
 above and the compiler after the E101 change. The held-out `months` answer

@@ -2,17 +2,8 @@
   "name": "sabline-lang",
   "version": "8.6.0",
   "mcpName": "io.github.gowrishankar-infra/sabline",
-  "description": "Run code you did not write. A language where a signature declares its effects and promises, and the runtime refuses anything you did not allow.",
-  "keywords": [
-    "sabline",
-    "sandbox",
-    "effects",
-    "verification",
-    "ai-generated-code",
-    "agent",
-    "mcp",
-    "prover"
-  ],
+  "description": "Run code an AI wrote without handing it everything you can reach. Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it's tried.",
+  "keywords": ["sabline", "ai-agents", "mcp", "secrets", "sandbox", "permissions", "supply-chain-security", "least-privilege", "ai-generated-code", "effects", "verification", "prover"],
   "homepage": "https://sabline.dev/",
   "repository": {
     "type": "git",

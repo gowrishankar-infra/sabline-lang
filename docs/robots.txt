@@ -1,0 +1,23 @@
+# sabline.dev, written by build_docs.py (8.7). Every crawler may read
+# everything here; the named ones are named so that saying so is
+# explicit.
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: *
+Allow: /
+
+Sitemap: https://sabline.dev/sitemap.xml

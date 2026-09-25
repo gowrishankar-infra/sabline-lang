@@ -119,6 +119,11 @@ HISTORICAL: tuple[str, ...] = (
     # The proof cache of this checkout, not source.
     ".velaris/**",
     ".sabline/**",
+    # The findability research of 8.7: what a search for the old name
+    # found on 2026-09-25, how people and registries still name it, and the
+    # monthly re-run of those searches. A record of the old name's reach,
+    # which is the point of it.
+    "plan/findability-research/**",
 )
 
 # ---------------------------------------------------------------------------
@@ -235,8 +240,23 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # the suite that scans for the variables the package reads, and the one
     # place that names velaris.toml outside project.py
     "check_self_budget.py": ("VELARIS_", "velaris.toml"),
-    # the sidebar entry for the page that says what the project was called
-    "build_docs.py": ("Velaris",),
+    # the sidebar entry for the page that says what the project was called,
+    # and (8.7) the page at /velaris that someone searching the old name
+    # lands on - its source docs/velaris.md, its address velaris.html - and
+    # the landing page's "Formerly Velaris" and JSON-LD alternateName
+    "build_docs.py": ("Velaris", "velaris.html", "velaris.md"),
+    # npm's page opens with the one description and says the old name once,
+    # so someone who knew the package as Velaris knows it is this one (8.7)
+    "npm/README.md": ("Formerly Velaris",),
+    # The page at /velaris, for someone searching the old name: what it
+    # was called, what each old name is now, and that the old ones still
+    # work in 8.x (8.7). check_docs.py names that page among those allowed
+    # to give the old address.
+    "docs/velaris.md": ("velaris", "Velaris", "VELARIS_"),
+    "check_docs.py": ("docs/velaris.md", "velaris.html"),
+    # The drafts a person posts (8.7), which say "formerly Velaris" so a
+    # reader who knew the old name recognises the project.
+    "plan/findability-kit/**": ("Velaris", "velaris.io"),
     # The final release under the old name, and the packages that hold the
     # old names on PyPI and npm so that nobody else can take them.
     "packaging/farewell/**": ("velaris", "Velaris", "VELARIS_"),

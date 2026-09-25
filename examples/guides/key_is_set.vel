@@ -1,0 +1,10 @@
+// Needs to know whether a key is set, and says so where a reviewer sees it.
+fn main() uses io, env, declassify {
+    let key = env("WEATHER_API_KEY", "")
+    let missing = declassify(key == "", "whether a key is set is not the key")
+    if missing {
+        print("WEATHER_API_KEY is not set")
+    } else {
+        print("WEATHER_API_KEY is set")
+    }
+}

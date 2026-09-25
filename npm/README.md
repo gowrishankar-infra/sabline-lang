@@ -1,6 +1,10 @@
 # sabline-lang
 
-Run code you did not write.
+**Run code an AI wrote without handing it everything you can reach.**
+
+Each function declares what it may touch. You grant the run one folder,
+one host or a number of calls, and the runtime refuses anything else the
+moment it's tried. Formerly Velaris.
 
 ```
 npx sabline-lang script.vel

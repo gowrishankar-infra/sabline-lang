@@ -221,6 +221,12 @@ jobs:
       # and the page budget; site.yml runs the same with Chrome
       - name: The documentation site holds what it says (without Chrome)
         run: python check_site.py --no-chrome
+      # one description, the same on every listing; and the paper's PDF on
+      # sabline.dev built from the paper as it is (8.7)
+      - name: Every listing opens with the same words, and the paper's PDF is current
+        run: |
+          python check_listings.py
+          python build_paper.py --check
       # the same audits and SARIF, byte for byte, on the three x64 systems
       - name: Audit and SARIF documents, for the comparison across systems
         if: matrix.python == '3.12' && matrix.deps == 'full' && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || matrix.os == 'macos-15-intel')

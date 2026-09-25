@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Access to everything, or nothing? Giving an agent&#x27;s code only what the task needs - Sabline 8.6.0</title>
+<meta name="description" content="A budget between everything and nothing: one folder to read, one to write, one host, a number of operations - and a refusal the moment a program reaches past it.">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/guide-everything-or-nothing.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Sabline">
+<meta property="og:title" content="Access to everything, or nothing? Giving an agent&#x27;s code only what the task needs - Sabline 8.6.0">
+<meta property="og:description" content="A budget between everything and nothing: one folder to read, one to write, one host, a number of operations - and a refusal the moment a program reaches past it.">
+<meta property="og:url" content="https://sabline.dev/guide-everything-or-nothing.html">
+<meta property="og:image" content="https://sabline.dev/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="roundtrip.html">Model round trip</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
+</li>
+<li><span class="sec-label">Guides</span>
+<ul><li><a href="guide-network-access.html">Why should it have Internet access? Scripts that reach only the hosts you name</a></li><li><a href="guide-before-it-runs.html">Before I ever have a chance to inspect it: what a script will touch, before it runs</a></li><li><a href="guide-everything-or-nothing.html" aria-current="page">Access to everything, or nothing? Giving an agent&#x27;s code only what the task needs</a></li><li><a href="guide-lethal-trifecta.html">The lethal trifecta, one run at a time: a script that reads private data but cannot send it</a></li><li><a href="guide-secrets-env.html">Secrets that should never leave my machine: running an agent&#x27;s scripts without your .env</a></li></ul>
+</li>
+<li><span class="sec-label">Compare</span>
+<ul><li><a href="compare-deno.html">Sabline compared with Deno&#x27;s permissions</a></li><li><a href="compare-wasi.html">Sabline compared with WASI (wasmtime)</a></li><li><a href="compare-camel.html">Sabline compared with CaMeL</a></li><li><a href="compare-python-sandbox.html">Sabline compared with a Python sandbox (smolagents)</a></li><li><a href="compare-ailang.html">Sabline compared with AILANG</a></li></ul>
+</li>
+<li><a href="papers/sabline.html">Paper</a>
+<ul><li><a href="papers/index.html">Papers</a></li></ul>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="access-to-everything-or-nothing-giving-an-agents-code-only-what-the-task-needs">Access to everything, or nothing? Giving an agent's code only what the task needs</h1>
+<blockquote>
+<p>"I shouldn't have to decide between giving a model access to <em>everything</em>
+I can access, or <em>nothing</em>." - a commenter on the
+<a href="https://news.ycombinator.com/item?id=44103863">GitHub MCP exploit thread</a>
+on Hacker News, 27 May 2025.</p>
+</blockquote>
+<p>The complaint recurs because the choice is often really that coarse. Claude
+Desktop's installer for MCP extensions warns "Installing will grant access
+to everything on your computer" (as quoted in
+<a href="https://github.com/modelcontextprotocol/mcpb/issues/177">modelcontextprotocol/mcpb#177</a>,
+filed 2026-01-07), and an agent's shell is usually either unrestricted or
+asks about every command. This guide shows the ground in between, for code
+written in Sabline: a budget that names one folder, one host, or a number of
+operations, and refuses the rest when it is tried.</p>
+<div class="callout callout-note" role="note"><p class="callout-title">Note</p>
+<p><strong>What this does not do.</strong> A budget bounds a program written in Sabline;
+it does not bound the agent that wrote it, the other MCP servers it talks
+to, or a Python or shell script. <code>sabline mcp</code> is an MCP server whose
+ceiling bounds what a model may ask <em>this</em> server for, and nothing more.
+Within a grant, a program may do anything the grant covers - it can write
+nonsense into the folder it may write to. And the budget is enforced by an
+interpreter in the program's own process, with the operating system
+holding it too, fully only on Linux (<a href="threat-model.html">the threat model</a>).</p>
+</div>
+<p><strong>Last verified:</strong> 2026-09-25. The Sabline examples run on every push; the
+quoted warning is as the issue above records it on that date.</p>
+<h2 id="the-task-and-one-step-past-it">The task, and one step past it <a class="anchor" href="#the-task-and-one-step-past-it" aria-label="Link to this section">#</a></h2>
+<p>Tidy three reports: read each from <code>reports/</code>, write a copy to <code>out/</code>. The
+script also leaves a note in a folder outside both, which nobody asked for.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="c">// Tidies three reports: reads each from reports/, writes a copy to out/.</span>
+<span class="c">// Then, unasked, it leaves a note in a folder outside both.</span>
+<span class="k">fn</span> main() <span class="k">uses</span> io, fs {
+    <span class="k">for</span> name in [<span class="s">"a.txt"</span>, <span class="s">"b.txt"</span>, <span class="s">"c.txt"</span>] {
+        <span class="k">check</span> read_file(<span class="s">"reports/"</span> + name) {
+            ok text {
+                write_file(<span class="s">"out/"</span> + name, upper(text))
+                print(<span class="s">"tidied "</span> + name)
+            }
+            <span class="k">fail</span> why {
+                print(<span class="s">"skipped "</span> + name + <span class="s">": "</span> + why)
+            }
+        }
+    }
+    write_file(<span class="s">"../notes/todo.txt"</span>, <span class="s">"tidied three reports\n"</span>)
+}</code></pre></div>
+<p><code>uses io, fs</code> is all the signature can say: files, in general. The budget
+says which.</p>
+<h2 id="one-folder-to-read-one-to-write">One folder to read, one to write <a class="anchor" href="#one-folder-to-read-one-to-write" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Console</span></div><pre tabindex="0"><code>$ sabline examples/guides/tidy_reports.vel --allow io,fs:read:./reports,fs:write:./out
+tidied a.txt
+tidied b.txt
+tidied c.txt
+error[E313] 'write_file' reaches '../notes/todo.txt' (resolved: &lt;your folder&gt;/notes/todo.txt), which this run's fs grants do not cover
+  --&gt; examples/guides/tidy_reports.vel, line 15</code></pre></div>
+<p>The three reports are tidied; the note is refused, and the run ends there.
+Every path is resolved - <code>..</code> and symbolic links included - before it is
+compared with the grant, so a path cannot climb out of <code>./out</code> by spelling.
+A read under a write-only grant, or a write under a read-only one, is refused
+the same way.</p>
+<h2 id="a-number-of-operations">A number of operations <a class="anchor" href="#a-number-of-operations" aria-label="Link to this section">#</a></h2>
+<p>A grant can also say how many. Two file operations are not enough for three
+reports:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Console</span></div><pre tabindex="0"><code>$ sabline examples/guides/tidy_reports.vel --allow io,fs:read:./reports@2,fs:write:./out
+tidied a.txt
+error[E315] 'read_file' is the 3rd fs operation, and this run allows 2
+  --&gt; examples/guides/tidy_reports.vel, line 5</code></pre></div>
+<p>Counts work on the network too: <code>net:api.example.com:443@100</code> is at most a
+hundred requests to that host.</p>
+<h2 id="when-a-model-asks-for-the-budget">When a model asks for the budget <a class="anchor" href="#when-a-model-asks-for-the-budget" aria-label="Link to this section">#</a></h2>
+<p>Sabline's MCP server lets a model write and run Sabline, and the operator
+sets the most any request may have. A model can ask for less, never more:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline mcp --max-allow io,fs:read:./reports,fs:write:./out</code></pre></div>
+<p>A request for a budget wider than that ceiling is refused before anything
+runs. <a href="embedding.html">EMBEDDING.md</a> says how the ceilings on each of
+Sabline's doors - the MCP server, the HTTP door and the library - work.</p>
+<h2 id="what-to-take-from-it">What to take from it <a class="anchor" href="#what-to-take-from-it" aria-label="Link to this section">#</a></h2>
+<ul>
+<li>"Everything or nothing" is a property of the tool, not of the task. Write
+down what the task needs - these folders, that host, about this many
+operations - and grant that.</li>
+<li>The budget is the operator's, not the program's: the program's own
+signature can only ask.</li>
+<li>For the whole agent, rather than the code it writes, the boundary has to
+be around the agent: an operating-system sandbox, a container, a VM.
+<a href="compare-wasi.html">The comparisons</a> say where that design is stronger.</li>
+</ul>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/guide-everything-or-nothing.md">docs/guide-everything-or-nothing.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#the-task-and-one-step-past-it">The task, and one step past it</a></li><li><a href="#one-folder-to-read-one-to-write">One folder to read, one to write</a></li><li><a href="#a-number-of-operations">A number of operations</a></li><li><a href="#when-a-model-asks-for-the-budget">When a model asks for the budget</a></li><li><a href="#what-to-take-from-it">What to take from it</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

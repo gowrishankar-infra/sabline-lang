@@ -1,7 +1,7 @@
 {
   "name": "sabline",
   "displayName": "Sabline",
-  "description": "Sabline language support: syntax highlighting, and live errors and proofs from the real compiler.",
+  "description": "Run code an AI wrote without handing it everything you can reach. Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it's tried.",
   "version": "8.6.0",
   "publisher": "gowrishankar-infra",
   "engines": {
@@ -60,13 +60,7 @@
   ],
   "license": "MIT",
   "icon": "icon.png",
-  "keywords": [
-    "sabline",
-    "verification",
-    "contracts",
-    "effects",
-    "formal methods"
-  ],
+  "keywords": ["sabline", "ai-agents", "mcp", "sandbox", "permissions", "least-privilege", "effects", "verification", "contracts", "formal methods"],
   "repository": {
     "type": "git",
     "url": "https://github.com/gowrishankar-infra/sabline-lang"

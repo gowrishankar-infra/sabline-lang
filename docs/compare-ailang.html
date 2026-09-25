@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Sabline compared with AILANG - Sabline 8.6.0</title>
+<meta name="description" content="AILANG 0.42.0 and Sabline, from AILANG&#x27;s documentation read in full: where AILANG is ahead comes first, then where the two differ.">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/compare-ailang.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Sabline">
+<meta property="og:title" content="Sabline compared with AILANG - Sabline 8.6.0">
+<meta property="og:description" content="AILANG 0.42.0 and Sabline, from AILANG&#x27;s documentation read in full: where AILANG is ahead comes first, then where the two differ.">
+<meta property="og:url" content="https://sabline.dev/compare-ailang.html">
+<meta property="og:image" content="https://sabline.dev/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="roundtrip.html">Model round trip</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
+</li>
+<li><span class="sec-label">Guides</span>
+<ul><li><a href="guide-network-access.html">Why should it have Internet access? Scripts that reach only the hosts you name</a></li><li><a href="guide-before-it-runs.html">Before I ever have a chance to inspect it: what a script will touch, before it runs</a></li><li><a href="guide-everything-or-nothing.html">Access to everything, or nothing? Giving an agent&#x27;s code only what the task needs</a></li><li><a href="guide-lethal-trifecta.html">The lethal trifecta, one run at a time: a script that reads private data but cannot send it</a></li><li><a href="guide-secrets-env.html">Secrets that should never leave my machine: running an agent&#x27;s scripts without your .env</a></li></ul>
+</li>
+<li><span class="sec-label">Compare</span>
+<ul><li><a href="compare-deno.html">Sabline compared with Deno&#x27;s permissions</a></li><li><a href="compare-wasi.html">Sabline compared with WASI (wasmtime)</a></li><li><a href="compare-camel.html">Sabline compared with CaMeL</a></li><li><a href="compare-python-sandbox.html">Sabline compared with a Python sandbox (smolagents)</a></li><li><a href="compare-ailang.html" aria-current="page">Sabline compared with AILANG</a></li></ul>
+</li>
+<li><a href="papers/sabline.html">Paper</a>
+<ul><li><a href="papers/index.html">Papers</a></li></ul>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="sabline-compared-with-ailang">Sabline compared with AILANG</h1>
+<p>Like AILANG, Sabline puts effects in signatures and refuses what a run was
+not granted, and both let the person running a program narrow it. Sabline's
+refusals cannot be caught by the program, its grants name several paths,
+read or write, and a host with its port, and <code>sabline audit</code> shows what a
+program can touch before it runs.</p>
+<p>AILANG is the language nearest to Sabline's: a purely functional,
+effect-typed language "designed as a deterministic execution substrate for
+AI-generated code" (its README). This page is drawn from its own
+documentation, read in full - every page of its documentation site, its
+README, CHANGELOG, SECURITY.md and <code>docs/LIMITATIONS.md</code> - and it starts
+with where AILANG is ahead.</p>
+<div class="callout callout-note" role="note"><p class="callout-title">Note</p>
+<p><strong>Last verified:</strong> 2026-09-25, against <strong>AILANG 0.42.0</strong> (released
+2026-09-23) and <strong>Sabline 8.6.0</strong>. Nothing here was measured by running
+AILANG; every statement about it is what its documentation says, with the
+page and that page's date. Where its documentation describes no
+equivalent of something, this page says "its documentation describes no"
+and means only that - it names what was searched for, not a claim about
+what AILANG cannot do. AILANG moves quickly (173 releases in a year), so
+read this against its <a href="https://github.com/sunholo-data/ailang/blob/dev/CHANGELOG.md">changelog</a>.</p>
+</div>
+<h2 id="where-ailang-is-ahead">Where AILANG is ahead <a class="anchor" href="#where-ailang-is-ahead" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>Information flow with labels you name.</strong> Values can carry labels -
+<code>&lt;pii&gt;</code>, <code>&lt;email&gt;</code>, a tenant's name - that "are not a fixed vocabulary";
+a sink can refuse a label (<code>T{not LABEL}</code>), and changing a label is an
+effect of its own, <code>! {Declassify}</code>, checked when the program is compiled
+(<a href="https://ailang.sunholo.com/docs/guides/ifc-labels">IFC labels</a>, page of
+2026-08-17). Sabline has one label: <code>Secret of T</code>.</li>
+<li><strong>Processes, narrowed to the subcommand.</strong> A process allowlist is pinned
+at start-up and can name subcommands: <code>git:status,gh:pr:list</code> "allows
+<code>git status …</code> … and refuses every other invocation"
+(<a href="https://ailang.sunholo.com/docs/reference/effects">effects</a>, page of
+2026-09-11). Sabline has no model of a subprocess: its <code>ffi:</code> grants a
+whole Python module, and <code>ffi:subprocess</code> is a shell.</li>
+<li><strong>More effects.</strong> Besides files, network, environment, clock and
+randomness: a process effect, streams, a typed <code>AI</code> effect across
+Anthropic, OpenAI, Gemini, Ollama and OpenRouter, a <code>Secret</code> effect that
+resolves 1Password references behind an approval pushed to a phone
+("code-complete - deploy-gated", on its own page), and shared memory for
+agents.</li>
+<li><strong>Counts on both sides.</strong> A function's signature can carry a maximum and
+a minimum - <code>! {IO @limit=5, Net @min=1 @limit=3}</code> - charged per call and
+to every enclosing call
+(<a href="https://ailang.sunholo.com/docs/reference/capability-budgets">capability budgets</a>,
+page of 2026-07-24); and in its policy mode the operator sets a count per
+effect for the whole run, which "a source @limit can only tighten"
+(<a href="https://ailang.sunholo.com/docs/guides/agent-tool-policy">agent tool policy</a>,
+page of 2026-09-23). Sabline's counts are the operator's alone.</li>
+<li><strong>Package effect ceilings.</strong> A package declares the most it may do
+(<code>max = ["IO"]</code>), the compiler holds it, and the package registry checks
+it again and warns when a new version widens it
+(<a href="https://ailang.sunholo.com/docs/guides/packages">packages</a>, page of
+2026-09-17). Sabline has <code>deps-diff</code> and a committed capability baseline,
+but no registry.</li>
+<li><strong>A prover that gates publishing.</strong> <code>ailang verify</code> uses Z3 over
+strings, lists, records and algebraic types, inlines calls across
+functions and unrolls recursion to a bounded depth, with counterexamples
+(<a href="https://ailang.sunholo.com/docs/guides/contracts">contracts</a>, page of
+2026-04-30), and the registry refuses to publish a package whose contract
+is refuted.</li>
+<li><strong>Property-based tests</strong>, with shrinking to a minimal counterexample.</li>
+<li><strong>A much larger public evaluation of how well models write it</strong>: 18
+models and several agent harnesses against a pinned Python baseline, with
+its losses published beside its wins - in its dashboard data for 0.32.0
+(2026-08-27), AILANG 92.1% and Python 89.4% on its core tier, and 68.3%
+against 82.8% on first attempts overall
+(<a href="https://ailang.sunholo.com/benchmarks/latest.json">benchmark data</a>).
+Sabline's own <a href="roundtrip.html">round trip</a> is far smaller.</li>
+<li><strong>Reach beyond the language.</strong> One command serves any module as an MCP,
+A2A or REST server; there are plugins for Claude Code and Codex, Go code
+generation, and an orchestration layer for fleets of agents with
+approvals and a messaging bus.</li>
+</ul>
+<h2 id="where-they-are-alike">Where they are alike <a class="anchor" href="#where-they-are-alike" aria-label="Link to this section">#</a></h2>
+<p>Effects are declared in signatures and checked by the compiler, a program
+running with an effect it was not granted is stopped, and the person running
+it can narrow what it may reach below the effect: AILANG's domain allowlist
+(<code>--net-allow-domains</code>), filesystem root (<code>AILANG_FS_SANDBOX</code>) and process
+allowlist belong to the invocation rather than the type, as Sabline's
+<code>--allow</code> grants do. Both re-check a redirect's host (AILANG since 0.41.0)
+and refuse to send through a proxy they cannot see past (AILANG in its
+policy mode), and both prove <code>requires</code> and <code>ensures</code> with Z3.</p>
+<h2 id="where-they-differ">Where they differ <a class="anchor" href="#where-they-differ" aria-label="Link to this section">#</a></h2>
+<p>As its documentation describes it, read 2026-09-25:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th></th><th>AILANG 0.42.0</th><th>Sabline</th></tr></thead>
+<tbody>
+<tr><td>A refused host or command</td><td>comes back as an error value the program can match on and carry on from (<code>DisallowedHost</code>, <code>NotAllowed</code>) - <a href="https://ailang.sunholo.com/docs/reference/effects">effects</a></td><td>ends the run; the program cannot catch it (E310, E313, E314, E315)</td></tr>
+<tr><td>Files</td><td>one root per run; write-protected paths inside it in policy mode</td><td>several grants, each read or write: <code>fs:read:./data,fs:write:./out</code></td></tr>
+<tr><td>Network</td><td>a domain allowlist; its documentation describes no grant by port</td><td>a host and its port: <code>net:api.example.com:443</code></td></tr>
+<tr><td>Counts</td><td>per function in the signature; per effect for a whole run in policy mode</td><td>per grant, set by the operator on any run: <code>net:api.example.com@100</code></td></tr>
+<tr><td>Before running</td><td>a policy admission check that names what is missing; its documentation describes no report of everything a program can touch</td><td><code>sabline audit</code>: every effect, which functions reach it, and every declassification with its reason</td></tr>
+<tr><td>Under the interpreter</td><td>Go's <code>os.Root</code> for its filesystem root; "host isolation is the container's job", and no OS sandbox is described (<a href="https://ailang.sunholo.com/docs/guides/agent-tool-policy">agent tool policy</a>)</td><td>the operating system holds the same budget - Landlock and seccomp on Linux, fully; partly on macOS and Windows - and each run says which it got</td></tr>
+<tr><td>Time and memory</td><td>a whole-run timeout in policy mode; memory is Go's soft target</td><td>a timeout and a memory cap the OS enforces (best-effort on macOS), through the library and every door</td></tr>
+<tr><td>Contracts the prover cannot settle</td><td>runtime checking is a flag (<code>--verify-contracts</code>); effectful functions are skipped</td><td>checked at run time automatically</td></tr>
+<tr><td>Failures</td><td><code>Result</code> values</td><td><code>or fail</code> in the signature, and a failure left unhandled is refused (E520)</td></tr>
+<tr><td>Python or Go called from the program</td><td>its documentation describes no effect for <code>extern func</code></td><td><code>ffi:</code> is an effect, granted per module</td></tr>
+<tr><td>A record of a run</td><td>traces, and unsigned receipts for agent dispatch</td><td>a receipt of a run when asked (<code>--receipt</code>), and in-toto attestations of the declared surface</td></tr>
+</tbody></table></div>
+<p>AILANG's own security audit found that its filesystem root could be left
+through <code>../</code> and symbolic links, and its domain allowlist through a
+redirect, until version 0.41.0 (2026-09-21), which fixed both
+(<a href="https://github.com/sunholo-data/ailang/blob/dev/CHANGELOG.md">its CHANGELOG</a>).
+Sabline's <a href="known-open.html">known-open table</a> lists what is open in Sabline
+the same way.</p>
+<h2 id="which-to-use">Which to use <a class="anchor" href="#which-to-use" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><strong>AILANG</strong>, to write whole agent programs in a language with effects:
+model calls, tools, processes, labelled data flowing between them, a
+package ecosystem and a fleet to run them in.</li>
+<li><strong>Sabline</strong>, to run a script a model wrote under a budget someone else
+sets, where a refusal must end the run and the budget should be held by
+the operating system too - and to see, before running it, what it can
+touch.</li>
+<li>Both bound only programs written in themselves.</li>
+</ul>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/compare-ailang.md">docs/compare-ailang.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#where-ailang-is-ahead">Where AILANG is ahead</a></li><li><a href="#where-they-are-alike">Where they are alike</a></li><li><a href="#where-they-differ">Where they differ</a></li><li><a href="#which-to-use">Which to use</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

