@@ -207,11 +207,14 @@ a crawler instead of a reader:
   AILANG, written from its documentation read in full at 0.42.0.
 - **Incident pages under the names people use** ("Shai-Hulud",
   "tj-actions/changed-files", "the xz backdoor", "slopsquatting";
-  `incidents/names.json`), and a flagship page, "We replayed 8 real
-  incidents in Sabline". `build_incidents.py` writes an incident's page only
-  once its entry says `verified: true`, and the flagship only once every
-  entry does - none do yet, so none is published; `--drafts DIR` writes
-  them to read, and `--check` fails if docs/ holds one early.
+  `incidents/names.json`), and a flagship page, "We examined 15 real
+  incidents and replayed 8 in Sabline", on which each of the 7 with no
+  replay says why - not covered, with nothing to run, or out of scope -
+  so none reads as left out, and `check_incidents.py` holds the draft to
+  that. `build_incidents.py` writes an incident's page only once its entry
+  says `verified: true`, and the flagship only once every entry does -
+  none do yet, so none is published; `--drafts DIR` writes them to read,
+  and `--check` fails if docs/ holds one early.
 - **The paper where Google Scholar can find it**: `build_paper.py` builds
   the PDF with the title and author sizes Scholar's guidelines ask for,
   served at `papers/sabline.pdf` beside a landing page carrying

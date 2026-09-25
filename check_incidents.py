@@ -28,6 +28,10 @@ GAPS        every PARTIAL, NOT COVERED and UNVERIFIED entry says in one
 PAGE        docs/incidents.md is what build_incidents.py writes from the
             entries, and no entry marked `verified: false` has its summary
             published on it.
+FLAGSHIP    the flagship, drafted whether or not it is published, gives in
+            its title how many incidents were examined and how many were
+            replayed, and has a row for every entry: a replayed one with
+            its line of budget, any other with why it has no replay.
 
 test.yml runs this on every push, and release.yml starts only when test.yml
 has passed on the commit, so no release is made from a tree where a STOPPED
@@ -154,6 +158,37 @@ def page() -> None:
                    f"sources anyway", meta["slug"] in published)
 
 
+def flagship(found: list[dict[str, str]]) -> None:
+    """The flagship, as drafted whether or not it is published: its title
+    gives how many incidents were examined and how many replayed, and every
+    entry is on it - a replayed one with its line of budget, any other with
+    the reason it has no replay - so none reads as left out."""
+    import build_incidents
+    entries_ = build_incidents.read()
+    text = build_incidents.every_page(entries_)[build_incidents.FLAGSHIP]
+    ran = sum(1 for e in entries_ if e["runs"])
+    title = text.split("\n", 1)[0]
+    expect("the flagship's title gives both counts, examined and replayed",
+           title == f"# We examined {len(found)} real incidents and "
+                    f"replayed {ran} in Sabline", title)
+    known = build_incidents.names()
+    rows = [ln for ln in text.split("\n") if ln.startswith("| [")]
+    for e in entries_:
+        mine = [ln for ln in rows if f"(incident-{e['slug']}.md)" in ln]
+        expect(f"{e['slug']}: the flagship has one row for it",
+               len(mine) == 1 and known[e["slug"]]["name"] in mine[0],
+               mine)
+        if len(mine) != 1:
+            continue
+        if e["verdict"] in build_incidents.NO_REPLAY:
+            reason = build_incidents.NO_REPLAY[e["verdict"]]
+            expect(f"{e['slug']}: its row says why it has no replay",
+                   reason[0].upper() + reason[1:] in mine[0], mine[0])
+        else:
+            expect(f"{e['slug']}: it was replayed, and its row gives the "
+                   f"line of budget", e["runs"], mine[0])
+
+
 def first_sentence(text: str) -> str:
     """The opening of an entry's 'What happened', which is the thing a page
     must not carry while the entry is unverified."""
@@ -174,6 +209,8 @@ def main() -> int:
     gaps(found)
     print("the page")
     page()
+    print("the flagship")
+    flagship(found)
     print("-" * 62)
     if FAILED:
         print(f"{len(FAILED)} FAILED, {PASSED[0]} passed")
