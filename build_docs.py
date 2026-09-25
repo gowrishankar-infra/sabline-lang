@@ -123,12 +123,14 @@ INDEXNOW_KEY = "27f58369084ca5db3a8438eb1dfc254a"
 # The paper (8.7): paper/sabline.pdf is built from paper/arxiv/sabline.tex
 # (paper/SUBMITTING.md's pdflatex steps) and copied here to papers/, where
 # Google Scholar can find it beside a landing page. PAPER_DATE is the day
-# that PDF was built; PAPER_DOI stays empty until a DOI is minted for it,
-# and the landing page carries citation_doi only once it is set.
+# that PDF was built. PAPER_DOI is Zenodo's concept DOI for the paper, which
+# resolves to its newest version there, so it stays right when a rebuilt PDF
+# is uploaded as a new version (paper/SUBMITTING.md section 8); the landing
+# page carries it as citation_doi.
 PAPER_SOURCE = "paper/sabline.md"
 PAPER_PDF = "paper/sabline.pdf"
 PAPER_DATE = "2026-09-25"
-PAPER_DOI = ""
+PAPER_DOI = "10.5281/zenodo.22952528"
 
 
 def earlier_sites() -> tuple[str, ...]:
@@ -882,7 +884,9 @@ def paper_pages(known: set[str]) -> list[Page]:
                    f"  title       = {{{meta['title']}}},\n"
                    f"  institution = {{sabline.dev}},\n"
                    f"  year        = {{{PAPER_DATE[:4]}}},\n"
-                   f"  url         = {{{SITE}/papers/sabline.pdf}}\n}}"),
+                   + (f"  doi         = {{{PAPER_DOI}}},\n" if PAPER_DOI
+                      else "")
+                   + f"  url         = {{{SITE}/papers/sabline.pdf}}\n}}"),
     ]
     index = [
         heading(1, "Papers", slug),

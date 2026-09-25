@@ -1,6 +1,7 @@
 ---
 title: "Sabline: effects in signatures, budgets at run time, and a baseline for a repository's capability surface"
 author: "Palakurthi Gowri Shankar"
+thanks: "Palakurthi Gowri Shankar, ORCID iD <https://orcid.org/0009-0007-0004-2955>."
 date: "Draft of 2026-09-11 - not submitted"
 bibliography: references.bib
 link-citations: true

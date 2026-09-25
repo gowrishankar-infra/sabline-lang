@@ -288,8 +288,8 @@ at <https://sabline.dev/papers/sabline.pdf>, beside a landing page,
 <https://sabline.dev/papers/sabline.html>, that carries the tags Google
 Scholar reads - `citation_title`, `citation_author`,
 `citation_publication_date`, `citation_pdf_url` and
-`citation_technical_report_institution`, with `citation_doi` once a DOI
-exists - and shows the abstract without a click. Scholar's inclusion
+`citation_technical_report_institution` and `citation_doi` - and shows
+the abstract without a click. Scholar's inclusion
 guidelines (<https://scholar.google.com/intl/en/scholar/inclusion.html>,
 read 2026-09-25) ask for the PDF in the same directory as that page, one
 paper to a URL, under 5 MB, the title in 24 points or more and the authors
@@ -303,7 +303,20 @@ then pdflatex, bibtex, pdflatex, pdflatex. It rebuilds arXiv's
 `paper/built.json` the SHA-256 of `sabline.md`, `references.bib` and
 `scholar.tex` as built. `python build_paper.py --check`, which CI runs,
 fails when any of them has changed since; `build_docs.py` copies the PDF
-to `papers/`, and `PAPER_DATE` there is the day it was built. **No DOI has
-been minted**: Zenodo has no record for this paper or this repository (searched
-2026-09-25), and minting one needs the author's own account.
+to `papers/`, and `PAPER_DATE` there is the day it was built.
+
+**The DOIs** (Zenodo, minted 2026-09-25 from the author's account; the
+record names the author with ORCID iD 0009-0007-0004-2955):
+
+- **10.5281/zenodo.22952528, the concept DOI** - all versions; it resolves
+  to the newest. It is the one this repository uses: `PAPER_DOI` in
+  `build_docs.py`, so the landing page's `citation_doi`, its DOI link and
+  its BibTeX; and `doi` in `CITATION.cff`. Cite this one.
+- **10.5281/zenodo.22952529, version 1** - one file, `sabline.pdf`, as
+  built on 2026-09-25 before the ORCID iD was added to the paper's front
+  matter (MD5 `b226d51a24860b1080fd41872bdc2e56`). Nothing here uses it;
+  it is for citing those exact bytes. The PDF built since carries the
+  ORCID iD in a footnote on the title and is not on Zenodo; uploading it
+  as a new version there gives it a DOI of its own under the same concept
+  DOI.
 

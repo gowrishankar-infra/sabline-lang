@@ -215,10 +215,12 @@ a crawler instead of a reader:
 - **The paper where Google Scholar can find it**: `build_paper.py` builds
   the PDF with the title and author sizes Scholar's guidelines ask for,
   served at `papers/sabline.pdf` beside a landing page carrying
-  `citation_title`, `citation_author`, `citation_publication_date` and
-  `citation_pdf_url`, and a `papers/` index; `--check`, in CI, fails when
-  the paper changes and the PDF is not rebuilt. No DOI exists yet, so none
-  is claimed. Related work gains AILANG (read in full), ETAS and AgentBound,
+  `citation_title`, `citation_author`, `citation_publication_date`,
+  `citation_pdf_url` and `citation_doi`, and a `papers/` index; `--check`,
+  in CI, fails when the paper changes and the PDF is not rebuilt. The
+  preprint is on Zenodo: its concept DOI, 10.5281/zenodo.22952528, is the
+  landing page's and `CITATION.cff`'s, which also gains the author's ORCID
+  iD, as does the paper's title footnote. Related work gains AILANG (read in full), ETAS and AgentBound,
   each saying where it is ahead of Sabline; the arXiv source is regenerated.
 - **The site, for search**: a title and a description of its own on every
   page (`<!-- description: -->` in a document), canonical links, a

@@ -276,10 +276,12 @@ them to read, and <code>--check</code> fails if docs/ holds one early.</li>
 <li><strong>The paper where Google Scholar can find it</strong>: <code>build_paper.py</code> builds
 the PDF with the title and author sizes Scholar's guidelines ask for,
 served at <code>papers/sabline.pdf</code> beside a landing page carrying
-<code>citation_title</code>, <code>citation_author</code>, <code>citation_publication_date</code> and
-<code>citation_pdf_url</code>, and a <code>papers/</code> index; <code>--check</code>, in CI, fails when
-the paper changes and the PDF is not rebuilt. No DOI exists yet, so none
-is claimed. Related work gains AILANG (read in full), ETAS and AgentBound,
+<code>citation_title</code>, <code>citation_author</code>, <code>citation_publication_date</code>,
+<code>citation_pdf_url</code> and <code>citation_doi</code>, and a <code>papers/</code> index; <code>--check</code>,
+in CI, fails when the paper changes and the PDF is not rebuilt. The
+preprint is on Zenodo: its concept DOI, 10.5281/zenodo.22952528, is the
+landing page's and <code>CITATION.cff</code>'s, which also gains the author's ORCID
+iD, as does the paper's title footnote. Related work gains AILANG (read in full), ETAS and AgentBound,
 each saying where it is ahead of Sabline; the arXiv source is regenerated.</li>
 <li><strong>The site, for search</strong>: a title and a description of its own on every
 page (<code>&lt;!-- description: --&gt;</code> in a document), canonical links, a
