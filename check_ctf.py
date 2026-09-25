@@ -357,7 +357,9 @@ def stderr_filter() -> None:
           "z3-solver)")
 
     def timed_out(who: str, secs: str) -> str:
-        return (f"note: the proof of {who} ran out of time after {secs}s "
+        # the runtime's own wording, its own quoting of the name included
+        # (sabline/prover.py, the abandoned-proof note)
+        return (f"note: the proof of '{who}' ran out of time after {secs}s "
                 "and was abandoned - nothing was proven and nothing was "
                 "refuted, so its promises are checked while running "
                 "instead. This is not 'the prover found nothing wrong'. "
@@ -369,8 +371,12 @@ def stderr_filter() -> None:
     expect("the z3 note is filtered out", judge.normalise_stderr(z3) == "")
     expect("the prover's timing note is the same however long it took",
            judge.normalise_stderr(timed_out("tally", "3"))
-           == judge.normalise_stderr(timed_out("tally", "11.5")),
+           == judge.normalise_stderr(timed_out("tally", "11.5"))
+           == judge.normalise_stderr(timed_out("tally", "0.25")),
            judge.normalise_stderr(timed_out("tally", "3")))
+    expect("and it really was matched, not left alone",
+           judge.normalise_stderr(timed_out("tally", "3"))
+           != timed_out("tally", "3"))
     expect("the prover's timing note still carries the function's name, so "
            "a secret put where the name goes is not filtered away",
            judge.normalise_stderr(timed_out("SECRET-aaa", "3"))
