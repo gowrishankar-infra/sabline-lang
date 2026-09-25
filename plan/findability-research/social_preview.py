@@ -14,7 +14,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+# Pillow is the one thing this needs that the project does not install; CI's
+# lint job runs without it, so mypy takes it as untyped there
+from PIL import (  # type: ignore[import-not-found, unused-ignore]
+    Image, ImageDraw, ImageFont)
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
