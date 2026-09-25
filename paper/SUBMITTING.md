@@ -280,3 +280,30 @@ by single spaces.
    `paper/arxiv/` (zipped locally as `paper/arxiv-submission.zip`, which
    is not committed), enter the metadata (section 4), choose the
    licence (section 5), read arXiv's build, submit.
+
+## 8. The PDF on sabline.dev, for Google Scholar
+
+Separate from arXiv, and not a substitute for it: the paper is also served
+at <https://sabline.dev/papers/sabline.pdf>, beside a landing page,
+<https://sabline.dev/papers/sabline.html>, that carries the tags Google
+Scholar reads - `citation_title`, `citation_author`,
+`citation_publication_date`, `citation_pdf_url` and
+`citation_technical_report_institution`, with `citation_doi` once a DOI
+exists - and shows the abstract without a click. Scholar's inclusion
+guidelines (<https://scholar.google.com/intl/en/scholar/inclusion.html>,
+read 2026-09-25) ask for the PDF in the same directory as that page, one
+paper to a URL, under 5 MB, the title in 24 points or more and the authors
+in 16 to 23 points on the first page, a section headed "References", and no
+bitmap (Type 3) fonts.
+
+`python build_paper.py` makes it: the command of README-for-me.txt's step 1
+with `--ascii` and `-H scholar.tex`, which sets the title and author sizes,
+then pdflatex, bibtex, pdflatex, pdflatex. It rebuilds arXiv's
+`sabline.tex` and `sabline.bbl` in the same run, and records in
+`paper/built.json` the SHA-256 of `sabline.md`, `references.bib` and
+`scholar.tex` as built. `python build_paper.py --check`, which CI runs,
+fails when any of them has changed since; `build_docs.py` copies the PDF
+to `papers/`, and `PAPER_DATE` there is the day it was built. **No DOI has
+been minted**: Zenodo has no record for this paper or this repository (searched
+2026-09-25), and minting one needs the author's own account.
+

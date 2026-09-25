@@ -5,12 +5,20 @@ build-backend = "hatchling.build"
 [project]
 name = "sabline-lang"
 version = "8.6.0"
-description = "The language where you can trust code you didn't write - signatures declare types, effects, and machine-checked promises."
+description = "Run code an AI wrote without handing it everything you can reach. Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it's tried."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "Palakurthi Gowri Shankar" }]
-keywords = ["language", "compiler", "verification", "effects", "contracts", "z3"]
+# the words people search with first (8.7), then how it is built
+keywords = ["ai-agents", "mcp", "secrets", "sandbox", "permissions",
+            "supply-chain-security", "least-privilege", "language",
+            "compiler", "verification", "effects", "contracts", "z3"]
+classifiers = ["Intended Audience :: Developers",
+               "Programming Language :: Python :: 3",
+               "Topic :: Security",
+               "Topic :: Software Development :: Compilers",
+               "Topic :: Software Development :: Interpreters"]
 
 [project.optional-dependencies]
 full = ["z3-solver", "llvmlite"]

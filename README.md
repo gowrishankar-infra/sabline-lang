@@ -8,11 +8,11 @@
 
 # Sabline
 
-**An AI wrote you a script. Run it anyway.**
+**Run code an AI wrote without handing it everything you can reach.**
 
-A language where a function's signature declares what it may touch —
-and the runtime refuses anything you did not allow, whatever the code
-says about itself.
+Each function declares what it may touch. You grant the run one folder,
+one host or a number of calls, and the runtime refuses anything else the
+moment it's tried.
 
 Not a security boundary by itself: an interpreter in the program's own
 process enforces the budget. From 8.4 the operating system is asked to hold
@@ -25,11 +25,40 @@ and each run says which it got ([THREAT_MODEL.md](THREAT_MODEL.md),
 [![release](https://img.shields.io/github/v/release/gowrishankar-infra/sabline-lang)](https://github.com/gowrishankar-infra/sabline-lang/releases)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-[**Playground**](https://sabline.dev/playground.html) · [**Documentation**](https://sabline.dev/) · [**Reference**](SPEC.md) · [**Library**](https://sabline.dev/library.html) · [**Errors**](https://sabline.dev/errors.html)
+[**Playground**](https://sabline.dev/playground.html) · [**Documentation**](https://sabline.dev/) · [**Guides**](https://sabline.dev/guide-network-access.html) · [**Reference**](SPEC.md) · [**Paper**](https://sabline.dev/papers/sabline.html)
+
+Formerly **Velaris** - [why the name changed](https://sabline.dev/velaris.html)
 
 </div>
 
 <img src="docs/hero.png" alt="Sabline refusing a network call because the run only allowed io" width="100%">
+
+**Who it is for.** The person about to run a program a model wrote - on a
+laptop, in CI, behind an MCP server - who wants what it can touch bounded by
+what they said, not by what the program says about itself. It bounds
+programs written in Sabline, not a Python or shell script the same model
+might write instead.
+
+**See it refuse, in one command** - no arguments, no network, under a
+minute. It writes the kind of script an agent writes (read `./.env`, post it
+to a webhook), runs it with no budget given, and shows the refusal and the
+run's receipt; then the same task inside a budget:
+
+<!-- illustrative lines 1: installs from PyPI -->
+```sh
+pip install sabline-lang
+sabline demo
+```
+
+<!-- output of: sabline demo -->
+```text
+error[E310] 'read_file' needs the 'fs' effect, which this run does not allow (it allows: io)
+exit 1. receipt: refused; E310 (fs) at line 6; grants used: none
+3 setting(s); the report is in out/report.txt
+```
+
+It writes what it runs and reads nothing of yours; `--keep` leaves the files,
+and `sabline receipt show` renders either receipt as a page.
 
 ---
 
@@ -79,20 +108,6 @@ caveats every review raised, the ffi cliff, unbounded execution, and
 `fs` and `net` with no path or host list, are now precise permissions
 rather than holes. It is a real guard for the situation everyone is
 now in — running a program someone, or something, else wrote.
-
-**To see it happen**, with nothing to read first (8.5):
-
-<!-- illustrative: writes and runs its own files in a temporary directory -->
-```sh
-sabline demo
-```
-
-It writes the kind of script an agent writes - read `./.env`, post it to a
-webhook - runs it with no budget given, and shows the refusal, its line and
-the run's receipt; then the same task inside a budget, and what differs
-between the two receipts. No arguments, no network, under a minute; it
-writes what it runs and reads nothing of yours. `--keep` leaves the files,
-and `sabline receipt show` renders either receipt as a page.
 
 ## The other half: promises, proven
 

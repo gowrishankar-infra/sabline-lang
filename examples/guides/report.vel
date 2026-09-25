@@ -1,0 +1,33 @@
+// Counts the settings in a file and posts the count to a status API.
+// Everything it may touch is in the signatures; nothing else is possible.
+fn count_settings(text: Text) -> Int {
+    let count = 0
+    for line in split(text, "\n") {
+        if contains(line, "=") {
+            count = count + 1
+        }
+    }
+    return count
+}
+
+fn send_status(count: Int) -> Text uses net {
+    check post("https://status.example.com/api/settings", to_text(count)) {
+        ok answer {
+            return "posted"
+        }
+        fail why {
+            return "not posted: " + why
+        }
+    }
+}
+
+fn main() uses io, fs, net {
+    check read_file("settings.txt") {
+        ok found {
+            print(send_status(count_settings(found)))
+        }
+        fail why {
+            print("no settings.txt: " + why)
+        }
+    }
+}

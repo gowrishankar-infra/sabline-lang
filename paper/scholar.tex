@@ -1,0 +1,11 @@
+% Loaded only for the PDF on sabline.dev (paper/sabline.pdf), never for
+% arXiv's package: Google Scholar's inclusion guidelines ask for the title
+% in a font of 24 points or more and the authors in 16 to 23 points, each
+% on its own line below it (scholar.google.com/intl/en/scholar/
+% inclusion.html, read 2026-09-25). The default article title is about
+% 17 points. paper/SUBMITTING.md section 8 gives the command.
+\usepackage{titling}
+\pretitle{\begin{center}\fontsize{24}{29}\selectfont\bfseries}
+\posttitle{\par\end{center}\vskip 0.6em}
+\preauthor{\begin{center}\fontsize{16}{20}\selectfont\begin{tabular}[t]{c}}
+\postauthor{\end{tabular}\par\end{center}}

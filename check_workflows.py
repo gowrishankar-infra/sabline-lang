@@ -33,6 +33,18 @@ practices, reports kept as files; one stylesheet, one script, no third party
 and 100 KB a page; and test.yml running check_site.py. Each rule is also
 broken once in a copy, and must be caught.
 
+site.yml checks out the whole history (8.7): check_site.py reads git to
+tell whether a page's sources changed in a commit that did not rewrite
+sitemap.xml, and a shallow clone has no history to read.
+
+Then indexnow.yml (8.7), which tells IndexNow what a push to main changed:
+it runs on page_build alone and only in this repository, with a read-only
+token, every action pinned by sha, a checkout of two commits keeping no
+credential, no secret, and one step, `python indexnow.py`; and indexnow.py
+sends only pages at the top of the site - never a copy under latest/ or a
+major.minor/, an asset or the search index. Each rule is broken once in a
+copy, and must be caught.
+
 Last, farewell-vscode.yml (8.6.0), the one-off that publishes the final
 version of the old VS Code extension: by hand only, a read-only token,
 every action pinned by sha, main checked out keeping no credential, and
@@ -514,6 +526,12 @@ def site_problems(doc: dict[Any, Any], text: str, rc: dict[str, Any],
                      f"third party and 100 KB a page: {sizes}, {counts}")
     if "python check_site.py" not in test_yml:
         found.append("test.yml does not run check_site.py")
+    checkouts = [s for job in jobs.values() for s in steps(job)
+                 if str(s.get("uses", "")).startswith("actions/checkout@")]
+    if not checkouts or any((s.get("with") or {}).get("fetch-depth") != 0
+                            for s in checkouts):
+        found.append("the checkout is shallow, and check_site.py needs the "
+                     "history to tell whether sitemap.xml is stale")
     return found
 
 
@@ -577,6 +595,97 @@ def site() -> None:
            doc=lambda d: d.__setitem__("permissions", {"contents": "write"}))
     broken("when test.yml stops running check_site.py", "test.yml",
            test_yml=lambda y: y.replace("python check_site.py", "python other.py"))
+    broken("with a shallow checkout", "shallow",
+           doc=lambda d: d["jobs"]["site"]["steps"][0]["with"].pop("fetch-depth"))
+
+
+def indexnow_problems(doc: dict[Any, Any], text: str) -> list[str]:
+    """What is wrong with indexnow.yml; nothing when it holds."""
+    found = []
+    triggers = doc.get("on", doc.get(True))
+    if triggers != "page_build" and set(triggers or {}) != {"page_build"}:
+        found.append(f"runs on more than page_build: {triggers}")
+    jobs: dict[str, dict[str, Any]] = doc.get("jobs") or {}
+    if doc.get("permissions") != {"contents": "read"} or any(
+            job.get("permissions") for job in jobs.values()):
+        found.append("a token that may do more than read the repository")
+    for line in re.findall(r"^\s*(?:-\s+)?uses:\s*(.*)$", text, re.M):
+        action, _, comment = line.partition("#")
+        if not SHA_PINNED.match(action.strip()) or not re.match(r"\s*v\d", comment):
+            found.append(f"not pinned by commit sha with its version: {line.strip()}")
+    if re.search(r"secrets\.", text):
+        found.append("names a secret")
+    for name, job in jobs.items():
+        if "github.repository == 'gowrishankar-infra/sabline-lang'" not in \
+                str(job.get("if", "")):
+            found.append(f"{name}: would run in a fork too")
+        for s in steps(job):
+            if str(s.get("uses", "")).startswith("actions/checkout@"):
+                with_ = s.get("with") or {}
+                if with_.get("persist-credentials") is not False:
+                    found.append(f"{name}: a checkout that keeps its credential")
+                if with_.get("fetch-depth") != 2:
+                    found.append(f"{name}: does not check out the two commits "
+                                 "whose difference it sends")
+        runs = [str(s["run"]).strip() for s in steps(job) if "run" in s]
+        if runs != ["python indexnow.py"]:
+            found.append(f"{name}: runs more than python indexnow.py: {runs}")
+    return found
+
+
+def indexnow() -> None:
+    print()
+    print("indexnow.yml and indexnow.py")
+    print("-" * 62)
+    text = (HERE / ".github" / "workflows" / "indexnow.yml").read_text(encoding="utf-8")
+    doc = workflow("indexnow.yml")
+    problems = indexnow_problems(doc, text)
+    ok("indexnow.yml runs on page_build in this repository only, with a "
+       "read-only token, every action pinned by sha, two commits checked out "
+       "keeping no credential, no secret, and python indexnow.py alone",
+       not problems, "\n          ".join(problems))
+
+    def broken(label: str, want: str, **change: Any) -> None:
+        d, x = copy.deepcopy(doc), text
+        if "text" in change:
+            x = change["text"](x)
+        if "doc" in change:
+            change["doc"](d)
+        got = indexnow_problems(d, x)
+        ok(f"...and it is refused {label}", any(want in g for g in got), str(got))
+
+    job = next(iter(doc["jobs"]))
+    broken("on a push as well", "more than page_build",
+           doc=lambda d: d.__setitem__("on", {"page_build": None, "push": None}))
+    broken("with a token that may write", "more than read",
+           doc=lambda d: d.__setitem__("permissions", {"contents": "write"}))
+    broken("with an action pinned by tag", "not pinned by commit sha",
+           text=lambda x: x.replace(
+               "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6",
+               "actions/setup-python@v6"))
+    broken("naming a secret", "names a secret",
+           text=lambda x: x + "\n# ${{ secrets.INDEXNOW }}\n")
+    broken("in a fork", "fork",
+           doc=lambda d: d["jobs"][job].__setitem__("if", "true"))
+    broken("keeping the checkout's credential", "keeps its credential",
+           doc=lambda d: d["jobs"][job]["steps"][0]["with"].__setitem__(
+               "persist-credentials", True))
+    broken("running something else too", "runs more than",
+           doc=lambda d: d["jobs"][job]["steps"].append({"run": "git push"}))
+
+    import indexnow as sender
+    names = ["docs/index.html", "docs/guide-network-access.html",
+             "docs/latest/guide-network-access.html", "docs/8.7/index.html",
+             "docs/assets/site.css", "docs/search-index.json",
+             "docs/sitemap.xml", "docs/papers/sabline.pdf",
+             "docs/papers/index.html", "README.md"]
+    from build_docs import SITE as site
+    want = [f"{site}/", f"{site}/guide-network-access.html",
+            f"{site}/papers/", f"{site}/papers/sabline.pdf"]
+    got = sender.changed_urls(names)
+    ok("indexnow.py sends the pages at the top and the paper, and never a "
+       "copy under latest/ or a major.minor/, an asset, the search index or "
+       "the sitemap", got == want, str(got))
 
 
 VSCE_PUBLISH = re.compile(r'vsce\s+publish\s+--pat\s+"\$VSCE_TOKEN"')
@@ -793,6 +902,7 @@ def main() -> int:
     issues()
     models()
     site()
+    indexnow()
     farewell_vscode()
     print("-" * 62)
     print(f"{PASS} correct, {FAIL} wrong")

@@ -1,8 +1,8 @@
 [package]
 name = "sabline-rt"
-description = "The Sabline runtime: a lexer and a parser that agree, token for token and node for node, with the Python reference implementation."
+description = "Run code an AI wrote without handing it everything you can reach. Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it's tried."
 readme = "../../README.md"
-keywords = ["sabline", "capability", "parser", "compiler"]
+keywords = ["sabline", "least-privilege", "sandbox", "parser", "compiler"]
 categories = ["parser-implementations", "compilers"]
 version.workspace = true
 edition.workspace = true

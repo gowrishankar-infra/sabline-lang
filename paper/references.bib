@@ -28,6 +28,17 @@
 % section 5 are quoted from them. "TypeGuard" is the prototype's name
 % and does not appear in 2605.12863's abstract, which is why the note
 % carries it rather than the title.
+%
+% Two entries added on 2026-09-25 (8.7), each read in full from its own
+% source on that date: tan2026etas against arXiv 2607.17780v1 - its
+% abstract page, the API's metadata (title, five authors in order,
+% 2026-07-20, cs.PL) and the paper's text; buhler2026agentbound against
+% arXiv 2510.21236v3 and its published version, whose venue, volume,
+% article number, pages and DOI are Crossref's record of
+% 10.1145/3808103 - the authors ask to be cited through it.
+% ailang moved from 0.20.1 to 0.42.0 the same day, read in full: the
+% README, all 205 pages of its documentation site, its CHANGELOG and
+% SECURITY.md; its title is the project's own description of itself.
 
 @inproceedings{odersky2026tacit,
   author    = {Odersky, Martin and Zhao, Yaoyu and Xu, Yichen and
@@ -214,12 +225,13 @@
 
 @software{ailang,
   author       = {Edmondson, Mark},
-  title        = {{AILANG}: row-polymorphic effects with capability grants},
-  version      = {0.20.1},
+  title        = {{AILANG}: an effect-typed language for {AI}-generated code},
+  version      = {0.42.0},
   year         = {2026},
   url          = {https://github.com/sunholo-data/ailang},
-  note         = {Version 0.20.1.
-                  \url{https://github.com/sunholo-data/ailang}}
+  note         = {Version 0.42.0, 23 September 2026; documentation at
+                  \url{https://ailang.sunholo.com/}, read in full on
+                  25 September 2026}
 }
 
 @software{sabline_lang,
@@ -240,6 +252,31 @@
   url          = {https://github.com/gowrishankar-infra/sabline-spec},
   note         = {Version 0.5.1.
                   \url{https://github.com/gowrishankar-infra/sabline-spec}}
+}
+
+@misc{tan2026etas,
+  author        = {Tan, Huiri and Wang, Yikun and Zhang, Puyang and
+                   Li, Shangyu and Shen, Jiasi},
+  title         = {{ETAS}: An Effect-Typed Language for Agent Systems},
+  year          = {2026},
+  howpublished  = {arXiv:2607.17780},
+  eprint        = {2607.17780},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.PL},
+  note          = {Version 1, 20 July 2026}
+}
+
+@article{buhler2026agentbound,
+  author        = {B{\"u}hler, Christoph and Biagiola, Matteo and
+                   Di Grazia, Luca and Salvaneschi, Guido},
+  title         = {{AgentBound}: Securing Execution Boundaries of {AI} Agents},
+  journal       = {Proceedings of the ACM on Software Engineering},
+  volume        = {3},
+  number        = {FSE},
+  pages         = {2141--2164},
+  year          = {2026},
+  doi           = {10.1145/3808103},
+  note          = {Article FSE096, FSE 2026. arXiv:2510.21236}
 }
 
 @misc{zhou2026lbac,

@@ -19,6 +19,13 @@ Allan, A. (2026b).
 \newblock {Vera}: a language with mandatory contracts and tiered verification.
 \newblock Version 0.1.13. \url{https://github.com/aallan/vera}.
 
+\bibitem[B{\"u}hler et~al., 2026]{buhler2026agentbound}
+B{\"u}hler, C., Biagiola, M., Di~Grazia, L., and Salvaneschi, G. (2026).
+\newblock {AgentBound}: Securing execution boundaries of {AI} agents.
+\newblock {\em Proceedings of the ACM on Software Engineering},
+  3(FSE):2141--2164.
+\newblock Article FSE096, FSE 2026. arXiv:2510.21236.
+
 \bibitem[{Bytecode Alliance}, 2026]{rustsec2026trailing}
 {Bytecode Alliance} (2026).
 \newblock Filesystem sandbox escape when paths or symlinks contain trailing
@@ -74,8 +81,9 @@ Dennis, J.~B. and Van~Horn, E.~C. (1966).
 
 \bibitem[Edmondson, 2026]{ailang}
 Edmondson, M. (2026).
-\newblock {AILANG}: row-polymorphic effects with capability grants.
-\newblock Version 0.20.1. \url{https://github.com/sunholo-data/ailang}.
+\newblock {AILANG}: an effect-typed language for {AI}-generated code.
+\newblock Version 0.42.0, 23 September 2026; documentation at
+  \url{https://ailang.sunholo.com/}, read in full on 25 September 2026.
 
 \bibitem[{escapeboy}, 2026]{boruna}
 {escapeboy} (2026).
@@ -157,6 +165,12 @@ Palakurthi, G.~S. (2026b).
 \newblock {Supply-chain Levels for Software Artifacts}.
 \newblock \url{https://slsa.dev}.
 \newblock Including its provenance predicate. Accessed 2026-09-11.
+
+\bibitem[Tan et~al., 2026]{tan2026etas}
+Tan, H., Wang, Y., Zhang, P., Li, S., and Shen, J. (2026).
+\newblock {ETAS}: An effect-typed language for agent systems.
+\newblock arXiv:2607.17780.
+\newblock Version 1, 20 July 2026.
 
 \bibitem[Torres-Arias et~al., 2019]{torresarias2019intoto}
 Torres-Arias, S., Afzali, H., Kuppusamy, T.~K., Curtmola, R., and Cappos, J.

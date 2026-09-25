@@ -8,7 +8,10 @@ written from benchmark/competitors/results.json.
 
 The first page publishes the table - the date, each runtime's version, the
 scenarios, each category's count for all seven tools - and says, before
-anything else, where a competitor is ahead. The second has every row with
+anything else, where a competitor is ahead. Four more (8.7) take one
+competitor each - Deno, WASI, CaMeL and the Python sandbox - as
+docs/compare-*.md: the same record, losses first, then every row that
+differs, for a reader who arrived asking about that one tool. The second has every row with
 its verdicts and notes, and the rest every cell's evidence line; none of it
 fits on one page within the site's page budget, so it is split, never
 trimmed. benchmark/compete.py records the
@@ -863,6 +866,146 @@ def self_test(r: dict[str, Any]) -> int:
     return 1 if faults else 0
 
 
+# One page per competitor (8.7): (the page, its title, the tool's name in
+# running text, a page that says more about the same tool)
+COMPARE = {
+    "deno": ("compare-deno.md", "Sabline compared with Deno's permissions",
+             "Deno", None),
+    "wasi": ("compare-wasi.md", "Sabline compared with WASI (wasmtime)",
+             "WASI", None),
+    "camel": ("compare-camel.md", "Sabline compared with CaMeL", "CaMeL",
+              ("agentdojo.md", "the AgentDojo run")),
+    "sandbox": ("compare-python-sandbox.md",
+                "Sabline compared with a Python sandbox (smolagents)",
+                "the Python sandbox", None),
+}
+COMPARED_AS = {"ahead": "ahead", "timing-ahead": "earlier", "tie": "tie",
+               "timing-behind": "later", "behind": "behind", "n/a": "n/a"}
+
+
+def evidence_part(r: dict[str, Any]) -> dict[int, int]:
+    """{category number: the evidence page holding it}, as evidence_pages
+    packs them."""
+    found: dict[int, int] = {}
+    for part, text in enumerate(evidence_pages(r), 1):
+        for cat in r["categories"]:
+            if f"\n## {cat['number']}. " in "\n" + text:
+                found[cat["number"]] = part
+    return found
+
+
+def compare_page(r: dict[str, Any], tool: str) -> str:
+    """docs/compare-<tool>.md: one competitor against Sabline, from the
+    record. Where it is ahead comes first - by design, then row by row -
+    then where it is earlier, where Sabline is, and what is not compared."""
+    rows: list[dict[str, Any]] = r["programs"]
+    labels: dict[str, str] = r["labels"]
+    meta = r["meta"]
+    rt = meta["runtimes"]
+    _, title, name, also = COMPARE[tool]
+    part = evidence_part(r)
+    by = {k: [x for x in rows if COMPARED_AS[compare_row(x, tool)] == k]
+          for k in ("ahead", "earlier", "tie", "later", "behind", "n/a")}
+    label = labels[tool]
+    version = rt[tool]["version"] + (f", {rt[tool]['detail']}"
+                                     if rt[tool].get("detail") else "")
+    w: list[str] = []
+    p = w.append
+
+    def row_table(chosen: list[dict[str, Any]], why: bool) -> None:
+        p(f"| Row | Category | Program | {label} | Sabline |"
+          + (" Why |" if why else ""))
+        p("|---|---|---|---|---|" + ("---|" if why else ""))
+        for x in chosen:
+            ev = f"competitors-evidence-{part[x['category']]}.md"
+            name_ = x["name"] + ("" if x["dangerous"] else " (control)")
+            p(f"| [{x['id']}]({ev}) | {x['category']}. "
+              f"{x['category_title'].replace('|', '/')} | `{name_}` | "
+              f"{cell_text(x, tool)} | {cell_text(x, 'sabline')} |"
+              + (f" {why_ahead(x, tool)} |" if why else ""))
+        p("")
+
+    p(f"# {title}")
+    p("")
+    p(f"<!-- description: {label} {rt[tool]['version']} against Sabline "
+      f"{rt['sabline']['version']} on {len(rows)} measured programs, "
+      f"{meta['date']}: where {name} is ahead ({len(by['ahead'])} rows) "
+      "comes first. -->")
+    p("")
+    p(f"{label} and Sabline, run on the same {len(rows)} programs of "
+      "Sabline's comparison benchmark, each in its own real runtime. This "
+      "page takes the one tool from [the competitor table](competitors.md), "
+      f"and starts with where {name} does better.")
+    p("")
+    p("> [!NOTE]")
+    p(f"> **Last verified:** {meta['date']}, on {meta['platform']}: "
+      f"**{label}** {version}, **Sabline** {rt['sabline']['version']}. "
+      "Every verdict below comes from a program that ran, recorded in "
+      f"[results.json]({REPO}/blob/main/benchmark/competitors/results.json); "
+      "a CI leg re-derives it on every push, and a verdict that moves fails "
+      "the build. A score on this corpus is not what either tool is for - "
+      "the next section is.")
+    p("")
+    p(f"## Where {name} is stronger by design")
+    p("")
+    p(BY_DESIGN[tool])
+    p("")
+    p(f"## Where {name} is ahead, row by row")
+    p("")
+    if by["ahead"]:
+        p(f"{len(by['ahead'])} of the {len(rows)} rows: a better outcome - the "
+          "danger stopped with the task's work intact where Sabline's refusal "
+          "ended the task, a catch Sabline missed, or a correct program run "
+          "clean where Sabline stopped it. The row links to its evidence.")
+        p("")
+        row_table(by["ahead"], True)
+    else:
+        p(f"On none of the {len(rows)} rows.")
+        p("")
+    if by["earlier"]:
+        p(f"## Where {name} is earlier")
+        p("")
+        p(f"The same outcome, but {name} reached it before running and Sabline "
+          "while running:")
+        p("")
+        row_table(by["earlier"], False)
+    p("## Where Sabline is ahead")
+    p("")
+    if by["behind"]:
+        p(f"{len(by['behind'])} rows where Sabline's outcome is the better "
+          f"one, and {len(by['later'])} where both reached the same outcome "
+          f"and Sabline reached it earlier - before running, where {name} "
+          "did while running.")
+        p("")
+        row_table(by["behind"], False)
+        # a category the benchmark itself calls a judgement call says so
+        # here too, beside the rows it would otherwise count as a win
+        for number in sorted({x["category"] for x in by["behind"]}):
+            if number in LONE_REVIEW:
+                p(f"**Category {number} is a judgement call, not a clean "
+                  f"win.** {LONE_REVIEW[number]}")
+                p("")
+    else:
+        p(f"On no row is Sabline's outcome better; on {len(by['later'])} it "
+          "reached the same one earlier.")
+        p("")
+    p("## The rest")
+    p("")
+    cats = sorted({x["category"] for x in by["tie"]})
+    p(f"{len(by['tie'])} rows are a tie - the same outcome at the same time"
+      + (f", in categories {', '.join(str(c) for c in cats)}" if cats else "")
+      + f". {len(by['n/a'])} are not compared: rows {name} cannot express"
+      + (", and rows outside its threat model" if tool == "camel" else "")
+      + " ([the rule](competitors.md#how-each-column-was-run)). Every row, "
+      "with every tool's verdict and its notes, is on "
+      "[the scenario page](competitors-scenarios.md).")
+    p("")
+    if also:
+        p(f"See also [{also[1]}]({also[0]}).")
+        p("")
+    return "\n".join(w)
+
+
 def main(argv: list[str]) -> int:
     if not RESULTS.exists():
         print("no benchmark/competitors/results.json "
@@ -883,7 +1026,9 @@ def main(argv: list[str]) -> int:
              (OUT.parent / "competitors-scenarios.md",
               scenario_page(r, len(parts)))] + [
         (OUT.parent / f"competitors-evidence-{i}.md", text)
-        for i, text in enumerate(parts, 1)]
+        for i, text in enumerate(parts, 1)] + [
+        (OUT.parent / COMPARE[tool][0], compare_page(r, tool))
+        for tool in COMPARE]
     names = {out.name for out, _ in pages}
     extra = sorted(q for q in OUT.parent.glob("competitors-evidence-*.md")
                    if q.name not in names)

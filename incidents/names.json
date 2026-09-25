@@ -1,0 +1,80 @@
+{
+  "about": "What people call each incident, from plan/findability-research/phrasings.md (2026-09-25): the name a page is titled with, other names in use, and one page showing the name in use. build_incidents.py titles each incident's page with `name`. Hacker News counts in that file are exact-phrase searches.",
+  "names": {
+    "amazon-q-extension-wiper": {
+      "name": "The Amazon Q wiper prompt",
+      "also": ["the malicious Amazon Q pull request", "CVE-2025-8217"],
+      "in_use": "https://news.ycombinator.com/item?id=44675557"
+    },
+    "camoleak-copilot-chat": {
+      "name": "CamoLeak",
+      "also": [],
+      "in_use": "https://news.ycombinator.com/item?id=45553422"
+    },
+    "circleci-oauth-token-theft": {
+      "name": "The CircleCI breach",
+      "also": ["the CircleCI incident", "rotate your CircleCI secrets"],
+      "in_use": "https://news.ycombinator.com/item?id=34390449"
+    },
+    "echoleak-m365-copilot": {
+      "name": "EchoLeak",
+      "also": ["CVE-2025-32711", "the zero-click Microsoft 365 Copilot leak"],
+      "in_use": "https://news.ycombinator.com/item?id=44250774"
+    },
+    "github-mcp-toxic-agent-flow": {
+      "name": "The GitHub MCP exploit",
+      "also": ["toxic agent flows (Invariant Labs' term)"],
+      "in_use": "https://news.ycombinator.com/item?id=44097390"
+    },
+    "mcp-remote-command-injection": {
+      "name": "CVE-2025-6514 (mcp-remote)",
+      "also": ["the mcp-remote RCE"],
+      "in_use": "https://jfrog.com/blog/2025-6514-critical-mcp-remote-rce-vulnerability/"
+    },
+    "mcp-tool-poisoning": {
+      "name": "MCP tool poisoning",
+      "also": ["the MCP rug pull"],
+      "in_use": "https://news.ycombinator.com/item?id=43601612"
+    },
+    "nx-s1ngularity": {
+      "name": "The Nx (s1ngularity) attack",
+      "also": ["s1ngularity", "Nx compromised"],
+      "in_use": "https://news.ycombinator.com/item?id=45059583"
+    },
+    "package-hallucination": {
+      "name": "Slopsquatting",
+      "also": ["package hallucination", "hallucinated packages"],
+      "in_use": "https://news.ycombinator.com/item?id=44810695"
+    },
+    "postmark-mcp-bcc-exfiltration": {
+      "name": "postmark-mcp",
+      "also": ["the first malicious MCP server in the wild"],
+      "in_use": "https://news.ycombinator.com/item?id=45395925"
+    },
+    "shai-hulud-npm-worm": {
+      "name": "Shai-Hulud",
+      "also": ["the Shai-Hulud npm worm", "Shai-Hulud 2.0"],
+      "in_use": "https://news.ycombinator.com/item?id=45260741"
+    },
+    "solana-web3js-backdoor": {
+      "name": "The Solana web3.js backdoor",
+      "also": ["the @solana/web3.js supply chain attack"],
+      "in_use": "https://news.ycombinator.com/item?id=42322739"
+    },
+    "tj-actions-changed-files": {
+      "name": "tj-actions/changed-files",
+      "also": ["the tj-actions attack", "CVE-2025-30066"],
+      "in_use": "https://news.ycombinator.com/item?id=43367987"
+    },
+    "ultralytics-pypi-cache-poisoning": {
+      "name": "The Ultralytics attack",
+      "also": ["the Ultralytics supply-chain attack"],
+      "in_use": "https://news.ycombinator.com/item?id=42388607"
+    },
+    "xz-utils-backdoor": {
+      "name": "The xz backdoor",
+      "also": ["Jia Tan", "CVE-2024-3094", "the xz utils backdoor"],
+      "in_use": "https://news.ycombinator.com/item?id=39877267"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+// Tidies three reports: reads each from reports/, writes a copy to out/.
+// Then, unasked, it leaves a note in a folder outside both.
+fn main() uses io, fs {
+    for name in ["a.txt", "b.txt", "c.txt"] {
+        check read_file("reports/" + name) {
+            ok text {
+                write_file("out/" + name, upper(text))
+                print("tidied " + name)
+            }
+            fail why {
+                print("skipped " + name + ": " + why)
+            }
+        }
+    }
+    write_file("../notes/todo.txt", "tidied three reports\n")
+}

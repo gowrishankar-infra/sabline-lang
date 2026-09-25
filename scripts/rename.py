@@ -235,8 +235,14 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # the suite that scans for the variables the package reads, and the one
     # place that names velaris.toml outside project.py
     "check_self_budget.py": ("VELARIS_", "velaris.toml"),
-    # the sidebar entry for the page that says what the project was called
-    "build_docs.py": ("Velaris",),
+    # the sidebar entry for the page that says what the project was called,
+    # and (8.7) the page at /velaris that someone searching the old name
+    # lands on - its source docs/velaris.md, its address velaris.html - and
+    # the landing page's "Formerly Velaris" and JSON-LD alternateName
+    "build_docs.py": ("Velaris", "velaris.html", "velaris.md"),
+    # npm's page opens with the one description and says the old name once,
+    # so someone who knew the package as Velaris knows it is this one (8.7)
+    "npm/README.md": ("Formerly Velaris",),
     # The final release under the old name, and the packages that hold the
     # old names on PyPI and npm so that nobody else can take them.
     "packaging/farewell/**": ("velaris", "Velaris", "VELARIS_"),

