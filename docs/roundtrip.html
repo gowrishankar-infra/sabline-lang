@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Model round trip - Sabline 8.6.0</title>
+<title>Model round trip - Sabline 8.7.0</title>
 <meta name="description" content="For each model, the same small tasks asked for twice - as a Sabline program, with the language card LLM.md in the prompt, and as a Python program, with none ...">
-<meta name="sabline-version" content="8.6.0">
+<meta name="sabline-version" content="8.7.0">
 <link rel="canonical" href="https://sabline.dev/roundtrip.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sabline">
-<meta property="og:title" content="Model round trip - Sabline 8.6.0">
+<meta property="og:title" content="Model round trip - Sabline 8.7.0">
 <meta property="og:description" content="For each model, the same small tasks asked for twice - as a Sabline program, with the language card LLM.md in the prompt, and as a Python program, with none ...">
 <meta property="og:url" content="https://sabline.dev/roundtrip.html">
 <meta property="og:image" content="https://sabline.dev/assets/og.png">
@@ -25,7 +25,7 @@
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
 <a class="brand" href="index.html">Sabline</a>
-<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<a class="badge" href="versions.html" aria-label="Version 8.7.0, all versions"><span>8.7.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -69,7 +69,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.7.0 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-3.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -78,7 +78,7 @@
 <p>For each model, the same small tasks asked for twice - as a Sabline program, with the language card <a href="llms.txt">LLM.md</a> in the prompt, and as a Python program, with none - and each answer compiled, run, and checked by the same check in both languages. A failed answer goes back to the model with the toolchain's own message, for at most 6 rounds; a wrong answer is not sent back, so the feedback never carries the answer. This is <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/plan/8.7.md">plan/8.7.md</a> section 2: the number that speaks to whether a model can write this language, beside the language models already write. The page is generated from <code>evals/roundtrip/results.json</code>, which <code>roundtrip_eval.py</code> re-derives from the recorded replies on every push, with no model and no key.</p>
 <p>The tasks are in two sets, reported apart: the original 10, which the card was changed in answer to after the first recording, and 5 held out from that change - written and committed before it, by the person who then made it, so they are held out from the edit and not from its author. A row is one recording: a model, the card it was given and the task set it was asked, each named by the first eight hex digits of its SHA-256, and the compiler whose messages it was sent back: the SHA-256 of the sabline package's source, recorded from the E101 rerun on, since a changed message changes what a model is told as much as a changed card does. A recording that names no compiler was sent the messages from before E101 said what a keyword is for. The current card is <code>37fda3ac</code> and the current task set <code>297f3d34</code>; a recording is scored on the tasks it was asked, by today's checks.</p>
 <div class="callout callout-note" role="note"><p class="callout-title">Note</p>
-<p><strong>Scored</strong> on Linux x86_64, Python 3.12, Sabline 8.6.0. Each row gives the model's exact version and the date its replies were recorded; a recording more than 183 days old is marked <strong>stale</strong> when this page is built, and its numbers are not carried to a newer version of the model.</p>
+<p><strong>Scored</strong> on Linux x86_64, Python 3.12, Sabline 8.7.0. Each row gives the model's exact version and the date its replies were recorded; a recording more than 183 days old is marked <strong>stale</strong> when this page is built, and its numbers are not carried to a newer version of the model.</p>
 </div>
 <h2 id="the-numbers">The numbers <a class="anchor" href="#the-numbers" aria-label="Link to this section">#</a></h2>
 <h3 id="the-original-ten-tasks">The original ten tasks <a class="anchor" href="#the-original-ten-tasks" aria-label="Link to this section">#</a></h3>
@@ -384,7 +384,7 @@ python roundtrip_eval.py --live anthropic:claude-sonnet-5   # needs your key; co
 <p>The recordings, one file per model, card and task set, are in <a href="https://github.com/gowrishankar-infra/sabline-lang/tree/main/evals/roundtrip/recordings">evals/roundtrip/recordings</a>, with every reply, the feedback it got and the tokens it used.</p>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/roundtrip.md">docs/roundtrip.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/roundtrip.md">docs/roundtrip.md</a> by build_docs.py, for Sabline 8.7.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
 <nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#the-numbers">The numbers</a><ul><li><a href="#the-original-ten-tasks">The original ten tasks</a></li><li><a href="#the-held-out-tasks">The held-out tasks</a></li><li><a href="#every-failed-attempt-by-what-went-wrong">Every failed attempt, by what went wrong</a></li><li><a href="#every-task">Every task</a></li></ul></li><li><a href="#what-the-full-set-would-cost">What the full set would cost</a></li><li><a href="#what-it-does-not-show">What it does not show</a></li><li><a href="#reproducing-it">Reproducing it</a></li></ul></nav>

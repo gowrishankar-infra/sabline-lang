@@ -8,13 +8,13 @@
     "source": "github"
   },
   "websiteUrl": "https://sabline.dev/",
-  "version": "8.6.0",
+  "version": "8.7.0",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "sabline-lang",
-      "version": "8.6.0",
+      "version": "8.7.0",
       "runtimeHint": "python",
       "runtimeArguments": [
         {
@@ -34,7 +34,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "sabline-lang",
-      "version": "8.6.0",
+      "version": "8.7.0",
       "transport": {
         "type": "stdio"
       },

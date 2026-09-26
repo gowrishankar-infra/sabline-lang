@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sabline-lang"
-version = "8.6.0"
+version = "8.7.0"
 description = "Run code an AI wrote without handing it everything you can reach. Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it's tried."
 readme = "README.md"
 requires-python = ">=3.10"

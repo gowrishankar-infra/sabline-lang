@@ -20,7 +20,7 @@ doi: "10.5281/zenodo.22952528"
 repository-code: "https://github.com/gowrishankar-infra/sabline-lang"
 url: "https://sabline.dev/"
 license: MIT
-version: "8.6.0"
+version: "8.7.0"
 date-released: "2026-09-20"
 keywords:
   - programming language

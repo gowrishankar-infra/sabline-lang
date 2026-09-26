@@ -5,10 +5,27 @@ below 8.6 uses the name it had at the time, which is what the
 record is for. [docs/renamed.md](docs/renamed.md) says what
 moved where.
 
-**Since v9.0.0-alpha.4, not yet released.** One line, which moves into
-the entry for the next version when there is one - this is where
-`check_api.py` looks for it while VERSION is one a tag already has
-(RELEASING.md).
+## 8.7.0 - Evidence
+
+**A page the site had stopped writing stayed at the top of it.**
+`build_docs.py` stages `latest/` and the release's `major.minor/` and swaps
+each into place, so each holds exactly what that build wrote. The top is
+written where it stands - it has to be, because every earlier release's
+directory lives under it - and nothing swept it, so a page the generator
+wrote once and stopped writing stayed there: served, in no `sitemap.xml`,
+linked from no page, and still titled with the version that wrote it. The
+changelog is split to the page budget and re-split on every release, and
+this entry packed the 8.x group into three pages where 8.6.0 needed four,
+which left `changelog-8-4.html` at the top saying "Sabline 8.6.0". The
+build now takes such a page away and says which, and `check_site.py` plants
+one at the top and one below it and fails if either survives - and plants a
+page without the generator's own `<meta name="sabline-version">`, and an
+earlier release's directory, and fails if either is touched. The one thing
+that still names the retired address is `docs/8.6/changelog-8-4.html`, an
+archive no build rewrites, in its canonical link and its `og:url`; those
+are hints in a `<head>` and not a link a reader can follow, so `check_docs.py`
+excuses them there and nowhere else - not a visible `href` in an archive,
+and nothing outside one.
 
 api: `tests/api/golden.json`'s `http.log` changes shape. It was a list
 of the shape of each line of `sabline serve`'s invocation log, in the

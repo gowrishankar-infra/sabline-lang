@@ -383,6 +383,20 @@ def build(out: Path) -> build_docs.Built:
         encoding="utf-8")
     (out / "latest").mkdir()
     (out / "latest" / "stale.html").write_text("an earlier build's", encoding="utf-8")
+    # ...and at the TOP, which is written in place rather than swapped, so
+    # a page an earlier release wrote and this one does not is left behind
+    # unless the build takes it away (8.7). The changelog is split to a page
+    # budget, so an entry added to it re-splits the group and the last page
+    # of the old split is exactly this: 8.7.0 left changelog-8-4.html at the
+    # top, still titled 8.6.0, in no sitemap and linked from no page.
+    # A page is this generator's if it carries the version meta it writes
+    # into every page; one without it is somebody else's and stays.
+    MARKER = '<!DOCTYPE html><meta name="sabline-version" content="8.6.0">'
+    (out / "gone.html").write_text(MARKER, encoding="utf-8")
+    (out / "papers").mkdir(parents=True, exist_ok=True)
+    (out / "papers" / "gone.html").write_text(MARKER, encoding="utf-8")
+    (out / "by-hand.html").write_text(
+        "<!DOCTYPE html><title>not this generator's</title>", encoding="utf-8")
     return build_docs.build(out)
 
 
@@ -400,6 +414,20 @@ def check_build(out: Path, built: build_docs.Built) -> None:
        and f'href="{build_docs.VERSION_DIR}/index.html"' in versions)
     ok("latest/ holds nothing this build did not write",
        not (out / "latest" / "stale.html").exists())
+    # the top is written in place, so this is the one tree that has to be
+    # swept rather than replaced (8.7)
+    ok("the top holds no page of this generator's that this build did not "
+       "write, at the top or below it",
+       not (out / "gone.html").exists()
+       and not (out / "papers" / "gone.html").exists(),
+       [p for p in ("gone.html", "papers/gone.html") if (out / p).exists()])
+    ok("...and says which ones it took away",
+       sorted(built.removed) == ["gone.html", "papers/gone.html"],
+       sorted(built.removed))
+    ok("...and leaves a page that is not this generator's where it is",
+       (out / "by-hand.html").is_file())
+    ok("...and an earlier release's directory, every page of which carries "
+       "the same mark", (out / "0.1" / "index.html").is_file())
     prefixes = [t.prefix for t in built.trees]
     ok(f"three trees: the top, latest/ and {build_docs.VERSION_DIR}/",
        prefixes == ["", "latest/", f"{build_docs.VERSION_DIR}/"], prefixes)
