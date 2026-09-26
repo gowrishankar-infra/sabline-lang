@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Changelog - Sabline 8.6.0</title>
+<title>Changelog - Sabline 8.7.0</title>
 <meta name="description" content="Every release of Sabline, newest first, one page for each major version. The text is CHANGELOG.md&#x27;s.">
-<meta name="sabline-version" content="8.6.0">
+<meta name="sabline-version" content="8.7.0">
 <link rel="canonical" href="https://sabline.dev/changelog.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sabline">
-<meta property="og:title" content="Changelog - Sabline 8.6.0">
+<meta property="og:title" content="Changelog - Sabline 8.7.0">
 <meta property="og:description" content="Every release of Sabline, newest first, one page for each major version. The text is CHANGELOG.md&#x27;s.">
 <meta property="og:url" content="https://sabline.dev/changelog.html">
 <meta property="og:image" content="https://sabline.dev/assets/og.png">
@@ -25,7 +25,7 @@
 <div class="bar">
 <button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
 <a class="brand" href="index.html">Sabline</a>
-<a class="badge" href="versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<a class="badge" href="versions.html" aria-label="Version 8.7.0, all versions"><span>8.7.0</span></a>
 <div class="search" role="search">
 <label class="vh" for="search">Search the documentation</label>
 <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
@@ -69,7 +69,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html" aria-current="page">Changelog</a>
-<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.7.0 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-3.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -81,301 +81,25 @@
 below 8.6 uses the name it had at the time, which is what the
 record is for. <a href="renamed.html">docs/renamed.md</a> says what
 moved where.</p>
-<p><strong>Since v9.0.0-alpha.4, not yet released.</strong> One line, which moves into
-the entry for the next version when there is one - this is where
-<code>check_api.py</code> looks for it while VERSION is one a tag already has
-(RELEASING.md).</p>
-<p>api: <code>tests/api/golden.json</code>'s <code>http.log</code> changes shape. It was a list
-of the shape of each line of <code>sabline serve</code>'s invocation log, in the
-order the lines were in the file; it is now an object keyed by the
-request that produced the line, holding that line's <code>endpoint</code> and
-<code>outcome</code> as <strong>values</strong> and the shape of the whole line. Nothing the
-HTTP door offers changed, and no line of the log changed: this is what
-the suite records, not what the door does. The reason is that the door
-is a <code>ThreadingHTTPServer</code> and writes its line after it has answered, so
-the order of the file was a race the old golden depended on - it failed
-once on a Windows leg in 8.4 and again on #97, and never reproduced.
-<code>check_api.py</code> now waits for each request's line before making the next
-one, and terminates the door only once its last line is in. The new form
-also catches things the old one could not: which endpoint a line names,
-and which outcome, are now part of the golden.</p>
-<p>An <strong>incident catalogue</strong>, in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/README.md">incidents/</a> and on
-<a href="incidents.html">/incidents.html</a>. Fifteen publicly
-reported incidents from 2023 onward in this project's lane - AI agent
-failures and supply-chain attacks where code ran with more authority than
-it should have - each with the primary report it was written from, and a
-verdict on whether a program of the same <em>shape</em> is refused: STOPPED,
-PARTIAL, NOT COVERED, UNVERIFIED, or OUT OF SCOPE where nothing ran. A
-STOPPED or PARTIAL entry carries a real program, the command, the refusal
-the runtime printed and the receipt, recorded by <code>incident_evidence.py</code>
-and re-run by <code>check_incidents.py</code> on every push, so no release is made
-from a tree where one has stopped refusing. It is not a claim that adopting
-Sabline would have prevented any of the real events, and every entry says
-which part of its incident is outside Sabline entirely; the seven new rows
-in the known-open table are where those sentences went, each now naming the
-milestone that would close it or saying nothing will. A "How these were
-chosen" section states the window, the lane and the primary-source rule, and
-that this is a selection and not a survey. Every summary carries
-<code>verified: false</code> until a person has checked it against its sources, and
-<code>build_incidents.py</code> will not publish one that does. One candidate, an agent
-that deleted a production database (Replit, July 2025), was dropped for lack
-of any primary source - its record is participants' posts and the news that
-quoted them - and <code>incidents/FACTCHECK.md</code> keeps every source's evidence,
-row by row, behind the summaries.</p>
-<p><code>tj-actions-changed-files</code> gains a Linux-only evidence step: under full
-confinement (8.4) the runtime is refused a read of another process's memory
-and the run ends with E319. A step may now name <code>platforms</code>; it runs and is
-checked only where it applies, held to its assertions and recorded in no
-<code>refusal.txt</code>, so a refusal one operating system makes and another does not
-is evidence here without making the recorded bytes differ from machine to
-machine.</p>
-<p>The known-open table has a page of its own,
-<a href="known-open.html">docs/known-open.md</a>, with the crosswalk's section that
-lands each of its rows on a framework's controls. Those seven rows took
-threat-model.html and crosswalk.html past the 100,000-byte page budget, and
-the table grows every time a gap is recorded honestly, so it was moved
-rather than trimmed and the budget stays where it was. THREAT_MODEL.md
-keeps its Known open heading, which links to the page, and every word of
-the table and the section is where it was moved to.</p>
-<p><strong>Competitor scoring</strong> (<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/benchmark/competitors/README.md">benchmark/competitors/</a>,
-<a href="competitors.html">/competitors.html</a>): the comparison
-benchmark run through Deno, CPython's WASI build under wasmtime, Starlark,
-smolagents' Python sandbox and CaMeL's reference implementation, each in its
-own pinned runtime, every cell's command and output recorded, and a CI leg
-that re-derives the table and fails if a cell moves. Its first version had
-Sabline ahead or level on every row, which said more about the benchmark
-than the tools, so it was corrected before it was published. <strong>Five
-categories were added (16 to 20, 102 programs now)</strong> where a competitor
-should win or Sabline should lose: a leak through a granted channel, one
-legitimate subprocess, correct programs Sabline's rules refuse (a loop
-until the input ends, Euclid's algorithm, 25! and a product modulo
-2^61 - 1), danger below the language in a granted library or its native
-code, and rows that check the task's legitimate work still got done. <strong>The
-scoring changed for every column alike:</strong> the outcome first and the timing
-only on a tie; a <code>task</code> check, so a runtime that stops everything scores as
-a catch with the task broken; before-running credit only where a tool's
-design has a static step; Sabline's audit credited only on the marked
-dangerous line, as Deno's lint always was; CaMeL scored only on the rows its
-threat model claims; and a scenario a runtime cannot express recorded with
-the reason. Sabline now loses rows, and the page says which first.
-<code>benchmark/results.json</code> is re-recorded at this checkout. Corpus 13a's
-JavaScript no longer calls <code>require</code>, which Deno does not define, so Deno's
-catch there is now its permission check. The receipt sections of
-EMBEDDING.md moved to <a href="receipts.html">docs/receipts.md</a>, to keep the
-embedding page inside the page budget.</p>
-<p><strong>The model round trip</strong> (<code>roundtrip_eval.py</code>,
-<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/evals/roundtrip/README.md">evals/roundtrip/</a>,
-<a href="roundtrip.html">/roundtrip.html</a>): for each model, ten
-small tasks asked for in Sabline, with the language card, and in Python,
-each answer compiled, run and checked by one check for both languages, with
-the toolchain's own messages sent back for up to six rounds and never the
-answer. A failed attempt is reported as one of four things - did not
-compile, refused by the budget, crashed, wrong output - per model with its
-exact version and date. Asking a model is <code>--live</code>, off by default and
-refused under CI; every reply is recorded, and a CI job re-derives every
-verdict from the recordings with no model and no key. One free model is
-recorded: <code>qwen2.5:7b</code>, locally, makes 7 of 10 tasks work in Sabline (6 on
-the first answer) and 9 of 10 in Python. The page publishes what asking
-every priced model would cost, from the vendors' published prices.</p>
-<p><strong>E101 says what a keyword is for.</strong> A keyword where a value belongs used
-to get the fix "expected a number, string, variable, or function call"; in
-the round trip's recording a model read that as an instruction, wrote
-<code>fail(...)</code> as a call, and sent the same program back until its six rounds
-ran out. Now <code>fail</code> after <code>or</code> is told that <code>or fail</code> belongs in a
-signature and how to handle or pass up a failure (<code>check ... { ok ... fail ... }</code>, or <code>try</code> inside an <code>or fail</code> function); <code>invariant</code> in a function
-body is told it is a loop clause, and that a promise about a result is
-<code>ensures</code>; any other keyword is told it cannot be a value, and that writing
-it as a call does not make it one. The message and the code are unchanged.
-Both parsers say the same words - sabline-rt's too, which the agreement
-gate compares - and <code>tests/error_messages</code> holds them: a golden entry may
-now hold its fixes, and four E101 cases do.</p>
-<p><strong>E101 says where <code>requires</code> and <code>ensures</code> go.</strong> In the round trip's E101
-rerun, a model moved a function's <code>{</code> above its <code>requires</code> and was told
-four times only that a keyword cannot be a value. Now <code>requires</code> or
-<code>ensures</code> where a statement belongs is told it is a clause of a function's
-signature, written after its return type and before its <code>{</code>, with an
-example (and, for <code>ensures</code>, that <code>result</code> is what the function returns).
-The second fix gives the order: <code>uses</code> and <code>or fail</code> first, then <code>requires</code>
-and <code>ensures</code>, all before the <code>{</code>; and inside a body, a value is tested with
-<code>if</code>. The message and the code are unchanged, both parsers say the same
-words, and two more golden cases hold them. The known-open list now says
-that <code>sabline replay</code> does not print the operating-system-layer line, and
-why.</p>
-<p><strong>A run whose grants turn the operating system layer off says so on
-stderr.</strong> Plain <code>ffi</code>, <code>ffi:os</code>, <code>ffi:subprocess</code> and the other modules the
-confinement table widens to nothing enforced, and a module the table does
-not name - even one that does not exist - each turn the layer off for the
-whole run, which until now only the receipt and <code>sabline audit</code> said. A
-command-line run now writes one line as the program is about to run, on
-one condition, the receipt's: its OS policy is not enforced because of
-what the budget grants. The line says which grant: <code>sabline: ffi:os is granted, so the operating system layer is off for this run: the budget is the only boundary</code>, or <code>plain ffi grants any module</code>, or <code>ffi:NAME is not in the confinement table</code>. Nothing else changes: the run, its exit status
-and its receipt are what they were, <code>sabline.run()</code>, <code>sabline replay</code>,
-<code>sabline serve</code> and a <code>Pool</code> write nothing new, and <code>--no-confine</code> says its
-own line instead. The package-hallucination incident's recording shows it,
-for the invented <code>huggingface_cli</code>.</p>
-<p><strong>The card changed where the round trip pointed, and did not move the
-number.</strong> Three fixes to LLM.md, and nothing else: the example to imitate
-no longer imports <code>std.vel</code> (six of ten first answers copied that line, and
-in one it was the whole failure), <code>a to b</code> stopping before <code>b</code> is said first
-among the rules, and <code>or fail</code> gets a wrong-then-right pair. Before the card
-was touched, five held-out tasks were committed (two ranges, a number read
-from standard input, two helpers a model might give a standard-library
-name) and <code>parse</code> got a second input, because the first recording's answer
-compared its input with "42" and printed a fixed 43. qwen2.5:7b, three runs
-of each card on the fifteen tasks: the original ten, Sabline 7, 6 and 6 on
-the first answer with the old card and 6, 6 and 6 with the new, 7 within
-six rounds every time; the held-out five, 0 on the first answer and 1
-within with the old card, 1 and 1 with the new; Python 9 of 10 and 5 of 5
-throughout. That is a one-task move, and it is read as noise. Under it, the
-card fixed <code>parse</code>, <code>larger</code> and the held-out <code>total</code> and broke <code>write</code> and
-<code>home_set</code> - the example's first line is now <code>import "log.vel" as log</code>,
-which the model copies instead - while the range rule fixed none of the
-three range tasks and over-corrected one. The same card, model build and
-options do not give the same answers twice: against the first recording,
-seven of nine unchanged Sabline first answers differed, which is why every
-run is kept (<code>.run-2</code>, <code>.run-3</code>) and reported. <code>results.json</code> is
-<code>sabline.roundtrip/2</code>, with the held-out set apart.</p>
-<p><strong>Findable by someone with the problem, in their own words</strong> (8.7; the
-research is in <code>plan/findability-research/</code>). A search baseline taken
-2026-09-25 found Sabline in none of 33 searches for the problem it
-addresses, under either name, and no page of sabline.dev indexed at all.
-What changed, by legitimate means only - nothing hidden, nothing written for
-a crawler instead of a reader:</p>
-<ul>
-<li><strong>One description everywhere</strong>: "Run code an AI wrote without handing it
-everything you can reach." and the sentence after it open the homepage,
-README.md's first screen and every listing - PyPI, npm, crates.io, the VS
-Code Marketplace, the MCP bundle, and the MCP registry, whose 100-character
-limit takes the first sentence alone. <code>check_listings.py</code> holds them to
-it; <code>--github</code> checks the repository's description, homepage and topics.
-Keywords lead with the words people search with (ai-agents, mcp, secrets,
-sandbox, permissions, supply-chain-security, least-privilege).</li>
-<li><strong>Five guides</strong>, each titled from a phrasing people used about the
-problem, with the link, each saying near its top what it does not do:
-scripts that reach only the hosts you name; what a script will touch
-before it runs; between everything and nothing; the lethal trifecta, one
-run at a time; and secrets that should never leave your machine, which
-says in its first paragraph that it does not stop an agent's own shell
-reading <code>.env</code>. Every example is a file under <code>examples/guides/</code>;
-<code>check_docs.py</code> reads each guide as a test - a <code>&lt;!-- file: --&gt;</code> marker
-holds a block to its file, every guide must show a refusal, and each
-refusal line shown must be the one printed - so a guide whose example
-stops refusing fails the build.</li>
-<li><strong>Comparison pages, losses first</strong>: Deno, WASI, CaMeL and the Python
-sandbox, generated from the recorded benchmark by
-<code>build_competitors_page.py</code>, where a category the benchmark calls a
-judgement call says so beside the rows it would count as a win; and
-AILANG, written from its documentation read in full at 0.42.0.</li>
-<li><strong>Incident pages under the names people use</strong> ("Shai-Hulud",
-"tj-actions/changed-files", "the xz backdoor", "slopsquatting";
-<code>incidents/names.json</code>), and a flagship page, "We examined 15 real
-incidents and replayed 8 in Sabline", on which each of the 7 with no
-replay says why - not covered, with nothing to run, or out of scope -
-so none reads as left out, and <code>check_incidents.py</code> holds the draft to
-that. <code>build_incidents.py</code> writes an incident's page only once its entry
-says <code>verified: true</code>, and the flagship only once every entry does -
-none do yet, so none is published; <code>--drafts DIR</code> writes them to read,
-and <code>--check</code> fails if docs/ holds one early.</li>
-<li><strong>The paper where Google Scholar can find it</strong>: <code>build_paper.py</code> builds
-the PDF with the title and author sizes Scholar's guidelines ask for,
-served at <code>papers/sabline.pdf</code> beside a landing page carrying
-<code>citation_title</code>, <code>citation_author</code>, <code>citation_publication_date</code>,
-<code>citation_pdf_url</code> and <code>citation_doi</code>, and a <code>papers/</code> index; <code>--check</code>,
-in CI, fails when the paper changes and the PDF is not rebuilt. The
-preprint is on Zenodo: its concept DOI, 10.5281/zenodo.22952528, is the
-landing page's and <code>CITATION.cff</code>'s, which also gains the author's ORCID
-iD, as does the paper's title footnote. Related work gains AILANG (read in full), ETAS and AgentBound,
-each saying where it is ahead of Sabline; the arXiv source is regenerated.</li>
-<li><strong>The site, for search</strong>: a title and a description of its own on every
-page (<code>&lt;!-- description: --&gt;</code> in a document), canonical links, a
-<code>sitemap.xml</code> dated from git, <code>robots.txt</code>, the IndexNow key and
-<code>indexnow.yml</code>, which sends the pages a push to main changed once Pages
-has published it; low-value extras labelled so in the code - OpenGraph
-cards and one small JSON-LD block with no rating on the landing page.
-<code>check_site.py</code> fails on a missing or repeated title or description, and,
-in site.yml, which now checks out the whole history, on a sitemap left
-stale by a commit that changed a page's sources and not it. The landing
-page leads with the same two sentences, says who Sabline is for and shows
-a refusal in one command; <code>/velaris</code> explains the rename to someone
-searching the old name.</li>
-<li>The sitemap's <code>&lt;lastmod&gt;</code> days are computed <strong>in UTC</strong>, on the side that
-builds them and the side that checks them. They were git's <code>%cs</code>, the day
-in the <em>committer's</em> timezone, while <code>check_site.py</code> compares them against
-today in UTC. A commit made in the hours that are still yesterday in UTC -
-midnight to 05:30 from +0530 - dated every page it touched tomorrow: the
-sitemap then pointed at the future, which the SITEMAP rule refuses and a
-crawler reading <code>&lt;lastmod&gt;</code> would be right to distrust, and the staleness
-rule saw a page whose sources changed the day after the sitemap was
-written. Both sides now ask git for the day in UTC, so the dates, the
-history the staleness rule reads and the "not in the future" comparison
-are one clock.</li>
-<li><strong>A capture-the-flag</strong>, <a href="ctf.html">docs/ctf.md</a> and
-the judge in <a href="https://github.com/gowrishankar-infra/sabline-lang/tree/main/ctf"><code>ctf/</code></a>. Ten claims (<code>C1</code>–<code>C10</code>), each a fixed budget
-and one thing no program under it may do; you write the program, the judge
-runs it five times with fresh canaries against the published package pinned
-by the hash of its wheel, on Linux and under the OS confinement that claim
-can get - <code>full</code> for the file, io and ffi claims, <code>partial</code> for the net and
-prover claims, <code>none</code> for the two scored through the tool door, stated per
-claim on the page and in <code>ctf/status.json</code>, and a run that does not reach
-its claim's level is not scored. It sees a break only through its own
-observers - hashes of every tree the run can reach but the one directory
-its budget lets it write, a listener, a nonce scan, a second run differing
-only in the nonce and compared on stdout, stderr and the files written (so
-an encoded leak counts, and one written with <code>log</code> counts as much as one
-printed), the tool door's transcript against both of its ceilings, the
-prover's answer for every file a submission brings against the run's
-receipt - never the submission's exit code or transcript, nor anything else
-the program can write. The receipt is written in a directory of the judge's
-own, outside the run's root entirely, and checked afterwards for having
-been changed; every run passes <code>--no-native</code>, and the judge refuses to
-score at all where native compilation is available anyway; <code>--sabline</code> must
-be an absolute path, never a name looked up on <code>PATH</code>. The judge's code is
-published here and pinned by commit from a private scoring repository, so
-it can be read but not edited by a submission; the safety rests on the
-per-run canaries, not on secrecy. Its self-test runs the C1 read submission
-against a build with the 8.1.1 double-dash hole and must report it broken,
-and against the pinned package it must hold; <code>check_ctf.py</code> runs the
-observers on every OS and, in one Linux job, the live self-test and a
-regression for each finding of the two adversarial reviews of the judge -
-a leak written with <code>log</code>, a write escaping into the run's own directory,
-an E601 raised by an imported helper's runtime-checked promise, and a
-program that floods the tool door's stderr. No money, no points:
-<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/HALL_OF_FAME.md">HALL_OF_FAME.md</a> names the finders.</li>
-</ul>
-<p><strong>E101's new hints, measured: the task they were written for now works.</strong>
-qwen2.5:7b was run three more times, with the card, tasks and settings
-above and the compiler after the E101 change. The held-out <code>months</code> answer
-still puts <code>or fail</code> in <code>main</code>, and still gets E101. That E101 now offers
-<code>check ... { ok ... fail ... }</code>, and in all three runs the next answer is
-exactly that, and works. Before the change it never worked. Sabline, first
-answer / within six rounds: original 8/8, 6/7 and 6/7 (6/7 in every run
-before); held-out 2/3, 1/2 and 1/2 (1/1). Python was 9/9 and 5/5
-throughout. That is a one-task move, read as noise; the mechanism is in the
-record. No compiler message can reach a first answer, since the prompt is
-the same byte for byte, yet one run's first answers moved by two tasks.
-That is the noise, measured with the prompt held still. The other two runs
-match the earlier ones on every Sabline task but <code>months</code>. A recording now
-names the compiler whose messages it was sent (<code>sabline_sha256</code>, also in
-its file name), and the page has a Compiler column.</p>
+<h2 id="8x-870-to-85">8.x: 8.7.0 to 8.5 <a class="anchor" href="#8x-870-to-85" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-8-1.html#870---evidence">8.7.0 - Evidence</a></li>
+<li><a href="changelog-8-1.html#86---the-name">8.6 - The name</a></li>
+<li><a href="changelog-8-1.html#85---taste">8.5 - Taste</a></li></ul>
+<h2 id="8x-84-to-83">8.x: 8.4 to 8.3 <a class="anchor" href="#8x-84-to-83" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-8-2.html#84---the-kernel-holds-the-line">8.4 - The kernel holds the line</a></li>
+<li><a href="changelog-8-2.html#831---the-documentation-as-a-site">8.3.1 - The documentation, as a site</a></li>
+<li><a href="changelog-8-2.html#83---what-a-run-can-show">8.3 - What a run can show</a></li></ul>
+<h2 id="8x-821-to-80">8.x: 8.2.1 to 8.0 <a class="anchor" href="#8x-821-to-80" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-8-3.html#821---two-things-that-should-have-been-red">8.2.1 - Two things that should have been red</a></li>
+<li><a href="changelog-8-3.html#82---held-to-it">8.2 - Held to it</a></li>
+<li><a href="changelog-8-3.html#811---the-proof-cache-can-no-longer-lie">8.1.1 - The proof cache can no longer lie</a></li>
+<li><a href="changelog-8-3.html#81---receipts-and-what-a-policy-can-ask">8.1 - Receipts, and what a policy can ask</a></li>
+<li><a href="changelog-8-3.html#80---what-the-socket-reaches-and-other-things-the-audit-now-says">8.0 - What the socket reaches, and other things the audit now says</a></li></ul>
 <h2 id="9x">9.x <a class="anchor" href="#9x" aria-label="Link to this section">#</a></h2>
 <ul><li><a href="changelog-9.html#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li>
 <li><a href="changelog-9.html#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li>
 <li><a href="changelog-9.html#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li>
 <li><a href="changelog-9.html#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul>
-<h2 id="8x-86-to-85">8.x: 8.6 to 8.5 <a class="anchor" href="#8x-86-to-85" aria-label="Link to this section">#</a></h2>
-<ul><li><a href="changelog-8-1.html#86---the-name">8.6 - The name</a></li>
-<li><a href="changelog-8-1.html#85---taste">8.5 - Taste</a></li></ul>
-<h2 id="8x-84-to-831">8.x: 8.4 to 8.3.1 <a class="anchor" href="#8x-84-to-831" aria-label="Link to this section">#</a></h2>
-<ul><li><a href="changelog-8-2.html#84---the-kernel-holds-the-line">8.4 - The kernel holds the line</a></li>
-<li><a href="changelog-8-2.html#831---the-documentation-as-a-site">8.3.1 - The documentation, as a site</a></li></ul>
-<h2 id="8x-83-to-821">8.x: 8.3 to 8.2.1 <a class="anchor" href="#8x-83-to-821" aria-label="Link to this section">#</a></h2>
-<ul><li><a href="changelog-8-3.html#83---what-a-run-can-show">8.3 - What a run can show</a></li>
-<li><a href="changelog-8-3.html#821---two-things-that-should-have-been-red">8.2.1 - Two things that should have been red</a></li></ul>
-<h2 id="8x-82-to-80">8.x: 8.2 to 8.0 <a class="anchor" href="#8x-82-to-80" aria-label="Link to this section">#</a></h2>
-<ul><li><a href="changelog-8-4.html#82---held-to-it">8.2 - Held to it</a></li>
-<li><a href="changelog-8-4.html#811---the-proof-cache-can-no-longer-lie">8.1.1 - The proof cache can no longer lie</a></li>
-<li><a href="changelog-8-4.html#81---receipts-and-what-a-policy-can-ask">8.1 - Receipts, and what a policy can ask</a></li>
-<li><a href="changelog-8-4.html#80---what-the-socket-reaches-and-other-things-the-audit-now-says">8.0 - What the socket reaches, and other things the audit now says</a></li></ul>
 <h2 id="7x">7.x <a class="anchor" href="#7x" aria-label="Link to this section">#</a></h2>
 <ul><li><a href="changelog-7.html#72---releases-that-tag-themselves">7.2 - Releases that tag themselves</a></li>
 <li><a href="changelog-7.html#712---the-proof-cache-could-be-lied-to">7.1.2 - The proof cache could be lied to</a></li>
@@ -516,10 +240,10 @@ its file name), and the page has a Compiler column.</p>
 <ul><li><a href="changelog-0.html#0x---the-climb">0.x - The climb</a></li></ul>
 </main>
 <footer class="foot">
-<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.7.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#9x">9.x</a></li><li><a href="#8x-86-to-85">8.x: 8.6 to 8.5</a></li><li><a href="#8x-84-to-831">8.x: 8.4 to 8.3.1</a></li><li><a href="#8x-83-to-821">8.x: 8.3 to 8.2.1</a></li><li><a href="#8x-82-to-80">8.x: 8.2 to 8.0</a></li><li><a href="#7x">7.x</a></li><li><a href="#6x">6.x</a></li><li><a href="#5x">5.x</a></li><li><a href="#4x-44-to-421">4.x: 4.4 to 4.2.1</a></li><li><a href="#4x-42-to-40">4.x: 4.2 to 4.0</a></li><li><a href="#3x">3.x</a></li><li><a href="#2x-2631-to-2401">2.x: 2.63.1 to 2.40.1</a></li><li><a href="#2x-240-to-20">2.x: 2.40 to 2.0</a></li><li><a href="#1x">1.x</a></li><li><a href="#0x">0.x</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#8x-870-to-85">8.x: 8.7.0 to 8.5</a></li><li><a href="#8x-84-to-83">8.x: 8.4 to 8.3</a></li><li><a href="#8x-821-to-80">8.x: 8.2.1 to 8.0</a></li><li><a href="#9x">9.x</a></li><li><a href="#7x">7.x</a></li><li><a href="#6x">6.x</a></li><li><a href="#5x">5.x</a></li><li><a href="#4x-44-to-421">4.x: 4.4 to 4.2.1</a></li><li><a href="#4x-42-to-40">4.x: 4.2 to 4.0</a></li><li><a href="#3x">3.x</a></li><li><a href="#2x-2631-to-2401">2.x: 2.63.1 to 2.40.1</a></li><li><a href="#2x-240-to-20">2.x: 2.40 to 2.0</a></li><li><a href="#1x">1.x</a></li><li><a href="#0x">0.x</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

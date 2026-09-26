@@ -1624,6 +1624,49 @@ class Built:
     pages: list[Page]
     versions: list[tuple[str, str]]
     missing: list[str]
+    removed: list[str] = field(default_factory=list)
+
+
+# Every page this generator writes carries it, and nothing else here does.
+GENERATOR_MARK = b'<meta name="sabline-version"'
+
+
+def sweep_top(out: Path, written: list[str]) -> list[str]:
+    """Take away the pages at the top that an earlier build of this
+    generator wrote and this one does not, and say which.
+
+    `latest/` and `major.minor/` are staged and swapped, so each holds
+    exactly what its build wrote. The top is written in place - it has to
+    be, because the releases before this one live under it - so a page
+    that stops being written stays there: served, in no sitemap, linked
+    from no page, and still titled with the version that wrote it.
+    8.7.0 found this: the changelog is split to the page budget, adding
+    an entry re-split the 8.x group from four pages to three, and
+    changelog-8-4.html was left at the top saying 8.6.0.
+
+    Two things are never swept. A **version directory** (`8.6/`) and
+    `latest/` are somebody else's tree, whole and deliberate. A file that
+    does not carry `GENERATOR_MARK` was not written by this generator -
+    CNAME, the predicate schemas, anything a person put there - and is
+    left alone. So this removes only what this generator itself wrote and
+    has stopped writing.
+    """
+    keep = set(written)
+    gone = []
+    for path in sorted(out.rglob("*.html")):
+        rel = path.relative_to(out).as_posix()
+        top = rel.split("/")[0]
+        if top == "latest" or VERSION_NAME.match(top) or rel in keep:
+            continue
+        try:
+            with open(path, "rb") as fh:
+                head = fh.read(4096)
+        except OSError:
+            continue
+        if GENERATOR_MARK in head:
+            path.unlink()
+            gone.append(rel)
+    return gone
 
 
 def build(out: Path = OUT) -> Built:
@@ -1647,7 +1690,10 @@ def build(out: Path = OUT) -> Built:
         shutil.rmtree(stage, ignore_errors=True)
         trees.append(write_tree(stage, prefix, pages, sections, anchors))
         replace_dir(stage, out / name)
-    return Built(trees, pages, versions, list(MISSING))
+    # last, so that everything this build writes at the top is already
+    # there to be counted as written
+    removed = sweep_top(out, list(trees[0].files))
+    return Built(trees, pages, versions, list(MISSING), removed)
 
 
 def main() -> int:
@@ -1658,6 +1704,9 @@ def main() -> int:
     most, where = max(sizes)
     for line in built.missing:
         print(f"  a link to a file that is not in this repository: {line}")
+    for line in built.removed:
+        print(f"  taken away, written by an earlier build and not by this "
+              f"one: {line}")
     print(f"docs/ written: {len(built.trees[1].pages)} pages at the top, in "
           f"latest/ and in {VERSION_DIR}/, and {len(top.pages) - len(built.trees[1].pages)} "
           f"kept at the top alone; {len(sabline.ERROR_TABLE)} error codes "

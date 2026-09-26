@@ -1408,6 +1408,21 @@ OLD_HOST_ALLOWED_PATH_REASON = ("the rendered CHANGELOG, a page built from a "
                                 "at that address")
 SITE_URL = re.compile(r"https?://sabline\.dev(?:/[^\s<>\"'`)\]}|\\&]*)?")
 
+# An archived tree (docs/8.6/...) is frozen: build_docs.py never rewrites
+# another major.minor. Every page of one carries a canonical link and an
+# og:url naming its copy at the TOP of the site, which was there when that
+# release was built - and the top's page list can shrink. The changelog is
+# split to the page budget and re-split on every release, so 8.7.0's entry
+# packed the 8.x group into three pages where 8.6.0 needed four, and
+# docs/8.6/changelog-8-4.html is now the only thing naming an address the
+# site no longer serves. Those two are machine hints in a <head>, not links
+# a reader can follow: a visible href in an archive is not excused here,
+# and nothing outside an archive is.
+ARCHIVED_PAGE = re.compile(r"docs/\d+\.\d+/")
+FROZEN_HEAD_URL = re.compile(
+    r'<(?:link rel="canonical"|meta property="og:url") '
+    r'(?:href|content)="[^"]*"')
+
 
 def domain_check() -> Result:
     """No tracked file names the documentation site's earlier address but
@@ -1437,7 +1452,9 @@ def domain_check() -> Result:
                 if host in text:
                     line = text[:text.index(host)].count(chr(10)) + 1
                     named.append(f"{rel}:{line} ({host})")
-        for m in SITE_URL.finditer(text):
+        reachable = (FROZEN_HEAD_URL.sub("", text)
+                     if ARCHIVED_PAGE.match(rel) else text)
+        for m in SITE_URL.finditer(reachable):
             urls.setdefault(m.group(0).rstrip(".,;:!?*_"), rel)
     if named:
         res.wrong(f"an earlier address of the documentation site "

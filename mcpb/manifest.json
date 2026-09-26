@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "sabline",
   "display_name": "Sabline",
-  "version": "8.6.0",
+  "version": "8.7.0",
   "description": "Run code an AI wrote without handing it everything you can reach. Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it's tried.",
   "long_description": "Sabline is a language where a function's signature declares its types, the effects it may perform, whether it can fail, and promises a theorem prover checks before the program runs.\n\nThis connector gives four tools: read the language card (about 4,600 words, enough to write correct Sabline), check a program without running it, audit what it can touch and how much of its promises are proven, and run it under an effect budget you choose. A program run with allow: [\"io\"] cannot read files, reach the network or call Python, whatever its source claims - and a refusal cannot be caught by the program.\n\nThe server grants at most io unless it is started with --max-allow: a run that asks for files, the network, the environment, the clock, randomness or Python is refused, and the refusal names what the server grants. This bundle starts the server without --max-allow, so it grants io only. It also holds each run to 30 seconds and 512 MB unless started with --max-timeout and --max-memory-mb: a run may ask for less, and asking for more is refused.\n\nNot a security boundary: a server started with --max-allow ffi grants everything Python can do.",
   "author": {
