@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url><loc>https://sabline.dev/</loc><lastmod>2026-09-26</lastmod></url>
-<url><loc>https://sabline.dev/agentdojo.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://sabline.dev/agentdojo.html</loc><lastmod>2026-09-26</lastmod></url>
 <url><loc>https://sabline.dev/capability/v1/</loc><lastmod>2026-09-26</lastmod></url>
 <url><loc>https://sabline.dev/changelog-0.html</loc><lastmod>2026-09-26</lastmod></url>
 <url><loc>https://sabline.dev/changelog-1.html</loc><lastmod>2026-09-26</lastmod></url>
@@ -28,7 +28,7 @@
 <url><loc>https://sabline.dev/competitors-evidence-2.html</loc><lastmod>2026-09-23</lastmod></url>
 <url><loc>https://sabline.dev/competitors-evidence-3.html</loc><lastmod>2026-09-23</lastmod></url>
 <url><loc>https://sabline.dev/competitors-scenarios.html</loc><lastmod>2026-09-23</lastmod></url>
-<url><loc>https://sabline.dev/competitors.html</loc><lastmod>2026-09-23</lastmod></url>
+<url><loc>https://sabline.dev/competitors.html</loc><lastmod>2026-09-26</lastmod></url>
 <url><loc>https://sabline.dev/confinement.html</loc><lastmod>2026-09-24</lastmod></url>
 <url><loc>https://sabline.dev/crosswalk.html</loc><lastmod>2026-09-23</lastmod></url>
 <url><loc>https://sabline.dev/ctf.html</loc><lastmod>2026-09-26</lastmod></url>
@@ -45,9 +45,9 @@
 <url><loc>https://sabline.dev/incidents.html</loc><lastmod>2026-09-23</lastmod></url>
 <url><loc>https://sabline.dev/known-open.html</loc><lastmod>2026-09-24</lastmod></url>
 <url><loc>https://sabline.dev/library.html</loc><lastmod>2026-09-20</lastmod></url>
-<url><loc>https://sabline.dev/papers/</loc><lastmod>2026-09-25</lastmod></url>
-<url><loc>https://sabline.dev/papers/sabline.html</loc><lastmod>2026-09-25</lastmod></url>
-<url><loc>https://sabline.dev/papers/sabline.pdf</loc><lastmod>2026-09-25</lastmod></url>
+<url><loc>https://sabline.dev/papers/</loc><lastmod>2026-09-26</lastmod></url>
+<url><loc>https://sabline.dev/papers/sabline.html</loc><lastmod>2026-09-26</lastmod></url>
+<url><loc>https://sabline.dev/papers/sabline.pdf</loc><lastmod>2026-09-26</lastmod></url>
 <url><loc>https://sabline.dev/playground.html</loc><lastmod>2026-09-26</lastmod></url>
 <url><loc>https://sabline.dev/receipt/v1/</loc><lastmod>2026-09-26</lastmod></url>
 <url><loc>https://sabline.dev/receipts.html</loc><lastmod>2026-09-23</lastmod></url>

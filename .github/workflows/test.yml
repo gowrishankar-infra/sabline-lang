@@ -368,9 +368,13 @@ jobs:
 
   # AgentDojo, with Sabline in the loop, offline and at no cost (plan/8.7.md).
   # It pins one AgentDojo version, replaces the agent with AgentDojo's own
-  # ground truth, and re-derives every number in evals/agentdojo/results.json.
-  # No model, no API key: the agent-writes-the-program half is behind a flag,
-  # off by default, and is not run here.
+  # ground truth, and re-derives every number in evals/agentdojo/results.json:
+  # all three budgets (--allow all, the task budget, and the task budget with
+  # each tool's arguments pinned to what the user task's text names), the
+  # argument pins themselves - every literal in them held to that task's own
+  # prompt - and which door each landing attack's value came through. No
+  # model, no API key: the agent-writes-the-program half is behind a flag,
+  # off by default, and is not run here (plan/8.7.md section 25a prices it).
   agentdojo:
     name: AgentDojo, with Sabline in the loop, offline
     runs-on: ubuntu-latest
@@ -381,7 +385,7 @@ jobs:
           python-version: "3.12"
       - name: Install pinned AgentDojo (no model, no key)
         run: pip install -r requirements/agentdojo.txt
-      - name: The recorded score re-derives, program for program
+      - name: All three budgets re-derive, program for program
         run: python agentdojo_eval.py --check
       - name: The published page is what the record says
         run: python build_agentdojo_page.py --check
