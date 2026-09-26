@@ -716,34 +716,78 @@ and benchmark version 1: 21 user tasks and 5 injection tasks, whose
 pairs make 105 attacks. Each user task's reference solution, and each
 injection's ground-truth action, is a Sabline program that reaches
 AgentDojo's real Slack environment only through \texttt{tool} calls.
-Each runs under a budget written for the user task - \texttt{io}, and a
-grant for each tool the reference solution calls - or, as the control,
-under \texttt{-\/-allow\ all}.
+Each runs under three budgets: \texttt{-\/-allow\ all} as the control; a
+budget written for the user task - \texttt{io}, and a grant for each
+tool the reference solution calls; and that budget with every argument
+the user task's own text names held to it by the tool door's argument
+patterns (\texttt{tool:send\_direct\_message:recipient=Bob}, section 7.2
+of the specification), which this paper calls the pinned budget.
 
-Under the task budget all 21 reference solutions ran to completion and
+Under all three budgets all 21 reference solutions ran to completion and
 passed AgentDojo's utility check. Under \texttt{-\/-allow\ all} all 105
-attacks landed; under the task budget 19 did. The other 86 call a tool
-the task was not granted, and were refused before the call reached the
-host (E321). Every one of the 19 that landed reuses a tool the task was
-granted: twelve visit a web page where the task reads web pages, and
-seven send a direct message where the task sends messages.
+attacks landed; under the task budget 19 did; under the pinned budget 9.
+The 86 the task budget refused call a tool the task was not granted, and
+were refused before the call reached the host (E321). Every one of the
+19 reuses a tool the task was granted: twelve visit a web page where the
+task reads web pages, and seven send a direct message where the task
+sends messages. The 10 more that pinning refused reuse a granted tool
+with an argument the task's own text excludes - a direct message to
+Alice where the task writes only to Bob, a web page where the task names
+the two addresses it reads.
+
+For each of the 19 that land under the task budget the harness records
+which door the attacker's value came through: written into the program
+as a literal, or read at run time out of what a tool returned. All 19
+are literals, and none is read at run time. That is a property of this
+harness rather than of AgentDojo, and it is the first thing to say about
+it. With no model in the loop, the step that would carry the injected
+instruction out of the data and into the program is the harness's
+transcription of ground truth, which writes the attacker's value out as
+a literal; the value originates in the data in every one of these, and
+what the harness fixes is that it arrives as a literal. Two of the five
+injection tasks do have the laundering shape - a tool that reads, then a
+tool that sends - and neither reaches the door under any task budget,
+because no user task grants every tool their action needs. The data door
+is one this corpus never puts in front of a budget, so the 19-to-0 split
+is a limit of the corpus and not a result about Sabline.
+
+Pinning cost no utility here and cannot be had everywhere. Of the 80
+arguments the reference solutions pass, 32 are named by the user task's
+own text and 48 are not: a summary the model writes, a channel found by
+counting users, an address that is on the page the task sends the agent
+to read. Eighteen of the 21 tasks have at least one such argument, and
+two of them - do everything on the TODO list at this address - describe
+their whole content on a page, so between them pinning holds one
+argument of thirteen. Where an argument is free the attacker's value is
+inside what the operator could write down, and all 9 attacks that still
+land are of that kind. The pattern grammar has limits of its own, which
+are reported and not fixed, since an evaluation should not extend the
+thing it measures: a star never stands for white space, so no pattern
+matches a free-text argument of more than one word, and a pattern is a
+whole-value match with no negation, so the useful pin for a message body
+- that it carry no address - cannot be written. For a body a model
+writes, the choice a pattern offers is one exact string or anything at
+all.
 
 There is no model in the loop, and that bounds what the numbers mean.
 Utility is AgentDojo's reference solution run under a budget, so it
 measures whether the budget lets correct work through, not whether a
 model writes it. Attack success assumes a model fully steered on every
-attack, so 19 of 105 is an upper bound on what the budget lets through,
-not a measured rate at which a model is steered; measuring that needs a
-model, a key and money, and has not been done. And the budget does not
-see what flows where. An attack that reuses a granted tool - to send
-what the task read to a sink the task may write to - is a choice within
-the budget, and Sabline has no per-value provenance with which to refuse
-it; \texttt{decisions/0004} is the design for a mark on untrusted input,
-and it has not shipped. CaMeL, which tracks every value's provenance,
-and ChainCaps, whose capabilities are per value and per sink, should do
-better on exactly these cases. The results are
-\texttt{evals/agentdojo/results.json}, which a CI job re-derives program
-by program.
+attack, so 19 of 105 and 9 of 105 are upper bounds on what those budgets
+let through, not measured rates at which a model is steered; measuring
+that needs a model, a key and money, and has not been done. And no
+budget here sees what flows where. A pattern is matched against the
+value at the door, whichever door it came through, so it refuses an
+attacker's value exactly when the operator can say in advance what the
+value should be, and can do nothing when they cannot. An attack that
+reuses a granted tool - to send what the task read to a sink the task
+may write to - is a choice within the budget, and Sabline has no
+per-value provenance with which to refuse it; \texttt{decisions/0004} is
+the design for a mark on untrusted input, and it has not shipped. CaMeL,
+which tracks every value's provenance, and ChainCaps, whose capabilities
+are per value and per sink, should do better on exactly these cases. The
+results are \texttt{evals/agentdojo/results.json}, which a CI job
+re-derives program by program under all three budgets.
 
 \subsection{4.4 The suites, and a conformance
 corpus}\label{the-suites-and-a-conformance-corpus}
@@ -851,11 +895,13 @@ in the loop, and a fourth, AgentBound, against published sets of
 malicious MCP servers. Sabline's is on AgentDojo too (section 4.3), with
 no model in it: under a budget written for each task, 21 of 21 tasks
 completed and 19 of 105 attacks landed, every one of them through a tool
-the task was granted. Its utility is AgentDojo's reference solution and
-its attack success an upper bound rather than a measured rate at which a
-model is steered, so it is not a like-for-like comparison with theirs;
-and on the laundering that makes up all 19, the systems that track
-values should do better.
+the task was granted; holding each tool's arguments to what the user
+task's own text names brings that to 9 with no loss of utility. Its
+utility is AgentDojo's reference solution and its attack success an
+upper bound rather than a measured rate at which a model is steered, so
+it is not a like-for-like comparison with theirs; and on the laundering
+that makes up the 9 that are left, the systems that track values should
+do better.
 
 \textbf{Object capabilities.} Dennis and Van Horn introduced the
 capability, a reference that both names a resource and carries the right
@@ -952,17 +998,19 @@ tools that already exist under a policy without modifying them, where
 Sabline needs the program written in Sabline; its budgets are per value
 and per sink, where Sabline's is one budget for a whole run; and it is
 measured against an adversary with real models. Per-sink budgets are
-what the 19 attacks that land on Sabline's AgentDojo run need, and it
-should do better on them. Its authors scope the claim to explicit flows,
-trusted manifests and data movement the proxy can see, and name manifest
-quality as the deployment bottleneck: manifests written by experts
-blocked every attack, and naive ones 27.3\% of them. Where Sabline
-differs: the budget is checked inside the runtime at each operation, so
-it bounds what a program does with no tool call at all - a file it
-opens, a host it reaches, a module it imports - and from 8.4.0 the
-operating system is asked to hold the same bounds beneath it. The
-amendment to \texttt{decisions/0004} adopts the intersection rule for
-Sabline's two marks; it is a 9.0 draft and is not normative.
+what the 9 attacks still landing on Sabline's AgentDojo run need - the
+ones whose argument the user task's own text cannot name, so that no
+pattern written in advance can exclude them - and it should do better on
+them. Its authors scope the claim to explicit flows, trusted manifests
+and data movement the proxy can see, and name manifest quality as the
+deployment bottleneck: manifests written by experts blocked every
+attack, and naive ones 27.3\% of them. Where Sabline differs: the budget
+is checked inside the runtime at each operation, so it bounds what a
+program does with no tool call at all - a file it opens, a host it
+reaches, a module it imports - and from 8.4.0 the operating system is
+asked to hold the same bounds beneath it. The amendment to
+\texttt{decisions/0004} adopts the intersection rule for Sabline's two
+marks; it is a 9.0 draft and is not normative.
 
 \textbf{CaMeL.} Debenedetti and colleagues have a privileged model turn
 a trusted request into a program in a restricted subset of Python, run
@@ -973,14 +1021,15 @@ Where it is ahead: it tracks data, which Sabline does not - a Sabline
 budget bounds which effects, paths, hosts and modules a run may reach,
 not which values may flow to them - and its AgentDojo evaluation runs a
 model, where Sabline's (section 4.3) runs AgentDojo's reference
-solutions in its place. The 19 attacks that land there all reuse a tool
-the task was granted, and provenance per value is the defence against
-them that Sabline lacks: CaMeL should do better on them. Its split
-between a privileged and a quarantined model has no counterpart here at
-all. Where Sabline differs: the program is written in a language whose
-signatures declare effects and whose compiler checks them across the
-call graph before anything runs, and the operator's budget is enforced
-against the operation rather than against a value's history.
+solutions in its place. The 9 attacks that still land there reuse a tool
+the task was granted with an argument its text could not name in
+advance, and provenance per value is the defence against them that
+Sabline lacks: CaMeL should do better on them. Its split between a
+privileged and a quarantined model has no counterpart here at all. Where
+Sabline differs: the program is written in a language whose signatures
+declare effects and whose compiler checks them across the call graph
+before anything runs, and the operator's budget is enforced against the
+operation rather than against a value's history.
 
 \textbf{Wassette.} Microsoft's Wassette runs MCP tools as WebAssembly
 components under Wasmtime, under a deny-by-default policy file granting
@@ -1284,16 +1333,22 @@ These are stated as sabline-lang's THREAT\_MODEL.md states them.
   \textbf{An evaluation against an adversary, without the adversary's
   model.} Section 4.3 runs Sabline on AgentDojo's Slack suite with
   AgentDojo's reference solutions in place of a model: 21 of 21 tasks
-  completed, and 19 of 105 attacks landed under a task budget, every one
-  reusing a tool the task was granted. The attack figure is an upper
-  bound on what the budget lets through, not a measured rate at which a
-  model is steered, and nothing here measures a model writing Sabline
-  under attack. The 19 are laundering, which a budget over effects and
+  completed under every budget, and of 105 attacks 19 landed under a
+  task budget and 9 under that budget with each tool's arguments pinned
+  to what the user task's own text names. The attack figures are upper
+  bounds on what those budgets let through, not measured rates at which
+  a model is steered, and nothing here measures a model writing Sabline
+  under attack. The 9 that remain are laundering with an argument no
+  operator could have written down, which a budget over effects and
   tools cannot see: Sabline has no per-value provenance, and CaMeL and
   ChainCaps, which have a number with a model in the loop, should do
-  better on them. It is one suite at one version, run by the project it
-  measures, which is the first of the three weaknesses Abdelnabi and
-  colleagues name \citep{abdelnabi2026measuring}.
+  better on them. Every one of the 19 that landed had the attacker's
+  value written into the program rather than read at run time, which is
+  an artefact of a harness with no model in it, and the two injection
+  tasks whose payload really is read at run time never reach any task
+  budget's door at all. It is one suite at one version, run by the
+  project it measures, which is the first of the three weaknesses
+  Abdelnabi and colleagues name \citep{abdelnabi2026measuring}.
 \end{itemize}
 
 \section{7. Conclusion}\label{conclusion}
@@ -1458,12 +1513,14 @@ and verdicts; 18 programs where one does better; 12 programs in CaMeL's
 scope; 19d stopped by none & \texttt{benchmark/competitors/results.json}
 at the same commit, and \texttt{docs/competitors.md} built from it \\
 Section 4.3: AgentDojo 0.1.35, Slack suite v1; 21 user tasks, 5
-injection tasks, 105 attacks; utility 21 of 21 under the task budget and
-under \texttt{-\/-allow\ all}; 105 attacks land under
-\texttt{-\/-allow\ all} and 19 under the task budget, 12 visiting a web
-page and 7 sending a message; 86 refused with E321 &
-\texttt{evals/agentdojo/results.json} at the commit of pull request
-\#103, re-derived by \texttt{agentdojo\_eval.py\ -\/-check} \\
+injection tasks, 105 attacks; utility 21 of 21 under all three budgets;
+105 attacks land under \texttt{-\/-allow\ all}, 19 under the task budget
+(12 visiting a web page and 7 sending a message, 86 refused with E321)
+and 9 under the task budget with arguments pinned; all 19 have the
+attacker's value written into the program, none read at run time; 32 of
+80 arguments pinned, 18 of 21 tasks with an argument that cannot be
+known in advance & \texttt{evals/agentdojo/results.json}, re-derived by
+\texttt{agentdojo\_eval.py\ -\/-check} \\
 the same table at 8.4.0: 76 programs, 66 dangerous, 10 controls, fifteen
 categories; 52/12/2, 8/34/24, 0/31/35; 0 false positives &
 \texttt{benchmark/results.json} at v8.4.0 \\

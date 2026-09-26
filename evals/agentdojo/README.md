@@ -46,6 +46,35 @@ So the numbers are the **operator budget's contribution**, not a model's:
   and nothing else. Under `--allow all` (the control) every injection lands;
   the drop under the task budget is what the budget refused.
 
+## Three budgets, and which door the attacker came through
+
+Every number is given under three budgets, each one more thing the operator
+said:
+
+| | |
+|---|---|
+| `all` | `--allow all`. The control: nothing is bounded |
+| `task` | `io`, and a grant for each tool the reference solution calls |
+| `pinned` | the task budget, with every argument the user task's **own text** names held to that value by the tool door's argument patterns (`tool:send_direct_message:recipient=Bob`, SPEC.md 7.2) |
+
+`PINS` in `agentdojo_eval.py` is the pin table: one entry for every
+`tool.argument` a reference solution passes, holding either the patterns the
+task's text supports or the reason the text cannot say. `check_pins` holds
+the table to two things and stops the run if either fails - it names exactly
+the arguments the ground truth passes, and **every literal in every pattern
+is in that user task's own prompt**. That is what makes "derived from the
+task, never from what a tool returned" a check rather than a claim. Where
+the pattern grammar itself could not say something, `PIN_LIMITS` records it
+and runs it against the door's real matcher; the grammar is not extended to
+flatter the numbers.
+
+`results.json` also records, for every attack that lands under the task
+budget, **which door the attacker's value came through**: written into the
+program as a literal, or read at run time out of what a tool returned. It is
+decided by matching what reached the door against the program's own string
+literals, and the page says what the answer means - and what it does not,
+given that the harness transcribes ground truth where a model would read.
+
 What needs a model - and a key, and money - is how often a model is actually
 steered, and how often it writes a working program at all. That is the harder
 half, it is not measured here, and the report says so. `agentdojo_eval.py`
