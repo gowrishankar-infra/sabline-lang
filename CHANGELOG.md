@@ -20,9 +20,14 @@ took **60.4 s** against a ceiling of 60; `audit` took 59.7 s on the same
 machine and passed, which is how narrow it was. The case now accepts E613
 and E614 from the two commands that have a ceiling - and from neither of the
 two that do not - and still fails on a traceback, on any other exit, and on
-any other code. Two cases beside it force the ceiling with
+any other code. Cases beside it force the ceiling with
 `--check-timeout 1` and pin that branch, so it is exercised on every machine
-and not only on one slow enough to find it by accident.
+and not only on one slow enough to find it by accident - and they force it
+with a map literal nested 22 deep, which stalls the type checker, not with
+the big program, which is only slow because of the prover. A `minimal`
+install has no prover: it checks those 1,168 functions, proves nothing, and
+finishes inside a second, so a pin written against that program passed every
+`full` leg and failed every `minimal` one.
 
 **A page the site had stopped writing stayed at the top of it.**
 `build_docs.py` stages `latest/` and the release's `major.minor/` and swaps

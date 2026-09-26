@@ -889,17 +889,35 @@ def big_file_cases() -> None:
     # ...and the ceiling branch above, pinned: forced to fire, rather than
     # waited for on a machine slow enough. Without this the branch is only
     # ever taken on the runner that made this case fail, so it would rot.
-    code, out, secs = run_cli(["check", "p.vel", "--check-timeout", "1"],
-                              cwd=str(d), timeout=120)
-    ok("...and a check stopped at its ceiling is E613, exit 2, no traceback "
-       "- which the case above accepts",
-       clean(out) and code == 2 and "error[E613]" in out
-       and held(code, out, True),
-       "code=%s %.1fs %s" % (code, secs, out.strip().splitlines()[-1][:60]
-                             if out.strip() else ""))
+    #
+    # Not with the program above. What makes THAT one slow is the prover,
+    # and a minimal install has none: without z3 it checks its 1,168
+    # functions, proves nothing, finishes inside a second, and never comes
+    # near the ceiling. (That is how this pin was first written, and every
+    # `minimal` leg went red.) A map literal nested 22 deep stalls the type
+    # CHECKER instead, which every install has: check_ratchet.py uses the
+    # same program for the same reason, and tests/error_messages/golden.json
+    # holds it for E613.
+    stall = new_dir("ceiling")
+    write(stall, "fn main() uses io {\n    let m = " + '{"a": ' * 22 + "1"
+          + "}" * 22 + '\n    print("built")\n}\n')
+    for label in ("check", "audit"):
+        code, out, secs = run_cli([label, "p.vel", "--check-timeout", "1"],
+                                  cwd=str(stall), timeout=120)
+        ok("...and %s stopped at its ceiling is E613, exit 2, no "
+           "traceback - which the case above accepts"
+           % ("a check" if label == "check" else "an audit"),
+           clean(out) and code == 2 and "error[E613]" in out
+           and held(code, out, True),
+           "code=%s %.1fs %s" % (code, secs, out.strip().splitlines()[-1][:60]
+                                 if out.strip() else ""))
     ok("...and that same answer is not accepted where there is no ceiling "
-       "to reach", not held(2, out, False), "exit 2 with E613 was allowed "
-       "for fmt or run")
+       "to reach", not held(2, "error[E613] ...", False),
+       "exit 2 with E613 was allowed for fmt or run")
+    ok("...nor is any other exit 2 where there is one",
+       not held(2, "error[E999] internal error", True)
+       and not held(3, "error[E613] ...", True),
+       "an internal error or another exit passed as the ceiling")
 
 
 # ---------------------------------------------------------------------------

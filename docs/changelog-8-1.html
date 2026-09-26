@@ -90,9 +90,14 @@ took <strong>60.4 s</strong> against a ceiling of 60; <code>audit</code> took 59
 machine and passed, which is how narrow it was. The case now accepts E613
 and E614 from the two commands that have a ceiling - and from neither of the
 two that do not - and still fails on a traceback, on any other exit, and on
-any other code. Two cases beside it force the ceiling with
+any other code. Cases beside it force the ceiling with
 <code>--check-timeout 1</code> and pin that branch, so it is exercised on every machine
-and not only on one slow enough to find it by accident.</p>
+and not only on one slow enough to find it by accident - and they force it
+with a map literal nested 22 deep, which stalls the type checker, not with
+the big program, which is only slow because of the prover. A <code>minimal</code>
+install has no prover: it checks those 1,168 functions, proves nothing, and
+finishes inside a second, so a pin written against that program passed every
+<code>full</code> leg and failed every <code>minimal</code> one.</p>
 <p><strong>A page the site had stopped writing stayed at the top of it.</strong>
 <code>build_docs.py</code> stages <code>latest/</code> and the release's <code>major.minor/</code> and swaps
 each into place, so each holds exactly what that build wrote. The top is
