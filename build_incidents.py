@@ -71,6 +71,18 @@ MEANING = {
     "OUT OF SCOPE": "prompt injection where no code ran - listed so the "
                     "boundary is visible, not counted as a gap",
 }
+# Why an entry has no replay, by verdict (the flagship's own column): an
+# entry with a program that runs was replayed, and check_incidents.py holds
+# that to be exactly the STOPPED and PARTIAL ones; every other verdict says
+# here why there is nothing to run, so no entry reads as left out.
+NO_REPLAY = {
+    "NOT COVERED": "not covered: nothing in Sabline addresses the shape, so "
+                   "there is no Sabline program to run",
+    "UNVERIFIED": "unverified: no repro has been built, so there is nothing "
+                  "to run yet",
+    "OUT OF SCOPE": "out of scope: prompt injection where no code ran, so "
+                    "there is no program of any kind to replay",
+}
 
 
 def read() -> list[dict[str, Any]]:
@@ -325,25 +337,41 @@ def incident_page(entry: dict[str, Any], name: dict[str, Any]) -> str:
 def flagship_page(found: list[dict[str, Any]],
                   known: dict[str, dict[str, Any]]) -> str:
     """docs/replayed.md: every incident on one page, what nothing here
-    addresses first."""
+    addresses first. The title and the first paragraph give both counts -
+    examined and replayed - and every entry that was not replayed says why,
+    in its own row, so none reads as left out."""
     ran = [e for e in found if e["runs"]]
+    rest = [e for e in found if not e["runs"]]
     counts = {v: sum(1 for e in found if e["verdict"] == v) for v in VERDICTS}
+    wrong = [e["slug"] for e in found
+             if e["runs"] != (e["verdict"] in ("STOPPED", "PARTIAL"))]
+    if wrong:
+        raise SystemExit("replayed and verdict disagree for: "
+                         + ", ".join(wrong) + " (check_incidents.py)")
     out: list[str] = []
     w = out.append
-    w(f"# We replayed {len(ran)} real incidents in Sabline")
+    w(f"# We examined {len(found)} real incidents and replayed "
+      f"{len(ran)} in Sabline")
     w("")
-    w(f"<!-- description: {len(found)} publicly reported incidents, each "
-      f"written as a Sabline program of the same shape: {counts['STOPPED']} "
-      f"refused, {counts['PARTIAL']} partly, {counts['NOT COVERED']} "
-      "nothing here addresses. -->")
+    w(f"<!-- description: {len(found)} publicly reported incidents examined; "
+      f"{len(ran)} replayed as Sabline programs of the same shape "
+      f"({counts['STOPPED']} refused, {counts['PARTIAL']} in part); "
+      f"{len(rest)} with no replay, each saying why. -->")
     w("")
-    w(f"{len(found)} publicly reported incidents from 2023 onward in which code "
-      f"ran with more authority than it should have. For {len(ran)} of them "
-      f"there is a Sabline program of the same shape, run under a budget, "
-      f"and a recorded result: {counts['STOPPED']} refused outright, "
-      f"{counts['PARTIAL']} refused in part. For {counts['NOT COVERED']}, "
-      f"nothing in Sabline addresses the shape, and {counts['OUT OF SCOPE']} "
-      "are prompt injection where no code ran.")
+    w(f"We examined {len(found)} publicly reported incidents from 2023 onward "
+      f"in which code ran with more authority than it should have, and "
+      f"replayed {len(ran)} of them: for each, a Sabline program of the same "
+      f"shape, run under a budget, with a recorded result - "
+      f"{counts['STOPPED']} refused outright, {counts['PARTIAL']} refused in "
+      "part.")
+    w("")
+    why = [(counts[v], NO_REPLAY[v]) for v in NO_REPLAY if counts[v]]
+    w(f"The other {len(rest)} have no replay, and each row below says why:")
+    w("")
+    for n, reason in why:
+        w(f"- {n} {'is' if n == 1 else 'are'} {reason}.")
+    w("")
+    w(f"All {len(found)} are on this page; none is left out.")
     w("")
     w("> [!NOTE]")
     w("> **None of these involved a Sabline program, and this is not a claim "
@@ -354,10 +382,13 @@ def flagship_page(found: list[dict[str, Any]],
       "nor bounds. Every refusal below is re-run on every push, and fails "
       "the build if it stops.")
     w("")
-    order = ("NOT COVERED", "PARTIAL", "STOPPED", "OUT OF SCOPE")
-    heads = {"NOT COVERED": "What nothing here addresses",
-             "PARTIAL": "Refused in part",
-             "STOPPED": "Refused", "OUT OF SCOPE": "Out of scope"}
+    order = ("NOT COVERED", "UNVERIFIED", "PARTIAL", "STOPPED",
+             "OUT OF SCOPE")
+    heads = {"NOT COVERED": "Not replayed: nothing here addresses the shape",
+             "UNVERIFIED": "Not replayed yet: no repro built",
+             "PARTIAL": "Replayed: refused in part",
+             "STOPPED": "Replayed: refused",
+             "OUT OF SCOPE": "Not replayed: out of scope"}
     for verdict in order:
         here = [e for e in found if e["verdict"] == verdict]
         if not here:
@@ -366,14 +397,26 @@ def flagship_page(found: list[dict[str, Any]],
         w("")
         w(MEANING[verdict][0].upper() + MEANING[verdict][1:] + ".")
         w("")
-        w("| Incident | Date | The line that does the work |")
-        w("|---|---|---|")
+        if verdict in NO_REPLAY:
+            w("| Incident | Date | Why there is no replay |")
+            w("|---|---|---|")
+        else:
+            w("| Incident | Date | The line that does the work |")
+            w("|---|---|---|")
         for e in here:
-            line = (f"`{e['budget_line']}`" if e["budget_line"] != "none"
-                    else "none")
+            if verdict in NO_REPLAY:
+                cell = NO_REPLAY[verdict][0].upper() + NO_REPLAY[verdict][1:]
+            else:
+                cell = (f"`{e['budget_line']}`"
+                        if e["budget_line"] != "none" else "none")
             w(f"| [{known[e['slug']]['name']}](incident-{e['slug']}.md) | "
-              f"{e['date']} | {line} |")
+              f"{e['date']} | {cell} |")
         w("")
+    missing = sorted({e["slug"] for e in found}
+                     - {e["slug"] for e in found if e["verdict"] in order})
+    if missing:
+        raise SystemExit("the flagship has no section for: "
+                         + ", ".join(missing))
     w("## Check it yourself")
     w("")
     w("`python incident_evidence.py` re-runs every program and writes what it "

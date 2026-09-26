@@ -268,11 +268,14 @@ judgement call says so beside the rows it would count as a win; and
 AILANG, written from its documentation read in full at 0.42.0.</li>
 <li><strong>Incident pages under the names people use</strong> ("Shai-Hulud",
 "tj-actions/changed-files", "the xz backdoor", "slopsquatting";
-<code>incidents/names.json</code>), and a flagship page, "We replayed 8 real
-incidents in Sabline". <code>build_incidents.py</code> writes an incident's page only
-once its entry says <code>verified: true</code>, and the flagship only once every
-entry does - none do yet, so none is published; <code>--drafts DIR</code> writes
-them to read, and <code>--check</code> fails if docs/ holds one early.</li>
+<code>incidents/names.json</code>), and a flagship page, "We examined 15 real
+incidents and replayed 8 in Sabline", on which each of the 7 with no
+replay says why - not covered, with nothing to run, or out of scope -
+so none reads as left out, and <code>check_incidents.py</code> holds the draft to
+that. <code>build_incidents.py</code> writes an incident's page only once its entry
+says <code>verified: true</code>, and the flagship only once every entry does -
+none do yet, so none is published; <code>--drafts DIR</code> writes them to read,
+and <code>--check</code> fails if docs/ holds one early.</li>
 <li><strong>The paper where Google Scholar can find it</strong>: <code>build_paper.py</code> builds
 the PDF with the title and author sizes Scholar's guidelines ask for,
 served at <code>papers/sabline.pdf</code> beside a landing page carrying

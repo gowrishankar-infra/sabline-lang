@@ -1,8 +1,8 @@
 # Four notes, to send once the flagship page is live
 
-The flagship - "We replayed N real incidents in Sabline" - is written only
-once every catalogue entry is checked (`verified: true`), so these wait for
-it. Each note is tied to something the person wrote, quoted from the page
+The flagship - "We examined N real incidents and replayed M in Sabline" -
+is written only once every catalogue entry is checked (`verified: true`),
+so these wait for it. Each note is tied to something the person wrote, quoted from the page
 itself (`plan/findability-research/people.md` has the links and dates),
 says what Sabline does not do, and asks for nothing but a correction if they
 see one. Use each person's own public channel as their site lists it; no

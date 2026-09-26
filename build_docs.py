@@ -783,10 +783,11 @@ def start_page() -> Page:
         "Sabline.</p>",
         listed(COMPARISONS),
         heading(2, "Incidents", slug),
-        ("<p>Real incidents, replayed in Sabline - what a budget stopped, "
-         "what it did not, and what nothing here addresses: "
+        ("<p>Real incidents, examined, and replayed in Sabline where there "
+         "is a shape to run - what a budget stopped, what it did not, and "
+         "why the rest have no replay: "
          f'<a href="{internal(FLAGSHIP[:-3] + ".html")}">the incidents, '
-         "replayed</a>, and the "
+         "examined and replayed</a>, and the "
          f'<a href="{internal("incidents.html")}">catalogue</a>.</p>'
          if flagship else
          f'<p>The <a href="{internal("incidents.html")}">incident '
