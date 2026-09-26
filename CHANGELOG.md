@@ -7,6 +7,23 @@ moved where.
 
 ## 8.7.0 - Evidence
 
+**A check stopped at its own ceiling was read as a crash.**
+`check_hostile.py`'s seventh case builds a valid 10,000-line program and
+holds `check`, `audit`, `fmt --check` and `run` over it to "no traceback,
+exit 0 or 1". A check and an audit have a ceiling of their own - 60 seconds,
+`CHECK_TIMEOUT_DEFAULT` - and on a slow enough machine a program that size
+reaches it: the answer is E613 and exit 2, which is the designed answer and
+not a crash. The case called it a failure. It fired for the first time on
+this release, on the `macos-15-intel / Python 3.10 / full` leg, where the
+whole suite took 244 s against 67 s on a developer's machine and the check
+took **60.4 s** against a ceiling of 60; `audit` took 59.7 s on the same
+machine and passed, which is how narrow it was. The case now accepts E613
+and E614 from the two commands that have a ceiling - and from neither of the
+two that do not - and still fails on a traceback, on any other exit, and on
+any other code. Two cases beside it force the ceiling with
+`--check-timeout 1` and pin that branch, so it is exercised on every machine
+and not only on one slow enough to find it by accident.
+
 **A page the site had stopped writing stayed at the top of it.**
 `build_docs.py` stages `latest/` and the release's `major.minor/` and swaps
 each into place, so each holds exactly what that build wrote. The top is

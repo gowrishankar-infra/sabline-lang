@@ -857,17 +857,49 @@ def big_file_cases() -> None:
     n = text.count("\n")
     ok("generated a %d-line program (%d functions)" % (n, nfuncs + 1),
        n >= 10000 or len(lines) >= 10000, "lines=%d" % n)
-    for label, args, limit in (("check", ["check", "p.vel"], 180),
-                               ("audit", ["audit", "p.vel"], 180),
-                               ("fmt --check", ["fmt", "p.vel", "--check"], 60),
-                               ("run", ["p.vel", "--allow", "io"], 180)):
+    # A check or an audit has a ceiling of its own - 60 seconds
+    # (CHECK_TIMEOUT_DEFAULT) - and a program this size can reach it on a
+    # slow machine, where the answer is E613 and exit 2. That is the
+    # designed answer and not a crash, so it passes here: what this case
+    # holds is that a big valid program never ends in a traceback, a hang
+    # or an uncoded exit. 8.7.0 found this on the macos-15-intel leg, where
+    # the check took 60.4s against a ceiling of 60 and the suite called the
+    # refusal a failure; audit took 59.7s on the same machine and passed,
+    # which is how narrow it was. `fmt` and `run` have no such ceiling.
+    CEILING = ("E613", "E614")            # the time and memory ceilings
+
+    def held(code: Any, out: Any, may_hit_the_ceiling: bool) -> bool:
+        if code in (0, 1):
+            return True
+        return (may_hit_the_ceiling and code == 2
+                and any("error[%s]" % c in out for c in CEILING))
+
+    for label, args, limit, ceiling in (
+            ("check", ["check", "p.vel"], 180, True),
+            ("audit", ["audit", "p.vel"], 180, True),
+            ("fmt --check", ["fmt", "p.vel", "--check"], 60, False),
+            ("run", ["p.vel", "--allow", "io"], 180, False)):
         code, out, secs = run_cli(args, cwd=str(d), timeout=limit)
-        ok("10,000-line program, %s in %.1fs -> no traceback, exit 0/1"
-           % (label, secs),
-           clean(out) and code in (0, 1) and secs < limit,
+        ok("10,000-line program, %s in %.1fs -> no traceback, and it "
+           "finished or was stopped by its own ceiling" % (label, secs),
+           clean(out) and held(code, out, ceiling) and secs < limit,
            "code=%s %.1fs %s" % (code, secs, out.strip().splitlines()[-1][:60]
                                  if out.strip() else ""),
            finding=not clean(out))
+    # ...and the ceiling branch above, pinned: forced to fire, rather than
+    # waited for on a machine slow enough. Without this the branch is only
+    # ever taken on the runner that made this case fail, so it would rot.
+    code, out, secs = run_cli(["check", "p.vel", "--check-timeout", "1"],
+                              cwd=str(d), timeout=120)
+    ok("...and a check stopped at its ceiling is E613, exit 2, no traceback "
+       "- which the case above accepts",
+       clean(out) and code == 2 and "error[E613]" in out
+       and held(code, out, True),
+       "code=%s %.1fs %s" % (code, secs, out.strip().splitlines()[-1][:60]
+                             if out.strip() else ""))
+    ok("...and that same answer is not accepted where there is no ceiling "
+       "to reach", not held(2, out, False), "exit 2 with E613 was allowed "
+       "for fmt or run")
 
 
 # ---------------------------------------------------------------------------

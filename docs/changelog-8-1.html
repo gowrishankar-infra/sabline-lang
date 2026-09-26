@@ -77,6 +77,22 @@
 <h1 id="changelog">Changelog: 8.x: 8.7.0 to 8.5</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
 <h2 id="870---evidence">8.7.0 - Evidence <a class="anchor" href="#870---evidence" aria-label="Link to this section">#</a></h2>
+<p><strong>A check stopped at its own ceiling was read as a crash.</strong>
+<code>check_hostile.py</code>'s seventh case builds a valid 10,000-line program and
+holds <code>check</code>, <code>audit</code>, <code>fmt --check</code> and <code>run</code> over it to "no traceback,
+exit 0 or 1". A check and an audit have a ceiling of their own - 60 seconds,
+<code>CHECK_TIMEOUT_DEFAULT</code> - and on a slow enough machine a program that size
+reaches it: the answer is E613 and exit 2, which is the designed answer and
+not a crash. The case called it a failure. It fired for the first time on
+this release, on the <code>macos-15-intel / Python 3.10 / full</code> leg, where the
+whole suite took 244 s against 67 s on a developer's machine and the check
+took <strong>60.4 s</strong> against a ceiling of 60; <code>audit</code> took 59.7 s on the same
+machine and passed, which is how narrow it was. The case now accepts E613
+and E614 from the two commands that have a ceiling - and from neither of the
+two that do not - and still fails on a traceback, on any other exit, and on
+any other code. Two cases beside it force the ceiling with
+<code>--check-timeout 1</code> and pin that branch, so it is exercised on every machine
+and not only on one slow enough to find it by accident.</p>
 <p><strong>A page the site had stopped writing stayed at the top of it.</strong>
 <code>build_docs.py</code> stages <code>latest/</code> and the release's <code>major.minor/</code> and swaps
 each into place, so each holds exactly what that build wrote. The top is
