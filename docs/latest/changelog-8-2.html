@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Changelog: 8.x: 8.4 to 8.3 - Sabline 8.7.0</title>
-<meta name="description" content="What changed in Sabline 8.3 to 8.4, release by release, newest first, as CHANGELOG.md records it.">
+<title>Changelog: 8.x: 8.5 to 8.4 - Sabline 8.7.0</title>
+<meta name="description" content="What changed in Sabline 8.4 to 8.5, release by release, newest first, as CHANGELOG.md records it.">
 <meta name="sabline-version" content="8.7.0">
 <link rel="canonical" href="https://sabline.dev/changelog-8-2.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sabline">
-<meta property="og:title" content="Changelog: 8.x: 8.4 to 8.3 - Sabline 8.7.0">
-<meta property="og:description" content="What changed in Sabline 8.3 to 8.4, release by release, newest first, as CHANGELOG.md records it.">
+<meta property="og:title" content="Changelog: 8.x: 8.5 to 8.4 - Sabline 8.7.0">
+<meta property="og:description" content="What changed in Sabline 8.4 to 8.5, release by release, newest first, as CHANGELOG.md records it.">
 <meta property="og:url" content="https://sabline.dev/changelog-8-2.html">
 <meta property="og:image" content="https://sabline.dev/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -69,13 +69,258 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.7.0 to 8.5</a></li><li><a href="changelog-8-2.html" aria-current="page">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-3.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html">8.x: 8.7.0 to 8.6</a></li><li><a href="changelog-8-2.html" aria-current="page">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-3.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
-<h1 id="changelog">Changelog: 8.x: 8.4 to 8.3</h1>
+<h1 id="changelog">Changelog: 8.x: 8.5 to 8.4</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="85---taste">8.5 - Taste <a class="anchor" href="#85---taste" aria-label="Link to this section">#</a></h2>
+<p>A minor version, additive throughout: what it is like to use. One command
+that shows a refusal and a run inside a budget with nothing to read first;
+four libraries, written in Velaris, so that an operations script against
+Azure, Kubernetes, GitHub or AWS calls no Python; a receipt and an audit as
+a page a person can read; and the first cut of the runner, in which a host
+process offers a program tools and the budget holds their arguments.</p>
+<p>No program that compiles and runs under 8.4.0 inside its budget is refused
+by 8.5.0. Every new builtin gives way to a function of the program's own
+name (SPEC.md 10.1); <code>uses tool</code> did not compile and a <code>tool</code> grant did not
+parse until now; with no <code>--tools</code> there is no tool to reach.
+<code>check_differential.py</code> holds the examples, velaris-spec's corpus and the
+quick benchmark to 8.4.0's outputs.</p>
+<p>compatibility: <code>sha256</code>, <code>hex_encode</code>, <code>hex_decode</code>, <code>base64_encode</code>, <code>base64_decode</code> and <code>url_encode</code> are new pure builtins, and each gives way to a function of that name in the program (they are in <code>NEW_BUILTINS</code>, SPEC.md 10.1), so a program that defined its own <code>sha256</code> under 8.4 still calls its own; a program that called an undefined one did not compile (E200).
+compatibility: <code>hmac_sha256</code> and <code>hmac_sha256_chain</code> are new builtins that give way to the program's own function in the same way; they need the <code>declassify</code> effect, which no program can come to need without calling them, and the E560, E561 and E609 they can give are given only to a program that calls them, which under 8.4 was E200.
+compatibility: <code>tool</code> is a ninth effect. <code>uses tool</code> was E300 under 8.4 and <code>--allow tool</code> a budget error, so no program or command line that worked changes meaning; <code>--allow all</code> now grants nine effects and says so in the line it has always written to standard error, and a program run under it that does not call <code>tool</code> runs as before; <code>velaris.ALL_EFFECTS</code> is one longer.
+compatibility: <code>tool</code> and <code>tool_secret</code> are new builtins that give way to the program's own function; E320, E321, E322, E323 and E324 are given only to a call of one of them, which no program that compiled under 8.4 makes, and the last four only under <code>velaris run --tools</code>.
+compatibility: <code>velaris demo</code>, <code>velaris receipt show</code> (and <code>velaris receipts show</code>, the same page), <code>velaris skill verify</code>, <code>velaris audit --html [-o FILE]</code> and <code>velaris run --tools MANIFEST [--tool-timeout S]</code> are new; a file named <code>demo</code>, <code>receipt</code> or <code>skill</code> in the working directory is now run with <code>velaris run demo</code>, as a file named <code>audit</code> or <code>check</code> always had to be.
+compatibility: <code>velaris.receipt/1</code> gains <code>grants_used</code> in every receipt, <code>tool_calls</code> and <code>tool_ceiling</code> in the receipt of a run given <code>--tools</code>, and <code>key_fingerprint</code> on the declassification an hmac call records - all within version 1, where fields may be added (velaris-spec 8.7, 0.13.0); <code>velaris replay</code> and <code>receipts diff</code> compare what they compared, and a receipt written by 8.4 is read, shown and verified as before.
+compatibility: <code>velaris.audit/1</code> gains <code>tools</code> within version 1, and <code>secrets.declassifications</code> gains an entry, with a <code>builtin</code> key, for each hmac call; <code>effects</code> may hold <code>tool</code>.
+compatibility: the audit and the capability ratchet now name the host of a URL that only begins fixed - <code>"https://api.example.com/" + path</code>, or <code>format("https://api.example.com/{}", id)</code> - when the fixed part holds the <code>/</code> that ends the host, where 8.4 said "a host built while running". <code>net_hosts</code>, <code>safe_command</code> and a derived baseline are narrower for such a program, never wider: the ratchet passes a narrowing against an 8.4 baseline, and the run-time check of <code>net:</code> grants is unchanged. velaris-spec 9.3 states the rule (0.13.0).
+compatibility: inside a library imported with a name, a call to a builtin older than 4.3 reaches the builtin, as it does in a flat import and as SPEC.md 10 says a named import behaves; until now a library's own <code>get</code> took a <code>get(list, i)</code> written inside it, a <code>for</code> loop's included. Only the shipped library may define such a name (E204) - <code>http.vel</code> has a <code>get</code> - and no shipped library made such a call, so no program's meaning changes.
+compatibility: <code>stdlib/http.vel</code> is byte for byte what it was in 8.4.0. What the batteries needed beside it - retries within a bound, JSON bodies, headers from a map - is in a new file, <code>stdlib/rest.vel</code>, because a function added to <code>http.vel</code> would stop a program that imports <code>http.vel</code> without a name and has a function of that name itself (E513), and <code>items</code> and <code>succeeded</code> are names a program has; <code>azure.vel</code>, <code>github.vel</code>, <code>k8s.vel</code>, <code>aws.vel</code> and <code>rest.vel</code> are new files that no 8.4 program imports.
+compatibility: <code>host_refusal</code> takes an optional <code>count</code> and the run state gains <code>TOOL_GRANTS</code>, <code>TOOL_LIMITS</code>, <code>TOOL_COUNTS</code>, <code>GRANT_USES</code> and <code>TOOL_SESSION</code>, none of which STABILITY.md covers and each of which has the value a run without tools had before.
+api: <code>AuditResult</code> gains the <code>tools</code> slot; <code>velaris.ALL_EFFECTS</code> gains <code>tool</code>; the run state gains <code>TOOL_GRANTS</code>, <code>TOOL_LIMITS</code>, <code>TOOL_COUNTS</code>, <code>GRANT_USES</code> and <code>TOOL_SESSION</code>; <code>host_refusal(url)</code> becomes <code>host_refusal(url, count=False)</code>; the command line gains <code>demo</code>, <code>receipt</code>, <code>skill</code>, <code>audit --html</code> and <code>run --tools</code>/<code>--tool-timeout</code>; receipts from every door gain <code>grants_used</code>, and audits <code>tools</code>.</p>
+<h3 id="velaris-demo"><code>velaris demo</code> <a class="anchor" href="#velaris-demo" aria-label="Link to this section">#</a></h3>
+<p>One command, no arguments, no network, about a second. It makes a directory,
+writes into it a <code>.env</code> whose one value is made up, a script of the kind an
+agent writes - read <code>./.env</code>, post it to a webhook - and the same task
+rewritten to stay inside a budget. It runs the first with no budget given
+and shows the refusal, the exact line, the reason and the receipt; runs the
+second under <code>io,fs:read:settings.txt,fs:write:out</code> and shows it succeed,
+with its receipt; and prints what differs between the two receipts. <code>--keep</code>
+leaves the files. The documentation's first page now opens with it.
+<code>check_demo.py</code> runs it on every leg: under a minute, under a screen, exit
+0, nothing left behind.</p>
+<h3 id="batteries-written-in-velaris">Batteries, written in Velaris <a class="anchor" href="#batteries-written-in-velaris" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong><code>stdlib/azure.vel</code></strong>: Azure Resource Manager over REST - <code>read</code>,
+<code>put_resource</code>, <code>patch_resource</code>, <code>delete_resource</code>, <code>list</code> with
+<code>nextLink</code> paging (a link that leaves the host is not followed), a 429 or
+a 5xx asked again within a bound, and ARM's <code>{"error": {"code", "message"}}</code> as the failure's words. The bearer token is the caller's
+<code>Secret of Text</code>; nothing in the library signs in. Every request is
+written <code>"https://management.azure.com:443/" + path</code>, so the audit of a
+program that uses it names exactly <code>management.azure.com:443</code>.</li>
+<li><strong><code>stdlib/k8s.vel</code></strong>: the API server over REST with a <code>Secret</code> token;
+<code>in_cluster()</code> reads the service-account file with <code>read_file_secret</code>;
+<code>list</code> (with <code>metadata.continue</code>), <code>read</code>, <code>watch_once</code>, and <code>pods</code>,
+<code>pod</code>, <code>services</code>, <code>deployments</code>, <code>deployment</code>, <code>configmaps</code>, <code>events</code>,
+<code>nodes</code>, <code>namespaces</code>. It reads; what changes the cluster is
+<code>write_create</code>, <code>write_patch</code>, <code>write_delete</code> and <code>write_scale</code>, and the
+suite fails if a function that sends a changing method is named otherwise.
+It has no function for reading a Secret resource, on purpose.</li>
+<li><strong><code>stdlib/github.vel</code></strong>: repos, issues, pulls, check runs, releases and
+contents; <code>Link</code>-header paging held to <code>api.github.com</code>; the rate limit
+in every reply (<code>remaining</code>, <code>reset</code>) and, when it is reached, a failure
+that says when it resets and is not asked again.</li>
+<li><strong><code>stdlib/aws.vel</code></strong>: Signature Version 4 in Velaris, to S3 (list
+buckets, list objects with continuation, get, put, delete) and STS
+(<code>GetCallerIdentity</code>), with a session token when there is one. The date
+is whole-number arithmetic on <code>now()</code>. It reproduces the signature AWS
+publishes for its own test request, and the stand-in checks each
+signature the way AWS does, from the request as it arrived.</li>
+<li><strong><code>hmac_sha256(key: Secret of Text, message: Text) -&gt; Text</code></strong> and
+<strong><code>hmac_sha256_chain(key, messages)</code></strong>. The result is not a Secret, so the
+call needs the <code>declassify</code> effect and grant, the audit lists it under
+<code>secrets</code> with the reason <code>hmac signature</code>, and the receipt records it
+with the key's fingerprint. The chain exists because SigV4's derived keys
+are credentials themselves: with it they are never values of the program.
+THREAT_MODEL.md has a new section saying why a MAC does not give the key
+away, what somebody holding one can do (replay it while it is valid), and
+the limit: a program with the <code>declassify</code> grant can MAC under a weak key
+it derived from a strong one - which is no more than <code>declassify</code> already
+let it do, and should be read in an audit as what it is.</li>
+<li><strong><code>sha256</code>, <code>hex_encode</code>, <code>hex_decode</code>, <code>base64_encode</code>, <code>base64_decode</code>,
+<code>url_encode</code></strong>: pure, over UTF-8; the decoders fail on what is not the
+encoding or not text.</li>
+<li><strong>Bearer tokens leave through <code>declassify</code></strong>, once, where the header is
+built, with a reason that names the host. 8.5 adds no builtin that sends a
+Secret: one that did would make <code>net</code> a second <code>declassify</code> that no audit
+names.</li>
+<li><strong><code>stdlib/rest.vel</code></strong> is what the four needed that <code>http.vel</code> lacked:
+<code>call_retrying</code> (a bound of ten, no pause - a program has no clock unless
+granted one), <code>call_json</code>, <code>header_map</code>, <code>header_of</code>, <code>items</code>,
+<code>succeeded</code>, <code>worth_retrying</code>, <code>after_prefix</code>, <code>no_leading_slash</code>. It is
+a new file and <code>http.vel</code> is untouched: the first draft added these to
+<code>http.vel</code>, and a program that imports <code>http.vel</code> without a name and
+defines its own <code>items</code> then stopped compiling (E513). A minor version
+does not do that, so they moved.</li>
+<li><strong>The audit names the host of a URL that begins fixed</strong> (above), which is
+what lets a library written against one host audit as that host.
+<code>azure.vel</code> and <code>github.vel</code> import nothing, because an audit reads every
+function a program loads and <code>http.vel</code>'s take any URL.</li>
+<li><strong>Each has an example</strong> under <code>examples/ops/</code> - <code>azure_groups.vel</code>
+(resource groups and tag drift), <code>k8s_pods.vel</code>, <code>github_issues.vel</code>,
+<code>aws_buckets.vel</code> - a line on the Library page, and a test in
+<code>check_batteries.py</code>, which runs on every leg against a stand-in server in
+the suite's own process: the request goes to the real host's name over
+TLS, under the real host's grant, and only where that name connects to is
+changed (<code>tests/standin/</code>, a certificate nothing else trusts).</li>
+</ul>
+<p><strong>The ffi count over <code>examples/</code></strong> (<code>velaris stats --ffi examples</code>): at 8.4.0,
+106 programs, 8 of which call Python; at 8.5.0, 112 programs, 8 of which
+call Python. The six new programs - the four under <code>examples/ops/</code> and the
+two under <code>examples/runner/</code> - call none, and the audit of each shows no
+<code>ffi</code> effect and no module. The eight are the ones that were there:
+<code>database.vel</code>, <code>edges.vel</code>, <code>ffi.vel</code>, <code>json_ffi.vel</code>, <code>report_fixes.vel</code>,
+<code>sandbox.vel</code>, <code>stdlib_tools.vel</code> and <code>stress.vel</code>, which exist to show
+<code>ffi</code>, <code>db.vel</code> and <code>dates.vel</code>; none of them was rewritten.</p>
+<h3 id="viewers">Viewers <a class="anchor" href="#viewers" aria-label="Link to this section">#</a></h3>
+<p><code>velaris receipt show &lt;file&gt;</code> and <code>velaris audit &lt;file&gt; --html</code> write a page:
+what was read, written and fetched - by grant, with counts - which secrets
+were declassified and why, what was refused and where, the confinement
+level, the wall time, the subjects. Plain HTML with the documentation site's
+stylesheet inside it; no script, nothing fetched, every value escaped;
+<code>--text</code> for the terminal, with control characters written as escapes. The
+same input gives the same bytes on every system (<code>tests/viewers/</code>).</p>
+<p>To say which host, a receipt had to know, and a receipt holds no value the
+program handled. So <code>grants_used</code> counts what each <em>grant</em> let through, by
+the grant's own text - <code>net:management.azure.com:443</code> three times - which is
+the operator's and not the program's.</p>
+<h3 id="the-runner-first-cut">The runner, first cut <a class="anchor" href="#the-runner-first-cut" aria-label="Link to this section">#</a></h3>
+<p><code>velaris run program.vel --tools manifest.json</code>. The manifest
+(<code>velaris.tools/1</code>) declares tools by name, a JSON Schema for each one's
+arguments, which results are secret, a cost, and a ceiling in calls and in
+the host's own cost unit. The budget grants them as it grants anything:
+<code>tool</code>, <code>tool:search@20</code>, <code>tool:send_email:to=*@corp.com</code>. A call goes
+through a door to the host - JSON lines on standard input and output now; an
+HTTP door later - pauses the run, and resumes with the result, which is a
+<code>Secret of Text</code> when the manifest says so. <code>Untrusted</code> arrives in 9.0, and
+the documents say so where it matters. Receipts record every call site, the
+patterns that held its arguments and the ceiling; the audit lists <code>tool</code>
+like any effect, and the tools a program names. <code>examples/runner/</code> is a host
+in Python offering <code>search</code> and <code>send_email</code>, and a program that is refused
+(E321) when it mails outside the allowed domain, before the host hears of
+it. <code>velaris skill verify &lt;dir&gt;</code> reads a skill's programs and manifest and
+reports the tools and the budget it would need. There is no framework
+adapter; docs/runner.md is the whole protocol, and who trusts whom.</p>
+<h3 id="the-adversarial-pass">The adversarial pass <a class="anchor" href="#the-adversarial-pass" aria-label="Link to this section">#</a></h3>
+<p>Kept as tests, so that each stays tried.</p>
+<ul>
+<li><strong>An argument that escapes its constraint</strong> (<code>check_runner.py</code>, fourteen
+ways against <code>to=*@corp.com</code>). The first matcher was a glob, and a glob
+star matches <code>eve@evil.example, ann@corp.com</code>. The rule that shipped: a
+pattern is matched against the whole value, nothing is trimmed or folded,
+and <code>*</code> never stands for the literal that follows it in the pattern, a
+separator (<code>, ; &lt; &gt; " ' \</code>), white space, a control or format character,
+or across <code>..</code>; a list matches when every item does; a held argument that
+is left out is refused, since the host's default is not the operator's
+pattern; and an argument the schema does not name is refused, since what
+nobody described nobody constrained.</li>
+<li><strong>A ceiling exceeded</strong>: five of them - <code>tool:NAME@N</code>, <code>tool@N</code>, the
+manifest's calls, its cost, and a cost the host reports mid-run.</li>
+<li><strong>A host that lies</strong>: another call's id, a Bool for an id, a line that is
+not JSON, a result and an error, neither, a negative cost to win budget
+back, a cost that is not a number, NaN, a closed door, silence. Each is
+E324 and the program does not go on. A reply's other fields change
+nothing: a result is a <code>Text</code> and never a grant.</li>
+<li><strong>A result that steers</strong> a host or a path: it cannot leave the budget (the
+suite has a tool return a URL outside <code>net:</code>, which is E314), and inside
+the budget it can. That is the 9.0 <code>Untrusted</code> case and is written down as
+open in THREAT_MODEL.md, not fixed.</li>
+<li><strong><code>hmac_sha256</code>: a key that reaches output other than as a MAC</strong>
+(<code>check_digests.py</code>). Sixteen routes - printed, logged, written, as a URL,
+as a tool's arguments, encoded first, through a list, a map, <code>format</code>,
+<code>json_of</code>, a loop over <code>chars</code>, as the <em>message</em> of another MAC - none
+compiles. One thing was changed for it: a call site that signs under many
+keys names sixteen fingerprints in a receipt and then says <code>many</code>, so a
+loop over keys derived from a secret cannot use the receipt as a channel.
+The limit above - a weak key derived from a strong one - is stated, not
+closed.</li>
+<li><strong><code>velaris demo</code> turned on a real <code>.env</code></strong> (<code>check_demo.py</code>): run from a
+directory holding a <code>.env</code> with a value only the suite knows, with seven
+argument forms, a proxy in the environment and the temporary directory
+pointed at the victim's. The value appears nowhere, nothing connects
+anywhere, and the directory is as it was.</li>
+<li><strong>A receipt somebody else wrote</strong>, shown as a page: markup in any value is
+text, and an escape sequence is written out, not sent to the terminal.</li>
+</ul>
+<h3 id="known-open">Known open <a class="anchor" href="#known-open" aria-label="Link to this section">#</a></h3>
+<ul>
+<li>A tool's result is not marked as the host's words (<code>Untrusted</code>, 9.0).</li>
+<li>The pattern rule is conservative: <code>*@corp.com</code> does not match
+<code>Ann@Corp.com</code>, and <code>/data/*.txt</code> does not match <code>/data/a.b.txt</code>.</li>
+<li><code>k8s.vel</code> verifies TLS against the machine's trust store; a cluster with
+its own CA needs <code>SSL_CERT_FILE</code> set where the run starts. There is no
+switch that turns verification off, and no way yet to name a CA per run.</li>
+<li><code>aws.vel</code> and <code>k8s.vel</code> take their host from the caller, so an audit says
+"a host built while running" for them and the operator names the grant.</li>
+<li><code>call_retrying</code> does not pause between attempts.</li>
+<li>A named import still renames a library's <em>parameters</em> that share a name
+with one of its functions; <code>http.vel</code> avoids the names. 9.0.</li>
+<li>S3 and STS answer in XML, and <code>aws.vel</code> reads values out by tag.</li>
+<li><code>embedding.html</code> and <code>threat-model.html</code> are within a few hundred bytes of
+the site's 100,000-byte page budget. The runner's protocol and the viewers
+moved to <code>docs/runner.md</code> for that reason; the next addition to either
+document has to move text out as well.</li>
+</ul>
+<h3 id="housekeeping">Housekeeping <a class="anchor" href="#housekeeping" aria-label="Link to this section">#</a></h3>
+<ul>
+<li><strong><code>build_docs.py</code> hashes and copies line-feed bytes</strong> (<code>lf_bytes</code>): the
+digest on the receipt page, <code>site.css</code>, <code>site.js</code>, <code>llms.txt</code> and the
+playground are the same bytes from a Windows checkout and from a runner,
+so the release's own rebuild of <code>docs/</code> no longer touches that page.</li>
+<li><code>velaris/site.css</code> is the site's stylesheet inside the package, for the
+viewers; <code>check_viewers.py</code> holds it to <code>site/site.css</code>.</li>
+<li>velaris-spec 0.13.0: the <code>tool</code> effect and its grants (sections 3.1, 4.1
+and 5.6), the URL-prefix rule (9.3), receipt <code>grants_used</code>, <code>tool_calls</code>,
+<code>tool_ceiling</code> and <code>key_fingerprint</code> (8.7), the audit's <code>tools</code> and the
+hmac declassification (8.6), and <code>velaris.tools/1</code> (8.10, provisional).</li>
+<li><a href="https://github.com/gowrishankar-infra/velaris-kit">velaris-kit</a>, a
+template repository: the Azure script, a committed <code>velaris.capabilities</code>,
+the Action in a workflow, and an empty <code>FRICTION.md</code>.</li>
+</ul>
+<h3 id="measured">Measured <a class="anchor" href="#measured" aria-label="Link to this section">#</a></h3>
+<p>Measured by <code>perf_gates.py --against v8.4.0</code> on Windows 11 (10.0.26200,
+AMD64, 16 CPUs), Python 3.13.13, z3-solver 5.1.0 and llvmlite 0.49.0: medians
+of 5 runs after one warm-up. <strong>The machine was not idle</strong>: 17% busy when it
+began, and this release's other suites ran beside the later measurements, so
+every figure here is higher than 8.4.0's table for that reason and not for a
+change in the code it measures. The comparison against v8.4.0 runs both
+versions in alternation under the same load, and is the figure to read; the
+release workflow repeats it on a runner that does nothing else, and fails
+the release past +25%.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Measure</th><th>8.5.0</th></tr></thead>
+<tbody>
+<tr><td>Cold start, <code>velaris --version</code></td><td>257 ms</td></tr>
+<tr><td>Cold start, <code>velaris check</code> of a one-line file</td><td>531 ms</td></tr>
+<tr><td>Check, per 1,000 lines (a 1,013- and a 10,013-line program)</td><td>1.11 s and 1.33 s; 0.07 s and 0.07 s without proofs</td></tr>
+<tr><td>Proof time per example with contracts, p50 / p95</td><td>23 ms / 488 ms, over 56 files</td></tr>
+<tr><td>Native code on <code>examples/bench.vel</code>: compile, and llvmlite's import</td><td>90 ms, and 78 ms; <code>burn</code> compiled</td></tr>
+<tr><td><code>examples/bench.vel</code>, native / <code>--no-native</code></td><td>6.76 s / 16.46 s, 2.44 times faster, 9.71 s saved</td></tr>
+<tr><td><code>--lite</code> build</td><td>there is none</td></tr>
+<tr><td>Pool worker's memory, after 1 run and after 1,000 more</td><td>26.6 MB, 27.6 MB</td></tr>
+<tr><td>z3 or llvmlite imported by <code>velaris --version</code>, or by <code>check</code> of a program with no promise</td><td>neither</td></tr>
+<tr><td>Importing z3 when a command needs it</td><td>+170 ms at cold start</td></tr>
+<tr><td>Importing llvmlite when a command needs it</td><td>+173 ms at cold start</td></tr>
+<tr><td>Pure numeric against v8.4.0, native (<code>bench.vel</code> and an integer loop)</td><td>6.76 s against 6.75 s, +0.2% (the gate allows +25%)</td></tr>
+<tr><td>Pure numeric against v8.4.0, interpreted</td><td>20.01 s against 18.64 s, +7.3%, measured under the load described above</td></tr>
+<tr><td><code>velaris demo</code>, start to finish</td><td>about 1 s: two runs of the command line and nothing else</td></tr>
+</tbody></table></div>
+<p><code>check_differential.py</code> against v8.4.0: none of the 97 examples' outputs
+differs, velaris-spec's 456 conformance cases give the same verdicts, and
+the quick benchmark's 15 programs the same verdicts.</p>
 <h2 id="84---the-kernel-holds-the-line">8.4 - The kernel holds the line <a class="anchor" href="#84---the-kernel-holds-the-line" aria-label="Link to this section">#</a></h2>
 <p>A minor version, and the last before 9.0. Until now the budget was enforced
 by the interpreter alone, in the process that runs the program, and
@@ -342,403 +587,12 @@ the quick benchmark's 15 programs the same verdicts. The full benchmark, run
 at 8.4.0 with every bounded Velaris run confined, gives every one of its 76
 programs the verdict it had at 8.3.0 (Velaris 52/12/2/0, Deno 8/34/24,
 Python 0/31/35); <code>benchmark/results.json</code> changes in its version line alone.</p>
-<h2 id="831---the-documentation-as-a-site">8.3.1 - The documentation, as a site <a class="anchor" href="#831---the-documentation-as-a-site" aria-label="Link to this section">#</a></h2>
-<p>A patch release that adds no code. 8.3 moved the documentation to
-velaris-lang.dev; this builds it into a site rather than a handful of pages.
-<code>build_docs.py</code> writes every document - README, SPEC, TUTORIAL, EMBEDDING,
-STABILITY, SECURITY, THREAT_MODEL, the CHANGELOG, the error pages, the two
-predicate types, <code>docs/eval.md</code>, <code>docs/crosswalk.md</code>,
-<code>docs/structurally-impossible.md</code> and <code>llms.txt</code> - through one generator,
-with one stylesheet and one script, into three trees: the top of the site,
-<code>latest/</code>, and <code>8.3/</code>. A version directory the build does not write is left
-alone, so an address published under an earlier one keeps working. Every
-copy's canonical link names the page at the top.</p>
-<p>Nothing in the package changed but its version: no error code, flag, default,
-output or verdict moves, and a program that compiled under 8.3.0 compiles the
-same way.</p>
-<ul>
-<li><strong>The renderer</strong> is <code>docs_markdown.py</code>, beside the generator: headings with
-anchors, tables, callouts (<code>&gt; [!NOTE]</code>, <code>&gt; [!REFUSES]</code>, <code>&gt; [!KNOWN-OPEN]</code>,
-and the <code>**Note.**</code> lead-ins the documents already used), and Velaris code
-highlighted from <code>velaris.lexer</code>'s own <code>MASTER_RE</code> and <code>KEYWORDS</code>, so the
-site cannot colour a keyword the compiler does not have.</li>
-<li><strong>A search index</strong> of every heading of every page, fetched only when the
-search box is given focus. A theme toggle follows the system until a reader
-chooses, and the choice survives a reload.</li>
-<li><strong><code>check_site.py</code></strong> builds the whole site into a scratch directory and
-holds it there: version directories kept and <code>latest/</code> rebuilt, no raw
-Markdown in page text, a strict HTML parse, every relative link and anchor
-resolving, one stylesheet and one script per page under a
-Content-Security-Policy, no request to another host, pages within their
-byte budget, the search index complete, <code>llms.txt</code> byte for byte in every
-tree, and the contrast ratios recomputed from the stylesheet's own tokens.
-With Chrome it also drives the pages: every one fits 360px, no console
-error, the copy buttons, the menu, the search (E700 reaches
-<code>errors.html#E700</code>), and the theme toggle. <code>--no-chrome</code> prints those as
-skipped, which is how <code>test.yml</code> runs it; <code>site.yml</code> runs it with
-<code>--require-chrome</code> and then Lighthouse, asserting 95 in performance,
-accessibility and best practices, and a transfer budget per page.</li>
-<li><strong><code>TUTORIAL.md</code>'s code blocks now run</strong> under <code>check_docs.py</code>, as every
-other document's already did.</li>
-<li><code>check_docs.py</code> also admits the generated pages that hold the changelog's
-own history, and the search index built from them, as the only files
-besides those it already lists that may name the site's earlier address.</li>
-</ul>
-<h3 id="known-open-2">Known open <a class="anchor" href="#known-open-2" aria-label="Link to this section">#</a></h3>
-<ul>
-<li><strong>The playground is over the page budget</strong> (about 1 MB: it carries the
-compiler) and loads Pyodide from a CDN, so it keeps its own layout, lives
-only at the top of the site, and <code>check_site.py</code> lists it as an exception
-rather than holding it to the rules.</li>
-<li><strong>The build does not remove a stale generated file</strong> at the top of the
-site: it rebuilds <code>latest/</code> and its own version directory, and a page
-renamed in a later release would leave its old file behind until it is
-deleted by hand.</li>
-</ul>
-<h2 id="83---what-a-run-can-show">8.3 - What a run can show <a class="anchor" href="#83---what-a-run-can-show" aria-label="Link to this section">#</a></h2>
-<p>A minor version. A receipt has said, since 8.1, what one run did; 8.3 adds
-what can be done with one - a profile for running code in an evaluation
-harness that always leaves a receipt, a comparison of a receipt with its
-program's audit and with earlier runs, a replay of a run from its receipt, and
-a verifier for attestations and receipts. Beside them: promises exercised on
-the inputs the prover finds, a page of what cannot occur in a Velaris program
-with a test for each, RFC 4180 quoting in <code>csv.vel</code>, log lines a value cannot
-forge, two benchmark categories, a workflow-permissions ratchet for the
-Action, and a crosswalk onto four agent-security frameworks. The project's
-documentation moved to velaris-lang.dev, and every name of it moved with it.
-A test written for a surviving mutant found a fault in the prover, which
-reported proven a promise past a comparison of two maps or lists; it is
-fixed, and has an advisory.</p>
-<p>compatibility: E615 is given only under <code>velaris eval</code>, new in 8.3, to a run that was asked to stop from outside; no run of 8.2.1 or earlier can meet it.
-compatibility: E616 is given only under <code>velaris replay --responses</code>, new in 8.3, to a call a recording of tool responses does not hold in that place; no earlier run can meet it.
-compatibility: <code>check</code>, <code>proofs</code>, <code>explain</code>, <code>audit</code>, <code>attest</code> and the library no longer report a promise proven when its proof passes through <code>==</code> or <code>!=</code> on two maps, two lists other than <code>List of Int</code>, a map and <code>put</code> of it, or two records holding a Float field: until 8.3 each such comparison was a constant to the prover, and a promise past it could be reported proven and then break when the program ran (Goal A, advisory-prover-compare.md). Such a promise is now checked while the program runs, as every unproven promise is, so the count of proven promises a report, an audit or an attestation gives can fall. Two records with a <code>List of Int</code> field now compare as two such lists do, so a false promise past that comparison, reported proven until 8.3, can be refused with E700. Against v8.2.1 no example's output and no conformance verdict changes.
-compatibility: every compiler error's and refusal's <code>reference:</code> line, the <code>reference</code> field of <code>--json</code> output and of SARIF, and each SARIF rule's <code>helpUri</code> name <a href="llms.txt">https://velaris-lang.dev/llms.txt</a> and <a href="errors.html">https://velaris-lang.dev/errors.html</a>, where they named the same pages at the project's GitHub Pages address, which now redirects there. Only that text changes; no code, message, exit status or verdict does, and a reader following the earlier address reaches the same page.
-compatibility: <code>velaris attest</code> writes the predicate type <a href="../capability/v1/index.html">https://velaris-lang.dev/capability/v1</a>, and a receipt names <a href="../receipt/v1/index.html">https://velaris-lang.dev/receipt/v1</a>, where 4.2 to 8.2.1 named both at the project's GitHub Pages address (<a href="index.html">https://gowrishankar-infra.github.io/velaris-lang/</a>...). <code>velaris verify</code>, <code>velaris receipts diff</code>, <code>velaris replay</code> and the OPA policy read each earlier name as the same type, so every attestation and receipt signed until now still verifies with Velaris; a verifier outside Velaris that pins one type name - cosign's <code>--type</code>, the Kyverno policy - takes the name the Statement carries. velaris.dev was never this project's domain: it is registered to someone else, 4.1 chose not to use it, no Velaris ever wrote a type under it, and <code>velaris verify</code> refuses a Statement naming one as it refuses every type Velaris does not define. The types now name a domain the project controls. A Statement's <code>specification</code> and a receipt's say velaris-spec 0.11.0, the version that records the new names.
-compatibility: <code>velaris verify</code> given a file checks it as an attestation or a receipt (exit 0 verified, 1 refused or naming other bytes, 2 not checked); with no file it is the older spelling of <code>velaris deps --verify</code>, as before. Until 8.3 a file given to <code>velaris verify</code> was ignored and the vendored libraries were checked.
-compatibility: <code>log</code>, every function of <code>stdlib/log.vel</code>, and <code>velaris trace</code> write a line feed, a carriage return, an escape, a NUL, every other C0 and C1 control character but tab, DEL, U+2028 and U+2029 in a value as an escape (<code>\n</code>, <code>\r</code>, <code>\xNN</code>, <code>\uNNNN</code>), so each call writes one line. Output changes only for a logged or traced value holding one of those characters, which until 8.3 reached the error channel as it was and could end its line, begin another, or move a terminal's cursor over one; <code>print</code> is unchanged.
-compatibility: <code>stdlib/csv.vel</code> quotes as RFC 4180 does. <code>line_of</code> changes its output only for a value holding a comma, a double quote, a carriage return or a line feed, which it now writes between double quotes with each double quote doubled: a value with a comma never came back from <code>fields</code> as one field, and one with a double quote, a carriage return or a line feed came back from <code>fields</code> but was split by <code>rows_of</code> and by any RFC 4180 reader. <code>fields</code> and <code>column</code> change only for a line with a field that begins with a double quote, now read as a quoted field; <code>rows_of</code> changes only for text in which a line feed falls inside such a field, which now stays in its row.
-compatibility: a receipt may carry <code>stop</code> and <code>run_parameters.profile</code>, added within <code>velaris.receipt/1</code> (velaris-spec 0.11.0, section 8.7); only a run of <code>velaris eval</code> writes them, and a reader ignores a field it does not know.
-api: the command line gains <code>velaris eval</code>, <code>velaris receipts diff</code>, <code>velaris replay</code>, <code>velaris permissions-ratchet</code>, <code>velaris test --from-contracts</code> (with <code>--count</code>, <code>--witness-seconds</code> and <code>--json</code>), <code>velaris verify &lt;file&gt;</code> (with <code>--root</code>, <code>--identity</code>, <code>--skip-signature</code> and <code>--json</code>) and <code>--record-responses</code> on a run; the library gains <code>SITE</code>, <code>CAPABILITY_PREDICATE_TYPES</code>, <code>RECEIPT_PREDICATE_TYPES</code>, <code>predicate_kind</code>, the run-state names <code>STOP_FILE</code> and <code>RESPONSES</code>, and the permissions ratchet's <code>read_workflow</code>, <code>permissions_compare</code>, <code>permissions_ratchet</code>, <code>permissions_lines</code>, <code>permissions_exit</code>, <code>permissions_main</code>, <code>WorkflowUnreadable</code>, <code>PERMISSION_SCOPES</code>, <code>PERMISSION_LEVELS</code> and <code>PERMISSIONS_RATCHET_SCHEMA</code>; <code>check_proofs</code> gains <code>witnesses_out</code> and <code>witness_count</code>; <code>CAPABILITY_PREDICATE_TYPE</code> and <code>RECEIPT_PREDICATE_TYPE</code> are the velaris-lang.dev names; and the Action gains the <code>permissions-ratchet</code> input, off by default.
-differential: 14a - a program of benchmark category 14, new in 8.3, so v8.2.1 has no verdict for it
-differential: 15a - a program of benchmark category 15, new in 8.3, so v8.2.1 has no verdict for it</p>
-<p>Against v8.2.1 (<code>check_differential.py</code>), velaris-spec's 456 conformance
-cases give the same verdicts, and the quick benchmark differs only in the
-two programs above. Of the 97 examples, 36 print something different, and
-in every one the only line that differs is the <code>reference:</code> line of an
-error, which names velaris-lang.dev (the compatibility line above): <code>examples/avg_bad.vel</code>, <code>examples/builtin_unhandled.vel</code>, <code>examples/callsite_bad.vel</code>, <code>examples/caught.vel</code>, <code>examples/conj_bad.vel</code>, <code>examples/contract_broken.vel</code>, <code>examples/contract_impure.vel</code>, <code>examples/discount_bad.vel</code>, <code>examples/div_bad.vel</code>, <code>examples/fail_proof_bad.vel</code>, <code>examples/failing_bad.vel</code>, <code>examples/floats_bad.vel</code>, <code>examples/fp_proof_bad.vel</code>, <code>examples/funcs_bad.vel</code>, <code>examples/generics_bad.vel</code>, <code>examples/grid_bad.vel</code>, <code>examples/import_bad.vel</code>, <code>examples/lambda_contract_bad.vel</code>, <code>examples/list_mixed.vel</code>, <code>examples/list_oob.vel</code>, <code>examples/list_proof_bad.vel</code>, <code>examples/loop_bad.vel</code>, <code>examples/loop_proof_bad.vel</code>, <code>examples/many_errors.vel</code>, <code>examples/map_bad.vel</code>, <code>examples/maps_bad.vel</code>, <code>examples/ns_bad.vel</code>, <code>examples/offbyone_bad.vel</code>, <code>examples/proof_catch.vel</code>, <code>examples/qlist_bad.vel</code>, <code>examples/rec_proof_bad.vel</code>, <code>examples/records_bad.vel</code>, <code>examples/secret_bad.vel</code>, <code>examples/sneaky.vel</code>, <code>examples/std_bad.vel</code>, <code>examples/types_bad.vel</code>.</p>
-<h3 id="a-promise-past-a-comparison-was-reported-proven">A promise past a comparison was reported proven <a class="anchor" href="#a-promise-past-a-comparison-was-reported-proven" aria-label="Link to this section">#</a></h3>
-<p>A test written for a mutant the monthly run left alive found a Goal A break
-in the prover as released, from 2.6 through 8.2.1
-(<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/advisory-prover-compare.md">advisory-prover-compare.md</a>). <code>==</code> and <code>!=</code> on
-two values the prover holds as its own objects - two maps, two lists of
-lists, two lists of Bool or of Text, a map and <code>put</code> of it - were Python's
-comparison of those objects, a constant. So a branch taken when two maps are
-equal looked unreachable, a promise past it was reported proven, and it broke
-with E601 when the program ran. Two records compared field by field had the
-same fault for a <code>List of Int</code> field; for a <code>Float</code> field, the prover's
-equality and a run's disagree about NaN whichever rule the prover takes.
-Those comparisons now leave the promise to runtime, as SPEC.md 9.4 says a
-premise the prover cannot translate does, and a record's <code>List of Int</code> field
-compares as two such lists do.</p>
-<p>The interpreter checks every promise, proven or not, and no function that can
-hold such a comparison is compiled to native code, so no run went unchecked.
-What was false is the report: <code>check</code>, <code>proofs</code>, <code>explain</code>, the audit, an
-attestation's count of proven promises, the library's <code>proven</code>, and the proof
-of any function that relied on such a function's <code>ensures</code>.
-<code>check_prover_lies.py</code> gains nine lies (COMPARED), <code>check_mutant_kills.py</code>
-V6 holds the map case, and SECURITY.md lists the advisory; a CVE is requested
-for it, as for every Goal A finding.</p>
-<h3 id="the-documentation-moved-to-velaris-langdev">The documentation moved to velaris-lang.dev <a class="anchor" href="#the-documentation-moved-to-velaris-langdev" aria-label="Link to this section">#</a></h3>
-<p>The project holds velaris-lang.dev, and GitHub Pages serves this repository's
-<code>docs/</code> there; the earlier address redirects. Every link that names the
-project's home moved: README, SPEC, TUTORIAL, LLM.md (and so <code>llms.txt</code>),
-EMBEDDING, SECURITY, STABILITY, docs, CITATION.cff, <code>pyproject.toml</code>'s
-Homepage and Documentation, the npm package, the VS Code extension, the MCP
-bundle and registry manifest, the Homebrew and winget manifests, and the
-release workflow. The two predicate types moved too, as the compatibility
-lines above say, and <code>velaris/predicates.py</code> holds both names of each;
-velaris-spec 0.11.0 records the new names and lists the earlier ones as
-accepted for verification.</p>
-<ul>
-<li>SECURITY.md's contact is security@velaris-lang.dev, beside GitHub's private
-reporting, and it says which predicate type a Statement names.</li>
-<li>THREAT_MODEL.md's Known open table gains a row: a predicate type is a name
-on a domain, and a domain can change hands. A type is an identifier, not a
-signature.</li>
-<li><code>check_docs.py</code> holds that no tracked file names the earlier address but
-the ten it lists with a reason (this entry's history, the redirect test,
-the readers of the earlier type names, the pages that name them, and the
-playground, which embeds the package), and that every velaris-lang.dev URL
-a tracked file names is a page <code>docs/</code> serves. <code>check_library.py</code> fetches
-the card at its new address and asserts the earlier address redirects to
-it; <code>check_urls.py</code>, monthly, asks both.</li>
-<li>The site does not enforce HTTPS yet, so the earlier address redirects to
-<code>http://velaris-lang.dev/</code>; the checks accept either scheme and say so.</li>
-</ul>
-<h3 id="what-a-run-can-show">What a run can show <a class="anchor" href="#what-a-run-can-show" aria-label="Link to this section">#</a></h3>
-<p><strong><code>velaris eval</code></strong> runs one program as an evaluation harness runs code it was
-handed, under a profile its command line cannot relax: no net, ffi or env,
-and an fs grant only under a named path; a time and a memory limit always (30
-seconds and 512 MB unless given, at most 600 and 4096); the program
-interpreted, so a stop asked for from outside - a signal, or <code>--stop-file</code>
-appearing - lands at the next call or loop turn with E615, and a worker that
-has not stopped after <code>--grace</code> is killed; a receipt always, written outside
-every fs grant or streamed to <code>--receipt-url</code> (<code>velaris.receipt-stream/1</code>),
-with the stop and <code>profile: "eval"</code> in it; and the worker confined where the
-operating system offers it without privileges, the level named in the
-receipt: <code>landlock-net</code> or <code>landlock</code> on Linux, <code>job-one-process</code> on Windows,
-<code>sandbox-exec</code> on macOS when a trial of its profile starts Python, <code>none</code>
-otherwise. The Windows job holds the processes starting the worker took -
-its own, and a launcher's where <code>python.exe</code> is one, as a virtual
-environment's is - and refuses any further process; a job that insisted on
-exactly one stopped the worker before it began in every venv this was tried
-in ("Unable to create process", "Not enough quota is available to process
-this command"), which is how it was found. A signal is taken only where eval
-runs on the main thread, CPython 3.11 and later; <code>--stop-file</code> works
-everywhere. <code>--confinement-probe</code> has a confined worker try a TCP connection,
-a write outside its directories and a process start, and fails if a refusal
-its level claims did not hold. Anything that would relax the profile is
-refused before the program is read, exit 2. <a href="eval.html">docs/eval.md</a> is
-the one page of what it guarantees and what it does not. <code>check_eval.py</code>
-holds every relaxation refused, a run's receipt matching the profile, a stop
-file honoured and a signal where eval can take one, a stalled compile killed
-after the grace period,
-the stream, and the probe; on Windows and on WSL Ubuntu 24.04, whose kernel
-offers Landlock ABI 3 and so <code>landlock</code>.</p>
-<p><strong><code>velaris receipts diff</code></strong> holds a receipt to its program's audit - an
-effect used or refused, a host, path or module granted, a declassification or
-a count past the audit's bound that the audit does not have, and bytes that
-are not the audited ones - and to earlier receipts of the same bytes: a new
-host, path or module, a count above the earlier maximum, a first
-declassification, a new reason. A receipt names no host or path a run
-reached, only what its budget granted, and that is what is compared. Exit 0
-clean, 1 with a difference, 2 when it could not compare; <code>--json</code> is the
-provisional <code>velaris.receipts-diff/1</code>, whose shape velaris-spec 8.8 records.</p>
-<p><strong><code>velaris replay</code></strong> makes a run again from its receipt: each subject is held
-to its digest and copied before anything runs, imports are held to the copy,
-the budget is no wider than <code>--max-allow</code> (<code>io</code> unless raised), and the
-recorded seed, clock, limits and read ceiling, and eval's profile, apply;
-every difference from the recorded receipt is named, and output is compared
-with <code>--expect-output</code>. Code mode: <code>--record-responses FILE</code> on a run records
-what each <code>py</code>, <code>py_int</code>, <code>py_float</code> and <code>py_json</code> call gave back, and
-<code>replay --responses FILE</code> gives those back after the grants are checked; a
-call not recorded in its place stops the run with E616. No tool-calling door
-exists yet, so the door this stubs is the one a tool reaches a program
-through today: Python.</p>
-<p><strong><code>velaris verify</code></strong> reads an attestation or a receipt - a Statement, JSON
-Lines of them, a DSSE envelope or a Sigstore bundle - refuses any type but
-capability/v1 and receipt/v1 under either name, a predicate without its
-type's shape, and a key given twice, reads a subject only inside <code>--root</code>,
-and checks a bundle's signature against <code>--identity</code>. <code>mcp-verify</code> checks a
-tool manifest signed as bytes, which names no predicate type, so nothing in
-it changed.</p>
-<p><code>check_receipts.py</code> holds each shape of difference and each refusal against
-real runs.</p>
-<h3 id="promises-exercised-and-what-cannot-occur">Promises exercised, and what cannot occur <a class="anchor" href="#promises-exercised-and-what-cannot-occur" aria-label="Link to this section">#</a></h3>
-<ul>
-<li><strong><code>velaris test --from-contracts</code></strong> asks the prover for up to <code>--count</code>
-argument lists each function's <code>requires</code> allows - the least and greatest
-value of each whole number, text length and list length first - and runs
-the function on each, interpreted, with no effect granted; a function that
-declares an effect is refused. <code>check_from_contracts.py</code>: a false <code>ensures</code>
-the prover left to runtime is broken by the witness at the requires'
-boundary; the true one passes; effects are refused; a witness that never
-returns is stopped. Stopping one raced its own stop file on Windows -
-the timer thread writing it while the call's end removed it, which
-WinError 32 refuses - and ended the command in a traceback about one run
-in three; writer and remover now share a lock. The suite's spinning
-witness was rewritten to spin whatever the prover picks, so the race is
-met on every run rather than sometimes.</li>
-<li><strong><a href="structurally-impossible.html">docs/structurally-impossible.md</a></strong>:
-CWE-78, CWE-95 and CWE-94, CWE-502, CWE-200 by the route of a secret in a
-path, and CWE-117, each with the grant that would undo it, and CWE-89 under
-"not structurally impossible": <code>db.vel</code>'s <code>run</code> takes SQL as text and its
-<code>count</code> builds a query with <code>format</code>. Parameterized queries change <code>run</code>'s
-signature and are left for 9.0. <code>check_impossible.py</code> tries each class, and
-fails if the page lists one it does not try.</li>
-<li><strong>CSV and logs</strong>, as the compatibility lines say. <code>check_properties.py</code>
-gains a sixth property, <code>fields(line_of(row)) == row</code> over rows of commas,
-quotes, CR and LF. <code>fields</code> and <code>rows_of</code> read a text holding no double
-quote with <code>split</code>, as 8.2.1's <code>fields</code> was: the character-by-character
-scan runs only where a quote makes it necessary. Without that path a long
-line cost about a hundred times what it did at 8.2.1, and <code>fuzz_parsers.py</code>
-stopped its CSV target for making no progress for 60 seconds.</li>
-</ul>
-<h3 id="benchmark-categories-14-and-15">Benchmark categories 14 and 15 <a class="anchor" href="#benchmark-categories-14-and-15" aria-label="Link to this section">#</a></h3>
-<p>Category 14, a skill supply chain: three agent skills whose helper - a
-"telemetry" call, an "update check" two helpers down, a "setup" step - reads
-a credential and posts it to a second endpoint, and a control that reads one
-ordinary file. Velaris caught all three before running: <code>velaris audit</code> names
-the net effect none of the stated tasks needs, the <code>.env</code> and <code>.pem</code> reads are
-refused with E318 inside a broad <code>fs:read</code> grant, and the environment read
-does not compile (E560). Deno's permissions stopped each send while running,
-and each program swallowed the denial; Python sent all three.</p>
-<p>Category 15, a hallucinated dependency: three programs importing a library
-the model invented, and a control importing one that exists (vendored for
-Velaris and Python, served by a local index for Deno, so no run reaches the
-network). Velaris refuses each import before running (E512), as <code>deno check</code>
-does; Python stops with ModuleNotFoundError when the import runs.</p>
-<p>Over the 76 programs - 66 dangerous, 10 controls - Velaris caught 52 before
-running and 12 while running and missed 2; Deno 8, 34 and 24; Python 0, 31
-and 35; no tool flagged a control. The 68 programs of categories 1 to 13 keep
-the verdict each tool gave them at 8.2.0. Two of them read differently:
-06d's evidence names E520 once, where the file 8.0.0 wrote named it twice,
-and 13a's names the refused read as a credential location, a wording of the
-runner. Ten consecutive full runs wrote identical <code>RESULTS.md</code> and
-<code>results.json</code>; README's tables, THREAT_MODEL.md's figures and the paper's
-were written from them.</p>
-<h3 id="the-actions-permissions-ratchet">The Action's permissions ratchet <a class="anchor" href="#the-actions-permissions-ratchet" aria-label="Link to this section">#</a></h3>
-<p>With <code>permissions-ratchet: "true"</code>, on a pull request the Action compares
-every workflow's <code>permissions:</code> blocks with the base branch's and fails on a
-widening - a scope's level rising, a block removed so a job takes the
-repository's default, a new job or workflow that grants anything - naming the
-file and line; a narrowing is reported. It reads the YAML shapes a
-<code>permissions:</code> value takes with no dependency, and a file it cannot read with
-confidence fails the step. It is the one input that helps a repository with
-no <code>.vel</code> file. <code>check_permissions.py</code>: 30 base and head fixtures, the reader
-against PyYAML, the command against real git repositories, and the step's
-bash.</p>
-<h3 id="the-crosswalk">The crosswalk <a class="anchor" href="#the-crosswalk" aria-label="Link to this section">#</a></h3>
-<p><a href="crosswalk.html">docs/crosswalk.md</a> maps each of README's five guarantees
-and each row of THREAT_MODEL.md's Known open table onto the OWASP Top 10 for
-Agentic Applications, the OWASP Agent Control Standard, AIUC-1 and the NIST AI
-RMF 1.0, one row per control, 151 rows. No row says enforced or recorded:
-every control asks for more than the refusal or the record Velaris makes, and
-the partial rows say which part is covered. The Agent Control Standard is a
-wire specification Velaris does not implement, so all 16 of its rows are not
-addressed. <code>check_docs.py</code> holds the page's guarantees to README's table and
-its known-open items to THREAT_MODEL.md's, both ways.</p>
-<h3 id="housekeeping-2">Housekeeping <a class="anchor" href="#housekeeping-2" aria-label="Link to this section">#</a></h3>
-<p>The monthly workflow ran by hand before this release (run 34978389207).
-Fuzzing, the pool soak and the differential against 8.2.0 passed. Three jobs
-failed, all on faults of the harness, each fixed here:</p>
-<ul>
-<li><strong>The report job</strong> opened the first surviving mutant's issue and then ran
-<code>gh issue comment -1</code>: every mutant of a function had the same title, and a
-just-opened issue was remembered as <code>-1</code>. <code>open_issues.py</code> now keeps the
-number gh gives, and <code>check_mutants.py</code> titles each mutant by line and
-operator; <code>check_workflows.py</code> holds both. The other 65 surviving mutants'
-issues were opened with the fixed script from the run's own reports.</li>
-<li><strong><code>check_urls.py</code></strong> asked identifiers the documents quote - a sigstore
-identity, the OIDC issuers, the Software Heritage API's POST endpoints, a
-placeholder repository - and called them broken. It leaves those out now.</li>
-<li><strong>The sanitizer build</strong> stopped inside CPython 3.12.11's own tokenizer on
-UndefinedBehaviorSanitizer's pointer-overflow check; that one check is left
-out of the build. It is verified only by the next monthly run.</li>
-</ul>
-<p>Issues #21 and #22 stay open until a monthly run passes.</p>
-<p>The mutation job made 521 mutants of the functions a guarantee rests on in
-<code>budget.py</code>, <code>effects.py</code>, <code>prover.py</code> and <code>wrappers.py</code>, ran 191 of them in
-its 90 minutes, and 67 survived (66 issues: two differ only in the column on
-one line). <code>check_mutant_kills.py</code> holds a test for each. Sixty fail with
-their mutant applied, and so do two sites on the same lines the sample never
-ran - checked against the mutants at 9972e41, where the run found them, with
-<code>check_mutants.py --only MODULE:LINE:OPERATOR --killers check_mutant_kills.py</code>. Seven change nothing a caller can observe: six turn
-<code>return False</code> into <code>return None</code> where every caller tests only the result's
-truth, and one flips what <code>uninterpreted_in</code> says of a value that is not a
-Z3 expression, which no program that type-checks reaches since the fix
-above. The suite's docstring gives the reason for each. <code>check_mutants.py</code>
-gains <code>--only</code> and <code>--killers</code>, and lists the suite among the killers of the
-four modules. The test written for <code>uninterpreted_in</code> is what found the
-prover's fault above.</p>
-<h3 id="the-adversarial-pass-2">The adversarial pass <a class="anchor" href="#the-adversarial-pass-2" aria-label="Link to this section">#</a></h3>
-<p>On eval, receipts diff, replay, witnesses, the log sinks and the verifier,
-kept as <code>check_adversarial.py</code> EV1-EV4, RD1-RD3, RP1-RP2, WT1, LG1-LG2 and
-VF1-VF2. It found one thing to fix before release: <code>velaris verify</code> and
-<code>receipts diff</code> printed text from the file they read - a subject name, a
-declassification reason - as it was, so a crafted receipt could print a line
-reading "clean: no difference". Both now print that text through the same
-escaping the log uses. Refused, each tried: grant spellings eval does not
-take (<code>IO,NET</code>, <code>net@0</code>, <code>io, env</code>, <code>fs:read@2</code>); a program writing its own
-receipt's path; <code>VELARIS_CHECK_CHILD</code> in eval's environment; a receipt naming
-other bytes; subject names leaving replay's directory (<code>..</code>, <code>&lt;stdlib&gt;/../..</code>,
-absolute, backslashes); an eval receipt widened to net; a witness run leaving
-the process's budget changed; U+2028, NEL, CR, an OSC 8 escape, DEL and NUL in
-a logged value; and a predicate type that is velaris.dev, upper-cased, given
-a trailing slash, padded, a list, null, or given twice.</p>
-<h3 id="known-open-3">Known open <a class="anchor" href="#known-open-3" aria-label="Link to this section">#</a></h3>
-<ul>
-<li><strong>macOS confinement is verified only on CI</strong>: <code>sandbox-exec</code> is used when
-a trial of its profile starts Python, and <code>none</code> is written otherwise.</li>
-<li><strong>No confinement level holds reads, UDP or a Unix socket</strong>, and
-<code>job-one-process</code> holds neither files nor the network (docs/eval.md).</li>
-<li><strong><code>velaris review</code> still has no check ceiling</strong> (8.2.1's entry).</li>
-<li><strong><code>db.vel</code> builds SQL from text</strong>; parameterized queries are 9.0.</li>
-<li><strong><code>csv.vel</code> assembles a quoted field one character at a time.</strong> Text is
-immutable, so <code>field = field + c</code> copies what it has each turn: a single
-quoted field of n characters costs n² work. Ordinary data never meets it -
-a line with no double quote takes <code>split</code>, and a quoted field is usually
-short - but one field of 16,000 double quotes takes seconds, and under the
-fuzzer's tracer (<code>sys.settrace</code>, CPython before 3.12) long enough that the
-run is stopped for making no progress. Reading a field as a slice of the
-line it came from would be linear, but <code>slice</code> can fail and nothing in the
-standard library handles it yet; that, or a <code>join</code> builtin, is 9.0.
-<code>fuzz_parsers.py</code> multiplies its no-progress budget before 3.12, where
-coverage is <code>sys.settrace</code> rather than <code>sys.monitoring</code>, so that a slow
-input is not reported as a hang; a child that is really stuck shows no
-new input at all and is still caught.</li>
-<li><strong>Two lists equal in every item can be refused with E700.</strong> The prover
-compares two <code>List of Int</code> values as equal arrays and equal lengths, which
-asks more than that they hold the same items, so a true promise such as
-<code>requires length(a) == 0 and length(b) == 0 ensures result == 1</code> over
-<code>if a == b { return 1 } return 0</code> is refused, with two empty lists as its
-counterexample. It is a false refusal, not a false proof, it predates 8.3,
-and a record's <code>List of Int</code> field now compares the same way.</li>
-<li><strong>Kyverno matches one predicate type per attestation entry</strong>: an image
-attested before 8.3 is admitted by the Kyverno policy only once attested
-again with the new type. The OPA policy admits both.</li>
-<li><strong>The in-toto predicate registration drafts</strong> (velaris-spec
-REGISTRY_SUBMISSION.md, now naming the new type) have not been sent.</li>
-<li><strong>The documentation site as reference documentation</strong> - navigation,
-search, versioned builds - is 8.3.1.</li>
-</ul>
-<h3 id="measured-2">Measured <a class="anchor" href="#measured-2" aria-label="Link to this section">#</a></h3>
-<p>Measured by <code>perf_gates.py --against v8.2.1</code> on Windows 11 (10.0.26200,
-AMD64, 16 CPUs, 7% busy when it began), Python 3.13.13, z3-solver 5.1.0 and
-llvmlite 0.49.0: medians of 5 runs after one warm-up. Wall-clock figures;
-another machine will differ, and this one is slower at a cold start than the
-machine 8.2.0 was measured on.</p>
-<div class="table-wrap" tabindex="0"><table>
-<thead><tr><th>Measure</th><th>8.3.0</th></tr></thead>
-<tbody>
-<tr><td>Cold start, <code>velaris --version</code></td><td>202 ms</td></tr>
-<tr><td>Cold start, <code>velaris check</code> of a one-line file</td><td>421 ms</td></tr>
-<tr><td>Check, per 1,000 lines (a 1,013- and a 10,013-line program)</td><td>1.05 s and 0.97 s; 0.06 s and 0.05 s without proofs</td></tr>
-<tr><td>Proof time per example with contracts, p50 / p95</td><td>16 ms / 396 ms, over 56 files</td></tr>
-<tr><td>Native code on <code>examples/bench.vel</code>: compile, and llvmlite's import</td><td>56 ms, and 49 ms; <code>burn</code> compiled</td></tr>
-<tr><td><code>examples/bench.vel</code>, native / <code>--no-native</code></td><td>4.40 s / 11.25 s, 2.56 times faster, 6.85 s saved</td></tr>
-<tr><td><code>--lite</code> build</td><td>there is none</td></tr>
-<tr><td>Pool worker's memory, after 1 run and after 1,000 more</td><td>25.6 MB, 26.6 MB</td></tr>
-<tr><td>z3 or llvmlite imported by <code>velaris --version</code>, or by <code>check</code> of a program with no promise</td><td>neither</td></tr>
-<tr><td>Importing z3 when a command needs it</td><td>+134 ms at cold start</td></tr>
-<tr><td>Importing llvmlite when a command needs it</td><td>+162 ms at cold start</td></tr>
-<tr><td>Pure numeric against v8.2.1, native (<code>bench.vel</code> and an integer loop)</td><td>4.40 s against 4.89 s, -10.0% (the gate allows +25%)</td></tr>
-<tr><td>Pure numeric against v8.2.1, interpreted</td><td>13.80 s against 12.95 s, +6.6%</td></tr>
-</tbody></table></div>
-<p><code>check_differential.py</code> against v8.2.1: of the 97 examples 36 differ, each in
-the <code>reference:</code> line alone and each named above; velaris-spec's 456
-conformance cases give the same verdicts; and of the quick benchmark's 15
-programs the two new categories' are the only ones v8.2.1 has no verdict for.</p>
-<p><code>velaris stats --ffi examples</code>: 106 programs, 70 of which compile. 8 call
-Python, and all 8 name every module they call (a grant like <code>ffi:math</code>);
-none names a module while running. The modules named: <code>builtins</code> in 4
-(native), <code>datetime</code> in 3, <code>math</code> in 3 (native), <code>sqlite3</code> in 3, <code>base64</code>
-in 1.</p>
-<p>Proven share over examples/ and stdlib/: 70 of 99 promise-carrying
-functions (71%), as at 8.2.0. The prover fix above leaves a promise past a
-comparison of two maps or lists to runtime, and no example or standard
-library function has one.</p>
-<p>velaris-spec 0.11.0 records the new predicate type names and accepts the
-earlier ones for verification, adds <code>stop</code> and <code>run_parameters.profile</code> to
-the receipt, and adds section 8.8 (comparing receipts) and 8.9 (the eval
-profile). Its <code>tools/check_sync.py</code> finds SPEC.md sections 6, 7 and 7.1 and
-both predicate schemas as it quotes them.</p>
 </main>
 <footer class="foot">
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.7.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#84---the-kernel-holds-the-line">8.4 - The kernel holds the line</a></li><li><a href="#831---the-documentation-as-a-site">8.3.1 - The documentation, as a site</a></li><li><a href="#83---what-a-run-can-show">8.3 - What a run can show</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#85---taste">8.5 - Taste</a></li><li><a href="#84---the-kernel-holds-the-line">8.4 - The kernel holds the line</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>
