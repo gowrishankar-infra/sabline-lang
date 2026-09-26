@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Changelog: 8.x: 8.7.0 to 8.5 - Sabline 8.7.0</title>
-<meta name="description" content="What changed in Sabline 8.5 to 8.7.0, release by release, newest first, as CHANGELOG.md records it.">
+<title>Changelog: 8.x: 8.7.0 to 8.6 - Sabline 8.7.0</title>
+<meta name="description" content="What changed in Sabline 8.6 to 8.7.0, release by release, newest first, as CHANGELOG.md records it.">
 <meta name="sabline-version" content="8.7.0">
 <link rel="canonical" href="https://sabline.dev/changelog-8-1.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sabline">
-<meta property="og:title" content="Changelog: 8.x: 8.7.0 to 8.5 - Sabline 8.7.0">
-<meta property="og:description" content="What changed in Sabline 8.5 to 8.7.0, release by release, newest first, as CHANGELOG.md records it.">
+<meta property="og:title" content="Changelog: 8.x: 8.7.0 to 8.6 - Sabline 8.7.0">
+<meta property="og:description" content="What changed in Sabline 8.6 to 8.7.0, release by release, newest first, as CHANGELOG.md records it.">
 <meta property="og:url" content="https://sabline.dev/changelog-8-1.html">
 <meta property="og:image" content="https://sabline.dev/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -69,14 +69,30 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html" aria-current="page">8.x: 8.7.0 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3</a></li><li><a href="changelog-8-3.html">8.x: 8.2.1 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-8-1.html" aria-current="page">8.x: 8.7.0 to 8.6</a></li><li><a href="changelog-8-2.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-3.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
-<h1 id="changelog">Changelog: 8.x: 8.7.0 to 8.5</h1>
+<h1 id="changelog">Changelog: 8.x: 8.7.0 to 8.6</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
 <h2 id="870---evidence">8.7.0 - Evidence <a class="anchor" href="#870---evidence" aria-label="Link to this section">#</a></h2>
+<p><strong><code>check_api.py</code> counted a pre-release tag, and asked for the <code>api:</code> line
+in the wrong place.</strong> <code>tests/api/golden.json</code> is the Python package's
+surface, and a pre-release ships the <code>sabline-rt</code> crate and nothing else -
+the six version files do not move, and the golden does not either. This
+suite's own newest-tag lookup counted one all the same, and
+<code>parse_version</code> reads <code>v9.0.0-alpha.1</code> as <code>(9, 0, 0)</code>, so from that tag on
+every ordinary release read as <em>older than the newest tag</em>: the suite
+looked for the <code>api:</code> line above the CHANGELOG's first entry instead of in
+the entry being released. 8.7.0 is the first ordinary release since
+9.0.0-alpha.1 and met it - <code>release_checks.py gate</code> said <code>release: 8.7.0</code>
+with the line in its entry, where RELEASING.md puts it, while this suite
+asked for it somewhere else. It went unseen because test.yml checks out
+shallow, with no tags at all, so the lookup returned None and the case
+passed trivially on every leg. It now skips pre-release tags, which is the
+rule <code>release_checks.prerelease_gate</code> already had for the same reason, and
+says <code>the golden differs from v8.6.0's</code>.</p>
 <p><strong>A check stopped at its own ceiling was read as a crash.</strong>
 <code>check_hostile.py</code>'s seventh case builds a valid 10,000-line program and
 holds <code>check</code>, <code>audit</code>, <code>fmt --check</code> and <code>run</code> over it to "no traceback,
@@ -169,6 +185,18 @@ the table grows every time a gap is recorded honestly, so it was moved
 rather than trimmed and the budget stays where it was. THREAT_MODEL.md
 keeps its Known open heading, which links to the page, and every word of
 the table and the section is where it was moved to.</p>
+<p>Categories 16 to 20 are new in this release, so v8.6.0's benchmark has no
+program of that name and nothing to compare a verdict against.</p>
+<p>differential: 16a - a program of benchmark category 16, new in 8.7, so
+v8.6.0 has no verdict for it
+differential: 17a - a program of benchmark category 17, new in 8.7, so
+v8.6.0 has no verdict for it
+differential: 18a - a program of benchmark category 18, new in 8.7, so
+v8.6.0 has no verdict for it
+differential: 19a - a program of benchmark category 19, new in 8.7, so
+v8.6.0 has no verdict for it
+differential: 20a - a program of benchmark category 20, new in 8.7, so
+v8.6.0 has no verdict for it</p>
 <p><strong>Competitor scoring</strong> (<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/benchmark/competitors/README.md">benchmark/competitors/</a>,
 <a href="competitors.html">/competitors.html</a>): the comparison
 benchmark run through Deno, CPython's WASI build under wasmtime, Starlark,
@@ -245,6 +273,17 @@ and its receipt are what they were, <code>sabline.run()</code>, <code>sabline re
 <code>sabline serve</code> and a <code>Pool</code> write nothing new, and <code>--no-confine</code> says its
 own line instead. The package-hallucination incident's recording shows it,
 for the invented <code>huggingface_cli</code>.</p>
+<p>Four example programs print that line where v8.6.0 printed nothing. It is
+the whole of the difference: same exit status, same stdout, one line added
+to stderr.</p>
+<p>differential: <code>examples/ffi.vel</code> - its budget grants <code>ffi:builtins</code>, so the
+OS layer is off for the run and 8.7 says so on stderr. Nothing else differs.
+differential: <code>examples/sandbox.vel</code> - the same, <code>ffi:builtins</code>. The program
+is a refusal exercise and every refusal in it is unchanged.
+differential: <code>examples/database.vel</code> - <code>ffi:builtins</code> is granted and
+<code>ffi:_sqlite3</code> is not in the confinement table, and the line names both.
+differential: <code>examples/stdlib_tools.vel</code> - the same two, for the same
+reason.</p>
 <p><strong>The card changed where the round trip pointed, and did not move the
 number.</strong> Three fixes to LLM.md, and nothing else: the example to imitate
 no longer imports <code>std.vel</code> (six of ten first answers copied that line, and
@@ -495,257 +534,12 @@ of six schemas, a <code>velaris.capabilities</code> of <code>velaris.capabilitie
 checked by the ratchet, and a Statement of each earlier predicate type
 verified - and refuses one of a type Sabline does not define.</li>
 </ul>
-<h2 id="85---taste">8.5 - Taste <a class="anchor" href="#85---taste" aria-label="Link to this section">#</a></h2>
-<p>A minor version, additive throughout: what it is like to use. One command
-that shows a refusal and a run inside a budget with nothing to read first;
-four libraries, written in Velaris, so that an operations script against
-Azure, Kubernetes, GitHub or AWS calls no Python; a receipt and an audit as
-a page a person can read; and the first cut of the runner, in which a host
-process offers a program tools and the budget holds their arguments.</p>
-<p>No program that compiles and runs under 8.4.0 inside its budget is refused
-by 8.5.0. Every new builtin gives way to a function of the program's own
-name (SPEC.md 10.1); <code>uses tool</code> did not compile and a <code>tool</code> grant did not
-parse until now; with no <code>--tools</code> there is no tool to reach.
-<code>check_differential.py</code> holds the examples, velaris-spec's corpus and the
-quick benchmark to 8.4.0's outputs.</p>
-<p>compatibility: <code>sha256</code>, <code>hex_encode</code>, <code>hex_decode</code>, <code>base64_encode</code>, <code>base64_decode</code> and <code>url_encode</code> are new pure builtins, and each gives way to a function of that name in the program (they are in <code>NEW_BUILTINS</code>, SPEC.md 10.1), so a program that defined its own <code>sha256</code> under 8.4 still calls its own; a program that called an undefined one did not compile (E200).
-compatibility: <code>hmac_sha256</code> and <code>hmac_sha256_chain</code> are new builtins that give way to the program's own function in the same way; they need the <code>declassify</code> effect, which no program can come to need without calling them, and the E560, E561 and E609 they can give are given only to a program that calls them, which under 8.4 was E200.
-compatibility: <code>tool</code> is a ninth effect. <code>uses tool</code> was E300 under 8.4 and <code>--allow tool</code> a budget error, so no program or command line that worked changes meaning; <code>--allow all</code> now grants nine effects and says so in the line it has always written to standard error, and a program run under it that does not call <code>tool</code> runs as before; <code>velaris.ALL_EFFECTS</code> is one longer.
-compatibility: <code>tool</code> and <code>tool_secret</code> are new builtins that give way to the program's own function; E320, E321, E322, E323 and E324 are given only to a call of one of them, which no program that compiled under 8.4 makes, and the last four only under <code>velaris run --tools</code>.
-compatibility: <code>velaris demo</code>, <code>velaris receipt show</code> (and <code>velaris receipts show</code>, the same page), <code>velaris skill verify</code>, <code>velaris audit --html [-o FILE]</code> and <code>velaris run --tools MANIFEST [--tool-timeout S]</code> are new; a file named <code>demo</code>, <code>receipt</code> or <code>skill</code> in the working directory is now run with <code>velaris run demo</code>, as a file named <code>audit</code> or <code>check</code> always had to be.
-compatibility: <code>velaris.receipt/1</code> gains <code>grants_used</code> in every receipt, <code>tool_calls</code> and <code>tool_ceiling</code> in the receipt of a run given <code>--tools</code>, and <code>key_fingerprint</code> on the declassification an hmac call records - all within version 1, where fields may be added (velaris-spec 8.7, 0.13.0); <code>velaris replay</code> and <code>receipts diff</code> compare what they compared, and a receipt written by 8.4 is read, shown and verified as before.
-compatibility: <code>velaris.audit/1</code> gains <code>tools</code> within version 1, and <code>secrets.declassifications</code> gains an entry, with a <code>builtin</code> key, for each hmac call; <code>effects</code> may hold <code>tool</code>.
-compatibility: the audit and the capability ratchet now name the host of a URL that only begins fixed - <code>"https://api.example.com/" + path</code>, or <code>format("https://api.example.com/{}", id)</code> - when the fixed part holds the <code>/</code> that ends the host, where 8.4 said "a host built while running". <code>net_hosts</code>, <code>safe_command</code> and a derived baseline are narrower for such a program, never wider: the ratchet passes a narrowing against an 8.4 baseline, and the run-time check of <code>net:</code> grants is unchanged. velaris-spec 9.3 states the rule (0.13.0).
-compatibility: inside a library imported with a name, a call to a builtin older than 4.3 reaches the builtin, as it does in a flat import and as SPEC.md 10 says a named import behaves; until now a library's own <code>get</code> took a <code>get(list, i)</code> written inside it, a <code>for</code> loop's included. Only the shipped library may define such a name (E204) - <code>http.vel</code> has a <code>get</code> - and no shipped library made such a call, so no program's meaning changes.
-compatibility: <code>stdlib/http.vel</code> is byte for byte what it was in 8.4.0. What the batteries needed beside it - retries within a bound, JSON bodies, headers from a map - is in a new file, <code>stdlib/rest.vel</code>, because a function added to <code>http.vel</code> would stop a program that imports <code>http.vel</code> without a name and has a function of that name itself (E513), and <code>items</code> and <code>succeeded</code> are names a program has; <code>azure.vel</code>, <code>github.vel</code>, <code>k8s.vel</code>, <code>aws.vel</code> and <code>rest.vel</code> are new files that no 8.4 program imports.
-compatibility: <code>host_refusal</code> takes an optional <code>count</code> and the run state gains <code>TOOL_GRANTS</code>, <code>TOOL_LIMITS</code>, <code>TOOL_COUNTS</code>, <code>GRANT_USES</code> and <code>TOOL_SESSION</code>, none of which STABILITY.md covers and each of which has the value a run without tools had before.
-api: <code>AuditResult</code> gains the <code>tools</code> slot; <code>velaris.ALL_EFFECTS</code> gains <code>tool</code>; the run state gains <code>TOOL_GRANTS</code>, <code>TOOL_LIMITS</code>, <code>TOOL_COUNTS</code>, <code>GRANT_USES</code> and <code>TOOL_SESSION</code>; <code>host_refusal(url)</code> becomes <code>host_refusal(url, count=False)</code>; the command line gains <code>demo</code>, <code>receipt</code>, <code>skill</code>, <code>audit --html</code> and <code>run --tools</code>/<code>--tool-timeout</code>; receipts from every door gain <code>grants_used</code>, and audits <code>tools</code>.</p>
-<h3 id="velaris-demo"><code>velaris demo</code> <a class="anchor" href="#velaris-demo" aria-label="Link to this section">#</a></h3>
-<p>One command, no arguments, no network, about a second. It makes a directory,
-writes into it a <code>.env</code> whose one value is made up, a script of the kind an
-agent writes - read <code>./.env</code>, post it to a webhook - and the same task
-rewritten to stay inside a budget. It runs the first with no budget given
-and shows the refusal, the exact line, the reason and the receipt; runs the
-second under <code>io,fs:read:settings.txt,fs:write:out</code> and shows it succeed,
-with its receipt; and prints what differs between the two receipts. <code>--keep</code>
-leaves the files. The documentation's first page now opens with it.
-<code>check_demo.py</code> runs it on every leg: under a minute, under a screen, exit
-0, nothing left behind.</p>
-<h3 id="batteries-written-in-velaris">Batteries, written in Velaris <a class="anchor" href="#batteries-written-in-velaris" aria-label="Link to this section">#</a></h3>
-<ul>
-<li><strong><code>stdlib/azure.vel</code></strong>: Azure Resource Manager over REST - <code>read</code>,
-<code>put_resource</code>, <code>patch_resource</code>, <code>delete_resource</code>, <code>list</code> with
-<code>nextLink</code> paging (a link that leaves the host is not followed), a 429 or
-a 5xx asked again within a bound, and ARM's <code>{"error": {"code", "message"}}</code> as the failure's words. The bearer token is the caller's
-<code>Secret of Text</code>; nothing in the library signs in. Every request is
-written <code>"https://management.azure.com:443/" + path</code>, so the audit of a
-program that uses it names exactly <code>management.azure.com:443</code>.</li>
-<li><strong><code>stdlib/k8s.vel</code></strong>: the API server over REST with a <code>Secret</code> token;
-<code>in_cluster()</code> reads the service-account file with <code>read_file_secret</code>;
-<code>list</code> (with <code>metadata.continue</code>), <code>read</code>, <code>watch_once</code>, and <code>pods</code>,
-<code>pod</code>, <code>services</code>, <code>deployments</code>, <code>deployment</code>, <code>configmaps</code>, <code>events</code>,
-<code>nodes</code>, <code>namespaces</code>. It reads; what changes the cluster is
-<code>write_create</code>, <code>write_patch</code>, <code>write_delete</code> and <code>write_scale</code>, and the
-suite fails if a function that sends a changing method is named otherwise.
-It has no function for reading a Secret resource, on purpose.</li>
-<li><strong><code>stdlib/github.vel</code></strong>: repos, issues, pulls, check runs, releases and
-contents; <code>Link</code>-header paging held to <code>api.github.com</code>; the rate limit
-in every reply (<code>remaining</code>, <code>reset</code>) and, when it is reached, a failure
-that says when it resets and is not asked again.</li>
-<li><strong><code>stdlib/aws.vel</code></strong>: Signature Version 4 in Velaris, to S3 (list
-buckets, list objects with continuation, get, put, delete) and STS
-(<code>GetCallerIdentity</code>), with a session token when there is one. The date
-is whole-number arithmetic on <code>now()</code>. It reproduces the signature AWS
-publishes for its own test request, and the stand-in checks each
-signature the way AWS does, from the request as it arrived.</li>
-<li><strong><code>hmac_sha256(key: Secret of Text, message: Text) -&gt; Text</code></strong> and
-<strong><code>hmac_sha256_chain(key, messages)</code></strong>. The result is not a Secret, so the
-call needs the <code>declassify</code> effect and grant, the audit lists it under
-<code>secrets</code> with the reason <code>hmac signature</code>, and the receipt records it
-with the key's fingerprint. The chain exists because SigV4's derived keys
-are credentials themselves: with it they are never values of the program.
-THREAT_MODEL.md has a new section saying why a MAC does not give the key
-away, what somebody holding one can do (replay it while it is valid), and
-the limit: a program with the <code>declassify</code> grant can MAC under a weak key
-it derived from a strong one - which is no more than <code>declassify</code> already
-let it do, and should be read in an audit as what it is.</li>
-<li><strong><code>sha256</code>, <code>hex_encode</code>, <code>hex_decode</code>, <code>base64_encode</code>, <code>base64_decode</code>,
-<code>url_encode</code></strong>: pure, over UTF-8; the decoders fail on what is not the
-encoding or not text.</li>
-<li><strong>Bearer tokens leave through <code>declassify</code></strong>, once, where the header is
-built, with a reason that names the host. 8.5 adds no builtin that sends a
-Secret: one that did would make <code>net</code> a second <code>declassify</code> that no audit
-names.</li>
-<li><strong><code>stdlib/rest.vel</code></strong> is what the four needed that <code>http.vel</code> lacked:
-<code>call_retrying</code> (a bound of ten, no pause - a program has no clock unless
-granted one), <code>call_json</code>, <code>header_map</code>, <code>header_of</code>, <code>items</code>,
-<code>succeeded</code>, <code>worth_retrying</code>, <code>after_prefix</code>, <code>no_leading_slash</code>. It is
-a new file and <code>http.vel</code> is untouched: the first draft added these to
-<code>http.vel</code>, and a program that imports <code>http.vel</code> without a name and
-defines its own <code>items</code> then stopped compiling (E513). A minor version
-does not do that, so they moved.</li>
-<li><strong>The audit names the host of a URL that begins fixed</strong> (above), which is
-what lets a library written against one host audit as that host.
-<code>azure.vel</code> and <code>github.vel</code> import nothing, because an audit reads every
-function a program loads and <code>http.vel</code>'s take any URL.</li>
-<li><strong>Each has an example</strong> under <code>examples/ops/</code> - <code>azure_groups.vel</code>
-(resource groups and tag drift), <code>k8s_pods.vel</code>, <code>github_issues.vel</code>,
-<code>aws_buckets.vel</code> - a line on the Library page, and a test in
-<code>check_batteries.py</code>, which runs on every leg against a stand-in server in
-the suite's own process: the request goes to the real host's name over
-TLS, under the real host's grant, and only where that name connects to is
-changed (<code>tests/standin/</code>, a certificate nothing else trusts).</li>
-</ul>
-<p><strong>The ffi count over <code>examples/</code></strong> (<code>velaris stats --ffi examples</code>): at 8.4.0,
-106 programs, 8 of which call Python; at 8.5.0, 112 programs, 8 of which
-call Python. The six new programs - the four under <code>examples/ops/</code> and the
-two under <code>examples/runner/</code> - call none, and the audit of each shows no
-<code>ffi</code> effect and no module. The eight are the ones that were there:
-<code>database.vel</code>, <code>edges.vel</code>, <code>ffi.vel</code>, <code>json_ffi.vel</code>, <code>report_fixes.vel</code>,
-<code>sandbox.vel</code>, <code>stdlib_tools.vel</code> and <code>stress.vel</code>, which exist to show
-<code>ffi</code>, <code>db.vel</code> and <code>dates.vel</code>; none of them was rewritten.</p>
-<h3 id="viewers">Viewers <a class="anchor" href="#viewers" aria-label="Link to this section">#</a></h3>
-<p><code>velaris receipt show &lt;file&gt;</code> and <code>velaris audit &lt;file&gt; --html</code> write a page:
-what was read, written and fetched - by grant, with counts - which secrets
-were declassified and why, what was refused and where, the confinement
-level, the wall time, the subjects. Plain HTML with the documentation site's
-stylesheet inside it; no script, nothing fetched, every value escaped;
-<code>--text</code> for the terminal, with control characters written as escapes. The
-same input gives the same bytes on every system (<code>tests/viewers/</code>).</p>
-<p>To say which host, a receipt had to know, and a receipt holds no value the
-program handled. So <code>grants_used</code> counts what each <em>grant</em> let through, by
-the grant's own text - <code>net:management.azure.com:443</code> three times - which is
-the operator's and not the program's.</p>
-<h3 id="the-runner-first-cut">The runner, first cut <a class="anchor" href="#the-runner-first-cut" aria-label="Link to this section">#</a></h3>
-<p><code>velaris run program.vel --tools manifest.json</code>. The manifest
-(<code>velaris.tools/1</code>) declares tools by name, a JSON Schema for each one's
-arguments, which results are secret, a cost, and a ceiling in calls and in
-the host's own cost unit. The budget grants them as it grants anything:
-<code>tool</code>, <code>tool:search@20</code>, <code>tool:send_email:to=*@corp.com</code>. A call goes
-through a door to the host - JSON lines on standard input and output now; an
-HTTP door later - pauses the run, and resumes with the result, which is a
-<code>Secret of Text</code> when the manifest says so. <code>Untrusted</code> arrives in 9.0, and
-the documents say so where it matters. Receipts record every call site, the
-patterns that held its arguments and the ceiling; the audit lists <code>tool</code>
-like any effect, and the tools a program names. <code>examples/runner/</code> is a host
-in Python offering <code>search</code> and <code>send_email</code>, and a program that is refused
-(E321) when it mails outside the allowed domain, before the host hears of
-it. <code>velaris skill verify &lt;dir&gt;</code> reads a skill's programs and manifest and
-reports the tools and the budget it would need. There is no framework
-adapter; docs/runner.md is the whole protocol, and who trusts whom.</p>
-<h3 id="the-adversarial-pass">The adversarial pass <a class="anchor" href="#the-adversarial-pass" aria-label="Link to this section">#</a></h3>
-<p>Kept as tests, so that each stays tried.</p>
-<ul>
-<li><strong>An argument that escapes its constraint</strong> (<code>check_runner.py</code>, fourteen
-ways against <code>to=*@corp.com</code>). The first matcher was a glob, and a glob
-star matches <code>eve@evil.example, ann@corp.com</code>. The rule that shipped: a
-pattern is matched against the whole value, nothing is trimmed or folded,
-and <code>*</code> never stands for the literal that follows it in the pattern, a
-separator (<code>, ; &lt; &gt; " ' \</code>), white space, a control or format character,
-or across <code>..</code>; a list matches when every item does; a held argument that
-is left out is refused, since the host's default is not the operator's
-pattern; and an argument the schema does not name is refused, since what
-nobody described nobody constrained.</li>
-<li><strong>A ceiling exceeded</strong>: five of them - <code>tool:NAME@N</code>, <code>tool@N</code>, the
-manifest's calls, its cost, and a cost the host reports mid-run.</li>
-<li><strong>A host that lies</strong>: another call's id, a Bool for an id, a line that is
-not JSON, a result and an error, neither, a negative cost to win budget
-back, a cost that is not a number, NaN, a closed door, silence. Each is
-E324 and the program does not go on. A reply's other fields change
-nothing: a result is a <code>Text</code> and never a grant.</li>
-<li><strong>A result that steers</strong> a host or a path: it cannot leave the budget (the
-suite has a tool return a URL outside <code>net:</code>, which is E314), and inside
-the budget it can. That is the 9.0 <code>Untrusted</code> case and is written down as
-open in THREAT_MODEL.md, not fixed.</li>
-<li><strong><code>hmac_sha256</code>: a key that reaches output other than as a MAC</strong>
-(<code>check_digests.py</code>). Sixteen routes - printed, logged, written, as a URL,
-as a tool's arguments, encoded first, through a list, a map, <code>format</code>,
-<code>json_of</code>, a loop over <code>chars</code>, as the <em>message</em> of another MAC - none
-compiles. One thing was changed for it: a call site that signs under many
-keys names sixteen fingerprints in a receipt and then says <code>many</code>, so a
-loop over keys derived from a secret cannot use the receipt as a channel.
-The limit above - a weak key derived from a strong one - is stated, not
-closed.</li>
-<li><strong><code>velaris demo</code> turned on a real <code>.env</code></strong> (<code>check_demo.py</code>): run from a
-directory holding a <code>.env</code> with a value only the suite knows, with seven
-argument forms, a proxy in the environment and the temporary directory
-pointed at the victim's. The value appears nowhere, nothing connects
-anywhere, and the directory is as it was.</li>
-<li><strong>A receipt somebody else wrote</strong>, shown as a page: markup in any value is
-text, and an escape sequence is written out, not sent to the terminal.</li>
-</ul>
-<h3 id="known-open">Known open <a class="anchor" href="#known-open" aria-label="Link to this section">#</a></h3>
-<ul>
-<li>A tool's result is not marked as the host's words (<code>Untrusted</code>, 9.0).</li>
-<li>The pattern rule is conservative: <code>*@corp.com</code> does not match
-<code>Ann@Corp.com</code>, and <code>/data/*.txt</code> does not match <code>/data/a.b.txt</code>.</li>
-<li><code>k8s.vel</code> verifies TLS against the machine's trust store; a cluster with
-its own CA needs <code>SSL_CERT_FILE</code> set where the run starts. There is no
-switch that turns verification off, and no way yet to name a CA per run.</li>
-<li><code>aws.vel</code> and <code>k8s.vel</code> take their host from the caller, so an audit says
-"a host built while running" for them and the operator names the grant.</li>
-<li><code>call_retrying</code> does not pause between attempts.</li>
-<li>A named import still renames a library's <em>parameters</em> that share a name
-with one of its functions; <code>http.vel</code> avoids the names. 9.0.</li>
-<li>S3 and STS answer in XML, and <code>aws.vel</code> reads values out by tag.</li>
-<li><code>embedding.html</code> and <code>threat-model.html</code> are within a few hundred bytes of
-the site's 100,000-byte page budget. The runner's protocol and the viewers
-moved to <code>docs/runner.md</code> for that reason; the next addition to either
-document has to move text out as well.</li>
-</ul>
-<h3 id="housekeeping">Housekeeping <a class="anchor" href="#housekeeping" aria-label="Link to this section">#</a></h3>
-<ul>
-<li><strong><code>build_docs.py</code> hashes and copies line-feed bytes</strong> (<code>lf_bytes</code>): the
-digest on the receipt page, <code>site.css</code>, <code>site.js</code>, <code>llms.txt</code> and the
-playground are the same bytes from a Windows checkout and from a runner,
-so the release's own rebuild of <code>docs/</code> no longer touches that page.</li>
-<li><code>velaris/site.css</code> is the site's stylesheet inside the package, for the
-viewers; <code>check_viewers.py</code> holds it to <code>site/site.css</code>.</li>
-<li>velaris-spec 0.13.0: the <code>tool</code> effect and its grants (sections 3.1, 4.1
-and 5.6), the URL-prefix rule (9.3), receipt <code>grants_used</code>, <code>tool_calls</code>,
-<code>tool_ceiling</code> and <code>key_fingerprint</code> (8.7), the audit's <code>tools</code> and the
-hmac declassification (8.6), and <code>velaris.tools/1</code> (8.10, provisional).</li>
-<li><a href="https://github.com/gowrishankar-infra/velaris-kit">velaris-kit</a>, a
-template repository: the Azure script, a committed <code>velaris.capabilities</code>,
-the Action in a workflow, and an empty <code>FRICTION.md</code>.</li>
-</ul>
-<h3 id="measured">Measured <a class="anchor" href="#measured" aria-label="Link to this section">#</a></h3>
-<p>Measured by <code>perf_gates.py --against v8.4.0</code> on Windows 11 (10.0.26200,
-AMD64, 16 CPUs), Python 3.13.13, z3-solver 5.1.0 and llvmlite 0.49.0: medians
-of 5 runs after one warm-up. <strong>The machine was not idle</strong>: 17% busy when it
-began, and this release's other suites ran beside the later measurements, so
-every figure here is higher than 8.4.0's table for that reason and not for a
-change in the code it measures. The comparison against v8.4.0 runs both
-versions in alternation under the same load, and is the figure to read; the
-release workflow repeats it on a runner that does nothing else, and fails
-the release past +25%.</p>
-<div class="table-wrap" tabindex="0"><table>
-<thead><tr><th>Measure</th><th>8.5.0</th></tr></thead>
-<tbody>
-<tr><td>Cold start, <code>velaris --version</code></td><td>257 ms</td></tr>
-<tr><td>Cold start, <code>velaris check</code> of a one-line file</td><td>531 ms</td></tr>
-<tr><td>Check, per 1,000 lines (a 1,013- and a 10,013-line program)</td><td>1.11 s and 1.33 s; 0.07 s and 0.07 s without proofs</td></tr>
-<tr><td>Proof time per example with contracts, p50 / p95</td><td>23 ms / 488 ms, over 56 files</td></tr>
-<tr><td>Native code on <code>examples/bench.vel</code>: compile, and llvmlite's import</td><td>90 ms, and 78 ms; <code>burn</code> compiled</td></tr>
-<tr><td><code>examples/bench.vel</code>, native / <code>--no-native</code></td><td>6.76 s / 16.46 s, 2.44 times faster, 9.71 s saved</td></tr>
-<tr><td><code>--lite</code> build</td><td>there is none</td></tr>
-<tr><td>Pool worker's memory, after 1 run and after 1,000 more</td><td>26.6 MB, 27.6 MB</td></tr>
-<tr><td>z3 or llvmlite imported by <code>velaris --version</code>, or by <code>check</code> of a program with no promise</td><td>neither</td></tr>
-<tr><td>Importing z3 when a command needs it</td><td>+170 ms at cold start</td></tr>
-<tr><td>Importing llvmlite when a command needs it</td><td>+173 ms at cold start</td></tr>
-<tr><td>Pure numeric against v8.4.0, native (<code>bench.vel</code> and an integer loop)</td><td>6.76 s against 6.75 s, +0.2% (the gate allows +25%)</td></tr>
-<tr><td>Pure numeric against v8.4.0, interpreted</td><td>20.01 s against 18.64 s, +7.3%, measured under the load described above</td></tr>
-<tr><td><code>velaris demo</code>, start to finish</td><td>about 1 s: two runs of the command line and nothing else</td></tr>
-</tbody></table></div>
-<p><code>check_differential.py</code> against v8.4.0: none of the 97 examples' outputs
-differs, velaris-spec's 456 conformance cases give the same verdicts, and
-the quick benchmark's 15 programs the same verdicts.</p>
 </main>
 <footer class="foot">
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.7.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#870---evidence">8.7.0 - Evidence</a></li><li><a href="#86---the-name">8.6 - The name</a></li><li><a href="#85---taste">8.5 - Taste</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#870---evidence">8.7.0 - Evidence</a></li><li><a href="#86---the-name">8.6 - The name</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

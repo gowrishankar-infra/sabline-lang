@@ -598,11 +598,31 @@ def differences(want: Any, have: Any, where: str = "") -> list[Any]:
 
 
 def _newest_tag() -> str | None:
+    """The newest ORDINARY release tag - never a pre-release.
+
+    A pre-release (9.0.0-alpha.N) ships the sabline-rt crate and nothing
+    else: the six version files stay on the newest ordinary release, and
+    `tests/api/golden.json` is the Python package's surface, which a
+    pre-release does not move. Counting one here asks the wrong question
+    twice over. `parse_version` reads v9.0.0-alpha.1 as (9, 0, 0), so from
+    9.0.0-alpha.1 on it made every ordinary release "older than the newest
+    tag", and `api_line_for_change` then looked for the `api:` line above
+    the CHANGELOG's first entry rather than in the entry being released.
+    8.7.0 met that: the gate said `release: 8.7.0` with the line in its
+    entry, where RELEASING.md puts it, and this suite asked for it
+    somewhere else. It went unseen because test.yml checks out shallow,
+    with no tags at all, so this returned None and the case passed
+    trivially on every leg.
+
+    release_checks.prerelease_gate has the same rule for the same reason,
+    and `_newest_tag(releases_only=True)` there is this list.
+    """
     try:
         tags = release_checks.git(HERE, "tag", "--list", "v*").splitlines()
     except release_checks.Unanswered:
         return None
-    tags = [t for t in tags if release_checks.parse_version(t)]
+    tags = [t for t in tags if release_checks.parse_version(t)
+            and not release_checks.prerelease_of(t)]
     # every tag left parses, so parse_version gives each one a version
     return max(tags, key=cast("Callable[[str], tuple[int, int, int]]",
                               release_checks.parse_version)) if tags else None

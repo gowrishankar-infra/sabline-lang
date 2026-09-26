@@ -7,6 +7,23 @@ moved where.
 
 ## 8.7.0 - Evidence
 
+**`check_api.py` counted a pre-release tag, and asked for the `api:` line
+in the wrong place.** `tests/api/golden.json` is the Python package's
+surface, and a pre-release ships the `sabline-rt` crate and nothing else -
+the six version files do not move, and the golden does not either. This
+suite's own newest-tag lookup counted one all the same, and
+`parse_version` reads `v9.0.0-alpha.1` as `(9, 0, 0)`, so from that tag on
+every ordinary release read as *older than the newest tag*: the suite
+looked for the `api:` line above the CHANGELOG's first entry instead of in
+the entry being released. 8.7.0 is the first ordinary release since
+9.0.0-alpha.1 and met it - `release_checks.py gate` said `release: 8.7.0`
+with the line in its entry, where RELEASING.md puts it, while this suite
+asked for it somewhere else. It went unseen because test.yml checks out
+shallow, with no tags at all, so the lookup returned None and the case
+passed trivially on every leg. It now skips pre-release tags, which is the
+rule `release_checks.prerelease_gate` already had for the same reason, and
+says `the golden differs from v8.6.0's`.
+
 **A check stopped at its own ceiling was read as a crash.**
 `check_hostile.py`'s seventh case builds a valid 10,000-line program and
 holds `check`, `audit`, `fmt --check` and `run` over it to "no traceback,
@@ -105,6 +122,20 @@ rather than trimmed and the budget stays where it was. THREAT_MODEL.md
 keeps its Known open heading, which links to the page, and every word of
 the table and the section is where it was moved to.
 
+Categories 16 to 20 are new in this release, so v8.6.0's benchmark has no
+program of that name and nothing to compare a verdict against.
+
+differential: 16a - a program of benchmark category 16, new in 8.7, so
+v8.6.0 has no verdict for it
+differential: 17a - a program of benchmark category 17, new in 8.7, so
+v8.6.0 has no verdict for it
+differential: 18a - a program of benchmark category 18, new in 8.7, so
+v8.6.0 has no verdict for it
+differential: 19a - a program of benchmark category 19, new in 8.7, so
+v8.6.0 has no verdict for it
+differential: 20a - a program of benchmark category 20, new in 8.7, so
+v8.6.0 has no verdict for it
+
 **Competitor scoring** ([benchmark/competitors/](benchmark/competitors/README.md),
 [/competitors.html](https://sabline.dev/competitors.html)): the comparison
 benchmark run through Deno, CPython's WASI build under wasmtime, Starlark,
@@ -189,6 +220,19 @@ and its receipt are what they were, `sabline.run()`, `sabline replay`,
 `sabline serve` and a `Pool` write nothing new, and `--no-confine` says its
 own line instead. The package-hallucination incident's recording shows it,
 for the invented `huggingface_cli`.
+
+Four example programs print that line where v8.6.0 printed nothing. It is
+the whole of the difference: same exit status, same stdout, one line added
+to stderr.
+
+differential: `examples/ffi.vel` - its budget grants `ffi:builtins`, so the
+OS layer is off for the run and 8.7 says so on stderr. Nothing else differs.
+differential: `examples/sandbox.vel` - the same, `ffi:builtins`. The program
+is a refusal exercise and every refusal in it is unchanged.
+differential: `examples/database.vel` - `ffi:builtins` is granted and
+`ffi:_sqlite3` is not in the confinement table, and the line names both.
+differential: `examples/stdlib_tools.vel` - the same two, for the same
+reason.
 
 **The card changed where the round trip pointed, and did not move the
 number.** Three fixes to LLM.md, and nothing else: the example to imitate
