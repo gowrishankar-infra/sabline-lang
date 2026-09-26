@@ -2,7 +2,7 @@
  "schema": "sabline.roundtrip/2",
  "platform": "Linux x86_64",
  "python": "3.12",
- "sabline": "8.6.0",
+ "sabline": "8.7.0",
  "rounds": 6,
  "card_sha256": "37fda3ac94c6324e139b7817f8d22081065849299abc8339d00ce9a3639bd73e",
  "tasks_sha256": "297f3d3425deb6a05873c0fb5ebbaf5b610beddfa2e1c6d6ce79bcd7d0cb10d3",

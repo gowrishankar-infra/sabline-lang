@@ -5,7 +5,7 @@ For each model, the same small tasks asked for twice - as a Sabline program, wit
 The tasks are in two sets, reported apart: the original 10, which the card was changed in answer to after the first recording, and 5 held out from that change - written and committed before it, by the person who then made it, so they are held out from the edit and not from its author. A row is one recording: a model, the card it was given and the task set it was asked, each named by the first eight hex digits of its SHA-256, and the compiler whose messages it was sent back: the SHA-256 of the sabline package's source, recorded from the E101 rerun on, since a changed message changes what a model is told as much as a changed card does. A recording that names no compiler was sent the messages from before E101 said what a keyword is for. The current card is `37fda3ac` and the current task set `297f3d34`; a recording is scored on the tasks it was asked, by today's checks.
 
 > [!NOTE]
-> **Scored** on Linux x86_64, Python 3.12, Sabline 8.6.0. Each row gives the model's exact version and the date its replies were recorded; a recording more than 183 days old is marked **stale** when this page is built, and its numbers are not carried to a newer version of the model.
+> **Scored** on Linux x86_64, Python 3.12, Sabline 8.7.0. Each row gives the model's exact version and the date its replies were recorded; a recording more than 183 days old is marked **stale** when this page is built, and its numbers are not carried to a newer version of the model.
 
 ## The numbers
 
