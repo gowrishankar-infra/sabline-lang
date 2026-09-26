@@ -86,7 +86,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python adversarial_models.py findings claude "$RUNNER_TEMP/claude.out" --out findings/claude
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         if: env.HAS_KEY == 'true'
         with:
           name: findings-claude
@@ -144,7 +144,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python adversarial_models.py findings gemini "$RUNNER_TEMP/gemini.out" --out findings/gemini
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         if: env.HAS_KEY == 'true'
         with:
           name: findings-gemini
@@ -181,7 +181,7 @@ jobs:
           python adversarial_models.py grok "$RUNNER_TEMP/prompt.md" --model "$MODEL" > "$RUNNER_TEMP/grok.out" || status=$?
           if [ "$status" != 0 ]; then echo "::warning::the Grok pass exited $status"; fi
           python adversarial_models.py findings grok "$RUNNER_TEMP/grok.out" --out findings/grok
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         if: env.HAS_KEY == 'true'
         with:
           name: findings-grok

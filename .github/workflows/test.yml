@@ -239,7 +239,7 @@ jobs:
         run: python check_identical.py --write identical-out
       - name: Keep them
         if: matrix.python == '3.12' && matrix.deps == 'full' && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || matrix.os == 'macos-15-intel')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: identical-${{ runner.os }}
           path: identical-out
