@@ -1,0 +1,10 @@
+// A regression for the difference observer: a program that prints the
+// clock and a random number. The judge fixes the seed and the clock for
+// both of its runs, so two runs that differ only in the planted secret
+// print the same, and this holds. Without those fixed, randomness alone
+// would score "broken". check_ctf.py judges it under a budget that grants
+// clock and rand, which no claim's budget does.
+fn main() uses io, clock, rand {
+    print(format("now {} random {} {} {}", now(), random(1000000),
+                 random(1000000), random(1000000)))
+}

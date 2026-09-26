@@ -51,7 +51,7 @@
 <li><a href="floats.html">Floats</a>
 </li>
 <li><a href="threat-model.html">Threat model</a>
-<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="roundtrip.html">Model round trip</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="security.html">Security policy</a></li></ul>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="roundtrip.html">Model round trip</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="ctf.html">The Sabline capture-the-flag</a></li><li><a href="security.html">Security policy</a></li></ul>
 </li>
 <li><a href="embedding.html">Embedding</a>
 <ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
@@ -298,6 +298,49 @@ stale by a commit that changed a page's sources and not it. The landing
 page leads with the same two sentences, says who Sabline is for and shows
 a refusal in one command; <code>/velaris</code> explains the rename to someone
 searching the old name.</li>
+<li>The sitemap's <code>&lt;lastmod&gt;</code> days are computed <strong>in UTC</strong>, on the side that
+builds them and the side that checks them. They were git's <code>%cs</code>, the day
+in the <em>committer's</em> timezone, while <code>check_site.py</code> compares them against
+today in UTC. A commit made in the hours that are still yesterday in UTC -
+midnight to 05:30 from +0530 - dated every page it touched tomorrow: the
+sitemap then pointed at the future, which the SITEMAP rule refuses and a
+crawler reading <code>&lt;lastmod&gt;</code> would be right to distrust, and the staleness
+rule saw a page whose sources changed the day after the sitemap was
+written. Both sides now ask git for the day in UTC, so the dates, the
+history the staleness rule reads and the "not in the future" comparison
+are one clock.</li>
+<li><strong>A capture-the-flag</strong>, <a href="ctf.html">docs/ctf.md</a> and
+the judge in <a href="https://github.com/gowrishankar-infra/sabline-lang/tree/main/ctf"><code>ctf/</code></a>. Ten claims (<code>C1</code>–<code>C10</code>), each a fixed budget
+and one thing no program under it may do; you write the program, the judge
+runs it five times with fresh canaries against the published package pinned
+by the hash of its wheel, on Linux and under the OS confinement that claim
+can get - <code>full</code> for the file, io and ffi claims, <code>partial</code> for the net and
+prover claims, <code>none</code> for the two scored through the tool door, stated per
+claim on the page and in <code>ctf/status.json</code>, and a run that does not reach
+its claim's level is not scored. It sees a break only through its own
+observers - hashes of every tree the run can reach but the one directory
+its budget lets it write, a listener, a nonce scan, a second run differing
+only in the nonce and compared on stdout, stderr and the files written (so
+an encoded leak counts, and one written with <code>log</code> counts as much as one
+printed), the tool door's transcript against both of its ceilings, the
+prover's answer for every file a submission brings against the run's
+receipt - never the submission's exit code or transcript, nor anything else
+the program can write. The receipt is written in a directory of the judge's
+own, outside the run's root entirely, and checked afterwards for having
+been changed; every run passes <code>--no-native</code>, and the judge refuses to
+score at all where native compilation is available anyway; <code>--sabline</code> must
+be an absolute path, never a name looked up on <code>PATH</code>. The judge's code is
+published here and pinned by commit from a private scoring repository, so
+it can be read but not edited by a submission; the safety rests on the
+per-run canaries, not on secrecy. Its self-test runs the C1 read submission
+against a build with the 8.1.1 double-dash hole and must report it broken,
+and against the pinned package it must hold; <code>check_ctf.py</code> runs the
+observers on every OS and, in one Linux job, the live self-test and a
+regression for each finding of the two adversarial reviews of the judge -
+a leak written with <code>log</code>, a write escaping into the run's own directory,
+an E601 raised by an imported helper's runtime-checked promise, and a
+program that floods the tool door's stderr. No money, no points:
+<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/HALL_OF_FAME.md">HALL_OF_FAME.md</a> names the finders.</li>
 </ul>
 <p><strong>E101's new hints, measured: the task they were written for now works.</strong>
 qwen2.5:7b was run three more times, with the card, tasks and settings

@@ -1,0 +1,6 @@
+{
+  "claim": "C1",
+  "program": "attack.vel",
+  "argv": ["--allow", "all"],
+  "note": "A regression for the judge, not a finding: the self-test's read submission, printing the secret reversed. Broken under the 8.1.1 double-dash hole (the second run, differing only in the secret, prints differently); holds on the pinned package, where the read is refused."
+}

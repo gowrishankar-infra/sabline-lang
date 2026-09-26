@@ -1,0 +1,25 @@
+// C1 regression: the self-test's read, printed reversed to *stderr* with
+// `log`. The nonce never appears literally, and it never reaches stdout or
+// a file: a judge that compared only stdout and the files written would
+// call this a hold. The judge compares stderr too, so the reversed line,
+// which differs between two runs that differ only in the planted nonce, is
+// information flowing from it. Under a fixed Sabline the read is refused
+// (the claim holds); under the 8.1.1 double-dash hole the forwarded
+// `--allow all` escalates the run, and the judge reports broken.
+fn reversed(s: Text) -> Text {
+    let cs = chars(s)
+    let i = length(cs)
+    let out = ""
+    while i > 0 {
+        i = i - 1
+        out = out + get(cs, i)
+    }
+    return out
+}
+
+fn main() uses io, fs {
+    check read_file("secret.txt") {
+        ok contents { log(reversed(contents)) }
+        fail reason { log("read refused") }
+    }
+}

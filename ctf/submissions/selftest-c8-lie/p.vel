@@ -1,0 +1,23 @@
+// C8 regression: a promise the pinned prover leaves to run time (it does
+// not reason about the loop), and which breaks there - tally(3) is 3, not
+// more. Against the real prover the judge has no proven promise to hold
+// this to, and the claim holds. Against ctf/lying_prover.py, which passes
+// the run through unchanged but calls every promise proven, the same
+// program is a genuine prover lie: a promise called proven, an ensures the
+// receipt says broke (E601). The judge must report it broken.
+fn tally(n: Int) -> Int
+    requires n >= 0
+    ensures result > n
+{
+    let acc = 0
+    let i = 0
+    while i < n {
+        acc = acc + 1
+        i = i + 1
+    }
+    return acc
+}
+
+fn main() uses io {
+    print(format("{}", tally(3)))
+}

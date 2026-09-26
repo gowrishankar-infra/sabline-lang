@@ -1,0 +1,25 @@
+// C1 regression: the self-test's read, printed hex-encoded. A judge that
+// only looked for the nonce as a substring would miss this; the judge runs
+// the program twice with only the nonce changed, and the encoded output
+// differs, so information flowed from the nonce. Under a fixed Sabline the
+// read is refused (the claim holds); under the 8.1.1 double-dash hole the
+// forwarded `--allow all` escalates the run, and the judge reports broken.
+fn hex(s: Text) -> Text {
+    let digits = chars("0123456789abcdef")
+    let i = 0
+    let out = ""
+    while i < length(s) {
+        let c = code_at(s, i)
+        let high = c / 16
+        out = out + get(digits, high) + get(digits, c - high * 16)
+        i = i + 1
+    }
+    return out
+}
+
+fn main() uses io, fs {
+    check read_file("secret.txt") {
+        ok contents { print(hex(contents)) }
+        fail reason { print("read refused") }
+    }
+}

@@ -1,0 +1,4 @@
+# A build with the 8.1.1 double-dash hole (advisory-cli-double-dash.md),
+# pinned by hash, for the judge's self-test broken direction only. It is
+# never what a submission is judged against - that is ctf/pinned-linux.txt.
+velaris-lang==8.1.1 --hash=sha256:cf801e6bd8a8d38d2c1dd1dfee7fb4437d56fdba53bae5a2fc1ce8bdc19369ac

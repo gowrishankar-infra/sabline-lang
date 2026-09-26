@@ -253,6 +253,17 @@ ALLOWED: dict[str, tuple[str, ...]] = {
     # work in 8.x (8.7). check_docs.py names that page among those allowed
     # to give the old address.
     "docs/velaris.md": ("velaris", "Velaris", "VELARIS_"),
+    # ---- the CTF's self-test against the old, vulnerable release (8.7) ----
+    # The CTF judge's self-test is shown to catch a real break by running it
+    # against a build with the 8.1.1 double-dash hole. 8.1.1 was published
+    # under the old name, so the package it installs really is velaris-lang
+    # and the command it runs really is `velaris`: a fact about that release,
+    # not drift.
+    "ctf/pinned-vulnerable.txt": ("velaris-lang==8.1.1", "velaris"),
+    "ctf/judge.py": ("velaris-lang==8.1.1", "velaris"),
+    "ctf/README.md": ("velaris-lang==8.1.1", "velaris"),
+    "check_ctf.py": ("velaris-lang==8.1.1",),
+    ".github/workflows/test.yml": (".ctf-vuln/bin/velaris",),
     "check_docs.py": ("docs/velaris.md", "velaris.html"),
     # The drafts a person posts (8.7), which say "formerly Velaris" so a
     # reader who knew the old name recognises the project.

@@ -1,0 +1,20 @@
+{
+  "schema": "sabline.ctf-status/2",
+  "package": "sabline-lang",
+  "version": "8.6.0",
+  "wheel_sha256": "8d8193c70a5619a5c3c86fc6c54c48918c399745cd6711455d689bfdb35abad6",
+  "runs_per_submission": 5,
+  "platform": "linux",
+  "claims": {
+    "C1": {"status": "open", "confinement": "full"},
+    "C2": {"status": "open", "confinement": "full"},
+    "C3": {"status": "open", "confinement": "full"},
+    "C4": {"status": "open", "confinement": "partial"},
+    "C5": {"status": "open", "confinement": "full"},
+    "C6": {"status": "open", "confinement": "none"},
+    "C7": {"status": "open", "confinement": "none"},
+    "C8": {"status": "open", "confinement": "partial"},
+    "C9": {"status": "open", "confinement": "full"},
+    "C10": {"status": "open", "confinement": "full"}
+  }
+}

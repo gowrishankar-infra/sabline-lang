@@ -1,0 +1,30 @@
+// C7 regression: a program that fills the judge's stderr pipe, makes its
+// one entirely allowed tool call, and then never ends.
+//
+// Two things must happen, and neither did. A host that reads stdout and
+// leaves stderr to fill wedges at the 64 KiB a pipe holds - the program
+// blocked on a write nobody reads, the host blocked on a read that will
+// never come - and a program need only `log` enough to put the scoring job
+// there for ever. And a host that ignores how the run ended scores a run
+// it had to kill as though the program had finished and behaved: the
+// transcript holds one allowed call, so "holds".
+//
+// The judge drains both pipes, so it gets past the flood and sees the
+// call; it holds the run to a deadline of its own; and a run that did not
+// come to its own end is reported did-not-run, as the plain runner reports
+// one. Never a hold.
+fn main() uses io, tool {
+    let i = 0
+    while i < 4000 {
+        log("0123456789012345678901234567890123456789012345678901234567890123")
+        i = i + 1
+    }
+    check tool("send_email", "{\"to\": \"alice@corp.com\", \"body\": \"hi\"}") {
+        ok r { print("sent within the pattern") }
+        fail reason { print("send refused") }
+    }
+    let spin = 0
+    while spin < 1 {
+        print("still going")
+    }
+}

@@ -772,10 +772,15 @@ def stale_pages(committed: dict[str, str], sources: dict[str, tuple[str, ...]],
 
 
 def git(*args: str) -> str | None:
+    # TZ=UTC, as build_docs._git does it: the days this reads are compared
+    # against the days the sitemap was built from, and the two must be the
+    # same timezone or a commit made in the evening UTC, east of it, reads
+    # as a page whose sources changed the day after the sitemap was written
+    env = {**os.environ, "TZ": "UTC"}
     try:
         done = subprocess.run(["git", *args], cwd=HERE, capture_output=True,
                               text=True, encoding="utf-8", errors="replace",
-                              timeout=180)
+                              timeout=180, env=env)
     except (OSError, subprocess.TimeoutExpired):
         return None
     return done.stdout if done.returncode == 0 else None
@@ -812,7 +817,8 @@ def check_stale(built: build_docs.Built, require: bool) -> None:
     sources[build_docs.canonical("playground.html")] = ("playground/index.html",)
     sources[build_docs.canonical("papers/sabline.pdf")] = (build_docs.PAPER_PDF,)
     wanted = sorted({s for ss in sources.values() for s in ss})
-    log = git("log", "--format=%x00%cs", "--name-only", "--no-renames", "HEAD",
+    log = git("log", "--date=format-local:%Y-%m-%d", "--format=%x00%cd",
+              "--name-only", "--no-renames", "HEAD",
               "--", *wanted, "docs/sitemap.xml") or ""
     commits: list[tuple[str, set[str]]] = []
     for line in log.splitlines():

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>The Sabline capture-the-flag - Sabline 8.6.0</title>
+<meta name="description" content="A standing invitation to get past a Sabline budget: ten claims, each a fixed budget and one thing no program under it may do, judged on free runners against the published package.">
+<meta name="sabline-version" content="8.6.0">
+<link rel="canonical" href="https://sabline.dev/ctf.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Sabline">
+<meta property="og:title" content="The Sabline capture-the-flag - Sabline 8.6.0">
+<meta property="og:description" content="A standing invitation to get past a Sabline budget: ten claims, each a fixed budget and one thing no program under it may do, judged on free runners against the published package.">
+<meta property="og:url" content="https://sabline.dev/ctf.html">
+<meta property="og:image" content="https://sabline.dev/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.6.0, all versions"><span>8.6.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="roundtrip.html">Model round trip</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="ctf.html" aria-current="page">The Sabline capture-the-flag</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
+</li>
+<li><span class="sec-label">Guides</span>
+<ul><li><a href="guide-network-access.html">Why should it have Internet access? Scripts that reach only the hosts you name</a></li><li><a href="guide-before-it-runs.html">Before I ever have a chance to inspect it: what a script will touch, before it runs</a></li><li><a href="guide-everything-or-nothing.html">Access to everything, or nothing? Giving an agent&#x27;s code only what the task needs</a></li><li><a href="guide-lethal-trifecta.html">The lethal trifecta, one run at a time: a script that reads private data but cannot send it</a></li><li><a href="guide-secrets-env.html">Secrets that should never leave my machine: running an agent&#x27;s scripts without your .env</a></li></ul>
+</li>
+<li><span class="sec-label">Compare</span>
+<ul><li><a href="compare-deno.html">Sabline compared with Deno&#x27;s permissions</a></li><li><a href="compare-wasi.html">Sabline compared with WASI (wasmtime)</a></li><li><a href="compare-camel.html">Sabline compared with CaMeL</a></li><li><a href="compare-python-sandbox.html">Sabline compared with a Python sandbox (smolagents)</a></li><li><a href="compare-ailang.html">Sabline compared with AILANG</a></li></ul>
+</li>
+<li><a href="../papers/sabline.html">Paper</a>
+<ul><li><a href="../papers/index.html">Papers</a></li></ul>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-2.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-3.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="the-sabline-capture-the-flag">The Sabline capture-the-flag</h1>
+<p>A standing invitation to get past a Sabline budget, on infrastructure that already exists, with the people who succeed named. There is no money: it is not a bug bounty, and <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/SECURITY.md">SECURITY.md</a> still says so.</p>
+<div class="callout callout-note" role="note"><p class="callout-title">Note</p>
+<p><strong>A CTF that nobody attacks proves nothing, and this is not evidence that Sabline is secure.</strong> The budget is not a security boundary on its own (SPEC.md section 6), whatever the CTF shows. This is a way to find the next defect earlier than the adversarial passes found the last four - and every break becomes a <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/check_adversarial.py">test</a> the same week.</p>
+</div>
+<h2 id="the-claims">The claims <a class="anchor" href="#the-claims" aria-label="Link to this section">#</a></h2>
+<p>Each claim is a <strong>fixed budget</strong>, one thing <strong>no program under it can do</strong>, and a <strong>canary the judge controls</strong>. You write the program (and, where a deployment would forward them, the words after <code>--</code>); everything else is fixed. The first version runs on <strong>linux only</strong>, against <strong>sabline-lang 8.6.0</strong> pinned by the hash of its wheel.</p>
+<p>The <strong>confinement</strong> column is the least operating-system confinement a scored run of that claim is held to, and a run that did not reach it is not scored. It is not <code>full</code> everywhere and the judge does not claim it is: a net grant names a host no kernel here holds by name, a program carrying a promise starts the prover's threads before the confinement is applied, and the runs scored by the tool door write no receipt to read a level from.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Claim</th><th>Budget</th><th>No program under it</th><th>Confinement</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>C1</td><td><code>io</code></td><td>reads any file of the user's</td><td><code>full</code></td><td>open</td></tr>
+<tr><td>C2</td><td><code>io,fs:read:{READ}</code></td><td>reads outside the one directory it may read</td><td><code>full</code></td><td>open</td></tr>
+<tr><td>C3</td><td><code>io,fs:write:{WRITE}</code></td><td>writes outside the one directory it may write</td><td><code>full</code></td><td>open</td></tr>
+<tr><td>C4</td><td><code>io,net:{HOST}</code></td><td>connects to a second loopback listener the judge owns, on a port the budget does not name</td><td><code>partial</code></td><td>open</td></tr>
+<tr><td>C5</td><td><code>io,fs:read:{READ}</code></td><td>reads the environment</td><td><code>full</code></td><td>open</td></tr>
+<tr><td>C6</td><td><code>io,tool:vault</code></td><td>changes its stdout with a secret it was given</td><td><code>none</code></td><td>open</td></tr>
+<tr><td>C7</td><td><code>io,tool:send_email:to=*@corp.com,tool:send_email@3</code></td><td>passes the tool door's argument pattern, its call ceiling or its cost ceiling</td><td><code>none</code></td><td>open</td></tr>
+<tr><td>C8</td><td><code>io</code></td><td>has a promise reported proven that a run then breaks</td><td><code>partial</code></td><td>open</td></tr>
+<tr><td>C9</td><td><code>io,ffi:gc</code></td><td>gets past the kernel's layers under an ffi grant that widens nothing</td><td><code>full</code></td><td>open</td></tr>
+<tr><td>C10</td><td><code>io,fs:read:{READ},fs:write:{WRITE}</code></td><td>gets past the eval profile</td><td><code>full</code></td><td>open</td></tr>
+</tbody></table></div>
+<p>A claim broken through something <a href="known-open.html">docs/known-open.md</a> already lists was a wrong claim: the claim is fixed, and the finder is credited. C9 is the strongest - <code>ffi:gc</code> widens no OS policy, so a run under it is held to the same kernel confinement as <code>io</code> alone, and what holds it is Landlock and seccomp, not the language.</p>
+<h2 id="how-a-submission-is-judged">How a submission is judged <a class="anchor" href="#how-a-submission-is-judged" aria-label="Link to this section">#</a></h2>
+<p>The judge's code is <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/ctf/"><code>ctf/</code></a> in this repository, so anyone can read what scores a submission. A private companion repository pins it by commit and runs it; the safety rests on the per-run canaries and nonces, made fresh each run, not on secrecy.</p>
+<ul>
+<li>The submission is <strong>hashed before the canaries exist</strong>, so it cannot contain them, and run <strong>5 times</strong> with fresh canaries each time.</li>
+<li>Each run is made against the pinned, published package under the operating-system confinement <strong>its own claim needs</strong> - the column above - and a run that does not reach it is <strong>not scored</strong>.</li>
+<li>Every run passes <code>--no-native</code>, and the judge <strong>refuses to score at all</strong> on a machine where native compilation is available anyway, so that no answer of its turns on whether <code>llvmlite</code> happens to be installed.</li>
+<li><strong>Only the judge's own observers count</strong>: hashes of every tree the run can reach but the one directory its budget lets it write, a listener's log, a scan for a planted nonce, a second run that differs only in the nonce - compared on <strong>stdout, stderr and the files written</strong>, so a leak encoded, or written with <code>log</code>, counts - the tool door's transcript against both of its ceilings, and the prover's answer, for every file a submission brings, against the run's receipt. The receipt is written in a directory of the judge's own, outside the run's root entirely, and checked afterwards for having been changed. Every piece of evidence comes from a channel the judge controls and the program cannot write to; a submission's own exit code and transcript are <strong>never</strong> evidence.</li>
+<li>The judge reports one of three answers: the claim <strong>held</strong> on every run, it was <strong>broken on k of the runs</strong> (with the evidence of each), or it <strong>did not run</strong>.</li>
+<li>A <code>broken</code> verdict is replayed on a second runner and checked by a person before any credit. After the fix, the case goes into <code>check_adversarial.py</code> that week, and a public job in this repository replays it - broken on the version before, holding on the one after.</li>
+</ul>
+<p>The judge is shown to catch a real break before it is trusted to find a new one: its self-test runs the C1 read submission against a build with the 8.1.1 double-dash hole (<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/advisory-cli-double-dash.md">advisory</a>) and must report it broken, and against the pinned package it must hold.</p>
+<h2 id="submitting">Submitting <a class="anchor" href="#submitting" aria-label="Link to this section">#</a></h2>
+<p>A submission is a directory with a <code>submission.json</code> naming the claim, the program, and any words to forward after <code>--</code>, plus the program itself. Send it <strong>privately</strong> - by <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/SECURITY.md">SECURITY.md</a>'s address or GitHub's private vulnerability reporting - so a live escape is not public before its fix. Submissions are scored in a private repository; what becomes public is what follows a fix.</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"claim": "C1", "program": "attack.vel", "argv": ["--allow", "all"],
+  "note": "what you think it does"}</code></pre></div>
+<p>The finders are named in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/HALL_OF_FAME.md">HALL_OF_FAME.md</a>. No points, no ranking: each fix earns one entry, and the first private report of a break wins it.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/ctf.md">docs/ctf.md</a> by build_docs.py, for Sabline 8.6.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#the-claims">The claims</a></li><li><a href="#how-a-submission-is-judged">How a submission is judged</a></li><li><a href="#submitting">Submitting</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

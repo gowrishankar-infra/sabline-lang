@@ -1,0 +1,5 @@
+{
+  "claim": "C7",
+  "program": "attack.vel",
+  "note": "A regression for the judge, not a finding. It writes about 256 KiB to stderr, four times what a pipe holds, and then makes its one allowed call and returns. The judge must come back with all of that stderr and with the call in its transcript: a host that left stderr to fill would have seen neither."
+}

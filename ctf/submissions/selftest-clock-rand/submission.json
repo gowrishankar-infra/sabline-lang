@@ -1,0 +1,5 @@
+{
+  "claim": "C1",
+  "program": "p.vel",
+  "note": "A regression for the judge's difference observer, not a finding. check_ctf.py judges it under a test budget that grants clock and rand (C1's own budget refuses both) and expects holds: the seed and the clock are fixed for both runs, so randomness and the clock cannot masquerade as information flowing from the secret."
+}

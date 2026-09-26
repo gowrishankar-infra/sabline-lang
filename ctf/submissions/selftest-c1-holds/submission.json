@@ -1,0 +1,6 @@
+{
+  "claim": "C1",
+  "program": "attack.vel",
+  "argv": ["--allow", "all"],
+  "note": "The judge's own self-test submission. Its program reads a file the C1 budget (io) does not grant, and prints it. Under a fixed Sabline the read is refused and the claim holds; under a build with the 8.1.1 double-dash hole, the forwarded words after -- escalate the run to --allow all, the read succeeds, and the judge reports the claim broken. It is not a real finding: C1 holds on the pinned, published Sabline."
+}

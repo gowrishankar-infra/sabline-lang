@@ -1,0 +1,5 @@
+{
+  "claim": "C8",
+  "program": "p.vel",
+  "note": "A regression for the judge, not a finding. The entry file's one promise is proven and holds; the run is stopped by an E601 from an imported helper's promise, which the prover left to run time. Asking the prover about the entry file alone makes this look like a prover lie; asking about every file the submission brings shows it is not. It must score holds."
+}

@@ -1,0 +1,6 @@
+# The published package the CTF judges, pinned by the hash of its wheel, and
+# the prover as CI installs it (for C8). check_ctf.py holds the sabline-lang
+# hash here to ctf/status.json, and the workflow installs with
+# --require-hashes --no-deps into a venv of its own.
+sabline-lang==8.6.0 --hash=sha256:8d8193c70a5619a5c3c86fc6c54c48918c399745cd6711455d689bfdb35abad6
+z3-solver==5.1.0.0 --hash=sha256:dfad9e309d7010b1ff6bdb33f21570a1603ef4727373221c7117a74448f0cfef

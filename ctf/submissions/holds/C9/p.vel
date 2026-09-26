@@ -1,0 +1,1 @@
+fn main() uses io { print("no escape attempted") }

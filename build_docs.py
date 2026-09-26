@@ -349,7 +349,7 @@ DOCS_ORDER = ["confinement.md", "runner.md", "eval.md",
               "competitors-scenarios.md",
               "competitors-evidence-1.md",
               "competitors-evidence-2.md", "competitors-evidence-3.md",
-              "crosswalk.md"]
+              "crosswalk.md", "ctf.md"]
 MISSING: list[str] = []         # links to a repository file that is not here
 
 
@@ -1504,10 +1504,13 @@ def write_tree(dest: Path, prefix: str, pages: list[Page],
 # what the top of the site alone holds for search (8.7)
 
 def _git(*args: str) -> str | None:
+    # TZ=UTC so that `--date=format-local:` gives the UTC day, whatever
+    # timezone the committer or this machine is in
+    env = {**os.environ, "TZ": "UTC"}
     try:
         done = subprocess.run(["git", *args], cwd=HERE, capture_output=True,
                               text=True, encoding="utf-8", errors="replace",
-                              timeout=120)
+                              timeout=120, env=env)
     except (OSError, subprocess.TimeoutExpired):
         return None
     return done.stdout if done.returncode == 0 else None
@@ -1537,8 +1540,13 @@ def source_dates(sources: set[str]) -> dict[str, str]:
     today = datetime.now(timezone.utc).date().isoformat()
     ordered = sorted(sources)
     found: dict[str, str] = {}
-    log = _git("log", "--format=%x00%cs", "--name-only", "--no-renames",
-               "--", *ordered)
+    # %cs is the committer's own timezone, and `today` above is UTC: a
+    # commit made in the evening UTC, east of it, would date a page
+    # tomorrow and read as a sitemap pointing at the future (check_site's
+    # SITEMAP rule, and a crawler's own reading of <lastmod>). The day is
+    # asked for in UTC instead.
+    log = _git("log", "--date=format-local:%Y-%m-%d", "--format=%x00%cd",
+               "--name-only", "--no-renames", "--", *ordered)
     day = ""
     for line in (log or "").splitlines():
         if line.startswith("\x00"):

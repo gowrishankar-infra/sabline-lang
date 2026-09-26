@@ -1,0 +1,5 @@
+{
+  "claim": "C7",
+  "program": "attack.vel",
+  "note": "A regression for the judge, not a finding. It writes about 256 KiB to stderr, makes its one entirely allowed tool call, and then never ends. A host that does not drain stderr wedges at the 64 KiB a pipe holds and never sees the call; a host that ignores how the run ended calls the killed run a hold. It must be reported did-not-run, and the judge must come back at all."
+}

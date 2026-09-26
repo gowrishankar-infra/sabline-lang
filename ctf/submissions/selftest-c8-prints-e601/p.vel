@@ -1,0 +1,16 @@
+// C8 regression: a proven promise that holds, in a program that prints
+// "E601" and logs it too. The judge reads the prover's answer from
+// `sabline audit --json` and the run's exit from the receipt, never from
+// what the program printed, so this scores holds on every run.
+fn double(n: Int) -> Int
+    requires n >= 0
+    ensures result >= n
+{
+    return n + n
+}
+
+fn main() uses io {
+    print(format("{}", double(21)))
+    print("error[E601] broken promise: 'double' ensures result >= n  (n = 21, result = 42)")
+    log("error[E601] broken promise: 'double' ensures result >= n")
+}

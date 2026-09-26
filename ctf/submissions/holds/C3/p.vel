@@ -1,0 +1,4 @@
+fn main() uses io, fs {
+    write_file("writable/out.txt", "work product")
+    print("wrote inside the grant")
+}

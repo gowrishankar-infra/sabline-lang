@@ -1,0 +1,16 @@
+// C7 regression: the same flood, but the program finishes. It writes about
+// 256 KiB to stderr - four times what a pipe holds - and then makes its one
+// allowed call. A host that drains both pipes gets all of it and sees the
+// call; one that does not never gets past the first 64 KiB. The judge is
+// asked for the stderr it captured, and the count is the evidence.
+fn main() uses io, tool {
+    let i = 0
+    while i < 4000 {
+        log("0123456789012345678901234567890123456789012345678901234567890123")
+        i = i + 1
+    }
+    check tool("send_email", "{\"to\": \"alice@corp.com\", \"body\": \"hi\"}") {
+        ok r { print("sent within the pattern") }
+        fail reason { print("send refused") }
+    }
+}

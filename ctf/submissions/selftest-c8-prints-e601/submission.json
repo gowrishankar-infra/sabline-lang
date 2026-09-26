@@ -1,0 +1,5 @@
+{
+  "claim": "C8",
+  "program": "p.vel",
+  "note": "A regression for the judge, not a finding. Its one promise is proven and holds; the program prints and logs the text of an E601. A judge that read the program's output would call this a prover lie; the judge reads the receipt, and this holds 5 of 5."
+}
