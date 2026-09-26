@@ -298,6 +298,17 @@ stale by a commit that changed a page's sources and not it. The landing
 page leads with the same two sentences, says who Sabline is for and shows
 a refusal in one command; <code>/velaris</code> explains the rename to someone
 searching the old name.</li>
+<li>The sitemap's <code>&lt;lastmod&gt;</code> days are computed <strong>in UTC</strong>, on the side that
+builds them and the side that checks them. They were git's <code>%cs</code>, the day
+in the <em>committer's</em> timezone, while <code>check_site.py</code> compares them against
+today in UTC. A commit made in the hours that are still yesterday in UTC -
+midnight to 05:30 from +0530 - dated every page it touched tomorrow: the
+sitemap then pointed at the future, which the SITEMAP rule refuses and a
+crawler reading <code>&lt;lastmod&gt;</code> would be right to distrust, and the staleness
+rule saw a page whose sources changed the day after the sitemap was
+written. Both sides now ask git for the day in UTC, so the dates, the
+history the staleness rule reads and the "not in the future" comparison
+are one clock.</li>
 <li><strong>A capture-the-flag</strong>, <a href="ctf.html">docs/ctf.md</a> and
 the judge in <a href="https://github.com/gowrishankar-infra/sabline-lang/tree/main/ctf"><code>ctf/</code></a>. Ten claims (<code>C1</code>–<code>C10</code>), each a fixed budget
 and one thing no program under it may do; you write the program, the judge

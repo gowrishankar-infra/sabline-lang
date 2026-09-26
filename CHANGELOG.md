@@ -237,6 +237,17 @@ a crawler instead of a reader:
   page leads with the same two sentences, says who Sabline is for and shows
   a refusal in one command; `/velaris` explains the rename to someone
   searching the old name.
+- The sitemap's `<lastmod>` days are computed **in UTC**, on the side that
+  builds them and the side that checks them. They were git's `%cs`, the day
+  in the *committer's* timezone, while `check_site.py` compares them against
+  today in UTC. A commit made in the hours that are still yesterday in UTC -
+  midnight to 05:30 from +0530 - dated every page it touched tomorrow: the
+  sitemap then pointed at the future, which the SITEMAP rule refuses and a
+  crawler reading `<lastmod>` would be right to distrust, and the staleness
+  rule saw a page whose sources changed the day after the sitemap was
+  written. Both sides now ask git for the day in UTC, so the dates, the
+  history the staleness rule reads and the "not in the future" comparison
+  are one clock.
 - **A capture-the-flag**, [docs/ctf.md](https://sabline.dev/ctf.html) and
   the judge in [`ctf/`](ctf/). Ten claims (`C1`–`C10`), each a fixed budget
   and one thing no program under it may do; you write the program, the judge
