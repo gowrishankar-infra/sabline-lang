@@ -35,7 +35,7 @@ jobs:
           - {os: ubuntu-latest, python: "3.14", deps: minimal, experimental: true}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
@@ -76,7 +76,7 @@ jobs:
       # suite holds audits and attestations to. It holds no .vel file, so
       # the capability check below still sees this repository alone.
       - name: sabline-spec, for its corpus and schemas
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           repository: gowrishankar-infra/sabline-spec
           path: sabline-spec
@@ -252,7 +252,7 @@ jobs:
     # job to that shape, so a pull request that weakens it fails on itself.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -266,7 +266,7 @@ jobs:
       - name: Install
         run: pip install -c requirements/ci.txt ".[full,test]"
       - name: sabline-spec, for its corpus
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           repository: gowrishankar-infra/sabline-spec
           path: sabline-spec
@@ -288,7 +288,7 @@ jobs:
     name: sabline-rt builds on the Rust version it says it needs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # The number here is rt/Cargo.toml's rust-version, and check_rt.py
       # fails when the two disagree.
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
@@ -303,7 +303,7 @@ jobs:
     name: cargo-deny - advisories, licenses, bans and sources
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
         with:
           toolchain: stable
@@ -317,7 +317,7 @@ jobs:
     name: sabline-rt, fuzzed - no input is a panic
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # cargo-fuzz needs nightly and a sanitizer; the fuzzing crate is
       # outside the workspace for exactly that reason.
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
@@ -342,7 +342,7 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -357,7 +357,7 @@ jobs:
     name: mypy --strict and ruff, and the complexity report
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -375,7 +375,7 @@ jobs:
     name: AgentDojo, with Sabline in the loop, offline
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -395,7 +395,7 @@ jobs:
     name: the model round trip, replayed from its recordings
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -417,7 +417,7 @@ jobs:
     name: competitors scored on the benchmark, every cell re-derived
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -448,14 +448,14 @@ jobs:
     name: suites run twice at once, from one checkout
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install (full)
         run: pip install -c requirements/ci.txt ".[full,test]"
       - name: sabline-spec, for the schemas
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           repository: gowrishankar-infra/sabline-spec
           path: sabline-spec
@@ -497,7 +497,7 @@ jobs:
     name: the CTF judge, shown to catch a real break
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
