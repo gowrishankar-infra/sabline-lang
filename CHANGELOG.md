@@ -5,6 +5,50 @@ below 8.6 uses the name it had at the time, which is what the
 record is for. [docs/renamed.md](docs/renamed.md) says what
 moved where.
 
+## 8.7.1 - The catalogue, checked
+
+**Every incident summary is published, and so is the flagship.** The
+catalogue has withheld all fifteen of its summaries since it was written:
+each entry said `verified: false`, so `build_incidents.py` counted it,
+named it, linked its sources and published the part a machine checks - the
+verdict it re-runs - while the part only a person can check, the account of
+what happened, stayed in the repository. On 2026-10-01 all fifteen were
+read against their sources by a person: eleven were approved as written and
+four were changed first. `incidents/REVIEW.md` is that decision, with a
+date and a list behind it; `incidents/FACTCHECK.md` now says where its
+flagged rows ended up rather than reading as outstanding work.
+
+What this adds to the site: fifteen summaries on
+[the catalogue](docs/incidents.md), a page for each incident under the name
+people use for it, and `docs/replayed.md`, the flagship, which needed every
+entry checked because it summarises all of them - *We examined 15 real
+incidents and replayed 8 in Sabline*.
+
+Four entries were corrected before their flag was set. Two cited a report
+only at second hand: **tj-actions/changed-files** now cites StepSecurity's
+report directly, which the Wiz post repeated, and
+**Ultralytics** cites William Woodruff's analysis, which the summary
+already named by way of PyPI's post deferring to it. **Amazon Q** said
+`aws s3 rb` in one place where the payload used `aws s3 rm` - `rb` removes
+a bucket, `rm` removes objects. And **EchoLeak** rested on a page that has
+answered HTTP 403 since August 2025: it now rests on Reddy and Gujral,
+arXiv:2509.10540 (AAAI Fall Symposium Series 2025), with Aim Labs kept as
+an archived copy and described as one, and its summary says only what that
+paper supports - which cost it three claims the paper does not make.
+
+**A link in an entry pointed outside the site once the entry was
+published.** An entry links the rest of the repository the way its own
+directory sees it, and `incidents/tj-actions-changed-files/incident.md`
+named `../../docs/known-open.md`. Copied onto a page under `docs/`, that
+path leaves the site, and `build_docs.py` refused it - a defect no release
+could have hit before, because no entry had ever been published as a page.
+`build_incidents.py` now rewrites such a link to the form the site uses for
+its own pages.
+
+Nothing in the runtime, the compiler or the command line changed:
+`release_checks.py covered v8.7.0` reports that nothing STABILITY.md covers
+moved, and `tests/api/golden.json` is unchanged.
+
 ## 8.7.0 - Evidence
 
 **`check_api.py` counted a pre-release tag, and asked for the `api:` line
