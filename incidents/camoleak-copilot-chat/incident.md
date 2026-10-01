@@ -5,7 +5,7 @@ date: 2025-10-08
 lane: agent
 verdict: OUT OF SCOPE
 budget_line: none
-verified: false
+verified: true
 ---
 
 ## What happened

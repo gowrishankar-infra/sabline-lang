@@ -1,9 +1,17 @@
 # Fact-check of the catalogue's sources
 
 **Working material, not documentation.** This is the evidence gathered on
-2026-09-23 for the person who decides whether each summary is right. It
-changes nothing: no entry was edited, and every entry still says
-`verified: false`. Each proposed wording below a table is a proposal only.
+2026-09-23 for the person who decides whether each summary is right.
+
+**Closed on 2026-10-01.** Every row below was read, by a person, beside the
+entry and its sources; eleven entries were approved as written and four were
+changed first; every entry now says `verified: true`, and the catalogue
+publishes. [REVIEW.md](REVIEW.md) is that decision - who decided what, and
+the four changes in full - and *Where the flagged rows ended up*, below,
+says what became of the rows here. This file is kept as the evidence the
+decision was made on, not as a list of outstanding work. A proposed wording
+below a table is still only the proposal it was on 2026-09-23: where one was
+adopted the entry carries it, and where it was not the entry does not.
 
 It is kept out of what is published and what is checked:
 
@@ -71,6 +79,38 @@ It is kept out of what is published and what is checked:
 | [xz-utils-backdoor](#xz-utils-backdoor) | NOT COVERED | 13 | 3 | 0 | 0 |
 | **all 16** | | **265** | **29** | **18** | **12** |
 
+## Where the flagged rows ended up
+
+Closed 2026-10-01. Of the 324 claims above, 265 were `SUPPORTED` when this
+file was written. The rest are the flagged rows, and 53 of them belong to
+the fifteen entries still in the catalogue - 24 `DIFFERS`, 17 `NOT IN
+SOURCE`, 12 `SOURCE UNREACHABLE` - with 7 source-provenance notes beside
+them. (The other 6 flagged rows are `replit-agent-database-deletion`'s,
+which has no entry to fix.)
+
+Most were already answered before the review: the fact-check quotes each
+entry as it stood on 2026-09-23, and most of its proposed wordings were
+adopted in the entries as committed, so the text it objects to is no longer
+there. The review's job was the remainder - **19 flags, across 6 entries,
+that the entry did not fully answer**:
+
+| Entry | Flags left open | What happened on 2026-10-01 |
+|---|---|---|
+| echoleak-m365-copilot | 13 | closed: the unreachable source replaced and the summary reworded to what the new one supports |
+| nx-s1ngularity | 2 | read and accepted as they stand |
+| tj-actions-changed-files | 1 | closed: StepSecurity's report cited directly |
+| ultralytics-pypi-cache-poisoning | 1 | closed: Woodruff's analysis cited directly |
+| amazon-q-extension-wiper | 1 | closed: the `aws s3 rb` example corrected to `aws s3 rm` |
+| postmark-mcp-bcc-exfiltration | 1 | read and accepted as they stand |
+
+Sixteen were closed by the four changes; three were read and accepted as
+they stand. **Accepted is not the same as supported.** Where a row records
+that no cited source says a thing, or that two sources disagree, that
+record stands exactly as written - the reviewer read it, judged the entry
+honest about what it knows, and did not change the text. Nothing below was
+rewritten to agree with an entry. The rows are what the sources said on
+2026-09-23; [REVIEW.md](REVIEW.md) is what was decided about them.
+
 ## Sources that are not the primary report
 
 The rule in `incidents/README.md` is that a source is a vendor post-mortem,
@@ -96,6 +136,7 @@ something else, or repeat one:
   The participants' posts on X, the actual primary record, are not cited.
 - **tj-actions-changed-files.** The Wiz post repeats StepSecurity's first
   report, which is not cited. The GHSA and CISA's alert are primary.
+  *Closed 2026-10-01:* StepSecurity's report is now cited directly.
 - **ultralytics-pypi-cache-poisoning.**
   - The Wiz post repeats the GitHub issues, ReversingLabs and
     BleepingComputer.
@@ -104,6 +145,7 @@ something else, or repeat one:
     (`blog.yossarian.net/2024/12/06/zizmor-ultralytics-injection`) is where
     the entry's `pull_request_target`, fork checkout and cache chain appears
     to come from, and it is not cited.
+    *Closed 2026-10-01:* that analysis is now cited directly.
 - **nx-s1ngularity.** StepSecurity is a vendor analysis: primary for its own
   payload analysis, secondary otherwise. GitGuardian is primary for its own
   counts, secondary for the attack mechanics.
@@ -114,6 +156,10 @@ something else, or repeat one:
 - **echoleak-m365-copilot.** The primary write-up (Aim Labs) is unreachable:
   the URL answers 403, and the Wayback Machine shows it stopped serving the
   article in August 2025. Twelve rows rest on it alone.
+  *Closed 2026-10-01:* the entry now rests on Reddy and Gujral's paper
+  (arXiv:2509.10540, AAAI Fall Symposium Series 2025), which was fetched and
+  checked against the reworded summary; Aim Labs stays only as an archived
+  copy, described as one. No sentence rests on an unreachable page.
 
 ---
 

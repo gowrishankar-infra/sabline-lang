@@ -5,7 +5,7 @@ date: 2025-04-01
 lane: agent
 verdict: PARTIAL
 budget_line: --max-allow io
-verified: false
+verified: true
 ---
 
 ## What happened

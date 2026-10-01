@@ -5,7 +5,7 @@ date: 2025-07-09
 lane: agent
 verdict: STOPPED
 budget_line: ffi:json
-verified: false
+verified: true
 ---
 
 ## What happened

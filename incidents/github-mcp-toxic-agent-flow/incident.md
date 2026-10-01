@@ -5,7 +5,7 @@ date: 2025-05-26
 lane: agent
 verdict: NOT COVERED
 budget_line: none
-verified: false
+verified: true
 ---
 
 ## What happened

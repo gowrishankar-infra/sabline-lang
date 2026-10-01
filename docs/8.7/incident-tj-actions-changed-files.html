@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>tj-actions/changed-files, replayed in Sabline - Sabline 8.7.0</title>
+<meta name="description" content="PARTIAL: The GitHub advisory dates the compromise to 14-15 March 2025 (Wiz puts it some time before 14 March, and CISA asks for an audit of runs from 12 ...">
+<meta name="sabline-version" content="8.7.0">
+<link rel="canonical" href="https://sabline.dev/incident-tj-actions-changed-files.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Sabline">
+<meta property="og:title" content="tj-actions/changed-files, replayed in Sabline - Sabline 8.7.0">
+<meta property="og:description" content="PARTIAL: The GitHub advisory dates the compromise to 14-15 March 2025 (Wiz puts it some time before 14 March, and CISA asks for an audit of runs from 12 ...">
+<meta property="og:url" content="https://sabline.dev/incident-tj-actions-changed-files.html">
+<meta property="og:image" content="https://sabline.dev/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="../versions.html" aria-label="Version 8.7.0, all versions"><span>8.7.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="../playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="roundtrip.html">Model round trip</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="ctf.html">The Sabline capture-the-flag</a></li><li><a href="incident-amazon-q-extension-wiper.html">The Amazon Q wiper prompt, replayed in Sabline</a></li><li><a href="incident-camoleak-copilot-chat.html">CamoLeak, replayed in Sabline</a></li><li><a href="incident-circleci-oauth-token-theft.html">The CircleCI breach, replayed in Sabline</a></li><li><a href="incident-echoleak-m365-copilot.html">EchoLeak, replayed in Sabline</a></li><li><a href="incident-github-mcp-toxic-agent-flow.html">The GitHub MCP exploit, replayed in Sabline</a></li><li><a href="incident-mcp-remote-command-injection.html">CVE-2025-6514 (mcp-remote), replayed in Sabline</a></li><li><a href="incident-mcp-tool-poisoning.html">MCP tool poisoning, replayed in Sabline</a></li><li><a href="incident-nx-s1ngularity.html">The Nx (s1ngularity) attack, replayed in Sabline</a></li><li><a href="incident-package-hallucination.html">Slopsquatting, replayed in Sabline</a></li><li><a href="incident-postmark-mcp-bcc-exfiltration.html">postmark-mcp, replayed in Sabline</a></li><li><a href="incident-shai-hulud-npm-worm.html">Shai-Hulud, replayed in Sabline</a></li><li><a href="incident-solana-web3js-backdoor.html">The Solana web3.js backdoor, replayed in Sabline</a></li><li><a href="incident-tj-actions-changed-files.html" aria-current="page">tj-actions/changed-files, replayed in Sabline</a></li><li><a href="incident-ultralytics-pypi-cache-poisoning.html">The Ultralytics attack, replayed in Sabline</a></li><li><a href="incident-xz-utils-backdoor.html">The xz backdoor, replayed in Sabline</a></li><li><a href="replayed.html">We examined 15 real incidents and replayed 8 in Sabline</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
+</li>
+<li><span class="sec-label">Guides</span>
+<ul><li><a href="guide-network-access.html">Why should it have Internet access? Scripts that reach only the hosts you name</a></li><li><a href="guide-before-it-runs.html">Before I ever have a chance to inspect it: what a script will touch, before it runs</a></li><li><a href="guide-everything-or-nothing.html">Access to everything, or nothing? Giving an agent&#x27;s code only what the task needs</a></li><li><a href="guide-lethal-trifecta.html">The lethal trifecta, one run at a time: a script that reads private data but cannot send it</a></li><li><a href="guide-secrets-env.html">Secrets that should never leave my machine: running an agent&#x27;s scripts without your .env</a></li></ul>
+</li>
+<li><span class="sec-label">Compare</span>
+<ul><li><a href="compare-deno.html">Sabline compared with Deno&#x27;s permissions</a></li><li><a href="compare-wasi.html">Sabline compared with WASI (wasmtime)</a></li><li><a href="compare-camel.html">Sabline compared with CaMeL</a></li><li><a href="compare-python-sandbox.html">Sabline compared with a Python sandbox (smolagents)</a></li><li><a href="compare-ailang.html">Sabline compared with AILANG</a></li></ul>
+</li>
+<li><a href="../papers/sabline.html">Paper</a>
+<ul><li><a href="../papers/index.html">Papers</a></li></ul>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-8-1.html">8.x: 8.7.0 to 8.6</a></li><li><a href="changelog-8-2.html">8.x: 8.5 to 8.4</a></li><li><a href="changelog-8-3.html">8.x: 8.3.1 to 8.2.1</a></li><li><a href="changelog-8-4.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="tj-actionschanged-files-replayed-in-sabline">tj-actions/changed-files, replayed in Sabline</h1>
+<p><strong>tj-actions/changed-files, CVE-2025-30066</strong>, 2025-03-14. Also called the tj-actions attack, CVE-2025-30066. (<a href="https://news.ycombinator.com/item?id=43367987">The name in use</a>.) Verdict: <strong><code>PARTIAL</code></strong> - part of the shape is refused and part is not; both halves are recorded.</p>
+<div class="callout callout-note" role="note"><p class="callout-title">Note</p>
+<p><strong>This is the shape of the attack, not a claim that Sabline would have prevented the real event.</strong> The real one happened in a language, a package manager, a build system or an agent framework that Sabline neither runs nor bounds. What this page shows is narrower and checkable: the same shape written in Sabline, the command, what the runtime printed, and the one line of budget that did the work - or, where nothing here addresses the shape, that.</p>
+</div>
+<h2 id="what-happened">What happened <a class="anchor" href="#what-happened" aria-label="Link to this section">#</a></h2>
+<p>The GitHub advisory dates the compromise to 14-15 March 2025 (Wiz puts it
+some time before 14 March, and CISA asks for an audit of runs from 12 March
+00:00 UTC to 15 March 12:00 UTC); in that window the tags of the
+<code>tj-actions/changed-files</code> GitHub Action, v1 through v45.0.7, were retagged
+to point at a single malicious commit. The GitHub advisory records that the
+Action then "allows remote attackers to discover secrets by reading actions
+logs": the injected step ran a Python script that read secrets out of the
+Runner Worker process's memory and printed them, double-base64 encoded, into
+the workflow log - public, on a public repository. CISA issued an alert on 18
+March 2025, and updated it on 19 March to cover the related compromise of
+<code>reviewdog/action-setup@v1</code> (CVE-2025-30154), which it says potentially
+enabled this one. The behaviour was removed in v46.0.1.</p>
+<h2 id="the-shape-in-sabline">The shape, in Sabline <a class="anchor" href="#the-shape-in-sabline" aria-label="Link to this section">#</a></h2>
+<p>The exfiltration channel was the build log - standard output - and the thing
+that went into it was a credential. In Sabline that is the one flow the type
+system is built around: a value from <code>env()</code> is a <code>Secret of Text</code>, and
+<code>print</code> performs <code>io</code>, so handing one to the other does not compile (E560).
+The budget here is the narrowest one that still lets the program do its job:
+<code>io</code> and <code>env</code>, nothing else. The program never runs, so its receipt says
+<code>did_not_compile</code> and names the code.</p>
+<p>The second step shows the same program with the rule obeyed: the token is
+read, a header is built from it, and the program says so - <code>"Bearer " + key</code>
+is still a <code>Secret of Text</code>, and what reaches the log is a sentence about
+the request, not the token. That run exits 0, and its receipt records
+<code>env</code> used and no declassification.</p>
+<h2 id="the-one-line-that-does-the-work">The one line that does the work <a class="anchor" href="#the-one-line-that-does-the-work" aria-label="Link to this section">#</a></h2>
+<p>--allow io,env</p>
+<p><code>env</code> is the line, but it is not the refusal: the run <em>is</em> granted <code>env</code>,
+and the token is read. What refuses is the type of what comes back. This is
+the case where the budget alone is not enough - an operator who wants a
+program to use a credential has to grant <code>env</code>, and after that only
+<code>Secret of T</code> keeps the credential out of the output.</p>
+<h2 id="what-this-does-not-cover">What this does not cover <a class="anchor" href="#what-this-does-not-cover" aria-label="Link to this section">#</a></h2>
+<p>The real payload did not read its own environment: it read another
+process's memory, which in Sabline means native code inside a granted <code>ffi</code>
+module, and THREAT_MODEL.md says plainly that a granted module's behaviour
+is not bounded. A secret that arrives any way other than <code>env()</code> or
+<code>read_file_secret()</code> - through <code>args()</code>, <code>read_line</code>, the network, or a
+granted Python module - is ordinary text with no protection.</p>
+<p>One thing the language cannot do, the operating system can. This entry
+carries a Linux-only step: under full confinement (8.4), the runtime is
+refused a read of another process's memory (<code>/proc/1/mem</code>), and the run ends
+with E319, the kernel naming the layer that stopped it. It is evidence, not a
+language feature - it holds only where confinement is full (Linux with
+Landlock), it is the kernel's guarantee and no better, and it says nothing
+about the secret that arrives as ordinary text in the first place. The
+<a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/known-open.html">Linux confinement row</a> states its limits in full.</p>
+<h3 id="attackvel">attack.vel <a class="anchor" href="#attackvel" aria-label="Link to this section">#</a></h3>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="c">// The shape of CVE-2025-30066: a step in somebody else's build reads a</span>
+<span class="c">// credential and writes it where the build log will keep it.</span>
+<span class="c">//</span>
+<span class="c">// The real Action scraped the runner process's memory; this reads the</span>
+<span class="c">// environment, which is the part a Sabline budget has a name for.</span>
+
+<span class="k">fn</span> main() <span class="k">uses</span> io, env {
+    <span class="k">let</span> token = env(<span class="s">"GITHUB_TOKEN"</span>, <span class="s">""</span>)
+    print(<span class="s">"changed-files: collecting the diff"</span>)
+    print(token)
+}</code></pre></div>
+<h3 id="same_program_keptvel">same_program_kept.vel <a class="anchor" href="#same_program_keptvel" aria-label="Link to this section">#</a></h3>
+<div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="c">// The same work, with the rule obeyed: the token is read and used, and</span>
+<span class="c">// what reaches the log is a sentence about the request rather than the</span>
+<span class="c">// token. `"Bearer " + token` is still a Secret of Text.</span>
+
+<span class="k">fn</span> main() <span class="k">uses</span> io, env {
+    <span class="k">let</span> token = env(<span class="s">"GITHUB_TOKEN"</span>, <span class="s">""</span>)
+    <span class="k">let</span> header = <span class="s">"Bearer "</span> + token
+    print(<span class="s">"changed-files: collecting the diff"</span>)
+    print(<span class="s">"an authorization header was built; it is not in this output"</span>)
+}</code></pre></div>
+<h2 id="what-the-runtime-printed">What the runtime printed <a class="anchor" href="#what-the-runtime-printed" aria-label="Link to this section">#</a></h2>
+<p>Recorded by <code>incident_evidence.py</code>, and re-run by <code>check_incidents.py</code> on every push:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code># the credential the Action printed into the build log
+$ sabline attack.vel --allow io,env --receipt receipt.json
+error[E560] argument 1 of 'print' is Secret of Text, and 'print' performs io - a Secret cannot be printed, written, sent or passed to Python. It came from env(), line 8
+  --&gt; attack.vel, line 10
+  how to fix (pick one):
+    1. build what you emit out of values that are not secret
+    2. or let it out on purpose: declassify(x, "why this is safe to emit") needs "uses declassify", is named in the audit with that reason, and an operator can refuse to grant it
+  reference: https://sabline.dev/llms.txt
+exit 1
+
+# the same program with the token used and not shown
+$ sabline same_program_kept.vel --allow io,env --receipt receipt-kept.json
+changed-files: collecting the diff
+an authorization header was built; it is not in this output
+exit 0</code></pre></div>
+<h2 id="sources">Sources <a class="anchor" href="#sources" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><a href="https://github.com/advisories/ghsa-mrrh-fwg8-r2c3">GHSA-mrrh-fwg8-r2c3 / CVE-2025-30066</a> - the GitHub advisory record: affected versions, the malicious commit <code>0e58ed8</code> the tags were moved to, the disclosure of secrets through action logs, and the fixed version.</li>
+<li><a href="https://www.stepsecurity.io/blog/harden-runner-detection-tj-actions-changed-files-action-is-compromised">Harden-Runner detection: tj-actions/changed-files action is compromised</a> - StepSecurity's own report: Harden-Runner's anomaly detection found the compromise on 14 March 2025, when an unexpected endpoint appeared in a run's network traffic; the report names the single malicious commit every release tag was moved to, and the Python script that dumps the Runner Worker process's secrets into the workflow log.</li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2025/03/18/supply-chain-compromise-third-party-tj-actionschanged-files-cve-2025-30066-and-reviewdogaction">Supply Chain Compromise of Third-Party tj-actions/changed-files (CVE-2025-30066) and reviewdog/action-setup@v1 (CVE-2025-30154)</a> - CISA's alert, 18 March 2025.</li>
+<li><a href="https://www.wiz.io/blog/github-action-tj-actions-changed-files-supply-chain-attack-cve-2025-30066">GitHub Action tj-actions/changed-files supply chain attack</a> - Wiz's analysis: the memory scrape, the double-base64 encoding, and the dozens of affected public repositories it found.</li>
+</ul>
+<p>The entry, its program and its recorded run are in <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/incidents/tj-actions-changed-files/">incidents/tj-actions-changed-files/</a>. Every incident, with its verdict, is in <a href="incidents.html">the catalogue</a>.</p>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/incident-tj-actions-changed-files.md">docs/incident-tj-actions-changed-files.md</a> by build_docs.py, for Sabline 8.7.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#what-happened">What happened</a></li><li><a href="#the-shape-in-sabline">The shape, in Sabline</a></li><li><a href="#the-one-line-that-does-the-work">The one line that does the work</a></li><li><a href="#what-this-does-not-cover">What this does not cover</a><ul><li><a href="#attackvel">attack.vel</a></li><li><a href="#same_program_keptvel">same_program_kept.vel</a></li></ul></li><li><a href="#what-the-runtime-printed">What the runtime printed</a></li><li><a href="#sources">Sources</a></li></ul></nav>
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>
