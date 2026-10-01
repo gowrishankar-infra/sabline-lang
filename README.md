@@ -834,7 +834,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: gowrishankar-infra/sabline-lang@269c47aa1ab1b38efdfc13da828340d326fd98f7  # v8.7.0
+      - uses: gowrishankar-infra/sabline-lang@a0bfce7044fc86a73f66e2407c4a6e1188a3774d  # v8.7.1
 ```
 
 The Action is pinned to a commit, with its tag in the comment beside it:
@@ -1028,10 +1028,10 @@ copy of a `pull_request_target` workflow, which is what runs. `--json` writes
 ### Everything else the Action takes
 
 ```yaml
-  - uses: gowrishankar-infra/sabline-lang@269c47aa1ab1b38efdfc13da828340d326fd98f7  # v8.7.0
+  - uses: gowrishankar-infra/sabline-lang@a0bfce7044fc86a73f66e2407c4a6e1188a3774d  # v8.7.1
     with:
       files: "src/*.vel"     # default: every .vel file in the repository
-      version: "8.7.0"       # default: the Action's own version (8.7.0)
+      version: "8.7.1"       # default: the Action's own version (8.7.1)
       proofs: "true"         # the default; installs z3-solver
       format: "true"         # also fail if the code is not canonically formatted
       min-proven: "80"       # fail below this percent of promises proven
