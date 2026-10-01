@@ -5,7 +5,7 @@ date: 2025-09-14
 lane: supply-chain
 verdict: PARTIAL
 budget_line: fs:read:.
-verified: false
+verified: true
 ---
 
 ## What happened

@@ -5,7 +5,7 @@ date: 2025-08-26
 lane: supply-chain
 verdict: PARTIAL
 budget_line: ffi:json
-verified: false
+verified: true
 ---
 
 ## What happened

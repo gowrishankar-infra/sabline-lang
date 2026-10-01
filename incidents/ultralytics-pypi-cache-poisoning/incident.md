@@ -5,7 +5,7 @@ date: 2024-12-04
 lane: supply-chain
 verdict: NOT COVERED
 budget_line: none
-verified: false
+verified: true
 ---
 
 ## What happened
@@ -26,6 +26,7 @@ versions, since removed: 8.3.41, 8.3.42, 8.3.45 and 8.3.46. Wiz reports that
 
 - [Supply-chain attack analysis: Ultralytics](https://blog.pypi.org/posts/2024-12-11-ultralytics-attack-analysis/) - the PyPI blog's analysis, 11 December 2024: the cache poisoning and the two publishing paths. It defers the technical path to William Woodruff's analysis, which it links.
 - [Ultralytics AI Library Hacked via GitHub for Cryptomining](https://www.wiz.io/blog/ultralytics-ai-library-hacked-via-github-for-cryptomining) - Wiz's analysis: the branch-name injection in the "Publish Docs" workflow, and the XMRig payload.
+- [zizmor would have caught the Ultralytics workflow vulnerability](https://blog.yossarian.net/2024/12/06/zizmor-ultralytics-injection) - William Woodruff's own analysis, the one the PyPI blog defers to: the `pull_request_target` trigger in `format.yml`, the branch name interpolated unquoted into `git pull origin ${{ github.head_ref || github.ref }}`, and the cache poisoning that followed.
 
 ## The shape, in Sabline
 

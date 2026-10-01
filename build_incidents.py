@@ -43,6 +43,7 @@ so neither is published; --drafts writes them elsewhere to be read, and
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -269,6 +270,18 @@ def programs(slug: str) -> list[str]:
     return sorted(q.name for q in (HERE / "incidents" / slug).glob("*.vel"))
 
 
+# An entry links the rest of the repository the way its own directory sees
+# it - `../../docs/known-open.md` from incidents/<slug>/. Copied onto a page
+# under docs/, that path points outside the site, so build_docs.py refuses
+# it. The page wants the form the site uses for its own pages instead.
+SITE_LINK = re.compile(r"\]\(\.\./\.\./docs/([A-Za-z0-9._-]+)\.md(#[^)]*)?\)")
+
+
+def for_site(text: str) -> str:
+    """A section body as a page under docs/ must spell its links."""
+    return SITE_LINK.sub(lambda m: f"]({m[1]}.html{m[2] or ''})", text)
+
+
 def incident_page(entry: dict[str, Any], name: dict[str, Any]) -> str:
     """docs/incident-<slug>.md: one incident, whole, under its common name."""
     slug = entry["slug"]
@@ -302,7 +315,7 @@ def incident_page(entry: dict[str, Any], name: dict[str, Any]) -> str:
         if heading in s:
             w(f"## {heading}")
             w("")
-            w(s[heading])
+            w(for_site(s[heading]))
             w("")
     for vel in programs(slug):
         source = (HERE / "incidents" / slug / vel).read_text(encoding="utf-8")

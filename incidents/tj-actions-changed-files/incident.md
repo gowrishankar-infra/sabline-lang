@@ -5,7 +5,7 @@ date: 2025-03-14
 lane: supply-chain
 verdict: PARTIAL
 budget_line: env
-verified: false
+verified: true
 ---
 
 ## What happened
@@ -26,6 +26,7 @@ enabled this one. The behaviour was removed in v46.0.1.
 ## Sources
 
 - [GHSA-mrrh-fwg8-r2c3 / CVE-2025-30066](https://github.com/advisories/ghsa-mrrh-fwg8-r2c3) - the GitHub advisory record: affected versions, the malicious commit `0e58ed8` the tags were moved to, the disclosure of secrets through action logs, and the fixed version.
+- [Harden-Runner detection: tj-actions/changed-files action is compromised](https://www.stepsecurity.io/blog/harden-runner-detection-tj-actions-changed-files-action-is-compromised) - StepSecurity's own report: Harden-Runner's anomaly detection found the compromise on 14 March 2025, when an unexpected endpoint appeared in a run's network traffic; the report names the single malicious commit every release tag was moved to, and the Python script that dumps the Runner Worker process's secrets into the workflow log.
 - [Supply Chain Compromise of Third-Party tj-actions/changed-files (CVE-2025-30066) and reviewdog/action-setup@v1 (CVE-2025-30154)](https://www.cisa.gov/news-events/alerts/2025/03/18/supply-chain-compromise-third-party-tj-actionschanged-files-cve-2025-30066-and-reviewdogaction) - CISA's alert, 18 March 2025.
 - [GitHub Action tj-actions/changed-files supply chain attack](https://www.wiz.io/blog/github-action-tj-actions-changed-files-supply-chain-attack-cve-2025-30066) - Wiz's analysis: the memory scrape, the double-base64 encoding, and the dozens of affected public repositories it found.
 

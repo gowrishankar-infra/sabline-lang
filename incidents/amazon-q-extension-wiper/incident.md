@@ -5,7 +5,7 @@ date: 2025-07-17
 lane: agent
 verdict: NOT COVERED
 budget_line: none
-verified: false
+verified: true
 ---
 
 ## What happened
@@ -41,7 +41,7 @@ This entry is here because it is the shape people most often imagine when
 they hear "an effect budget for agent code", and it is worth saying plainly
 that a budget would not have been anywhere near it. Sabline bounds a
 program written in Sabline and run by `sabline`. An IDE extension shelling
-out to `aws s3 rb` is not that, and a signature check on a Sabline release
+out to `aws s3 rm` is not that, and a signature check on a Sabline release
 says nothing about somebody else's.
 
 ## What this does not cover

@@ -5,7 +5,7 @@ date: 2022-12-22
 lane: supply-chain
 verdict: NOT COVERED
 budget_line: none
-verified: false
+verified: true
 ---
 
 ## What happened

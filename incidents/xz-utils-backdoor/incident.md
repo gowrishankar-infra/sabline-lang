@@ -5,7 +5,7 @@ date: 2024-03-29
 lane: supply-chain
 verdict: NOT COVERED
 budget_line: none
-verified: false
+verified: true
 ---
 
 ## What happened

@@ -5,7 +5,7 @@ date: 2024-12-03
 lane: supply-chain
 verdict: STOPPED
 budget_line: sabline.lock
-verified: false
+verified: true
 ---
 
 ## What happened

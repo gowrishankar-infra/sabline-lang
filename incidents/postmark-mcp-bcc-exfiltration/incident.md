@@ -5,7 +5,7 @@ date: 2025-09-25
 lane: agent
 verdict: PARTIAL
 budget_line: tool:send_email:to=*@corp.com
-verified: false
+verified: true
 ---
 
 ## What happened
