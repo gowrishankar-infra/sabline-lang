@@ -225,6 +225,8 @@ It leaves open:
 
 A grant names a resource and never a relation between two of them: nothing can say that data read from one granted place may not be written to another.
 
+The [AgentDojo evaluation](agentdojo.md) measures what that costs rather than asserting it. Of 629 attacks over its four suites, 73 land under a budget written for the user task and 23 under that budget with each tool's arguments pinned to what the task's own text names; every one of the 23 reuses a tool the task was granted with an argument the task could not name. And the one thing a reader might hope pinning does - treat a value differently because it was *read* rather than written - it does not: for every injection AgentDojo's own ground truth says a real agent would read the value for, the harness runs a second program that builds that argument at run time out of what the read returned, and the budget decides the same way, with the same refusal code, in all 714 runs. A pattern is matched against the value at the door, whichever door it came through.
+
 It leaves open:
 
 - OWASP Agentic Top 10: ASI02 (partial), ASI03 (partial)

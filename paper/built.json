@@ -1,8 +1,8 @@
 {
-  "built": "2026-09-26",
+  "built": "2026-10-04",
   "engine": "MiKTeX-pdfTeX 4.23 (MiKTeX 25.12)",
   "sources": {
-    "sabline.md": "44f807962a3905ffd9cb9a933f388ecf301e8a0363c9de4858b2f1f33bd497e9",
+    "sabline.md": "26326de00ae2de8dd1b362e2bd2bb8adcb2b218dd8e1ff533c432535e432da07",
     "references.bib": "962323d8cc1bbecf1cf360ac0d2135098b8b57f556a9d47b74dbc5fa6008fb37",
     "scholar.tex": "785177f91b9eda007f8b9cfde66c26790c744fafe61cca6b1c74bae31744d6df"
   },
@@ -10,6 +10,6 @@
     "pages": 21
   },
   "site": {
-    "pages": 21
+    "pages": 22
   }
 }

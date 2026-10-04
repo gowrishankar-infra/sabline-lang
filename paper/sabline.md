@@ -604,83 +604,136 @@ AgentDojo measures the second [@debenedetti2024agentdojo]: a suite of
 tasks a user gives an agent, injection tasks an attacker plants in the
 data the agent reads, and AgentDojo's own checks of whether the user's
 task was done (utility) and whether the attacker's goal was reached
-(security). Sabline was run on its Slack suite, AgentDojo 0.1.35 and
-benchmark version 1: 21 user tasks and 5 injection tasks, whose pairs
-make 105 attacks. Each user task's reference solution, and each
-injection's ground-truth action, is a Sabline program that reaches
-AgentDojo's real Slack environment only through `tool` calls. Each runs
-under three budgets: `--allow all` as the control; a budget written for
-the user task - `io`, and a grant for each tool the reference solution
-calls; and that budget with every argument the user task's own text
-names held to it by the tool door's argument patterns
-(`tool:send_direct_message:recipient=Bob`, section 7.2 of the
-specification), which this paper calls the pinned budget.
+(security). Sabline was run on all four of its suites - slack,
+workspace, banking and travel - at AgentDojo 0.1.35 and benchmark
+version 1: 97 user tasks and 27 injection tasks, whose pairs make 629
+attacks. Each user task's reference solution, and each injection's
+ground-truth action, is a Sabline program that reaches AgentDojo's real
+environment only through `tool` calls. Each runs under three budgets:
+`--allow all` as the control; a budget written for the user task - `io`,
+and a grant for each tool the reference solution calls; and that budget
+with every argument the user task's own text names held to it by the
+tool door's argument patterns (`tool:send_direct_message:recipient=Bob`,
+section 7.2 of the specification), which this paper calls the pinned
+budget.
 
-Under all three budgets all 21 reference solutions ran to completion and
-passed AgentDojo's utility check. Under `--allow all` all 105 attacks
-landed; under the task budget 19 did; under the pinned budget 9. The 86
-the task budget refused call a tool the task was not granted, and were
-refused before the call reached the host (E321). Every one of the 19
-reuses a tool the task was granted: twelve visit a web page where the
-task reads web pages, and seven send a direct message where the task
-sends messages. The 10 more that pinning refused reuse a granted tool
-with an argument the task's own text excludes - a direct message to
-Alice where the task writes only to Bob, a web page where the task names
-the two addresses it reads.
+Under `--allow all` 529 of the 629 attacks landed; under the task budget
+73 did; under the pinned budget 23. Most of what the task budget refused
+calls a tool the task was not granted, and was refused before the call
+reached the host (E321). Every one of the 73 reuses a tool the task was
+granted, and the 50 more that pinning refused reuse a granted tool with
+an argument the task's own text excludes - a direct message to Alice
+where the task writes only to Bob, a hotel reservation where the task
+names the hotel it wants.
 
-For each of the 19 that land under the task budget the harness records
-which door the attacker's value came through: written into the program
-as a literal, or read at run time out of what a tool returned. All 19
-are literals, and none is read at run time. That is a property of this
-harness rather than of AgentDojo, and it is the first thing to say about
-it. With no model in the loop, the step that would carry the injected
-instruction out of the data and into the program is the harness's
-transcription of ground truth, which writes the attacker's value out as
-a literal; the value originates in the data in every one of these, and
-what the harness fixes is that it arrives as a literal. Two of the five
-injection tasks do have the laundering shape - a tool that reads, then a
-tool that sends - and neither reaches the door under any task budget,
-because no user task grants every tool their action needs. The data door
-is one this corpus never puts in front of a budget, so the 19-to-0 split
-is a limit of the corpus and not a result about Sabline.
+Utility has to be read over the tasks that can be judged offline, and
+only 42 of the 97 can be. Many of AgentDojo's utility checks read the
+assistant's own answer - `"4.2" in model_output`, the restaurant's name
+in the reply - rather than only what the run did to the environment;
+with no model there is no answer to judge, and no budget could make
+those checks pass. All 20 travel tasks are of that kind, and 6 of the 16
+banking ones. Of the 42 that remain, **all 42 passed under all three
+budgets**: neither the task budget nor the pins refused a single
+reference solution that `--allow all` let through. That is what utility
+measures here - whether a budget lets correct work through - and not
+whether a model writes it.
 
-Pinning cost no utility here and cannot be had everywhere. Of the 80
-arguments the reference solutions pass, 32 are named by the user task's
-own text and 48 are not: a summary the model writes, a channel found by
-counting users, an address that is on the page the task sends the agent
-to read. Eighteen of the 21 tasks have at least one such argument, and
-two of them - do everything on the TODO list at this address - describe
-their whole content on a page, so between them pinning holds one
-argument of thirteen. Where
-an argument is free the attacker's value is inside what the operator
-could write down, and all 9 attacks that still land are of that kind.
+For each of the 73 attacks that land under the task budget the harness
+records which door the attacker's value came through: written into the
+program as a literal, or read at run time out of what a tool returned.
+The answer comes in three parts, and the first two were the whole of it
+until this round.
+
+All 73 arrive as literals, and that number is fixed by construction
+rather than measured. With no model in the loop, the step that would
+carry the injected instruction out of the data and into the program is
+the harness's transcription of ground truth, which writes the attacker's
+value out as a literal. The value originates in the data in every one of
+these; what the harness fixes is that it arrives as a literal, and under
+transcription the recorded door can only ever be the program.
+
+What is not fixed by construction is AgentDojo's own account of the same
+arguments. Its ground truth carries `placeholder_args` beside the
+resolved ones, and where a real agent would have to read a value out of
+the data it writes a marker there - `$code` for a security code in an
+email, `$email.body`, `$content`, `$most_expensive_hotel.name`. That is
+the benchmark's own judgement, made independently of this work. **Of the
+73 landing attacks, 46 have ground truth that marks at least one
+argument as read at run time.** On the Slack suite alone the figure is
+zero: no injection there with the read-then-send shape reaches any task
+budget's door, because no user task grants every tool one needs, which
+is why the previous round reported the data door as a case the corpus
+never put in front of a budget. The workspace, banking and travel suites
+do put it there.
+
+The third part runs it. For every injection whose ground truth marks an
+argument that way, and which makes a read call there is something to
+launder from, the harness generates a second program: the same calls, in
+the same order, with that one argument built at run time out of the text
+the read returned. The attacker's value then comes through the data door
+for real. Each runs under the same three budgets, and its verdict is
+compared with the literal program's, pair by pair - 238 pairs, 714 runs.
+**The budget decided the same way, with the same refusal code, in every
+one.** That is the behaviour the design predicts rather than a surprise:
+a pattern is matched against the value at the door, whichever door it
+came through. It is now measured, and it is the evidence that pinning
+cannot be made to do the job a mark on the value would do. These
+laundering programs are reported beside the score and never inside it:
+they run programs AgentDojo's ground truth describes but does not
+contain, and where a security check demands an exact value a laundered
+argument fails it for a reason that is not the budget's.
+
+Pinning cost no utility here and cannot be had everywhere. Of the 394
+arguments the reference solutions pass, 160 are named by the user task's
+own text and 234 are not: a summary the model writes, a channel found by
+counting users, an event id the calendar returns, the hotel that
+comparing prices picks. Seventy-nine of the 97 tasks have at least one
+such argument, and 18 can be pinned all the way through. A pin is held
+to the task's prompt, and 154 of the patterns are in it character for
+character; 9 are its own letters and digits in another layout
+(`2024-05-19 12:00` from "at 12:00 on 2024-05-19"), where the check
+holds every letter and digit of the pattern to the fragments it is
+declared to come from; and 9 are another notation for something it says
+(`2024-05-15` for "May 15th, 2024", `r` for "read permissions", `true`
+for "recurring"), where the check can only hold those fragments to the
+prompt and a person judged the notation. A pattern shorter than three
+characters is refused unless it is declared, because a one-character
+literal is in almost any prompt by accident - `5` is in `2024-05-20`,
+and two workspace event ids are exactly that case.
+
 The pattern grammar has limits of its own, which are reported and not
-fixed, since an evaluation should not extend the thing it measures: a
+fixed, since an evaluation should not extend the thing it measures. A
 star never stands for white space, so no pattern matches a free-text
-argument of more than one word, and a pattern is a whole-value match
-with no negation, so the useful pin for a message body - that it carry
-no address - cannot be written. For a body a model writes, the choice a
-pattern offers is one exact string or anything at all.
+argument of more than one word, and no "contains" pattern works on one
+either. A pattern is a whole-value match with no negation, so the useful
+pin for a message body - that it carry no address - cannot be written at
+all. A number is held to the pattern its JSON text makes, so the amount
+a task writes as `10.00` is pinned as `10.0`, and a star stands for a
+digit as readily as for anything else, so `1*` matches 10000 as well as
+1000: the useful bound on money is a maximum, and there is no grammar
+for one. And a structured argument - an email's attachments, a list of
+objects - cannot be held to a pattern at all. Each of these is run
+against the door's own matcher, or its own grant check, when the
+evaluation runs, so it is a test rather than a sentence.
 
 There is no model in the loop, and that bounds what the numbers mean.
 Utility is AgentDojo's reference solution run under a budget, so it
 measures whether the budget lets correct work through, not whether a
 model writes it. Attack success assumes a model fully steered on every
-attack, so 19 of 105 and 9 of 105 are upper bounds on what those budgets
-let through, not measured rates at which a model is steered; measuring
-that needs a model, a key and money, and has not been done. And no
-budget here sees what flows where. A pattern is matched against the
-value at the door, whichever door it came through, so it refuses an
-attacker's value exactly when the operator can say in advance what the
-value should be, and can do nothing when they cannot. An attack that
-reuses a granted tool - to send what the task read to a sink the task
-may write to - is a choice within the budget, and Sabline has no
-per-value provenance with which to refuse it; `decisions/0004` is the
-design for a mark on untrusted input, and it has not shipped. CaMeL,
-which tracks every value's provenance, and ChainCaps, whose capabilities
-are per value and per sink, should do better on exactly these cases. The
-results are `evals/agentdojo/results.json`, which a CI job re-derives
-program by program under all three budgets.
+attack, so 73 of 629 and 23 of 629 are upper bounds on what those
+budgets let through, not measured rates at which a model is steered;
+measuring that needs a model, a key and money, and has not been done.
+And no budget here sees what flows where. An attack that reuses a
+granted tool - to send what the task read to a sink the task may write
+to - is a choice within the budget, and Sabline has no per-value
+provenance with which to refuse it; `decisions/0004` is the design for a
+mark on untrusted input, `decisions/0007` schedules it first in the
+milestone that carries it, and neither has shipped. CaMeL, which tracks
+every value's provenance, and ChainCaps, whose capabilities are per
+value and per sink, should do better on exactly these cases. The results
+are `evals/agentdojo/<suite>/results.json` with `results.json` as their
+roll-up, which a CI leg per suite re-derives program by program under
+all three budgets.
 
 ### 4.4 The suites, and a conformance corpus
 
@@ -783,15 +836,17 @@ claimed over any of it.
 Three of the systems below - CaMeL, TypeGuard and ChainCaps - report an
 evaluation against an adversary on a published benchmark, with a model
 in the loop, and a fourth, AgentBound, against published sets of
-malicious MCP servers. Sabline's is on AgentDojo too (section 4.3), with no model
-in it: under a budget written for each task, 21 of 21 tasks completed
-and 19 of 105 attacks landed, every one of them through a tool the task
-was granted; holding each tool's arguments to what the user task's own
-text names brings that to 9 with no loss of utility. Its utility is
-AgentDojo's reference solution and its attack success an upper bound
-rather than a measured rate at which a model is steered, so it is not a
-like-for-like comparison with theirs; and on the laundering that makes
-up the 9 that are left, the systems that track values should do better.
+malicious MCP servers. Sabline's is on AgentDojo too (section 4.3), with
+no model in it: over all four suites, under a budget written for each
+task, every one of the 42 reference solutions that can be judged offline
+completed and 73 of 629 attacks landed, every one of them through a tool
+the task was granted; holding each tool's arguments to what the user
+task's own text names brings that to 23 with no loss of utility. Its
+utility is AgentDojo's reference solution and its attack success an
+upper bound rather than a measured rate at which a model is steered, so
+it is not a like-for-like comparison with theirs; and on the laundering
+that makes up the 23 that are left, the systems that track values should
+do better.
 
 **Object capabilities.** Dennis and Van Horn introduced the capability,
 a reference that both names a resource and carries the right to use it
@@ -820,7 +875,10 @@ case study uses the LIO library. On AgentDojo's Slack suite - 21 user
 tasks and 5 injection tasks, whose pairs make 105 attacks - TypeGuard
 and CaMeL each resisted all 105 with information-flow policies enabled;
 TypeGuard completed 15 of the 21 benign tasks without policies and 8
-with them.
+with them. On that one suite Sabline's own figures are 21 of 21
+reference solutions and 9 of 105 attacks landing under the pinned
+budget, measured the other way about - a worst-case steered program
+against a budget rather than a real model against a policy.
 
 Where it is ahead: it has information-flow control and provenance,
 which Sabline has not - `Secret of T` is a one-way mark with an audited
@@ -889,7 +947,7 @@ that answers it, and neither has shipped. ChainCaps also puts tools
 that already exist under a policy without modifying them, where Sabline
 needs the program written in Sabline; its budgets are per value and per
 sink, where Sabline's is one budget for a whole run; and it is measured
-against an adversary with real models. Per-sink budgets are what the 9
+against an adversary with real models. Per-sink budgets are what the 23
 attacks still landing on Sabline's AgentDojo run need - the ones whose
 argument the user task's own text cannot name, so that no pattern
 written in advance can exclude them - and it should do better on them. Its authors scope the claim to explicit flows,
@@ -912,8 +970,8 @@ it is ahead: it tracks data, which Sabline does not - a Sabline budget
 bounds which effects, paths, hosts and modules a run may reach, not
 which values may flow to them - and its AgentDojo evaluation runs a
 model, where Sabline's (section 4.3) runs AgentDojo's reference
-solutions in its place. The 9 attacks that still land there reuse a tool
-the task was granted with an argument its text could not name in
+solutions in its place. The 23 attacks that still land there reuse a
+tool the task was granted with an argument its text could not name in
 advance, and provenance per value is the defence against them that
 Sabline lacks: CaMeL should do better on them. Its split
 between a privileged and a quarantined model has no counterpart here at
@@ -1203,24 +1261,29 @@ These are stated as sabline-lang's THREAT_MODEL.md states them.
   properties rest on its definition and its cases, not on a measured
   detection rate.
 - **An evaluation against an adversary, without the adversary's
-  model.** Section 4.3 runs Sabline on AgentDojo's Slack suite with
-  AgentDojo's reference solutions in place of a model: 21 of 21 tasks
-  completed under every budget, and of 105 attacks 19 landed under a
-  task budget and 9 under that budget with each tool's arguments pinned
-  to what the user task's own text names. The attack figures are upper
-  bounds on what those budgets let through, not measured rates at which
-  a model is steered, and nothing here measures a model writing Sabline
-  under attack. The 9 that remain are laundering with an argument no
-  operator could have written down, which a budget over effects and
-  tools cannot see: Sabline has no per-value provenance, and CaMeL and
-  ChainCaps, which have a number with a model in the loop, should do
-  better on them. Every one of the 19 that landed had the attacker's
-  value written into the program rather than read at run time, which is
-  an artefact of a harness with no model in it, and the two injection
-  tasks whose payload really is read at run time never reach any task
-  budget's door at all. It is one suite at one version, run by the
-  project it measures, which is the first of the three weaknesses
-  Abdelnabi and colleagues name [@abdelnabi2026measuring].
+  model.** Section 4.3 runs Sabline on all four AgentDojo suites with
+  AgentDojo's reference solutions in place of a model: every one of the
+  42 reference solutions that can be judged offline completed under
+  every budget, and of 629 attacks 73 landed under a task budget and 23
+  under that budget with each tool's arguments pinned to what the user
+  task's own text names. Utility over the other 55 tasks cannot be read
+  at all, because their checks read an answer a model would have
+  written. The attack figures are upper bounds on what those budgets let
+  through, not measured rates at which a model is steered, and nothing
+  here measures a model writing Sabline under attack. The 23 that remain
+  are laundering with an argument no operator could have written down,
+  which a budget over effects and tools cannot see: Sabline has no
+  per-value provenance, and CaMeL and ChainCaps, which have a number
+  with a model in the loop, should do better on them. Every one of the 73
+  that landed had the attacker's value written into the program rather
+  than read at run time, which is fixed by a harness with no model in
+  it rather than measured; what is measured is that 46 of the 73 are
+  attacks AgentDojo's own ground truth says a real agent would have read
+  the value for, and that when the harness builds that value at run time
+  instead the budget decides the same way in all 714 runs. It is four
+  suites at one version, run by the project it measures, which is the
+  first of the three weaknesses Abdelnabi and colleagues name
+  [@abdelnabi2026measuring].
 
 ## 7. Conclusion
 
@@ -1266,8 +1329,10 @@ figures of the abstract, sections 4.1 and 4.2, Tables 1 and 2 and the
 conclusion are from `benchmark/results.json` and
 `benchmark/competitors/results.json` at the commit that added the
 benchmark's categories 16 to 20 (pull request #105; 8.7, not released),
-section 4.3's are from `evals/agentdojo/results.json` at the commit that
-added it (pull request #103), and section 6's counts
+section 4.3's are from `evals/agentdojo/<suite>/results.json` at the
+commit that added the other three suites and the door-2 probe (the
+Slack suite alone was pull request #103, and its three budgets #122),
+and section 6's counts
 of escape attempts stopped by the kernel are from
 `tests/confine/kernel-linux.json` and `kernel-windows.json` at the same
 tag. Releases after 4.2.1
@@ -1359,7 +1424,7 @@ Where each number comes from:
 |---|---|
 | 102 programs, 80 dangerous, 22 controls, twenty categories; 54/16/10, 8/43/29, 0/32/48; 4, 0 and 0 false positives; seven Sabline catches with the task broken; Sabline 8.6.0, Deno 2.9.6, Python 3.13.13, Windows 11; 5 s timeout, 256 MB cap; the misses `04c`, `09c` and eight in categories 16 to 20; 61 of 63 in categories 1 to 11 and 13 to 15; category 12's three upgrades and one control; category 13's program, its verdicts and E318; categories 14 to 20; 08f's catch moved to while running | `benchmark/results.json` at the commit that added categories 16 to 20 |
 | Table 2 and section 4.2: the five competitors, their versions, grants and verdicts; 18 programs where one does better; 12 programs in CaMeL's scope; 19d stopped by none | `benchmark/competitors/results.json` at the same commit, and `docs/competitors.md` built from it |
-| Section 4.3: AgentDojo 0.1.35, Slack suite v1; 21 user tasks, 5 injection tasks, 105 attacks; utility 21 of 21 under all three budgets; 105 attacks land under `--allow all`, 19 under the task budget (12 visiting a web page and 7 sending a message, 86 refused with E321) and 9 under the task budget with arguments pinned; all 19 have the attacker's value written into the program, none read at run time; 32 of 80 arguments pinned, 18 of 21 tasks with an argument that cannot be known in advance | `evals/agentdojo/results.json`, re-derived by `agentdojo_eval.py --check` |
+| Section 4.3: AgentDojo 0.1.35, benchmark v1, all four suites (slack, workspace, banking, travel); 97 user tasks, 27 injection tasks, 629 attacks; 42 of the 97 reference solutions can be judged offline and all 42 pass under all three budgets, the other 55 having a utility check that reads an answer a model would have written; 529 attacks land under `--allow all`, 73 under the task budget and 23 under the task budget with arguments pinned; all 73 arrive as literals, which ground-truth transcription fixes, while 46 of the 73 have ground truth that marks an argument read at run time, and the laundering programs built for those agree with the literal programs' budget verdict in all 714 runs; 160 of 394 arguments pinned (154 verbatim, 9 reformatted, 9 translated), 79 of 97 tasks with an argument that cannot be known in advance | `evals/agentdojo/<suite>/results.json` and their roll-up, re-derived by `agentdojo_eval.py --check` |
 | the same table at 8.4.0: 76 programs, 66 dangerous, 10 controls, fifteen categories; 52/12/2, 8/34/24, 0/31/35; 0 false positives | `benchmark/results.json` at v8.4.0 |
 | three of each six programs written against the tools; about four minutes for a full run, five to eight on a slower machine | `benchmark/README.md` at v8.4.0 |
 | the 68 programs of categories 1 to 13 unchanged in verdict since 8.2.0; ten identical runs at 8.3.0; categories 14 and 15 added in 8.3; every verdict unchanged at 8.4.0 | `benchmark/results.json` at v8.2.0, v8.3.0 and v8.4.0, and `CHANGELOG.md`, 8.3 and 8.4 entries |

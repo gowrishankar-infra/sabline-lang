@@ -719,9 +719,10 @@ and these are the corrections, each applied to every column alike.
     ("What the benchmark is still missing", """
 - **A model in the loop.** Every CaMeL plan here is a hand translation; CaMeL
   exists to constrain plans a model writes from untrusted input, and the
-  [AgentDojo evaluation](agentdojo.md) is where that is measured (Sabline:
-  19 of 105 attacks land under a task budget, and 9 under that budget with
-  each tool's arguments pinned to what the user task's own text names).
+  [AgentDojo evaluation](agentdojo.md) is where that is measured, over all
+  four of its suites (Sabline: 73 of 629 attacks land under a task budget,
+  and 23 under that budget with each tool's arguments pinned to what the
+  user task's own text names).
 - **An operating-system sandbox column** - bubblewrap, nsjail, gVisor, a
   container - which would stop 19d, where native code in a granted library
   writes a file of its own and no column here stops it. Sabline's own OS
@@ -828,14 +829,17 @@ def claims(r: dict[str, Any]) -> list[str]:
                      for n in x["cells"]["camel"]["notes"])
                  and v(x, "camel") not in UNSCORED for x in r["programs"]),
          "no scored CaMeL cell decided by its 30 s deadline")
+    # the roll-up over the four suites, which agentdojo_eval.py --index
+    # derives from each suite's own record; the prose above quotes its
+    # totals and this holds the two to each other
     agentdojo = json.loads((HERE / "evals" / "agentdojo" / "results.json")
                            .read_text(encoding="utf-8"))
-    a = agentdojo["attack_success"]["task_budget"]
-    need((a["succeeded"], a["of"]) == (19, 105),
-         "AgentDojo: 19 of 105 attacks land under a task budget")
-    pinned = agentdojo["attack_success"]["pinned_budget"]
-    need((pinned["succeeded"], pinned["of"]) == (9, 105),
-         "AgentDojo: 9 of 105 land with the task's arguments pinned")
+    a = agentdojo["totals"]["attack_success"]["task_budget"]
+    need((a["succeeded"], a["of"]) == (73, 629),
+         "AgentDojo: 73 of 629 attacks land under a task budget")
+    pinned = agentdojo["totals"]["attack_success"]["pinned_budget"]
+    need((pinned["succeeded"], pinned["of"]) == (23, 629),
+         "AgentDojo: 23 of 629 land with the task's arguments pinned")
     return wrong
 
 

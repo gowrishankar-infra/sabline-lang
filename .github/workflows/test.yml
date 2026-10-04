@@ -368,16 +368,24 @@ jobs:
 
   # AgentDojo, with Sabline in the loop, offline and at no cost (plan/8.7.md).
   # It pins one AgentDojo version, replaces the agent with AgentDojo's own
-  # ground truth, and re-derives every number in evals/agentdojo/results.json:
-  # all three budgets (--allow all, the task budget, and the task budget with
-  # each tool's arguments pinned to what the user task's text names), the
-  # argument pins themselves - every literal in them held to that task's own
-  # prompt - and which door each landing attack's value came through. No
-  # model, no API key: the agent-writes-the-program half is behind a flag,
-  # off by default, and is not run here (plan/8.7.md section 25a prices it).
+  # ground truth, and re-derives every number in
+  # evals/agentdojo/<suite>/results.json: all three budgets (--allow all, the
+  # task budget, and the task budget with each tool's arguments pinned to what
+  # the user task's text names), the argument pins themselves - every literal
+  # in them held to that task's own prompt - which door each landing attack's
+  # value came through, and the door-2 probe that runs the laundered version
+  # of each attack the ground truth says a real agent would read. One leg per
+  # suite, because the four together are an hour of subprocesses and a failure
+  # should name its suite. No model, no API key: the
+  # agent-writes-the-program half is behind a flag, off by default, and is not
+  # run here (plan/8.7.md section 25a prices it).
   agentdojo:
-    name: AgentDojo, with Sabline in the loop, offline
+    name: AgentDojo (${{ matrix.suite }}), with Sabline in the loop, offline
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [slack, workspace, banking, travel]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -386,8 +394,24 @@ jobs:
       - name: Install pinned AgentDojo (no model, no key)
         run: pip install -r requirements/agentdojo.txt
       - name: All three budgets re-derive, program for program
-        run: python agentdojo_eval.py --check
-      - name: The published page is what the record says
+        run: python agentdojo_eval.py --check --suite ${{ matrix.suite }}
+
+  # The roll-up over the four, and the five published pages. Neither runs a
+  # program: both are derived from the four records the matrix above re-ran,
+  # so this needs no AgentDojo install and fails only when a committed file
+  # disagrees with them.
+  agentdojo-pages:
+    name: the AgentDojo roll-up and pages are what the records say
+    runs-on: ubuntu-latest
+    needs: agentdojo
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: The roll-up is the four suites' own numbers
+        run: python agentdojo_eval.py --index && git diff --exit-code evals/agentdojo/results.json
+      - name: The published pages are what the records say
         run: python build_agentdojo_page.py --check
 
   # The model round trip against Python (plan/8.7.md section 2): every reply
