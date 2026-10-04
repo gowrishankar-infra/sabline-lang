@@ -1182,9 +1182,21 @@ def do_record(names: tuple[str, ...]) -> int:
             json.dumps(build_manifest(name, rt), indent=2) + "\n",
             encoding="utf-8", newline="\n")
         result = evaluate(name, suite, rt, manifest_path, programs, write=True)
-        (out / "results.json").write_text(
-            json.dumps(result, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8", newline="\n")
+        path = out / "results.json"
+        path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8", newline="\n")
+        # Hold what was written to what is in memory, under the comparison
+        # --check will make. A value JSON cannot carry back unchanged - a
+        # tuple, a set - makes --check fail on every run afterwards, and it
+        # should fail here, once, where it was written. DOOR_LIMITS held its
+        # grants as tuples and cost a red CI leg in exactly this way.
+        back = json.loads(path.read_text(encoding="utf-8"))
+        unreadable = [f for f in CHECKED if back.get(f) != result.get(f)]
+        if unreadable:
+            raise SystemExit(
+                f"{path}: {', '.join(unreadable)} did not survive being "
+                f"written and read back, so --check could never pass. A "
+                f"value in it is not one JSON carries unchanged.")
         print(_headline(result))
     return do_index()
 
