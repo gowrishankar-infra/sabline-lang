@@ -29,9 +29,10 @@ Every estimate below is split the way 0006's were (`5 days - 3 in Python,
 not yet been ported is cheaper there than anywhere else.
 
 **Nothing here may let a program do more than its budget grants.** Of the
-twelve items, eleven narrow what a grant means, report more precisely, or
-add a check; item 36's wildcard is the only one that widens what a pattern
-can match, and it is the one with the longest risk section.
+sixteen entries below, fifteen narrow what a grant means, report more
+precisely, or add a check; the `**` spelling inside item 36 is the only
+thing anywhere in this record that widens what a pattern can match, and
+item 36 has the longest risk section because of it.
 
 ## What was decided
 
