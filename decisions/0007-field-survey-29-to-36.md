@@ -45,7 +45,7 @@ its section, says more.
 | | Item | Decision | Where | Days |
 |---|---|---|---|---|
 | 29 | order rules | **accepted, partly and later than first proposed**: one built-in rule over the mark, in M6a *after* `Untrusted of T`; "at most N" struck as already shipped; the general rule language after rc | M6a | +4 |
-| 30 | `endorse` | **accepted**, in the same **release** as 34's step 3 and not merely the same rung | M6a | +6 |
+| 30 | `endorse` | **accepted**, in the same **release** as `Untrusted of T` itself and not merely the same rung - so with 34's step 3, which is what makes it load-bearing | M6a | +6 |
 | 31 | a Z3 ratchet | **deferred** until after the release candidate | - | 0 |
 | 32a | fail hard on weak confinement | **accepted**, and the release note says what it does on Windows under either outcome of the AppContainer spike | M4 | +3 |
 | 32b | an audit stream, JSON lines | **accepted** as JSON lines; OpenTelemetry after rc | M3 | +4 |
@@ -208,9 +208,10 @@ program.
 
 **Recommendation: yes, in M6, in the same release as 34's step 3.**
 
-**Decision (2026-10-05): accepted, and in the same release as 34's step
-3** rather than merely the same rung - the 133 destination arguments settle
-it. M6a. +6 days.
+**Decision (2026-10-05): accepted, and in the same release as `Untrusted
+of T` itself** rather than merely the same rung - and therefore with 34's
+step 3, which is the rule the 133 destination arguments would otherwise
+refuse. M6a, +6 days.
 
 ---
 
