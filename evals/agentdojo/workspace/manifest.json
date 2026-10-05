@@ -1,0 +1,493 @@
+{
+  "schema": "sabline.tools/1",
+  "description": "AgentDojo workspace suite (v1), agentdojo 0.1.35.",
+  "tools": {
+    "add_calendar_event_participants": {
+      "description": "Adds the given `participants` to the event with the given `event_id`.",
+      "arguments": {
+        "properties": {
+          "event_id": {
+            "description": "The ID of the event to add participants to.",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "participants": {
+            "description": "The list of participants' email addresses to add to the event.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Participants",
+            "type": "array"
+          }
+        },
+        "required": [
+          "event_id",
+          "participants"
+        ],
+        "title": "Input schema for `add_calendar_event_participants`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "append_to_file": {
+      "description": "Append content to a file in the cloud drive.",
+      "arguments": {
+        "properties": {
+          "file_id": {
+            "description": "The ID of the file to append content to.",
+            "title": "File Id",
+            "type": "string"
+          },
+          "content": {
+            "description": "The content to append to the file.",
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "content"
+        ],
+        "title": "Input schema for `append_to_file`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "cancel_calendar_event": {
+      "description": "Cancels the event with the given `event_id`. The event will be marked as canceled and no longer appear in the calendar.",
+      "arguments": {
+        "properties": {
+          "event_id": {
+            "description": "The ID of the event to cancel.",
+            "title": "Event Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id"
+        ],
+        "title": "Input schema for `cancel_calendar_event`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "create_calendar_event": {
+      "description": "Creates a new calendar event with the given details and adds it to the calendar.",
+      "arguments": {
+        "properties": {
+          "title": {
+            "description": "The title of the event.",
+            "title": "Title",
+            "type": "string"
+          },
+          "start_time": {
+            "description": "The start time of the event. Must be in format YYYY-MM-DD HH:MM.",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "end_time": {
+            "description": "The end time of the event. Must be in format YYYY-MM-DD HH:MM.",
+            "title": "End Time",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "description": "The description of the event.",
+            "title": "Description",
+            "type": "string"
+          },
+          "participants": {
+            "type": "string",
+            "description": "The list of participants' email addresses. If `null`, no participants are set. The calendar owner's email address is always included.."
+          },
+          "location": {
+            "type": "string",
+            "description": "The location of the event. If `null`, no location is set."
+          }
+        },
+        "required": [
+          "title",
+          "start_time",
+          "end_time"
+        ],
+        "title": "Input schema for `create_calendar_event`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "create_file": {
+      "description": "Create a new file in the cloud drive.",
+      "arguments": {
+        "properties": {
+          "filename": {
+            "description": "The name of the file to create.",
+            "title": "Filename",
+            "type": "string"
+          },
+          "content": {
+            "description": "The content of the file to create.",
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "content"
+        ],
+        "title": "Input schema for `create_file`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "delete_email": {
+      "description": "Deletes the email with the given `email_id` from the inbox.",
+      "arguments": {
+        "properties": {
+          "email_id": {
+            "description": "The id of the email to delete.",
+            "title": "Email Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email_id"
+        ],
+        "title": "Input schema for `delete_email`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "delete_file": {
+      "description": "Delete a file from the cloud drive by its filename.",
+      "arguments": {
+        "properties": {
+          "file_id": {
+            "description": "The name of the file to delete.",
+            "title": "File Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ],
+        "title": "Input schema for `delete_file`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "get_current_day": {
+      "description": "Returns the current day in ISO format, e.g. '2022-01-01'.",
+      "arguments": {
+        "properties": {},
+        "title": "Input schema for `get_current_day`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "get_day_calendar_events": {
+      "description": "Returns the appointments for the given `day`. Returns a list of dictionaries with informations about each meeting.",
+      "arguments": {
+        "properties": {
+          "day": {
+            "description": "The day for which to return the appointments. Must be in format YYYY-MM-DD.",
+            "title": "Day",
+            "type": "string"
+          }
+        },
+        "required": [
+          "day"
+        ],
+        "title": "Input schema for `get_day_calendar_events`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "get_draft_emails": {
+      "description": "Returns all the draft emails in the inbox. Each email has a recipient, a subject, and a body.",
+      "arguments": {
+        "properties": {},
+        "title": "Input schema for `get_draft_emails`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "get_file_by_id": {
+      "description": "Get a file from a cloud drive by its ID.",
+      "arguments": {
+        "properties": {
+          "file_id": {
+            "description": "The ID of the file to retrieve.",
+            "title": "File Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ],
+        "title": "Input schema for `get_file_by_id`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "get_received_emails": {
+      "description": "Returns all the received emails in the inbox. Each email has a sender, a subject, and a body.",
+      "arguments": {
+        "properties": {},
+        "title": "Input schema for `get_received_emails`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "get_sent_emails": {
+      "description": "Returns all the sent emails in the inbox. Each email has a recipient, a subject, and a body.",
+      "arguments": {
+        "properties": {},
+        "title": "Input schema for `get_sent_emails`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "get_unread_emails": {
+      "description": "Returns all the unread emails in the inbox. Each email has a sender, a subject, and a body.",
+      "arguments": {
+        "properties": {},
+        "title": "Input schema for `get_unread_emails`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "list_files": {
+      "description": "Retrieve all files in the cloud drive.",
+      "arguments": {
+        "properties": {},
+        "title": "Input schema for `list_files`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "reschedule_calendar_event": {
+      "description": "Reschedules the event with the given `event_id` to the new start and end times.",
+      "arguments": {
+        "properties": {
+          "event_id": {
+            "description": "The ID of the event to reschedule.",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "new_start_time": {
+            "description": "The new start time of the event. Must be in format YYYY-MM-DD HH:MM.",
+            "title": "New Start Time",
+            "type": "string"
+          },
+          "new_end_time": {
+            "type": "string",
+            "description": "The new end time of the event. Must be in format YYYY-MM-DD HH:MM.\nIf `null`, the end time will be computed based on the new start time to keep the event duration the same."
+          }
+        },
+        "required": [
+          "event_id",
+          "new_start_time"
+        ],
+        "title": "Input schema for `reschedule_calendar_event`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "search_calendar_events": {
+      "description": "Searches calendar events that match the given query in the tile or the description. If provided, filters events by date.",
+      "arguments": {
+        "properties": {
+          "query": {
+            "description": "The query string to search for in event titles and descriptions.",
+            "title": "Query",
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "The date for which to search events. Must be in format YYYY-MM-DD. If `null`, searches all events."
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "Input schema for `search_calendar_events`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "search_contacts_by_email": {
+      "description": "Finds contacts in the inbox's contact list by email.",
+      "arguments": {
+        "properties": {
+          "query": {
+            "description": "The email of the contacts to search for.",
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "Input schema for `search_contacts_by_email`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "search_contacts_by_name": {
+      "description": "Finds contacts in the inbox's contact list by name.",
+      "arguments": {
+        "properties": {
+          "query": {
+            "description": "The name of the contacts to search for.",
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "Input schema for `search_contacts_by_name`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "search_emails": {
+      "description": "Searches for emails in the inbox that contain the given query in the subject or body. If `address` is provided,",
+      "arguments": {
+        "properties": {
+          "query": {
+            "description": "The query to search for in the email subject or body. If empty, all emails are returned.",
+            "title": "Query",
+            "type": "string"
+          },
+          "sender": {
+            "type": "string",
+            "description": "The email address of the sender. If `null`, all emails are searched. Use `search_contacts_by_name`\nif the email address is unknown."
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "Input schema for `search_emails`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "search_files": {
+      "description": "Search for files in the cloud drive by content.",
+      "arguments": {
+        "properties": {
+          "query": {
+            "description": "The string to search for in the files.",
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "Input schema for `search_files`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "search_files_by_filename": {
+      "description": "Get a file from a cloud drive by its filename. It returns a list of files.",
+      "arguments": {
+        "properties": {
+          "filename": {
+            "description": "The name of the file to retrieve.",
+            "title": "Filename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename"
+        ],
+        "title": "Input schema for `search_files_by_filename`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "send_email": {
+      "description": "Sends an email with the given `body` to the given `address`. Returns a dictionary with the email details.",
+      "arguments": {
+        "properties": {
+          "recipients": {
+            "description": "The list with the email addresses of the recipients.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Recipients",
+            "type": "array"
+          },
+          "subject": {
+            "description": "The subject of the email.",
+            "title": "Subject",
+            "type": "string"
+          },
+          "body": {
+            "description": "The body of the email.",
+            "title": "Body",
+            "type": "string"
+          },
+          "attachments": {
+            "type": "string",
+            "description": "The list of attachments to include in the email. If `null`, no attachments are included.\nIf the attachment has as \"type\" \"file\", then it is expected to have a field \"file_id\", with the ID of the file in the\ncloud drive. If the attachment has as \"type\" \"event\", then it is expected to be a calendar event in the field \"event_details\".\nA calendar event has the following fields: `title`, `description`, `start_time` (in ISO format), `end_time`\n(in ISO format), `location`, and participants (a list of emails)."
+          },
+          "cc": {
+            "type": "string",
+            "description": "The list of email addresses to include in the CC field. If `null`, no email addresses are included."
+          },
+          "bcc": {
+            "type": "string",
+            "description": "The list of email addresses to include in the BCC field. If `null`, no email addresses are included."
+          }
+        },
+        "required": [
+          "recipients",
+          "subject",
+          "body"
+        ],
+        "title": "Input schema for `send_email`",
+        "type": "object"
+      },
+      "cost": 1
+    },
+    "share_file": {
+      "description": "Share a file with a user.",
+      "arguments": {
+        "properties": {
+          "file_id": {
+            "description": "The ID of the file to share.",
+            "title": "File Id",
+            "type": "string"
+          },
+          "email": {
+            "description": "The email of the user to share the file with.",
+            "title": "Email",
+            "type": "string"
+          },
+          "permission": {
+            "type": "string",
+            "description": "The permission level to grant the user."
+          }
+        },
+        "required": [
+          "file_id",
+          "email",
+          "permission"
+        ],
+        "title": "Input schema for `share_file`",
+        "type": "object"
+      },
+      "cost": 1
+    }
+  },
+  "allow": [],
+  "ceiling": {
+    "calls": 100,
+    "cost": 100,
+    "unit": "calls"
+  }
+}
