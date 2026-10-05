@@ -1,12 +1,15 @@
 # 0007 - Items 29 to 36 of the field survey, and two small additions
 
-**PROPOSED 2026-10-04. Nothing here is decided, and nothing here is
-built.** Each item below is what it is, where it would sit, what it would
-cost, what it would risk, and a recommendation. The maintainer accepts or
-changes each one after reading; until an item is accepted *and* shipped it
-changes nothing in `SPEC.md`, sabline-spec or either runtime, and no
-document may describe it as a feature. That is the same rule
-`decisions/0006-where-sabline-loses.md` runs under.
+**Proposed 2026-10-04; decided 2026-10-05. Nothing here is built.** Each
+item below is the proposal as it was written - what it is, where it would
+sit, what it would cost, what it would risk, and a recommendation -
+followed by the maintainer's decision on it; *What was decided*, just
+below, gathers them. An accepted item is scheduled in the rung of
+`plan/9.0.md` the decision names, not built: until it ships it changes
+nothing in `SPEC.md`, sabline-spec or either runtime, and no document may
+describe it as a feature. That is the same rule
+`decisions/0006-where-sabline-loses.md` runs under, and the proposal text
+above each decision is unedited.
 
 This record started from the maintainer's own recommendations, which are
 quoted in each item under **The recommendation this started from**. Six
@@ -30,7 +33,54 @@ twelve items, eleven narrow what a grant means, report more precisely, or
 add a check; item 36's wildcard is the only one that widens what a pattern
 can match, and it is the one with the longest risk section.
 
-## What is proposed
+## What was decided
+
+Decided by the maintainer on 2026-10-05. Every disagreement this record
+raised with the recommendations it started from was accepted, and one item
+was accepted *against* this record's own recommendation: 32e is kept, on a
+condition that turned out to hold. Each item's own decision, at the end of
+its section, says more.
+
+| | Item | Decision | Where | Days |
+|---|---|---|---|---|
+| 29 | order rules | **accepted, partly and later than first proposed**: one built-in rule over the mark, in M6a *after* `Untrusted of T`; "at most N" struck as already shipped; the general rule language after rc | M6a | +4 |
+| 30 | `endorse` | **accepted**, in the same **release** as 34's step 3 and not merely the same rung | M6a | +6 |
+| 31 | a Z3 ratchet | **deferred** until after the release candidate | - | 0 |
+| 32a | fail hard on weak confinement | **accepted**, and the release note says what it does on Windows under either outcome of the AppContainer spike | M4 | +3 |
+| 32b | an audit stream, JSON lines | **accepted** as JSON lines; OpenTelemetry after rc | M3 | +4 |
+| 32c | an organisation ceiling file | **accepted**, and it is in the receipt or it is not shipped | M3 | +6 |
+| 32d | the MCP specification's own rules | **accepted**, pinned to a named specification version | M5 | +5 |
+| 32e | child-process confinement tests | **kept, and rescoped**: the condition found a claim with no test - the MCP server's confinement. A small item outside 9.0, and M4 inherits the case | now, then M4 | +2 |
+| 33a | pause and resume | **folded into the open `recover@N` decision** | - | 0 |
+| 33b | Cedar | **deferred** unless a user asks, and the ask names the system | - | 0 |
+| 33c | how Python-like the syntax is | **deferred** until the nine-model round trip has run | - | 0 |
+| 34 | fixing the AgentDojo laundering attacks | **steps 1-2 recorded done** (#122, four suites in #141); **step 3 accepted**, first in M6a and in the same release as 30; **step 4 accepted**, now | M6a | +8 |
+| 35 | the other three AgentDojo suites | **closed** by #141 | - | 0 |
+| 36 | the pattern grammar | **accepted, partly**: no negation. A bound on a number first, then a pattern into a structured argument, then `**` as a separate spelling - `*` keeps its meaning exactly | M5 | +13 |
+| + | an analysis-mode field in `capability/v1` | **accepted**, with one defined value, outside 9.0 | now | +1 |
+| + | `sabline new` writes an `AGENTS.md` | **accepted**, on `sabline new` and printable with `sabline card --agents` | now | +2 |
+
+**The total: 9.0 goes from 196 days to 245, and 6 days sit outside it.**
+`plan/9.0.md` carries the arithmetic rung by rung. M6 was split by the
+same decision - **M6a** is `Untrusted of T`, `endorse` and the order
+rules, **M6b** is the breaking set, `proc:NAME` and `fs:secret:PATH` -
+because M6 had reached 58 days, which is more than any other rung and
+enough to hide a schedule inside one name.
+
+Two changes of order inside what was accepted, both worth reading as
+decisions rather than as detail. **36 takes the numeric bound first**, and
+a pattern into a structured argument second, ahead of the wider wildcard
+that the item had led with: the measured corpus ranks them that way. And
+**30 ships with 34's step 3, in the same release**, because the rule
+refuses 133 of 222 destination arguments without it.
+
+---
+
+## What was proposed
+
+The table as it was written on 2026-10-04, kept unedited. Where it and the
+decision above differ - 32e, the rung names, the days outside 9.0 - the
+decision is what holds.
 
 | | Item | Recommendation here | Where | Days |
 |---|---|---|---|---|
@@ -108,6 +158,11 @@ second request is the rule language, after rc.
 M6 after `Untrusted of T`. Nothing in 9.0 before M6. "At most N" is struck
 as already shipped.
 
+**Decision (2026-10-05): accepted as recommended.** One built-in rule,
+`order:no-sign-after-untrusted` in name only until it is written, in **M6a**
+and after `Untrusted of T` inside it. "At most N" is struck as already
+shipped. The general rule language is not scheduled. +4 days.
+
 ---
 
 ## 30 - `endorse`
@@ -152,6 +207,10 @@ program.
 
 **Recommendation: yes, in M6, in the same release as 34's step 3.**
 
+**Decision (2026-10-05): accepted, and in the same release as 34's step
+3** rather than merely the same rung - the 133 destination arguments settle
+it. M6a. +6 days.
+
 ---
 
 ## 31 - a Z3 ratchet
@@ -176,6 +235,9 @@ and a ratchet then means something.
 **Cost if taken after rc.** 3-4 days. Not counted in 9.0.
 
 **Recommendation: defer until after rc.**
+
+**Decision (2026-10-05): deferred** until after the release candidate, as
+recommended. No rung, not counted.
 
 ---
 
@@ -217,6 +279,10 @@ the default must not move.
 **Recommendation: yes, M4, and the release note names what it does on
 Windows under either spike outcome.**
 
+**Decision (2026-10-05): accepted.** M4, +3 days, opt-in, and the release
+note says what it does on Windows under either outcome of the AppContainer
+spike rather than leaving a reader to find out.
+
 ---
 
 ## 32b - an audit stream
@@ -250,6 +316,11 @@ is a dependency and a wire format, and neither belongs in a milestone that
 is porting an interpreter.
 
 **Recommendation: yes, M3, as JSON lines. OpenTelemetry after rc.**
+
+**Decision (2026-10-05): accepted** as JSON lines, in M3, +4 days.
+OpenTelemetry is not scheduled. The `Secret` cases of `check_library.py`
+cover the stream as they cover the receipt, which is a condition of the
+acceptance and not a note.
 
 ---
 
@@ -285,6 +356,11 @@ defensible because it can only ever narrow.
 
 **Recommendation: yes, M3, and it is in the receipt or it is not shipped.**
 
+**Decision (2026-10-05): accepted**, in M3, +6 days, **and it is in the
+receipt or it is not shipped.** A budget narrowed by a file the operator
+cannot see named in the refusal is the trap this condition exists to
+prevent.
+
 ---
 
 ## 32d - the MCP specification's own rules
@@ -313,6 +389,10 @@ the item most likely to produce an uncomfortable row, which is the reason
 to do it.
 
 **Recommendation: yes, M5, pinned to a named specification version.**
+
+**Decision (2026-10-05): accepted**, in M5, +5 days, pinned to a named
+specification version. A rule Sabline cannot satisfy gets a
+`docs/known-open.md` row rather than a quiet omission.
 
 ---
 
@@ -372,6 +452,61 @@ M4's `--confine strict` exit criteria, where it already is, and the
 inheritance cases into M6's `proc:NAME`. No bug is reported, because none
 was found.
 
+**Decision (2026-10-05): kept, and rescoped. The condition found a
+claim with no test behind it.**
+
+The item was accepted for striking only if nothing claimed that a run
+inside the tool door or the MCP server is confined. Something does, in two
+places:
+
+- `docs/confinement.md`: confinement "is on by default on the command
+  line, in `sabline.run(timeout=...)`, in `sabline.Pool`, on the HTTP door,
+  **on the MCP server** and under `sabline eval`."
+- `THREAT_MODEL.md`'s confinement row: "On by default on the command line,
+  in `run(timeout=...)`, in `Pool` and on **both doors**", with
+  `check_confine.py` named as the evidence for it.
+
+Six places are claimed; five are asserted. `check_confine.py` covers the
+command line, `run(timeout=)`, a `Pool`, `sabline eval` (through
+`_EvalPool`) and the **HTTP door** - for which it starts a real `sabline
+serve` child with the fault-injection hook in its environment, posts a
+request that asks for no confinement five different ways, and asserts the
+answer is E319 with the platform's own level. There is no equivalent for
+`sabline mcp`, and the suite's own docstring lists "run(timeout=), a Pool
+and the HTTP door".
+
+The claim is **true in the code**: `sabline_mcp.py` sets `CONFINE = True`
+and builds `sabline.PoolRegistry(confine=CONFINE)` and its checker
+`Pool(..., confine=CONFINE)`. So this is a missing test and not a defect,
+and no advisory follows from it - but a claim two documents make and no
+test holds is exactly what 32e was for.
+
+What is kept is small and specific: **the HTTP door's test, again for the
+MCP server** - a real `sabline mcp` child, the fault-injection hook, a tool
+call that asks for no confinement, and E319 with the platform's level
+coming back. **2 days, outside 9.0**, because it tests behaviour that
+shipped in 8.4 and waiting for M4 leaves the claim untested for months. M4
+inherits the case, since `check_confine.py` must pass against sabline-rt
+there.
+
+What is struck is the rest of the item, for the reasons above: the program
+cannot start a process at all, and that is asserted on every platform; the
+runtime's own bounded child and pool worker are confined, and that is
+asserted with the fault-injection hook; the `ffi:os`/`ffi:subprocess` case
+is already an M4 exit criterion of `--confine strict`; and the inheritance
+cases cannot be written until `proc:NAME` exists, so they belong to M6b
+with it. `plan/9.0.md` already states the inheritance `proc:NAME` will have
+to prove - "on Linux under full confinement the child inherits Landlock and
+seccomp and may `execve` nothing else" - which is the sentence those tests
+will hold it to.
+
+One thing the AgentDojo round in this pull request does exercise without
+asserting: a tool-door run under a task budget is confined - a receipt from
+one says `partial` on Windows with the Windows row's own reason - so the
+629 attacks and 42 reference solutions ran through a confined door, four CI
+legs at a time. That is evidence the door and confinement compose, not a
+test that they do.
+
 ---
 
 ## 33a - pause and resume
@@ -395,6 +530,10 @@ top, so it cannot be decided before the smaller one is.
 **Recommendation: fold into the open `recover@N` decision**, as the
 heavier of the two cases it has to answer for.
 
+**Decision (2026-10-05): folded into the open `recover@N` decision**, as
+the heavier of the two cases that decision has to answer for. Not
+scheduled.
+
 ---
 
 ## 33b - Cedar
@@ -414,6 +553,9 @@ against.
 
 **Recommendation: defer unless a user asks**, and the ask should name the
 system they need it for.
+
+**Decision (2026-10-05): deferred** unless a user asks, and the ask names
+the system they need it for. Not scheduled.
 
 ---
 
@@ -438,6 +580,10 @@ the trap, and `docs/compare-python-sandbox.md` is about the version of it
 that already bites.
 
 **Recommendation: decide after the nine-model run, and not before.**
+
+**Decision (2026-10-05): deferred** until the nine-model round trip has
+run. The caution stands: a syntax change that improves the number can still
+be wrong, and Python-like syntax with different semantics is the trap.
 
 ---
 
@@ -546,6 +692,14 @@ becomes a claim about manifests nobody checked.
 yes, first in M6 and in the same release as item 30; step 4 yes, now, as
 one piece of work with the `AGENTS.md` primer.**
 
+**Decision (2026-10-05): steps 1 and 2 recorded as done** - #122 for the
+Slack suite, #141 for the four and the door-2 probe. **Step 3 accepted,
+first in M6a**, and in the same release as `endorse` (item 30). **Step 4
+accepted, now**, as one piece of work with the `AGENTS.md` primer. +8 days
+in M6a for the destination-versus-content rule; step 4's day is part of the
+3 outside 9.0. The two known limits get their `docs/known-open.md` row the
+day the rule ships.
+
 ---
 
 ## 35 - the other three AgentDojo suites
@@ -562,6 +716,8 @@ and in the paper's section 4.3. What it found that bears on the rest of
 this record is quoted under items 29, 30, 34 and 36.
 
 **Recommendation: record as closed.** No days.
+
+**Decision (2026-10-05): closed** by #141. No days.
 
 ---
 
@@ -645,6 +801,21 @@ a number - and the answer has to be "it is refused", not "it is coerced".
 **Recommendation: no to negation. Yes to a bound on a number and to `**`,
 in M5, in that order. The structured-argument path is deferred.**
 
+**Decision (2026-10-05): accepted, partly, and in this record's order
+rather than the item's.** No negation - the content check belongs to
+`Untrusted of T`. Then, in order: **a bound on a number** (+4), **a pattern
+into a structured argument** (+6), and **`**` as a separate spelling**
+(+3), all in M5. `*` keeps its meaning exactly, so no budget ever written
+changes what it permits. The structured-argument path, which this record
+recommended deferring, is accepted against that recommendation and
+sequenced second: an argument no pattern can reach at all is a worse gap
+than one a pattern can only reach loosely. That is the one place where the
+decision added work this record had tried to leave out, and it is why the
+total is 245 rather than the 239 the proposal costed.
+
+All three are counted in M5: 4 + 6 + 3 = 13 days, which with item 32d's 5
+takes M5 from 14 to 32 and makes it the rung this decision changed most.
+
 ---
 
 ## An analysis-mode field in `capability/v1`
@@ -677,6 +848,10 @@ absence. Only one value should be defined now - `static` - and a second
 one should wait until there is a predicate that earns it.
 
 **Recommendation: yes, now, with one defined value.**
+
+**Decision (2026-10-05): accepted**, now, outside 9.0, with `static` as
+the only defined value. +1 day. A second value waits until there is a
+predicate that earns it.
 
 ---
 
@@ -713,42 +888,59 @@ from.
 **Recommendation: yes, now, on `sabline new`, and printable with `sabline
 card --agents`.**
 
+**Decision (2026-10-05): accepted**, on `sabline new`, printable with
+`sabline card --agents`, and done as one piece of work with 34's step 4.
++2 days with it, outside 9.0.
+
 ---
 
-## What the 9.0 total becomes
+## What the 9.0 total became
 
-`plan/9.0.md` stands at **196 days**. If every yes above is taken:
+`plan/9.0.md` stood at **196 days** and now stands at **245**. Every yes
+above was taken, and M6 was split in the same decision.
 
-| Milestone | Today | Added | New |
+| Rung | Was | Added | Now |
 |---|---:|---|---:|
 | M1 - the parser | 18 | - | 18 |
 | M2 - the checkers | 24 | - | 24 |
 | M3 - the interpreter | 35 | +4 (32b), +6 (32c) | 45 |
 | M4 - confinement | 23 | +3 (32a) | 26 |
-| M5 - the tool door | 14 | +5 (32d), +7 (36) | 26 |
-| M6 - `Untrusted` | 40 | +4 (29), +6 (30), +8 (34 step 3) | 58 |
+| M5 - the tool door | 14 | +5 (32d), +13 (36) | 32 |
+| M6a - `Untrusted` | 13 of M6's 22 | +6 (30), +8 (34 step 3), +4 (29) | 31 |
+| M6b - the breaking set | 9 of M6's 22, +18 (0006) | - | 27 |
 | M7 - embeddings | 20 | - | 20 |
 | M8 - the candidate | 22 | - | 22 |
-| **Total** | **196** | **+43** | **239** |
+| **Total** | **196** | **+49** | **245** |
 
-**And 4 days outside 9.0**, which can be done at any time and do not gate
-a milestone: 34's step 4 and the `AGENTS.md` primer together (3), and the
-`capability/v1` field (1).
+**And 6 days outside 9.0**, which gate no rung and can be done at any
+time: 34's step 4 and the `AGENTS.md` primer together (3), the
+`capability/v1` field (1), and the MCP server's confinement test (2, item
+32e). `plan/9.0.md` carries the same arithmetic.
 
-**Deferred, not counted, no milestone**: the Z3 ratchet (31, 3-4 days after
-rc), 29's general rule language, pause and resume (33a, inside the open
-`recover@N` decision), Cedar (33b, 3-4 days if asked for), 36's
-structured-argument path (6 days), and OpenTelemetry on top of 32b.
+**Deferred, not counted, no rung**: the Z3 ratchet (31, 3-4 days after rc),
+29's general rule language, pause and resume (33a, inside the open
+`recover@N` decision), Cedar (33b, 3-4 days if asked for), and
+OpenTelemetry on top of 32b. Nothing this record recommended deferring on
+cost was deferred: 36's structured-argument path was taken instead.
 
-**Struck**: 32e as a separate item, folded into M4's and M6's exit
-criteria, and 29's "at most N", which already ships.
+**Struck**: 29's "at most N", which already ships, and all of 32e except
+the one missing test its condition found.
 
-Two cautions on the 43. M6 goes to 58 days and is already the milestone
-holding `Untrusted of T`, the breaking set, `proc:NAME` and
-`fs:secret:PATH`; three of the four additions here land in it, and 34's
-step 3 is sequenced first inside it. If the ladder has a place where a
-schedule breaks, that is now clearly it, and splitting M6 is worth
-considering before any of this is accepted. M3 goes to 45 with two
-additions that are both independent of the port - 32b and 32c could each be
-done in Python before M3 and ported with it, or deferred past rc entirely,
-without changing anything else in this record.
+**M6 split, for the reason this record raised.** M6 would have reached 58
+days, more than any other rung, while holding `Untrusted of T`, the
+breaking set, `proc:NAME` and `fs:secret:PATH`. It is now **M6a** -
+`Untrusted of T`, `endorse`, the destination rule and the order rule, 31
+days - and **M6b** - the breaking set, `proc:NAME` and `fs:secret:PATH`, 27
+days. M6a is first, and `Untrusted of T` is first inside it. The 22 days M6
+carried for 0004 and 0005 together are split 13 and 9, which is a
+judgement and is recorded as one in `plan/9.0.md`.
+
+Two cautions that survive the decision. **M5 more than doubles**, 14 to
+32,
+and two of its three bodies of work - guard mode and the MCP
+specification's rules - turn on a specification this project does not
+control; a specification that moves is the one risk in it that no estimate
+covers. And **M3's two additions are both independent of the port**: 32b
+and 32c could each be done in Python before M3 and ported with it, or
+deferred past rc entirely, without changing anything else here. If the
+schedule needs 10 days back, that is where they are.

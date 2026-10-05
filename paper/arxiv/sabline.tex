@@ -836,11 +836,11 @@ And no budget here sees what flows where. An attack that reuses a
 granted tool - to send what the task read to a sink the task may write
 to - is a choice within the budget, and Sabline has no per-value
 provenance with which to refuse it; \texttt{decisions/0004} is the
-design for a mark on untrusted input, \texttt{decisions/0007} schedules
-it first in the milestone that carries it, and neither has shipped.
-CaMeL, which tracks every value's provenance, and ChainCaps, whose
-capabilities are per value and per sink, should do better on exactly
-these cases. The results are
+design for a mark on untrusted input, \texttt{decisions/0007} (decided
+2026-10-05) schedules it first in M6a with an \texttt{endorse} that
+clears the mark, and neither has shipped. CaMeL, which tracks every
+value's provenance, and ChainCaps, whose capabilities are per value and
+per sink, should do better on exactly these cases. The results are
 \texttt{evals/agentdojo/\textless{}suite\textgreater{}/results.json}
 with \texttt{results.json} as their roll-up, which a CI leg per suite
 re-derives program by program under all three budgets.

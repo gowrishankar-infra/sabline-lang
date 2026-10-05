@@ -173,10 +173,13 @@ From 9.0.0-alpha.1 there is a second kind of release. A pre-release is a
 shippable tag, and it ships **the `sabline-rt` crate** and nothing else:
 whatever the newest ordinary release was stays what a user gets.
 
-`plan/9.0.md` is the eight milestones M1 to M8, which are bodies of work
-and not version numbers - several pre-releases may be spent inside one,
-and three were spent inside M1. Its *Versions, and the milestone each one
-was in* table is the record of which pre-release was in which, and
+`plan/9.0.md` is the nine rungs M1 to M5, M6a, M6b, M7 and M8, which are
+bodies of work and not version numbers - several pre-releases may be spent
+inside one, and three were spent inside M1. M6 became M6a and M6b on
+2026-10-05 (decisions/0007), before any pre-release had been spent in it,
+so no CHANGELOG heading had to be rewritten. Its *Versions, and the
+milestone each one was in* table is the record of which pre-release was
+in which, and
 `check_plan.py` fails if that table and this CHANGELOG disagree.
 
 **What makes a commit a pre-release** is the version in

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The milestone table and the CHANGELOG agree, and the ladder is whole.
 
-`plan/9.0.md` names eight milestones, M1 to M8, which are bodies of work
+`plan/9.0.md` names nine rungs - M1 to M5, M6a, M6b, M7, M8, since
+decisions/0007 split M6 on 2026-10-05 - which are bodies of work
 and not version numbers, and carries a table of every pre-release
 published so far against the milestone it was working on. From
 `9.0.0-alpha.5` on, every pre-release's CHANGELOG heading names its
@@ -16,8 +17,13 @@ so this suite holds them to each other. It fails when:
   what happens when somebody ships one and forgets the plan;
 - a row names a version no CHANGELOG entry has;
 - a row names a milestone the ladder does not define;
-- the ladder is not exactly M1 to M8, consecutive, with no gap and no
-  repeat;
+- the ladder is not exactly the rungs RUNGS names, in that order, with no
+  gap and no repeat;
+- the rungs' own `**Effort**` lines do not add up to the `**Total**` the
+  file states. decisions/0007 raised the total twice, and the first of
+  those two passes had M5 counted at its old number in the table while its
+  own section said something else; a sum is a thing a machine should add
+  up;
 - a pre-release at or after the enforcement point has a heading that
   names no milestone, names more than one, or names a milestone other
   than the table's;
@@ -64,7 +70,12 @@ RULE_FROM = "9.0.0-alpha.5"
 BEFORE_THE_RULE = ("9.0.0-alpha.1", "9.0.0-alpha.2", "9.0.0-alpha.3",
                    "9.0.0-alpha.4")
 
-MILESTONES = 8
+# The ladder, in order. M6 is two rungs from 2026-10-05: decisions/0007
+# split it into M6a (`Untrusted of T`, `endorse`, the order rules) and M6b
+# (the breaking set, `proc:NAME`, `fs:secret:PATH`), because M6 had reached
+# 58 days and a rung that large hides a schedule. A rung's name may carry
+# an `a` or a `b`, and nothing else.
+RUNGS = ("M1", "M2", "M3", "M4", "M5", "M6a", "M6b", "M7", "M8")
 
 PASSED = FAILED = SKIPPED = 0
 
@@ -104,7 +115,29 @@ def version_key(version: str) -> tuple[int, ...]:
 
 def ladder(plan: str) -> list[str]:
     """Every milestone the plan defines, in the order it defines them."""
-    return re.findall(r"^### (M\d+)\b", plan, re.MULTILINE)
+    return re.findall(r"^### (M\d+[ab]?)\b", plan, re.MULTILINE)
+
+
+def efforts(plan: str) -> dict[str, int]:
+    """{rung: the days its own section claims}. A rung may state its effort
+    in more than one `**Effort**:` line - M8 has one for the performance
+    floor and one for the candidate itself - and the days are the first
+    number of each, so a line that goes on to break the figure down
+    ("26 days - 18 for confinement, 5 for ...") still reads as 26."""
+    out: dict[str, int] = {}
+    parts = re.split(r"^### (M\d+[ab]?)\b", plan, flags=re.MULTILINE)
+    for i in range(1, len(parts), 2):
+        body = parts[i + 1].split("\n## ")[0]
+        out[parts[i]] = sum(
+            int(m.group(1)) for m in
+            re.finditer(r"^\*\*Effort\*\*: (\d+) days", body, re.MULTILINE))
+    return out
+
+
+def stated_total(plan: str) -> int | None:
+    """The total the file states, or None when it states none."""
+    m = re.search(r"\*\*Total: (\d+) days of work", plan)
+    return int(m.group(1)) if m else None
 
 
 def table(plan: str) -> list[tuple[str, str, str]]:
@@ -127,7 +160,7 @@ def table(plan: str) -> list[tuple[str, str, str]]:
 def milestone_of(cell: str) -> str | None:
     """The milestone a table cell names: `M1 (in progress)` and
     `**M1, complete**` are both M1."""
-    m = re.search(r"\bM(\d+)\b", cell)
+    m = re.search(r"\bM(\d+[ab]?)\b", cell)
     return f"M{m.group(1)}" if m else None
 
 
@@ -178,10 +211,24 @@ def verdicts(plan: str, changelog: str,
         out.append((rule, label, bool(held), str(detail)))
 
     rungs = ladder(plan)
-    say("ladder", f"plan/9.0.md defines exactly {MILESTONES} milestones",
-        len(rungs) == MILESTONES, rungs)
-    say("ladder", "...M1 to M8, consecutive, no gap and no repeat",
-        rungs == [f"M{n}" for n in range(1, MILESTONES + 1)], rungs)
+    say("ladder", f"plan/9.0.md defines exactly {len(RUNGS)} rungs",
+        len(rungs) == len(RUNGS), rungs)
+    say("ladder", f"...{', '.join(RUNGS)}, in that order, no gap and no "
+        f"repeat", tuple(rungs) == RUNGS, rungs)
+
+    claimed = efforts(plan)
+    stated = stated_total(plan)
+    say("total", "every rung states an effort",
+        all(claimed.get(r) for r in RUNGS),
+        {r: claimed.get(r) for r in RUNGS})
+    say("total", "plan/9.0.md states a total",
+        stated is not None, "no '**Total: N days of work' line")
+    if stated is not None:
+        say("total", f"...and the rungs add up to it ({stated} days)",
+            sum(claimed.values()) == stated,
+            f"the rungs add up to {sum(claimed.values())} "
+            f"({', '.join(f'{r} {claimed.get(r)}' for r in RUNGS)}) and the "
+            f"file says {stated}")
 
     try:
         rows = table(plan)
@@ -226,7 +273,7 @@ def verdicts(plan: str, changelog: str,
     cut = version_key(RULE_FROM)
     for version in sorted(pre, key=version_key):
         title = pre[version]
-        found = re.findall(r"\bM(\d+)\b", title)
+        found = re.findall(r"\bM(\d+[ab]?)\b", title)
         if version_key(version) < cut:
             say("exemption",
                 f"{version}: before the rule, and named as exempt",
@@ -245,7 +292,7 @@ def verdicts(plan: str, changelog: str,
                 f"heading says M{found[0]}, table says {want}")
             say("heading-form",
                 "...written as `M<n>: ` at the start of the title",
-                re.match(r"^M\d+: \S", title) is not None,
+                re.match(r"^M\d+[ab]?: \S", title) is not None,
                 f"heading: {title!r}")
 
     stale = sorted(set(BEFORE_THE_RULE) - set(table_versions))
@@ -312,6 +359,15 @@ def injections(plan: str, changelog: str) -> list[tuple[str, str, str, str]]:
                count=1, flags=re.MULTILINE),
         changelog))
 
+    # 4b. A rung's effort changes and the total does not follow it. This is
+    #     the mistake decisions/0007 made on its first pass: M5 grew in its
+    #     own section and the table above it still said the old figure.
+    out.append((
+        "M5's effort changes and the stated total does not",
+        "total",
+        re.sub(r"^\*\*Effort\*\*: 32 days", "**Effort**: 40 days", plan,
+               count=1, flags=re.MULTILINE),
+        changelog))
     # 5. A new pre-release, at the rule, whose heading names no milestone.
     out.append((
         "9.0.0-alpha.5 ships with a heading that names no milestone",
