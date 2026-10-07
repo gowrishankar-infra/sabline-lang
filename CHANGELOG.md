@@ -22,11 +22,10 @@ THREAT_MODEL.md's confinement row says the same of both doors, naming
 asserted: `check_confine.py` covered the command line, `run(timeout=)`, a
 `Pool`, `sabline eval` through `_EvalPool`, and the HTTP door - for which
 it starts a real `sabline serve` child with the fault-injection hook in its
-environment, posts a request that asks for no confinement in every field
-a request could carry it in, and holds the answer to E319 at the
-platform's own level. The MCP
-server had no equivalent, and the suite's own docstring listed only
-"run(timeout=), a Pool and the HTTP door".
+environment, posts a request that asks for no confinement in every field a
+request could carry it in, and holds the answer to E319 at the platform's
+own level. The MCP server had no equivalent, and the suite's own docstring
+listed only "run(timeout=), a Pool and the HTTP door".
 
 It has one now, written the same way: a real `sabline mcp` child with the
 hook in its environment, one `sabline_run` call carrying every
