@@ -118,7 +118,11 @@ SABLINE_PY = str(HERE / "sabline.py")
 # docs/receipts.md is two sections of EMBEDDING.md, moved to fit the page
 # budget (8.7), and its blocks are held as they were there
 DOCS = ("README.md", "SPEC.md", "EMBEDDING.md", "TUTORIAL.md",
-        "docs/receipts.md") + tuple(
+        "docs/receipts.md",
+        # the primer `sabline new` writes: its commands and its budget
+        # examples are held to the ones that run, like any other document
+        # here, because a copy of it lives in someone else's repository
+        "templates/AGENTS.md") + tuple(
     # the guides (8.7): each example runs, and each shows its refusal
     sorted(f"docs/{p.name}" for p in (HERE / "docs").glob("guide-*.md")))
 CODE_DOCS = (["SPEC.md", "README.md", "EMBEDDING.md", "LLM.md", "TUTORIAL.md"]
@@ -147,6 +151,7 @@ FIXTURES = {
     "hello.vel": HELLO,
     "myprogram.vel": HELLO,
     "file.vel": HELLO,
+    "main.vel": HELLO,
     "src/report.vel": HELLO,
     "program.vel": ('fn add1(n: Int) -> Int\n    ensures result == n + 1\n{\n'
                     '    return n + 1\n}\n\n'

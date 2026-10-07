@@ -19,6 +19,10 @@
       "description": "The sabline-spec version the producer followed, as 'sabline-spec 0.4'. Informative.",
       "type": "string"
     },
+    "analysisMode": {
+      "description": "How the evidence in this predicate was arrived at. 'static' means the audit was read from the source - its declared types and effects - before the program ran, which is what a sabline.audit/1 document is. It is the only value defined: the record of a run is a sabline.receipt/1 document and not a predicate of this type, so a producer MUST write 'static' or leave the field out, and a consumer MUST treat a value it does not know as a mode it cannot reason about. From sabline-spec 0.15.0.",
+      "enum": ["static"]
+    },
     "auditedAt": {
       "description": "When the audit was made, RFC 3339 with timezone Z. Informative: it is the producer's clock.",
       "type": "string",

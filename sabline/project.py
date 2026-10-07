@@ -568,6 +568,25 @@ def doctor() -> int:
     return 1
 
 
+# The primer `sabline new` writes and `sabline card --agents` prints: one
+# file, so the two cannot disagree. It says nothing about the language that
+# `sabline card` does not say in full - a copy in someone else's repository
+# goes stale where no check here can reach it, so it is short, it points at
+# the card, and it carries the version it was written from.
+AGENTS_TEMPLATE = os.path.join("templates", "AGENTS.md")
+
+
+def agents_primer() -> str | None:
+    """The primer's text, with the version it was written from in it, or
+    None when the template is not installed beside the compiler."""
+    for where in (os.path.join(_INSTALL_DIR, AGENTS_TEMPLATE),
+                  os.path.join(_INSTALL_DIR, "..", AGENTS_TEMPLATE)):
+        if os.path.exists(where):
+            with open(where, encoding="utf-8") as f:
+                return f.read().replace("SABLINE_VERSION", VERSION)
+    return None
+
+
 def new_project(name: str) -> int:
     if not name or name.startswith("-"):
         print("usage: sabline new <project-name>", file=sys.stderr)
@@ -586,9 +605,25 @@ def new_project(name: str) -> int:
                 f"```\ncd {name}\nsabline main.vel\n```\n\n"
                 f"Docs: https://github.com/gowrishankar-infra/"
                 f"sabline-lang\n")
+    primer = agents_primer()
+    if primer is not None:
+        with open(os.path.join(name, "AGENTS.md"), "w",
+                  encoding="utf-8") as f:
+            f.write(primer)
     print(f"created {name}/")
     print(f"  {name}/main.vel    - a working program with a proven "
           f"contract")
     print(f"  {name}/README.md")
+    if primer is not None:
+        print(f"  {name}/AGENTS.md   - for an agent writing Sabline here: "
+              f"the budget, and writing the program before reading data")
+    else:
+        # a build that ships no templates/ - the downloadable executables
+        # carry no LLM.md either - says so rather than quietly writing two
+        # files where it says three
+        print("sabline new: templates/AGENTS.md is not installed alongside "
+              "the compiler, so no AGENTS.md was written; read it at "
+              "https://github.com/gowrishankar-infra/sabline-lang/blob/"
+              "main/templates/AGENTS.md", file=sys.stderr)
     print(f"next:  cd {name}  then  sabline main.vel")
     return 0

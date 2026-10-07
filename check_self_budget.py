@@ -1073,8 +1073,9 @@ def toml_cases() -> None:
     code, out, _ = vel(["new", "demo"], fresh)
     made = sorted(os.listdir(fresh / "demo")) if code == 0 else out
     ok("D4 sabline.toml is named only in sabline/project.py (deps, verify, "
-       "add), and sabline new writes none",
-       named == ["project.py"] and made == ["README.md", "main.vel"],
+       "add), and sabline new writes none - it writes these three (8.8)",
+       named == ["project.py"]
+       and made == ["AGENTS.md", "README.md", "main.vel"],
        f"{named} {made}")
 
 

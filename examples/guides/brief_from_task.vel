@@ -1,0 +1,21 @@
+// The brief this program writes was decided from the task - "summarise
+// the mail in inbox/" - before any of that mail was read. It reads and
+// counts. It names no destination, because the task named none, and
+// nothing in the mail can add one after the fact.
+fn main() uses io, fs {
+    let messages = 0
+    let lines = 0
+    for name in ["1.txt", "2.txt"] {
+        check read_file("inbox/" + name) {
+            ok text {
+                messages = messages + 1
+                lines = lines + length(split(text, "\n"))
+            }
+            fail why {
+                print("skipped " + name + ": " + why)
+            }
+        }
+    }
+    print("read " + to_text(messages) + " messages, "
+          + to_text(lines) + " lines")
+}

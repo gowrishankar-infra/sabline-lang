@@ -186,6 +186,8 @@ Usage:
   sabline audit <files or folders> --sarif what they can touch, as SARIF
   sabline audit program.vel --html [-o F]  the audit as a page to read
   sabline card                             the language, for pasting into a model
+  sabline card --agents                    the AGENTS.md primer `new` writes,
+                                           for a project that already exists
   sabline mcp [--max-allow G]              the MCP server on stdin/stdout,
         [--max-timeout S]                  the same one python -m sabline_mcp
         [--max-memory-mb M]                starts; grants at most io, 30 s and
@@ -911,6 +913,28 @@ def main() -> int:
             return 1
 
     if argv[:1] == ["card"]:
+        if argv[1:] == ["--agents"]:
+            # the primer `sabline new` writes, for a project that already
+            # exists: `sabline card --agents > AGENTS.md`
+            from .project import agents_primer
+            primer = agents_primer()
+            if primer is not None:
+                sys.stdout.write(primer)
+                return 0
+            print("templates/AGENTS.md is not installed alongside the "
+                  "compiler; read it at https://github.com/"
+                  "gowrishankar-infra/sabline-lang/blob/main/templates/"
+                  "AGENTS.md", file=sys.stderr)
+            return 1
+        if argv[1:]:
+            # name what is actually wrong: an unknown flag, or a word after
+            # --agents, which takes none
+            extra = [a for a in argv[1:] if a != "--agents"]
+            wrong = (f"'{extra[0]}' is not one of its flags" if extra
+                     else "--agents takes no further words")
+            print(f"usage: sabline card [--agents]; {wrong}",
+                  file=sys.stderr)
+            return 2
         here = _INSTALL_DIR
         for where in (os.path.join(here, "LLM.md"),
                       os.path.join(here, "..", "LLM.md")):

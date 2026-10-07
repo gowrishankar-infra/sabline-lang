@@ -20,8 +20,8 @@ doi: "10.5281/zenodo.22952528"
 repository-code: "https://github.com/gowrishankar-infra/sabline-lang"
 url: "https://sabline.dev/"
 license: MIT
-version: "8.7.1"
-date-released: "2026-10-01"
+version: "8.8.0"
+date-released: "2026-10-07"
 keywords:
   - programming language
   - effect system
