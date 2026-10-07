@@ -807,7 +807,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v5
-  - uses: gowrishankar-infra/sabline-lang@a0bfce7044fc86a73f66e2407c4a6e1188a3774d  # v8.7.1
+  - uses: gowrishankar-infra/sabline-lang@c051b51c0aecefccdf90080952f6300f1362fd1a  # v8.8.0
     with:
       min-proven: "80"
       pr-comment: "true"
@@ -1333,7 +1333,7 @@ ejected and what does not. In short:
 ```yaml
 repos:
   - repo: https://github.com/gowrishankar-infra/sabline-lang
-    rev: v8.7.1
+    rev: v8.8.0
     hooks:
       - id: sabline-check      # it compiles, and the promises hold
       - id: sabline-fmt        # canonically formatted
