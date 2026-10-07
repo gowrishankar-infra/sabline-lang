@@ -9,6 +9,11 @@
   file name. After `run` or a file, --help is the program's argument.
 - `sabline stats --ffi` counts what the audit reads, over a directory of
   known programs made here (8.2).
+- `sabline new` writes the AGENTS.md primer and `sabline card --agents`
+  prints the same one (8.8): the two cannot disagree, it carries the
+  version it was written from, and it still says the three things it is
+  for - read the card, how the budget works, write the program before
+  reading data.
 - A command that proves nothing imports neither z3 nor llvmlite: --version,
   card, fmt, and check of a file with no promises, under python -X
   importtime (8.2 item 22). With the prover installed, a check of a promise
@@ -225,9 +230,87 @@ def import_cases() -> None:
            f"exit {code}")
 
 
+def scaffold_cases() -> None:
+    """`sabline new` writes the AGENTS.md primer and `sabline card --agents`
+    prints the same one (8.8). A copy of this file lives in someone else's
+    repository, where no check here can reach it - so what is checked is
+    that the two cannot disagree, that it carries the version it was
+    written from, and that it still says the three things it exists for."""
+    print()
+    print("the AGENTS.md primer: `new` writes it, `card --agents` prints it")
+    print("-" * 62)
+    box = WORK / "scaffold"
+    if box.exists():
+        import shutil
+        shutil.rmtree(box, ignore_errors=True)
+    box.mkdir(parents=True)
+    code, out, err = sabline_cmd("new", "project", cwd=str(box))
+    made = box / "project"
+    ok("sabline new writes main.vel, README.md and AGENTS.md, and says so",
+       code == 0 and (made / "main.vel").exists()
+       and (made / "README.md").exists() and (made / "AGENTS.md").exists()
+       and "AGENTS.md" in out and not err.strip(),
+       f"exit {code}; {out[:200]!r}; {err[:160]!r}")
+    written = (made / "AGENTS.md").read_text(encoding="utf-8")
+    code, printed, err = sabline_cmd("card", "--agents")
+    ok("sabline card --agents prints that same primer, byte for byte",
+       code == 0 and printed.replace("\r\n", "\n")
+       == written.replace("\r\n", "\n") and not err.strip(),
+       f"exit {code}; {len(printed)} printed, {len(written)} written")
+    ok("...carrying the version it was written from, and no placeholder",
+       f"Sabline {sabline.VERSION}" in written
+       and "SABLINE_VERSION" not in written, written[:300])
+    says = {"the card": "sabline card", "the budget": "--allow",
+            "the ordering": "before you read the data"}
+    absent = sorted(k for k, text in says.items() if text not in written)
+    ok("...and saying the three things it exists to say: read the card, "
+       "how the budget works, write the program before reading data",
+       not absent, str(absent))
+    code, card, _ = sabline_cmd("card")
+    ok("sabline card with no flag is still the language reference, which "
+       "the primer is not",
+       code == 0 and "Sabline for language models" in card
+       and "Sabline for language models" not in written,
+       card[:120])
+    for words in (("--nope",), ("--agents", "extra")):
+        code, out, err = sabline_cmd("card", *words)
+        ok(f"sabline card {' '.join(words)}: refused, naming what is wrong "
+           f"and the flag it does have",
+           code == 2 and "--agents" in err and words[-1] in err
+           and not out.strip(), f"exit {code}; {err[:160]!r}")
+
+    # a build that ships no templates/ - the downloadable executables carry
+    # no LLM.md either - must say so rather than quietly writing two files
+    # where it printed three
+    import contextlib
+    import io as _io
+    import sabline.project as _project
+    bare = box / "bare"
+    bare.mkdir()
+    kept, cwd = _project.AGENTS_TEMPLATE, os.getcwd()
+    _project.AGENTS_TEMPLATE = os.path.join("templates", "absent.md")
+    said, printed = _io.StringIO(), _io.StringIO()
+    try:
+        os.chdir(bare)
+        with contextlib.redirect_stderr(said):
+            with contextlib.redirect_stdout(printed):
+                rc = _project.new_project("project")
+    finally:
+        os.chdir(cwd)
+        _project.AGENTS_TEMPLATE = kept
+    ok("a build with no templates/AGENTS.md writes the project and says on "
+       "stderr that it wrote no primer, rather than saying nothing",
+       rc == 0
+       and sorted(os.listdir(bare / "project")) == ["README.md", "main.vel"]
+       and "no AGENTS.md was written" in said.getvalue()
+       and "AGENTS.md" not in printed.getvalue(),
+       f"{rc}; {said.getvalue()[:160]!r}")
+
+
 def main() -> int:
     help_cases()
     stats_cases()
+    scaffold_cases()
     import_cases()
     print("-" * 62)
     print(f"{PASS} passed, {FAIL} wrong")

@@ -35,7 +35,15 @@ from typing import Any
 INTOTO_STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
 # the type is sabline/predicates.py's: at sabline.dev from 8.3, and the
 # version of sabline-spec that names it there
-CAPABILITY_SPEC = "sabline-spec 0.13.0"
+CAPABILITY_SPEC = "sabline-spec 0.15.0"
+# How the evidence in the predicate was arrived at (sabline-spec 0.15.0,
+# raised on in-toto #594, which asked how a verifier is to tell). "static"
+# is what an audit is: read from the source's declared types and effects,
+# before the program runs. The record of a run is the other thing, and it
+# is a receipt, not this predicate. One value is defined; a predicate that
+# is not an audit would need its own, and until one exists anything else
+# written here would say less than the field's absence.
+ANALYSIS_MODE = "static"
 
 
 def _attested_at() -> str:
@@ -128,6 +136,7 @@ def attest_statement(path: str, name: str | None = None, *,
             "predicate": {"producer": {"name": "sabline-lang",
                                        "uri": REPOSITORY},
                           "specification": CAPABILITY_SPEC,
+                          "analysisMode": ANALYSIS_MODE,
                           "auditedAt": _attested_at(),
                           "audit": doc}}
 

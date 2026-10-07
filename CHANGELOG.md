@@ -5,6 +5,142 @@ below 8.6 uses the name it had at the time, which is what the
 record is for. [docs/renamed.md](docs/renamed.md) says what
 moved where.
 
+## 8.8 - The three outside 9.0
+
+`decisions/0007` accepted three items as work that gates no rung of 9.0 and
+can be done at any time. This release is those three and nothing else: no
+rule of the language changed, no error code was added or removed, and no
+default moved. `release_checks.py covered v8.7.1` reports that nothing
+STABILITY.md covers changed.
+
+**A claim two documents made, and no test held: the MCP server's
+confinement.** `docs/confinement.md` says confinement is on by default
+"on the command line, in `sabline.run(timeout=...)`, in `sabline.Pool`, on
+the HTTP door, on the MCP server and under `sabline eval`", and
+THREAT_MODEL.md's confinement row says the same of both doors, naming
+`check_confine.py` as the evidence. Six places were claimed. Five were
+asserted: `check_confine.py` covered the command line, `run(timeout=)`, a
+`Pool`, `sabline eval` through `_EvalPool`, and the HTTP door - for which
+it starts a real `sabline serve` child with the fault-injection hook in its
+environment, posts a request that asks for no confinement in every field a
+request could carry it in, and holds the answer to E319 at the platform's
+own level. The MCP server had no equivalent, and the suite's own docstring
+listed only "run(timeout=), a Pool and the HTTP door".
+
+It has one now, written the same way: a real `sabline mcp` child with the
+hook in its environment, one `sabline_run` call carrying every
+no-confinement field that request carries - `confine: false`,
+`no_confine`, `no-confine`, and `--no-confine` among the program's own
+arguments - and E319 at this platform's own level coming back, with the
+write the hook attempted never landing.
+
+**The claim was true.** `sabline_mcp.py` sets `CONFINE = True` and builds
+both its pool registry and its checker with it, and the test holds that
+behaviour on each of the three platforms `check_confine.py` runs on - no
+release happens unless it passes on every one. Nothing was wrong, so no
+advisory follows; what was missing was the test. A second case makes the
+first one falsifiable: the same tool call against a server started with
+the operator's own `--no-confine` lets the write through at level `none`,
+so a green first case is green for the reason intended. `decisions/0007`
+asked for exactly that, having warned that a test which cannot fail is
+worse than no test, because it is counted. The suite's docstring now lists
+all six places, and THREAT_MODEL.md's evidence cell names both doors
+rather than "a door's request".
+
+**A capability predicate now says how its evidence was arrived at.**
+A Statement of `https://sabline.dev/capability/v1` carries a
+`sabline.audit/1` document, and a verifier reading one had no way to tell
+whether that evidence came from reading the source or from watching a run.
+The two bound different things: an audit says what a program *can* touch,
+a receipt (`.../receipt/v1`) says what one run *did*, and a run that did
+not reach a host is not a program that cannot. Raised on in-toto #594.
+
+`predicate.analysisMode` answers it, with `static` the only value defined:
+the audit was read from the source - its declared types and effects -
+before the program ran. `sabline attest` writes it; the predicate's schema
+admits that value and no other; and because every predicate of this type
+carries an audit, a producer writes `static` or leaves the field out. No
+second value is defined, because no predicate of this type has earned one,
+and a value written for a predicate that is still an audit would make the
+field worse than its absence.
+
+The field is additive within version 1, so no `v2` is needed and a
+consumer that does not know it ignores it. A consumer must not read the
+field's absence as `static`: a Statement signed before this release has no
+field and says nothing here either way. The repository's own two consumers
+- `policies/opa/capability.rego` and the Kyverno policy - ask for it
+nowhere, which `check_policies.py` now asserts, so a Statement from a
+producer before this release is still admitted.
+
+sabline-spec **0.15.0** defines it (section 8.5), and `sabline attest`'s
+`specification` says that version. The same field is in the in-toto draft
+on the `capability-predicate` branch of `gowrishankar-infra/attestation`,
+where this predicate type is proposed as a generic one.
+
+**`sabline new` writes an `AGENTS.md`, and `sabline card --agents` prints
+it for a project that already exists.** The primer says three things: read
+`sabline card` for the language, how a budget works, and write the program
+before reading the data. It is short on purpose and repeats nothing the
+card says, because a copy of it lives in someone else's repository where
+no check here can reach it; it carries the version it was written from, and
+`templates/AGENTS.md` is the one source both the command and the scaffold
+read, so the two cannot disagree. A build that ships no `templates/` -
+the downloadable executables carry no `LLM.md` either - says on stderr
+that it wrote no primer rather than quietly writing two files where it
+printed three.
+
+**And a guide for the rule the primer states**:
+[write the program before you read the data](docs/guide-write-before-read.md).
+It is the fourth step of `decisions/0007`'s item 34, and what it explains
+is which half of the problem the ordering is for. Not the door: a budget is
+matched against a value *at the door*, whichever door it came through, and
+over AgentDojo's four suites 238 programs that build an argument at run
+time out of what a read returned were run against three budgets each and
+decided identically to the literal program in all 714 runs. What the
+ordering is for is the budget itself - a program that takes its destination
+from what it read names no host, so the narrowest budget `sabline audit`
+can derive for it grants every host, and an operator who narrows it to the
+host that program wants is narrowing it to the attacker's. The guide says
+plainly what is not covered: Sabline has no per-value provenance, nothing
+refuses a program for having been written late, and the audit's `any`
+flags are the nearest signal there is.
+
+`check_differential.py` against v8.7.1: none of the 97 examples' outputs
+differs, sabline-spec's 456 conformance cases give the same verdicts, and
+the quick benchmark's 20 programs the same verdicts. Nothing in the
+runtime's path through a program changed, which is what that measures.
+
+| Measure | Result |
+|---|---|
+| Cold start, `sabline --version` | 276 ms |
+| Cold start, `sabline check` of a one-line file | 710 ms |
+| Check, 1,013-line program | 1.344 s per 1,000 lines (0.081 s without proofs) |
+| Check, 10,013-line program | 1.390 s per 1,000 lines (0.075 s without proofs) |
+| Proof time per example with contracts (z3), p50 / p95 | 24 ms / 598 ms over 56 files |
+| JIT on `examples/bench.vel`: compile (+ llvmlite import) | 88 ms (+ 77 ms), `burn` compiled |
+| Pure numeric, `examples/bench.vel`: native / interpreted | 5.87 s / 13.75 s, 2.34x (native code: `burn`) |
+| Pure numeric, integer loop: native / interpreted | 4 ms / 3.31 s (native code: `spin`) |
+| Pure numeric against v8.7.1, native | 5.88 s against 5.73 s, +2.6% (the gate allows +25%) |
+| Pure numeric against v8.7.1, interpreted | 17.06 s against 16.49 s, +3.5% |
+| `--lite` build size | there is none |
+| Pool worker RSS, 1 run -> 1,000 more | 26.7 MB -> 27.7 MB (+1.0 MB) |
+| z3 / llvmlite imported by `--version`; by `check` with no contracts | neither; neither |
+| Importing z3 when a command needs it | +216 ms at cold start |
+| Importing llvmlite when a command needs it | +223 ms at cold start |
+
+Measured on the machine MAINTENANCE.md names, Python 3.13, 16 CPUs, with
+21% of them busy over the second before measuring: wall-clock figures, and
+noisy to that extent. The release's `perf` job runs the pure-numeric gate
+against v8.7.1 on its own runner, where the 25% limit is enforced.
+
+api: `tests/api/golden.json` gains `--agents` in `cli.commands.card` and in
+`cli.flags`. One flag is added to one command - `sabline card --agents`
+prints the `AGENTS.md` primer instead of the language card - and nothing
+was removed, no signature changed, and no return type changed. `sabline
+card` with no flag prints what it always has. The command now refuses a
+flag it does not have, and a word after `--agents`, with exit 2 and a usage
+line, where before it ignored anything after `card`.
+
 ## 8.7.1 - The catalogue, checked
 
 **Every incident summary is published, and so is the flagship.** The

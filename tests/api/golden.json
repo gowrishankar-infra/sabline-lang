@@ -70,7 +70,9 @@
     "--json",
     "--sarif"
    ],
-   "card": [],
+   "card": [
+    "--agents"
+   ],
    "check": [
     "--check-memory-mb",
     "--check-timeout",
@@ -211,6 +213,7 @@
   },
   "flags": [
    "--against",
+   "--agents",
    "--allow",
    "--audit",
    "--bind",

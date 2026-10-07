@@ -91,6 +91,27 @@ def main() -> int:
        and "velaris.dev/capability" not in rego.replace(
            "velaris.dev/capability/v1 among them", ""))
 
+    # analysisMode (sabline-spec 0.15.0): the predicate says the evidence
+    # was read from the source, before the program ran. The two policies
+    # here are this repository's own consumers of the type, and the field
+    # is additive within v1 - so neither may ask for it, or a Statement
+    # signed by a producer before 0.15.0 would stop being admitted. That
+    # the field does not disturb them is `opa eval` below, on a Statement
+    # that carries it.
+    mode_program = WORK / "analysis-mode.vel"
+    mode_program.write_text(INSIDE, encoding="utf-8")
+    mode_statement = sabline.attest(str(mode_program))[0]
+    ok("the Statement a policy is given says how its evidence was arrived "
+       "at: analysisMode static, an audit read from the source",
+       mode_statement["predicate"]["analysisMode"] == "static"
+       and mode_statement["predicate"]["audit"]["schema"]
+       == "sabline.audit/1",
+       mode_statement["predicate"].get("analysisMode"))
+    ok("...and neither policy asks for it, so a Statement from a producer "
+       "before 0.15.0 is still admitted",
+       "analysisMode" not in rego
+       and "analysisMode" not in KYVERNO.read_text(encoding="utf-8"))
+
     opa = shutil.which(os.environ.get("OPA", "opa"))
     if opa is None:
         notice("opa is not installed, so policies/opa was not run; install "

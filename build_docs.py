@@ -104,7 +104,7 @@ AUTHOR = "Palakurthi Gowri Shankar"
 # check_docs.py; a comparison is docs/compare-*.md.
 GUIDES = ["guide-network-access.md", "guide-before-it-runs.md",
           "guide-everything-or-nothing.md", "guide-lethal-trifecta.md",
-          "guide-secrets-env.md"]
+          "guide-write-before-read.md", "guide-secrets-env.md"]
 COMPARISONS = ["compare-deno.md", "compare-wasi.md", "compare-camel.md",
                "compare-python-sandbox.md", "compare-ailang.md"]
 # the incident catalogue's flagship page, written by build_incidents.py only
@@ -941,6 +941,7 @@ def capability_page() -> Page:
     "producer": {"name": "sabline-lang",
                  "uri": "https://github.com/gowrishankar-infra/sabline-lang"},
     "specification": "%s",
+    "analysisMode": "static",
     "auditedAt": "2026-09-11T00:00:00Z",
     "audit": {"schema": "sabline.audit/1", "sabline_version": "%s",
               "ok": true, "effects": ["clock", "fs", "io", "rand"],
@@ -962,6 +963,15 @@ def capability_page() -> Page:
          "its version is the audit's <code>sabline_version</code>"),
         ("<code>predicate.specification</code>", "no", "the sabline-spec "
          f"version followed, as <code>{html.escape(spec)}</code>"),
+        ("<code>predicate.analysisMode</code>", "no", "how the evidence here "
+         "was arrived at. <code>static</code> is the only value defined, and "
+         "means the audit was read from the source - its declared types and "
+         "effects - before the program ran, which is what a "
+         "<code>sabline.audit/1</code> document is. The record of a run is a "
+         "receipt (<code>receipt/v1</code>), not a predicate of this type, so "
+         "a producer writes <code>static</code> or leaves the field out. A "
+         "Statement written before sabline-spec 0.15.0 has no field, and the "
+         "absence is not <code>static</code>: it says nothing either way"),
         ("<code>predicate.auditedAt</code>", "no", "when the audit was made, "
          "RFC 3339 in UTC, by the producer's clock"),
         ("<code>predicate.conformance</code>", "no", "the conformance levels "

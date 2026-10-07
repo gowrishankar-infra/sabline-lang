@@ -14,8 +14,10 @@ much of it.
              confinement what this system's row of the table says is held is
              refused by the kernel and the run ends with E319 naming the
              layers; what it says is not held goes through; and with
-             --no-confine every one goes through. Through the command line,
-             run(timeout=), a Pool and the HTTP door
+             --no-confine every one goes through. Through every place
+             docs/confinement.md and THREAT_MODEL.md say it is on by
+             default: the command line, run(timeout=), a Pool, the HTTP
+             door, the MCP server and sabline eval
   legitimate reads and writes inside a grant, a name resolved and a request
              made under a net grant, a temporary file under ffi:tempfile, a
              proof and native code made inside a confined pool worker
@@ -790,6 +792,75 @@ fn main() uses io {
     finally:
         door.terminate()
         door.wait(timeout=30)
+
+    # The same door-level case for the MCP server (32e). Six places are
+    # claimed confined and five were asserted here; `sabline mcp` is the
+    # sixth: a real child with the hook in its environment, one
+    # sabline_run that asks for no confinement every way the request
+    # above asks, and E319 at this platform's own level coming back. The
+    # operator's --no-confine is the second case on purpose - without it
+    # a green first case could be green for a reason nobody wanted.
+    def mcp_call(flags: list[str], arguments: dict[str, Any]) -> dict[str, Any]:
+        """Start `sabline mcp`, make one tool call, stop it, and give back
+        what the tool answered. Everything is written at once and read at
+        EOF, so a server that stops answering ends this instead of
+        holding it."""
+        asks = [{"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                 "params": {}},
+                {"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                 "params": {"name": "sabline_run",
+                            "arguments": arguments}},
+                {"jsonrpc": "2.0", "id": 3, "method": "exit"}]
+        child = subprocess.Popen(
+            [sys.executable, SABLINE, "mcp", *flags],
+            env=dict(os.environ, **fault), stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+            cwd=str(WORK))
+        try:
+            out, _ = child.communicate(
+                "".join(json.dumps(a) + "\n" for a in asks),
+                timeout=300)
+        except subprocess.TimeoutExpired:
+            child.kill()
+            child.wait(timeout=30)
+            return {"error": "the MCP server did not answer"}
+        for line in out.splitlines():
+            try:
+                msg = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(msg, dict) and msg.get("id") == 2:
+                content = (msg.get("result") or {}).get("content") or [{}]
+                text = content[0].get("text") or "{}"
+                try:
+                    answered = json.loads(text)
+                except json.JSONDecodeError:
+                    answered = None
+                return (answered if isinstance(answered, dict)
+                        else {"error": text})
+        return {"error": f"no answer to the tool call in {out!r}"}
+
+    def confinement_of(answer: dict[str, Any]) -> Any:
+        return (((answer.get("receipt") or {}).get("predicate") or {})
+                .get("run_parameters") or {}).get("confinement")
+
+    tool_call = {"source": HELLO, "allow": ["io"], "confine": False,
+                 "no_confine": True, "no-confine": True, "receipt": True,
+                 "args": ["--no-confine"]}
+    written.unlink(missing_ok=True)
+    answer = mcp_call([], tool_call)
+    codes = [p.get("code") for p in answer.get("problems") or []]
+    ok("a tool call to the MCP server that asks for no confinement gets a "
+       "confined run all the same",
+       codes == ["E319"] and not written.exists()
+       and confinement_of(answer) == LEVEL.get(PLATFORM), answer)
+    written.unlink(missing_ok=True)
+    answer = mcp_call(["--no-confine"], tool_call)
+    ok("...and the operator's own --no-confine is what turns it off, so "
+       "the case above is one that can fail",
+       not answer.get("problems") and written.exists()
+       and confinement_of(answer) == "none", answer)
+    written.unlink(missing_ok=True)
 
 
 # ---- against the confinement itself ---------------------------------------------------

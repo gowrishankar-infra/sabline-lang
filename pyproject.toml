@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sabline-lang"
-version = "8.7.1"
+version = "8.8.0"
 description = "Run code an AI wrote without handing it everything you can reach. Each function declares what it may touch. You grant the run one folder, one host or a number of calls, and the runtime refuses anything else the moment it's tried."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -59,6 +59,9 @@ only-include = ["sabline", "sabline_mcp.py", "sabline_mcp_install.py",
 "velaris_mcp_install.py" = "velaris_mcp_install.py"
 "velaris_magic.py" = "velaris_magic.py"
 "stdlib" = "stdlib"
+# the AGENTS.md primer `sabline new` writes and `sabline card --agents`
+# prints (8.8)
+"templates" = "templates"
 
 [tool.hatch.build]
 

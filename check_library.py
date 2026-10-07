@@ -2774,6 +2774,24 @@ def main() -> int:
                               for s in statements for e in v.iter_errors(part(s))]
             ok(f"every Statement validates against the {label} schema",
                not statement_errs, statement_errs[:3])
+    modes = {f: s["predicate"].get("analysisMode")
+             for f, s in by_file.items()}
+    ok("every predicate says how its evidence was arrived at: analysisMode "
+       "static, read from the source before the program ran (0.15.0)",
+       set(modes.values()) == {"static"}, modes)
+    if _V2 is not None:
+        v = _V2(json.loads((HERE / "docs" / "capability" / "v1"
+                            / "schema.json").read_text(encoding="utf-8")))
+        one = dict(statements[0]["predicate"])
+        runtime = dict(one, analysisMode="runtime")
+        absent = {k: x for k, x in one.items() if k != "analysisMode"}
+        ok("...and the schema admits only that value, and admits a "
+           "predicate without the field - a Statement signed before "
+           "0.15.0 is still valid",
+           list(v.iter_errors(runtime)) and not list(v.iter_errors(absent))
+           and not list(v.iter_errors(one)),
+           [e.message for e in v.iter_errors(absent)])
+
     comp = by_file["computed.vel"]["predicate"]["audit"]
     ok("a module named while running is represented as ffi_any, not as a "
        "list of modules", comp["ffi_any"] is True
