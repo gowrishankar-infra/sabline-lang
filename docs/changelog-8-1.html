@@ -181,8 +181,10 @@ runtime's path through a program changed, which is what that measures.</p>
 <tr><td>Check, 10,013-line program</td><td>1.390 s per 1,000 lines (0.075 s without proofs)</td></tr>
 <tr><td>Proof time per example with contracts (z3), p50 / p95</td><td>24 ms / 598 ms over 56 files</td></tr>
 <tr><td>JIT on <code>examples/bench.vel</code>: compile (+ llvmlite import)</td><td>88 ms (+ 77 ms), <code>burn</code> compiled</td></tr>
-<tr><td>Pure numeric, <code>examples/bench.vel</code>: native / interpreted</td><td>6.11 s / 14.05 s, 2.30x, gain 7.94 s</td></tr>
-<tr><td>Pure numeric, integer loop: native / interpreted</td><td>4 ms / 3.22 s (native code: <code>spin</code>)</td></tr>
+<tr><td>Pure numeric, <code>examples/bench.vel</code>: native / interpreted</td><td>5.87 s / 13.75 s, 2.34x (native code: <code>burn</code>)</td></tr>
+<tr><td>Pure numeric, integer loop: native / interpreted</td><td>4 ms / 3.31 s (native code: <code>spin</code>)</td></tr>
+<tr><td>Pure numeric against v8.7.1, native</td><td>5.88 s against 5.73 s, +2.6% (the gate allows +25%)</td></tr>
+<tr><td>Pure numeric against v8.7.1, interpreted</td><td>17.06 s against 16.49 s, +3.5%</td></tr>
 <tr><td><code>--lite</code> build size</td><td>there is none</td></tr>
 <tr><td>Pool worker RSS, 1 run -&gt; 1,000 more</td><td>26.7 MB -&gt; 27.7 MB (+1.0 MB)</td></tr>
 <tr><td>z3 / llvmlite imported by <code>--version</code>; by <code>check</code> with no contracts</td><td>neither; neither</td></tr>

@@ -119,8 +119,10 @@ runtime's path through a program changed, which is what that measures.
 | Check, 10,013-line program | 1.390 s per 1,000 lines (0.075 s without proofs) |
 | Proof time per example with contracts (z3), p50 / p95 | 24 ms / 598 ms over 56 files |
 | JIT on `examples/bench.vel`: compile (+ llvmlite import) | 88 ms (+ 77 ms), `burn` compiled |
-| Pure numeric, `examples/bench.vel`: native / interpreted | 6.11 s / 14.05 s, 2.30x, gain 7.94 s |
-| Pure numeric, integer loop: native / interpreted | 4 ms / 3.22 s (native code: `spin`) |
+| Pure numeric, `examples/bench.vel`: native / interpreted | 5.87 s / 13.75 s, 2.34x (native code: `burn`) |
+| Pure numeric, integer loop: native / interpreted | 4 ms / 3.31 s (native code: `spin`) |
+| Pure numeric against v8.7.1, native | 5.88 s against 5.73 s, +2.6% (the gate allows +25%) |
+| Pure numeric against v8.7.1, interpreted | 17.06 s against 16.49 s, +3.5% |
 | `--lite` build size | there is none |
 | Pool worker RSS, 1 run -> 1,000 more | 26.7 MB -> 27.7 MB (+1.0 MB) |
 | z3 / llvmlite imported by `--version`; by `check` with no contracts | neither; neither |
