@@ -12,7 +12,9 @@ as a feature.
 section c's input-bounded verdict: the rule as first worded was not sound,
 and the section it is written into is this repository's `SPEC.md` §9.5,
 not sabline-spec's. Read section c first and the amendment second; it says
-which sentences it changes, and changes nothing else.
+which sentences it changes, and changes nothing else. **That verdict is
+built**, as amended, in both runtimes on main (M2, 2026-10-08), and ships
+with 9.0; the rest of this file is still unbuilt.
 
 ## What this answers
 
