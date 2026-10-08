@@ -177,6 +177,11 @@ jobs:
         run: python check_mutant_kills.py
       - name: This repository needs nothing its sabline.capabilities does not declare
         run: sabline capabilities check .
+      # The ratchet reads a baseline it did not write without asking whether
+      # it is reduced; sabline-spec's validator does ask, so a hand-edited
+      # surface fails here rather than in sabline-spec's own CI.
+      - name: That sabline.capabilities is sorted and reduced, as sabline-spec 9.2 says
+        run: python sabline-spec/tools/validate.py --capabilities sabline.capabilities
       - name: sabline-spec's corpus is what these suites say (drift test)
         run: python build_conformance.py --check sabline-spec/tests
       - name: Conformant at L1, L2 and L3 against sabline-spec's corpus
