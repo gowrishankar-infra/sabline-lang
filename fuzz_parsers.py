@@ -4,7 +4,7 @@
 A Sabline error is a SablineError with a stable code, and a fallible
 builtin fails with FailSignal. Anything else that escapes - a Python
 traceback, a RecursionError, a process that dies or stops making progress
-- is a bug, whatever the input. Five targets:
+- is a bug, whatever the input. Seven targets:
 
     parser     lex, parse, then check_effects / check_types, on arbitrary
                text and on mutated real programs (examples/, stdlib/)
@@ -21,6 +21,11 @@ traceback, a RecursionError, a process that dies or stops making progress
                and sabline-rt - which must answer the same tree, or the
                same code, message, fixes and line (9.0.0-alpha.1; needs
                Rust, and is never skipped for want of it)
+    agreement_checks
+               generated programs, well- and ill-formed, to both checkers,
+               which must write the same check document: each stage's
+               problems and every loop's verdict (9.0, M2; needs Rust, and
+               is never skipped for want of it)
 
     python fuzz_parsers.py 30               30 iterations per target, under
                                             a random seed and then each of
@@ -68,7 +73,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from suite_dirs import isolate  # noqa: E402
 
-TARGETS = ("parser", "json", "csv", "py_json", "contracts", "agreement")
+TARGETS = ("parser", "json", "csv", "py_json", "contracts", "agreement",
+           "agreement_checks")
 
 # A child is given its parent's work directory; only the parent makes one.
 if "--work" in sys.argv[1:-1]:
@@ -1409,10 +1415,596 @@ def rt_binary() -> Path:
     return built
 
 
+# ---------------------------------------------------------------------------
+# agreement_checks: generated programs to both checkers (9.0, M2)
+# ---------------------------------------------------------------------------
+
+# The types a generated program holds values of. Int and Text are the
+# commonest in real programs, so they are listed twice.
+K_TYPES = ["Int", "Int", "Bool", "Float", "Text", "Text", "List of Int",
+           "List of Text", "Map of Text to Int", "Money of INR", "Pt",
+           "Secret of Text", "fn(Int) -> Int"]
+# The types a function may return: every value type, and none.
+K_RESULTS = [t for t in K_TYPES if t != "fn(Int) -> Int"] + [None, None]
+K_PRELUDE = ("record Pt {\n    x: Int\n    y: Int\n}\n\n"
+             "fn twice(n: Int) -> Int {\n    return n * 2\n}\n")
+# The effects a body can use, by what uses them.
+K_EFFECTS = ("io", "fs", "net", "clock", "rand", "env", "declassify")
+CHECKER_TOKENS = [
+    b"uses io", b"uses io, fs", b"uses clock", b"uses rand", b"uses env",
+    b"uses declassify", b"uses net", b"read_line()", b'line == ""',
+    b'line != ""', b"going = false", b"going = true", b"Secret of Int",
+    b'declassify(s, "shown")', b'env("HOME", "")', b"now()", b"random(6)",
+    b'write_file("out.txt", "x")', b'try read_file("in.txt")', b"twice",
+    b"for i in 0 to n {", b"for x in xs {", b"i = i + 1", b"i = i - 1",
+]
+
+
+class CheckerGen:
+    """Programs for the checkers, made to land on both sides of their
+    rules: an effect used and declared, or used and not; a Secret kept in,
+    declassified, or reaching an output; a failure handled, passed on, or
+    neither; a loop the termination rule has to judge, its counter moving
+    the right way, the wrong way, or bound again, and a read loop on each
+    side of the input-bounded verdict; a function value carrying what it
+    was made with. Well-formed most of the time, so that each stage runs
+    and the next one does too - the type checker runs only when the stages
+    before it found nothing - and wrong on purpose some of the time.
+
+    ContractGen makes programs for the prover; this makes them for what a
+    run needs before the prover, which is what sabline-rt has.
+    """
+
+    def __init__(self, rng: Any) -> None:
+        self.r: random.Random = rng
+        self.ill = False
+        self.used: set[str] = set()        # effects the body being written uses
+        self.can_fail = False              # whether that body may fail
+        self.pure = False                  # inside a function value's body
+        self.sigs: list[tuple[str, list[Any], Any, bool, set[str]]] = []
+        self.names = 0
+
+    def fresh(self, stem: str) -> str:
+        self.names += 1
+        return f"{stem}{self.names}"
+
+    def leaf(self, ty: Any) -> str:
+        r = self.r
+        if ty == "Int":
+            return r.choice(["0", "1", "2", "3", "-1", "10", "100",
+                             "9223372036854775807"])
+        if ty == "Bool":
+            return r.choice(["true", "false"])
+        if ty == "Float":
+            return r.choice(["0.0", "0.5", "1.5", "-2.25", "1000.0"])
+        if ty == "Text":
+            return r.choice(['""', '"a"', '"a,b"', '"x"', '"\\n"', '"é"',
+                             '"{}"'])
+        if ty == "List of Int":
+            return r.choice(["[1, 2, 3]", "[0]", "[-1, 5]"])
+        if ty == "List of Text":
+            return r.choice(['["a"]', '["a", "b"]'])
+        if ty == "Map of Text to Int":
+            return r.choice(['{"a": 1}', '{"a": 1, "b": 2}'])
+        if ty == "Money of INR":
+            return f'money({self.leaf("Int")}, "INR")'
+        if ty == "Pt":
+            return f"Pt(x: {self.leaf('Int')}, y: {self.leaf('Int')})"
+        if ty == "Secret of Text":
+            self.used.add("env")
+            return 'env("SABLINE_FUZZ", "")'
+        if ty == "fn(Int) -> Int":
+            return "twice"
+        return "0"
+
+    def expr(self, ty: Any, env: dict[str, Any], depth: int = 0) -> str:
+        r = self.r
+        if self.ill and r.random() < 0.05:
+            ty = r.choice(K_TYPES)
+        names = [n for n, t in env.items() if t == ty]
+        if depth >= 3 or r.random() < 0.35:
+            if names and r.random() < 0.75:
+                return r.choice(names)
+            return self.leaf(ty)
+
+        def e(t: Any) -> str:
+            return self.expr(t, env, depth + 1)
+
+        def effect(name: str, text: str) -> Callable[[], str]:
+            # a function value's body is pure: it declares no effects
+            def made() -> str:
+                if self.pure:
+                    return self.leaf(ty)
+                self.used.add(name)
+                return text
+            return made
+
+        def fallible(text: str) -> Callable[[], str]:
+            # `try` where the body may fail; a bare call to something that
+            # can fail, E5xx, when the program is meant to be wrong
+            def made() -> str:
+                if self.can_fail:
+                    return "try " + text
+                return text if self.ill else self.leaf(ty)
+            return made
+
+        def made_fn(param: str, result: str, body: Callable[[], str]) -> str:
+            """A function value, its body pure and unable to fail, which
+            reads the names around it: what it carries when it is made."""
+            saved = self.pure, self.can_fail
+            self.pure, self.can_fail = True, False
+            try:
+                return (f"fn({param}: Int) -> {result} {{ return "
+                        f"{body()} }}")
+            finally:
+                self.pure, self.can_fail = saved
+
+        def held(name: str) -> dict[str, Any]:
+            inner = dict(env)
+            inner[name] = "Int"
+            return inner
+
+        def effect_fallible(name: str, text: str) -> Callable[[], str]:
+            def made() -> str:
+                self.used.add(name)
+                return fallible(text)()
+            return made
+
+        def declassified() -> str:
+            if self.pure:
+                return self.leaf("Text")
+            self.used.add("declassify")
+            return f'declassify({e("Secret of Text")}, "shown")'
+
+        def call_of(t: Any) -> list[Callable[[], str]]:
+            out: list[Callable[[], str]] = []
+            for name, params, ret, can_fail, uses in self.sigs:
+                if ret != t or (self.pure and (uses or can_fail)):
+                    continue
+
+                def made(name: str = name, params: Any = params,
+                         can_fail: bool = can_fail, uses: Any = uses) -> str:
+                    self.used |= uses
+                    text = name + "(" + ", ".join(e(p) for _, p in params) + ")"
+                    if can_fail:
+                        return fallible(text)()
+                    return text
+                out.append(made)
+            return out
+
+        forms: list[Callable[[], str]] = []
+        if ty == "Int":
+            forms = [
+                lambda: f"({e('Int')} {r.choice(['+', '-', '*', '/', '%'])} {e('Int')})",
+                lambda: "-" + e("Int"),
+                lambda: f"length({e(r.choice(['List of Int', 'Text', 'List of Text']))})",
+                lambda: f"get({e('List of Int')}, {e('Int')})",
+                lambda: f"code_at({e('Text')}, {e('Int')})",
+                lambda: f"units_of({e('Money of INR')})",
+                lambda: f"{e('Pt')}.{r.choice(['x', 'y'])}",
+                lambda: f"round({e('Float')})",
+                lambda: f"get_or({e('Map of Text to Int')}, {e('Text')}, {e('Int')})",
+                lambda: r.choice([n for n, t in env.items()
+                                  if t == "fn(Int) -> Int"] or ["twice"])
+                + f"({e('Int')})",
+                effect("clock", "now()"),
+                effect("rand", f"random({r.randint(1, 9)})"),
+                lambda: fallible(f"to_int({e('Text')})")(),
+                lambda: fallible(f"div_or_fail({e('Int')}, {e('Int')})")(),
+            ] + call_of("Int")
+        elif ty == "Bool":
+            cmp_t = r.choice(["Int", "Int", "Float", "Text", "Money of INR"])
+            forms = [
+                lambda: f"({e(cmp_t)} {r.choice(C_CMP)} {e(cmp_t)})",
+                lambda: f"({e('Bool')} {r.choice(['and', 'or'])} {e('Bool')})",
+                lambda: "not " + e("Bool"),
+                lambda: f"contains({e('Text')}, {e('Text')})",
+                lambda: f"has({e('Map of Text to Int')}, {e('Text')})",
+                lambda: f"{r.choice(['all_of', 'any_of'])}({e('List of Int')}, "
+                        + made_fn("n", "Bool", lambda: "n > " + self.expr(
+                            "Int", held("n"), depth + 1)) + ")",
+            ] + call_of("Bool")
+        elif ty == "Float":
+            forms = [
+                lambda: f"({e('Float')} {r.choice(['+', '-', '*', '/'])} {e('Float')})",
+                lambda: f"to_float({e('Int')})",
+                lambda: "-" + e("Float"),
+            ] + call_of("Float")
+        elif ty == "Text":
+            forms = [
+                lambda: f"({e('Text')} + {e(r.choice(['Text', 'Text', 'Int']))})",
+                lambda: f"{r.choice(['upper', 'lower', 'sha256'])}({e('Text')})",
+                lambda: f"to_text({e(r.choice(['Int', 'Float', 'Bool', 'Pt']))})",
+                lambda: f'format("{{}} and {{}}", {e("Text")}, {e("Int")})',
+                lambda: f"get({e('List of Text')}, {e('Int')})",
+                lambda: f"text_of({e('Money of INR')})",
+                lambda: f"json_of({e(r.choice(['List of Int', 'Map of Text to Int', 'Pt']))})",
+                effect("io", "read_line()"),
+                lambda: declassified(),
+                effect_fallible("fs", 'read_file("in.txt")'),
+                effect_fallible("net", 'fetch("example.com")'),
+            ] + call_of("Text")
+        elif ty == "List of Int":
+            forms = [
+                lambda: f"push({e('List of Int')}, {e('Int')})",
+                lambda: f"[{e('Int')}, {e('Int')}]",
+                lambda: fallible(f"slice({e('List of Int')}, {e('Int')}, {e('Int')})")(),
+            ] + call_of("List of Int")
+        elif ty == "List of Text":
+            forms = [
+                lambda: f'split({e("Text")}, ",")',
+                lambda: f"chars({e('Text')})",
+                lambda: f"push({e('List of Text')}, {e('Text')})",
+                effect("io", "args()"),
+            ] + call_of("List of Text")
+        elif ty == "Map of Text to Int":
+            forms = [lambda: f"put({e('Map of Text to Int')}, {e('Text')}, {e('Int')})"] \
+                + call_of("Map of Text to Int")
+        elif ty == "Money of INR":
+            forms = [
+                lambda: f"({e('Money of INR')} {r.choice(['+', '-'])} {e('Money of INR')})",
+                lambda: f"({e('Money of INR')} * {e('Int')})",
+                lambda: f'money({e("Int")}, "INR")',
+            ] + call_of("Money of INR")
+        elif ty == "Pt":
+            forms = [lambda: f"Pt(x: {e('Int')}, y: {e('Int')})"] + call_of("Pt")
+        elif ty == "Secret of Text":
+            forms = [
+                lambda: f"({e('Secret of Text')} + {e('Text')})",
+                effect("env", f'env("SABLINE_FUZZ_{r.randint(0, 3)}", {e("Text")})'),
+            ] + call_of("Secret of Text")
+        elif ty == "fn(Int) -> Int":
+            forms = [lambda: made_fn("x", "Int", lambda: "x + " + self.expr(
+                         "Int", held("x"), depth + 1)),
+                     lambda: "twice"]
+        else:
+            forms = [lambda: self.leaf(ty)]
+        return r.choice(forms)()
+
+    # statements ------------------------------------------------------------
+
+    def block(self, env: dict[str, Any], ret: Any, depth: int,
+              count: int) -> list[str]:
+        out: list[str] = []
+        for _ in range(count):
+            out += self.statement(env, ret, depth)
+        return out
+
+    def statement(self, env: dict[str, Any], ret: Any, depth: int) -> list[str]:
+        r = self.r
+        pad = "    " * (depth + 1)
+        kinds = ["let", "let", "assign", "print", "if", "loop", "for",
+                 "check", "read_loop"]
+        if self.can_fail:
+            kinds += ["fail", "try_let"]
+        if ret is not None:
+            kinds.append("return")
+        if depth >= 2:
+            kinds = ["let", "assign", "print"]
+        kind = r.choice(kinds)
+        if kind == "let":
+            ty = r.choice(K_TYPES)
+            name = self.fresh("v")
+            line = f"{pad}let {name} = {self.expr(ty, env)}"
+            env[name] = ty
+            return [line]
+        if kind == "assign":
+            names = [n for n in env if not n.startswith("p")]
+            if not names:
+                return []
+            name = r.choice(names)
+            ty = env[name] if not (self.ill and r.random() < 0.3) else r.choice(K_TYPES)
+            return [f"{pad}{name} = {self.expr(ty, env)}"]
+        if kind == "print":
+            self.used.add("io")
+            ty = r.choice(K_TYPES if self.ill else
+                          [t for t in K_TYPES if t != "Secret of Text"])
+            return [f"{pad}{r.choice(['print', 'log'])}({self.expr(ty, env)})"]
+        if kind == "if":
+            out = [f"{pad}if {self.expr('Bool', env)} {{"]
+            out += self.block(dict(env), ret, depth + 1, r.randint(1, 2))
+            if r.random() < 0.5:
+                out.append(f"{pad}}} else {{")
+                out += self.block(dict(env), ret, depth + 1, r.randint(1, 2))
+            return out + [f"{pad}}}"]
+        if kind == "for":
+            inner = dict(env)
+            if r.random() < 0.5:
+                name = self.fresh("x")
+                out = [f"{pad}for {name} in {self.expr('List of Int', env)} {{"]
+            else:
+                name = self.fresh("i")
+                out = [f"{pad}for {name} in {self.expr('Int', env)} to "
+                       f"{self.expr('Int', env)} {{"]
+            inner[name] = "Int"
+            out += self.block(inner, ret, depth + 1, r.randint(1, 2))
+            return out + [f"{pad}}}"]
+        if kind == "loop":
+            return self.counter_loop(env, ret, depth)
+        if kind == "read_loop":
+            return self.read_loop(env, depth)
+        if kind == "check":
+            # what is checked, what an ok gives, and the effects it uses
+            subjects: list[tuple[str, Any, set[str]]] = [
+                (f"to_int({self.expr('Text', env)})", "Int", set()),
+                ('read_file("in.txt")', "Text", {"fs"}),
+                (f"div_or_fail({self.expr('Int', env)}, {self.expr('Int', env)})",
+                 "Int", set())]
+            subjects += [(f"{n}(" + ", ".join(self.expr(p, env) for _, p in ps) + ")",
+                          rt, uses)
+                         for n, ps, rt, fails, uses in self.sigs if fails]
+            subject, gives, uses = r.choice(subjects)
+            self.used |= uses
+            ok_env, fail_env = dict(env), dict(env)
+            ok = self.fresh("got") if gives is not None else ""
+            why = self.fresh("why")
+            if gives is not None:
+                ok_env[ok] = gives
+            fail_env[why] = "Text"
+            opened = f"{pad}    ok {ok} {{" if ok else f"{pad}    ok {{"
+            return ([f"{pad}check {subject} {{", opened]
+                    + self.block(ok_env, ret, depth + 2, 1)
+                    + [f"{pad}    }}", f"{pad}    fail {why} {{"]
+                    + self.block(fail_env, ret, depth + 2, 1)
+                    + [f"{pad}    }}", f"{pad}}}"])
+        if kind == "fail":
+            return [f"{pad}if {self.expr('Bool', env)} {{",
+                    f'{pad}    fail "{r.choice(["no", "bad input", ""])}"',
+                    f"{pad}}}"]
+        if kind == "try_let":
+            name = self.fresh("t")
+            line = f"{pad}let {name} = try to_int({self.expr('Text', env)})"
+            env[name] = "Int"
+            return [line]
+        # return
+        return [f"{pad}return {self.expr(ret, env)}"]
+
+    def counter_loop(self, env: dict[str, Any], ret: Any, depth: int) -> list[str]:
+        """A counting loop, from the shapes the termination rule judges:
+        up or down, by one or more, the right way or the wrong way, with
+        the counter or the limit bound again inside."""
+        r = self.r
+        pad = "    " * (depth + 1)
+        i = self.fresh("i")
+        limit = self.expr("Int", env)
+        up = r.random() < 0.6
+        start, cmp = ("0", r.choice(["<", "<=", "!="])) if up else \
+            (limit, r.choice([">", ">=", "!="]))
+        bound = limit if up else r.choice(["0", "1", "-1"])
+        step = r.choice(["1", "1", "2", "0", "-1"])
+        move = f"{i} = {i} {'+' if up else '-'} {step}"
+        out = [f"{pad}let {i} = {start}", f"{pad}while {i} {cmp} {bound} {{"]
+        inner = dict(env)
+        inner[i] = "Int"
+        # whole statements, so that the counter's step goes between two of
+        # them and never inside one
+        body = [self.statement(inner, ret, depth + 1)
+                for _ in range(r.randint(0, 2))]
+        roll = r.random()
+        if roll < 0.08:
+            body.append([f"{pad}    {i} = {self.expr('Int', inner)}"])   # bound again
+        elif roll < 0.12:
+            body.append([f"{pad}    let {i} = 0"])                       # shadowed
+        if r.random() < 0.9:
+            body.insert(r.randint(0, len(body)), [f"{pad}    {move}"])
+        env[i] = "Int"
+        return out + [line for lines in body for line in lines] + [f"{pad}}}"]
+
+    def read_loop(self, env: dict[str, Any], depth: int) -> list[str]:
+        """A loop over the lines of the input, on one side or the other of
+        the input-bounded verdict (SPEC.md 9.5): the condition tests the
+        line, or a flag cleared in an arm that tests it - or near misses
+        of both, which must stay unshown."""
+        r = self.r
+        pad = "    " * (depth + 1)
+        self.used.add("io")
+        line = self.fresh("line")
+        empty = r.choice(['""', '"x"', '"quit"'])
+        shape = r.choice(["cond", "flag-then", "flag-else", "flag-cleared-twice",
+                          "read-once"])
+        if shape == "cond":
+            test = r.choice([f"{line} != {empty}", f"length({line}) > 0",
+                             f"0 < length({line})", f"{empty} != {line}"])
+            out = [f"{pad}let {line} = read_line()", f"{pad}while {test} {{"]
+            if r.random() < 0.85:
+                out.append(f"{pad}    {line} = read_line()")
+            out.append(f"{pad}    print({line})")
+            env[line] = "Text"
+            return out + [f"{pad}}}"]
+        flag = self.fresh("going")
+        out = [f"{pad}let {flag} = true", f"{pad}while {flag} {{"]
+        if shape == "read-once":
+            out = [f"{pad}let {line} = read_line()"] + out
+        else:
+            out.append(f"{pad}    let {line} = read_line()")
+        if shape == "flag-else":
+            out += [f"{pad}    if {line} != {empty} {{", f"{pad}        print({line})",
+                    f"{pad}    }} else {{", f"{pad}        {flag} = false", f"{pad}    }}"]
+        else:
+            out += [f"{pad}    if {line} == {empty} {{", f"{pad}        {flag} = false",
+                    f"{pad}    }}"]
+            if shape == "flag-cleared-twice":
+                out.append(f"{pad}    {flag} = {r.choice(['true', 'false'])}")
+        env[line] = "Text"
+        env[flag] = "Bool"
+        return out + [f"{pad}}}"]
+
+    # functions and programs ---------------------------------------------------
+
+    def function(self, k: int) -> str:
+        r = self.r
+        name = f"f{k}"
+        params = [(f"p{j}", r.choice(K_TYPES)) for j in range(r.randint(0, 3))]
+        ret = r.choice(K_RESULTS)
+        self.used = set()
+        self.can_fail = r.random() < 0.25
+        env = dict(params)
+        body = self.block(env, ret, 0, r.randint(1, 4))
+        if ret is not None:
+            body.append(f"    return {self.expr(ret, env)}")
+        uses = set(self.used)
+        declared = set(uses)
+        if self.ill and r.random() < 0.15 and declared:
+            declared.discard(r.choice(sorted(declared)))
+        elif self.ill and r.random() < 0.2:
+            declared.add(r.choice(K_EFFECTS))
+        head = f"fn {name}(" + ", ".join(f"{n}: {t}" for n, t in params) + ")"
+        if ret:
+            head += f" -> {ret}"
+        if declared:
+            head += " uses " + ", ".join(sorted(declared))
+        if self.can_fail:
+            head += " or fail"
+        self.sigs.append((name, params, ret, self.can_fail, uses))
+        return head + " {\n" + "".join(b + "\n" for b in body) + "}\n"
+
+    def program(self) -> str:
+        r = self.r
+        self.ill = r.random() < 0.3
+        parts = [K_PRELUDE]
+        for k in range(r.randint(1, 3)):
+            parts.append(self.function(k))
+        self.used = {"io"}
+        self.can_fail = False
+        env: dict[str, Any] = {}
+        body = self.block(env, None, 0, r.randint(1, 3))
+        for name, params, _ret, can_fail, uses in self.sigs:
+            call = name + "(" + ", ".join(self.expr(t, env) for _, t in params) + ")"
+            self.used |= uses
+            if can_fail:
+                ok = " value" if _ret is not None else ""
+                body += [f"    check {call} {{", f"        ok{ok} {{", "        }",
+                         "        fail why {", "            print(why)",
+                         "        }", "    }"]
+            elif _ret not in (None, "Secret of Text") and r.random() < 0.5:
+                body.append(f"    print({call})")
+            else:
+                body.append(f"    {call}")
+        declared = set(self.used)
+        if self.ill and r.random() < 0.15:
+            declared.discard(r.choice(sorted(declared)))
+        uses_clause = " uses " + ", ".join(sorted(declared)) if declared else ""
+        parts.append(f"fn main(){uses_clause} {{\n"
+                     + "".join(b + "\n" for b in body) + "}\n")
+        return "\n".join(parts)
+
+
+class CheckerAgreementTarget(Target):
+    """Generated programs to both checkers, which must agree exactly.
+
+    The `agreement` target holds the parsers to each other on input nobody
+    wrote; this holds the checkers, the same way. The comparison is the
+    one `check_agreement.py` makes of the checkers - the check document,
+    byte for byte: each stage's problems in the reference's order, and
+    every loop's verdict and the reason for it - over programs CheckerGen
+    writes and the mutations the engine makes of them, steered by the
+    lines of the Python checkers each one reaches.
+
+    As in `agreement`, sabline-rt is built if it is not built, and nothing
+    here skips.
+    """
+
+    name = "agreement_checks"
+    max_len = 96 * 1024
+    pairs = PARSER_PAIRS
+
+    def setup(self) -> None:
+        super().setup()
+        self.binary = str(rt_binary())
+        self.dump = importlib.import_module("sabline.check_dump")
+        self.tokens = (PARSER_TOKENS + CHECKER_TOKENS
+                       + sorted(n.encode() for n in V.BUILTINS))
+        # the file both checkers read; written before each input
+        self.entry = str(WORK / "agreement_checks_input.vel")
+
+    def seeds(self, rng: Any) -> Any:
+        out = [as_bytes(CheckerGen(rng).program()) for _ in range(16)]
+        files = (sorted(HERE.glob("examples/**/*.vel"))
+                 + sorted(HERE.glob("stdlib/*.vel")))
+        out += [p.read_bytes() for p in files]
+        # the loops the termination rule is held to, and the refusals no
+        # mutation of a shipped program reaches: what the gate carries
+        for module, pick in (
+                ("check_termination",
+                 lambda m: [s.lstrip().encode() for _, _, s in m.CASES]),
+                ("agreement_checks",
+                 lambda m: [p for _, p in m.edges() if isinstance(p, bytes)])):
+            try:
+                out += pick(importlib.import_module(module))
+            except ImportError:
+                pass
+        return out
+
+    def generate(self, rng: Any) -> Any:
+        return as_bytes(CheckerGen(rng).program())
+
+    def execute(self, data: Any) -> None:
+        try:
+            plain = imports_are_plain(V.lex(as_text(data)))
+        except V.SablineError:
+            plain = True          # refused while lexing: nothing is opened
+        if not plain:
+            return                # an import of any other path is opened as
+                                  # written, and a UNC path is the network
+        Path(self.entry).write_bytes(data)
+        mine = self.dump.canonical(
+            self.dump.check_document(self.entry)).encode("ascii")
+        try:
+            done = subprocess.run([self.binary, "check", "--install-dir",
+                                   str(HERE), self.entry], capture_output=True)
+        except OSError as e:
+            raise SystemExit(f"fuzz_parsers: {self.binary} cannot be run "
+                             f"({e}); the comparison would be one checker "
+                             f"against itself")
+        if done.returncode not in (0, 1):
+            raise Difference(
+                f"sabline-rt ended {done.returncode}, which is neither a "
+                f"check that found nothing nor one that found something: "
+                f"{done.stderr.decode('utf-8', 'replace')[:2000]}")
+        theirs = done.stdout.rstrip(b"\n")
+        if mine != theirs:
+            raise Difference("the two checkers differ: "
+                             + first_difference(mine, theirs))
+
+
+def first_difference(mine: bytes, theirs: bytes) -> str:
+    """Where two canonical documents differ: a path through the tree, or
+    the byte they first differ at when one will not read."""
+    def walk(a: Any, b: Any, where: str) -> str | None:
+        if type(a) is not type(b):
+            return f"{where or 'the document'}: python {a!r}, sabline-rt {b!r}"
+        if isinstance(a, dict):
+            for key in sorted(set(a) | set(b)):
+                if key not in a or key not in b:
+                    return f"{where}.{key}: only {'sabline-rt' if key not in a else 'python'} has it"
+                found = walk(a[key], b[key], f"{where}.{key}")
+                if found:
+                    return found
+            return None
+        if isinstance(a, list):
+            for k, (x, y) in enumerate(zip(a, b)):
+                found = walk(x, y, f"{where}[{k}]")
+                if found:
+                    return found
+            if len(a) != len(b):
+                return f"{where}: python has {len(a)} items, sabline-rt {len(b)}"
+            return None
+        return None if a == b else f"{where}: python {a!r}, sabline-rt {b!r}"
+    try:
+        return walk(json.loads(mine), json.loads(theirs), "") or "in bytes only"
+    except (ValueError, RecursionError):
+        at = next((i for i, (a, b) in enumerate(zip(mine, theirs)) if a != b),
+                  min(len(mine), len(theirs)))
+        window = slice(max(0, at - 80), at + 80)
+        return (f"at byte {at}:\n  python:     {mine[window]!r}\n"
+                f"  sabline-rt: {theirs[window]!r}")
+
+
 def make_target(name: str) -> Target:
     return {"parser": ParserTarget, "json": JsonTarget, "csv": CsvTarget,
             "py_json": PyJsonTarget, "contracts": ContractsTarget,
-            "agreement": AgreementTarget}[name]()
+            "agreement": AgreementTarget,
+            "agreement_checks": CheckerAgreementTarget}[name]()
 
 
 # ---------------------------------------------------------------------------

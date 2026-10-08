@@ -257,7 +257,9 @@ def collect(paths: list[str]) -> tuple[list[tuple[str, Any]], list[str], Path]:
 
     A program is either a path to a file, which both runtimes read
     themselves, or the **bytes** of one, which the gate writes into a
-    directory both runtimes then read. Reading a file is the path a user's
+    directory both runtimes then read, or several files by name - a
+    program and the libraries it imports - which the gate writes into a
+    folder of their own. Reading a file is the path a user's
     program takes, so it is the path the gate takes too - and bytes rather
     than text because a byte-order mark, a lone carriage return and a
     sequence that is not UTF-8 are three of the things that have to agree.
@@ -492,6 +494,16 @@ def main(argv: list[str]) -> int:
             if payload is MISSING:
                 # named, never written: both runtimes must answer E001
                 listing.append(str(here / f"{i:05d}-not-written.vel"))
+                continue
+            if isinstance(payload, dict):
+                # a program of several files: written into a folder of its
+                # own, so that each import finds its library beside it, and
+                # asked about by its first file
+                folder = here / f"{i:05d}"
+                folder.mkdir()
+                for file_name, data in payload.items():
+                    (folder / file_name).write_bytes(data)
+                listing.append(str(folder / next(iter(payload))))
                 continue
             # a program that is not a file becomes one, because reading a
             # file is the path a user's program takes

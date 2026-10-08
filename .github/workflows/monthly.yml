@@ -53,9 +53,10 @@ jobs:
           if-no-files-found: ignore
 
   rt_fuzz:
-    name: sabline-rt fuzzed, and both parsers on the same input
+    name: sabline-rt fuzzed, and both parsers and both checkers on the same input
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # two hours of cargo-fuzz and forty minutes of the differential fuzzer
+    timeout-minutes: 200
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
         with:
@@ -79,11 +80,14 @@ jobs:
         working-directory: rt/crates/sabline-rt
         run: cargo fuzz run dump -- -max_total_time=3600 -rss_limit_mb=4096
       # Both parsers on the same generated input, which must answer the
-      # same tree or the same code, message, fixes and line.
-      - name: The differential fuzzer, 20 minutes
+      # same tree or the same code, message, fixes and line; then both
+      # checkers on generated programs, which must write the same check
+      # document.
+      - name: The differential fuzzer, 20 minutes a target
         run: |
           cargo build --release --manifest-path rt/Cargo.toml
           python fuzz_parsers.py --target agreement --minutes 20 --crashes rt-fuzz-crashes
+          python fuzz_parsers.py --target agreement_checks --minutes 20 --crashes rt-fuzz-crashes
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         if: always()
         with:

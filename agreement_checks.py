@@ -26,9 +26,13 @@ with an empty reason, a loop whose counter is bound again inside it, an
 import that is not Sabline source. Each was found by measuring which lines
 of `sabline/checker.py`, `effects.py`, `termination.py`, `loader.py` and
 `wrappers.py` the rest of the gate never runs, and is named for the rule
-it reaches. A rule that cannot be reached from one file - an import root,
-a library with a function value imported under a name - is not here, and
-the progress record says which.
+it reaches.
+
+**The trees.** A rule one file cannot reach - a library with a function
+value imported under a name, a library importing another - is reached by
+a program of several files, which the gate writes into a folder of its
+own. An import root is a door's setting rather than a program's, and is
+not here.
 """
 from pathlib import Path
 from typing import Any, Callable
@@ -467,11 +471,53 @@ EDGES: tuple[tuple[str, str], ...] = (
 )
 
 
+# Programs of more than one file: the rules a single file cannot reach.
+# Each is its files by name, the one the gate asks about first; the gate
+# writes them into a folder of their own, so that each import finds its
+# library beside it.
+LIBRARY_WITH_A_FUNCTION_VALUE = (
+    "fn positive(xs: List of Int) -> Bool {\n"
+    "    return all_of(xs, fn(x: Int) -> Bool { return x > 0 })\n"
+    "}\n")
+TREES = (
+    # a library that makes a function value, imported under a name: the
+    # loader renames the library's functions, the lifted one among them,
+    # and not the name the value refers to it by, so the type checker
+    # cannot find it (checker.py's "unknown function value"). Imported
+    # flat, the same library compiles.
+    ("library-function-value-under-a-name", {
+        "main.vel": 'import "lib.vel" as lib\n' + _main("print(lib.positive([1, 2]))"),
+        "lib.vel": LIBRARY_WITH_A_FUNCTION_VALUE}),
+    ("library-function-value-flat", {
+        "main.vel": 'import "lib.vel"\n' + _main("print(positive([1, 2]))"),
+        "lib.vel": LIBRARY_WITH_A_FUNCTION_VALUE}),
+    # a library under a name that imports one of its own, flat and named
+    ("library-imports-a-library", {
+        "main.vel": 'import "outer.vel" as outer\n' + _main("print(outer.twice_of(2))"),
+        "outer.vel": 'import "inner.vel" as inner\n'
+                     "fn twice_of(n: Int) -> Int {\n    return inner.double(n)\n}\n",
+        "inner.vel": "fn double(n: Int) -> Int {\n    return n * 2\n}\n"}),
+    # a library's loop, judged where it is written, and its refusal
+    # reported against the library's file and line
+    ("library-loop-and-refusal", {
+        "main.vel": 'import "lib.vel" as lib\n' + _main('print(lib.count("a"))'),
+        "lib.vel": "fn count(t: Text) -> Int {\n    let i = 0\n"
+                   "    while i < length(t) {\n        i = i + 1\n    }\n"
+                   '    return i + "x"\n}\n'}),
+)
+
+
 def edges() -> list[tuple[str, Any]]:
-    """The table above, and the one edge that has to name a real file: an
-    import of something that is not Sabline source, which must say so
-    without quoting what the file holds."""
-    out = [(f"check-edge/{name}", source.encode("utf-8")) for name, source in EDGES]
+    """The table above, the programs of several files - each a mapping of
+    file name to bytes, the first the one asked about - and the one edge
+    that has to name a real file: an import of something that is not
+    Sabline source, which must say so without quoting what the file
+    holds."""
+    out: list[tuple[str, Any]] = [
+        (f"check-edge/{name}", source.encode("utf-8")) for name, source in EDGES]
+    out += [(f"check-tree/{name}", {path: text.encode("utf-8")
+                                    for path, text in files.items()})
+            for name, files in TREES]
     licence = (ROOT / "LICENSE").as_posix()
     out.append(("check-edge/import-of-what-is-not-sabline",
                 ('import "' + licence + '"\n' + _main("print(1)")).encode("utf-8")))

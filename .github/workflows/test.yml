@@ -288,6 +288,10 @@ jobs:
       # twenty minutes and cargo-fuzz for an hour.
       - name: The same generated input to both parsers
         run: python fuzz_parsers.py --target agreement --minutes 2
+      # Generated programs to both checkers, which must write the same
+      # check document (M2): the programs nobody wrote, beside the gate's.
+      - name: The same generated programs to both checkers
+        run: python fuzz_parsers.py --target agreement_checks --minutes 2
       # Five suites' check-time questions asked of sabline-rt (M2), each
       # held to the answer it holds the Python package to. A question that
       # runs a program (M3), the prover's and an audit's are counted as not
