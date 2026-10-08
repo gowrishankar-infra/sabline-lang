@@ -1,4 +1,4 @@
-//! A canonical JSON writer, and nothing else.
+//! A canonical JSON writer, and a reader for what the gate sends.
 //!
 //! The AST dump is compared byte for byte against what CPython's `json`
 //! module writes, so the writer is specified against that module rather
@@ -24,6 +24,15 @@
 //! that contract: a general JSON library is free to spell any of it
 //! differently, and the difference would read as a difference between two
 //! parsers.
+//!
+//! The reader ([`Json::parse`]) is for input that is data, not a program:
+//! the budgets the agreement gate and `sabline conformance --runtime rust`
+//! hand over, one JSON document a line, so that a budget holding a tab, a
+//! comma or a character past ASCII reaches sabline-rt exactly as it reached
+//! the Python package. It reads what CPython's `json.dumps` writes. A
+//! number with a fraction or an exponent, a lone surrogate and a document
+//! nested deeper than [`MAX_DEPTH`] are refused: nothing the gate sends
+//! holds one.
 
 use std::collections::BTreeMap;
 
@@ -36,6 +45,9 @@ pub enum Json {
     Bool(bool),
     /// A whole number.
     Int(i64),
+    /// A whole number of any size, as its decimal digits: what a count in
+    /// a budget is, since CPython's `int()` has no upper bound.
+    Num(String),
     /// A string.
     Str(String),
     /// An array.
@@ -70,6 +82,7 @@ fn write_value(out: &mut String, value: &Json) {
         Json::Bool(true) => out.push_str("true"),
         Json::Bool(false) => out.push_str("false"),
         Json::Int(n) => out.push_str(&n.to_string()),
+        Json::Num(digits) => out.push_str(digits),
         Json::Str(s) => write_string(out, s),
         Json::List(items) => {
             if items.is_empty() {
@@ -127,9 +140,251 @@ fn write_string(out: &mut String, s: &str) {
     out.push('"');
 }
 
+/// How deep [`Json::parse`] reads before it refuses.
+pub const MAX_DEPTH: usize = 64;
+
+impl Json {
+    /// Read one JSON document. `Err` says where it stopped and why.
+    pub fn parse(text: &str) -> Result<Json, String> {
+        let chars: Vec<char> = text.chars().collect();
+        let mut reader = Reader { chars: &chars, at: 0 };
+        reader.blank();
+        let value = reader.value(0)?;
+        reader.blank();
+        if reader.at != chars.len() {
+            return Err(format!("JSON: something after the document, at {}", reader.at));
+        }
+        Ok(value)
+    }
+}
+
+struct Reader<'a> {
+    chars: &'a [char],
+    at: usize,
+}
+
+impl Reader<'_> {
+    fn peek(&self) -> Option<char> {
+        self.chars.get(self.at).copied()
+    }
+
+    fn blank(&mut self) {
+        while matches!(self.peek(), Some(' ' | '\t' | '\n' | '\r')) {
+            self.at += 1;
+        }
+    }
+
+    fn word(&mut self, word: &str, value: Json) -> Result<Json, String> {
+        for want in word.chars() {
+            if self.peek() != Some(want) {
+                return Err(format!("JSON: expected {word} at {}", self.at));
+            }
+            self.at += 1;
+        }
+        Ok(value)
+    }
+
+    fn value(&mut self, depth: usize) -> Result<Json, String> {
+        if depth > MAX_DEPTH {
+            return Err(format!("JSON: nested deeper than {MAX_DEPTH}"));
+        }
+        match self.peek() {
+            Some('n') => self.word("null", Json::Null),
+            Some('t') => self.word("true", Json::Bool(true)),
+            Some('f') => self.word("false", Json::Bool(false)),
+            Some('"') => self.string().map(Json::Str),
+            Some('[') => self.list(depth),
+            Some('{') => self.object(depth),
+            Some(c) if c == '-' || c.is_ascii_digit() => self.number(),
+            _ => Err(format!("JSON: no value at {}", self.at)),
+        }
+    }
+
+    fn list(&mut self, depth: usize) -> Result<Json, String> {
+        self.at += 1;
+        let mut items = Vec::new();
+        self.blank();
+        if self.peek() == Some(']') {
+            self.at += 1;
+            return Ok(Json::List(items));
+        }
+        loop {
+            self.blank();
+            items.push(self.value(depth + 1)?);
+            self.blank();
+            match self.peek() {
+                Some(',') => self.at += 1,
+                Some(']') => {
+                    self.at += 1;
+                    return Ok(Json::List(items));
+                }
+                _ => return Err(format!("JSON: expected , or ] at {}", self.at)),
+            }
+        }
+    }
+
+    fn object(&mut self, depth: usize) -> Result<Json, String> {
+        self.at += 1;
+        let mut pairs = BTreeMap::new();
+        self.blank();
+        if self.peek() == Some('}') {
+            self.at += 1;
+            return Ok(Json::Obj(pairs));
+        }
+        loop {
+            self.blank();
+            if self.peek() != Some('"') {
+                return Err(format!("JSON: expected a key at {}", self.at));
+            }
+            let key = self.string()?;
+            self.blank();
+            if self.peek() != Some(':') {
+                return Err(format!("JSON: expected : at {}", self.at));
+            }
+            self.at += 1;
+            self.blank();
+            let item = self.value(depth + 1)?;
+            pairs.insert(key, item);
+            self.blank();
+            match self.peek() {
+                Some(',') => self.at += 1,
+                Some('}') => {
+                    self.at += 1;
+                    return Ok(Json::Obj(pairs));
+                }
+                _ => return Err(format!("JSON: expected , or }} at {}", self.at)),
+            }
+        }
+    }
+
+    fn number(&mut self) -> Result<Json, String> {
+        let start = self.at;
+        self.at += 1;
+        while self.peek().is_some_and(|c| c.is_ascii_digit()) {
+            self.at += 1;
+        }
+        if matches!(self.peek(), Some('.' | 'e' | 'E')) {
+            return Err(format!("JSON: only whole numbers are read, at {start}"));
+        }
+        let digits: String = self.chars[start..self.at].iter().collect();
+        if digits == "-" {
+            return Err(format!("JSON: a lone - at {start}"));
+        }
+        Ok(match digits.parse::<i64>() {
+            Ok(n) => Json::Int(n),
+            Err(_) => Json::Num(digits),
+        })
+    }
+
+    fn hex4(&mut self) -> Result<u32, String> {
+        let mut n = 0;
+        for _ in 0..4 {
+            let Some(d) = self.peek().and_then(|c| c.to_digit(16)) else {
+                return Err(format!("JSON: an escape wants four hex digits, at {}", self.at));
+            };
+            n = n * 16 + d;
+            self.at += 1;
+        }
+        Ok(n)
+    }
+
+    fn escape(&mut self) -> Result<char, String> {
+        let Some(e) = self.peek() else {
+            return Err("JSON: a string that does not end".to_string());
+        };
+        self.at += 1;
+        let simple = match e {
+            '"' => '"',
+            '\\' => '\\',
+            '/' => '/',
+            'b' => '\u{8}',
+            'f' => '\u{c}',
+            'n' => '\n',
+            'r' => '\r',
+            't' => '\t',
+            'u' => return self.unicode_escape(),
+            _ => return Err(format!("JSON: {e:?} is not an escape, at {}", self.at)),
+        };
+        Ok(simple)
+    }
+
+    fn unicode_escape(&mut self) -> Result<char, String> {
+        let lone = |at: usize| format!("JSON: a lone surrogate at {at}");
+        let unit = self.hex4()?;
+        let code = if (0xD800..0xDC00).contains(&unit) {
+            if self.peek() != Some('\\') {
+                return Err(lone(self.at));
+            }
+            self.at += 1;
+            if self.peek() != Some('u') {
+                return Err(lone(self.at));
+            }
+            self.at += 1;
+            let low = self.hex4()?;
+            if !(0xDC00..0xE000).contains(&low) {
+                return Err(lone(self.at));
+            }
+            0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00)
+        } else {
+            unit
+        };
+        char::from_u32(code).ok_or_else(|| lone(self.at))
+    }
+
+    fn string(&mut self) -> Result<String, String> {
+        self.at += 1;
+        let mut out = String::new();
+        loop {
+            let Some(c) = self.peek() else {
+                return Err("JSON: a string that does not end".to_string());
+            };
+            self.at += 1;
+            match c {
+                '"' => return Ok(out),
+                '\\' => out.push(self.escape()?),
+                _ => out.push(c),
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn what_it_writes_it_reads_back() {
+        let doc = Json::obj([
+            ("a", Json::List(vec![Json::Null, Json::Bool(true), Json::Int(-7)])),
+            ("b", Json::text("tab\there, caf\u{e9}, \u{1f600}, \"q\" \\ /")),
+            ("c", Json::Num("123456789012345678901234567890".to_string())),
+        ]);
+        assert_eq!(Json::parse(&doc.canonical()), Ok(doc));
+        assert_eq!(
+            Json::parse(" [ \"x\" , null, {} ] "),
+            Ok(Json::List(vec![Json::text("x"), Json::Null, Json::Obj(BTreeMap::new())]))
+        );
+    }
+
+    #[test]
+    fn what_it_will_not_read() {
+        for bad in [
+            "1.5",
+            "1e3",
+            "\"\\ud800\"",
+            "\"\\udc00\"",
+            "[1,]",
+            "{\"a\" 1}",
+            "\"x",
+            "-",
+            "[] []",
+            "\"\\q\"",
+        ] {
+            assert!(Json::parse(bad).is_err(), "{bad}");
+        }
+        let deep = format!("{}{}", "[".repeat(MAX_DEPTH + 2), "]".repeat(MAX_DEPTH + 2));
+        assert!(Json::parse(&deep).is_err());
+    }
 
     #[test]
     fn an_empty_container_is_written_flat() {

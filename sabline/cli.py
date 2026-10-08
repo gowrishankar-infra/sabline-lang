@@ -226,7 +226,8 @@ Usage:
         --against REF [--json]             block gives a job more than REF
         [--root DIR]                       did (exit 1; 2 if one is unreadable)
   sabline conformance [--level 1|2|3]      run sabline-spec's conformance
-        [--json] [--corpus DIR]            corpus against this Sabline
+        [--json] [--corpus DIR]            corpus against this Sabline; rust:
+        [--runtime python|rust]            sabline-rt answers what it implements
   sabline attest <path> [--output FILE]    the audit as an in-toto Statement,
         [--json]                           each file by its sha256 (unsigned)
   sabline eval program.vel --receipt FILE  a run as an evaluation sandbox runs
@@ -1444,8 +1445,13 @@ def main() -> int:
             loops = f.get("loops") or []
             if loops:
                 ends = sum(1 for lp in loops if lp["verdict"] == "terminates")
+                # 9.0: the third verdict is counted only where there is one,
+                # so every other program's line reads as it always has
+                bounded = sum(1 for lp in loops
+                              if lp["verdict"] == "input-bounded")
                 print(f"  loops: {ends} terminate, "
-                      f"{len(loops) - ends} not shown")
+                      + (f"{bounded} bounded by its input, " if bounded else "")
+                      + f"{len(loops) - ends - bounded} not shown")
                 for lp in loops:
                     if lp["verdict"] == "unshown":
                         print(f"    line {lp['line']}: {lp['why']}")

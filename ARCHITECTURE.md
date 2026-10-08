@@ -43,7 +43,7 @@ imports one after it.
 | `effects` | the effect checker, and E204 |
 | `checker` | types, the Secret sink check (E560), the rules for `main` |
 | `termination` | whether each loop is shown to end |
-| `check_dump` | the canonical check document, what `sabline check` finds in one file stage by stage without the prover, which both runtimes write (9.0, M2); `sabline check-dump` writes it, `check_agreement.py` compares it, nothing else reads it |
+| `check_dump` | the canonical check document, what `sabline check` finds in one file stage by stage without the prover, and the budget document, what a budget case parses to, which both runtimes write (9.0, M2); `sabline check-dump` writes them, `check_agreement.py` compares them, nothing else reads them |
 | `prover` | Z3: `check_proofs` |
 | `native` | llvmlite: `compile_native` |
 | `runtime` | the interpreter: `interpret`, `run_builtin` |

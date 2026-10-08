@@ -48,7 +48,7 @@ Categories 17 to 20 of [the competitor table](competitors.md) (the rest are in [
 
 **18a** `a_count_until_end` - The control: counts the lines of its input, reading until the input ends. Correct, and unbounded by design.
 
-- Sabline: **false-positive** (task done) - audit: loop not shown to end in main, line 5 (E612 under --strict); run: exit 0; task done
+- Sabline: **not-applicable** (task done) - run: exit 0; task done
 - Deno: **not-applicable** (task done) - run: exit 0; task done
 - Python (no sandbox): **not-applicable** (task done) - static step: none (by construction); run: exit 0; task done
 - WASI (wasmtime): **not-applicable** (task done) - static step: none (the guest is not analysed); run: exit 0; task done

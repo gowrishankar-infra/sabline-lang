@@ -1,6 +1,6 @@
 # Sabline compared with Deno's permissions
 
-<!-- description: Deno 2.9.7 against Sabline 8.6.0 on 102 measured programs, 2026-09-23: where Deno is ahead (15 rows) comes first. -->
+<!-- description: Deno 2.9.7 against Sabline 8.6.0 on 102 measured programs, 2026-09-23: where Deno is ahead (14 rows) comes first. -->
 
 Deno and Sabline, run on the same 102 programs of Sabline's comparison benchmark, each in its own real runtime. This page takes the one tool from [the competitor table](competitors.md), and starts with where Deno does better.
 
@@ -13,7 +13,7 @@ A permission system for a language people already write, enforced by the runtime
 
 ## Where Deno is ahead, row by row
 
-15 of the 102 rows: a better outcome - the danger stopped with the task's work intact where Sabline's refusal ended the task, a catch Sabline missed, or a correct program run clean where Sabline stopped it. The row links to its evidence.
+14 of the 102 rows: a better outcome - the danger stopped with the task's work intact where Sabline's refusal ended the task, a catch Sabline missed, or a correct program run clean where Sabline stopped it. The row links to its evidence.
 
 | Row | Category | Program | Deno | Sabline | Why |
 |---|---|---|---|---|---|
@@ -23,7 +23,6 @@ A permission system for a language people already write, enforced by the runtime
 | [14c](competitors-evidence-2.md) | 14. Skill supply chain: an agent skill whose helper reads a credential and posts it | `c_setup_env` | during ▲ | before, task broken | stopped the danger with the task's work intact, where Sabline's refusal ended the run and the task with it |
 | [17a](competitors-evidence-3.md) | 17. One legitimate subprocess: the task needs one program, and the program also runs another | `a_labels_with_hostname` | during ▲ | **missed** | caught what Sabline missed |
 | [17b](competitors-evidence-3.md) | 17. One legitimate subprocess: the task needs one program, and the program also runs another | `b_preflight_first` | during ▲ | **missed** | caught what Sabline missed |
-| [18a](competitors-evidence-3.md) | 18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins | `a_count_until_end (control)` | clean ▲ | **false positive** | ran the correct program clean, where Sabline stopped or flagged it |
 | [18b](competitors-evidence-3.md) | 18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins | `b_euclid (control)` | clean ▲ | **false positive** | ran the correct program clean, where Sabline stopped or flagged it |
 | [18c](competitors-evidence-3.md) | 18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins | `c_factorial_exact (control)` | clean ▲ | **false positive** | ran the correct program clean, where Sabline stopped or flagged it |
 | [18d](competitors-evidence-3.md) | 18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins | `d_modular_product (control)` | clean ▲ | **false positive** | ran the correct program clean, where Sabline stopped or flagged it |
@@ -67,4 +66,4 @@ A permission system for a language people already write, enforced by the runtime
 
 ## The rest
 
-35 rows are a tie - the same outcome at the same time, in categories 4, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 19, 20. 0 are not compared: rows Deno cannot express ([the rule](competitors.md#how-each-column-was-run)). Every row, with every tool's verdict and its notes, is on [the scenario page](competitors-scenarios.md).
+36 rows are a tie - the same outcome at the same time, in categories 4, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20. 0 are not compared: rows Deno cannot express ([the rule](competitors.md#how-each-column-was-run)). Every row, with every tool's verdict and its notes, is on [the scenario page](competitors-scenarios.md).

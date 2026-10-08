@@ -123,8 +123,26 @@ pub mod nt {
     }
 
     /// `ntpath.normcase(s)`: separators made `\`, and lower case.
+    ///
+    /// CPython 3.13 lowercases with the system's `LCMapStringEx`, one
+    /// character for one: no final-sigma rule, and `İ` left alone where
+    /// `str.lower()` writes two characters. So it is done here character by
+    /// character, keeping a character whose lower case is not one
+    /// character. The system's table is older than Unicode's, and about
+    /// four hundred letters it does not lower (`ẞ`, Cherokee, some Greek)
+    /// this lowers anyway; safe Rust cannot ask the system, so a path with
+    /// one of them is a known difference, and the gate's corpus holds none.
     pub fn normcase(s: &str) -> String {
-        s.replace('/', "\\").to_lowercase()
+        s.chars()
+            .map(|c| if c == '/' { '\\' } else { c })
+            .map(|c| {
+                let mut lower = c.to_lowercase();
+                match (lower.next(), lower.next()) {
+                    (Some(one), None) => one,
+                    _ => c,
+                }
+            })
+            .collect()
     }
 
     /// `ntpath.isabs(s)`, as CPython 3.13 has it.
@@ -169,6 +187,115 @@ pub mod nt {
         } else {
             normpath(&join(cwd, path))
         }
+    }
+
+    /// What `ntpath.realpath` asks of the system.
+    pub trait Disk {
+        /// `_getfinalpathname(path)`: the path the system holds the file
+        /// under, `\\?\` and all, or the Windows error code it gave.
+        fn final_path(&self, path: &str) -> Result<String, i32>;
+        /// `os.readlink(path)`, or the error code.
+        fn readlink(&self, path: &str) -> Result<String, i32>;
+        /// `os.path.islink(path)`.
+        fn is_link(&self, path: &str) -> bool;
+    }
+
+    const PREFIX: &str = "\\\\?\\";
+    const UNC_PREFIX: &str = "\\\\?\\UNC\\";
+
+    /// `ntpath.realpath(path)`, not strict, against `cwd`: the file the
+    /// system finds, as much of the path as exists resolved and the rest
+    /// joined on.
+    ///
+    /// One difference, which only an unusual system reaches: CPython
+    /// raises for an error code outside its list of codes that mean "stop
+    /// resolving here" (a missing file, a missing directory, a bad name and
+    /// thirteen more), and this treats every code as one of those.
+    pub fn realpath(path: &str, cwd: &str, disk: &dyn Disk) -> String {
+        let mut path = normpath(path);
+        if normcase(&path) == "nul" {
+            return "\\\\.\\NUL".to_string();
+        }
+        let had_prefix = path.starts_with(PREFIX);
+        if !had_prefix && !isabs(&path) {
+            path = join(cwd, &path);
+        }
+        if path.contains('\0') {
+            // gh-106242: the system cannot be asked, so the path is the
+            // answer, made absolute above
+            return normpath(&path);
+        }
+        let initial = match disk.final_path(&path) {
+            Ok(found) => {
+                path = found;
+                0
+            }
+            Err(code) => {
+                path = final_path_nonstrict(&path, disk);
+                code
+            }
+        };
+        if !had_prefix && path.starts_with(PREFIX) {
+            let spath = match path.strip_prefix(UNC_PREFIX) {
+                Some(rest) => format!("\\\\{rest}"),
+                None => path[PREFIX.len()..].to_string(),
+            };
+            // the plain form only where it names the same file, or where
+            // the system cannot find it for the same reason as before
+            match disk.final_path(&spath) {
+                Ok(found) if found == path => path = spath,
+                Ok(_) => {}
+                Err(code) if code == initial => path = spath,
+                Err(_) => {}
+            }
+        }
+        path
+    }
+
+    /// `_getfinalpathname_nonstrict`: as much of the path as the system
+    /// finds, and the rest joined on.
+    fn final_path_nonstrict(path: &str, disk: &dyn Disk) -> String {
+        let mut path = path.to_string();
+        let mut tail = String::new();
+        while !path.is_empty() {
+            if let Ok(found) = disk.final_path(&path) {
+                return if tail.is_empty() { found } else { join(&found, &tail) };
+            }
+            let new_path = readlink_deep(&path, disk);
+            if new_path != path {
+                return if tail.is_empty() { new_path } else { join(&new_path, &tail) };
+            }
+            let (head, name) = split(&path);
+            if !head.is_empty() && name.is_empty() {
+                return format!("{head}{tail}");
+            }
+            tail = if tail.is_empty() { name } else { join(&name, &tail) };
+            path = head;
+        }
+        tail
+    }
+
+    /// `_readlink_deep`: follow links until one does not read.
+    fn readlink_deep(path: &str, disk: &dyn Disk) -> String {
+        let mut path = path.to_string();
+        let mut seen = std::collections::HashSet::new();
+        while seen.insert(normcase(&path)) {
+            let old = path.clone();
+            match disk.readlink(&path) {
+                Ok(target) => {
+                    path = target;
+                    if !isabs(&path) {
+                        if !disk.is_link(&old) {
+                            path = old;
+                            break;
+                        }
+                        path = normpath(&join(&dirname(&old), &path));
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        path
     }
 }
 
@@ -251,6 +378,82 @@ pub mod posix {
             normpath(&join(cwd, path))
         }
     }
+
+    /// What `posixpath.realpath` asks of the system.
+    pub trait Disk {
+        /// Whether `os.lstat(path)` says a symbolic link; `None` when
+        /// `lstat` fails.
+        fn is_link(&self, path: &str) -> Option<bool>;
+        /// `os.readlink(path)`; `None` when it fails.
+        fn readlink(&self, path: &str) -> Option<String>;
+    }
+
+    /// `posixpath.realpath(path)`, not strict, against `cwd`, as CPython
+    /// 3.13 walks it: a component at a time, each link replaced by what it
+    /// points to, and a component that does not exist kept as written.
+    /// CPython 3.10 and 3.12 walk recursively and reach the same path for
+    /// every input but a loop of links, which neither corpus holds.
+    pub fn realpath(filename: &str, cwd: &str, disk: &dyn Disk) -> String {
+        // the parts still to resolve, last first; None marks a link whose
+        // target has just been resolved, with the link under it
+        let mut rest: Vec<Option<String>> =
+            filename.split('/').rev().map(|s| Some(s.to_string())).collect();
+        let mut part_count = rest.len();
+        let mut path =
+            if filename.starts_with('/') { "/".to_string() } else { cwd.to_string() };
+        let mut seen: std::collections::HashMap<String, Option<String>> =
+            std::collections::HashMap::new();
+        while part_count > 0 {
+            let name = match rest.pop() {
+                Some(Some(name)) => name,
+                Some(None) => {
+                    // a link's target is resolved: remember where it led
+                    if let Some(Some(link)) = rest.pop() {
+                        seen.insert(link, Some(path.clone()));
+                    }
+                    continue;
+                }
+                None => break,
+            };
+            part_count -= 1;
+            if name.is_empty() || name == "." {
+                continue;
+            }
+            if name == ".." {
+                path = match path.rfind('/') {
+                    Some(0) | None => "/".to_string(),
+                    Some(i) => path[..i].to_string(),
+                };
+                continue;
+            }
+            let newpath =
+                if path == "/" { format!("/{name}") } else { format!("{path}/{name}") };
+            if disk.is_link(&newpath) != Some(true) {
+                path = newpath;
+                continue;
+            }
+            if let Some(cached) = seen.get(&newpath) {
+                // resolved before, or a loop: CPython keeps the link's own
+                // path for a loop when it is not strict
+                path = cached.clone().unwrap_or(newpath);
+                continue;
+            }
+            let Some(target) = disk.readlink(&newpath) else {
+                path = newpath;
+                continue;
+            };
+            if target.starts_with('/') {
+                path = "/".to_string();
+            }
+            seen.insert(newpath.clone(), None);
+            rest.push(Some(newpath));
+            rest.push(None);
+            let parts: Vec<&str> = target.split('/').collect();
+            part_count += parts.len();
+            rest.extend(parts.into_iter().rev().map(|p| Some(p.to_string())));
+        }
+        path
+    }
 }
 
 /// The flavour this platform's CPython uses.
@@ -273,22 +476,53 @@ pub fn abspath(path: &str) -> String {
     os_path::abspath(path, &getcwd())
 }
 
-/// `os.path.realpath(path)`: links resolved where the file exists, and
-/// the absolute path where it does not, which is as far as the effect
-/// checker's one question - is this file inside that directory - needs.
+/// The disk itself, as each flavour's `realpath` asks it.
+pub struct RealDisk;
+
+impl nt::Disk for RealDisk {
+    fn final_path(&self, path: &str) -> Result<String, i32> {
+        // std's canonicalize is GetFinalPathNameByHandleW on a handle opened
+        // with FILE_FLAG_BACKUP_SEMANTICS, which is what _getfinalpathname
+        // does; its error is the system's code
+        std::fs::canonicalize(path)
+            .map(|found| found.to_string_lossy().into_owned())
+            .map_err(|e| e.raw_os_error().unwrap_or(-1))
+    }
+
+    fn readlink(&self, path: &str) -> Result<String, i32> {
+        std::fs::read_link(path)
+            .map(|found| found.to_string_lossy().into_owned())
+            .map_err(|e| e.raw_os_error().unwrap_or(-1))
+    }
+
+    fn is_link(&self, path: &str) -> bool {
+        std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink())
+    }
+}
+
+impl posix::Disk for RealDisk {
+    fn is_link(&self, path: &str) -> Option<bool> {
+        std::fs::symlink_metadata(path).ok().map(|m| m.file_type().is_symlink())
+    }
+
+    fn readlink(&self, path: &str) -> Option<String> {
+        std::fs::read_link(path).ok().map(|found| found.to_string_lossy().into_owned())
+    }
+}
+
+/// `os.path.realpath(path)`, not strict: links resolved as far as the
+/// path exists, and the rest joined on, as this platform's CPython does
+/// it. The budget's `fs:` grants (sabline-spec 5.1's resolution R) and the
+/// effect checker's question - is this file inside the shipped standard
+/// library - both read it.
 pub fn realpath(path: &str) -> String {
-    match std::fs::canonicalize(path) {
-        Ok(found) => {
-            let text = found.to_string_lossy().into_owned();
-            if let Some(rest) = text.strip_prefix("\\\\?\\UNC\\") {
-                format!("\\\\{rest}")
-            } else if let Some(rest) = text.strip_prefix("\\\\?\\") {
-                rest.to_string()
-            } else {
-                text
-            }
-        }
-        Err(_) => abspath(path),
+    #[cfg(windows)]
+    {
+        nt::realpath(path, &getcwd(), &RealDisk)
+    }
+    #[cfg(not(windows))]
+    {
+        posix::realpath(path, &getcwd(), &RealDisk)
     }
 }
 
@@ -349,5 +583,132 @@ mod tests {
         assert_eq!(posix::normpath("//x"), "//x");
         assert_eq!(posix::normpath("///x"), "/x");
         assert_eq!(posix::abspath("a.vel", "/w"), "/w/a.vel");
+    }
+
+    /// A disk of directories and links, the one CPython was given with
+    /// `os.lstat` and `os.readlink` patched to read it.
+    struct PosixFake;
+
+    const LINKS: &[(&str, &str)] = &[
+        ("/var", "private/var"),
+        ("/a/l", "/b"),
+        ("/a/loop", "loop2"),
+        ("/a/loop2", "loop"),
+        ("/a/up", "../c"),
+        ("/a/rel", "sub/x"),
+        ("/a/chain", "l/deeper"),
+    ];
+    const DIRS: &[&str] =
+        &["/", "/private", "/private/var", "/b", "/a", "/c", "/a/sub", "/b/deeper"];
+
+    impl posix::Disk for PosixFake {
+        fn is_link(&self, path: &str) -> Option<bool> {
+            if LINKS.iter().any(|(l, _)| *l == path) {
+                Some(true)
+            } else if DIRS.contains(&path) {
+                Some(false)
+            } else {
+                None
+            }
+        }
+
+        fn readlink(&self, path: &str) -> Option<String> {
+            LINKS.iter().find(|(l, _)| *l == path).map(|(_, t)| t.to_string())
+        }
+    }
+
+    #[test]
+    fn posix_realpath_matches_cpython() {
+        // Every row is CPython 3.13's posixpath.realpath over this disk,
+        // with the working directory /a/sub.
+        let rows = [
+            ("/var/folders/x", "/private/var/folders/x"),
+            ("var/x", "/a/sub/var/x"),
+            ("/a/l/q", "/b/q"),
+            ("/a/up/z", "/c/z"),
+            ("/a/rel/../k", "/a/sub/k"),
+            ("/a/loop/z", "/a/loop/z"),
+            ("/a/chain/m", "/b/deeper/m"),
+            ("../../..", "/"),
+            ("/nonexistent/./y/../z", "/nonexistent/z"),
+            ("x/../../y", "/a/y"),
+            ("/a//sub/", "/a/sub"),
+            ("", "/a/sub"),
+            ("/a/l/../..", "/"),
+            ("./a", "/a/sub/a"),
+        ];
+        for (given, want) in rows {
+            assert_eq!(posix::realpath(given, "/a/sub", &PosixFake), want, "{given:?}");
+        }
+    }
+
+    /// A Windows disk: what exists, and one junction the system resolves
+    /// on its own - the fake CPython was given as `_getfinalpathname`.
+    struct NtFake;
+
+    const EXIST: &[&str] =
+        &["c:\\", "c:\\w", "c:\\w\\data", "c:\\real", "c:\\real\\in", "d:\\"];
+
+    impl nt::Disk for NtFake {
+        fn final_path(&self, path: &str) -> Result<String, i32> {
+            let q = path.strip_prefix("\\\\?\\").unwrap_or(path).to_lowercase();
+            let mut low = q.trim_end_matches('\\').to_string();
+            if low.is_empty() {
+                low = q.clone();
+            }
+            if low.ends_with(':') {
+                low.push('\\');
+            }
+            let junction = "c:\\w\\j";
+            if low == junction || low.starts_with(&format!("{junction}\\")) {
+                low = format!("c:\\real{}", &low[junction.len()..]);
+            }
+            if EXIST.contains(&low.as_str()) {
+                let mut out = low[..1].to_uppercase();
+                out.push_str(&low[1..]);
+                return Ok(format!("\\\\?\\{out}"));
+            }
+            Err(if EXIST.contains(&nt::dirname(&low).as_str()) { 2 } else { 3 })
+        }
+
+        fn readlink(&self, _path: &str) -> Result<String, i32> {
+            Err(4390)
+        }
+
+        fn is_link(&self, _path: &str) -> bool {
+            false
+        }
+    }
+
+    #[test]
+    fn nt_realpath_matches_cpython() {
+        // Every row is CPython 3.13's ntpath.realpath over this disk, with
+        // the working directory C:\w. `..\up` keeps its `..` because this
+        // fake, unlike the system, does not read one.
+        let rows = [
+            (r"data", r"C:\w\data"),
+            (r"data\new\x.txt", r"C:\w\data\new\x.txt"),
+            (r".\with a space", r"C:\w\with a space"),
+            (r"..\up", r"C:\w\..\up"),
+            (r"C:\real\in\f", r"C:\real\in\f"),
+            (r"j\in\f", r"C:\real\in\f"),
+            (r"j\nope\f", r"C:\real\nope\f"),
+            (r"D:\x\y", r"D:\x\y"),
+            (r"nul", r"\\.\NUL"),
+            (r"C:/w/data/./a/../b", r"C:\w\data\b"),
+            (r"\rooted\x", r"C:\rooted\x"),
+            (r"q:\no\such", r"q:\no\such"),
+        ];
+        for (given, want) in rows {
+            assert_eq!(nt::realpath(given, r"C:\w", &NtFake), want, "{given:?}");
+        }
+        assert_eq!(nt::realpath("a\0b", r"C:\w", &NtFake), "C:\\w\\a\0b");
+    }
+
+    #[test]
+    fn nt_normcase_lowers_one_character_for_one() {
+        // CPython 3.13 on Windows, LCMapStringEx: no final sigma, and a
+        // capital I with a dot stays itself
+        assert_eq!(nt::normcase("C:/ΑΣ ΑΣ/\u{130}x/CAFÉ"), "c:\\ασ ασ\\\u{130}x\\café");
     }
 }

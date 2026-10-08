@@ -1,6 +1,6 @@
 # Sabline compared with a Python sandbox (smolagents)
 
-<!-- description: Python sandbox (smolagents) 1.26.0 against Sabline 8.6.0 on 102 measured programs, 2026-09-23: where the Python sandbox is ahead (7 rows) comes first. -->
+<!-- description: Python sandbox (smolagents) 1.26.0 against Sabline 8.6.0 on 102 measured programs, 2026-09-23: where the Python sandbox is ahead (6 rows) comes first. -->
 
 Python sandbox (smolagents) and Sabline, run on the same 102 programs of Sabline's comparison benchmark, each in its own real runtime. This page takes the one tool from [the competitor table](competitors.md), and starts with where the Python sandbox does better.
 
@@ -13,14 +13,13 @@ Nothing new to learn: the model writes the Python it already writes, and the age
 
 ## Where the Python sandbox is ahead, row by row
 
-7 of the 102 rows: a better outcome - the danger stopped with the task's work intact where Sabline's refusal ended the task, a catch Sabline missed, or a correct program run clean where Sabline stopped it. The row links to its evidence.
+6 of the 102 rows: a better outcome - the danger stopped with the task's work intact where Sabline's refusal ended the task, a catch Sabline missed, or a correct program run clean where Sabline stopped it. The row links to its evidence.
 
 | Row | Category | Program | Python sandbox (smolagents) | Sabline | Why |
 |---|---|---|---|---|---|
 | [16a](competitors-evidence-2.md) | 16. Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read | `a_posts_the_ledger` | during † ▲ | **missed** | stopped what Sabline missed, by a failure that is not a refusal and would have stopped the task too (†) |
 | [16b](competitors-evidence-2.md) | 16. Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read | `b_summary_with_ledger` | during † ▲ | **missed** | stopped what Sabline missed, by a failure that is not a refusal and would have stopped the task too (†) |
 | [16c](competitors-evidence-2.md) | 16. Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read | `c_uppercased_note` | during † ▲ | **missed** | stopped what Sabline missed, by a failure that is not a refusal and would have stopped the task too (†) |
-| [18a](competitors-evidence-3.md) | 18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins | `a_count_until_end (control)` | clean ▲ | **false positive** | ran the correct program clean, where Sabline stopped or flagged it |
 | [18b](competitors-evidence-3.md) | 18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins | `b_euclid (control)` | clean ▲ | **false positive** | ran the correct program clean, where Sabline stopped or flagged it |
 | [18c](competitors-evidence-3.md) | 18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins | `c_factorial_exact (control)` | clean ▲ | **false positive** | ran the correct program clean, where Sabline stopped or flagged it |
 | [18d](competitors-evidence-3.md) | 18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins | `d_modular_product (control)` | clean ▲ | **false positive** | ran the correct program clean, where Sabline stopped or flagged it |
@@ -56,4 +55,4 @@ Nothing new to learn: the model writes the Python it already writes, and the age
 
 ## The rest
 
-28 rows are a tie - the same outcome at the same time, in categories 3, 4, 7, 9, 10, 12, 14, 15, 17, 19, 20. 0 are not compared: rows the Python sandbox cannot express ([the rule](competitors.md#how-each-column-was-run)). Every row, with every tool's verdict and its notes, is on [the scenario page](competitors-scenarios.md).
+29 rows are a tie - the same outcome at the same time, in categories 3, 4, 7, 9, 10, 12, 14, 15, 17, 18, 19, 20. 0 are not compared: rows the Python sandbox cannot express ([the rule](competitors.md#how-each-column-was-run)). Every row, with every tool's verdict and its notes, is on [the scenario page](competitors-scenarios.md).

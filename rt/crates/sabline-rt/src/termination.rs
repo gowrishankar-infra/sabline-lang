@@ -1,14 +1,18 @@
 //! Which loops provably end: syntactic, the same with and without the
 //! prover. `sabline/termination.py`, rule for rule.
 //!
-//! One shape is `terminates` and everything else is `unshown`: a
-//! condition that is, or has as an `and` conjunct, `v < E`, `v <= E`,
-//! `v > E` or `v >= E` (v on either side), where E mentions nothing the
-//! body binds and calls only pure functions, and every path through the
-//! body moves v by exactly one step toward E, with v assigned nowhere else
-//! in the body. A path that returns or fails leaves the loop and needs no
-//! step. `check --strict` refuses an `unshown` loop with E612; nothing
-//! else does.
+//! One shape is `terminates`: a condition that is, or has as an `and`
+//! conjunct, `v < E`, `v <= E`, `v > E` or `v >= E` (v on either side),
+//! where E mentions nothing the body binds and calls only pure functions,
+//! and every path through the body moves v by exactly one step toward E,
+//! with v assigned nowhere else in the body. A path that returns or fails
+//! leaves the loop and needs no step.
+//!
+//! From 9.0 (decisions/0006 section c, amended 2026-10-08), a loop that
+//! shape does not reach is `input-bounded` when its exit is keyed to the
+//! first empty `read_line()` - `bounded_by_input` names the two shapes -
+//! and everything else is `unshown`. `check --strict` refuses an
+//! `unshown` loop with E612; nothing else does.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
@@ -21,7 +25,7 @@ use crate::tables::{builtin, builtin_reached, is_fallible};
 pub struct LoopVerdict {
     /// The `while`'s line.
     pub line: u32,
-    /// `terminates` or `unshown`.
+    /// `terminates`, `input-bounded` or `unshown`.
     pub verdict: &'static str,
     /// Why, in a sentence.
     pub why: String,
@@ -219,6 +223,162 @@ fn judge(
     ("unshown", "no counter walking toward a limit in the loop's condition".to_string())
 }
 
+/// `INPUT_BOUNDED`: the third verdict (9.0), a loop that leaves on the
+/// first empty `read_line()`.
+pub const INPUT_BOUNDED: &str = "input-bounded";
+
+/// `_reads_a_line(expr, table)`: a call of the builtin `read_line()`.
+fn reads_a_line(e: &Expr, table: &HashMap<&str, &Function>) -> bool {
+    matches!(e, Expr::Call { name, args, .. }
+        if args.is_empty()
+            && builtin_reached(name, |n| table.contains_key(n)) == Some("read_line"))
+}
+
+/// `_length_of(expr, name, table)`: `length(name)`, the builtin.
+fn length_of(e: &Expr, name: &str, table: &HashMap<&str, &Function>) -> bool {
+    matches!(e, Expr::Call { name: called, args, .. }
+        if args.len() == 1
+            && builtin_reached(called, |n| table.contains_key(n)) == Some("length")
+            && matches!(&args[0], Expr::Var { name: v, .. } if v == name))
+}
+
+/// `_tests_empty(expr, name, table)`: `Some(true)` when `e` tests `name`
+/// for empty, `Some(false)` when it tests it for not empty - SPEC.md 9.5's
+/// shapes and no others, each with its sides either way round.
+fn tests_empty(e: &Expr, name: &str, table: &HashMap<&str, &Function>) -> Option<bool> {
+    let Expr::BinOp { op, left, right, .. } = e else {
+        return None;
+    };
+    if !matches!(op.as_str(), "==" | "!=" | "<" | ">") {
+        return None;
+    }
+    let turned = match op.as_str() {
+        "<" => ">",
+        ">" => "<",
+        other => other,
+    };
+    for (side, o, other) in [(left, op.as_str(), right), (right, turned, left)] {
+        let is_var = matches!(side.as_ref(), Expr::Var { name: v, .. } if v == name);
+        if is_var && matches!(other.as_ref(), Expr::Str { value } if value.is_empty()) {
+            match o {
+                "==" => return Some(true),
+                "!=" => return Some(false),
+                _ => {}
+            }
+        }
+        if length_of(side, name, table)
+            && matches!(other.as_ref(), Expr::Num { value } if value == "0")
+        {
+            match o {
+                "==" => return Some(true),
+                "!=" | ">" => return Some(false),
+                _ => {}
+            }
+        }
+    }
+    None
+}
+
+/// `_bindings_of(stmts, name)`: every statement anywhere inside these that
+/// binds `name`, nested blocks and loops included.
+fn bindings_of<'a>(stmts: &'a [Stmt], name: &str, out: &mut Vec<&'a Stmt>) {
+    for s in stmts {
+        match s {
+            Stmt::Assign { name: n, .. } | Stmt::Let { name: n, .. } => {
+                if n == name {
+                    out.push(s);
+                }
+            }
+            Stmt::If { then, other, .. } => {
+                bindings_of(then, name, out);
+                bindings_of(other, name, out);
+            }
+            Stmt::While { body, .. } => bindings_of(body, name, out),
+            Stmt::Check { ok_name, fail_name, ok_body, fail_body, .. } => {
+                if ok_name.as_deref() == Some(name) || fail_name == name {
+                    out.push(s);
+                }
+                bindings_of(ok_body, name, out);
+                bindings_of(fail_body, name, out);
+            }
+            Stmt::Block { stmts, .. } => bindings_of(stmts, name, out),
+            Stmt::Return { .. } | Stmt::ExprStmt { .. } | Stmt::FailStmt { .. } => {}
+        }
+    }
+}
+
+fn bound_by<'a>(stmts: &'a [Stmt], name: &str) -> Vec<&'a Stmt> {
+    let mut out = Vec::new();
+    bindings_of(stmts, name, &mut out);
+    out
+}
+
+/// `_bounded_by_input(loop, table)`: the input-bounded verdict and its
+/// reason, or `None`. A statement of the body itself binds `r` to
+/// `read_line()` and nothing else in the body binds `r`; and either the
+/// condition (or an `and` conjunct) tests that `r` is not empty, or it is
+/// a flag `f` whose only assignment in the body is `f = false`, a
+/// statement of the arm of a later `if` of the body taken when `r` is
+/// empty.
+fn bounded_by_input(
+    cond: &Expr,
+    body: &[Stmt],
+    table: &HashMap<&str, &Function>,
+) -> Option<(&'static str, String)> {
+    for (i, read) in body.iter().enumerate() {
+        let (Stmt::Let { name: r, value, .. } | Stmt::Assign { name: r, value, .. }) = read
+        else {
+            continue;
+        };
+        if !reads_a_line(value, table) {
+            continue;
+        }
+        let bound = bound_by(body, r);
+        if bound.len() != 1 || !std::ptr::eq(bound[0], read) {
+            continue;
+        }
+        for c in conjuncts(cond) {
+            if tests_empty(c, r, table) == Some(false) {
+                return Some((
+                    INPUT_BOUNDED,
+                    format!(
+                        "every turn reads a line into '{r}', and the loop leaves on the first \
+                         empty read"
+                    ),
+                ));
+            }
+            let Expr::Var { name: f, .. } = c else {
+                continue;
+            };
+            let flags = bound_by(body, f);
+            let clear = match flags.as_slice() {
+                [only @ Stmt::Assign { value: Expr::Bool { value: false }, .. }] => *only,
+                _ => continue,
+            };
+            for later in &body[i + 1..] {
+                let Stmt::If { cond: test, then, other, .. } = later else {
+                    continue;
+                };
+                let arm: &[Stmt] = match tests_empty(test, r, table) {
+                    Some(true) => then,
+                    Some(false) => other,
+                    None => &[],
+                };
+                if arm.iter().any(|s| std::ptr::eq(s, clear)) {
+                    return Some((
+                        INPUT_BOUNDED,
+                        format!(
+                            "every turn reads a line into '{r}', and '{f}' is cleared on the \
+                             first empty read"
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+    None
+}
+
 /// `loop_termination(fn, table)`: every loop in `f`, in the order the
 /// reference walks them.
 pub fn loop_termination(f: &Function, table: &HashMap<&str, &Function>) -> Vec<LoopVerdict> {
@@ -226,7 +386,12 @@ pub fn loop_termination(f: &Function, table: &HashMap<&str, &Function>) -> Vec<L
         for s in stmts {
             match s {
                 Stmt::While { cond, body, line, .. } => {
-                    let (verdict, why) = judge(cond, body, table);
+                    let (mut verdict, mut why) = judge(cond, body, table);
+                    if verdict == "unshown" {
+                        if let Some((v, w)) = bounded_by_input(cond, body, table) {
+                            (verdict, why) = (v, w);
+                        }
+                    }
                     out.push(LoopVerdict { line: *line, verdict, why });
                     walk(body, table, out);
                 }

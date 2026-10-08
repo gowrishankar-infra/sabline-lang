@@ -639,7 +639,7 @@ counterexample that is not real, so it is never done.
 
 ### 9.5 Which loops are shown to end
 
-Every loop is given one of two verdicts, by a syntactic rule that
+Every loop is given one of three verdicts, by a syntactic rule that
 needs no solver and so answers the same with and without the prover:
 
 **terminates** - the condition is, or contains as an `and` conjunct,
@@ -655,11 +655,37 @@ either side), where
   loops included. A path that leaves through `return` or `fail` leaves
   the loop and needs no step.
 
+**bounded by its input** (9.0) - a loop that is not `terminates`, and
+leaves on the first empty `read_line()`. `read_line()` answers `""` at the
+end of the input and on every call after it, so such a loop reads one line
+a turn and runs at most once more than its input has lines - and for as
+long as its input lasts, which is why it is not `terminates`. Exactly two
+shapes. In both, `r` is a name a statement of the body itself (not of an
+`if`, a `check` or a loop inside it) binds to `read_line()`, by `let r =
+read_line()` or `r = read_line()`, and nothing else in the body binds `r`,
+nested loops included; and either
+
+- the condition is, or has as an `and` conjunct, a test that `r` is not
+  empty - `r != ""`, `length(r) > 0` or `length(r) != 0`, each either way
+  round (`"" != r`, `0 < length(r)`); or
+- the condition is, or has as an `and` conjunct, a name `f` that the body
+  assigns once, `f = false`, and nowhere else, nested loops included; and
+  that assignment is a statement of one arm of an `if` that comes after the
+  read in the body itself - the first arm of an `if` that tests `r` for
+  empty (`r == ""` or `length(r) == 0`, either way round), or the `else`
+  arm of one that tests it for not empty.
+
+`read_line` and `length` are the builtins. The test must be for the empty
+text: a loop that leaves on any other (`while line != "quit"`, or a flag
+cleared when `line == "x"`) reads `""` for ever once its input ends, and
+is unshown.
+
 **unshown** - every other shape. A step of two, a step on one arm of an
 `if` only, a counter reset on some path, a limit the body changes, a
-condition with only a flag, an `or` in the condition, a counter moved
-inside a nested loop: all unshown, whether or not the loop happens to
-end when run.
+condition with only a flag no empty read clears, an `or` in the condition,
+a counter moved inside a nested loop, a read on one arm of an `if` only,
+a read before the loop and never inside it: all unshown, whether or not
+the loop happens to end when run.
 
 A `for` loop is a `while` loop by the time the rule runs (the parser
 rewrites it; ARCHITECTURE.md) and goes through it unchanged: `for i in a to b` is shown to end unless the body
@@ -667,12 +693,15 @@ assigns `i` or changes `b`, and `for x in xs` unless the body assigns
 `xs`.
 
 The verdict is reported by `sabline explain` ("loops: 2 terminate, 1 not
-shown") and by `sabline audit` (`loops_unshown` per function, and a
-warning naming the functions). It is an error only under
-`sabline check --strict`, as E612; without the flag a loop whose end is
-not shown is not a problem, and the time limit in `sabline.run` remains
-the guard against a loop that never ends. The compiler never reports
-`terminates` for a shape outside the rule above.
+shown", and "loops: 1 terminate, 1 bounded by its input, 0 not shown" when
+there is such a loop) and by `sabline audit` (`loops_unshown` per function,
+and a warning naming the functions; a loop bounded by its input is not
+counted). It is an error only under `sabline check --strict`, as E612, and
+only for an unshown loop; without the flag a loop whose end is not shown is
+not a problem, and the time limit in `sabline.run` remains the guard
+against a loop that never ends - or reads an input that never does. The
+compiler never reports `terminates` or `bounded by its input` for a shape
+outside the rules above.
 
 ## 10. Modules
 

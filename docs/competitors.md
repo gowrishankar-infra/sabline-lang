@@ -9,20 +9,20 @@ Sabline's [comparison benchmark](https://sabline.dev/index.html) - 102 programs,
 
 Each row is compared first on what a tool achieved, and only then on when: stopping the danger with the task's legitimate work intact beats stopping it with the work broken too, which beats missing it, and on a correct program running it clean beats flagging it. Only where two tools achieved the same does the timing count - before running or while. A row a tool cannot express, or one outside CaMeL's threat model, is not compared.
 
-- **Deno**, 15 row(s): stopped the danger with the task's work intact, where Sabline's refusal ended the run and the task with it (12a, 12b, 12c, 14c, 20b, 20c, 20d); caught what Sabline missed (17a, 17b, 19a, 19b); ran the correct program clean, where Sabline stopped or flagged it (18a, 18b, 18c, 18d).
-- **WASI (wasmtime)**, 10 row(s): stopped the danger with the task's work intact, where Sabline's refusal ended the run and the task with it (12c, 14c, 20b, 20d); ran the correct program clean, where Sabline stopped or flagged it (18a, 18b, 18c, 18d); caught what Sabline missed (19a, 19b).
+- **Deno**, 14 row(s): stopped the danger with the task's work intact, where Sabline's refusal ended the run and the task with it (12a, 12b, 12c, 14c, 20b, 20c, 20d); caught what Sabline missed (17a, 17b, 19a, 19b); ran the correct program clean, where Sabline stopped or flagged it (18b, 18c, 18d).
+- **WASI (wasmtime)**, 9 row(s): stopped the danger with the task's work intact, where Sabline's refusal ended the run and the task with it (12c, 14c, 20b, 20d); ran the correct program clean, where Sabline stopped or flagged it (18b, 18c, 18d); caught what Sabline missed (19a, 19b).
 - **Starlark**, 4 row(s): caught what Sabline missed (17a); caught what Sabline missed, though with the task broken (17b); ran the correct program clean, where Sabline stopped or flagged it (18c, 18d).
-- **Python sandbox (smolagents)**, 7 row(s): stopped what Sabline missed, by a failure that is not a refusal and would have stopped the task too (†) (16a, 16b, 16c); ran the correct program clean, where Sabline stopped or flagged it (18a, 18b, 18c, 18d).
+- **Python sandbox (smolagents)**, 6 row(s): stopped what Sabline missed, by a failure that is not a refusal and would have stopped the task too (†) (16a, 16b, 16c); ran the correct program clean, where Sabline stopped or flagged it (18b, 18c, 18d).
 - **CaMeL**, 3 row(s): caught what Sabline missed (16a, 16b, 16c).
 
 Against Sabline, row by row. *Tie* is the same outcome at the same time; *earlier* and *later* mean the same outcome, one before running and one while running. *Not compared* counts the rows a tool cannot express, and for CaMeL the rows outside its threat model.
 
 | Competitor | Ahead | Earlier | Tie | Later | Behind | Not compared |
 |---|---:|---:|---:|---:|---:|---:|
-| Deno | 15 | 0 | 35 | 29 | 23 | 0 |
-| WASI (wasmtime) | 10 | 0 | 21 | 49 | 7 | 15 |
-| Starlark | 4 | 0 | 64 | 19 | 10 | 5 |
-| Python sandbox (smolagents) | 7 | 0 | 28 | 47 | 20 | 0 |
+| Deno | 14 | 0 | 36 | 29 | 23 | 0 |
+| WASI (wasmtime) | 9 | 0 | 22 | 49 | 7 | 15 |
+| Starlark | 4 | 0 | 63 | 19 | 11 | 5 |
+| Python sandbox (smolagents) | 6 | 0 | 29 | 47 | 20 | 0 |
 | CaMeL | 3 | 0 | 2 | 2 | 4 | 91 |
 
 Nothing caught 04c, 09c, 19d.
@@ -60,11 +60,11 @@ Per category: caught before running / caught while running / missed, with how ma
 | 15. Hallucinated dependency: a program that imports a package that does not exist | 3/0/0; 1 clean | 3/0/0; 1 clean | 0/3/0; 1 clean | 0/3/0; 1 clean | 0/3/0; 1 clean | 0/3/0; 1 clean | 4 outside |
 | 16. Leaking data through a granted channel: the task needs the read and the send, and the program sends what it read | 0/0/3; 2 clean | 0/0/3; 2 clean | 0/0/3; 2 clean | 5 not expressible | 0/0/3; 2 clean | 0/3/0; 0 clean, **2 FP** | 0/3/0; 1 clean, **1 FP** |
 | 17. One legitimate subprocess: the task needs one program, and the program also runs another | 0/0/2; 2 clean | 0/2/0; 2 clean | 0/0/2; 2 clean | 4 not expressible | 0/2/0 (1 task broken); 2 clean | 0/0/2; 2 clean | 4 outside |
-| 18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins | 1/1/0; 0 clean, **4 FP** | 0/1/1; 4 clean | 0/1/1; 4 clean | 0/1/1; 4 clean | 1/0/1; 2 clean, **2 FP** | 0/1/1; 4 clean | 6 outside |
+| 18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins | 1/1/0; 1 clean, **3 FP** | 0/1/1; 4 clean | 0/1/1; 4 clean | 0/1/1; 4 clean | 1/0/1; 2 clean, **2 FP** | 0/1/1; 4 clean | 6 outside |
 | 19. Danger below the language: a granted library, or its native code, doing I/O of its own | 0/0/3; 2 clean | 0/2/1; 2 clean | 0/0/3; 2 clean | 0/2/0; 1 clean; 2 not expressible | 5 not expressible | 0/0/3; 2 clean | 5 outside |
 | 20. The task still works: the legitimate work and the danger use the same kind of effect, before or after each other | 2/2/0 (3 task broken); 2 clean | 0/4/0; 2 clean | 0/0/4; 2 clean | 0/3/0; 2 clean; 1 not expressible | 2/2/0 (4 task broken); 2 clean | 0/3/1 (3 task broken); 2 clean | 6 outside |
 | **Caught, of the dangerous rows scored** | **70** of 80 (54 before; 7 with the task broken) | **51** of 80 (8 before; 0 with the task broken) | **32** of 80 (0 before; 0 with the task broken) | **61** of 70 (0 before; 0 with the task broken) | **65** of 77 (35 before; 11 with the task broken) | **63** of 80 (0 before; 7 with the task broken) | **7** of 8 (0 before; 3 with the task broken) |
-| **False positives, of the correct programs scored** | **4** of 22 | **0** of 22 | **0** of 22 | **0** of 17 | **2** of 20 | **2** of 22 | **1** of 3 |
+| **False positives, of the correct programs scored** | **3** of 22 | **0** of 22 | **0** of 22 | **0** of 17 | **2** of 20 | **2** of 22 | **1** of 3 |
 | **Not expressible / outside the threat model** | 0 / 0 | 0 / 0 | 0 / 0 | 15 / 0 | 5 / 0 | 0 / 0 | 0 / 91 |
 | **Catches the row itself says were not a refusal** | 0 | 0 | 0 | 0 | 0 | 10 | 0 |
 

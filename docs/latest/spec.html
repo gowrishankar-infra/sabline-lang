@@ -69,7 +69,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -605,7 +605,7 @@ proof for that function is abandoned and its promises fall back to
 runtime checks. Proving with a dropped premise could manufacture a
 counterexample that is not real, so it is never done.</p>
 <h3 id="95-which-loops-are-shown-to-end">9.5 Which loops are shown to end <a class="anchor" href="#95-which-loops-are-shown-to-end" aria-label="Link to this section">#</a></h3>
-<p>Every loop is given one of two verdicts, by a syntactic rule that
+<p>Every loop is given one of three verdicts, by a syntactic rule that
 needs no solver and so answers the same with and without the prover:</p>
 <p><strong>terminates</strong> - the condition is, or contains as an <code>and</code> conjunct,
 <code>v &lt; E</code>, <code>v &lt;= E</code>, <code>v &gt; E</code> or <code>v &gt;= E</code> (the counter <code>v</code> may stand on
@@ -620,22 +620,49 @@ one step toward <code>E</code> - <code>v = v + 1</code> for <code>&lt;</code> an
 loops included. A path that leaves through <code>return</code> or <code>fail</code> leaves
 the loop and needs no step.</li>
 </ul>
+<p><strong>bounded by its input</strong> (9.0) - a loop that is not <code>terminates</code>, and
+leaves on the first empty <code>read_line()</code>. <code>read_line()</code> answers <code>""</code> at the
+end of the input and on every call after it, so such a loop reads one line
+a turn and runs at most once more than its input has lines - and for as
+long as its input lasts, which is why it is not <code>terminates</code>. Exactly two
+shapes. In both, <code>r</code> is a name a statement of the body itself (not of an
+<code>if</code>, a <code>check</code> or a loop inside it) binds to <code>read_line()</code>, by <code>let r = read_line()</code> or <code>r = read_line()</code>, and nothing else in the body binds <code>r</code>,
+nested loops included; and either</p>
+<ul>
+<li>the condition is, or has as an <code>and</code> conjunct, a test that <code>r</code> is not
+empty - <code>r != ""</code>, <code>length(r) &gt; 0</code> or <code>length(r) != 0</code>, each either way
+round (<code>"" != r</code>, <code>0 &lt; length(r)</code>); or</li>
+<li>the condition is, or has as an <code>and</code> conjunct, a name <code>f</code> that the body
+assigns once, <code>f = false</code>, and nowhere else, nested loops included; and
+that assignment is a statement of one arm of an <code>if</code> that comes after the
+read in the body itself - the first arm of an <code>if</code> that tests <code>r</code> for
+empty (<code>r == ""</code> or <code>length(r) == 0</code>, either way round), or the <code>else</code>
+arm of one that tests it for not empty.</li>
+</ul>
+<p><code>read_line</code> and <code>length</code> are the builtins. The test must be for the empty
+text: a loop that leaves on any other (<code>while line != "quit"</code>, or a flag
+cleared when <code>line == "x"</code>) reads <code>""</code> for ever once its input ends, and
+is unshown.</p>
 <p><strong>unshown</strong> - every other shape. A step of two, a step on one arm of an
 <code>if</code> only, a counter reset on some path, a limit the body changes, a
-condition with only a flag, an <code>or</code> in the condition, a counter moved
-inside a nested loop: all unshown, whether or not the loop happens to
-end when run.</p>
+condition with only a flag no empty read clears, an <code>or</code> in the condition,
+a counter moved inside a nested loop, a read on one arm of an <code>if</code> only,
+a read before the loop and never inside it: all unshown, whether or not
+the loop happens to end when run.</p>
 <p>A <code>for</code> loop is a <code>while</code> loop by the time the rule runs (the parser
 rewrites it; ARCHITECTURE.md) and goes through it unchanged: <code>for i in a to b</code> is shown to end unless the body
 assigns <code>i</code> or changes <code>b</code>, and <code>for x in xs</code> unless the body assigns
 <code>xs</code>.</p>
 <p>The verdict is reported by <code>sabline explain</code> ("loops: 2 terminate, 1 not
-shown") and by <code>sabline audit</code> (<code>loops_unshown</code> per function, and a
-warning naming the functions). It is an error only under
-<code>sabline check --strict</code>, as E612; without the flag a loop whose end is
-not shown is not a problem, and the time limit in <code>sabline.run</code> remains
-the guard against a loop that never ends. The compiler never reports
-<code>terminates</code> for a shape outside the rule above.</p>
+shown", and "loops: 1 terminate, 1 bounded by its input, 0 not shown" when
+there is such a loop) and by <code>sabline audit</code> (<code>loops_unshown</code> per function,
+and a warning naming the functions; a loop bounded by its input is not
+counted). It is an error only under <code>sabline check --strict</code>, as E612, and
+only for an unshown loop; without the flag a loop whose end is not shown is
+not a problem, and the time limit in <code>sabline.run</code> remains the guard
+against a loop that never ends - or reads an input that never does. The
+compiler never reports <code>terminates</code> or <code>bounded by its input</code> for a shape
+outside the rules above.</p>
 <h2 id="10-modules">10. Modules <a class="anchor" href="#10-modules" aria-label="Link to this section">#</a></h2>
 <div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">import</span> <span class="s">"std.vel"</span>                 <span class="c">// names merge into this file</span>
 <span class="k">import</span> <span class="s">"lib/geo.vel"</span> as geo      <span class="c">// names live behind geo.</span></code></pre></div>

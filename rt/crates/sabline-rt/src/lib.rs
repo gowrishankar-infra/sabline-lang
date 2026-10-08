@@ -2,18 +2,21 @@
 //!
 //! `decisions/0002-runtime-in-rust.md` says what this crate is for and
 //! what stays in the Python package; `plan/9.0.md` is the ladder it
-//! climbs. **It holds a lexer, a parser and - from M2 - the loader and the
-//! checkers**: effects, types with `Secret of T` and `Money of C`, the rules
-//! for `main`, and each loop's termination verdict. It does not prove, does
-//! not run a program, does not hold a budget and does not write a receipt.
+//! climbs. **It holds a lexer, a parser and - from M2 - the loader, the
+//! checkers and the budget parser**: effects, types with `Secret of T` and
+//! `Money of C`, the rules for `main`, each loop's termination verdict, and
+//! what a budget grants. It does not prove, does not run a program, does
+//! not enforce a budget and does not write a receipt.
 //! Do not use it to decide whether a program is safe to run: the Python
 //! package is what does that, and it is the reference.
 //!
 //! What it claims is checked on every commit: for every Sabline source this
 //! project has, sabline-rt builds the same tree the Python parser builds,
 //! or refuses it with the same code, the same message, the same fixes and
-//! the same line; and its checkers find what `sabline check` finds, stage
-//! by stage and message for message. `check_agreement.py` is what says so;
+//! the same line; its checkers find what `sabline check` finds, stage by
+//! stage and message for message; and its budget parser reads every budget
+//! the gate holds to the same grants, or the same refusal.
+//! `check_agreement.py` is what says so;
 //! rt/README.md says how to run it.
 //!
 //! ```
@@ -44,6 +47,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+pub mod budget;
 pub mod check_dump;
 pub mod checker;
 pub mod dump;
@@ -61,6 +65,7 @@ pub mod source;
 pub mod tables;
 pub mod termination;
 pub mod types;
+pub mod unicode_digit;
 pub mod unicode_nd;
 
 pub use errors::{Answer, SablineError};

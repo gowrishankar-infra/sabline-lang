@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <title>Changelog: 9.x - Sabline 8.8.0</title>
-<meta name="description" content="What changed in Sabline 9.0.0-alpha.1 to 9.0.0-alpha.4, release by release, newest first, as CHANGELOG.md records it.">
+<meta name="description" content="What changed in Sabline 9.0.0-alpha.1 to 9.0.0-alpha.5, release by release, newest first, as CHANGELOG.md records it.">
 <meta name="sabline-version" content="8.8.0">
 <link rel="canonical" href="https://sabline.dev/changelog-9.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sabline">
 <meta property="og:title" content="Changelog: 9.x - Sabline 8.8.0">
-<meta property="og:description" content="What changed in Sabline 9.0.0-alpha.1 to 9.0.0-alpha.4, release by release, newest first, as CHANGELOG.md records it.">
+<meta property="og:description" content="What changed in Sabline 9.0.0-alpha.1 to 9.0.0-alpha.5, release by release, newest first, as CHANGELOG.md records it.">
 <meta property="og:url" content="https://sabline.dev/changelog-9.html">
 <meta property="og:image" content="https://sabline.dev/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -69,13 +69,115 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-9.html" aria-current="page">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-9.html" aria-current="page">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
 <h1 id="changelog">Changelog: 9.x</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="900-alpha5---m2-the-checkers-the-budget-parser-and-a-loop-bounded-by-its-input">9.0.0-alpha.5 - M2: the checkers, the budget parser, and a loop bounded by its input <a class="anchor" href="#900-alpha5---m2-the-checkers-the-budget-parser-and-a-loop-bounded-by-its-input" aria-label="Link to this section">#</a></h2>
+<p>The second rung of 9.0 (<code>plan/9.0.md</code>, <em>M2 - the checkers</em>), as far as its
+exit criteria go: <strong>sabline-rt now checks a program the way <code>sabline check</code>
+does - every stage's problems, in the reference's order and in its words,
+and every loop's verdict - and parses a budget the way a run does.</strong> It
+still does not run a program, prove a promise, enforce a budget or write a
+receipt; the Python package does all four and is the reference, and where
+the two disagree sabline-rt has a defect.</p>
+<p>This is a <strong>pre-release</strong> of the <code>sabline-rt</code> crate, and it publishes that
+and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
+main gained below ships with 9.0.</p>
+<h3 id="what-exists">What exists <a class="anchor" href="#what-exists" aria-label="Link to this section">#</a></h3>
+<p><strong>The checkers, ported</strong> (pull request #144): the loader with its imports
+and the shipped standard library, the effect checker, the type checker -
+<code>Secret of T</code>, <code>Money of C</code>, generics, records, maps, function values - the
+rules for <code>main</code>, and each loop's termination verdict. A literal
+transliteration, rule for rule and message for message; <code>rt/README.md</code> and
+<code>src/checker.rs</code> say which of the reference's behaviours are copied on
+purpose and why (<code>infer</code> runs again where the reference runs it again,
+because the number of runs is visible in the problem list).</p>
+<p><strong>The budget parser</strong> (<code>src/budget.rs</code>): sabline-spec's grammar of sections
+4 and 5 - effects, scoped <code>fs:</code>, <code>net:</code>, <code>ffi:</code> and <code>tool:</code> grants, <code>@N</code>
+counts, every refusal in the reference's words - and the library's
+<code>_budget_from</code>, which is the path a budget case takes. A path in a grant
+is resolved when the budget is parsed, as <code>normcase(realpath(path))</code>, so
+<code>src/pypath.rs</code> now copies CPython's own <code>realpath</code>: the walk that resolves
+as much of a path as exists, through links and junctions, and joins the
+rest on. Four of CPython's behaviours are copied rather than Rust's -
+<code>realpath</code>'s walk, <code>ntpath.normcase</code> lowering one character for one,
+<code>str.isdigit()</code> taking superscripts and circled digits (a new generated
+table, <code>src/unicode_digit.rs</code>), and <code>int()</code>'s 4,300-digit limit, whose
+message becomes the budget's refusal. The crate gains a JSON reader for the
+budgets the gate sends, and <code>sabline-rt budget --list</code>.</p>
+<p><strong>A third loop verdict, bounded by its input</strong> (decisions/0006 section c,
+and its amendment of 2026-10-08), in both runtimes in the same commit and
+written first into <code>SPEC.md</code> §9.5. A loop gets it only when its exit is
+keyed to the read's empty result: <code>read_line()</code> answers <code>""</code> at the end of
+input and on every call after it, so a loop that reads a line every turn
+and leaves on the first empty one runs at most once more than its input
+has lines. §9.5 states the two shapes exactly. <code>sabline check --strict</code>
+does not refuse such a loop (E612 is for <code>unshown</code> loops), <code>sabline audit</code>
+does not count it in <code>loops_unshown</code>, and <code>sabline explain</code> names it. The
+benchmark's 18a, a correct line counter, is reported bounded by its input
+and passes <code>check --strict</code>.</p>
+<p>0006 first worded the rule as a loop "whose condition changes only from
+that call's result", and <strong>that wording was not sound</strong>: a loop that clears
+its flag only when <code>line == "x"</code> fits it, and once its input ends it reads
+<code>""</code> for ever. The maintainer amended the rule to key it to the empty read
+(0006's Amendment 1), and that loop is now a test in both runtimes that
+must stay <code>unshown</code> - beside 07d, which leaves only on <code>"quit"</code>, and 18e,
+which reads once before its loop and never inside it.</p>
+<p><strong><code>sabline conformance --runtime rust</code></strong>: sabline-rt answers the conformance
+case kinds it implements - L1's 280 <code>budget</code> cases - through its binary,
+and every other case is answered by the Python package and labelled as its
+answer, never counted as sabline-rt's. The C ABI the plan first named is
+M7's, and conformance through it moved to M7's criteria; L3's 51 <code>check</code>
+cases are <code>sabline capabilities check</code>, which decisions/0002 keeps in
+Python, so they stay Python-answered (<code>plan/9.0.md</code>, amended 2026-10-08).
+<code>check_conformance_rust.py</code> holds the runner to that labelling, and to a
+wrong answer from sabline-rt failing its case.</p>
+<h3 id="the-agreement-gate">The agreement gate <a class="anchor" href="#the-agreement-gate" aria-label="Link to this section">#</a></h3>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6570 compared, 6570 agree, 0 differ
+the checkers: 6570 compared, 6570 agree, 0 differ
+the budget parser: 2969 compared, 2969 agree, 0 differ
+the builtin tables: 1 compared, 1 agree, 0 differ</code></pre></div>
+<p>agreement gate: 16110 comparisons, 16110 agreements, 0 differences</p>
+<p>The budget comparison is the 280 L1 budget cases, 2,558 budgets made from
+them by fixed operations, 117 hand-written edges and 14 paths through a
+small tree both runtimes resolve; together they reach every statement of
+the reference's budget parser that a parse can reach. <code>check_gate.py</code>'s
+injections - one per comparison class, each of which must turn the gate
+red - gain three: a budget refusal's message, the rule that the smallest
+count holds, and one shape of the input-bounded verdict.</p>
+<p>Under <code>--runtime rust</code>, <code>check_termination.py</code> asks sabline-rt 67
+questions (64 loops and three <code>--strict</code> verdicts), and the other four
+suites the check-time questions they asked of alpha.4's checkers; every
+one is answered as the Python package answers it.</p>
+<h3 id="what-moved-because-18a-is-no-longer-flagged">What moved because 18a is no longer flagged <a class="anchor" href="#what-moved-because-18a-is-no-longer-flagged" aria-label="Link to this section">#</a></h3>
+<p>The benchmark's Sabline column re-measured: 18a is <code>not-applicable</code>, and
+Sabline's false positives on the 22 correct controls are three - Euclid's
+loop (18b), and 25! and a product modulo 2^61 - 1, which do not fit 64
+bits (18c, 18d). On the competitor page, Deno, WASI and the Python sandbox
+are each ahead on one row fewer. docs/known-open.md's row for correct
+programs the rules refuse says 18a is closed on main and ships with 9.0.</p>
+<h3 id="what-is-not-done">What is not done <a class="anchor" href="#what-is-not-done" aria-label="Link to this section">#</a></h3>
+<p>M2's exit criteria are met, as amended, for every question a checker
+answers. The five suites' questions that run a program wait for M3's
+interpreter; the prover's and the audit's stay Python's for good
+(decisions/0002). <code>plan/9.0-m2-progress.md</code> lists two recommended pieces
+of work that are not exit criteria - a checker target for the differential
+fuzzer, and a two-file case for the one reachable checker line no
+single-file program reaches - and says where the next session starts.</p>
+<h3 id="outside-m2">Outside M2 <a class="anchor" href="#outside-m2" aria-label="Link to this section">#</a></h3>
+<p>sabline-spec's CI had been red on main since 2026-09-28: its validator
+refused this repository's <code>sabline.capabilities</code>, whose surface had <code>tool</code>
+added by hand beside <code>tool:search</code> and <code>tool:send_email</code>. The validator was
+right - <code>tool</code> covers every tool grant, and the reference's own reduction
+drops the two - so the baseline is reduced now (#145), and the test job
+runs sabline-spec's validator on it; sabline-spec 0.15.1 adds the line its
+section 9.5 had been missing.</p>
 <h2 id="900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run <a class="anchor" href="#900-alpha4---the-job-that-was-read-and-then-run" aria-label="Link to this section">#</a></h2>
 <p>9.0.0-alpha.3 published its crate and made no GitHub release. The two
 hard things worked: release.yml dispatched <code>publish-crate.yml</code>, waited
@@ -250,7 +352,7 @@ the Marketplace lists and what the MCP registry serves; the Action pins
 still name 8.6.0's commit; <code>sabline --version</code> still says 8.6.0. The
 Python package's version files were not touched, and the release gate
 refuses a pre-release whose commit moved one.</p>
-<h3 id="what-exists">What exists <a class="anchor" href="#what-exists" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-1">What exists <a class="anchor" href="#what-exists-1" aria-label="Link to this section">#</a></h3>
 <p><strong><code>rt/</code>, a Cargo workspace holding one crate, <code>sabline-rt</code>.</strong> Edition
 2021, minimum Rust 1.82, <strong>no dependencies at all</strong>. A lexer, a parser and
 a canonical dump of the tree, in fourteen files. <code>#![forbid(unsafe_code)]</code>
@@ -430,7 +532,7 @@ performance floor of its own.</p>
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.8.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li><li><a href="#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li><li><a href="#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li><li><a href="#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha5---m2-the-checkers-the-budget-parser-and-a-loop-bounded-by-its-input">9.0.0-alpha.5 - M2: the checkers, the budget parser, and a loop bounded by its input</a></li><li><a href="#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li><li><a href="#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li><li><a href="#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li><li><a href="#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

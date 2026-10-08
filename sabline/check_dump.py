@@ -46,6 +46,7 @@ else. Inside one file and what it imports the counter runs on as it does
 in a check - across every file the loader parses, in the order it parses
 them - and the Rust loader carries it the same way.
 """
+import json
 import sys
 from typing import Any
 
@@ -83,6 +84,9 @@ else reads it.
   --list FILE       one path per line; writes a framed stream, so that
                     comparing some thousands of files is one process
   --tables          the builtin tables the checkers read, as one document
+  --budgets FILE    one budget document per line of FILE, each line a JSON
+                    [allow, deny] - text or null each - as a conformance
+                    budget case gives them
 
 Exit 0 when every program checked clean, 1 when one did not, 2 when the
 command line itself was wrong."""
@@ -202,6 +206,58 @@ def tables_document() -> dict[str, Any]:
 _KNOWN_ORDER = ("Int", "Text", "Bool", "Float", "Handle")
 
 
+BUDGET_BATCH_HEADER = "sabline.budget-batch/1"
+
+
+def budget_document(allow: str | None, deny: str | None) -> dict[str, Any]:
+    """The budget document for one budget case (9.0, M2): the budget a
+    conformance case reads - `_budget_from({allow}, {deny...})`, as
+    sabline/conform.py's budget kind asks it - as the shape that case
+    compares, the tools, and `spec()`; or the refusal's text.
+
+    A raise that is not a refusal is recorded by its type rather than let
+    out, so that it is a difference the gate reports and not a gate that
+    stops."""
+    from .conform import _conf_budget_shape
+    from .library import _budget_from
+    try:
+        b = _budget_from({allow} if allow is not None else None,
+                         {n.strip() for n in deny.split(",")}
+                         if deny is not None else None)
+    except ValueError as e:
+        return {"valid": False, "refused": str(e)}
+    except Exception as e:                  # never a refusal: a defect
+        return {"valid": False, "raised": type(e).__name__}
+    return {"valid": True, "shape": _conf_budget_shape(b), "spec": b.spec(),
+            "tools": None if b.tools is None else {
+                name: None if held is None else [list(p) for p in held]
+                for name, held in b.tools.items()},
+            "tool_limits": dict(b.tool_limits)}
+
+
+def _budgets_main(path: str) -> int:
+    try:
+        with open(path, encoding="utf-8") as fh:
+            listed = fh.read()
+    except OSError as e:
+        print(f"sabline check-dump: cannot read the budgets '{path}': {e}",
+              file=sys.stderr)
+        return 2
+    every = True
+    _out(BUDGET_BATCH_HEADER.encode("ascii") + b"\n")
+    for n, line in enumerate(listed.split("\n"), 1):
+        line = line.rstrip("\r")
+        if not line:
+            continue
+        allow, deny = json.loads(line)
+        document = budget_document(allow, deny)
+        every = every and document["valid"]
+        body = canonical(document).encode("ascii")
+        _out(f"--- {len(body)} {n}\n".encode("ascii"))
+        _out(body + b"\n")
+    return 0 if every else 1
+
+
 def check_dump_main(argv: Any) -> int:
     """`sabline check-dump <file>`, and `--list` for many at once."""
     words = list(argv)
@@ -211,6 +267,8 @@ def check_dump_main(argv: Any) -> int:
     if words == ["--tables"]:
         _write(canonical(tables_document()))
         return 0
+    if words[:1] == ["--budgets"] and len(words) == 2:
+        return _budgets_main(words[1])
     if words[:1] == ["--list"] and len(words) == 2:
         try:
             with open(words[1], encoding="utf-8") as fh:

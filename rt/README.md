@@ -4,11 +4,12 @@ The Sabline runtime, in Rust. `decisions/0002-runtime-in-rust.md` says why
 there is a second runtime and what stays in the Python package;
 `plan/9.0.md` is the ladder it climbs and the gate that holds it.
 
-**This crate holds a lexer, a parser and - from M2 - the loader and the
-checkers: effects, types with `Secret of T` and `Money of C`, the rules
-for `main`, and each loop's termination verdict.** It does not prove, does
-not run a program, does not hold a budget and does not write a receipt,
-so it cannot tell you whether a program is safe to run. The Python package
+**This crate holds a lexer, a parser and - from M2 - the loader, the
+checkers (effects, types with `Secret of T` and `Money of C`, the rules
+for `main`, and each loop's termination verdict) and the budget parser.**
+It does not prove, does not run a program, does not enforce a budget and
+does not write a receipt, so it cannot tell you whether a program is safe
+to run. The Python package
 is what does that, and where the two disagree the Python package is right
 and sabline-rt has a defect - that is what a reference implementation is,
 and `plan/9.0.md`'s demotion criteria are the only thing that ever changes
@@ -19,7 +20,10 @@ project has, sabline-rt builds the same tree the Python parser builds, or
 refuses it with the same code, the same message, the same fixes and the
 same line; and `sabline check` and sabline-rt find the same problems in it,
 stage by stage, in the same order, with the same messages, and give each
-loop the same verdict for the same reason.
+loop the same verdict for the same reason. And for every budget the gate
+holds - sabline-spec's L1 budget cases, what is made from them, and the
+edges - both parse it to the same grants and counts, or refuse it with
+the same words.
 
     python check_agreement.py ../sabline-spec/tests
 
@@ -31,14 +35,20 @@ loop the same verdict for the same reason.
       the lie corpus: 146 programs
       check_sandbox.py: 58 programs
       check_refusals.py: 24 programs
+      check_termination.py: 64 programs
       truncations of every example: 1830 programs
       the adversarial corpus: 113 programs
       the checkers' corpus: 3781 programs
       paths that are not files: 2 programs
-      the parsers: 6506 compared, 6506 agree, 0 differ
-      the checkers: 6506 compared, 6506 agree, 0 differ
+      the L1 budget cases: 280 budgets
+      their mutations: 2558 budgets
+      the budgets' edges: 117 budgets
+      paths through a tree: 14 budgets
+      the parsers: 6570 compared, 6570 agree, 0 differ
+      the checkers: 6570 compared, 6570 agree, 0 differ
+      the budget parser: 2969 compared, 2969 agree, 0 differ
       the builtin tables: 1 compared, 1 agree, 0 differ
-    agreement gate: 13013 comparisons, 13013 agreements, 0 differences
+    agreement gate: 16110 comparisons, 16110 agreements, 0 differences
 
 ## Building it
 
@@ -186,6 +196,43 @@ the same way under `--list`, with the header `sabline.check-batch/1`.
 tables both checkers read, so that a builtin added to one runtime and not
 the other is a difference whether or not any program calls it.
 
+## The budget document
+
+The third comparison surface (9.0, M2): what a budget parses to.
+
+    sabline check-dump --budgets <file>      from the Python package
+    sabline-rt budget --list <file>          from this crate
+
+Each line of `<file>` is one budget case as JSON, `[allow, deny]`, each a
+string or `null`, exactly as a sabline-spec `budget` case gives them:
+`allow` is the budget's text (`null` is the default, `io`) and `deny` is a
+comma-separated list of effects to take away. JSON, so that a tab, a comma
+or a character past ASCII reaches both runtimes unchanged. Each answer is
+what the library's `_budget_from` makes of the case:
+
+```json
+{"valid":true,"shape":{"effects":[...],"fs":[...],"net":[...],"counts":{...}},
+ "spec":"...","tools":{...},"tool_limits":{...}}
+```
+
+or `{"valid":false,"refused":"..."}` with the refusal word for word.
+`shape` is what a conformance case compares; `spec` is the budget written
+back as the command line writes it, and `tools` and `tool_limits` are the
+tool grants, which no conformance case reads yet. The stream is framed as
+the others are, with the header `sabline.budget-batch/1`, each record named
+by its line's number.
+
+**A path is resolved when the budget is parsed** (sabline-spec 5.1's
+resolution R): `normcase(realpath(path))` against the working directory.
+So the gate runs both runtimes in one scratch directory, holding a small
+tree - a directory, a file, a link to the directory, a link to nothing,
+and on Windows a junction - that `agreement_budgets.py`'s paths walk
+through.
+
+`sabline conformance --runtime rust` asks the same question for L1's 280
+budget cases through this binary, and labels every other case as answered
+by the Python package (`check_conformance_rust.py` holds it to that).
+
 ## What had to be written down to be copied
 
 Four things in the reference are decided somewhere other than the lexer
@@ -246,6 +293,31 @@ Two smaller ones: CPython's `str.strip()` strips U+001C to U+001F, which
 Unicode does not call white space (`pyrepr::py_isspace`), and `expr_str`
 writes a float as CPython's `repr` does, `1e-05` and `1e+16` included
 (`pyrepr::py_float_repr`).
+
+**The budget parser copies four more** (`src/budget.rs` says more):
+
+* **`os.path.realpath` is CPython's walk, not `std::fs::canonicalize`.**
+  Canonicalize fails on a path that does not exist; CPython resolves as
+  much as exists - following links and, on Windows, junctions - and joins
+  the rest on. `src/pypath.rs` copies `ntpath.realpath` (with
+  `_getfinalpathname` as the system's final-path call, and its walk up
+  through the parts that are not there) and posixpath's link-by-link walk,
+  each over a small trait so both are tested everywhere against answers
+  CPython gave over the same fake disk.
+* **`ntpath.normcase` is `LCMapStringEx`** from CPython 3.13 on Windows:
+  one character for one, no final sigma, `İ` left alone. Safe Rust cannot
+  call it, so the port lowers one character for one with Unicode's table,
+  and about four hundred letters that Windows' older table does not lower
+  (`ẞ`, Cherokee, some Greek) would differ. No budget in the gate holds
+  one.
+* **`str.isdigit()` is more than the decimal digits**: superscripts and
+  circled digits count, so `net:*.1.²` is a wildcard over an IP literal.
+  `src/unicode_digit.rs` carries them, written by
+  `scripts/gen_unicode_digit.py`.
+* **A count is any size, up to 4,300 digits**: `int()` has no upper
+  bound, and from CPython 3.10.7 refuses to read more than 4,300 digits,
+  leading zeros included, with a message of its own that becomes the
+  budget's refusal. `budget::Count` holds the digits.
 
 ## No `unsafe`
 
@@ -317,9 +389,9 @@ recursion limit to 20,000 before it parses.
 | `src/nodes.rs` | the tree, field order for field order with Python's |
 | `src/parser.rs` | tokens to the tree, and the free-variable walk |
 | `src/pyrepr.rs` | CPython's `ascii()` of a character, and the float form |
-| `src/json.rs` | the canonical JSON writer |
+| `src/json.rs` | the canonical JSON writer, and a reader for the budgets the gate sends |
 | `src/dump.rs` | the tree as the canonical document |
-| `src/pypath.rs` | CPython's `os.path`, Windows and POSIX, for the paths a check reports |
+| `src/pypath.rs` | CPython's `os.path`, Windows and POSIX, `realpath` included |
 | `src/tables.rs` | the builtins, the effects and the currencies every checker reads |
 | `src/types.rs` | types as text: `fn_sig_parts`, `type_mentions`, `Money of C` and `Secret of T` |
 | `src/show.rs` | `expr_str` and `nice_name`, an expression as a message quotes it |
@@ -328,6 +400,8 @@ recursion limit to 20,000 before it parses.
 | `src/checker.rs` | `check_main` and the type checker |
 | `src/termination.rs` | which loops are shown to end |
 | `src/check_dump.rs` | what `sabline check` finds, as the canonical check document |
-| `src/bin/sabline-rt.rs` | `sabline-rt ast`, `check` and `tables` |
+| `src/budget.rs` | the budget parser, and the budget document |
+| `src/unicode_digit.rs` | every digit `str.isdigit()` accepts that is not decimal (generated) |
+| `src/bin/sabline-rt.rs` | `sabline-rt ast`, `check`, `tables` and `budget` |
 | `tests/limits.rs` | the depth caps, and the stack they need |
 | `fuzz/` | the `cargo fuzz` targets |

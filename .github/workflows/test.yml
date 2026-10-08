@@ -294,6 +294,14 @@ jobs:
           python check_secret.py --runtime rust
           python check_fallible.py --runtime rust
           python check_error_messages.py --runtime rust
+      # sabline-spec's corpus with sabline-rt answering the kinds it
+      # implements - L1's budget cases from M2 - through its binary (the C
+      # ABI is M7's); every other case is answered, and labelled, as the
+      # Python package's. The suite holds the runner to that labelling.
+      - name: The conformance corpus, sabline-rt answering what it implements
+        run: |
+          python check_conformance_rust.py sabline-spec/tests
+          python sabline.py conformance --runtime rust --corpus sabline-spec/tests
 
   msrv:
     name: sabline-rt builds on the Rust version it says it needs

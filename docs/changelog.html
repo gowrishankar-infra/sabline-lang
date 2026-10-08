@@ -69,7 +69,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html" aria-current="page">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -81,6 +81,15 @@
 below 8.6 uses the name it had at the time, which is what the
 record is for. <a href="renamed.html">docs/renamed.md</a> says what
 moved where.</p>
+<p>api: <code>sabline conformance</code> takes <code>--runtime python|rust</code> (9.0, M2): with
+<code>rust</code>, sabline-rt answers the case kinds it implements and every result
+says which runtime answered it; without the flag nothing changes.</p>
+<h2 id="9x">9.x <a class="anchor" href="#9x" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-9.html#900-alpha5---m2-the-checkers-the-budget-parser-and-a-loop-bounded-by-its-input">9.0.0-alpha.5 - M2: the checkers, the budget parser, and a loop bounded by its input</a></li>
+<li><a href="changelog-9.html#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li>
+<li><a href="changelog-9.html#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li>
+<li><a href="changelog-9.html#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li>
+<li><a href="changelog-9.html#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul>
 <h2 id="8x-88-to-870">8.x: 8.8 to 8.7.0 <a class="anchor" href="#8x-88-to-870" aria-label="Link to this section">#</a></h2>
 <ul><li><a href="changelog-8-1.html#88---the-three-outside-90">8.8 - The three outside 9.0</a></li>
 <li><a href="changelog-8-1.html#871---the-catalogue-checked">8.7.1 - The catalogue, checked</a></li>
@@ -99,11 +108,6 @@ moved where.</p>
 <li><a href="changelog-8-5.html#811---the-proof-cache-can-no-longer-lie">8.1.1 - The proof cache can no longer lie</a></li>
 <li><a href="changelog-8-5.html#81---receipts-and-what-a-policy-can-ask">8.1 - Receipts, and what a policy can ask</a></li>
 <li><a href="changelog-8-5.html#80---what-the-socket-reaches-and-other-things-the-audit-now-says">8.0 - What the socket reaches, and other things the audit now says</a></li></ul>
-<h2 id="9x">9.x <a class="anchor" href="#9x" aria-label="Link to this section">#</a></h2>
-<ul><li><a href="changelog-9.html#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li>
-<li><a href="changelog-9.html#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li>
-<li><a href="changelog-9.html#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li>
-<li><a href="changelog-9.html#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul>
 <h2 id="7x">7.x <a class="anchor" href="#7x" aria-label="Link to this section">#</a></h2>
 <ul><li><a href="changelog-7.html#72---releases-that-tag-themselves">7.2 - Releases that tag themselves</a></li>
 <li><a href="changelog-7.html#712---the-proof-cache-could-be-lied-to">7.1.2 - The proof cache could be lied to</a></li>
@@ -247,7 +251,7 @@ moved where.</p>
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.8.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#8x-88-to-870">8.x: 8.8 to 8.7.0</a></li><li><a href="#8x-86-to-85">8.x: 8.6 to 8.5</a></li><li><a href="#8x-84-to-831">8.x: 8.4 to 8.3.1</a></li><li><a href="#8x-83-to-821">8.x: 8.3 to 8.2.1</a></li><li><a href="#8x-82-to-80">8.x: 8.2 to 8.0</a></li><li><a href="#9x">9.x</a></li><li><a href="#7x">7.x</a></li><li><a href="#6x">6.x</a></li><li><a href="#5x">5.x</a></li><li><a href="#4x-44-to-421">4.x: 4.4 to 4.2.1</a></li><li><a href="#4x-42-to-40">4.x: 4.2 to 4.0</a></li><li><a href="#3x">3.x</a></li><li><a href="#2x-2631-to-2401">2.x: 2.63.1 to 2.40.1</a></li><li><a href="#2x-240-to-20">2.x: 2.40 to 2.0</a></li><li><a href="#1x">1.x</a></li><li><a href="#0x">0.x</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#9x">9.x</a></li><li><a href="#8x-88-to-870">8.x: 8.8 to 8.7.0</a></li><li><a href="#8x-86-to-85">8.x: 8.6 to 8.5</a></li><li><a href="#8x-84-to-831">8.x: 8.4 to 8.3.1</a></li><li><a href="#8x-83-to-821">8.x: 8.3 to 8.2.1</a></li><li><a href="#8x-82-to-80">8.x: 8.2 to 8.0</a></li><li><a href="#7x">7.x</a></li><li><a href="#6x">6.x</a></li><li><a href="#5x">5.x</a></li><li><a href="#4x-44-to-421">4.x: 4.4 to 4.2.1</a></li><li><a href="#4x-42-to-40">4.x: 4.2 to 4.0</a></li><li><a href="#3x">3.x</a></li><li><a href="#2x-2631-to-2401">2.x: 2.63.1 to 2.40.1</a></li><li><a href="#2x-240-to-20">2.x: 2.40 to 2.0</a></li><li><a href="#1x">1.x</a></li><li><a href="#0x">0.x</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>
