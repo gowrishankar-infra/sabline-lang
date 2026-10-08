@@ -283,6 +283,17 @@ jobs:
       # twenty minutes and cargo-fuzz for an hour.
       - name: The same generated input to both parsers
         run: python fuzz_parsers.py --target agreement --minutes 2
+      # Five suites' check-time questions asked of sabline-rt (M2), each
+      # held to the answer it holds the Python package to. A question that
+      # runs a program (M3), the prover's and an audit's are counted as not
+      # asked, never as passed.
+      - name: Five suites' check-time questions, asked of sabline-rt
+        run: |
+          python check_termination.py --runtime rust
+          python check_refusals.py --runtime rust
+          python check_secret.py --runtime rust
+          python check_fallible.py --runtime rust
+          python check_error_messages.py --runtime rust
 
   msrv:
     name: sabline-rt builds on the Rust version it says it needs

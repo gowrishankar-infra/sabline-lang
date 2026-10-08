@@ -47,6 +47,7 @@ pub fn check_document(path: &str, install_dir: &str) -> Json {
                 ("check", Json::Int(CHECK_VERSION)),
                 ("errors", Json::List(vec![one.clone()])),
                 ("loops", Json::List(Vec::new())),
+                ("raised", Json::text("load")),
                 (
                     "stages",
                     Json::obj([
@@ -69,10 +70,12 @@ pub fn check_document(path: &str, install_dir: &str) -> Json {
     check_effects(funcs, install_dir, &mut effects);
     let mut found: Vec<SablineError> = main.iter().chain(&effects).cloned().collect();
     let mut types: Option<Vec<SablineError>> = None;
+    let mut raised = Json::Null;
     if found.is_empty() {
         let mut ran = Vec::new();
-        if let Err(raised) = check_types(funcs, &loaded.records, &mut ran) {
-            ran.push(raised); // a raise is still one problem
+        if let Err(stopped) = check_types(funcs, &loaded.records, &mut ran) {
+            ran.push(stopped); // a raise is still one problem
+            raised = Json::text("types");
         }
         found.clone_from(&ran);
         types = Some(ran);
@@ -111,6 +114,7 @@ pub fn check_document(path: &str, install_dir: &str) -> Json {
         ("check", Json::Int(CHECK_VERSION)),
         ("errors", Json::List(errors)),
         ("loops", Json::List(loops)),
+        ("raised", raised),
         (
             "stages",
             Json::obj([

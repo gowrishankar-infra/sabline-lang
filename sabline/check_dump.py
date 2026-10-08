@@ -22,16 +22,22 @@ so a check here runs the stages a run needs and stops before
     types       check_types, which runs only when the three above found
                 nothing - exactly as `sabline check` runs it - and is
                 null when it did not run
+    raised      the stage that ended the check by raising rather than
+                appending - "load", "effects" (only a program nested too
+                deeply for Python's own stack), "types" (a parameter or
+                result of a type that does not exist) - or null
     errors      every problem, in order, once each: what
                 `sabline check --json` prints, less the `reference` line
                 every error carries
     loops       every loop of every function, lifted ones included, with
                 its termination verdict and the reason
 
-Each stage is there separately, in the order the stages ran, because the
-port reaches them one at a time and the gate compares the stages it has
-reached (`check_agreement.py`'s CHECK_STAGES). The last two are what the
-whole port is held to once every stage is in it.
+Each stage is there separately, in the order the stages ran, so that a
+difference is reported at the stage it is in. `raised` is there because
+the command and the library read a raise differently: `sabline check`
+reports what the stage had appended and then what it raised, and
+`sabline.check` reports what it raised and nothing else. The document
+holds both answers, so a suite held to either can be held to it.
 
 **One thing it does that `sabline check` does not**: it sets
 `Parser.lambda_n` to zero before each file, as the AST dump does, so that a
@@ -106,15 +112,17 @@ def check_document(path: str) -> dict[str, Any]:
     stages: dict[str, Any] = {"load": None, "main": None, "main_run": None,
                               "effects": None, "types": None}
     document: dict[str, Any] = {"check": CHECK_VERSION, "stages": stages,
-                                "errors": [], "loops": []}
+                                "raised": None, "errors": [], "loops": []}
     try:
         funcs, records = load_program(path)
     except SablineError as e:
         stages["load"] = _error(e, path)
+        document["raised"] = "load"
         document["errors"] = [stages["load"]]
         return document
     except RecursionError:
         stages["load"] = _error(_too_deep_error(False), path)
+        document["raised"] = "load"
         document["errors"] = [stages["load"]]
         return document
 
@@ -127,6 +135,7 @@ def check_document(path: str) -> dict[str, Any]:
         check_effects(funcs, effects)
     except RecursionError:
         effects.append(_too_deep_error(False))
+        document["raised"] = "effects"
     found = main + effects
     types: list[Any] | None = None
     if not found:
@@ -135,8 +144,10 @@ def check_document(path: str) -> dict[str, Any]:
             check_types(funcs, records, types)
         except SablineError as e:      # a raise is still one problem
             types.append(e)
+            document["raised"] = "types"
         except RecursionError:
             types.append(_too_deep_error(False))
+            document["raised"] = "types"
         found = list(types)
     stages["main"] = [_error(e, path) for e in main]
     stages["main_run"] = [_error(e, path) for e in main_run]

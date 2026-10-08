@@ -15,7 +15,12 @@ in `check`, and asserts the failure is caught and FORMATTED - never a
 traceback. A new fallible builtin is covered the moment it is added,
 with no test to remember to write.
 
-    python check_fallible.py
+    python check_fallible.py                   the Python package
+    python check_fallible.py --runtime rust    sabline-rt (9.0, M2)
+
+Under `--runtime rust` the first half - ignoring each failure is E520 - is
+a check, and is asked of sabline-rt; the second half and the redirect run
+a program, which sabline-rt does from M3, and are counted as not asked.
 """
 import subprocess
 import sys
@@ -27,7 +32,10 @@ SABLINE = HERE / "sabline.py"
 
 sys.path.insert(0, str(HERE))
 import sabline  # noqa: E402
+import suite_runtime  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
+
+RUNTIME = "python"
 
 # its own directory, so two runs at once do not collide
 SCRATCH = isolate("check_fallible") / "_fallible_check.vel"
@@ -116,6 +124,8 @@ def run(source: str, effect: str | None = None) -> tuple[Any, ...]:
 
 def check_only(source: str) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
+    if RUNTIME == "rust":
+        return suite_runtime.check_output(SCRATCH, cwd=HERE)
     done = subprocess.run(
         [sys.executable, str(SABLINE), "check", str(SCRATCH)],
         capture_output=True, text=True, timeout=300, cwd=HERE)
@@ -168,7 +178,10 @@ def redirect_case() -> tuple[Any, ...]:
     return good, output.strip()[:100]
 
 
-def main() -> int:
+def main(argv: list[str]) -> int:
+    global RUNTIME
+    RUNTIME = suite_runtime.chosen(argv)
+    tally = suite_runtime.Tally()
     members = sorted(sabline.FALLIBLE_BUILTINS - SKIP)
     missing = [m for m in members if m not in CALLS]
     if missing:
@@ -178,7 +191,8 @@ def main() -> int:
         return 1
 
     passed = failed = 0
-    print(f"{len(members)} fallible builtins, read from the compiler")
+    print(f"{len(members)} fallible builtins, read from the compiler, asked "
+          f"of {'sabline-rt' if RUNTIME == 'rust' else 'the Python package'}")
     print("-" * 62)
     for name in members:
         effect = NEEDS.get(name)
@@ -202,6 +216,12 @@ def main() -> int:
             continue
 
         # 2. a caught failure must format, never traceback
+        if RUNTIME == "rust":
+            print(f"  ok enforced  {name} (refused when ignored; the caught "
+                  f"failure is a run)")
+            tally.skip("run")
+            passed += 1
+            continue
         if name in NO_RUNTIME:
             print(f"  ok enforced  {name} (runtime case covered elsewhere)")
             passed += 1
@@ -229,8 +249,10 @@ def main() -> int:
             failed += 1
 
     SCRATCH.unlink(missing_ok=True)
-    good, detail = redirect_case()
-    if good:
+    good, detail = (True, "") if RUNTIME == "rust" else redirect_case()
+    if RUNTIME == "rust":
+        tally.skip("run")
+    elif good:
         print("  ok        a redirect to an ungranted host is a failure the "
               "program can catch")
         passed += 1
@@ -239,6 +261,8 @@ def main() -> int:
         failed += 1
 
     print("-" * 62)
+    for line in tally.lines():
+        print(line)
     print(f"{passed} enforced, {failed} not")
     if failed == 0:
         print("a builtin added to FALLIBLE_BUILTINS without a recipe here")
@@ -247,4 +271,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

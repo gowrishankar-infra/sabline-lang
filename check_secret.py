@@ -32,7 +32,15 @@ right, and the places a hole would be:
 
 Needs no theorem prover: every rule here is a type rule.
 
-    python check_secret.py
+    python check_secret.py                   the Python package
+    python check_secret.py --runtime rust    sabline-rt (9.0, M2)
+
+Under `--runtime rust` every question that is a check - refused, and
+with which code and words, or compiled - is asked of sabline-rt and held
+to the same answer. A question that runs a program - `sabline trace`
+included - is a run, which sabline-rt does from M3; one that reads an
+audit is a command that stays in Python (decisions/0002). Each of those
+is counted as not asked, never as passed.
 """
 import subprocess
 import sys
@@ -44,7 +52,12 @@ SABLINE = HERE / "sabline.py"
 
 sys.path.insert(0, str(HERE))
 import sabline  # noqa: E402
+import suite_runtime  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
+
+RUNTIME = suite_runtime.chosen(sys.argv)
+PYTHON = RUNTIME == "python"
+TALLY = suite_runtime.Tally()
 
 # its own directory, so two runs at once do not collide
 SCRATCH = isolate("check_secret") / "_secret_check.vel"
@@ -64,6 +77,8 @@ def ok(label: str, good: bool, detail: str = "") -> None:
 
 def check(source: str) -> tuple[Any, ...]:
     SCRATCH.write_text(source, encoding="utf-8")
+    if not PYTHON:
+        return suite_runtime.check_output(SCRATCH, cwd=HERE)
     done = subprocess.run(
         [sys.executable, str(SABLINE), "check", str(SCRATCH)],
         capture_output=True, text=True, timeout=300, cwd=str(HERE))
@@ -102,6 +117,9 @@ def compiles(label: str, source: str) -> None:
 
 def prints(label: str, source: str, allow: str, want: str) -> None:
     """This program must run and print exactly this."""
+    if not PYTHON:
+        TALLY.skip("run")
+        return
     got, out = run(source, allow)
     ok(label, got == 0 and said(out) == want,
        f"wanted {want!r}, got {said(out)!r}")
@@ -445,18 +463,22 @@ EXTRACT = (
     '    print("recovered: " + found)\n}\n')
 prints("...and with declassify the same program runs", EXTRACT,
        "declassify,env,io", "recovered: abc")
-doc = audit_of(EXTRACT)
-ok("...with the audit saying it let the secret out, and why",
-   doc["secrets"]["declassifies"] is True
-   and doc["secrets"]["declassifications"][0]["reason"]
-   == "this program exists to show what declassify costs"
-   and "declassify" in doc["effects"]
-   and "declassify" in doc["safe_command"],
-   str(doc["secrets"]))
-code, out = run(EXTRACT, "env,io")
-ok("...and an operator who withholds the grant stops it (E310)",
-   code != 0 and "E310" in out and "recovered" not in said(out),
-   said(out)[:140])
+if PYTHON:
+    doc = audit_of(EXTRACT)
+    ok("...with the audit saying it let the secret out, and why",
+       doc["secrets"]["declassifies"] is True
+       and doc["secrets"]["declassifications"][0]["reason"]
+       == "this program exists to show what declassify costs"
+       and "declassify" in doc["effects"]
+       and "declassify" in doc["safe_command"],
+       str(doc["secrets"]))
+    code, out = run(EXTRACT, "env,io")
+    ok("...and an operator who withholds the grant stops it (E310)",
+       code != 0 and "E310" in out and "recovered" not in said(out),
+       said(out)[:140])
+else:
+    TALLY.skip("audit", 1)
+    TALLY.skip("run", 1)
 
 # A promise is not a branch: it cannot be caught, it stops the run, and
 # it cannot accumulate - so a Secret of Bool is allowed in one.
@@ -496,10 +518,13 @@ refused("declassify refuses a record that merely holds one",
         "E561", says=["inside it"])
 prints("declassify with the effect and the grant lets the value out",
        DECL, "declassify,env,io", "none")
-code, out = run(DECL, "env,io")
-ok("declassify without the grant is refused while running (E310)",
-   code != 0 and "E310" in out and "none" not in said(out),
-   said(out)[:140])
+if PYTHON:
+    code, out = run(DECL, "env,io")
+    ok("declassify without the grant is refused while running (E310)",
+       code != 0 and "E310" in out and "none" not in said(out),
+       said(out)[:140])
+else:
+    TALLY.skip("run", 1)
 prints("what declassify gives back is an ordinary Text",
        'fn main() uses io, env, declassify {\n'
        '    let key = env("API_KEY", "abcd")\n'
@@ -539,65 +564,68 @@ prints("...and a program that keeps it runs",
 print()
 print("what sabline.audit/1 says about both (sabline-spec 8.6)")
 print("-" * 62)
-doc = audit_of(KEY + '    print("a key was read")\n}\n')
-ok("the audit reports env as a source of secrets",
-   doc["secrets"]["sources"] == ["env"], str(doc["secrets"]))
-ok("...and says the program never declassifies",
-   doc["secrets"]["declassifies"] is False
-   and doc["secrets"]["declassifications"] == [], str(doc["secrets"]))
-ok("...and declassify is not among its effects",
-   "declassify" not in doc["effects"], str(doc["effects"]))
+if PYTHON:
+    doc = audit_of(KEY + '    print("a key was read")\n}\n')
+    ok("the audit reports env as a source of secrets",
+       doc["secrets"]["sources"] == ["env"], str(doc["secrets"]))
+    ok("...and says the program never declassifies",
+       doc["secrets"]["declassifies"] is False
+       and doc["secrets"]["declassifications"] == [], str(doc["secrets"]))
+    ok("...and declassify is not among its effects",
+       "declassify" not in doc["effects"], str(doc["effects"]))
 
-doc = audit_of(DECL)
-ok("a program that declassifies says so in the audit",
-   doc["secrets"]["declassifies"] is True, str(doc["secrets"]))
-ok("...with the reason and the function it happened in",
-   doc["secrets"]["declassifications"] == [
-       {"reason": "REASON", "function": "main", "line": 3}],
-   str(doc["secrets"]["declassifications"]))
-ok("...and declassify is an effect, so a budget can refuse it",
-   "declassify" in doc["effects"] and "declassify" in doc["safe_command"],
-   str(doc["effects"]) + " " + doc["safe_command"])
+    doc = audit_of(DECL)
+    ok("a program that declassifies says so in the audit",
+       doc["secrets"]["declassifies"] is True, str(doc["secrets"]))
+    ok("...with the reason and the function it happened in",
+       doc["secrets"]["declassifications"] == [
+           {"reason": "REASON", "function": "main", "line": 3}],
+       str(doc["secrets"]["declassifications"]))
+    ok("...and declassify is an effect, so a budget can refuse it",
+       "declassify" in doc["effects"] and "declassify" in doc["safe_command"],
+       str(doc["effects"]) + " " + doc["safe_command"])
 
-doc = audit_of('fn main() uses io, fs, declassify {\n'
-               '    check read_file_secret("k.txt") {\n'
-               '        ok body {\n'
-               '            print(declassify(body, "printed on purpose"))\n'
-               '        }\n'
-               '        fail why {\n            print(why)\n        }\n'
-               '    }\n}\n')
-ok("read_file_secret is reported as a source too",
-   doc["secrets"]["sources"] == ["read_file_secret"], str(doc["secrets"]))
-ok("...and a program with both sources reports both",
-   audit_of('fn main() uses io, env, fs {\n'
-            '    let a = env("A", "")\n'
-            '    check read_file_secret("k.txt") {\n'
-            '        ok body {\n            let both = a == body\n'
-            '            print("read both")\n        }\n'
-            '        fail why {\n            print(why)\n        }\n'
-            '    }\n}\n')["secrets"]["sources"]
-   == ["env", "read_file_secret"], "")
-ok("a program with no secret at all reports none",
-   audit_of("fn main() uses io {\n    print(1)\n}\n")["secrets"]
-   == {"sources": [], "declassifies": False, "declassifications": []}, "")
+    doc = audit_of('fn main() uses io, fs, declassify {\n'
+                   '    check read_file_secret("k.txt") {\n'
+                   '        ok body {\n'
+                   '            print(declassify(body, "printed on purpose"))\n'
+                   '        }\n'
+                   '        fail why {\n            print(why)\n        }\n'
+                   '    }\n}\n')
+    ok("read_file_secret is reported as a source too",
+       doc["secrets"]["sources"] == ["read_file_secret"], str(doc["secrets"]))
+    ok("...and a program with both sources reports both",
+       audit_of('fn main() uses io, env, fs {\n'
+                '    let a = env("A", "")\n'
+                '    check read_file_secret("k.txt") {\n'
+                '        ok body {\n            let both = a == body\n'
+                '            print("read both")\n        }\n'
+                '        fail why {\n            print(why)\n        }\n'
+                '    }\n}\n')["secrets"]["sources"]
+       == ["env", "read_file_secret"], "")
+    ok("a program with no secret at all reports none",
+       audit_of("fn main() uses io {\n    print(1)\n}\n")["secrets"]
+       == {"sources": [], "declassifies": False, "declassifications": []}, "")
 
-bad = audit_of(KEY + "    print(key)\n}\n")
-ok("a program refused for leaking one still names its source",
-   bad["ok"] is False
-   and any(p["code"] == "E560" for p in bad["problems"])
-   and bad["secrets"]["sources"] == ["env"], str(bad["secrets"]))
+    bad = audit_of(KEY + "    print(key)\n}\n")
+    ok("a program refused for leaking one still names its source",
+       bad["ok"] is False
+       and any(p["code"] == "E560" for p in bad["problems"])
+       and bad["secrets"]["sources"] == ["env"], str(bad["secrets"]))
 
-doc = audit_of('fn a(k: Secret of Text) -> Text uses declassify {\n'
-               '    return declassify(k, "first reason")\n}\n\n'
-               'fn main() uses io, env, declassify {\n'
-               '    let k = env("K", "")\n'
-               '    print(a(k))\n'
-               '    print(declassify(k, "second reason"))\n}\n')
-ok("every declassification is listed, in its own function",
-   [(d["function"], d["reason"]) for d in doc["secrets"]
-    ["declassifications"]]
-   == [("a", "first reason"), ("main", "second reason")],
-   str(doc["secrets"]["declassifications"]))
+    doc = audit_of('fn a(k: Secret of Text) -> Text uses declassify {\n'
+                   '    return declassify(k, "first reason")\n}\n\n'
+                   'fn main() uses io, env, declassify {\n'
+                   '    let k = env("K", "")\n'
+                   '    print(a(k))\n'
+                   '    print(declassify(k, "second reason"))\n}\n')
+    ok("every declassification is listed, in its own function",
+       [(d["function"], d["reason"]) for d in doc["secrets"]
+        ["declassifications"]]
+       == [("a", "first reason"), ("main", "second reason")],
+       str(doc["secrets"]["declassifications"]))
+else:
+    TALLY.skip("audit", 11)
 
 # ---- 10. an honest program -------------------------------------------------
 print()
@@ -615,12 +643,17 @@ prints("a program that uses a secret correctly runs",
        "env,io",
        "GET https://example.com/v1\n"
        "a key was attached, and is not in this output")
-code, out = run((HERE / "examples" / "secret.vel").read_text(
-    encoding="utf-8"), "env,io")
-ok("examples/secret.vel runs and prints no key",
-   code == 0 and "authorization: Bearer <the key" in out, said(out)[:120])
-code, out = run((HERE / "examples" / "secret_bad.vel").read_text(
-    encoding="utf-8"), "env,io")
+if PYTHON:
+    code, out = run((HERE / "examples" / "secret.vel").read_text(
+        encoding="utf-8"), "env,io")
+    ok("examples/secret.vel runs and prints no key",
+       code == 0 and "authorization: Bearer <the key" in out, said(out)[:120])
+    code, out = run((HERE / "examples" / "secret_bad.vel").read_text(
+        encoding="utf-8"), "env,io")
+else:
+    TALLY.skip("run")
+    code, out = check((HERE / "examples" / "secret_bad.vel").read_text(
+        encoding="utf-8"))
 ok("examples/secret_bad.vel is refused with E560 naming env()",
    code != 0 and "E560" in out and "env(), line" in out, said(out)[:160])
 
@@ -628,38 +661,43 @@ ok("examples/secret_bad.vel is refused with E560 naming env()",
 print()
 print("and nothing prints one behind the program's back")
 print("-" * 62)
-SCRATCH.write_text(
-    'fn keep(key: Secret of Text) -> Secret of Text {\n'
-    '    return key\n}\n\n'
-    'fn main() uses io, env {\n'
-    '    let key = env("API_KEY", "sesame")\n'
-    '    let held = keep(key)\n'
-    '    print("held one")\n}\n', encoding="utf-8")
-done = subprocess.run(
-    [sys.executable, str(SABLINE), "trace", str(SCRATCH),
-     "--allow", "env,io"],
-    capture_output=True, text=True, timeout=300, cwd=str(HERE))
-trace = (done.stdout or "") + (done.stderr or "")
-ok("sabline trace prints <secret> in place of the value",
-   "sesame" not in trace and "<secret>" in trace, trace.strip()[:200])
+if PYTHON:
+    SCRATCH.write_text(
+        'fn keep(key: Secret of Text) -> Secret of Text {\n'
+        '    return key\n}\n\n'
+        'fn main() uses io, env {\n'
+        '    let key = env("API_KEY", "sesame")\n'
+        '    let held = keep(key)\n'
+        '    print("held one")\n}\n', encoding="utf-8")
+    done = subprocess.run(
+        [sys.executable, str(SABLINE), "trace", str(SCRATCH),
+         "--allow", "env,io"],
+        capture_output=True, text=True, timeout=300, cwd=str(HERE))
+    trace = (done.stdout or "") + (done.stderr or "")
+    ok("sabline trace prints <secret> in place of the value",
+       "sesame" not in trace and "<secret>" in trace, trace.strip()[:200])
 
-SCRATCH.write_text(
-    'fn keep(key: Secret of Text) -> Secret of Text\n'
-    '    requires length(key) > 99\n'
-    '{\n    return key\n}\n\n'
-    'fn main() uses io, env {\n'
-    '    let key = env("API_KEY", "sesame")\n'
-    '    let held = keep(key)\n'
-    '    print("held one")\n}\n', encoding="utf-8")
-done = subprocess.run(
-    [sys.executable, str(SABLINE), str(SCRATCH), "--allow", "env,io"],
-    capture_output=True, text=True, timeout=300, cwd=str(HERE))
-broke = (done.stdout or "") + (done.stderr or "")
-ok("a broken promise about a secret prints <secret>, not the value",
-   done.returncode != 0 and "sesame" not in broke and "<secret>" in broke,
-   broke.strip()[:200])
+    SCRATCH.write_text(
+        'fn keep(key: Secret of Text) -> Secret of Text\n'
+        '    requires length(key) > 99\n'
+        '{\n    return key\n}\n\n'
+        'fn main() uses io, env {\n'
+        '    let key = env("API_KEY", "sesame")\n'
+        '    let held = keep(key)\n'
+        '    print("held one")\n}\n', encoding="utf-8")
+    done = subprocess.run(
+        [sys.executable, str(SABLINE), str(SCRATCH), "--allow", "env,io"],
+        capture_output=True, text=True, timeout=300, cwd=str(HERE))
+    broke = (done.stdout or "") + (done.stderr or "")
+    ok("a broken promise about a secret prints <secret>, not the value",
+       done.returncode != 0 and "sesame" not in broke and "<secret>" in broke,
+       broke.strip()[:200])
+else:
+    TALLY.skip("run", 2)
 
 SCRATCH.unlink(missing_ok=True)
 print("-" * 62)
+for line in TALLY.lines():
+    print(line)
 print(f"{PASS[0]} right, {FAIL[0]} wrong")
 sys.exit(1 if FAIL[0] else 0)
