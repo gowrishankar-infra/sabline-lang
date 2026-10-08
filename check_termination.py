@@ -17,6 +17,7 @@ Every question here is the checkers', so under `--runtime rust` every
 case is asked of sabline-rt and held to the same verdicts.
 """
 import os
+import subprocess
 import sys
 from typing import Any
 
@@ -32,6 +33,8 @@ RUNTIME = "python"
 WORK = str(isolate("check_termination"))
 
 T, U = "terminates", "unshown"
+# the third verdict (9.0; decisions/0006 section c, amended 2026-10-08)
+B = "input-bounded"
 
 # (name, verdicts of every loop in source order, program)
 CASES = [
@@ -571,6 +574,237 @@ fn main() uses io {
     print(length(kept))
 }
 '''),
+    # ---- bounded by its input (9.0) -------------------------------------
+    # read_line() answers "" at the end of input and on every call after
+    # it, so a loop is bounded by its input only when it leaves on the
+    # first empty read. Every near miss below is a loop that can run
+    # forever once its input ends, and must stay unshown.
+    ("18a: a flag cleared when the line read is empty", [B], '''
+fn main() uses io {
+    let count = 0
+    let going = true
+    while going {
+        let line = read_line()
+        if line == "" {
+            going = false
+        } else {
+            count = count + 1
+        }
+    }
+    print(count)
+}
+'''),
+    ("THE COUNTEREXAMPLE: a flag cleared only when the line is \"x\"", [U], '''
+fn main() uses io {
+    let going = true
+    while going {
+        let line = read_line()
+        if line == "x" {
+            going = false
+        }
+    }
+}
+'''),
+    ("07d: reads every turn, leaves only on \"quit\"", [U], '''
+fn main() uses io {
+    let line = ""
+    let seen = 0
+    while line != "quit" {
+        line = read_line()
+        seen = seen + 1
+    }
+    print(seen)
+}
+'''),
+    ("18e: reads once before the loop, never inside it", [U], '''
+fn main() uses io {
+    let count = 0
+    let line = read_line()
+    while line != "" {
+        count = count + 1
+    }
+    print(count)
+}
+'''),
+    ("a read on one arm of an if only", [U], '''
+fn main() uses io {
+    let going = true
+    let tick = 0
+    while going {
+        tick = tick + 2
+        if tick > 4 {
+            let line = read_line()
+            if line == "" {
+                going = false
+            }
+        }
+    }
+}
+'''),
+    ("the condition tests the line read: while line != \"\"", [B], '''
+fn main() uses io {
+    let count = 0
+    let line = read_line()
+    while line != "" {
+        count = count + 1
+        line = read_line()
+    }
+    print(count)
+}
+'''),
+    ("...written \"\" != line", [B], '''
+fn main() uses io {
+    let line = read_line()
+    while "" != line {
+        line = read_line()
+    }
+}
+'''),
+    ("...written length(line) > 0", [B], '''
+fn main() uses io {
+    let line = read_line()
+    while length(line) > 0 {
+        line = read_line()
+    }
+}
+'''),
+    ("...written 0 < length(line)", [B], '''
+fn main() uses io {
+    let line = read_line()
+    while 0 < length(line) {
+        line = read_line()
+    }
+}
+'''),
+    ("...with another conjunct, which can only end it sooner", [B], '''
+fn main() uses io {
+    let ready = true
+    let line = read_line()
+    while line != "" and ready {
+        line = read_line()
+    }
+}
+'''),
+    ("...with an or, which can keep it going", [U], '''
+fn main() uses io {
+    let more = true
+    let line = read_line()
+    while line != "" or more {
+        line = read_line()
+    }
+}
+'''),
+    ("the flag cleared in the else arm of a not-empty test", [B], '''
+fn main() uses io {
+    let count = 0
+    let going = true
+    while going {
+        let line = read_line()
+        if length(line) != 0 {
+            count = count + 1
+        } else {
+            going = false
+        }
+    }
+    print(count)
+}
+'''),
+    ("the flag cleared on length(line) == 0", [B], '''
+fn main() uses io {
+    let going = true
+    while going {
+        let line = read_line()
+        if length(line) == 0 {
+            going = false
+        }
+    }
+}
+'''),
+    ("the flag set back to true later in the turn", [U], '''
+fn main() uses io {
+    let going = true
+    while going {
+        let line = read_line()
+        if line == "" {
+            going = false
+        }
+        going = true
+    }
+}
+'''),
+    ("the flag cleared somewhere else as well", [U], '''
+fn main() uses io {
+    let count = 0
+    let going = true
+    while going {
+        let line = read_line()
+        if line == "" {
+            going = false
+        }
+        count = count + 1
+        if count > 9 {
+            going = false
+        }
+    }
+}
+'''),
+    ("the flag cleared on one path of the empty arm only", [U], '''
+fn main() uses io {
+    let strict = false
+    let going = true
+    while going {
+        let line = read_line()
+        if line == "" {
+            if strict {
+                going = false
+            }
+        }
+    }
+}
+'''),
+    ("the line overwritten after it is read", [U], '''
+fn main() uses io {
+    let line = read_line()
+    while line != "" {
+        line = read_line()
+        line = "more"
+    }
+}
+'''),
+    ("the empty test before the read, not after it", [U], '''
+fn main() uses io {
+    let going = true
+    let line = "start"
+    while going {
+        if line == "" {
+            going = false
+        }
+        line = read_line()
+    }
+}
+'''),
+    ("the test on a different text than the one read", [U], '''
+fn main() uses io {
+    let other = "x"
+    let line = read_line()
+    while other != "" {
+        line = read_line()
+    }
+    print(line)
+}
+'''),
+    ("a reader inside a counted loop: each gets its own verdict", [T, B], '''
+fn main() uses io {
+    let i = 0
+    while i < 3 {
+        let line = read_line()
+        while line != "" {
+            line = read_line()
+        }
+        i = i + 1
+    }
+}
+'''),
     ("recursion instead of a loop", [], '''
 fn count_down(n: Int) -> Int
     requires n >= 0
@@ -584,6 +818,45 @@ fn count_down(n: Int) -> Int
 fn main() uses io { print(count_down(3)) }
 '''),
 ]
+
+
+# `sabline check --strict` refuses a loop not shown to end (E612) and
+# nothing else: a loop bounded by its input passes it (plan/9.0.md, M2's
+# exit criteria). (name, passes --strict, program)
+STRICT = [
+    ("18a passes --strict: bounded by its input", True, CASES[[
+        n for n, _, _ in CASES].index(
+            "18a: a flag cleared when the line read is empty")][2]),
+    ("the counterexample is E612 under --strict", False, CASES[[
+        n for n, _, _ in CASES].index(
+            "THE COUNTEREXAMPLE: a flag cleared only when the line is \"x\"")][2]),
+    ("while line != \"\" passes --strict", True, CASES[[
+        n for n, _, _ in CASES].index(
+            "the condition tests the line read: while line != \"\"")][2]),
+]
+
+
+def passes_strict(source: str) -> bool:
+    """Whether `check --strict` passes the program. Under --runtime rust,
+    the half of --strict that is the checkers': no problem, and no loop of
+    the program's own left unshown - which is all E612 reads."""
+    path = os.path.join(WORK, "_termination_strict.vel")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(source.lstrip())
+    try:
+        if RUNTIME == "rust":
+            document = suite_runtime.check_document(path)
+            return not document["errors"] and not any(
+                lp["verdict"] == "unshown"
+                for lp in suite_runtime.own_loops(document, path))
+        done = subprocess.run([sys.executable, os.path.join(HERE, "sabline.py"),
+                               "check", path, "--strict"],
+                              capture_output=True, text=True)
+        if done.returncode != 0 and "E612" not in done.stdout + done.stderr:
+            raise AssertionError(f"refused, but not with E612: {done.stdout}")
+        return done.returncode == 0
+    finally:
+        os.unlink(path)
 
 
 def verdicts_of(source: str) -> tuple[Any, ...]:
@@ -620,7 +893,7 @@ def verdicts_of(source: str) -> tuple[Any, ...]:
 def main(argv: list[str]) -> int:
     global RUNTIME
     RUNTIME = suite_runtime.chosen(argv)
-    passed = failed = 0
+    passed = failed = skipped = 0
     print(f"{len(CASES)} adversarial programs, "
           f"{sum(len(v) for _, v, _ in CASES)} loops, asked of "
           f"{'sabline-rt' if RUNTIME == 'rust' else 'the Python package'}")
@@ -643,8 +916,32 @@ def main(argv: list[str]) -> int:
             print(f"  WRONG        {name}")
             print(f"               expected {want}, got {got}")
             failed += 1
+    for name, passes, source in STRICT:
+        if RUNTIME == "python" and not sabline.HAVE_Z3:
+            # without the prover `check --strict` refuses every program, by
+            # design, for the promises it cannot check (check_refusals.py
+            # skips its --strict case for the same reason); sabline-rt's
+            # half of --strict needs no prover and is asked either way
+            print(f"  skip --strict                {name} (--strict needs "
+                  f"the prover)")
+            skipped += 1
+            continue
+        try:
+            got = passes_strict(source)
+        except Exception as e:
+            print(f"  CRASH        {name}: {type(e).__name__}: {e}")
+            failed += 1
+            continue
+        if got == passes:
+            print(f"  ok {'--strict':<28} {name}")
+            passed += 1
+        else:
+            print(f"  WRONG        {name}: --strict "
+                  f"{'refused it' if passes else 'passed it'}")
+            failed += 1
     print("-" * 62)
-    print(f"{passed} right, {failed} wrong")
+    print(f"{passed} right, {failed} wrong"
+          + (f", {skipped} skipped" if skipped else ""))
     return 1 if failed else 0
 
 

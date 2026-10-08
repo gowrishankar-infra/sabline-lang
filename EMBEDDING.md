@@ -294,7 +294,7 @@ Field meanings, all stable within `sabline.audit/1`:
 | `safe_command` | the narrowest budget the audit can write: `fs:read:<path>` and `net:<host>` for the literals it read, the bare direction or effect where a value was built at runtime |
 | `warnings` | human-readable cautions, including which modules to grant |
 | `ffi_modules` | top-level Python packages named in py* calls, for `ffi:` grants (added in 2.60 within schema 1) |
-| `loops_unshown` | loops the termination rule cannot show to end (added in 2.62) |
+| `loops_unshown` | loops the termination rule cannot show to end (added in 2.62); from 9.0 a loop bounded by its input (SPEC.md 9.5) is not one |
 | `contract_coverage` | functions that take or return data and promise nothing (added in 2.62) |
 | `fs_paths` | `{"read": [...], "write": [...], "read_any": bool, "write_any": bool}` - the path literals a program reads and writes; a flag says a path was built at runtime (added in 3.0) |
 | `net_hosts` | `{"hosts": [...], "any": bool}` - the hosts (with ports when given) named in URL literals (added in 3.0) |

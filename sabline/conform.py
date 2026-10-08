@@ -195,23 +195,103 @@ def _conf_resolved(shape: dict[Any, Any]) -> dict[Any, Any]:
     return out
 
 
+def _conf_budget_wrong(want: dict[Any, Any], refused: str | None,
+                       got: Any) -> str:
+    """What is wrong with a budget case's answer - the refusal's text, or
+    the shape it parsed to - whichever runtime gave it."""
+    if refused is not None:
+        return f"refused ({refused}); it must parse" if want["valid"] else ""
+    if not want["valid"]:
+        return f"parsed, to {got}; it must be refused"
+    if _conf_resolved(got) != _conf_resolved(want["grants"]):
+        return f"parsed to {got}, not {want['grants']}"
+    return ""
+
+
 def _conf_budget(case: dict[Any, Any], ctx: dict[Any, Any]) -> str:
     given, want = case["input"], case["expect"]
+    rust = ctx.get("rust_budgets")
+    if rust is not None:
+        # --runtime rust: sabline-rt's answer, asked once for every budget
+        # case before the first case ran (_conf_ask_rust)
+        document = rust[case["id"]]
+        if "shape" not in document and "refused" not in document:
+            return f"sabline-rt answered nothing a budget case reads: {document}"
+        return _conf_budget_wrong(want, document.get("refused"),
+                                  document.get("shape"))
     try:
         budget = _budget_from(
             {given["allow"]} if "allow" in given else None,
             {n.strip() for n in given["deny"].split(",")}
             if "deny" in given else None)
     except ValueError as e:
-        if want["valid"]:
-            return f"refused ({e}); it must parse"
-        return ""
-    got = _conf_budget_shape(budget)
-    if not want["valid"]:
-        return f"parsed, to {got}; it must be refused"
-    if _conf_resolved(got) != _conf_resolved(want["grants"]):
-        return f"parsed to {got}, not {want['grants']}"
-    return ""
+        return _conf_budget_wrong(want, str(e), None)
+    return _conf_budget_wrong(want, None, _conf_budget_shape(budget))
+
+
+# ---- --runtime rust: sabline-rt answers what it implements -----------------
+#
+# plan/9.0.md, M2 (amended 2026-10-08): sabline-rt answers the case kinds it
+# implements - from M2, L1's `budget` cases - through the `sabline-rt`
+# binary; the C ABI is M7's. Every other case is answered by this package,
+# as it is without the flag, and each result says which runtime answered
+# it: a case sabline-rt did not answer is never counted as one it passed.
+
+# The case kinds sabline-rt answers, and the milestone that made it so.
+_RUST_KINDS = ("budget",)
+
+
+def _rt_binary() -> str | None:
+    """sabline-rt: this checkout's own build (release, then debug), so that
+    a checkout is held to the crate beside it; else one on PATH (`cargo
+    install sabline-rt`)."""
+    exe = "sabline-rt.exe" if os.name == "nt" else "sabline-rt"
+    for profile in ("release", "debug"):
+        candidate = os.path.join(_INSTALL_DIR, "rt", "target", profile, exe)
+        if os.path.isfile(candidate):
+            return candidate
+    return shutil.which("sabline-rt")
+
+
+def _conf_ask_rust(binary: str, cases: list[Any]) -> dict[str, Any]:
+    """Every budget case's document from sabline-rt, by case id: one
+    process for all of them, run in the working directory the cases run
+    in, so a relative path resolves where this package resolves it."""
+    import subprocess
+    with tempfile.TemporaryDirectory(prefix="sabline-conformance-rt-") as tmp:
+        listing = os.path.join(tmp, "budgets.jsonl")
+        with open(listing, "w", encoding="utf-8", newline="\n") as fh:
+            for case in cases:
+                given = case["input"]
+                fh.write(json.dumps([given.get("allow"), given.get("deny")])
+                         + "\n")
+        done = subprocess.run([binary, "budget", "--list", listing],
+                              capture_output=True)
+    if done.returncode not in (0, 1):
+        raise ValueError(f"sabline-rt ({binary}) did not answer the budget "
+                         f"cases: {done.stderr.decode('utf-8', 'replace')[:400]}")
+    stream, heading = done.stdout, b"sabline.budget-batch/1\n"
+    if not stream.startswith(heading):
+        raise ValueError(f"sabline-rt ({binary}) does not write budget "
+                         f"documents; it may be older than the budget parser "
+                         f"(9.0, M2)")
+    documents: list[Any] = []
+    at = len(heading)
+    while at < len(stream):
+        end = stream.index(b"\n", at)
+        size = int(stream[at + 4:end].split(b" ")[0])
+        documents.append(json.loads(stream[end + 1:end + 1 + size]))
+        at = end + 2 + size
+    if len(documents) != len(cases):
+        raise ValueError(f"sabline-rt answered {len(documents)} of "
+                         f"{len(cases)} budget cases")
+    return {case["id"]: doc for case, doc in zip(cases, documents)}
+
+
+def _rt_version(binary: str) -> str:
+    import subprocess
+    done = subprocess.run([binary, "--version"], capture_output=True, text=True)
+    return done.stdout.strip() or binary
 
 
 def _grants_of(safe_command: Any) -> Any:
@@ -615,6 +695,20 @@ def conformance(corpus: str, levels: Any = (1, 2, 3)) -> dict[str, Any]:
     """Run sabline-spec's conformance corpus at `corpus` (its tests/
     directory) against this implementation; the sabline.conformance/1
     report. ValueError when the corpus cannot be read."""
+    return _conformance(corpus, levels, "python")
+
+
+def _conformance(corpus: str, levels: Any, runtime: str) -> dict[str, Any]:
+    """`conformance`, with the runtime that answers the case kinds
+    sabline-rt implements: "python", or "rust" for sabline-rt."""
+    binary = None
+    if runtime == "rust":
+        binary = _rt_binary()
+        if binary is None:
+            raise ValueError(
+                "--runtime rust needs sabline-rt, and there is none: build it "
+                "in this checkout (cargo build --release --manifest-path "
+                "rt/Cargo.toml) or install it (cargo install sabline-rt)")
     try:
         with open(os.path.join(corpus, "index.json"), encoding="utf-8") as fh:
             index = json.load(fh)
@@ -641,10 +735,21 @@ def conformance(corpus: str, levels: Any = (1, 2, 3)) -> dict[str, Any]:
     scratch = tempfile.mkdtemp(prefix="sabline-conformance-cwd-")
     os.chdir(scratch)            # relative paths in budgets resolve here
     try:
+        if binary is not None:
+            asked = []
+            for listed in entries:
+                if listed["kind"] in _RUST_KINDS:
+                    with open(os.path.join(corpus, *listed["file"].split("/")),
+                              encoding="utf-8") as fh:
+                        asked.append(json.load(fh))
+            ctx["rust_budgets"] = _conf_ask_rust(binary, asked)
         for listed in entries:
             row = {"id": listed["id"], "level": listed["level"],
                    "kind": listed["kind"],
                    "known_limit": bool(listed.get("known_limit"))}
+            if binary is not None:
+                row["answered_by"] = ("sabline-rt" if listed["kind"] in
+                                      _RUST_KINDS else "python")
             try:
                 with open(os.path.join(corpus, *listed["file"].split("/")),
                           encoding="utf-8") as fh:
@@ -682,11 +787,20 @@ def conformance(corpus: str, levels: Any = (1, 2, 3)) -> dict[str, Any]:
     shown = [lvl for lvl, _, needs in CONFORMANCE_LEVELS if lvl in levels
              and all(summary[str(n)]["failed"] == 0
                      and summary[str(n)]["unshown"] == 0 for n in needs)]
-    return {"schema": CONFORMANCE_SCHEMA,
-            "implementation": {"name": "sabline-lang", "version": VERSION},
-            "corpus": corpus, "levels_run": wanted,
-            "levels": summary, "conformant": shown,
-            "results": results}
+    report = {"schema": CONFORMANCE_SCHEMA,
+              "implementation": {"name": "sabline-lang", "version": VERSION},
+              "corpus": corpus, "levels_run": wanted,
+              "levels": summary, "conformant": shown,
+              "results": results}
+    if binary is not None:
+        # within version 1, an added field: which runtime answered how many
+        answered = [r.get("answered_by") for r in results]
+        report["runtime"] = {
+            "name": "rust", "sabline_rt": _rt_version(binary),
+            "kinds": list(_RUST_KINDS),
+            "answered": {"sabline-rt": answered.count("sabline-rt"),
+                         "python": answered.count("python")}}
+    return report
 
 
 def _conformance_verdict(report: dict[Any, Any], asked: Any) -> str:
@@ -704,25 +818,39 @@ def _conformance_verdict(report: dict[Any, Any], asked: Any) -> str:
     if skipped:
         said += (f" ({len(skipped)} case(s) not run here: "
                  + "; ".join(sorted({r['detail'] for r in skipped})) + ")")
+    runtime = report.get("runtime")
+    if runtime:
+        said += (f". {runtime['sabline_rt']} answered "
+                 f"{runtime['answered']['sabline-rt']} case(s) - "
+                 f"{', '.join(runtime['kinds'])} - and this package "
+                 f"answered the other {runtime['answered']['python']}, which "
+                 f"are kinds sabline-rt does not implement")
     return said
 
 
 def conformance_main(argv: list[Any]) -> int:
-    """sabline conformance [--level 1|2|3] [--json] [--corpus DIR]"""
+    """sabline conformance [--level 1|2|3] [--json] [--corpus DIR]
+    [--runtime python|rust]"""
     usage = ("usage: sabline conformance [--level 1|2|3] [--json] "
-             "[--corpus DIR]")
+             "[--corpus DIR] [--runtime python|rust]")
     levels: tuple[int, ...] = (1, 2, 3)
     as_json = False
     given: str | None = None
+    runtime = "python"
     i = 0
     while i < len(argv):
         a = argv[i]
-        if a in ("--level", "--corpus") and i + 1 < len(argv):
+        if a in ("--level", "--corpus", "--runtime") and i + 1 < len(argv):
             if a == "--level":
                 if argv[i + 1] not in ("1", "2", "3"):
                     print(usage, file=sys.stderr)
                     return 2
                 levels = (int(argv[i + 1]),)
+            elif a == "--runtime":
+                if argv[i + 1] not in ("python", "rust"):
+                    print(usage, file=sys.stderr)
+                    return 2
+                runtime = argv[i + 1]
             else:
                 given = argv[i + 1]
             i += 2
@@ -742,7 +870,7 @@ def conformance_main(argv: list[Any]) -> int:
               "sabline-spec/tests", file=sys.stderr)
         return 2
     try:
-        report = conformance(corpus, levels)
+        report = _conformance(corpus, levels, runtime)
     except ValueError as e:
         print(f"sabline conformance: {e}", file=sys.stderr)
         return 2

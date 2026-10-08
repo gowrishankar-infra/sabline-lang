@@ -152,11 +152,134 @@ def _conjuncts(cond: Any) -> list[Any]:
 FLIP = {"<": ">", "<=": ">=", ">": "<", ">=": "<="}
 
 
+# ---- the third verdict (9.0): bounded by its input ---------------------------
+#
+# decisions/0006 section c, as amended 2026-10-08, and SPEC.md 9.5. A loop
+# gets it only when its exit is keyed to the read's empty result:
+# `read_line()` answers "" at the end of input and on every call after it,
+# so a loop that leaves on any other text (`line == "quit"`) runs forever
+# once its input does, and is not bounded by anything.
+
+INPUT_BOUNDED = "input-bounded"
+
+
+def _reads_a_line(expr: Any, table: dict[Any, Any] | None) -> bool:
+    return (isinstance(expr, Call) and not expr.args
+            and builtin_reached(expr.name, table) == "read_line")
+
+
+def _length_of(expr: Any, name: str, table: dict[Any, Any] | None) -> bool:
+    return (isinstance(expr, Call) and len(expr.args) == 1
+            and builtin_reached(expr.name, table) == "length"
+            and isinstance(expr.args[0], Var) and expr.args[0].name == name)
+
+
+def _tests_empty(expr: Any, name: str,
+                 table: dict[Any, Any] | None) -> bool | None:
+    """True when `expr` tests `name` for empty, False when it tests it for
+    not empty, None for anything else. The shapes are SPEC.md 9.5's, and
+    no others: `r == ""`, `length(r) == 0`; `r != ""`, `length(r) > 0`,
+    `length(r) != 0` - each with its sides either way round."""
+    if not isinstance(expr, BinOp) or expr.op not in ("==", "!=", "<", ">"):
+        return None
+    turned = {"<": ">", ">": "<"}.get(expr.op, expr.op)
+    for side, op, other in ((expr.left, expr.op, expr.right),
+                            (expr.right, turned, expr.left)):
+        if (isinstance(side, Var) and side.name == name
+                and isinstance(other, Str) and other.value == ""):
+            if op == "==":
+                return True
+            if op == "!=":
+                return False
+        if (_length_of(side, name, table) and isinstance(other, Num)
+                and other.value == 0):
+            if op == "==":
+                return True
+            if op in ("!=", ">"):
+                return False
+    return None
+
+
+def _bindings_of(stmts: Any, name: str) -> list[Any]:
+    """Every statement anywhere inside these that binds `name`, nested
+    blocks and loops included - the statements `_names_bound_in` reads."""
+    out: list[Any] = []
+
+    def walk(node: Any) -> None:
+        if isinstance(node, (list, tuple)):
+            for x in node:
+                walk(x)
+        elif isinstance(node, (Assign, Let)):
+            if node.name == name:
+                out.append(node)
+        elif isinstance(node, If):
+            walk(node.then)
+            walk(node.other)
+        elif isinstance(node, While):
+            walk(node.body)
+        elif isinstance(node, Check):
+            if name in (node.ok_name, node.fail_name):
+                out.append(node)
+            walk(node.ok_body)
+            walk(node.fail_body)
+        elif isinstance(node, Block):
+            walk(node.stmts)
+    walk(stmts)
+    return out
+
+
+def _bounded_by_input(loop: While,
+                      table: dict[Any, Any] | None) -> tuple[Any, ...] | None:
+    """The input-bounded verdict and its reason, or None. A statement of
+    the body itself binds r to `read_line()` and nothing else in the body
+    binds r, so every turn that reaches the end of the body reads a line;
+    and either the condition (or an `and` conjunct of it) tests that r is
+    not empty, or it is a flag f whose only assignment in the body is
+    `f = false`, a statement of the arm of a later `if` of the body that
+    is taken when r is empty."""
+    body = loop.body
+    for i, read in enumerate(body):
+        if not (isinstance(read, (Let, Assign))
+                and _reads_a_line(read.value, table)):
+            continue
+        r = read.name
+        bound = _bindings_of(body, r)
+        if len(bound) != 1 or bound[0] is not read:
+            continue
+        for c in _conjuncts(loop.cond):
+            if _tests_empty(c, r, table) is False:
+                return (INPUT_BOUNDED, f"every turn reads a line into "
+                                       f"'{r}', and the loop leaves on the "
+                                       f"first empty read")
+            if not isinstance(c, Var):
+                continue
+            flags = _bindings_of(body, c.name)
+            if not (len(flags) == 1 and isinstance(flags[0], Assign)
+                    and isinstance(flags[0].value, Bool)
+                    and flags[0].value.value is False):
+                continue
+            for later in body[i + 1:]:
+                if not isinstance(later, If):
+                    continue
+                empty = _tests_empty(later.cond, r, table)
+                arm = (later.then if empty is True else
+                       later.other if empty is False else [])
+                if any(s is flags[0] for s in arm):
+                    return (INPUT_BOUNDED, f"every turn reads a line into "
+                                           f"'{r}', and '{c.name}' is "
+                                           f"cleared on the first empty "
+                                           f"read")
+    return None
+
+
 def loop_termination(fn: Any, table: dict[Any, Any] | None = None) -> list[Any]:
     """For every loop in fn: {"line", "verdict", "why"}.
 
-    verdict is "terminates" for exactly one shape, and "unshown" for
-    everything else. The shape: the condition is, or has as an `and`
+    verdict is "terminates" for exactly one shape, "input-bounded" (9.0)
+    for a loop that leaves on the first empty `read_line()` - the shapes
+    `_bounded_by_input` names, which only a loop the counter rule does not
+    reach is asked about - and "unshown" for everything else. The
+    counter's shape: the condition is, or has as an `and`
     conjunct, `v < E`, `v <= E`, `v > E` or `v >= E` (v on either
     side), where E mentions nothing the body binds and calls only pure
     functions, and every path through the body moves v by exactly one
@@ -207,6 +330,10 @@ def loop_termination(fn: Any, table: dict[Any, Any] | None = None) -> list[Any]:
                 walk(x)
         elif isinstance(node, While):
             verdict, why = judge(node)
+            if verdict == "unshown":
+                bounded = _bounded_by_input(node, table)
+                if bounded is not None:
+                    verdict, why = bounded
             out.append({"line": node.line, "verdict": verdict, "why": why})
             walk(node.body)
         elif isinstance(node, If):

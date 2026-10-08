@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <title>Sabline compared with WASI (wasmtime) - Sabline 8.8.0</title>
-<meta name="description" content="WASI (wasmtime) 49.0.0 against Sabline 8.6.0 on 102 measured programs, 2026-09-23: where WASI is ahead (10 rows) comes first.">
+<meta name="description" content="WASI (wasmtime) 49.0.0 against Sabline 8.6.0 on 102 measured programs, 2026-09-23: where WASI is ahead (9 rows) comes first.">
 <meta name="sabline-version" content="8.8.0">
 <link rel="canonical" href="https://sabline.dev/compare-wasi.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sabline">
 <meta property="og:title" content="Sabline compared with WASI (wasmtime) - Sabline 8.8.0">
-<meta property="og:description" content="WASI (wasmtime) 49.0.0 against Sabline 8.6.0 on 102 measured programs, 2026-09-23: where WASI is ahead (10 rows) comes first.">
+<meta property="og:description" content="WASI (wasmtime) 49.0.0 against Sabline 8.6.0 on 102 measured programs, 2026-09-23: where WASI is ahead (9 rows) comes first.">
 <meta property="og:url" content="https://sabline.dev/compare-wasi.html">
 <meta property="og:image" content="https://sabline.dev/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -69,7 +69,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -82,13 +82,12 @@
 <h2 id="where-wasi-is-stronger-by-design">Where WASI is stronger by design <a class="anchor" href="#where-wasi-is-stronger-by-design" aria-label="Link to this section">#</a></h2>
 <p>A boundary made by the virtual machine, not by the language: whatever code runs inside - interpreted Python, compiled C, a native extension - reaches only the handles the host passed in, one by one. Sabline's first guard is its own interpreter, with OS confinement (8.4) under it as a second; but a granted <code>ffi:</code> module runs as host code, and the OS policy is widened to what that module can do - for <code>ffi:os</code> or <code>ffi:subprocess</code>, nothing is enforced. Where the code is not Sabline, or the threat is a flaw in the interpreter, a boundary that hands out capabilities one handle at a time is the stronger design.</p>
 <h2 id="where-wasi-is-ahead-row-by-row">Where WASI is ahead, row by row <a class="anchor" href="#where-wasi-is-ahead-row-by-row" aria-label="Link to this section">#</a></h2>
-<p>10 of the 102 rows: a better outcome - the danger stopped with the task's work intact where Sabline's refusal ended the task, a catch Sabline missed, or a correct program run clean where Sabline stopped it. The row links to its evidence.</p>
+<p>9 of the 102 rows: a better outcome - the danger stopped with the task's work intact where Sabline's refusal ended the task, a catch Sabline missed, or a correct program run clean where Sabline stopped it. The row links to its evidence.</p>
 <div class="table-wrap" tabindex="0"><table>
 <thead><tr><th>Row</th><th>Category</th><th>Program</th><th>WASI (wasmtime)</th><th>Sabline</th><th>Why</th></tr></thead>
 <tbody>
 <tr><td><a href="competitors-evidence-2.html">12c</a></td><td>12. Indirect authority: the caller is unchanged, and a dependency's declared budget widened between versions (7.1)</td><td><code>c_gains_write</code></td><td>during ▲</td><td>before, task broken</td><td>stopped the danger with the task's work intact, where Sabline's refusal ended the run and the task with it</td></tr>
 <tr><td><a href="competitors-evidence-2.html">14c</a></td><td>14. Skill supply chain: an agent skill whose helper reads a credential and posts it</td><td><code>c_setup_env</code></td><td>during ▲</td><td>before, task broken</td><td>stopped the danger with the task's work intact, where Sabline's refusal ended the run and the task with it</td></tr>
-<tr><td><a href="competitors-evidence-3.html">18a</a></td><td>18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins</td><td><code>a_count_until_end (control)</code></td><td>clean ▲</td><td><strong>false positive</strong></td><td>ran the correct program clean, where Sabline stopped or flagged it</td></tr>
 <tr><td><a href="competitors-evidence-3.html">18b</a></td><td>18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins</td><td><code>b_euclid (control)</code></td><td>clean ▲</td><td><strong>false positive</strong></td><td>ran the correct program clean, where Sabline stopped or flagged it</td></tr>
 <tr><td><a href="competitors-evidence-3.html">18c</a></td><td>18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins</td><td><code>c_factorial_exact (control)</code></td><td>clean ▲</td><td><strong>false positive</strong></td><td>ran the correct program clean, where Sabline stopped or flagged it</td></tr>
 <tr><td><a href="competitors-evidence-3.html">18d</a></td><td>18. Correct programs a rule can refuse: a loop that ends only when its input does, a whole number past 64 bits, and their defective twins</td><td><code>d_modular_product (control)</code></td><td>clean ▲</td><td><strong>false positive</strong></td><td>ran the correct program clean, where Sabline stopped or flagged it</td></tr>
@@ -112,7 +111,7 @@
 </tbody></table></div>
 <p><strong>Category 5 is a judgement call, not a clean win.</strong> Reviewed, and kept, as a judgement call rather than a win. Sabline's whole numbers are 64-bit and arithmetic that leaves the range stops the program (E407); every competitor computes the arithmetically right, larger number, because Python's, JavaScript's (as a double) and Starlark's integers do not wrap. Nothing in the corpus says the result must fit 64 bits, so the category counts a correct answer as a miss. A reader who disagrees can discount its six rows. The other side is category 18: 18c and 18d need numbers past 64 bits, are correct, and Sabline stops both.</p>
 <h2 id="the-rest">The rest <a class="anchor" href="#the-rest" aria-label="Link to this section">#</a></h2>
-<p>21 rows are a tie - the same outcome at the same time, in categories 3, 4, 7, 8, 9, 10, 11, 12, 14, 15, 19, 20. 15 are not compared: rows WASI cannot express (<a href="competitors.html#how-each-column-was-run">the rule</a>). Every row, with every tool's verdict and its notes, is on <a href="competitors-scenarios.html">the scenario page</a>.</p>
+<p>22 rows are a tie - the same outcome at the same time, in categories 3, 4, 7, 8, 9, 10, 11, 12, 14, 15, 18, 19, 20. 15 are not compared: rows WASI cannot express (<a href="competitors.html#how-each-column-was-run">the rule</a>). Every row, with every tool's verdict and its notes, is on <a href="competitors-scenarios.html">the scenario page</a>.</p>
 </main>
 <footer class="foot">
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/compare-wasi.md">docs/compare-wasi.md</a> by build_docs.py, for Sabline 8.8.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>

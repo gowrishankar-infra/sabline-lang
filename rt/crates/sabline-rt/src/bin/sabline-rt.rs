@@ -7,6 +7,8 @@
 //!                                  the canonical check document (9.0, M2)
 //! sabline-rt check --install-dir DIR --list <paths>
 //! sabline-rt tables                the builtin tables the checkers read
+//! sabline-rt budget --list <file>  one budget document per line of <file>,
+//!                                  each line `[allow, deny]` as JSON (M2)
 //! sabline-rt --version
 //! ```
 //!
@@ -43,6 +45,7 @@ fn main() -> ExitCode {
             eprintln!("       sabline-rt check --install-dir <dir> <file.vel>");
             eprintln!("       sabline-rt check --install-dir <dir> --list <paths-file>");
             eprintln!("       sabline-rt tables");
+            eprintln!("       sabline-rt budget --list <budgets-file>");
             eprintln!("       sabline-rt --version");
             ExitCode::from(2)
         }
@@ -68,6 +71,7 @@ fn run(words: &[&str]) -> Result<ExitCode, String> {
             write_out(&sabline_rt::tables::document().canonical())?;
             Ok(ExitCode::SUCCESS)
         }
+        ["budget", "--list", list] => budget_list_of(list),
         _ => Err(format!("sabline-rt: cannot read '{}'", words.join(" "))),
     }
 }
@@ -163,6 +167,47 @@ fn check_list_of(
         }
         Ok(if every { ExitCode::SUCCESS } else { ExitCode::from(1) })
     }
+}
+
+/// The header of the framed stream `budget --list` writes; the records are
+/// framed as `ast --list`'s are, each named by its line's number.
+const BUDGET_BATCH_HEADER: &str = "sabline.budget-batch/1";
+
+/// One budget document per line of `list`. A line is a JSON array of two,
+/// the budget's text and the effects it denies, each a string or `null`:
+/// JSON, so that a tab, a comma or a character past ASCII in a budget
+/// arrives as the Python package received it.
+fn budget_list_of(list: &str) -> Result<ExitCode, String> {
+    let text = read_list(list)?;
+    let mut every = true;
+    out(format!("{BUDGET_BATCH_HEADER}\n").as_bytes())?;
+    for (n, line) in text.lines().enumerate() {
+        let line = line.trim_end_matches('\r');
+        if line.is_empty() {
+            continue;
+        }
+        let given =
+            Json::parse(line).map_err(|e| format!("sabline-rt: line {}: {e}", n + 1))?;
+        let field = |v: &Json| -> Result<Option<String>, String> {
+            match v {
+                Json::Null => Ok(None),
+                Json::Str(s) => Ok(Some(s.clone())),
+                _ => Err(format!("sabline-rt: line {}: a budget is text or null", n + 1)),
+            }
+        };
+        let (allow, deny) = match &given {
+            Json::List(pair) if pair.len() == 2 => (field(&pair[0])?, field(&pair[1])?),
+            _ => return Err(format!("sabline-rt: line {} is not [allow, deny]", n + 1)),
+        };
+        let document = sabline_rt::budget::budget_document(allow.as_deref(), deny.as_deref());
+        every &=
+            matches!(&document, Json::Obj(f) if f.get("valid") == Some(&Json::Bool(true)));
+        let body = document.canonical();
+        out(format!("--- {} {}\n", body.len(), n + 1).as_bytes())?;
+        out(body.as_bytes())?;
+        out(b"\n")?;
+    }
+    Ok(if every { ExitCode::SUCCESS } else { ExitCode::from(1) })
 }
 
 /// The document for one path, and whether it parsed.

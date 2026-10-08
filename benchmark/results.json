@@ -8,7 +8,7 @@
   "python": "3.13.13",
   "python_memory_cap": "job object",
   "quick": false,
-  "sabline": "8.6.0",
+  "sabline": "8.8.0",
   "sabline_memory_cap": "enforced",
   "timeout_s": 5
  },
@@ -8532,12 +8532,7 @@
       "beyond_needs": [],
       "beyond_needs_on_danger_line": [],
       "check": [],
-      "loops_unshown": [
-       {
-        "in": "main",
-        "line": 5
-       }
-      ],
+      "loops_unshown": [],
       "loops_unshown_on_danger_line": [],
       "proven_functions": []
      },
@@ -8551,10 +8546,10 @@
       "stdout": "3 lines",
       "timed_out": false
      },
-     "evidence": "audit: loop not shown to end in main, line 5 (E612 under --strict); run: exit 0; task done",
+     "evidence": "run: exit 0; task done",
      "observed": null,
      "task": "done",
-     "verdict": "false-positive"
+     "verdict": "not-applicable"
     }
    }
   },
@@ -10667,9 +10662,9 @@
     "sabline": {
      "caught-before-run": 1,
      "caught-during-run": 1,
-     "false-positive": 4,
+     "false-positive": 3,
      "missed": 0,
-     "not-applicable": 0,
+     "not-applicable": 1,
      "tool-absent": 0
     }
    }
@@ -10755,9 +10750,9 @@
   "sabline": {
    "caught-before-run": 54,
    "caught-during-run": 16,
-   "false-positive": 4,
+   "false-positive": 3,
    "missed": 10,
-   "not-applicable": 18,
+   "not-applicable": 19,
    "tool-absent": 0
   }
  }

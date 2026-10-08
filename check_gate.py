@@ -9,9 +9,9 @@ third is the one that matters:
 1. **It reads nothing that could disable it.** This script reads the
    gate's syntax tree and fails on `os.environ`, `getenv`, a configuration
    file, or any use of `sys.argv` beyond handing the corpus paths to
-   `main`. The same scan covers `agreement_edges.py` and
-   `agreement_checks.py`, which are part of the corpus rather than of the
-   comparison.
+   `main`. The same scan covers `agreement_edges.py`,
+   `agreement_checks.py` and `agreement_budgets.py`, which are part of the
+   corpus rather than of the comparison.
 
 2. **The workflow cannot skip it.** `check_workflows.py` holds that: the
    `agreement` job is in test.yml, has no `if:` and no `continue-on-error`,
@@ -21,8 +21,10 @@ third is the one that matters:
 3. **It is proven to detect, not merely to run.** This script builds
    sabline-rt with one deliberate difference injected - a single error
    code changed, a single message changed, one field of the tree dropped,
-   and from M2 a checker's code, a checker's message, a loop's verdict and
-   a row of the builtin tables - and asserts the gate goes red for each,
+   and from M2 a checker's code, a checker's message, a loop's verdict, a
+   row of the builtin tables, one shape of the input-bounded loop
+   verdict, a budget refusal's message and a budget's count - and asserts
+   the gate goes red for each,
    one injection per comparison class. A gate that has never been shown
    to fail is a gate nobody has tested. `check_mutant_kills.py`'s idea,
    applied to the gate itself.
@@ -49,14 +51,17 @@ ROOT = Path(__file__).resolve().parent
 GATE = ROOT / "check_agreement.py"
 EDGES = ROOT / "agreement_edges.py"
 CHECKS = ROOT / "agreement_checks.py"
+BUDGETS = ROOT / "agreement_budgets.py"
 
 # What a copy needs to run the gate: the corpora it reads, the suites it
 # imports the tables of, the package it runs, and the crate it builds.
 NEEDED = ("examples", "stdlib", "benchmark/corpus", "tests/error_messages",
           "sabline", "rt/crates", "rt/Cargo.toml", "rt/rustfmt.toml",
           "rt/deny.toml", "sabline.py", "check_agreement.py",
-          "agreement_edges.py", "agreement_checks.py", "check_prover_lies.py",
-          "check_sandbox.py", "check_refusals.py", "suite_dirs.py",
+          "agreement_edges.py", "agreement_checks.py", "agreement_budgets.py",
+          "check_prover_lies.py",
+          "check_sandbox.py", "check_refusals.py", "check_termination.py",
+          "suite_dirs.py",
           "suite_runtime.py", "LICENSE")
 
 # Names that would let something outside the gate change what it compares.
@@ -127,6 +132,28 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
         'b("to_float", NONE, &["Int"], "Float"),',
         'b("to_float", NONE, &["Float"], "Float"),',
     ),
+    # The budget parser (9.0, M2): a refusal's text, and the rule that the
+    # smallest count written is the one that holds.
+    # The third loop verdict (9.0): one of its two flag shapes, the clear in
+    # the else arm of a not-empty test, taken away from sabline-rt.
+    (
+        "the input-bounded verdict's else arm",
+        "rt/crates/sabline-rt/src/termination.rs",
+        "Some(false) => other,",
+        "Some(false) => &[],",
+    ),
+    (
+        "a budget refusal's message",
+        "rt/crates/sabline-rt/src/budget.rs",
+        "no wildcard over an IP literal",
+        "no wildcard over an IP address",
+    ),
+    (
+        "a budget's count",
+        "rt/crates/sabline-rt/src/budget.rs",
+        "Some(cur) if cur <= &n => cur.clone(),",
+        "Some(cur) if cur >= &n => cur.clone(),",
+    ),
 )
 
 
@@ -152,7 +179,7 @@ def _uses(tree: Any) -> list[str]:
 
 def reads_nothing_that_disables_it() -> list[str]:
     problems = []
-    for path in (GATE, EDGES, CHECKS):
+    for path in (GATE, EDGES, CHECKS, BUDGETS):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for told in _uses(tree):
             problems.append(f"{path.name} {told}")
@@ -311,8 +338,9 @@ def main(argv: list[str]) -> int:
     told = reads_nothing_that_disables_it()
     problems += told
     if not told:
-        print(f"  {GATE.name}, {EDGES.name} and {CHECKS.name}: no "
-              f"environment, no configuration, one use of the command line")
+        print(f"  {GATE.name}, {EDGES.name}, {CHECKS.name} and "
+              f"{BUDGETS.name}: no environment, no configuration, one use "
+              f"of the command line")
 
     print("nothing in the environment changes what it compares")
     problems += environment_changes_nothing(corpus)

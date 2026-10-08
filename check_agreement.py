@@ -7,8 +7,8 @@ project has and fails on any difference. plan/9.0.md designs it, and each
 milestone grows it by what that milestone ports: M1 compared the parsers -
 the AST dump, the error code, the message, the fixes and the line - and M2
 adds the checkers, which is what `sabline check` finds in each program,
-stage by stage, and each loop's termination verdict, and the builtin
-tables both checkers read. M3 adds runs and receipts.
+stage by stage, and each loop's termination verdict, the builtin tables
+both checkers read, and the budget parser. M3 adds runs and receipts.
 
 **What it runs over** (plan/9.0.md's table, the rows that hold a program):
 
@@ -27,6 +27,7 @@ lines, which is half of what this alpha claims:
 
     tests/error_messages/               one program per error code
     check_refusals.py                   its wrong programs
+    check_termination.py                its loops, one per edge of the rule
     truncations                         every example cut at fifteen points
     agreement_edges.py                  the standing adversarial pass, as a
                                         table: the depth caps on each side,
@@ -60,7 +61,14 @@ byte, and one more document for the whole gate:
   each stage's problems in the reference's order, every problem once, and
   every loop's verdict and the reason for it;
 - the builtin tables both runtimes' checkers read, so that a builtin added
-  to one and not the other is a difference before any program calls it.
+  to one and not the other is a difference before any program calls it;
+- and for every budget agreement_budgets.py holds - sabline-spec's L1
+  budget cases, what is made from them, and its edges - the budget
+  document (sabline/check_dump.py's `budget_document`, the crate's
+  `budget` module): what the budget parses to, or its refusal word for
+  word. Both runtimes resolve its paths in one scratch directory holding a
+  small tree of directories and links, since a path is resolved when a
+  budget is parsed.
 
 **What it does not read.** Nothing but the paths on its command line. No
 environment variable, no configuration file, no flag that skips a corpus or
@@ -213,6 +221,15 @@ def _refusal_corpus() -> list[tuple[str, str]]:
                    for name, code, _proves, source in m.CASES))
 
 
+def _termination_corpus() -> list[tuple[str, str]]:
+    """check_termination.py's loops, each built to sit on one side of one
+    edge of the rule - the input-bounded verdict's near misses among them."""
+    return _from_module(
+        "check_termination",
+        lambda m: ((f"termination/{name}", source.lstrip())
+                   for name, _verdicts, source in m.CASES))
+
+
 # How many pieces every example is cut into. Cutting a program at a point
 # inside it is the cheapest way there is to make a parse error that nobody
 # wrote by hand, and cutting at the same points every time makes the corpus
@@ -234,8 +251,9 @@ def _truncations(files: list[Path]) -> list[tuple[str, str]]:
     return out
 
 
-def collect(paths: list[str]) -> tuple[list[tuple[str, Any]], list[str]]:
-    """Every program to compare, and one line per corpus saying how many.
+def collect(paths: list[str]) -> tuple[list[tuple[str, Any]], list[str], Path]:
+    """Every program to compare, one line per corpus saying how many, and
+    where sabline-spec's corpus was found.
 
     A program is either a path to a file, which both runtimes read
     themselves, or the **bytes** of one, which the gate writes into a
@@ -273,6 +291,7 @@ def collect(paths: list[str]) -> tuple[list[tuple[str, Any]], list[str]]:
     for name, rows in (("the lie corpus", _lie_corpus()),
                        ("check_sandbox.py", _sandbox_corpus()),
                        ("check_refusals.py", _refusal_corpus()),
+                       ("check_termination.py", _termination_corpus()),
                        ("truncations of every example", _truncations(examples))):
         texts += rows
         counts.append(f"{name}: {len(rows)} programs")
@@ -295,7 +314,7 @@ def collect(paths: list[str]) -> tuple[list[tuple[str, Any]], list[str]]:
 
     return ([(str(f), None) for f in files]
             + [(n, t.encode("utf-8")) for n, t in texts]
-            + list(edges) + list(checks) + missing), counts
+            + list(edges) + list(checks) + missing), counts, corpus
 
 
 # ---- asking each runtime ----------------------------------------------------
@@ -329,10 +348,11 @@ def rt_binary() -> Path:
 
 BATCH_HEADER = b"sabline.ast-batch/1\n"
 CHECK_BATCH_HEADER = b"sabline.check-batch/1\n"
+BUDGET_BATCH_HEADER = b"sabline.budget-batch/1\n"
 
 
-def _run(command: list[str]) -> bytes:
-    done = subprocess.run(command, capture_output=True)
+def _run(command: list[str], cwd: Path | None = None) -> bytes:
+    done = subprocess.run(command, capture_output=True, cwd=cwd)
     if done.returncode not in (0, 1):
         raise SystemExit(
             f"check_agreement.py: {command[0]} ended {done.returncode} for "
@@ -342,13 +362,14 @@ def _run(command: list[str]) -> bytes:
 
 
 def dumps(runtime: list[str], listing: Path,
-          heading: bytes = BATCH_HEADER) -> list[tuple[str, bytes]]:
+          heading: bytes = BATCH_HEADER,
+          cwd: Path | None = None) -> list[tuple[str, bytes]]:
     """Each path and the bytes of its canonical document, in order.
 
     The bytes are kept as bytes: comparing them is the comparison, and a
     document is read only to say where two of them differ.
     """
-    stream = _run(runtime + [str(listing)])
+    stream = _run(runtime + [str(listing)], cwd)
     if not stream.startswith(heading):
         raise SystemExit(
             f"check_agreement.py: {runtime[0]} did not write a batch "
@@ -456,7 +477,10 @@ def tables(binary: Path) -> tuple[bytes, bytes]:
 
 
 def main(argv: list[str]) -> int:
-    programs, counts = collect(argv)
+    programs, counts, corpus = collect(argv)
+    sys.path.insert(0, str(ROOT))
+    import agreement_budgets                 # the budgets' corpus (M2)
+    budgets, budget_counts = agreement_budgets.cases(corpus)
     binary = rt_binary()
     with tempfile.TemporaryDirectory(prefix="sabline-agreement-") as tmp:
         here = Path(tmp)
@@ -490,26 +514,47 @@ def main(argv: list[str]) -> int:
                               CHECK_BATCH_HEADER)
         rust_checks = dumps([str(binary), "check", "--install-dir",
                              str(ROOT), "--list"], paths, CHECK_BATCH_HEADER)
+        # the budget parser (M2): each budget case's document, both
+        # runtimes resolving its paths in one scratch directory that holds
+        # the tree agreement_budgets.py's paths walk through
+        budget_list = here / "budgets.jsonl"
+        budget_list.write_text(
+            "".join(json.dumps([allow, deny]) + "\n"
+                    for _, allow, deny in budgets), encoding="utf-8")
+        scratch = here / "cwd"
+        scratch.mkdir()
+        unmade = agreement_budgets.prepare(scratch)
+        python_budgets = dumps([sys.executable, str(ROOT / "sabline.py"),
+                                "check-dump", "--budgets"], budget_list,
+                               BUDGET_BATCH_HEADER, scratch)
+        rust_budgets = dumps([str(binary), "budget", "--list"], budget_list,
+                             BUDGET_BATCH_HEADER, scratch)
 
     # the names the gate reports are the corpus names, not the temporary
     # paths it wrote them to
     names = [name for name, _ in programs]
     parsed = compare(python, rust, names)
     checked = compare(python_checks, rust_checks, names)
+    budgeted = compare(python_budgets, rust_budgets,
+                       [name for name, _, _ in budgets])
     python_tables, rust_tables = tables(binary)
     tabled = ([] if python_tables == rust_tables else
               [f"the builtin tables: {_told(python_tables, rust_tables)}"])
 
-    for line in counts:
+    for line in counts + budget_counts:
         print(f"  {line}")
+    if unmade:
+        print(f"  (this system would not make: {', '.join(unmade)}; those "
+              f"paths are compared as paths that do not exist)")
     rows = (("the parsers", len(programs), parsed),
             ("the checkers", len(programs), checked),
+            ("the budget parser", len(budgets), budgeted),
             ("the builtin tables", 1, tabled))
     for what, many, found in rows:
         print(f"  {what}: {many} compared, {many - len(found)} agree, "
               f"{len(found)} differ")
     total = sum(many for _, many, _ in rows)
-    differences = [f"{what}: {line}" for what, _, found in rows[:2]
+    differences = [f"{what}: {line}" for what, _, found in rows[:3]
                    for line in found] + tabled
     print(f"agreement gate: {total} comparisons, "
           f"{total - len(differences)} agreements, "

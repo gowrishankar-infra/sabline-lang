@@ -69,7 +69,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-9.html">9.x</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -304,7 +304,7 @@ it; the <code>schema</code> field names the version.</p>
 <tr><td><code>safe_command</code></td><td>the narrowest budget the audit can write: <code>fs:read:&lt;path&gt;</code> and <code>net:&lt;host&gt;</code> for the literals it read, the bare direction or effect where a value was built at runtime</td></tr>
 <tr><td><code>warnings</code></td><td>human-readable cautions, including which modules to grant</td></tr>
 <tr><td><code>ffi_modules</code></td><td>top-level Python packages named in py* calls, for <code>ffi:</code> grants (added in 2.60 within schema 1)</td></tr>
-<tr><td><code>loops_unshown</code></td><td>loops the termination rule cannot show to end (added in 2.62)</td></tr>
+<tr><td><code>loops_unshown</code></td><td>loops the termination rule cannot show to end (added in 2.62); from 9.0 a loop bounded by its input (SPEC.md 9.5) is not one</td></tr>
 <tr><td><code>contract_coverage</code></td><td>functions that take or return data and promise nothing (added in 2.62)</td></tr>
 <tr><td><code>fs_paths</code></td><td><code>{"read": [...], "write": [...], "read_any": bool, "write_any": bool}</code> - the path literals a program reads and writes; a flag says a path was built at runtime (added in 3.0)</td></tr>
 <tr><td><code>net_hosts</code></td><td><code>{"hosts": [...], "any": bool}</code> - the hosts (with ports when given) named in URL literals (added in 3.0)</td></tr>

@@ -5,6 +5,131 @@ below 8.6 uses the name it had at the time, which is what the
 record is for. [docs/renamed.md](docs/renamed.md) says what
 moved where.
 
+api: `sabline conformance` takes `--runtime python|rust` (9.0, M2): with
+`rust`, sabline-rt answers the case kinds it implements and every result
+says which runtime answered it; without the flag nothing changes.
+
+## 9.0.0-alpha.5 - M2: the checkers, the budget parser, and a loop bounded by its input
+
+The second rung of 9.0 (`plan/9.0.md`, *M2 - the checkers*), as far as its
+exit criteria go: **sabline-rt now checks a program the way `sabline check`
+does - every stage's problems, in the reference's order and in its words,
+and every loop's verdict - and parses a budget the way a run does.** It
+still does not run a program, prove a promise, enforce a budget or write a
+receipt; the Python package does all four and is the reference, and where
+the two disagree sabline-rt has a defect.
+
+This is a **pre-release** of the `sabline-rt` crate, and it publishes that
+and nothing else. 8.8.0 is still what `pip install sabline-lang`, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and `sabline --version` still says 8.8.0. What the Python package on
+main gained below ships with 9.0.
+
+### What exists
+
+**The checkers, ported** (pull request #144): the loader with its imports
+and the shipped standard library, the effect checker, the type checker -
+`Secret of T`, `Money of C`, generics, records, maps, function values - the
+rules for `main`, and each loop's termination verdict. A literal
+transliteration, rule for rule and message for message; `rt/README.md` and
+`src/checker.rs` say which of the reference's behaviours are copied on
+purpose and why (`infer` runs again where the reference runs it again,
+because the number of runs is visible in the problem list).
+
+**The budget parser** (`src/budget.rs`): sabline-spec's grammar of sections
+4 and 5 - effects, scoped `fs:`, `net:`, `ffi:` and `tool:` grants, `@N`
+counts, every refusal in the reference's words - and the library's
+`_budget_from`, which is the path a budget case takes. A path in a grant
+is resolved when the budget is parsed, as `normcase(realpath(path))`, so
+`src/pypath.rs` now copies CPython's own `realpath`: the walk that resolves
+as much of a path as exists, through links and junctions, and joins the
+rest on. Four of CPython's behaviours are copied rather than Rust's -
+`realpath`'s walk, `ntpath.normcase` lowering one character for one,
+`str.isdigit()` taking superscripts and circled digits (a new generated
+table, `src/unicode_digit.rs`), and `int()`'s 4,300-digit limit, whose
+message becomes the budget's refusal. The crate gains a JSON reader for the
+budgets the gate sends, and `sabline-rt budget --list`.
+
+**A third loop verdict, bounded by its input** (decisions/0006 section c,
+and its amendment of 2026-10-08), in both runtimes in the same commit and
+written first into `SPEC.md` §9.5. A loop gets it only when its exit is
+keyed to the read's empty result: `read_line()` answers `""` at the end of
+input and on every call after it, so a loop that reads a line every turn
+and leaves on the first empty one runs at most once more than its input
+has lines. §9.5 states the two shapes exactly. `sabline check --strict`
+does not refuse such a loop (E612 is for `unshown` loops), `sabline audit`
+does not count it in `loops_unshown`, and `sabline explain` names it. The
+benchmark's 18a, a correct line counter, is reported bounded by its input
+and passes `check --strict`.
+
+0006 first worded the rule as a loop "whose condition changes only from
+that call's result", and **that wording was not sound**: a loop that clears
+its flag only when `line == "x"` fits it, and once its input ends it reads
+`""` for ever. The maintainer amended the rule to key it to the empty read
+(0006's Amendment 1), and that loop is now a test in both runtimes that
+must stay `unshown` - beside 07d, which leaves only on `"quit"`, and 18e,
+which reads once before its loop and never inside it.
+
+**`sabline conformance --runtime rust`**: sabline-rt answers the conformance
+case kinds it implements - L1's 280 `budget` cases - through its binary,
+and every other case is answered by the Python package and labelled as its
+answer, never counted as sabline-rt's. The C ABI the plan first named is
+M7's, and conformance through it moved to M7's criteria; L3's 51 `check`
+cases are `sabline capabilities check`, which decisions/0002 keeps in
+Python, so they stay Python-answered (`plan/9.0.md`, amended 2026-10-08).
+`check_conformance_rust.py` holds the runner to that labelling, and to a
+wrong answer from sabline-rt failing its case.
+
+### The agreement gate
+
+    the parsers: 6570 compared, 6570 agree, 0 differ
+    the checkers: 6570 compared, 6570 agree, 0 differ
+    the budget parser: 2967 compared, 2967 agree, 0 differ
+    the builtin tables: 1 compared, 1 agree, 0 differ
+  agreement gate: 16108 comparisons, 16108 agreements, 0 differences
+
+The budget comparison is the 280 L1 budget cases, 2,558 budgets made from
+them by fixed operations, 115 hand-written edges and 14 paths through a
+small tree both runtimes resolve; together they reach every statement of
+the reference's budget parser that a parse can reach. `check_gate.py`'s
+injections - one per comparison class, each of which must turn the gate
+red - gain three: a budget refusal's message, the rule that the smallest
+count holds, and one shape of the input-bounded verdict.
+
+Under `--runtime rust`, `check_termination.py` asks sabline-rt 67
+questions (64 loops and three `--strict` verdicts), and the other four
+suites the check-time questions they asked of alpha.4's checkers; every
+one is answered as the Python package answers it.
+
+### What moved because 18a is no longer flagged
+
+The benchmark's Sabline column re-measured: 18a is `not-applicable`, and
+Sabline's false positives on the 22 correct controls are three - Euclid's
+loop (18b), and 25! and a product modulo 2^61 - 1, which do not fit 64
+bits (18c, 18d). On the competitor page, Deno, WASI and the Python sandbox
+are each ahead on one row fewer. docs/known-open.md's row for correct
+programs the rules refuse says 18a is closed on main and ships with 9.0.
+
+### What is not done
+
+M2's exit criteria are met, as amended, for every question a checker
+answers. The five suites' questions that run a program wait for M3's
+interpreter; the prover's and the audit's stay Python's for good
+(decisions/0002). `plan/9.0-m2-progress.md` lists two recommended pieces
+of work that are not exit criteria - a checker target for the differential
+fuzzer, and a two-file case for the one reachable checker line no
+single-file program reaches - and says where the next session starts.
+
+### Outside M2
+
+sabline-spec's CI had been red on main since 2026-09-28: its validator
+refused this repository's `sabline.capabilities`, whose surface had `tool`
+added by hand beside `tool:search` and `tool:send_email`. The validator was
+right - `tool` covers every tool grant, and the reference's own reduction
+drops the two - so the baseline is reduced now (#145), and the test job
+runs sabline-spec's validator on it; sabline-spec 0.15.1 adds the line its
+section 9.5 had been missing.
+
 ## 8.8 - The three outside 9.0
 
 `decisions/0007` accepted three items as work that gates no rung of 9.0 and

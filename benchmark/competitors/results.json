@@ -1574,9 +1574,9 @@
      "caught, task broken": 0,
      "caught-before-run": 1,
      "caught-during-run": 1,
-     "false-positive": 4,
+     "false-positive": 3,
      "missed": 0,
-     "not-applicable": 0,
+     "not-applicable": 1,
      "not-expressible": 0,
      "not-run": 0,
      "outside": 0,
@@ -18781,12 +18781,7 @@
         "audit_ffi_modules": [],
         "beyond_needs": [],
         "beyond_needs_on_danger_line": [],
-        "loops_unshown": [
-         {
-          "in": "main",
-          "line": 5
-         }
-        ],
+        "loops_unshown": [],
         "loops_unshown_on_danger_line": []
        }
       },
@@ -18806,12 +18801,12 @@
        "stdin": "alpha\nbeta\ngamma\n"
       }
      ],
-     "evidence": "audit: loop not shown to end in main, line 5 (E612 under --strict); run: exit 0; task done",
+     "evidence": "run: exit 0; task done",
      "grant": "sabline.run(allow=[io])",
      "notes": [],
      "observed": null,
      "task": "done",
-     "verdict": "false-positive"
+     "verdict": "not-applicable"
     },
     "sandbox": {
      "calls": [
@@ -22028,9 +22023,9 @@
    "caught, task broken": 7,
    "caught-before-run": 54,
    "caught-during-run": 16,
-   "false-positive": 4,
+   "false-positive": 3,
    "missed": 10,
-   "not-applicable": 18,
+   "not-applicable": 19,
    "not-expressible": 0,
    "not-run": 0,
    "outside": 0,

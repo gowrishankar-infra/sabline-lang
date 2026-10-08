@@ -8,6 +8,14 @@ the decision names, not built: until it ships it changes nothing in
 `SPEC.md`, sabline-spec or either runtime, and no document may describe it
 as a feature.
 
+**Amendment 1, at the end of this file, decided 2026-10-08**, changes
+section c's input-bounded verdict: the rule as first worded was not sound,
+and the section it is written into is this repository's `SPEC.md` §9.5,
+not sabline-spec's. Read section c first and the amendment second; it says
+which sentences it changes, and changes nothing else. **That verdict is
+built**, as amended, in both runtimes on main (M2, 2026-10-08), and ships
+with 9.0; the rest of this file is still unbuilt.
+
 ## What this answers
 
 The competitor table ([docs/competitors.md](../docs/competitors.md), from
@@ -596,3 +604,63 @@ it is accepted and built.
 *Decided 2026-09-24* (above): the known-open rows now name the milestone
 that closes each accepted item, or say that nothing is scheduled, and each
 changes again when its item ships.
+
+---
+
+# Amendment 1 - the input-bounded verdict, made sound
+
+Decided 2026-10-08, by the maintainer, on the three questions
+`plan/9.0-m2-progress.md` raised when M2 reached section c's verdict. It
+amends section c rather than replacing it: everything written there stands
+unless this section says otherwise. Status: section c's - accepted for M2,
+and nothing here is normative until both checkers implement it.
+
+**1. The rule.** Section c (*What the static rules would need*, and the
+decision under it) worded the verdict as: a loop "whose every path from
+the top of the body back to the condition calls `read_line()`, and whose
+condition changes only from that call's result, ends when its input
+ends". That is not sound. `read_line()` answers `""` at the end of input,
+and on every call after that, so this loop fits the words and never ends
+once its input does:
+
+    fn main() uses io {
+        let going = true
+        while going {
+            let line = read_line()
+            if line == "x" {
+                going = false
+            }
+        }
+    }
+
+18a ends only because its exit is keyed to the empty text. So the verdict
+is given **only when the loop's exit condition is the read's empty
+result**: every path through the body calls `read_line()`, and either the
+condition tests that the value read is not empty, that value being bound
+in the body only from `read_line()`; or the condition is a flag the body
+assigns only `false`, and only in the arm of an `if` that tests the value
+read on that path for empty. Each turn then consumes a line and the first
+turn after the input ends leaves, so the loop runs at most once more than
+its input has lines. `SPEC.md` §9.5 states the exact shapes. 18a meets
+the rule; the loop above, 18e, 07d (which leaves only on `"quit"`) and
+Euclid (18b) do not, and must not.
+
+**2. Where it is written.** Section c says the verdict is "written into
+sabline-spec §9.5 first". sabline-spec's §9.5 is *When one grant covers
+another*; the loop verdicts are defined in this repository's own `SPEC.md`
+§9.5, and sabline-spec refers to that rule from the audit's
+`loops_unshown`. The verdict is written into this repository's `SPEC.md`
+§9.5, and sabline-spec does not change for it.
+
+**3. How it is built.** In both runtimes in the same commits -
+`sabline/termination.py` and sabline-rt's `termination.rs` - with the loop
+above as a test that must stay `unshown` in both. Section c's cases that
+must fail (1, 2 and 5) still hold, and the loop above joins them.
+
+**The same day, outside this decision**, the maintainer answered two more
+questions about M2's criteria, recorded in `plan/9.0.md`: L3's 51 `check`
+conformance cases are `sabline capabilities check`, which
+decisions/0002 keeps in Python, so they stay Python-answered and
+sabline-rt answers the rest; and conformance through the C ABI is M7's
+criterion, so in M2 `sabline conformance --runtime rust` drives the
+`sabline-rt` binary.
