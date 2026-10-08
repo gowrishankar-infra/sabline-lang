@@ -56,7 +56,8 @@ NEEDED = ("examples", "stdlib", "benchmark/corpus", "tests/error_messages",
           "sabline", "rt/crates", "rt/Cargo.toml", "rt/rustfmt.toml",
           "rt/deny.toml", "sabline.py", "check_agreement.py",
           "agreement_edges.py", "agreement_checks.py", "check_prover_lies.py",
-          "check_sandbox.py", "check_refusals.py", "suite_dirs.py", "LICENSE")
+          "check_sandbox.py", "check_refusals.py", "suite_dirs.py",
+          "suite_runtime.py", "LICENSE")
 
 # Names that would let something outside the gate change what it compares.
 FORBIDDEN_ATTRIBUTES = {"environ", "getenv", "putenv", "environb"}
