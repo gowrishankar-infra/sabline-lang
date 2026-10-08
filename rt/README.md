@@ -42,13 +42,13 @@ the same words.
       paths that are not files: 2 programs
       the L1 budget cases: 280 budgets
       their mutations: 2558 budgets
-      the budgets' edges: 117 budgets
+      the budgets' edges: 115 budgets
       paths through a tree: 14 budgets
       the parsers: 6570 compared, 6570 agree, 0 differ
       the checkers: 6570 compared, 6570 agree, 0 differ
-      the budget parser: 2969 compared, 2969 agree, 0 differ
+      the budget parser: 2967 compared, 2967 agree, 0 differ
       the builtin tables: 1 compared, 1 agree, 0 differ
-    agreement gate: 16110 comparisons, 16110 agreements, 0 differences
+    agreement gate: 16108 comparisons, 16108 agreements, 0 differences
 
 ## Building it
 
@@ -317,7 +317,11 @@ writes a float as CPython's `repr` does, `1e-05` and `1e+16` included
 * **A count is any size, up to 4,300 digits**: `int()` has no upper
   bound, and from CPython 3.10.7 refuses to read more than 4,300 digits,
   leading zeros included, with a message of its own that becomes the
-  budget's refusal. `budget::Count` holds the digits.
+  budget's refusal. `budget::Count` holds the digits. That message is
+  the one place the supported CPythons disagree with each other: 3.10
+  says "Exceeds the limit (4300) for ...", 3.12 and later "(4300
+  digits)". The crate writes the later, and the gate holds no count that
+  long, because no single answer would match every leg.
 
 ## No `unsafe`
 

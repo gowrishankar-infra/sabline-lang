@@ -84,12 +84,12 @@ wrong answer from sabline-rt failing its case.
 
     the parsers: 6570 compared, 6570 agree, 0 differ
     the checkers: 6570 compared, 6570 agree, 0 differ
-    the budget parser: 2969 compared, 2969 agree, 0 differ
+    the budget parser: 2967 compared, 2967 agree, 0 differ
     the builtin tables: 1 compared, 1 agree, 0 differ
-  agreement gate: 16110 comparisons, 16110 agreements, 0 differences
+  agreement gate: 16108 comparisons, 16108 agreements, 0 differences
 
 The budget comparison is the 280 L1 budget cases, 2,558 budgets made from
-them by fixed operations, 117 hand-written edges and 14 paths through a
+them by fixed operations, 115 hand-written edges and 14 paths through a
 small tree both runtimes resolve; together they reach every statement of
 the reference's budget parser that a parse can reach. `check_gate.py`'s
 injections - one per comparison class, each of which must turn the gate

@@ -59,7 +59,9 @@ pub struct Count(String);
 impl Count {
     /// `int(digits)` for a run of ASCII digits - which CPython refuses
     /// past 4,300 of them (`sys.get_int_max_str_digits()`, from 3.10.7),
-    /// leading zeros counted.
+    /// leading zeros counted. The message is 3.12's and later's; 3.10
+    /// writes "(4300)" where they write "(4300 digits)", so the reference
+    /// disagrees with itself here and the gate holds no such count.
     fn of(digits: &str) -> Parsed<Count> {
         if digits.len() > INT_MAX_STR_DIGITS {
             return refuse(format!(

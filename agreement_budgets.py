@@ -36,9 +36,13 @@ directory, with the tree in it, before it asks either.
 
 **What is not in it, on purpose.** A path whose letters Windows' own case
 table and Unicode's disagree on (`ẞ`, Cherokee - pypath.rs says why), a
-path longer than Windows' 260 characters, a NUL in a path, and a loop of
-links: CPython itself answers each of those differently from one version
-or one Windows to the next, so no single answer could be held to.
+path longer than Windows' 260 characters, a NUL in a path, a loop of
+links, and a count of more than 4,300 digits: CPython itself answers each
+of those differently from one version or one Windows to the next, so no
+single answer could be held to. The last is `int()`'s own refusal, which
+CPython 3.10 words "Exceeds the limit (4300) for integer string
+conversion" and 3.12 and later "(4300 digits)"; sabline-rt writes the
+later, and CI's 3.10 legs are where the two meet.
 """
 import json
 import os
@@ -86,8 +90,6 @@ EDGES: tuple[Case, ...] = (
     ("fs-count-64-bits", "fs@18446744073709551616", None),
     ("fs-count-huge", "fs@" + "9" * 300, None),
     ("fs-count-at-limit", "fs@" + "1" * 4300, None),
-    ("fs-count-past-limit", "fs@" + "1" * 4301, None),
-    ("fs-zeros-past-limit", "fs@" + "0" * 4301, None),
     ("fs-least-count", "fs:read@9,fs:write@3,fs@5", None),
     ("fs-unicode-digits-count", "fs@\u0663", None),
     ("fs-superscript-count", "fs@\u00b2", None),
