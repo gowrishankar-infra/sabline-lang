@@ -133,18 +133,18 @@ monthly), and the gate carries programs of more than one file, which reach
 the type checker's "unknown function value" for a library imported under a
 name.</p>
 <h3 id="the-agreement-gate">The agreement gate <a class="anchor" href="#the-agreement-gate" aria-label="Link to this section">#</a></h3>
-<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6772 compared, 6772 agree, 0 differ
-the checkers: 6772 compared, 6772 agree, 0 differ
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6774 compared, 6774 agree, 0 differ
+the checkers: 6774 compared, 6774 agree, 0 differ
 the budget parser: 2967 compared, 2967 agree, 0 differ
-the interpreters: 6771 compared, 6771 agree, 0 differ
+the interpreters: 6773 compared, 6773 agree, 0 differ
 the builtin tables: 1 compared, 1 agree, 0 differ</code></pre></div>
-<p>agreement gate: 23283 comparisons, 23283 agreements, 0 differences</p>
+<p>agreement gate: 23289 comparisons, 23289 agreements, 0 differences</p>
 <p>The runs' corpus, <code>agreement_runs.py</code>: 72 texts where code points and
 UTF-8 part - lone surrogates, a surrogate pair written as two escapes,
 characters past the basic plane, combining marks with nothing to combine
 with, letters whose case is two or three characters or depends on the
 next - each through every text builtin and named in a broken promise; and
-54 edges of arithmetic at 64 bits and at IEEE-754's, float printing,
+56 edges of arithmetic at 64 bits and at IEEE-754's, float printing,
 texts, lists, maps, records, money's rounding and parsing, every message
 the JSON reader gives, the input, exit statuses, recursion, and every kind
 of value a promise's message names. The first full run found one

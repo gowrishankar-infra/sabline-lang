@@ -48,19 +48,19 @@ the same words.
       truncations of every example: 1830 programs
       the adversarial corpus: 113 programs
       the checkers' corpus: 3785 programs
-      the runs' corpus: 198 programs
+      the runs' corpus: 200 programs
       paths that are not files: 2 programs
       the L1 budget cases: 280 budgets
       their mutations: 2558 budgets
       the budgets' edges: 115 budgets
       paths through a tree: 14 budgets
       (parsed and checked, not run: tests/error_messages/E611_run_memory_cap.vel - ...)
-      the parsers: 6772 compared, 6772 agree, 0 differ
-      the checkers: 6772 compared, 6772 agree, 0 differ
+      the parsers: 6774 compared, 6774 agree, 0 differ
+      the checkers: 6774 compared, 6774 agree, 0 differ
       the budget parser: 2967 compared, 2967 agree, 0 differ
-      the interpreters: 6771 compared, 6771 agree, 0 differ
+      the interpreters: 6773 compared, 6773 agree, 0 differ
       the builtin tables: 1 compared, 1 agree, 0 differ
-    agreement gate: 23283 comparisons, 23283 agreements, 0 differences
+    agreement gate: 23289 comparisons, 23289 agreements, 0 differences
 
 ## Building it
 

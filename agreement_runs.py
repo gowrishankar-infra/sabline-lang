@@ -531,6 +531,14 @@ print(ask("fourth?"))
     ("log-lines", _main('log("plain")\nlog("two\\nlines")\nlog(["a", "b"])\nlog(true)\nlog(1.5)')),
     ("recursion-too-deep", "fn down(n: Int) -> Int {\n    return down(n + 1)\n}\n"
      + _main("print(down(0))")),
+    # programs that do not end and print on every turn, so that where the
+    # step limit stops them - one call or loop turn either way - shows in
+    # what they printed (check_gate.py's injection into the limit)
+    ("never-ends-printing-each-turn", _main(
+        "let i = 0\nwhile true {\n    i = i + 1\n    print(i)\n}")),
+    ("never-ends-calling-each-turn",
+     "fn tick(n: Int) -> Int uses io {\n    print(n)\n    return n + 1\n}\n"
+     + _main("let i = 0\nwhile true {\n    i = tick(i)\n}")),
     ("main-with-a-parameter", "fn main(x: Int) uses io {\n    print(x)\n}\n"),
     ("function-values-carry-names", "fn apply(f: fn(Int) -> Int, x: Int) -> Int {\n"
      "    return f(x)\n}\n" + _main('''

@@ -75,19 +75,19 @@ name.
 
 ### The agreement gate
 
-    the parsers: 6772 compared, 6772 agree, 0 differ
-    the checkers: 6772 compared, 6772 agree, 0 differ
+    the parsers: 6774 compared, 6774 agree, 0 differ
+    the checkers: 6774 compared, 6774 agree, 0 differ
     the budget parser: 2967 compared, 2967 agree, 0 differ
-    the interpreters: 6771 compared, 6771 agree, 0 differ
+    the interpreters: 6773 compared, 6773 agree, 0 differ
     the builtin tables: 1 compared, 1 agree, 0 differ
-  agreement gate: 23283 comparisons, 23283 agreements, 0 differences
+  agreement gate: 23289 comparisons, 23289 agreements, 0 differences
 
 The runs' corpus, `agreement_runs.py`: 72 texts where code points and
 UTF-8 part - lone surrogates, a surrogate pair written as two escapes,
 characters past the basic plane, combining marks with nothing to combine
 with, letters whose case is two or three characters or depends on the
 next - each through every text builtin and named in a broken promise; and
-54 edges of arithmetic at 64 bits and at IEEE-754's, float printing,
+56 edges of arithmetic at 64 bits and at IEEE-754's, float printing,
 texts, lists, maps, records, money's rounding and parsing, every message
 the JSON reader gives, the input, exit statuses, recursion, and every kind
 of value a promise's message names. The first full run found one
