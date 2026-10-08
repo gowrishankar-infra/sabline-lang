@@ -366,6 +366,7 @@ from . import naming
 from .version import REFERENCE_URL, VERSION, _INSTALL_DIR, _launch_command
 from .errors import SablineError
 from .ast_dump import ast_main
+from .check_dump import check_dump_main
 from . import confine as _confine
 from .tables import CHECK_MEMORY_MB_DEFAULT, CHECK_TIMEOUT_DEFAULT
 from .recorder import _RunRecorder, _note_error, _note_stop, _utc_now_ms
@@ -529,6 +530,9 @@ HELP_FLAGS = ("--help", "-h")
 UNLISTED_COMMANDS = (
     ("ast", "the canonical AST dump is a comparison surface for the "
             "agreement gate, not a feature (rt/README.md; 9.0.0-alpha.1)"),
+    ("check-dump", "the canonical check document is the agreement gate's "
+                   "comparison surface for the checkers, not a feature "
+                   "(rt/README.md; 9.0 M2)"),
 )
 
 
@@ -727,6 +731,9 @@ def main() -> int:
     # is the surface sabline-rt is compared on (rt/README.md).
     if argv[:1] == ["ast"]:
         return ast_main(argv[1:])
+    # The canonical check document, for check_agreement.py likewise (M2).
+    if argv[:1] == ["check-dump"]:
+        return check_dump_main(argv[1:])
     if argv[:1] == ["lsp"]:
         return lsp_serve()
     # `sabline verify` alone is the older spelling of `deps --verify`; given a

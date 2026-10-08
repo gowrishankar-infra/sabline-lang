@@ -10,7 +10,11 @@ wrong verdict is a bug in the analysis, never in this file.
 Needs no theorem prover: the rule is syntactic, so this behaves
 identically with and without z3.
 
-    python check_termination.py
+    python check_termination.py                   the Python package
+    python check_termination.py --runtime rust    sabline-rt (9.0, M2)
+
+Every question here is the checkers', so under `--runtime rust` every
+case is asked of sabline-rt and held to the same verdicts.
 """
 import os
 import sys
@@ -19,7 +23,10 @@ from typing import Any
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import sabline  # noqa: E402
+import suite_runtime  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
+
+RUNTIME = "python"
 
 # its own directory, so two runs at once do not collide
 WORK = str(isolate("check_termination"))
@@ -584,6 +591,13 @@ def verdicts_of(source: str) -> tuple[Any, ...]:
     path = os.path.join(WORK, "_termination_check.vel")
     with open(path, "w", encoding="utf-8") as f:
         f.write(source.lstrip())
+    if RUNTIME == "rust":
+        try:
+            document = suite_runtime.check_document(path)
+        finally:
+            os.unlink(path)
+        return ([lp["verdict"] for lp in suite_runtime.own_loops(document, path)],
+                document["errors"])
     try:
         report = sabline.inspect_source(path, source.lstrip())
     finally:
@@ -603,10 +617,13 @@ def verdicts_of(source: str) -> tuple[Any, ...]:
     return [lp["verdict"] for lp in loops], report["errors"]
 
 
-def main() -> int:
+def main(argv: list[str]) -> int:
+    global RUNTIME
+    RUNTIME = suite_runtime.chosen(argv)
     passed = failed = 0
     print(f"{len(CASES)} adversarial programs, "
-          f"{sum(len(v) for _, v, _ in CASES)} loops")
+          f"{sum(len(v) for _, v, _ in CASES)} loops, asked of "
+          f"{'sabline-rt' if RUNTIME == 'rust' else 'the Python package'}")
     print("-" * 62)
     for name, want, source in CASES:
         try:
@@ -632,4 +649,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

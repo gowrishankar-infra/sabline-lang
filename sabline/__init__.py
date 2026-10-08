@@ -16,7 +16,7 @@ _MODULES = (
     "ast_dump",
     "tables", "confine", "state", "recorder", "loader", "values",
     "wrappers", "budget", "tools", "effects", "checker", "termination",
-    "prover", "native", "runtime", "witnesses", "editor", "formatter",
+    "check_dump", "prover", "native", "runtime", "witnesses", "editor", "formatter",
     "project", "session", "results", "library", "pool",
     "findings", "mcp_manifest", "doors", "migrate", "ratchet",
     "conform", "attestation", "receipts", "statements", "receipt_diff",
@@ -30,7 +30,9 @@ from . import version, naming, predicates, errors, lexer, nodes, parser  # noqa:
 from . import ast_dump  # noqa: E402,F401
 from . import tables, confine, state, recorder, loader, values  # noqa: E402,F401
 from . import wrappers, budget, tools  # noqa: E402,F401
-from . import effects, checker, termination, prover, native, runtime  # noqa: E402,F401
+from . import effects, checker, termination  # noqa: E402,F401
+from . import check_dump  # noqa: E402,F401
+from . import prover, native, runtime  # noqa: E402,F401
 from . import witnesses  # noqa: E402,F401
 from . import editor, formatter, project, session, results, library  # noqa: E402,F401
 from . import pool, findings, mcp_manifest, doors, migrate, ratchet  # noqa: E402,F401

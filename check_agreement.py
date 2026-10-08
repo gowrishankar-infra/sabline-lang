@@ -2,12 +2,13 @@
 
     python check_agreement.py [corpus paths...]
 
-It runs the Python parser and sabline-rt over every Sabline source this
-project has and fails on any difference in the AST dump, the error code,
-the error message, the fixes or the line. plan/9.0.md designs it; this is
-9.0.0-alpha.1's cut of it, which compares what alpha.1 built - a lexer and
-a parser - and is written so that alpha.2 adds verdicts, alpha.3 adds runs
-and receipts, and neither has to change what is here.
+It runs the Python package and sabline-rt over every Sabline source this
+project has and fails on any difference. plan/9.0.md designs it, and each
+milestone grows it by what that milestone ports: M1 compared the parsers -
+the AST dump, the error code, the message, the fixes and the line - and M2
+adds the checkers, which is what `sabline check` finds in each program,
+stage by stage, and each loop's termination verdict, and the builtin
+tables both checkers read. M3 adds runs and receipts.
 
 **What it runs over** (plan/9.0.md's table, the rows that hold a program):
 
@@ -39,10 +40,27 @@ lines, which is half of what this alpha claims:
 Together they reach every code the lexer and the parser give: E000, E001,
 E002, E100, E101, E102, E407, E511, E512 and E562.
 
-**What it compares.** One canonical document per source (sabline/ast_dump.py
-and the crate's `dump` module say what is in it), byte for byte. The
-document holds the whole tree when the source parses and the code, message,
-fixes and line when it does not, so one comparison covers both.
+And one for the checkers (M2), because every corpus above was written to
+compile or to be refused while parsing, and so reaches little of the half
+of the checkers that refuses:
+
+    agreement_checks.py                 a type-level mistake made at fixed
+                                        places in every example and library,
+                                        and a table of programs that reach
+                                        each refusal no mistake reaches
+
+**What it compares.** Two canonical documents per source, each byte for
+byte, and one more document for the whole gate:
+
+- the AST dump (sabline/ast_dump.py and the crate's `dump` module say what
+  is in it), which holds the whole tree when the source parses and the
+  code, message, fixes and line when it does not;
+- the check document (sabline/check_dump.py and the crate's `check_dump`
+  module), which holds what `sabline check` finds without the prover -
+  each stage's problems in the reference's order, every problem once, and
+  every loop's verdict and the reason for it;
+- the builtin tables both runtimes' checkers read, so that a builtin added
+  to one and not the other is a difference before any program calls it.
 
 **What it does not read.** Nothing but the paths on its command line. No
 environment variable, no configuration file, no flag that skips a corpus or
@@ -261,6 +279,11 @@ def collect(paths: list[str]) -> tuple[list[tuple[str, Any]], list[str]]:
 
     edges = _from_module("agreement_edges", lambda m: m.cases())
     counts.append(f"the adversarial corpus: {len(edges)} programs")
+    # the checkers' corpus (M2): a mistake made in every example and
+    # library at fixed places, and a table of the refusals no mutation
+    # reaches - the half of the checkers the corpora above barely touch
+    checks = _from_module("agreement_checks", lambda m: m.cases())
+    counts.append(f"the checkers' corpus: {len(checks)} programs")
 
     # and the one refusal that is not about a program's contents: a path
     # that is not a file. Both runtimes must give E001 with the same
@@ -272,7 +295,7 @@ def collect(paths: list[str]) -> tuple[list[tuple[str, Any]], list[str]]:
 
     return ([(str(f), None) for f in files]
             + [(n, t.encode("utf-8")) for n, t in texts]
-            + list(edges) + missing), counts
+            + list(edges) + list(checks) + missing), counts
 
 
 # ---- asking each runtime ----------------------------------------------------
@@ -305,6 +328,7 @@ def rt_binary() -> Path:
 
 
 BATCH_HEADER = b"sabline.ast-batch/1\n"
+CHECK_BATCH_HEADER = b"sabline.check-batch/1\n"
 
 
 def _run(command: list[str]) -> bytes:
@@ -317,19 +341,20 @@ def _run(command: list[str]) -> bytes:
     return done.stdout
 
 
-def dumps(runtime: list[str], listing: Path) -> list[tuple[str, bytes]]:
+def dumps(runtime: list[str], listing: Path,
+          heading: bytes = BATCH_HEADER) -> list[tuple[str, bytes]]:
     """Each path and the bytes of its canonical document, in order.
 
     The bytes are kept as bytes: comparing them is the comparison, and a
     document is read only to say where two of them differ.
     """
     stream = _run(runtime + [str(listing)])
-    if not stream.startswith(BATCH_HEADER):
+    if not stream.startswith(heading):
         raise SystemExit(
             f"check_agreement.py: {runtime[0]} did not write a batch "
             f"stream:\n{stream[:2000]!r}")
     out: list[tuple[str, bytes]] = []
-    at = len(BATCH_HEADER)
+    at = len(heading)
     while at < len(stream):
         end = stream.find(b"\n", at)
         if end < 0 or not stream.startswith(b"--- ", at):
@@ -420,6 +445,16 @@ def compare(python: list[tuple[str, bytes]],
     return out
 
 
+def tables(binary: Path) -> tuple[bytes, bytes]:
+    """The builtin tables each runtime's checkers read, as one document
+    each: a builtin added to one and not the other is a difference on the
+    commit that adds it, whether or not any program calls it yet."""
+    python = _run([sys.executable, str(ROOT / "sabline.py"), "check-dump",
+                   "--tables"])
+    rust = _run([str(binary), "tables"])
+    return python.rstrip(b"\n"), rust.rstrip(b"\n")
+
+
 def main(argv: list[str]) -> int:
     programs, counts = collect(argv)
     binary = rt_binary()
@@ -442,17 +477,42 @@ def main(argv: list[str]) -> int:
         paths = here / "paths.txt"
         paths.write_text("\n".join(listing) + "\n", encoding="utf-8")
 
+        # the parsers: the tree, or the refusal (M1)
         python = dumps([sys.executable, str(ROOT / "sabline.py"), "ast",
                         "--json", "--list"], paths)
         rust = dumps([str(binary), "ast", "--list"], paths)
+        # the checkers: what `sabline check` finds, stage by stage, and
+        # every loop's verdict (M2). Both are told the same place for the
+        # shipped standard library - this checkout, which is where the
+        # Python package that runs here keeps its own.
+        python_checks = dumps([sys.executable, str(ROOT / "sabline.py"),
+                               "check-dump", "--list"], paths,
+                              CHECK_BATCH_HEADER)
+        rust_checks = dumps([str(binary), "check", "--install-dir",
+                             str(ROOT), "--list"], paths, CHECK_BATCH_HEADER)
 
     # the names the gate reports are the corpus names, not the temporary
     # paths it wrote them to
-    differences = compare(python, rust, [name for name, _ in programs])
+    names = [name for name, _ in programs]
+    parsed = compare(python, rust, names)
+    checked = compare(python_checks, rust_checks, names)
+    python_tables, rust_tables = tables(binary)
+    tabled = ([] if python_tables == rust_tables else
+              [f"the builtin tables: {_told(python_tables, rust_tables)}"])
+
     for line in counts:
         print(f"  {line}")
-    print(f"agreement gate: {len(programs)} programs, "
-          f"{len(programs) - len(differences)} agreements, "
+    rows = (("the parsers", len(programs), parsed),
+            ("the checkers", len(programs), checked),
+            ("the builtin tables", 1, tabled))
+    for what, many, found in rows:
+        print(f"  {what}: {many} compared, {many - len(found)} agree, "
+              f"{len(found)} differ")
+    total = sum(many for _, many, _ in rows)
+    differences = [f"{what}: {line}" for what, _, found in rows[:2]
+                   for line in found] + tabled
+    print(f"agreement gate: {total} comparisons, "
+          f"{total - len(differences)} agreements, "
           f"{len(differences)} differences")
     if differences:
         print()

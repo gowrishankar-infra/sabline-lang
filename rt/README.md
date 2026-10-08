@@ -4,33 +4,41 @@ The Sabline runtime, in Rust. `decisions/0002-runtime-in-rust.md` says why
 there is a second runtime and what stays in the Python package;
 `plan/9.0.md` is the ladder it climbs and the gate that holds it.
 
-**In 9.0.0-alpha.1 this crate holds a lexer and a parser, and nothing
-else.** It does not check types, does not check effects, does not run a
-program, does not hold a budget and does not write a receipt. It cannot
-tell you whether a program is safe to run. The Python package is what
-does that, and where the two disagree the Python package is right and
-sabline-rt has a defect - that is what a reference implementation is, and
-`plan/9.0.md`'s demotion criteria are the only thing that ever changes it.
+**This crate holds a lexer, a parser and - from M2 - the loader and the
+checkers: effects, types with `Secret of T` and `Money of C`, the rules
+for `main`, and each loop's termination verdict.** It does not prove, does
+not run a program, does not hold a budget and does not write a receipt,
+so it cannot tell you whether a program is safe to run. The Python package
+is what does that, and where the two disagree the Python package is right
+and sabline-rt has a defect - that is what a reference implementation is,
+and `plan/9.0.md`'s demotion criteria are the only thing that ever changes
+it.
 
-What the alpha claims is one thing, and it is checked on every commit:
-for every Sabline source this project has, sabline-rt builds the same tree
-the Python parser builds, or refuses it with the same code, the same
-message, the same fixes and the same line.
+What it claims is checked on every commit: for every Sabline source this
+project has, sabline-rt builds the same tree the Python parser builds, or
+refuses it with the same code, the same message, the same fixes and the
+same line; and `sabline check` and sabline-rt find the same problems in it,
+stage by stage, in the same order, with the same messages, and give each
+loop the same verdict for the same reason.
 
     python check_agreement.py ../sabline-spec/tests
 
-    examples: 112 files
-    stdlib: 14 files
-    benchmark/corpus: 85 files
-    tests/error_messages: 84 files
-    ../sabline-spec/tests: 216 programs in cases
-    the lie corpus: 146 programs
-    check_sandbox.py: 58 programs
-    check_refusals.py: 24 programs
-    truncations of every example: 1680 programs
-    the adversarial corpus: 113 programs
-    paths that are not files: 2 programs
-    agreement gate: 2534 programs, 2534 agreements, 0 differences
+      examples: 122 files
+      stdlib: 14 files
+      benchmark/corpus: 111 files
+      tests/error_messages: 89 files
+      ../sabline-spec/tests: 216 programs in cases
+      the lie corpus: 146 programs
+      check_sandbox.py: 58 programs
+      check_refusals.py: 24 programs
+      truncations of every example: 1830 programs
+      the adversarial corpus: 113 programs
+      the checkers' corpus: 3781 programs
+      paths that are not files: 2 programs
+      the parsers: 6506 compared, 6506 agree, 0 differ
+      the checkers: 6506 compared, 6506 agree, 0 differ
+      the builtin tables: 1 compared, 1 agree, 0 differ
+    agreement gate: 13013 comparisons, 13013 agreements, 0 differences
 
 ## Building it
 
@@ -143,6 +151,41 @@ document's bytes and a reader never has to parse one to find the next. The
 gate compares those bytes; it reads a document only to say where two of
 them first differ.
 
+## The canonical check document
+
+The second comparison surface (9.0, M2): what `sabline check` finds in one
+program, without the prover, which sabline-rt does not have.
+
+    sabline check-dump <file.vel>                          from the Python package
+    sabline-rt check --install-dir <dir> <file.vel>        from this crate
+
+`--install-dir` is where the host keeps the shipped standard library, as
+`<dir>/stdlib/`: an import that a program's own directory does not have is
+looked for there by its base name, as the Python package looks beside
+itself. The gate gives both the same place - its own checkout, which is
+where the Python package it runs keeps its library.
+
+```json
+{"check":1,"errors":[...],"loops":[...],
+ "stages":{"load":null,"main":[],"main_run":[],"effects":[],"types":[]}}
+```
+
+`stages` is the reference's pipeline, stage by stage and in its order:
+`load` (the one refusal that stopped the loader, or null), `main` as
+`sabline check` asks about it and `main_run` as a run does (where a
+missing `main` is E400), `effects`, and `types` - null when an earlier
+stage found something, because the type checker then does not run. Each
+problem is `code`, `file`, `fixes`, `line` and `message`. `errors` is every
+problem once, in order, which is what `sabline check --json` prints less
+the `reference` line every error carries; `loops` is every loop of every
+function, lifted ones included, with `function`, `file`, `line`,
+`verdict` and `why`. It is written the way the AST dump is, and framed
+the same way under `--list`, with the header `sabline.check-batch/1`.
+
+`sabline-rt tables` and `sabline check-dump --tables` write the builtin
+tables both checkers read, so that a builtin added to one runtime and not
+the other is a difference whether or not any program calls it.
+
 ## What had to be written down to be copied
 
 Four things in the reference are decided somewhere other than the lexer
@@ -179,6 +222,30 @@ because it is true rather than because it bites.
 parsed before. `sabline ast --json` sets it to zero for each file, so a
 dump of one file is a function of that file. This crate's counter belongs
 to the parser, which is the same thing one file at a time.
+
+**The checkers are a transliteration, and three of their properties are
+copied because each changes what a check reports** (`src/checker.rs`
+says more):
+
+* `infer` runs again wherever the reference runs it again - three times on
+  a map's first value, twice on a key it puts in a message - because
+  inferring a function value checks that function, and the check appends
+  what it finds to the one list of problems. A cache would be faster and
+  would report a different list.
+* **The counter that names a lifted function value runs across every file
+  one load parses**, in the order the loader parses them, because
+  `Parser.lambda_n` is a class attribute; `fn#N` in a message is that
+  sequence's `N`. The check document sets it to zero per program, as the
+  AST dump does.
+* **A file's name is spelled the way CPython's `os.path` spells it**:
+  `os.path.join(os.path.dirname(importer), path)`, unnormalised, which is
+  what an error's `file` and an E512 or E513 message say. `src/pypath.rs`
+  is `ntpath` and `posixpath`, both compiled and tested everywhere.
+
+Two smaller ones: CPython's `str.strip()` strips U+001C to U+001F, which
+Unicode does not call white space (`pyrepr::py_isspace`), and `expr_str`
+writes a float as CPython's `repr` does, `1e-05` and `1e+16` included
+(`pyrepr::py_float_repr`).
 
 ## No `unsafe`
 
@@ -252,6 +319,15 @@ recursion limit to 20,000 before it parses.
 | `src/pyrepr.rs` | CPython's `ascii()` of a character, and the float form |
 | `src/json.rs` | the canonical JSON writer |
 | `src/dump.rs` | the tree as the canonical document |
-| `src/bin/sabline-rt.rs` | `sabline-rt ast` |
+| `src/pypath.rs` | CPython's `os.path`, Windows and POSIX, for the paths a check reports |
+| `src/tables.rs` | the builtins, the effects and the currencies every checker reads |
+| `src/types.rs` | types as text: `fn_sig_parts`, `type_mentions`, `Money of C` and `Secret of T` |
+| `src/show.rs` | `expr_str` and `nice_name`, an expression as a message quotes it |
+| `src/loader.rs` | a file and everything it imports, as one program |
+| `src/effects.rs` | the effect checker, and E204 |
+| `src/checker.rs` | `check_main` and the type checker |
+| `src/termination.rs` | which loops are shown to end |
+| `src/check_dump.rs` | what `sabline check` finds, as the canonical check document |
+| `src/bin/sabline-rt.rs` | `sabline-rt ast`, `check` and `tables` |
 | `tests/limits.rs` | the depth caps, and the stack they need |
 | `fuzz/` | the `cargo fuzz` targets |

@@ -345,10 +345,14 @@ pub fn unescape(raw: &str, line: u32) -> Answer<String> {
 }
 
 /// `fmt_fn_type(param_types, ret)`: a function type as one string.
+///
+/// `if ret and ret != "Unit"` in Python, so an empty result type is no
+/// result type, as `None` is. The parser never passes an empty one; the
+/// type checker can.
 pub fn fmt_fn_type(params: &[String], ret: Option<&str>) -> String {
     let mut s = format!("fn({})", params.join(", "));
     match ret {
-        Some(r) if r != "Unit" => {
+        Some(r) if !r.is_empty() && r != "Unit" => {
             s.push_str(" -> ");
             s.push_str(r);
         }

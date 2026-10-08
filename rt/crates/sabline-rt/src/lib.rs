@@ -2,17 +2,19 @@
 //!
 //! `decisions/0002-runtime-in-rust.md` says what this crate is for and
 //! what stays in the Python package; `plan/9.0.md` is the ladder it
-//! climbs. **In 9.0.0-alpha.1 it holds a lexer and a parser and nothing
-//! else.** It does not check types, does not check effects, does not run a
-//! program, does not hold a budget and does not write a receipt. Do not
-//! use it to decide whether a program is safe to run: the Python package
-//! is what does that, and it is the reference.
+//! climbs. **It holds a lexer, a parser and - from M2 - the loader and the
+//! checkers**: effects, types with `Secret of T` and `Money of C`, the rules
+//! for `main`, and each loop's termination verdict. It does not prove, does
+//! not run a program, does not hold a budget and does not write a receipt.
+//! Do not use it to decide whether a program is safe to run: the Python
+//! package is what does that, and it is the reference.
 //!
-//! What this alpha claims is one thing, and it is checked on every commit:
-//! for every Sabline source this project has, sabline-rt builds the same
-//! tree the Python parser builds, or refuses it with the same code, the
-//! same message, the same fixes and the same line. `check_agreement.py`
-//! is what says so; rt/README.md says how to run it.
+//! What it claims is checked on every commit: for every Sabline source this
+//! project has, sabline-rt builds the same tree the Python parser builds,
+//! or refuses it with the same code, the same message, the same fixes and
+//! the same line; and its checkers find what `sabline check` finds, stage
+//! by stage and message for message. `check_agreement.py` is what says so;
+//! rt/README.md says how to run it.
 //!
 //! ```
 //! use sabline_rt::{lex, Parser};
@@ -21,6 +23,12 @@
 //! let program = Parser::new(tokens).parse_program().unwrap();
 //! assert_eq!(program.funcs[0].name, "main");
 //! assert_eq!(program.funcs[0].effects, vec!["io"]);
+//!
+//! let mut problems = Vec::new();
+//! sabline_rt::checker::check_main(&program.funcs, &mut problems, true);
+//! sabline_rt::effects::check_effects(&program.funcs, ".", &mut problems);
+//! sabline_rt::checker::check_types(&program.funcs, &program.records, &mut problems).unwrap();
+//! assert!(problems.is_empty());
 //! ```
 //!
 //! # No `unsafe`
@@ -36,14 +44,23 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+pub mod check_dump;
+pub mod checker;
 pub mod dump;
+pub mod effects;
 pub mod errors;
 pub mod json;
 pub mod lexer;
+pub mod loader;
 pub mod nodes;
 pub mod parser;
+pub mod pypath;
 pub mod pyrepr;
+pub mod show;
 pub mod source;
+pub mod tables;
+pub mod termination;
+pub mod types;
 pub mod unicode_nd;
 
 pub use errors::{Answer, SablineError};

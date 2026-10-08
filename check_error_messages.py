@@ -47,6 +47,17 @@ are that directory and the program's path there.
                                                 what the compiler says now
     python check_error_messages.py E613 E7      only the cases whose id
                                                 starts with one of these
+    python check_error_messages.py --runtime rust
+                                                the same golden, asked of
+                                                sabline-rt (9.0, M2)
+
+Under `--runtime rust` a case reached by `check` is asked of sabline-rt
+- its check document, read the way `sabline.check` reads it - and held
+to the same golden, code, line, message and fixes. Both runtimes are
+held to that one golden (plan/9.0.md, M2). A case the prover reaches
+(every E7xx), one that needs the check ceiling (E613, E614) or an import
+root (E515), and one reached by `run`, `cli` or `library` are counted as
+not asked, each with the reason, never as passed.
 
 --update is for a deliberate change of wording. It prints every message
 that changed, and it never changes a case's code: a case that now
@@ -78,6 +89,7 @@ CORPUS = HERE / "tests" / "error_messages"
 GOLDEN = CORPUS / "golden.json"
 sys.path.insert(0, str(HERE))
 import sabline  # noqa: E402
+import suite_runtime  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_error_messages")
@@ -374,6 +386,33 @@ def reach(how: Any, case_dir: Any, program: Any) -> Any:
     raise CaseError(f"unknown way to reach a case: {via!r}")
 
 
+class NotAsked(Exception):
+    """A case sabline-rt is not asked under --runtime rust, by kind."""
+
+
+def reach_rust(how: Any, case_dir: Any, program: Any, want_code: Any) -> Any:
+    """A `check` case asked of sabline-rt: the first problem of its check
+    document, as `sabline.check` would report it."""
+    via = how.get("via")
+    if via == "run":
+        raise NotAsked("run")
+    if via in ("cli", "library"):
+        raise NotAsked("command")
+    if str(want_code).startswith("E7") or how.get("needs") == "prover":
+        raise NotAsked("prover")
+    if how.get("timeout") is not None or how.get("max_memory_mb") is not None:
+        raise NotAsked("ceiling")
+    if how.get("import_root"):
+        raise NotAsked("import root")
+    with environment(fill(how.get("env") or {}, case_dir, program)):
+        document = suite_runtime.check_document(program, cwd=case_dir)
+    problems = suite_runtime.library_problems(document)
+    if not problems:
+        raise CaseError("no problem was reported")
+    p = problems[0]
+    return p["code"], p["line"], p["message"], list(p["fixes"])
+
+
 def skip_reason(how: Any) -> str | None:
     """Why this case cannot be carried out here, or None."""
     needs = how.get("needs")
@@ -435,6 +474,13 @@ def coverage_problems(golden: dict[Any, Any]) -> list[Any]:
 
 
 def main(argv: Any) -> int:
+    argv = list(argv)
+    runtime = suite_runtime.chosen(argv)
+    tally = suite_runtime.Tally()
+    if runtime == "rust" and "--update" in argv:
+        raise SystemExit("--update rewrites the golden from the Python "
+                         "package, the reference; it is not given with "
+                         "--runtime rust")
     update = "--update" in argv
     only = [a for a in argv if not a.startswith("-")]
     golden = load_golden()
@@ -444,11 +490,13 @@ def main(argv: Any) -> int:
     passed = failed = skipped = changed = 0
     print(f"{len(chosen)} error-message cases, {len(sabline.ERROR_TABLE)} "
           f"codes in ERROR_TABLE"
-          + ("" if HAVE_Z3 else " (no prover: E7xx cases skip)"))
+          + ("" if HAVE_Z3 or runtime == "rust"
+             else " (no prover: E7xx cases skip)")
+          + (", asked of sabline-rt" if runtime == "rust" else ""))
     print("-" * 62)
     for case_id, entry in sorted(chosen.items()):
         how, want_code = entry.get("how") or {}, entry.get("code")
-        why = skip_reason(how)
+        why = None if runtime == "rust" else skip_reason(how)
         if why:
             print(f"  skip {want_code} ({why}): {case_id}")
             skipped += 1
@@ -461,10 +509,21 @@ def main(argv: Any) -> int:
             continue
         started = time.monotonic()
         try:
+            if runtime == "rust" and how.get("via") != "check":
+                raise NotAsked("run" if how.get("via") == "run" else "command")
             case_dir, program = prepare(case_id, how)
-            code, line, message, fixes = reach(how, case_dir, program)
+            if runtime == "rust":
+                code, line, message, fixes = reach_rust(how, case_dir,
+                                                        program, want_code)
+            else:
+                code, line, message, fixes = reach(how, case_dir, program)
             message = normalise(message, case_dir, program)
             fixes = [normalise(f, case_dir, program) for f in fixes]
+        except NotAsked as kind:
+            print(f"  not asked {want_code} {case_id}: "
+                  f"{suite_runtime.NOT_YET[str(kind)]}")
+            tally.skip(str(kind))
+            continue
         except (CaseError, OSError, subprocess.SubprocessError) as e:
             print(f"  WRONG {want_code} {case_id}: {ascii_only(e)}")
             failed += 1
@@ -513,6 +572,8 @@ def main(argv: Any) -> int:
         print(f"{len(cases_for & set(sabline.ERROR_TABLE))} of "
               f"{len(sabline.ERROR_TABLE)} codes have a case, "
               f"{len(UNREACHABLE)} listed unreachable")
+    for line in tally.lines():
+        print(line)
     note = f", {skipped} skipped" if skipped else ""
     done = f", {changed} message(s) rewritten" if update else ""
     print(f"{passed} ok, {failed} wrong{note}{done} "

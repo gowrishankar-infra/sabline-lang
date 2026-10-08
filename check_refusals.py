@@ -6,7 +6,15 @@ something stricter: that each one is rejected with the *specific* error
 the language promises, so a guarantee cannot quietly degrade into a
 different guarantee.
 
-    python check_refusals.py
+    python check_refusals.py                   the Python package
+    python check_refusals.py --runtime rust    sabline-rt (9.0, M2)
+
+Under `--runtime rust` every case refused by the checkers is asked of
+sabline-rt and must be refused with the same code; a case only the prover
+refuses is the prover's, which stays in the Python package
+(decisions/0002), and is counted as not asked rather than as passed. The
+`--strict` case is asked for the half of `--strict` that is the checkers':
+a loop whose end is not shown.
 """
 import shutil
 import subprocess
@@ -16,6 +24,7 @@ from pathlib import Path
 HERE = Path(__file__).parent
 SABLINE = HERE / "sabline.py"
 sys.path.insert(0, str(HERE))
+import suite_runtime  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 try:                       # proof-only refusals cannot be checked without
@@ -265,12 +274,64 @@ fn main() uses io {
 ]
 
 
-def main() -> int:
+def with_rust(work: Path) -> int:
+    """The cases the checkers refuse, asked of sabline-rt."""
+    tally = suite_runtime.Tally()
+    passed = failed = 0
+    print(f"{len(CASES)} programs that must be refused, asked of sabline-rt")
+    print("-" * 62)
+    path = work / "_refusal_check.vel"
+    for name, want, needs_prover, source in CASES:
+        if needs_prover:
+            print(f"  prover {want:<5}  {name} (the prover's, in Python)")
+            tally.skip("prover")
+            continue
+        path.write_text(source.lstrip(), encoding="utf-8")
+        document = suite_runtime.check_document(path, cwd=HERE)
+        codes = [e["code"] for e in document["errors"]]
+        if not codes:
+            print(f"  NOT REFUSED  {name}")
+            print(f"               expected {want}, the program checked clean")
+            failed += 1
+        elif want in codes:
+            print(f"  ok {want:<5}    {name}")
+            passed += 1
+        else:
+            print(f"  WRONG REASON {name}")
+            print(f"               expected {want}, got: {', '.join(codes)}")
+            failed += 1
+    for name, want, _needs_prover, source in STRICT_CASES:
+        path.write_text(source.lstrip(), encoding="utf-8")
+        document = suite_runtime.check_document(path, cwd=HERE)
+        unshown = [lp for lp in suite_runtime.own_loops(document, path)
+                   if lp["verdict"] == "unshown"]
+        if document["errors"]:
+            print(f"  WRONG        {name}: refused WITHOUT --strict too")
+            failed += 1
+        elif not unshown:
+            print(f"  NOT REFUSED  {name} (under --strict: every loop shown)")
+            failed += 1
+        else:
+            print(f"  ok {want:<5}    {name} (--strict only: the loop on "
+                  f"line {unshown[0]['line']} is not shown to end)")
+            passed += 1
+    path.unlink(missing_ok=True)
+    print("-" * 62)
+    for line in tally.lines():
+        print(line)
+    print(f"{passed} refused correctly, {failed} not")
+    return 1 if failed else 0
+
+
+def main(argv: list[str]) -> int:
+    runtime = suite_runtime.chosen(argv)
     # its own directory, so two runs at once do not collide.
     # One case imports examples/lib/geo.vel relative to itself, so that
     # library is copied to the same place beside the scratch file.
     work = isolate("check_refusals")
     shutil.copytree(HERE / "examples" / "lib", work / "examples" / "lib")
+    if runtime == "rust":
+        return with_rust(work)
     skipped = 0
     passed = failed = 0
     print(f"{len(CASES)} programs that must be refused")
@@ -336,4 +397,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

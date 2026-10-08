@@ -9,8 +9,9 @@ third is the one that matters:
 1. **It reads nothing that could disable it.** This script reads the
    gate's syntax tree and fails on `os.environ`, `getenv`, a configuration
    file, or any use of `sys.argv` beyond handing the corpus paths to
-   `main`. The same scan covers `agreement_edges.py`, which is part of the
-   corpus rather than of the comparison.
+   `main`. The same scan covers `agreement_edges.py` and
+   `agreement_checks.py`, which are part of the corpus rather than of the
+   comparison.
 
 2. **The workflow cannot skip it.** `check_workflows.py` holds that: the
    `agreement` job is in test.yml, has no `if:` and no `continue-on-error`,
@@ -19,10 +20,12 @@ third is the one that matters:
 
 3. **It is proven to detect, not merely to run.** This script builds
    sabline-rt with one deliberate difference injected - a single error
-   code changed, a single message changed, one field of the tree dropped -
-   and asserts the gate goes red for each, one injection per comparison
-   class. A gate that has never been shown to fail is a gate nobody has
-   tested. `check_mutant_kills.py`'s idea, applied to the gate itself.
+   code changed, a single message changed, one field of the tree dropped,
+   and from M2 a checker's code, a checker's message, a loop's verdict and
+   a row of the builtin tables - and asserts the gate goes red for each,
+   one injection per comparison class. A gate that has never been shown
+   to fail is a gate nobody has tested. `check_mutant_kills.py`'s idea,
+   applied to the gate itself.
 
 And a fourth, from the same section: every environment variable Sabline
 reads is set to a plausible disabling value and the number of compared
@@ -45,14 +48,16 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 GATE = ROOT / "check_agreement.py"
 EDGES = ROOT / "agreement_edges.py"
+CHECKS = ROOT / "agreement_checks.py"
 
 # What a copy needs to run the gate: the corpora it reads, the suites it
 # imports the tables of, the package it runs, and the crate it builds.
 NEEDED = ("examples", "stdlib", "benchmark/corpus", "tests/error_messages",
           "sabline", "rt/crates", "rt/Cargo.toml", "rt/rustfmt.toml",
           "rt/deny.toml", "sabline.py", "check_agreement.py",
-          "agreement_edges.py", "check_prover_lies.py", "check_sandbox.py",
-          "check_refusals.py", "suite_dirs.py")
+          "agreement_edges.py", "agreement_checks.py", "check_prover_lies.py",
+          "check_sandbox.py", "check_refusals.py", "suite_dirs.py",
+          "suite_runtime.py", "LICENSE")
 
 # Names that would let something outside the gate change what it compares.
 FORBIDDEN_ATTRIBUTES = {"environ", "getenv", "putenv", "environb"}
@@ -72,9 +77,10 @@ DISABLING = {
     "NO_COLOR": "1",
 }
 
-# One injection per class of thing the gate compares: the error code, the
-# error message, and the tree. Each is a replacement in one file of the
-# crate, and each must make the gate red.
+# One injection per class of thing the gate compares: the parser's error
+# code, its message and the tree (M1); the checkers' codes, their messages,
+# a loop's verdict and the tables they read (M2). Each is a replacement in
+# one file of the crate, and each must make the gate red.
 INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "an error code",
@@ -93,6 +99,33 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
         "rt/crates/sabline-rt/src/dump.rs",
         '        ("type_vars", texts(&f.type_vars)),\n',
         "",
+    ),
+    # The checkers (9.0, M2): a code the type checker gives, a message the
+    # effect checker gives, a loop's verdict, and a row of the builtin
+    # tables both checkers read.
+    (
+        "a type checker's error code",
+        "rt/crates/sabline-rt/src/checker.rs",
+        '"E520",\n                format!("\'{said}\' can fail - that cannot be ignored"),',
+        '"E521",\n                format!("\'{said}\' can fail - that cannot be ignored"),',
+    ),
+    (
+        "an effect checker's message",
+        "rt/crates/sabline-rt/src/effects.rs",
+        "which needs effect '{eff}'",
+        "which needs the effect '{eff}'",
+    ),
+    (
+        "a loop's termination verdict",
+        "rt/crates/sabline-rt/src/termination.rs",
+        "moves one step toward '{}' every turn",
+        "moves a step toward '{}' every turn",
+    ),
+    (
+        "a row of the builtin tables",
+        "rt/crates/sabline-rt/src/tables.rs",
+        'b("to_float", NONE, &["Int"], "Float"),',
+        'b("to_float", NONE, &["Float"], "Float"),',
     ),
 )
 
@@ -119,7 +152,7 @@ def _uses(tree: Any) -> list[str]:
 
 def reads_nothing_that_disables_it() -> list[str]:
     problems = []
-    for path in (GATE, EDGES):
+    for path in (GATE, EDGES, CHECKS):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for told in _uses(tree):
             problems.append(f"{path.name} {told}")
@@ -205,7 +238,7 @@ def detects(corpus: str) -> list[str]:
                 + "\n".join(output.splitlines()[-12:]))
             return problems
         clean = _compared(output)
-        print(f"  a copy with nothing injected: green, {clean} programs")
+        print(f"  a copy with nothing injected: green, {clean} comparisons")
 
         for what, path, before, after in INJECTIONS:
             file = here / path
@@ -223,15 +256,15 @@ def detects(corpus: str) -> list[str]:
             compared = _compared(output)
             if code == 0:
                 problems.append(f"{what}: injected into {path}, and the gate "
-                                f"stayed green over {compared} programs")
+                                f"stayed green over {compared} comparisons")
             elif compared != clean:
                 problems.append(f"{what}: the gate went red, but over "
-                                f"{compared} programs where it compared "
+                                f"{compared} comparisons where it made "
                                 f"{clean} - it stopped early rather than "
                                 f"finding a difference")
             else:
                 print(f"  {what}: the gate goes red over "
-                      f"{_differences(output)} of {compared} programs")
+                      f"{_differences(output)} of {compared} comparisons")
         _build(here)
     return problems
 
@@ -248,13 +281,13 @@ def environment_changes_nothing(corpus: str) -> list[str]:
     with_env = _compared(output)
     named = ", ".join(f"{k}={v!r}" for k, v in DISABLING.items())
     if with_env != plain:
-        return [f"with {named} the gate compared {with_env} programs where "
-                f"it compared {plain}"]
+        return [f"with {named} the gate made {with_env} comparisons where "
+                f"it made {plain}"]
     if code != 0:
         return [f"with {named} the gate went red over the same {plain} "
-                f"programs, which means it read one of them"]
+                f"comparisons, which means it read one of them"]
     print(f"  with {len(DISABLING)} disabling variables set: still "
-          f"{with_env} programs, still green")
+          f"{with_env} comparisons, still green")
     return []
 
 
@@ -278,8 +311,8 @@ def main(argv: list[str]) -> int:
     told = reads_nothing_that_disables_it()
     problems += told
     if not told:
-        print(f"  {GATE.name} and {EDGES.name}: no environment, no "
-              f"configuration, one use of the command line")
+        print(f"  {GATE.name}, {EDGES.name} and {CHECKS.name}: no "
+              f"environment, no configuration, one use of the command line")
 
     print("nothing in the environment changes what it compares")
     problems += environment_changes_nothing(corpus)
