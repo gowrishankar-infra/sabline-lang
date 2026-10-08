@@ -72,6 +72,9 @@ fn run(words: &[&str]) -> Result<ExitCode, String> {
             Ok(ExitCode::SUCCESS)
         }
         ["budget", "--list", list] => budget_list_of(list),
+        ["run", "--install-dir", dir, "--list", list] => {
+            on_a_big_stack(run_list_of((*dir).to_string(), (*list).to_string()))
+        }
         _ => Err(format!("sabline-rt: cannot read '{}'", words.join(" "))),
     }
 }
@@ -160,6 +163,34 @@ fn check_list_of(
             }
             let document = sabline_rt::check_dump::check_document(path, &dir);
             every &= sabline_rt::check_dump::checked_clean(&document);
+            let body = document.canonical();
+            out(format!("--- {} {path}\n", body.len()).as_bytes())?;
+            out(body.as_bytes())?;
+            out(b"\n")?;
+        }
+        Ok(if every { ExitCode::SUCCESS } else { ExitCode::from(1) })
+    }
+}
+
+/// The header of the framed stream `run --list` writes; the records are
+/// framed as `ast --list`'s are.
+const RUN_BATCH_HEADER: &str = "sabline.run-batch/1";
+
+fn run_list_of(
+    dir: String,
+    list: String,
+) -> impl FnOnce() -> Result<ExitCode, String> + Send + 'static {
+    move || {
+        let text = read_list(&list)?;
+        let mut every = true;
+        out(format!("{RUN_BATCH_HEADER}\n").as_bytes())?;
+        for line in text.lines() {
+            let path = line.trim_end_matches('\r');
+            if path.is_empty() {
+                continue;
+            }
+            let document = sabline_rt::run_dump::run_document(path, &dir);
+            every &= sabline_rt::run_dump::ran_clean(&document);
             let body = document.canonical();
             out(format!("--- {} {path}\n", body.len()).as_bytes())?;
             out(body.as_bytes())?;

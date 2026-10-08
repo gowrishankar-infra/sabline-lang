@@ -9,6 +9,118 @@ api: `sabline conformance` takes `--runtime python|rust` (9.0, M2): with
 `rust`, sabline-rt answers the case kinds it implements and every result
 says which runtime answered it; without the flag nothing changes.
 
+## 9.0.0-alpha.6 - M3: the interpreter, as far as it got
+
+The third rung of 9.0 (`plan/9.0.md`, *M3 - the interpreter, the budget,
+`Secret` and receipts*) has begun, and this pre-release is where it got
+to, not its end: **sabline-rt now runs a program, and the agreement gate
+compares every run of every program it holds as it compares every check -
+what was printed to each channel, the status the run ended with, and the
+error it stopped with, word for word.** M3's exit criteria are not met and
+none is claimed: the builtins whose work is a file, the network, a clock,
+randomness, the environment, Python, a tool or a signature are spent
+against the budget and refused by every budget that does not grant them,
+which is all a run under `io` reaches of them, and their work is not
+ported yet; nor are receipts. The Python package is the reference, and
+where the two disagree sabline-rt has a defect.
+
+This is a **pre-release** of the `sabline-rt` crate, and it publishes that
+and nothing else. 8.8.0 is still what `pip install sabline-lang`, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and `sabline --version` still says 8.8.0. What the Python package on
+main gained below ships with 9.0.
+
+### What exists
+
+**The interpreter** (`src/interp.rs`): `sabline/runtime.py`'s run,
+transliterated - calls, function values and what they carry, `check` and
+`try`, promises checked while running with their messages, loop
+invariants, the depth limit - and the work of every builtin that is pure
+or is the console's: the text builtins, lists and maps, the seven Money
+builtins, the JSON builtins, the encoders and `sha256`, `format`, `print`,
+`log`, `read_line`, `ask`, `args` and `exit_with`. Every builtin is spent
+against the run's budget first, with the reference's refusal.
+
+**A running program's values are CPython's objects** (`src/value.rs`), and
+what a program sees of them is copied rather than reinvented: a Text is
+code points, so a lone surrogate read out of a JSON document is a value
+like any other (`src/text.rs`); `upper`, `lower` - the final sigma
+included - and what `repr` leaves unescaped come from tables generated
+from CPython (`src/unicode_text.rs`); `to_text` writes `true` where a
+broken promise's message, which is an f-string, writes `True`; a whole
+number literal past 64 bits is a value (`src/bigint.rs`); a container
+compares its items by identity first, so a record holding a NaN equals
+itself; a map is a `dict`, `1`, `1.0` and `true` one key; and the JSON
+builtins are `json.loads` and `json.dumps`, every message with its line,
+column and character (`src/pyjson.rs`). `rt/README.md` lists each and the
+two places CPython 3.10 to 3.13 disagree with themselves, which the gate's
+corpus avoids.
+
+**The run document**: `sabline run-dump --list FILE` from the Python
+package and `sabline-rt run --install-dir DIR --list FILE` from the crate,
+a program run as `sabline <file>` runs it with four things fixed - the
+budget `io`, the input, the arguments, and a step limit of 20,000 calls
+and loop turns, so that a program that does not end stops at the same one
+in both - and without the prover, native code or the operating system's
+confinement. The step limit is `state._STEP_LIMIT` in the Python package,
+set by `run-dump` and by nothing else.
+
+**The checkers on generated programs, and programs of several files** - the
+two items M2 left recommended: `fuzz_parsers.py --target agreement_checks`
+writes programs on both sides of the checkers' rules and requires the same
+check document from both (two minutes in the agreement job, twenty
+monthly), and the gate carries programs of more than one file, which reach
+the type checker's "unknown function value" for a library imported under a
+name.
+
+### The agreement gate
+
+    the parsers: 6772 compared, 6772 agree, 0 differ
+    the checkers: 6772 compared, 6772 agree, 0 differ
+    the budget parser: 2967 compared, 2967 agree, 0 differ
+    the interpreters: 6771 compared, 6771 agree, 0 differ
+    the builtin tables: 1 compared, 1 agree, 0 differ
+  agreement gate: 23283 comparisons, 23283 agreements, 0 differences
+
+The runs' corpus, `agreement_runs.py`: 72 texts where code points and
+UTF-8 part - lone surrogates, a surrogate pair written as two escapes,
+characters past the basic plane, combining marks with nothing to combine
+with, letters whose case is two or three characters or depends on the
+next - each through every text builtin and named in a broken promise; and
+54 edges of arithmetic at 64 bits and at IEEE-754's, float printing,
+texts, lists, maps, records, money's rounding and parsing, every message
+the JSON reader gives, the input, exit statuses, recursion, and every kind
+of value a promise's message names. The first full run found one
+difference - CPython's identity-first comparison of a NaN inside a record
+- and the runs' corpus found three more, each now copied. One program is
+not run, and the gate says which and why: it doubles a text until the
+memory cap it tests would stop it, and a run here has no cap.
+
+`check_gate.py`'s injections gain four, each of which turns the gate red:
+a value a run prints, a run's error code, a run's error message, and where
+the step limit stops a run.
+
+### A defect in the reference, fixed
+
+A broken promise that named a record printed the record's memory address -
+`<sabline.values.RecordValue object at 0x...>` - so the same promise gave a
+different message on every run, and no second runtime could give the one
+the first gave. Twelve programs in the gate's corpora did it. A record is
+now written as a dataclass is, `Pt(x=1, y='z')`, beside an amount's
+`MoneyValue(units=150, currency='INR')`. Messages are not covered by
+STABILITY.md; no code changed.
+
+### What is not done
+
+`plan/9.0-m3-progress.md` lists it in order - the builtins' work for the
+other budgets, then receipts and the audit stream, a run target for the
+fuzzer, `sabline run` through sabline-rt, the organisation ceiling file -
+and asks three questions: what should stop a program that grows without
+bound in a compared run, how a function value should print (today the
+reference writes the Python object, an address included), and whether a
+library's function value imported under a name - refused today, by both
+runtimes - should be fixed.
+
 ## 9.0.0-alpha.5 - M2: the checkers, the budget parser, and a loop bounded by its input
 
 The second rung of 9.0 (`plan/9.0.md`, *M2 - the checkers*), as far as its

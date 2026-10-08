@@ -2,11 +2,16 @@
 //!
 //! `decisions/0002-runtime-in-rust.md` says what this crate is for and
 //! what stays in the Python package; `plan/9.0.md` is the ladder it
-//! climbs. **It holds a lexer, a parser and - from M2 - the loader, the
-//! checkers and the budget parser**: effects, types with `Secret of T` and
-//! `Money of C`, the rules for `main`, each loop's termination verdict, and
-//! what a budget grants. It does not prove, does not run a program, does
-//! not enforce a budget and does not write a receipt.
+//! climbs. **It holds a lexer, a parser, from M2 the loader, the checkers
+//! and the budget parser** - effects, types with `Secret of T` and `Money
+//! of C`, the rules for `main`, each loop's termination verdict, and what
+//! a budget grants - **and from M3 the interpreter**: a program run under a
+//! budget, every builtin spent against it, and the work of every builtin
+//! that is pure or is the console's ([`interp`]). The work of the builtins
+//! that reach a file, the network, a clock, randomness, the environment,
+//! Python or a tool is not ported yet; a budget that does not grant them
+//! refuses them first, as the reference does. It does not prove, does not
+//! hold a budget at the operating system and does not write a receipt.
 //! Do not use it to decide whether a program is safe to run: the Python
 //! package is what does that, and it is the reference.
 //!
@@ -14,8 +19,10 @@
 //! project has, sabline-rt builds the same tree the Python parser builds,
 //! or refuses it with the same code, the same message, the same fixes and
 //! the same line; its checkers find what `sabline check` finds, stage by
-//! stage and message for message; and its budget parser reads every budget
-//! the gate holds to the same grants, or the same refusal.
+//! stage and message for message; its budget parser reads every budget
+//! the gate holds to the same grants, or the same refusal; and a run of
+//! every program under the budget `io` prints what the reference prints,
+//! ends with its status and stops with its error.
 //! `check_agreement.py` is what says so;
 //! rt/README.md says how to run it.
 //!
@@ -47,26 +54,34 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+pub mod bigint;
 pub mod budget;
 pub mod check_dump;
 pub mod checker;
+pub mod digest;
 pub mod dump;
 pub mod effects;
 pub mod errors;
+pub mod interp;
 pub mod json;
 pub mod lexer;
 pub mod loader;
 pub mod nodes;
 pub mod parser;
+pub mod pyjson;
 pub mod pypath;
 pub mod pyrepr;
+pub mod run_dump;
 pub mod show;
 pub mod source;
 pub mod tables;
 pub mod termination;
+pub mod text;
 pub mod types;
 pub mod unicode_digit;
 pub mod unicode_nd;
+pub mod unicode_text;
+pub mod value;
 
 pub use errors::{Answer, SablineError};
 pub use lexer::{lex, Token};

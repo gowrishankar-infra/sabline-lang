@@ -534,6 +534,9 @@ UNLISTED_COMMANDS = (
     ("check-dump", "the canonical check document is the agreement gate's "
                    "comparison surface for the checkers, not a feature "
                    "(rt/README.md; 9.0 M2)"),
+    ("run-dump", "the canonical run document is the agreement gate's "
+                 "comparison surface for runs, not a feature "
+                 "(rt/README.md; 9.0 M3)"),
 )
 
 
@@ -735,6 +738,10 @@ def main() -> int:
     # The canonical check document, for check_agreement.py likewise (M2).
     if argv[:1] == ["check-dump"]:
         return check_dump_main(argv[1:])
+    # The canonical run document, for check_agreement.py likewise (M3).
+    if argv[:1] == ["run-dump"]:
+        from .run_dump import run_dump_main
+        return run_dump_main(argv[1:])
     if argv[:1] == ["lsp"]:
         return lsp_serve()
     # `sabline verify` alone is the older spelling of `deps --verify`; given a

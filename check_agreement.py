@@ -8,7 +8,10 @@ milestone grows it by what that milestone ports: M1 compared the parsers -
 the AST dump, the error code, the message, the fixes and the line - and M2
 adds the checkers, which is what `sabline check` finds in each program,
 stage by stage, and each loop's termination verdict, the builtin tables
-both checkers read, and the budget parser. M3 adds runs and receipts.
+both checkers read, and the budget parser. M3 adds the interpreters - every
+program run by both, under the budget io, and what each run printed,
+the status it ended with and the error it stopped with compared - and,
+later in M3, receipts.
 
 **What it runs over** (plan/9.0.md's table, the rows that hold a program):
 
@@ -47,10 +50,22 @@ of the checkers that refuses:
 
     agreement_checks.py                 a type-level mistake made at fixed
                                         places in every example and library,
-                                        and a table of programs that reach
-                                        each refusal no mistake reaches
+                                        a table of programs that reach each
+                                        refusal no mistake reaches, and
+                                        programs of several files
 
-**What it compares.** Two canonical documents per source, each byte for
+And one for the interpreters (M3), because a program written to compile
+prints little and reaches little of the builtins:
+
+    agreement_runs.py                   every text builtin over texts where
+                                        code points and UTF-8 part - lone
+                                        surrogates, characters past the
+                                        basic plane, combining marks, case
+                                        that is more than one character -
+                                        and the arithmetic, floats, JSON,
+                                        money and messages a run shows
+
+**What it compares.** Three canonical documents per source, each byte for
 byte, and one more document for the whole gate:
 
 - the AST dump (sabline/ast_dump.py and the crate's `dump` module say what
@@ -60,6 +75,12 @@ byte, and one more document for the whole gate:
   module), which holds what `sabline check` finds without the prover -
   each stage's problems in the reference's order, every problem once, and
   every loop's verdict and the reason for it;
+- the run document (sabline/run_dump.py and the crate's `run_dump`
+  module), which holds what `sabline <file>` does with the program under
+  the budget io, a fixed input, fixed arguments and a step limit: the
+  problems that refused it, or what it printed to each channel, the status
+  it ended with and the error it stopped with - for every program but the
+  ones RUN_EXCLUDED names, each with its reason;
 - the builtin tables both runtimes' checkers read, so that a builtin added
   to one and not the other is a difference before any program calls it;
 - and for every budget agreement_budgets.py holds - sabline-spec's L1
@@ -305,6 +326,11 @@ def collect(paths: list[str]) -> tuple[list[tuple[str, Any]], list[str], Path]:
     # reaches - the half of the checkers the corpora above barely touch
     checks = _from_module("agreement_checks", lambda m: m.cases())
     counts.append(f"the checkers' corpus: {len(checks)} programs")
+    # the runs' corpus (M3): the text builtins on lone surrogates, astral
+    # characters and combining marks, and the rest of what a run does that
+    # is CPython's own - every program here is written to be run
+    runs = _from_module("agreement_runs", lambda m: m.cases())
+    counts.append(f"the runs' corpus: {len(runs)} programs")
 
     # and the one refusal that is not about a program's contents: a path
     # that is not a file. Both runtimes must give E001 with the same
@@ -316,7 +342,7 @@ def collect(paths: list[str]) -> tuple[list[tuple[str, Any]], list[str], Path]:
 
     return ([(str(f), None) for f in files]
             + [(n, t.encode("utf-8")) for n, t in texts]
-            + list(edges) + list(checks) + missing), counts, corpus
+            + list(edges) + list(checks) + list(runs) + missing), counts, corpus
 
 
 # ---- asking each runtime ----------------------------------------------------
@@ -351,6 +377,27 @@ def rt_binary() -> Path:
 BATCH_HEADER = b"sabline.ast-batch/1\n"
 CHECK_BATCH_HEADER = b"sabline.check-batch/1\n"
 BUDGET_BATCH_HEADER = b"sabline.budget-batch/1\n"
+RUN_BATCH_HEADER = b"sabline.run-batch/1\n"
+
+# The programs the gate does not run, each with the reason, which the gate
+# prints. A program joins this list only with its own argument in the pull
+# request that adds it, because each is a place the gate stops looking -
+# and it is still parsed and checked like every other program.
+RUN_EXCLUDED = {
+    "tests/error_messages/E611_run_memory_cap.vel":
+        "it doubles a text forty times, to be stopped by the memory cap "
+        "it tests (E611); a run here has no cap, and how far it gets "
+        "before the machine stops it is the machine's, not the program's",
+}
+
+
+def _run_name(name: str) -> str:
+    """A program's name as RUN_EXCLUDED writes it: a path under this
+    checkout, with forward slashes."""
+    try:
+        return Path(name).resolve().relative_to(ROOT).as_posix()
+    except (ValueError, OSError):
+        return name
 
 
 def _run(command: list[str], cwd: Path | None = None) -> bytes:
@@ -541,6 +588,19 @@ def main(argv: list[str]) -> int:
                                BUDGET_BATCH_HEADER, scratch)
         rust_budgets = dumps([str(binary), "budget", "--list"], budget_list,
                              BUDGET_BATCH_HEADER, scratch)
+        # the interpreters (M3): each program run as `sabline <file>` runs
+        # it, under io, with a fixed input and arguments and a step limit -
+        # sabline/run_dump.py says what is fixed and why
+        runs = [(name, path) for (name, _), path in zip(programs, listing)
+                if _run_name(name) not in RUN_EXCLUDED]
+        run_paths = here / "runs.txt"
+        run_paths.write_text("\n".join(path for _, path in runs) + "\n",
+                             encoding="utf-8")
+        python_runs = dumps([sys.executable, str(ROOT / "sabline.py"),
+                             "run-dump", "--list"], run_paths,
+                            RUN_BATCH_HEADER)
+        rust_runs = dumps([str(binary), "run", "--install-dir", str(ROOT),
+                           "--list"], run_paths, RUN_BATCH_HEADER)
 
     # the names the gate reports are the corpus names, not the temporary
     # paths it wrote them to
@@ -549,6 +609,7 @@ def main(argv: list[str]) -> int:
     checked = compare(python_checks, rust_checks, names)
     budgeted = compare(python_budgets, rust_budgets,
                        [name for name, _, _ in budgets])
+    ran = compare(python_runs, rust_runs, [name for name, _ in runs])
     python_tables, rust_tables = tables(binary)
     tabled = ([] if python_tables == rust_tables else
               [f"the builtin tables: {_told(python_tables, rust_tables)}"])
@@ -558,15 +619,23 @@ def main(argv: list[str]) -> int:
     if unmade:
         print(f"  (this system would not make: {', '.join(unmade)}; those "
               f"paths are compared as paths that do not exist)")
+    held = {_run_name(name) for name, _ in programs}
+    for name, why in RUN_EXCLUDED.items():
+        if name not in held:
+            # an exclusion that names nothing would outlive its reason
+            raise SystemExit(f"check_agreement.py: RUN_EXCLUDED names {name}, "
+                             f"which is in no corpus")
+        print(f"  (parsed and checked, not run: {name} - {why})")
     rows = (("the parsers", len(programs), parsed),
             ("the checkers", len(programs), checked),
             ("the budget parser", len(budgets), budgeted),
+            ("the interpreters", len(runs), ran),
             ("the builtin tables", 1, tabled))
     for what, many, found in rows:
         print(f"  {what}: {many} compared, {many - len(found)} agree, "
               f"{len(found)} differ")
     total = sum(many for _, many, _ in rows)
-    differences = [f"{what}: {line}" for what, _, found in rows[:3]
+    differences = [f"{what}: {line}" for what, _, found in rows[:4]
                    for line in found] + tabled
     print(f"agreement gate: {total} comparisons, "
           f"{total - len(differences)} agreements, "

@@ -23,8 +23,9 @@ third is the one that matters:
    code changed, a single message changed, one field of the tree dropped,
    and from M2 a checker's code, a checker's message, a loop's verdict, a
    row of the builtin tables, one shape of the input-bounded loop
-   verdict, a budget refusal's message and a budget's count - and asserts
-   the gate goes red for each,
+   verdict, a budget refusal's message and a budget's count, and from M3
+   a value a run prints, a run's error code and message, and where the
+   step limit stops a run - and asserts the gate goes red for each,
    one injection per comparison class. A gate that has never been shown
    to fail is a gate nobody has tested. `check_mutant_kills.py`'s idea,
    applied to the gate itself.
@@ -52,6 +53,7 @@ GATE = ROOT / "check_agreement.py"
 EDGES = ROOT / "agreement_edges.py"
 CHECKS = ROOT / "agreement_checks.py"
 BUDGETS = ROOT / "agreement_budgets.py"
+RUNS = ROOT / "agreement_runs.py"
 
 # What a copy needs to run the gate: the corpora it reads, the suites it
 # imports the tables of, the package it runs, and the crate it builds.
@@ -59,6 +61,7 @@ NEEDED = ("examples", "stdlib", "benchmark/corpus", "tests/error_messages",
           "sabline", "rt/crates", "rt/Cargo.toml", "rt/rustfmt.toml",
           "rt/deny.toml", "sabline.py", "check_agreement.py",
           "agreement_edges.py", "agreement_checks.py", "agreement_budgets.py",
+          "agreement_runs.py",
           "check_prover_lies.py",
           "check_sandbox.py", "check_refusals.py", "check_termination.py",
           "suite_dirs.py",
@@ -154,6 +157,33 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
         "Some(cur) if cur <= &n => cur.clone(),",
         "Some(cur) if cur >= &n => cur.clone(),",
     ),
+    # The interpreter (9.0, M3): what a run prints, the code a run stops
+    # with, the message it stops with, and where the step limit stops a
+    # program that does not end.
+    (
+        "a value a run prints",
+        "rt/crates/sabline-rt/src/value.rs",
+        'Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),',
+        'Value::Bool(b) => out.push_str(if *b { "True" } else { "false" }),',
+    ),
+    (
+        "a run's error code",
+        "rt/crates/sabline-rt/src/interp.rs",
+        '"E403",\n                    "division by zero",',
+        '"E404",\n                    "division by zero",',
+    ),
+    (
+        "a run's error message",
+        "rt/crates/sabline-rt/src/interp.rs",
+        '"broken promise: {} requires {}  (",',
+        '"broken promise: {} requires {} (",',
+    ),
+    (
+        "where the step limit stops a run",
+        "rt/crates/sabline-rt/src/interp.rs",
+        "Some(limit) if self.ticks > limit => Err(Stop::Steps(line)),",
+        "Some(limit) if self.ticks >= limit => Err(Stop::Steps(line)),",
+    ),
 )
 
 
@@ -179,7 +209,7 @@ def _uses(tree: Any) -> list[str]:
 
 def reads_nothing_that_disables_it() -> list[str]:
     problems = []
-    for path in (GATE, EDGES, CHECKS, BUDGETS):
+    for path in (GATE, EDGES, CHECKS, BUDGETS, RUNS):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for told in _uses(tree):
             problems.append(f"{path.name} {told}")
@@ -338,9 +368,9 @@ def main(argv: list[str]) -> int:
     told = reads_nothing_that_disables_it()
     problems += told
     if not told:
-        print(f"  {GATE.name}, {EDGES.name}, {CHECKS.name} and "
-              f"{BUDGETS.name}: no environment, no configuration, one use "
-              f"of the command line")
+        print(f"  {GATE.name}, {EDGES.name}, {CHECKS.name}, "
+              f"{BUDGETS.name} and {RUNS.name}: no environment, no "
+              f"configuration, one use of the command line")
 
     print("nothing in the environment changes what it compares")
     problems += environment_changes_nothing(corpus)

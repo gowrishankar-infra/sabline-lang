@@ -178,6 +178,16 @@ class RecordValue:
                 and self.rname == other.rname
                 and self.fields == other.fields)
 
+    def __repr__(self) -> str:
+        # What a broken promise's message shows of a record (9.0, M3): its
+        # name and fields, as Python writes a dataclass and as the message
+        # shows an amount beside it. It was object.__repr__, whose address
+        # changed from run to run, so the same broken promise gave a
+        # different message every time and no second runtime could give
+        # the one the reference gave.
+        inner = ", ".join(f"{k}={v!r}" for k, v in self.fields.items())
+        return f"{self.rname}({inner})"
+
 
 def to_text(v: Any) -> str:
     if v.__class__ is MoneyValue:

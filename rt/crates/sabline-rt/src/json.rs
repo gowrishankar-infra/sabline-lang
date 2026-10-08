@@ -54,6 +54,9 @@ pub enum Json {
     List(Vec<Json>),
     /// An object, whose keys are written in sorted order.
     Obj(BTreeMap<String, Json>),
+    /// A string that may hold a lone surrogate: a Text a program made,
+    /// written as CPython writes a `str` (9.0, M3).
+    Text(crate::text::Text),
 }
 
 impl Json {
@@ -84,6 +87,7 @@ fn write_value(out: &mut String, value: &Json) {
         Json::Int(n) => out.push_str(&n.to_string()),
         Json::Num(digits) => out.push_str(digits),
         Json::Str(s) => write_string(out, s),
+        Json::Text(t) => t.write_json_ascii(out),
         Json::List(items) => {
             if items.is_empty() {
                 out.push_str("[]");

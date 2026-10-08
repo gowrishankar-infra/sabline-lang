@@ -55,6 +55,7 @@ imports one after it.
 | `results` | `CheckResult`, `AuditResult`, `RunResult`, `Problem` |
 | `library` | `check`, `audit`, `run` and what they share |
 | `pool` | `Pool`, `pool_worker`, `MUTABLE_GLOBALS`, `reset_program_state` |
+| `run_dump` | the canonical run document, what `sabline <file>` does with one program under the budget io with a fixed input, arguments and step limit, without the prover, native code or confinement, which both runtimes write (9.0, M3); `sabline run-dump` writes it, `check_agreement.py` compares it, nothing else reads it |
 | `findings` | SARIF (`_SarifRun`, `sarif_check`, ...) and `InvocationLog` |
 | `mcp_manifest` | `mcp-manifest` and `mcp-verify` |
 | `doors` | the HTTP door (`serve_main`), `door_ceilings`, `run_limits` |

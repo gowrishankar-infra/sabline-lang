@@ -881,6 +881,18 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
 STOP_EVERY = 256
 
 
+class StepLimit(Exception):
+    """A run stopped after `_state._STEP_LIMIT` calls and loop turns, at
+    `line`. Only `sabline run-dump` sets the limit, and only it catches
+    this: it is how the agreement gate stops a program that does not end
+    at the same place in both runtimes. Not a SablineError, so nothing a
+    program writes can handle it, and blame() never sees it."""
+
+    def __init__(self, line: int) -> None:
+        super().__init__(line)
+        self.line = line
+
+
 def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -> dict[str, Any]:
     native = native or {}
     table = {f.name: f for f in funcs}
@@ -895,10 +907,15 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
     # at the next of either, with E615, which it cannot catch. STOP_FILE is
     # None everywhere but eval's worker, and then nothing is looked for.
     stop_file = _state.STOP_FILE
+    # the agreement gate's step limit (9.0, M3): None but in run-dump
+    step_limit = _state._STEP_LIMIT
+    watched = stop_file is not None or step_limit is not None
     stop_ticks = [0]
 
     def stop_point(line: int) -> None:
         stop_ticks[0] += 1
+        if step_limit is not None and stop_ticks[0] > step_limit:
+            raise StepLimit(line)
         if (stop_file is not None and stop_ticks[0] % STOP_EVERY == 0
                 and os.path.exists(stop_file)):
             raise SablineError(
@@ -949,7 +966,7 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
         if isinstance(fn, Bound):
             caught, fn = fn.caught, fn.fn
         name = fn.name
-        if stop_file is not None:
+        if watched:
             stop_point(line)
         if depth[0] >= DEPTH_LIMIT:
             raise SablineError("E609",
@@ -1074,7 +1091,7 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
                                    "or fix the invariant if it is wrong"])
             check_invariants()
             while eval_(node.cond, env):
-                if stop_file is not None:
+                if watched:
                     stop_point(node.line)
                 for s in node.body:
                     run(s, env)
