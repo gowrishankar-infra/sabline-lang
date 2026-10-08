@@ -42,8 +42,7 @@ def ok(label: str, good: bool, detail: Any = "") -> None:
 def corpus_of(argv: list[str]) -> str:
     found = conform._conformance_corpus(argv[0] if argv else None)
     if found is None:
-        for guess in ("sabline-spec/tests", "../sabline-spec/tests",
-                      "../velaris-spec/tests"):
+        for guess in ("sabline-spec/tests", "../sabline-spec/tests"):
             if os.path.isfile(os.path.join(HERE, guess, "index.json")):
                 return os.path.join(HERE, guess)
         raise SystemExit("check_conformance_rust.py: give sabline-spec's tests/")
