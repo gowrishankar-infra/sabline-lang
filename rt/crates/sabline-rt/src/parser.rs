@@ -52,7 +52,17 @@ pub struct Parser {
 impl Parser {
     /// A parser over `tokens`.
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { toks: tokens, i: 0, lifted: Vec::new(), lambda_n: 0, nest: 0, blocks: 0 }
+        Self::continuing(tokens, 0)
+    }
+
+    /// A parser over `tokens` whose generated names carry on from
+    /// `lambda_n`, which is how the loader parses the second file of a
+    /// program and every one after it. `Parser.lambda_n` is a class
+    /// attribute in Python, so one `load_program` numbers the function
+    /// values of every file it reads in one sequence, in the order it reads
+    /// them, and `fn#N` in a check's message is that sequence's `N`.
+    pub fn continuing(tokens: Vec<Token>, lambda_n: u32) -> Self {
+        Self { toks: tokens, i: 0, lifted: Vec::new(), lambda_n, nest: 0, blocks: 0 }
     }
 
     // ---- the token cursor ------------------------------------------------
@@ -135,7 +145,13 @@ impl Parser {
     // ---- the program ------------------------------------------------------
 
     /// Read a whole file: its functions, records and imports.
-    pub fn parse_program(mut self) -> Answer<Program> {
+    pub fn parse_program(self) -> Answer<Program> {
+        self.parse_program_counted().map(|(program, _)| program)
+    }
+
+    /// Read a whole file, and say where the generated-name counter stood
+    /// at the end of it, for the parser of the next file the loader reads.
+    pub fn parse_program_counted(mut self) -> Answer<(Program, u32)> {
         let mut records: Vec<RecordDef> = Vec::new();
         let mut imports: Vec<Import> = Vec::new();
         while self.peek().kind != Kind::Eof {
@@ -160,7 +176,8 @@ impl Parser {
                 self.lifted.push(f);
             }
         }
-        Ok(Program { funcs: self.lifted, records, imports })
+        let counted = self.lambda_n;
+        Ok((Program { funcs: self.lifted, records, imports }, counted))
     }
 
     fn parse_record(&mut self) -> Answer<RecordDef> {

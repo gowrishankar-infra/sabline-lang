@@ -1,12 +1,19 @@
 //! `sabline-rt`: the crate's command line.
 //!
-//! One command in 9.0.0-alpha.1:
-//!
 //! ```text
 //! sabline-rt ast <file.vel>        the canonical dump of one file
 //! sabline-rt ast --list <paths>    one dump per line of <paths>, framed
+//! sabline-rt check --install-dir DIR <file.vel>
+//!                                  the canonical check document (9.0, M2)
+//! sabline-rt check --install-dir DIR --list <paths>
+//! sabline-rt tables                the builtin tables the checkers read
 //! sabline-rt --version
 //! ```
+//!
+//! `--install-dir` is where the host keeps the shipped standard library,
+//! as `DIR/stdlib/`: an import a program's own directory does not have is
+//! looked for there by its base name, as the Python package looks beside
+//! itself. The host says where, because the host is what knows.
 //!
 //! `--list` exists because the agreement gate compares some hundreds of
 //! files on every commit in every leg, and a process per file would make
@@ -33,6 +40,9 @@ fn main() -> ExitCode {
             eprintln!("{message}");
             eprintln!("usage: sabline-rt ast <file.vel>");
             eprintln!("       sabline-rt ast --list <paths-file>");
+            eprintln!("       sabline-rt check --install-dir <dir> <file.vel>");
+            eprintln!("       sabline-rt check --install-dir <dir> --list <paths-file>");
+            eprintln!("       sabline-rt tables");
             eprintln!("       sabline-rt --version");
             ExitCode::from(2)
         }
@@ -48,6 +58,16 @@ fn run(words: &[&str]) -> Result<ExitCode, String> {
         ["--help"] | ["-h"] | [] => Err("sabline-rt: say what to do".to_string()),
         ["ast", "--list", list] => on_a_big_stack(list_of((*list).to_string())),
         ["ast", path] if !path.starts_with('-') => on_a_big_stack(one((*path).to_string())),
+        ["check", "--install-dir", dir, "--list", list] => {
+            on_a_big_stack(check_list_of((*dir).to_string(), (*list).to_string()))
+        }
+        ["check", "--install-dir", dir, path] if !path.starts_with('-') => {
+            on_a_big_stack(check_one((*dir).to_string(), (*path).to_string()))
+        }
+        ["tables"] => {
+            write_out(&sabline_rt::tables::document().canonical())?;
+            Ok(ExitCode::SUCCESS)
+        }
         _ => Err(format!("sabline-rt: cannot read '{}'", words.join(" "))),
     }
 }
@@ -96,6 +116,46 @@ fn list_of(list: String) -> impl FnOnce() -> Result<ExitCode, String> + Send + '
             }
             let (document, ok) = document_of(path);
             every &= ok;
+            let body = document.canonical();
+            out(format!("--- {} {path}\n", body.len()).as_bytes())?;
+            out(body.as_bytes())?;
+            out(b"\n")?;
+        }
+        Ok(if every { ExitCode::SUCCESS } else { ExitCode::from(1) })
+    }
+}
+
+/// The header of the framed stream `check --list` writes; the records are
+/// framed as `ast --list`'s are.
+const CHECK_BATCH_HEADER: &str = "sabline.check-batch/1";
+
+fn check_one(
+    dir: String,
+    path: String,
+) -> impl FnOnce() -> Result<ExitCode, String> + Send + 'static {
+    move || {
+        let document = sabline_rt::check_dump::check_document(&path, &dir);
+        write_out(&document.canonical())?;
+        let clean = sabline_rt::check_dump::checked_clean(&document);
+        Ok(if clean { ExitCode::SUCCESS } else { ExitCode::from(1) })
+    }
+}
+
+fn check_list_of(
+    dir: String,
+    list: String,
+) -> impl FnOnce() -> Result<ExitCode, String> + Send + 'static {
+    move || {
+        let text = read_list(&list)?;
+        let mut every = true;
+        out(format!("{CHECK_BATCH_HEADER}\n").as_bytes())?;
+        for line in text.lines() {
+            let path = line.trim_end_matches('\r');
+            if path.is_empty() {
+                continue;
+            }
+            let document = sabline_rt::check_dump::check_document(path, &dir);
+            every &= sabline_rt::check_dump::checked_clean(&document);
             let body = document.canonical();
             out(format!("--- {} {path}\n", body.len()).as_bytes())?;
             out(body.as_bytes())?;

@@ -1,10 +1,11 @@
 //! `SablineError`, the one shape a refusal takes.
 //!
 //! The mirror of `sabline/errors.py`'s class: a code, a message, the line
-//! it is about, and the fixes offered under it. The codes this alpha can
-//! give are E000, E001, E002, E100, E101, E102, E407, E511, E512 and
-//! E562: every code `sabline/lexer.py` and `sabline/parser.py` raise,
-//! plus the two the loader gives for an entry file it cannot read.
+//! it is about, the fixes offered under it, and - once the loader or a
+//! checker has said so - the file it is about. The lexer and the parser
+//! give E000, E001, E002, E100, E101, E102, E407, E511, E512 and E562; the
+//! loader and the checkers (9.0, M2) give the rest of what `sabline check`
+//! reports.
 
 use std::fmt;
 
@@ -20,12 +21,16 @@ pub struct SablineError {
     pub line: u32,
     /// What to do about it, in the order Python offers them.
     pub fixes: Vec<String>,
+    /// The file it is about, when a stage has said; `None` means the file
+    /// the caller asked about, which is what `err.file or path` reads in
+    /// Python.
+    pub file: Option<String>,
 }
 
 impl SablineError {
     /// A refusal with no fixes offered.
     pub fn new(code: &'static str, message: impl Into<String>, line: u32) -> Self {
-        Self { code, message: message.into(), line, fixes: Vec::new() }
+        Self { code, message: message.into(), line, fixes: Vec::new(), file: None }
     }
 
     /// A refusal with the fixes Python offers under it, in Python's order.
@@ -40,7 +45,24 @@ impl SablineError {
             message: message.into(),
             line,
             fixes: fixes.iter().map(|f| (*f).to_string()).collect(),
+            file: None,
         }
+    }
+
+    /// A refusal whose fixes are built at run time, in Python's order.
+    pub fn with_owned_fixes(
+        code: &'static str,
+        message: impl Into<String>,
+        line: u32,
+        fixes: Vec<String>,
+    ) -> Self {
+        Self { code, message: message.into(), line, fixes, file: None }
+    }
+
+    /// The same refusal, about `file`.
+    pub fn in_file(mut self, file: impl Into<String>) -> Self {
+        self.file = Some(file.into());
+        self
     }
 }
 
