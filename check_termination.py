@@ -893,7 +893,7 @@ def verdicts_of(source: str) -> tuple[Any, ...]:
 def main(argv: list[str]) -> int:
     global RUNTIME
     RUNTIME = suite_runtime.chosen(argv)
-    passed = failed = 0
+    passed = failed = skipped = 0
     print(f"{len(CASES)} adversarial programs, "
           f"{sum(len(v) for _, v, _ in CASES)} loops, asked of "
           f"{'sabline-rt' if RUNTIME == 'rust' else 'the Python package'}")
@@ -917,6 +917,15 @@ def main(argv: list[str]) -> int:
             print(f"               expected {want}, got {got}")
             failed += 1
     for name, passes, source in STRICT:
+        if RUNTIME == "python" and not sabline.HAVE_Z3:
+            # without the prover `check --strict` refuses every program, by
+            # design, for the promises it cannot check (check_refusals.py
+            # skips its --strict case for the same reason); sabline-rt's
+            # half of --strict needs no prover and is asked either way
+            print(f"  skip --strict                {name} (--strict needs "
+                  f"the prover)")
+            skipped += 1
+            continue
         try:
             got = passes_strict(source)
         except Exception as e:
@@ -931,7 +940,8 @@ def main(argv: list[str]) -> int:
                   f"{'refused it' if passes else 'passed it'}")
             failed += 1
     print("-" * 62)
-    print(f"{passed} right, {failed} wrong")
+    print(f"{passed} right, {failed} wrong"
+          + (f", {skipped} skipped" if skipped else ""))
     return 1 if failed else 0
 
 
