@@ -9,6 +9,170 @@ api: `sabline conformance` takes `--runtime python|rust` (9.0, M2): with
 `rust`, sabline-rt answers the case kinds it implements and every result
 says which runtime answered it; without the flag nothing changes.
 
+## 9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got
+
+M3's second checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,
+`Secret` and receipts*), and still not its end: **sabline-rt now does the
+work of every builtin a budget can grant short of the network, Python and a
+tool, and the agreement gate runs every program written for a budget under
+that budget**, in a tree of files made afresh for each runtime - 106 of
+them, check_sandbox.py's rows and sabline-spec's L2 cases among them.
+The maintainer's three decisions on the questions the first checkpoint left
+are in both runtimes: a counted size limit stops a compared run that grows
+without end, a function value prints as its name, and a library's function
+value imported under a name is no longer refused. M3's exit criteria are
+not met and none is claimed: the network, Python and tools are refused by
+every budget that does not grant them and not ported under one that does,
+and receipts and the audit stream are not started. The Python package is
+the reference, and where the two disagree sabline-rt has a defect.
+
+This is a **pre-release** of the `sabline-rt` crate, and it publishes that
+and nothing else. 8.8.0 is still what `pip install sabline-lang`, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and `sabline --version` still says 8.8.0. What the Python package on
+main gained below ships with 9.0.
+
+### What exists
+
+**The builtins' work** (`src/interp.rs`, and `src/host.rs` for what a run
+reaches of the machine): `read_file`, `read_file_secret`, `write_file` and
+`file_exists`, each guarded as `budget.allow_path` guards it -
+`normcase(realpath(path))` against each grant's, the credential rule (E318)
+before the ordinary one (E313), the count (E315) spent before the work, the
+read ceiling (E316) - and read and written as CPython's `open` does it,
+universal newlines and the system's line end included; `now` under
+`--freeze-time` and the clock; `random` as `random.Random(seed).randrange`,
+CPython's Mersenne Twister seeded as CPython seeds it, and its rejection
+loop; `env` as `os.environ` reads it, every name upper-cased on Windows;
+`declassify`; and `hmac_sha256` and `hmac_sha256_chain`. A refusal to open a
+file is in `OSError.strerror`'s words, the C runtime's on Windows.
+
+**The run document, version 2**: a line of the list may give a budget, a
+seed, a frozen clock, a read ceiling and variables over the environment,
+`{"path": ..., "allow": ..., "seed": ..., "freeze_time": ..., "max_read":
+..., "environ": {...}}`, and the document names which limit stopped a run,
+`stopped_by`.
+
+**A size limit** for the run document (decided 2026-10-09): both runtimes
+count what a run makes - a text's UTF-8 bytes, a list's or a map's items, as
+`runtime.size_of` says, from every `+` that makes a text or a list, every
+list and map written, every builtin's answer but those that hand back a
+value the program already held, and what `print`, `log` and `ask` write -
+and stop the run at the operation that passes 4,194,304. Never wall-clock
+time or real memory; the real memory cap stays the operating system's
+(E611, M4). The program the gate did not run - a text doubled forty times,
+to be stopped by the memory cap it tests - is run now, and stopped at the
+same operation in both; so are the benchmark's five programs that grow
+forever, which made the gate slower than anything else did. It is
+`state._SIZE_LIMIT` in the Python package, set by `run-dump` and nothing
+else.
+
+### The agreement gate
+
+    the parsers: 6798 compared, 6798 agree, 0 differ
+    the checkers: 6798 compared, 6798 agree, 0 differ
+    the budget parser: 2967 compared, 2967 agree, 0 differ
+    the interpreters: 6798 compared, 6798 agree, 0 differ
+    the interpreters, under their budgets: 106 compared, 106 agree, 0 differ
+    the builtin tables: 1 compared, 1 agree, 0 differ
+  agreement gate: 23468 comparisons, 23468 agreements, 0 differences
+
+The same on CPython 3.10, 3.12 and 3.13. Every program the gate holds is
+run (`RUN_EXCLUDED` is empty). The runs under their budgets: the runs'
+corpus's own table, `agreement_runs.BUDGETED` - files read, written and
+looked for under every kind of grant and count, the read ceiling at and past
+its size, each documented credential location refused by a broad grant and
+read when named, the clock frozen, randomness under four seeds and ranges
+past 32 bits, the environment, both HMACs - and every row of
+`check_sandbox.py` and every L2 case of sabline-spec whose budget grants
+only those effects, in the fixture both name, with `~` the tree's own home.
+The size limit's edges pin it exactly: at the limit a run ends, one past it
+stops, a two-byte character fits two bytes of room and a three-byte one does
+not.
+
+`check_gate.py`'s injections gain four, each of which turns the gate red:
+where the size limit stops a run, what it counts of a text, a file grant's
+refusal, and randomness under a seed.
+
+### Decided, and done in both runtimes
+
+**A function value prints as its name**: `fn double`, and for one written
+inline the name it was lifted to, `fn fn#1`, whether or not it carries
+values (SPEC.md 12a). Until now a broken promise's message showed a
+function's whole definition, and a value carrying names printed as a Python
+object with an address that changed from run to run, so no second runtime
+could agree with it.
+
+**A library's function value, imported under a name, is no longer refused.**
+The loader renamed a library's lifted function and not the `Closure` that
+names it, so `import "lib.vel" as lib` of a library holding
+`all_of(xs, fn(x: Int) -> Bool { ... })` was refused with E402 "unknown
+function value 'fn#1'", while the same library imported flat compiled. Both
+loaders rename it now, in the same commit (SPEC.md 10); a lifted name under
+a prefix, `lib.fn#1`, still reads as "this function value" in a message.
+The adversarial pass held thirteen libraries each way - values carrying
+names, nested, handed back and called, calling the library's own functions,
+looping, failing, breaking a promise, recursing through `all_of` - to the
+same run, flat and named, in both runtimes.
+
+### Found on the way, and fixed
+
+**`all_of` and `any_of` recursed in C.** They were Python's `all()` over a
+generator, so a function value that reached them again nested C calls, and
+from CPython 3.12 the C recursion limit ended the run first - as E609
+"nested too deeply to print, compare or encode", at line 0 - where 3.10 gave
+the depth limit's own E609 at the right line. The same program, two answers,
+by CPython version. They are a loop now, and the depth limit fires on every
+CPython.
+
+### Two chores
+
+**check_release.py's timing checks run on a counted clock.** `consistent` and
+`published --require` with `--timeout 0.3` asked for at least two polls
+inside 0.3 seconds of the machine's clock, and a runner whose first poll of
+the stand-in took longer gave none. release_checks now runs those checks on
+a clock that moves only when slept on: six polls, on every runner. Nothing
+is waived.
+
+**The sitemap's dates are made from what the pages hold.** A page's
+`<lastmod>` was the day of the last commit that changed its sources, so a
+pull request built one UTC day and squash-merged the next re-dated every
+source it carried and left main's sitemap stale (#147, fixed by #148). Each
+page is now dated by a digest of its sources as git holds them -
+`docs/sitemap-dates.json`, committed beside the sitemap - and the day a
+build first saw that digest. check_site's STALE rule asks of HEAD alone
+whether every page's sources are the ones its date was given for, so it
+runs on a shallow clone too, and site.yml no longer checks out the whole
+history. It also ends the Windows checkout's false bumps: `git status`
+calling unchanged files modified dated them today.
+
+compatibility: a pre-release publishes the sabline-rt crate and a GitHub
+release marked pre-release and nothing else; nothing a user of 8.8.0 has is
+touched.
+
+compatibility: for 9.0's Python package, a function value prints as `fn`
+and its name everywhere a value is written: a broken promise's message names
+one as `fn double` where it showed the function's definition, and a value
+carrying names prints as `fn fn#1` where it printed `<...Bound object at
+0x...>`. `print` of one that carries none is unchanged. Messages are not
+covered by STABILITY.md; no code changed.
+
+compatibility: for 9.0's Python package, a program importing a library that
+makes a function value under a name compiles, where it was refused with
+E402; and a function value that reaches `all_of` or `any_of` again stops at
+the depth limit's E609 on every CPython, where 3.12 and 3.13 gave the
+nested-value E609 at line 0. No program that ran before runs differently.
+
+### What is not done
+
+`plan/9.0-m3-progress.md` lists it in order - receipts and then the audit
+stream, the network's, Python's and the tools' work (each a design
+question), a run target for the fuzzer, `sabline run` through sabline-rt,
+the organisation ceiling file - and records two defects in the reference
+the port copies, for a decision: a file that is not UTF-8 ends a run with a
+Python traceback rather than a failure the program can handle, and a library
+function's broken `requires` is reported against the importing file.
+
 ## 9.0.0-alpha.6 - M3: the interpreter, as far as it got
 
 The third rung of 9.0 (`plan/9.0.md`, *M3 - the interpreter, the budget,

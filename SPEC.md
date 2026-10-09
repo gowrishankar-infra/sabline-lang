@@ -711,8 +711,11 @@ outside the rules above.
 A plain import merges the imported file's functions and records, with
 duplicate names rejected. A named import prefixes that file's
 functions; the library's internal references are rewritten with it, so
-a library behaves identically from the inside. A local name may not
-shadow an import name (E514).
+a library behaves identically from the inside. A function value the
+library writes inline is one of its functions and one of its references,
+and is prefixed with them (`geo.fn#1`); until 9.0 it was not, and a
+library that made one was refused under a name with E402. A local name
+may not shadow an import name (E514).
 
 Imports are resolved relative to the importing file, with the bundled
 standard library searched last. A file already in the program is not
@@ -830,6 +833,16 @@ The prover treats captured values as unknown: promises on a capturing
 function value fall back to runtime checks rather than being proven.
 That is the conservative direction, and a false promise on such a
 function is still caught while running.
+
+A function value prints as `fn` and its name: the name it was declared
+with, or for one written inline the name it was lifted to, `fn#1`
+(`geo.fn#1` from a library imported as `geo`), whether or not it carries
+values. That is what `print`, `log`, `to_text`, `format` and `+` with a
+text write, and what a broken promise's message shows of one, inside a
+list, a map or a record too: `[fn double, fn fn#1]`. Until 9.0 a broken
+promise's message showed a function's whole definition there, and a value
+carrying names printed, everywhere, as an object with an address that
+changed from run to run.
 
 ## 13a. Early loop exit: considered, and answered
 

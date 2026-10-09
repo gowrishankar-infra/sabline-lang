@@ -3,15 +3,16 @@
 //!
 //! **What runs here.** A program the loader read and the checkers passed,
 //! under a budget, with its input, its arguments and - for the agreement
-//! gate - a limit on how many calls and loop turns it may make. Every
-//! builtin a run under any budget reaches is spent against that budget
-//! first, as the reference spends it; the builtins whose work is pure or
-//! is the console's (`print`, `log`, `read_line`, `ask`, `args`,
-//! `exit_with`) are ported. The ones whose work is a file, the network, a
-//! clock, randomness, the environment, Python or a tool are refused by the
-//! budget before their work starts, which is all a run under `io` - the
-//! budget the gate runs every program under - can reach of them;
-//! their work is the next part of M3 to port (plan/9.0-m3-progress.md).
+//! gate - a limit on how many calls and loop turns it may make, and on how
+//! much it may make. Every builtin a run under any budget reaches is spent
+//! against that budget first, as the reference spends it, and the work of
+//! every builtin is ported but three kinds: the network, Python and a tool,
+//! which are refused by every budget that does not grant them and answer
+//! `NotPorted` under one that does (plan/9.0-m3-progress.md). A file
+//! builtin is guarded as `budget.allow_path` guards it, counted as
+//! `count_op` counts it and held to the read ceiling; what a run reaches of
+//! the machine - the environment, `~`, randomness, a file's text - is
+//! [`crate::host`]'s.
 //!
 //! **Why literal.** The reference's behaviour is its code: a promise's
 //! message names its values as an f-string writes them, a failing `check`
