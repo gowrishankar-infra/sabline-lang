@@ -691,7 +691,7 @@ def main(argv: list[str]) -> int:
         for i, (_, source, given) in enumerate(budgeted_runs):
             program = written / f"{i:05d}.vel"
             program.write_bytes(_filled(source, values).encode("utf-8"))
-            entry = {"path": str(program)}
+            entry: dict[str, Any] = {"path": str(program)}
             entry.update({k: _filled(v, values) for k, v in given.items()})
             entry["environ"] = agreement_runs.environ(values)
             lines.append(json.dumps(entry))

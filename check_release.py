@@ -272,12 +272,13 @@ class CountedClock:
 @contextlib.contextmanager
 def counted_clock() -> Any:
     """release_checks run on a CountedClock for as long as this lasts."""
-    real = release_checks.time
-    release_checks.time = cast(Any, CountedClock())
+    held = vars(release_checks)
+    real = held["time"]
+    held["time"] = CountedClock()
     try:
         yield
     finally:
-        release_checks.time = real
+        held["time"] = real
 
 
 # ---- a stand-in for PyPI, npm, the MCP registry, the Marketplace and GitHub --
