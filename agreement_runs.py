@@ -206,6 +206,9 @@ def _each(*lines: str) -> str:
 # made, two short of run_dump.SIZE
 _DOUBLED = 'let s = "x"\nlet i = 0\nwhile i < 21 {\n    s = s + s\n    i = i + 1\n}\n'
 
+# a whole number of fifty-one digits, past 128 bits: what only a literal makes
+_HUGE = "1" + "0" * 50
+
 
 # A program per behaviour, named for it. Most print what they reach and end
 # with status 0; the ones that end otherwise end there on purpose.
@@ -249,6 +252,31 @@ check mul_or_fail(3037000500, 3037000500) {
     fail why { print(why) }
 }
 ''')),
+    # a literal past 128 bits reaching a builtin that takes an Int: the
+    # reference's integers have no size, and sabline-rt's i128 gave up on
+    # them with TypeError - the run fuzzer's third finding (9.0)
+    ("int-past-128-bits-in-builtins", _main("\n".join(
+        f"check {call} {{\n    ok q {{ print(q) }}\n    fail why {{ print(why) }}\n}}"
+        for call in (
+            f"add_or_fail({_HUGE}, 1)", f"add_or_fail({_HUGE}, 0 - {_HUGE})",
+            f"sub_or_fail(0, {_HUGE})", f"mul_or_fail({_HUGE}, 0)",
+            f"mul_or_fail({_HUGE}, 2)", f"div_or_fail({_HUGE}, 3)",
+            f"div_or_fail(7, {_HUGE})", f"div_or_fail(0 - 7, {_HUGE})",
+            f"mod_or_fail({_HUGE}, 7)", f"mod_or_fail(0 - 7, {_HUGE})",
+            f"set_at([1, 2], {_HUGE}, 3)", f"set_at([1, 2], 0 - {_HUGE}, 3)",
+            f"slice([1, 2], 0, {_HUGE})", f"slice([1, 2], {_HUGE}, {_HUGE})",
+            f"slice([1, 2], 0 - {_HUGE}, 1)",
+            f'divide_or_fail(money(5, "INR"), {_HUGE}, "half_up")',
+            f'divide_or_fail(money(-5, "INR"), {_HUGE}, "down")',
+            f'divide_or_fail(money(5, "INR"), 0 - {_HUGE}, "half_even")')) + "\n"
+        + "\n".join(f"print({x})" for x in (
+            f'percent_of(money(5, "INR"), 1, {_HUGE}, "half_up")',
+            f'percent_of(money(0, "INR"), {_HUGE}, 100, "down")',
+            f'percent_of(money(5, "INR"), 1, 0 - {_HUGE}, "half_even")')))),
+    ("int-past-128-bits-percent-of", _each(
+        f'percent_of(money(5, "INR"), {_HUGE}, 100, "half_up")')),
+    ("int-past-128-bits-code-at", _each(f'code_at("abc", {_HUGE})')),
+    ("int-past-128-bits-exit-with", _main(f"exit_with({_HUGE})")),
     # ---- floats ---------------------------------------------------------
     ("float-printing", _each(
         "0.1 + 0.2", "1.0", "-0.0", "0.0 - 0.0", "10000000000000000.0",
@@ -914,6 +942,14 @@ BUDGETED: tuple[tuple[str, str, dict[str, Any]], ...] = (
     ("random-seeded-negative", _main(
         "let i = 0\nwhile i < 12 {\n    print(random(100))\n    i = i + 1\n}",
         uses="io, rand"), {"allow": "io,rand", "seed": -5}),
+    # a bound past 64 bits, as CPython's randrange draws it: getrandbits of
+    # the bound's bit length in 32-bit words, rejected until below it (9.0)
+    ("random-seeded-past-64-bits", _main(
+        "print(random(18446744073709551615))\nprint(random(18446744073709551616))\n"
+        "let i = 0\nwhile i < 6 {\n"
+        "    print(random(340282366920938463463374607431768211457))\n    i = i + 1\n}\n"
+        f"print(random({_HUGE}))\nprint(random(6))", uses="io, rand"),
+     {"allow": "io,rand", "seed": 2026}),
     ("random-seeded-zero", _main("print(random(10))\nprint(random(10))",
                                  uses="io, rand"),
      {"allow": "io,rand", "seed": 0}),

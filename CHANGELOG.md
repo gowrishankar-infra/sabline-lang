@@ -83,31 +83,33 @@ corpora leave out, it leaves out the same way, counted.
 
 ### The agreement gate
 
-    the parsers: 6808 compared, 6808 agree, 0 differ
-    the checkers: 6808 compared, 6808 agree, 0 differ
+    the parsers: 6812 compared, 6812 agree, 0 differ
+    the checkers: 6812 compared, 6812 agree, 0 differ
     the budget parser: 2967 compared, 2967 agree, 0 differ
-    the interpreters: 6808 compared, 6808 agree, 0 differ
-    the interpreters, under their budgets: 121 compared, 121 agree, 0 differ
-    the receipts: 6929 compared, 6929 agree, 0 differ
-    the audit streams: 6929 compared, 6929 agree, 0 differ
+    the interpreters: 6812 compared, 6812 agree, 0 differ
+    the interpreters, under their budgets: 122 compared, 122 agree, 0 differ
+    the receipts: 6934 compared, 6934 agree, 0 differ
+    the audit streams: 6934 compared, 6934 agree, 0 differ
     the builtin tables: 1 compared, 1 agree, 0 differ
-  agreement gate: 37371 comparisons, 37371 agreements, 0 differences
+  agreement gate: 37394 comparisons, 37394 agreements, 0 differences
 
 The same on CPython 3.10, 3.12 and 3.13. A receipt's normalisation is
 `RECEIPT_NORMALISED` - the producer's name and version, `startedAt`,
 `wall_time_ms`, a `<source>` subject's name - and the four confinement
 fields by rule (present in both, and sabline-rt's level at least Python's);
 `check_gate.py` holds that list to plan/9.0.md's, so a field cannot join
-one without the other. The runs under their budgets gain fifteen: a lone
+one without the other. The runs under their budgets gain sixteen: a lone
 surrogate written over a file and to a new one, and what was there after;
 and what a receipt records - a declassification in a loop, two reasons on
 one line, an HMAC under twenty keys, grants counted, `exit_with` with and
 without a status, a refused effect, a frozen clock before 1970, after 3001,
 at both ends of what an instant can say and past them, and a run that does
-not end. The read of a file that is not UTF-8 now reads four, each caught,
-and carries on. The programs the gate holds gain ten: seven of several
-files - a promise broken in a library, three ways, flat and named, and one
-called back - and three amounts made past 64 bits.
+not end; and `random` under a seed with bounds past 64 bits. The read of a
+file that is not UTF-8 now reads four, each caught, and carries on. The
+programs the gate holds gain fourteen: seven of several files - a promise
+broken in a library, three ways, flat and named, and one called back -
+three amounts made past 64 bits, and whole numbers past 128 bits in every
+builtin that takes one.
 
 `check_gate.py`'s injections gain five, each of which turns the gate red:
 the file a broken promise names, a receipt's field dropped, a field beside
@@ -140,6 +142,17 @@ hold". `parse_money` already refused one.
 compatibility: for 9.0's Python package, `money` and `with_units` of units
 outside -2^63 to 2^63-1 are E407 where they are made, where the amount was
 made and held and only arithmetic on it refused it.
+
+**A whole number past 128 bits stopped sabline-rt in thirteen builtins** -
+the fuzzer's next finding, on CI's Windows leg: a mutated example with a
+400-digit amount. The reference's integers have no size, and a literal is
+the one place a program gets one past 64 bits; sabline-rt read them through
+an `i128` and answered `TypeError` in `money`, `with_units`, the five
+`_or_fail` builtins, `set_at`, `slice`, `code_at`, `exit_with`, `percent_of`,
+`divide_or_fail` and `random`. They are exact now (`py_big`, a `BigInt`
+`round_ratio`, and `randrange` of a bound past 64 bits as CPython draws it:
+`getrandbits` of its bit length in 32-bit words, rejected until below it).
+Nothing in the reference changed.
 
 ### Decided, and done in both runtimes
 

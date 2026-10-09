@@ -1126,58 +1126,75 @@ impl Runtime {
             }
             "slice" => {
                 let xs = arg(0);
-                let (start, stop) = (py_int(&arg(1))?, py_int(&arg(2))?);
+                let (start, stop) = (py_big(&arg(1))?, py_big(&arg(2))?);
                 let n = length_of(&xs)? as i128;
-                if start < 0 || stop > n || start > stop {
+                let within = |b: &BigInt| b.to_i128().filter(|i| (0..=n).contains(i));
+                let (Some(from), Some(to)) = (within(&start), within(&stop)) else {
                     return Err(fail(format!(
-                        "a slice from {start} to {stop} does not fit a list of {n}"
+                        "a slice from {} to {} does not fit a list of {n}",
+                        start.to_decimal(),
+                        stop.to_decimal()
+                    )));
+                };
+                if from > to {
+                    return Err(fail(format!(
+                        "a slice from {from} to {to} does not fit a list of {n}"
                     )));
                 }
                 let items = sequence(&xs)?;
-                Ok(Value::list(items[start as usize..stop as usize].to_vec()))
+                Ok(Value::list(items[from as usize..to as usize].to_vec()))
             }
+            // whole numbers of any size, as Python's are: a literal can be
+            // past 128 bits, and the answer is what the reference gives for
+            // it (the run fuzzer's third finding)
             "set_at" => {
                 let xs = arg(0);
-                let at = py_int(&arg(1))?;
-                let n = length_of(&xs)? as i128;
-                if at < 0 || at >= n {
-                    return Err(fail(format!("there is no position {at} in a list of {n}")));
-                }
+                let at = py_big(&arg(1))?;
+                let n = length_of(&xs)?;
+                let index = at.to_i128().filter(|i| (0..n as i128).contains(i));
+                let Some(index) = index else {
+                    return Err(fail(format!(
+                        "there is no position {} in a list of {n}",
+                        at.to_decimal()
+                    )));
+                };
                 let mut out = iterate(&xs)?;
-                out[at as usize] = arg(2);
+                out[index as usize] = arg(2);
                 Ok(Value::list(out))
             }
             "div_or_fail" | "mod_or_fail" => {
-                let (a, b) = (py_int(&arg(0))?, py_int(&arg(1))?);
-                if b == 0 {
+                let (a, b) = (py_big(&arg(0))?, py_big(&arg(1))?);
+                if b.is_zero() {
                     let word =
                         if name == "div_or_fail" { "divide" } else { "take a remainder" };
                     return Err(fail(format!("cannot {word} by zero")));
                 }
-                let (q, r) = floor_divmod(a, b);
+                let (q, r) = a.divmod_floor(&b);
                 let answer = if name == "div_or_fail" { q } else { r };
-                if answer < i128::from(INT_MIN) || answer > i128::from(INT_MAX) {
+                if answer.to_i64().is_none() {
                     return Err(fail(format!(
-                        "dividing {a} by {b} makes a number too big to hold"
+                        "dividing {} by {} makes a number too big to hold",
+                        a.to_decimal(),
+                        b.to_decimal()
                     )));
                 }
-                Ok(Value::int128(answer))
+                Ok(Value::int(answer))
             }
             "add_or_fail" | "sub_or_fail" | "mul_or_fail" => {
-                let (a, b) = (py_int(&arg(0))?, py_int(&arg(1))?);
+                let (a, b) = (py_big(&arg(0))?, py_big(&arg(1))?);
                 let (answer, word) = match name {
-                    "add_or_fail" => (a.checked_add(b), "adding"),
-                    "sub_or_fail" => (a.checked_sub(b), "subtracting"),
-                    _ => (a.checked_mul(b), "multiplying"),
+                    "add_or_fail" => (a.add(&b), "adding"),
+                    "sub_or_fail" => (a.sub(&b), "subtracting"),
+                    _ => (a.mul(&b), "multiplying"),
                 };
-                match answer {
-                    Some(v) if v >= i128::from(INT_MIN) && v <= i128::from(INT_MAX) => {
-                        Ok(Value::int128(v))
-                    }
-                    _ => {
-                        Err(fail(format!("{word} {a} and {b} makes a number too big to hold")))
-                    }
+                if answer.to_i64().is_none() {
+                    return Err(fail(format!(
+                        "{word} {} and {} makes a number too big to hold",
+                        a.to_decimal(),
+                        b.to_decimal()
+                    )));
                 }
+                Ok(Value::int(answer))
             }
             "push" => Err(Stop::Raised("TypeError")),
             "put" => {
@@ -1193,12 +1210,15 @@ impl Runtime {
             }
             "code_at" => {
                 let t = text_of(&arg(0))?;
-                let i = py_int(&arg(1))?;
-                if i < 0 || i >= t.len() as i128 {
+                let at = py_big(&arg(1))?;
+                let i =
+                    at.to_i128().filter(|i| (0..t.len() as i128).contains(i)).unwrap_or(-1);
+                if i < 0 {
                     return Err(Stop::Error(RunError {
                         code: "E602",
                         message: Text::from(format!(
-                            "position {i} is outside the text (it has {} character(s))",
+                            "position {} is outside the text (it has {} character(s))",
+                            at.to_decimal(),
                             t.len()
                         )),
                         line,
@@ -1361,12 +1381,14 @@ impl Runtime {
                 Ok(Value::None)
             }
             "exit_with" => {
-                let code = py_int(&arg(0))?;
-                if !(0..=255).contains(&code) {
+                let given = py_big(&arg(0))?;
+                let code = given.to_i128().filter(|c| (0..=255).contains(c)).unwrap_or(-1);
+                if code < 0 {
                     return Err(Stop::Error(RunError {
                         code: "E408",
                         message: Text::from(format!(
-                            "an exit code must be between 0 and 255, not {code}"
+                            "an exit code must be between 0 and 255, not {}",
+                            given.to_decimal()
                         )),
                         line,
                         fixes: vec![
@@ -1428,9 +1450,12 @@ impl Runtime {
                         &["pass a positive number, e.g. random(6)"],
                     ));
                 }
-                let Value::Int(n) = n else { return Err(Stop::Raised("NotPorted")) };
                 let rng = self.rng.get_or_insert_with(Twister::unseeded);
-                Ok(Value::Int(rng.randrange(n as u64) as i64))
+                match n {
+                    Value::Int(n) => Ok(Value::Int(rng.randrange(n as u64) as i64)),
+                    // a bound past 64 bits, which a literal can be
+                    other => Ok(Value::int(rng.randbelow_big(&py_big(&other)?))),
+                }
             }
             // the effect was spent above; a Secret is a compile-time
             // distinction, so here the value is simply itself (8.1). A
@@ -1792,6 +1817,16 @@ fn checked_int(v: Value, op: &str, line: u32) -> R<Value> {
     Ok(v)
 }
 
+/// The minor units `money` and `with_units` make an amount of: E407 for a
+/// whole number outside 64 bits, however far outside - past 128 bits too,
+/// which `py_int` cannot hold (SPEC.md 4.3; the run fuzzer's second finding).
+fn amount_units(v: &Value, op: &str, line: u32) -> R<i64> {
+    if matches!(v, Value::Big(_)) && v.as_i128().is_none() {
+        return Err(money_too_big(op, line));
+    }
+    i64::try_from(py_int(v)?).map_err(|_| money_too_big(op, line))
+}
+
 fn money_too_big(op: &str, line: u32) -> Stop {
     error(
         "E407",
@@ -2004,6 +2039,46 @@ fn currency_of(code: &Text) -> Option<Rc<str>> {
     CURRENCIES.iter().any(|(c, _)| *c == s).then(|| Rc::from(s.as_str()))
 }
 
+/// `round_ratio(p, q, mode)` on whole numbers of any size.
+fn round_ratio_big(mut p: BigInt, mut q: BigInt, mode: &str) -> BigInt {
+    if q.is_negative() {
+        p = p.neg();
+        q = q.neg();
+    }
+    let one = BigInt::from_i128(1);
+    let (f, r) = p.divmod_floor(&q);
+    if r.is_zero() {
+        return f;
+    }
+    if mode == "down" {
+        return if p.is_negative() { f.add(&one) } else { f };
+    }
+    let twice = r.add(&r);
+    if twice > q {
+        return f.add(&one);
+    }
+    if twice < q {
+        return f;
+    }
+    if mode == "half_up" {
+        return if p.is_negative() { f } else { f.add(&one) };
+    }
+    if f.divmod_floor(&BigInt::from_i128(2)).1.is_zero() {
+        f
+    } else {
+        f.add(&one)
+    }
+}
+
+/// `int(v)`, exactly: a whole number of any size, as `py_int`'s errors.
+fn py_big(v: &Value) -> R<BigInt> {
+    match v {
+        Value::Big(b) => Ok((**b).clone()),
+        Value::Float(_) | Value::Int(_) | Value::Bool(_) => py_int(v).map(BigInt::from_i128),
+        other => other.as_big().ok_or(Stop::Raised("TypeError")),
+    }
+}
+
 /// `round_ratio(p, q, mode)`: p / q exactly, rounded by `mode`.
 pub fn round_ratio(mut p: i128, mut q: i128, mode: &str) -> i128 {
     if q < 0 {
@@ -2060,8 +2135,7 @@ fn run_money(name: &str, args: &[Value], line: u32) -> R<Value> {
             };
             // an amount's units are an Int's 64 bits (SPEC.md 4.3): one past
             // them is E407 where it is made, as where arithmetic makes one
-            let units =
-                i64::try_from(py_int(&arg(0))?).map_err(|_| money_too_big(name, line))?;
+            let units = amount_units(&arg(0), name, line)?;
             Ok(Value::Money(Money { units, currency }))
         }
         "units_of" => match arg(0) {
@@ -2077,8 +2151,7 @@ fn run_money(name: &str, args: &[Value], line: u32) -> R<Value> {
         },
         "with_units" => {
             let m = money_arg(&arg(0))?;
-            let units =
-                i64::try_from(py_int(&arg(1))?).map_err(|_| money_too_big(name, line))?;
+            let units = amount_units(&arg(1), name, line)?;
             Ok(Value::Money(Money { units, currency: m.currency }))
         }
         "text_of" => Ok(Value::text(&money_text(&money_arg(&arg(0))?))),
@@ -2100,9 +2173,10 @@ fn run_money(name: &str, args: &[Value], line: u32) -> R<Value> {
                 }));
             }
             let m = money_arg(&arg(0))?;
+            let units = BigInt::from_i128(i128::from(m.units));
             if name == "percent_of" {
-                let (num, den) = (py_int(&arg(1))?, py_int(&arg(2))?);
-                if den == 0 {
+                let (num, den) = (py_big(&arg(1))?, py_big(&arg(2))?);
+                if den.is_zero() {
                     return Err(error(
                         "E403",
                         "percent_of with a denominator of zero",
@@ -2110,19 +2184,23 @@ fn run_money(name: &str, args: &[Value], line: u32) -> R<Value> {
                         &["check the denominator first"],
                     ));
                 }
-                let units = round_ratio(i128::from(m.units) * num, den, &mode_s);
-                return money_checked(units, &m.currency, "percent_of", line);
+                // the product is exact, however large: only the answer must fit
+                let answer = round_ratio_big(units.mul(&num), den, &mode_s);
+                return match answer.to_i64() {
+                    Some(u) => Ok(Value::Money(Money { units: u, currency: m.currency })),
+                    None => Err(money_too_big("percent_of", line)),
+                };
             }
-            let by = py_int(&arg(1))?;
-            if by == 0 {
+            let by = py_big(&arg(1))?;
+            if by.is_zero() {
                 return Err(fail("cannot divide an amount by zero"));
             }
-            let units = round_ratio(i128::from(m.units), by, &mode_s);
-            match i64::try_from(units) {
-                Ok(u) => Ok(Value::Money(Money { units: u, currency: m.currency })),
-                Err(_) => Err(fail(format!(
-                    "dividing {} by {by} makes an amount too big to hold",
-                    money_text(&m)
+            match round_ratio_big(units, by.clone(), &mode_s).to_i64() {
+                Some(u) => Ok(Value::Money(Money { units: u, currency: m.currency })),
+                None => Err(fail(format!(
+                    "dividing {} by {} makes an amount too big to hold",
+                    money_text(&m),
+                    by.to_decimal()
                 ))),
             }
         }
