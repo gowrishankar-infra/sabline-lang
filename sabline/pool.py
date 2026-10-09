@@ -28,13 +28,16 @@ from .library import (
 )
 
 if TYPE_CHECKING:
-    from .receipts import _run_parameters, receipt_statement
+    from .receipts import (_run_parameters, receipt_statement, stream_end,
+                           stream_start)
 
 # Used inside functions only, from modules after this one: sabline/__init__.py
 # binds each here once every module is loaded.
 __forward__ = {
     "_run_parameters": "receipts",
     "receipt_statement": "receipts",
+    "stream_end": "receipts",
+    "stream_start": "receipts",
 }
 
 # ---------------------------------------------------------------------------
@@ -329,6 +332,9 @@ def pool_worker(argv: list[Any]) -> int:
         def emit(event: Any) -> None:
             _msg_write(replies, {"event": event})
 
+        def tell(event: Any) -> None:       # the audit stream (9.0)
+            _msg_write(replies, {"audit_event": event})
+
         op = request.get("op") or "run"
         try:
             if op == "probe" and "--confine-probe" in argv:
@@ -351,7 +357,9 @@ def pool_worker(argv: list[Any]) -> int:
                     seed=request.get("seed"),
                     freeze_time=request.get("freeze_time"),
                     native=native, emit=emit,
-                    name=request.get("name")).as_dict()
+                    name=request.get("name"),
+                    stream=tell if request.get("audit") else None,
+                    stream_ends=False).as_dict()
         except MemoryError:
             answer = {"out_of_memory": True}
         except Exception as e:             # a defect in the compiler, not
@@ -376,6 +384,8 @@ class _Worker:
         self.temp: str | None = None
         # handed each event as it arrives, when set (sabline eval's stream)
         self.on_event: Any = None
+        # handed each audit stream event of the run it is asked for (9.0)
+        self.on_audit: Any = None
         self._kill_lock = threading.Lock()
         self._noise: list[Any] = []
         self.proc, self.job, self.cap = _spawn_capped(
@@ -437,6 +447,15 @@ class _Worker:
                 return None, events
             while True:
                 message = _msg_read(self.proc.stdout)
+                if message is not None and len(message) == 1 and \
+                        "audit_event" in message:
+                    if self.on_audit is not None and isinstance(
+                            message["audit_event"], dict):
+                        try:
+                            self.on_audit(message["audit_event"])
+                        except Exception:
+                            self.on_audit = None   # not called again
+                    continue
                 if message is not None and len(message) == 1 and isinstance(
                         message.get("confinement"), dict):
                     # a pool of one run is confined at its first statement,
@@ -626,22 +645,30 @@ class Pool:
     # ---- using it ----------------------------------------------------
     def run(self, source: str, *, stdin: str = "", args: list[Any] | None = None,
             path: str | None = None, seed: int | None = None,
-            freeze_time: Any = None, _name: str | None = None) -> RunResult:
+            freeze_time: Any = None, _name: str | None = None,
+            audit_stream: Any = None) -> RunResult:
         """Run one program on this pool, under the pool's budget.
 
         The same RunResult `sabline.run` returns, including timed_out,
         out_of_memory and, from 8.1, the run's receipt. `seed` and
         `freeze_time` fix the run's randomness and clock (8.0); they are
-        not grants.
+        not grants. `audit_stream` as `sabline.run` takes it (9.0): the
+        worker sends each event as it happens, and the last carries the
+        receipt this pool made, of a run it stopped too.
         """
         started_at = _utc_now_ms()
-        _run_parameters(seed, freeze_time, self.timeout,
-                        self.max_memory_mb)       # a bad instant fails here
+        parameters = _run_parameters(seed, freeze_time, self.timeout,
+                                     self.max_memory_mb)   # a bad instant
+        teller = _RunRecorder(stream=audit_stream)          # fails here
+        stream_start(teller, budget=self.allow, parameters=parameters,
+                     started_at=started_at)
         answer, events, worker, seconds = self._use(
             {"op": "run", "source": source, "stdin": stdin or "",
              "args": list(args or []), "path": path, "seed": seed,
-             "freeze_time": freeze_time, "name": _name},
-            lambda a: bool(a) and bool(a.get("ok")))
+             "freeze_time": freeze_time, "name": _name,
+             "audit": teller.stream is not None},
+            lambda a: bool(a) and bool(a.get("ok")),
+            on_audit=teller.tell if teller.stream is not None else None)
         if answer is not None and "ok" in answer:
             result = RunResult(
                 bool(answer.get("ok")), answer.get("output") or "",
@@ -656,6 +683,7 @@ class Pool:
         result.receipt = self._receipt(
             source, path, _name, seed, freeze_time, answer, events, result,
             started_at, seconds, worker)
+        stream_end(teller, result.receipt)
         return result
 
     def check(self, source: str, *, path: str | None = None,
@@ -691,7 +719,8 @@ class Pool:
         return _unfinished_audit(self._stopped(worker, answer, path,
                                                "audit"))
 
-    def _use(self, request: dict[Any, Any], keep_if: Any) -> tuple[Any, ...]:
+    def _use(self, request: dict[Any, Any], keep_if: Any,
+             on_audit: Any = None) -> tuple[Any, ...]:
         """One request to an idle worker: (answer, events, the worker,
         seconds it took). The worker goes back to the pool only when
         keep_if(answer) says so; otherwise it is killed and replaced."""
@@ -712,7 +741,11 @@ class Pool:
             if worker is None:
                 worker = self._start()
             began = _time.monotonic()
-            answer, events = worker.ask(request, self.timeout)
+            worker.on_audit = on_audit
+            try:
+                answer, events = worker.ask(request, self.timeout)
+            finally:
+                worker.on_audit = None
             seconds = _time.monotonic() - began
             keep = bool(keep_if(answer))
             return answer, events, worker, seconds
@@ -964,12 +997,14 @@ class PoolRegistry:
             max_memory_mb: Any = None, native: bool = True, stdin: str = "",
             args: list[Any] | None = None, path: str | None = None,
             seed: int | None = None, freeze_time: Any = None,
-            import_root: Any = None, _name: str | None = None) -> RunResult:
+            import_root: Any = None, _name: str | None = None,
+            audit_stream: Any = None) -> RunResult:
         return self.pool(allow=allow, deny=deny, timeout=timeout,
                          max_memory_mb=max_memory_mb, native=native,
                          import_root=import_root).run(
             source, stdin=stdin, args=args, path=path,
-            seed=seed, freeze_time=freeze_time, _name=_name)
+            seed=seed, freeze_time=freeze_time, _name=_name,
+            audit_stream=audit_stream)
 
     def close(self) -> None:
         with self._lock:

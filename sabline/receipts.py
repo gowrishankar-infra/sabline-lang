@@ -4,7 +4,8 @@ import os
 
 from . import state as _state
 from .version import VERSION
-from .recorder import RECEIPT_PREDICATE_TYPE, RECEIPT_SCHEMA, RECEIPT_SPEC
+from .recorder import (AUDIT_STREAM_SCHEMA, RECEIPT_PREDICATE_TYPE, RECEIPT_SCHEMA,
+                       RECEIPT_SPEC)
 from .budget import _frozen_epoch
 from .findings import REPOSITORY
 from .attestation import INTOTO_STATEMENT_TYPE, _sha256_of, _subject_name
@@ -85,6 +86,31 @@ def _run_parameters(seed: Any, freeze_time: Any, timeout: Any, max_memory_mb: An
                               else int(max_memory_mb)),
             "max_read_bytes": _state.MAX_READ_BYTES,
             **_confinement_fields(confinement)}
+
+
+CONFINEMENT_KEYS = ("confinement", "confinement_reason", "confinement_layers",
+                    "os_policy_sha256")
+
+
+def stream_start(recorder: Any, *, budget: str, parameters: dict[str, Any],
+                 started_at: str) -> None:
+    """The audit stream's first event (9.0): what the run was given, before
+    it ran - its confinement is not known until its first statement, and is
+    in the receipt the last event carries."""
+    if recorder.stream is None:
+        return
+    recorder.tell({
+        "event": "start", "schema": AUDIT_STREAM_SCHEMA,
+        "producer": {"name": "sabline-lang", "uri": REPOSITORY,
+                     "version": VERSION},
+        "startedAt": started_at, "budget": budget,
+        "run_parameters": {k: v for k, v in parameters.items()
+                           if k not in CONFINEMENT_KEYS}})
+
+
+def stream_end(recorder: Any, receipt: dict[str, Any] | None) -> None:
+    """The audit stream's last event: the run's receipt."""
+    recorder.tell({"event": "end", "receipt": receipt})
 
 
 def _grants_used(uses: Any) -> list[dict[str, Any]]:

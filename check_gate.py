@@ -243,6 +243,14 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
         "seen.len() >= FINGERPRINTS_PER_SITE",
         "seen.len() > FINGERPRINTS_PER_SITE",
     ),
+    # The audit stream (decisions/0007, 32b): one event dropped - a grant's,
+    # which every receipt still counts, so only the stream's row can see it.
+    (
+        "an audit stream's event dropped",
+        "rt/crates/sabline-rt/src/interp.rs",
+        "self.recorder.grant(&grant); // the audit stream (9.0)",
+        "// the audit stream (9.0)",
+    ),
 )
 
 # plan/9.0.md's list of what the gate normalises in a receipt, and nothing

@@ -14,7 +14,7 @@
 //! recorded as `sabline <file> --receipt` records it, or `null` where the
 //! command line writes none.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::budget::budget_from;
 use crate::checker::check_types;
@@ -170,22 +170,82 @@ pub fn run_document(path: &str, install_dir: &str) -> Json {
 
 /// The document for one program, under what its line of the list gives.
 pub fn run_document_given(path: &str, install_dir: &str, given: &Given) -> Json {
-    run_and_receipt(path, install_dir, given).0
+    run_recorded(path, install_dir, given).0
 }
 
-/// What the receipt is made from besides the recorder: what the run read,
-/// and when.
-struct Facts {
+/// What a run's receipt and audit stream are made from besides the
+/// recorder: the program as it was given and read, and when it started.
+struct Facts<'a> {
+    path: &'a str,
+    install_dir: &'a str,
+    given: &'a Given,
+    spec: String,
+    name: String,
     entry_bytes: Vec<u8>,
     files: Vec<String>,
     started_at: String,
     t0: std::time::Instant,
 }
 
-/// The run document, and the receipt of the same run - `Json::Null` where
-/// the command line writes none: a budget that does not parse, a failure
-/// that escaped, and a frozen clock past what an instant can say.
-pub fn run_and_receipt(path: &str, install_dir: &str, given: &Given) -> (Json, Json) {
+impl Facts<'_> {
+    fn subjects(&self) -> Vec<Json> {
+        receipt::subjects(
+            self.path,
+            &self.name,
+            &self.entry_bytes,
+            &self.files,
+            self.install_dir,
+        )
+    }
+
+    fn run<'r>(
+        &'r self,
+        effect_uses: &'r HashMap<String, u64>,
+        grant_uses: &'r [(String, u64)],
+        ending: Ending,
+        subjects: Vec<Json>,
+    ) -> receipt::Run<'r> {
+        receipt::Run {
+            name: &self.name,
+            subjects,
+            budget: self.spec.clone(),
+            seed: self.given.params.seed,
+            freeze_time: self.given.params.freeze_time,
+            max_read: self.given.params.max_read,
+            effect_uses,
+            grant_uses,
+            started_at: self.started_at.clone(),
+            wall_time_ms: self.t0.elapsed().as_secs_f64() * 1000.0,
+            ending,
+        }
+    }
+
+    /// The receipt and the audit stream of a run that has ended, or two
+    /// nulls for a frozen clock past what an instant can say.
+    fn ended(
+        &self,
+        recorder: &mut receipt::Recorder,
+        effect_uses: &HashMap<String, u64>,
+        grant_uses: &[(String, u64)],
+        ending: Ending,
+    ) -> (Json, Json) {
+        let run = self.run(effect_uses, grant_uses, ending, self.subjects());
+        match receipt::statement(recorder, &run) {
+            Some(receipt) => {
+                receipt::stream_end(recorder, &receipt);
+                let stream = Json::List(recorder.stream.take().unwrap_or_default());
+                (receipt, stream)
+            }
+            None => (Json::Null, Json::Null),
+        }
+    }
+}
+
+/// The run document, the receipt of the same run, and its audit stream as a
+/// list of events - the last two `Json::Null` where the command line writes
+/// no receipt: a budget that does not parse, a failure that escaped, and a
+/// frozen clock past what an instant can say.
+pub fn run_recorded(path: &str, install_dir: &str, given: &Given) -> (Json, Json, Json) {
     let mut doc = Doc {
         refused: Json::Null,
         error: Json::Null,
@@ -199,36 +259,39 @@ pub fn run_and_receipt(path: &str, install_dir: &str, given: &Given) -> (Json, J
     let Ok(budget) = budget_from(given.allow.as_deref(), given.deny.as_deref()) else {
         doc.raised = Json::text("BudgetError");
         doc.exit = Json::Null;
-        return (doc.json(), Json::Null);
+        return (doc.json(), Json::Null, Json::Null);
     };
-    let spec = budget.spec();
     // read before the run, as the command line reads it for the receipt
     let mut facts = Facts {
+        path,
+        install_dir,
+        given,
+        spec: budget.spec(),
+        name: receipt::entry_name(path),
         entry_bytes: std::fs::read(path).unwrap_or_default(),
         files: Vec::new(),
         started_at: receipt::utc_now_ms(),
         t0: std::time::Instant::now(),
     };
-    let mut recorder = receipt::Recorder::default();
-    let none = std::collections::HashMap::new();
-    let loaded = match load_program_recording(path, install_dir, &mut facts.files) {
+    let none = HashMap::new();
+    let failed = Ending { status: Some(1), ..Ending::default() };
+    let mut recorder = receipt::Recorder::streaming();
+    if !receipt::stream_start(&mut recorder, &facts.run(&none, &[], failed, Vec::new())) {
+        recorder.stream = None; // no instant: neither a stream nor a receipt
+    }
+    let loaded = load_program_recording(path, install_dir, &mut facts.files);
+    // the audit stream's subjects, once loading is over
+    if !facts.files.is_empty() && recorder.stream.is_some() {
+        recorder.tell_subjects(&facts.subjects());
+    }
+    let loaded = match loaded {
         Ok(loaded) => loaded,
         Err(e) => {
             recorder.note_error(e.code, e.line, &e.message);
             doc.error = checked(&e, path);
             doc.exit = Json::Int(1);
-            let receipt = receipt_of(
-                path,
-                install_dir,
-                given,
-                &spec,
-                &recorder,
-                &none,
-                &[],
-                &facts,
-                Ending { status: Some(1), ..Ending::default() },
-            );
-            return (doc.json(), receipt);
+            let (receipt, stream) = facts.ended(&mut recorder, &none, &[], failed);
+            return (doc.json(), receipt, stream);
         }
     };
     let mut errors = Vec::new();
@@ -237,18 +300,8 @@ pub fn run_and_receipt(path: &str, install_dir: &str, given: &Given) -> (Json, J
         recorder.note_error(stopped.code, stopped.line, &stopped.message);
         doc.error = checked(&stopped, path);
         doc.exit = Json::Int(1);
-        let receipt = receipt_of(
-            path,
-            install_dir,
-            given,
-            &spec,
-            &recorder,
-            &none,
-            &[],
-            &facts,
-            Ending { status: Some(1), ..Ending::default() },
-        );
-        return (doc.json(), receipt);
+        let (receipt, stream) = facts.ended(&mut recorder, &none, &[], failed);
+        return (doc.json(), receipt, stream);
     }
     if !errors.is_empty() {
         let mut seen: HashSet<(&'static str, String, u32, String)> = HashSet::new();
@@ -267,18 +320,8 @@ pub fn run_and_receipt(path: &str, install_dir: &str, given: &Given) -> (Json, J
         doc.refused = Json::List(unique.iter().map(|e| checked(e, path)).collect());
         doc.exit = Json::Int(1);
         recorder.note_stop(unique[0].code, unique[0].line);
-        let receipt = receipt_of(
-            path,
-            install_dir,
-            given,
-            &spec,
-            &recorder,
-            &none,
-            &[],
-            &facts,
-            Ending { status: Some(1), ..Ending::default() },
-        );
-        return (doc.json(), receipt);
+        let (receipt, stream) = facts.ended(&mut recorder, &none, &[], failed);
+        return (doc.json(), receipt, stream);
     }
     let io = Io::new(STDIN, ARGS.iter().map(|a| Text::from(*a)).collect());
     let mut environ = Environ::of_process();
@@ -331,60 +374,13 @@ pub fn run_and_receipt(path: &str, install_dir: &str, given: &Given) -> (Json, J
     }
     doc.stdout = std::mem::take(&mut rt.io.stdout).done();
     doc.stderr = std::mem::take(&mut rt.io.stderr).done();
-    let receipt = if escaped {
-        Json::Null // the command line wrote none
-    } else {
-        receipt_of(
-            path,
-            install_dir,
-            given,
-            &spec,
-            &rt.recorder,
-            &rt.effect_uses,
-            &rt.grant_uses,
-            &facts,
-            ending,
-        )
-    };
-    (doc.json(), receipt)
-}
-
-/// The receipt of a run that has ended, or `Json::Null` for a frozen clock
-/// past what an instant can say.
-#[allow(clippy::too_many_arguments)]
-fn receipt_of(
-    path: &str,
-    install_dir: &str,
-    given: &Given,
-    spec: &str,
-    recorder: &receipt::Recorder,
-    effect_uses: &std::collections::HashMap<String, u64>,
-    grant_uses: &[(String, u64)],
-    facts: &Facts,
-    ending: Ending,
-) -> Json {
-    let wall_time_ms = facts.t0.elapsed().as_secs_f64() * 1000.0;
-    let name = receipt::entry_name(path);
-    let run = receipt::Run {
-        name: &name,
-        subjects: receipt::subjects(
-            path,
-            &name,
-            &facts.entry_bytes,
-            &facts.files,
-            install_dir,
-        ),
-        budget: spec.to_string(),
-        seed: given.params.seed,
-        freeze_time: given.params.freeze_time,
-        max_read: given.params.max_read,
-        effect_uses,
-        grant_uses,
-        started_at: facts.started_at.clone(),
-        wall_time_ms,
-        ending,
-    };
-    receipt::statement(recorder, &run).unwrap_or(Json::Null)
+    if escaped {
+        return (doc.json(), Json::Null, Json::Null); // the command line wrote none
+    }
+    let mut recorder = std::mem::take(&mut rt.recorder);
+    let (receipt, stream) =
+        facts.ended(&mut recorder, &rt.effect_uses, &rt.grant_uses, ending);
+    (doc.json(), receipt, stream)
 }
 
 /// Whether a document is of a run that ended with status 0.

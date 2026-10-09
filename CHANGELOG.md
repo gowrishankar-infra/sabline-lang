@@ -9,6 +9,12 @@ api: `sabline conformance` takes `--runtime python|rust` (9.0, M2): with
 `rust`, sabline-rt answers the case kinds it implements and every result
 says which runtime answered it; without the flag nothing changes.
 
+api: a run takes `--audit-stream FILE`, and `sabline.run`, `Pool.run` and
+`PoolRegistry.run` take `audit_stream=` (9.0, decisions/0007 32b): the run's
+audit stream, `sabline.audit-stream/1`, one JSON object an event as it
+happens - written to FILE a line each, or handed to the function. Without
+either nothing changes.
+
 ## 9.0.0-alpha.8 - M3: receipts, field for field
 
 M3's third checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,

@@ -173,9 +173,10 @@ fn check_list_of(
 }
 
 /// The header of the framed stream `run --list` writes; the records are
-/// framed as `ast --list`'s are, two for each program: its run document,
-/// then its receipt (2, from the receipt).
-const RUN_BATCH_HEADER: &str = "sabline.run-batch/2";
+/// framed as `ast --list`'s are, three for each program: its run document,
+/// its receipt, and its audit stream as a list of events (3, from the
+/// stream; 2 added the receipt).
+const RUN_BATCH_HEADER: &str = "sabline.run-batch/3";
 
 fn run_list_of(
     dir: String,
@@ -192,10 +193,10 @@ fn run_list_of(
             }
             let (path, given) = sabline_rt::run_dump::Given::of_line(line)?;
             let path = path.as_str();
-            let (document, receipt) =
-                sabline_rt::run_dump::run_and_receipt(path, &dir, &given);
+            let (document, receipt, stream) =
+                sabline_rt::run_dump::run_recorded(path, &dir, &given);
             every &= sabline_rt::run_dump::ran_clean(&document);
-            for record in [document, receipt] {
+            for record in [document, receipt, stream] {
                 let body = record.canonical();
                 out(format!("--- {} {path}\n", body.len()).as_bytes())?;
                 out(body.as_bytes())?;

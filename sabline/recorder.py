@@ -32,6 +32,25 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# 19c. THE AUDIT STREAM - the receipt's fields as they are produced (9.0)
+#
+#     decisions/0007, item 32b: one JSON object a line, for a host that
+#     would watch a run rather than read its receipt afterwards. `start`
+#     (the budget and the parameters known before the run), `subjects`,
+#     then as each happens `effect` (every builtin call the budget let
+#     through: the effect, the builtin and the line), `grant` (the grant
+#     that let an operation through, by its text), `refusal`, `declassify`
+#     and `tool` - each what the receipt keeps of it, once per occurrence
+#     rather than once per place - and `end`, which carries the receipt.
+#     Like the receipt it holds no value the program handled, a Secret
+#     least of all. docs/receipts.md states it; `sabline <file> --audit-stream
+#     FILE` and `sabline.run(audit_stream=...)` ask for it.
+# ---------------------------------------------------------------------------
+
+AUDIT_STREAM_SCHEMA = "sabline.audit-stream/1"
+
+
 RECEIPT_SCHEMA = "sabline.receipt/1"
 # the type is sabline/predicates.py's, at sabline.dev from 8.3
 RECEIPT_SPEC = "sabline-spec 0.13.0"
@@ -91,8 +110,12 @@ class _RunRecorder:
 
     STREAM_EVERY = 1000
 
-    def __init__(self, emit: Any = None) -> None:
+    def __init__(self, emit: Any = None, stream: Any = None) -> None:
         self.emit = emit
+        # the audit stream (9.0), handed every event as it happens; one that
+        # cannot take an event is let go, and the run goes on
+        self.stream = stream
+        self.stream_failed = False
         self.subjects: list[Any] | None = None
         self.sites: dict[Any, Any] = {}
         self.stop: dict[str, Any] | None = None
@@ -119,9 +142,30 @@ class _RunRecorder:
         except Exception:                 # nobody is listening any more
             self.emit = None
 
+    def tell(self, event: dict[str, Any]) -> None:
+        """One event of the audit stream, when one was asked for."""
+        if self.stream is None:
+            return
+        try:
+            self.stream(event)
+        except Exception:                 # nobody is listening any more
+            self.stream, self.stream_failed = None, True
+
     def set_subjects(self, subjects: list[Any]) -> None:
         self.subjects = subjects
         self._send({"kind": "subjects", "subjects": subjects})
+        self.tell({"event": "subjects", "subject": subjects})
+
+    def effect(self, effect: str, builtin: str, line: int) -> None:
+        """A builtin call the budget let through: the audit stream's
+        `effect`, which the receipt's `effects_used` counts."""
+        self.tell({"event": "effect", "effect": effect, "builtin": builtin,
+                   "line": line})
+
+    def grant(self, grant: str) -> None:
+        """An operation a grant let through, by the grant's own text: what
+        the receipt's `grants_used` counts."""
+        self.tell({"event": "grant", "grant": grant})
 
     def note(self, kind: str, **fields: Any) -> None:
         key = (kind,) + tuple(sorted(fields.items()))
@@ -131,6 +175,12 @@ class _RunRecorder:
         entry["times"] += 1
         if entry["times"] == 1 or entry["times"] % self.STREAM_EVERY == 0:
             self._send(dict(entry))
+        if self.stream is not None:
+            event = dict(fields, event=kind)
+            if kind == "tool":            # as the receipt says it
+                event["held_to"] = [g for g in str(event.pop("held", "") or "")
+                                    .split("\n") if g]
+            self.tell(event)
 
     def take(self, event: dict[Any, Any]) -> None:
         """An entry a worker streamed, kept by its parent."""

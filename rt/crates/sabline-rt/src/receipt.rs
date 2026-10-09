@@ -9,6 +9,11 @@
 //! each declassification is kept once per place, with a count, so a loop
 //! that declassifies a million times is one entry.
 //!
+//! **The audit stream** (decisions/0007, 32b) is the receipt's fields as
+//! they are produced, one JSON object an event: `start`, `subjects`, then
+//! as each happens `effect`, `grant`, `refusal` and `declassify`, and `end`
+//! with the receipt - `sabline/recorder.py`'s `tell`, and docs/receipts.md.
+//!
 //! The run document (`run_dump`) writes one after each run, and
 //! `check_agreement.py` compares it with the Python package's field for
 //! field, after normalising exactly plan/9.0.md's list: the producer's name
@@ -31,6 +36,8 @@ pub const RECEIPT_SPEC: &str = "sabline-spec 0.13.0";
 pub const RECEIPT_PREDICATE_TYPE: &str = "https://sabline.dev/receipt/v1";
 /// `INTOTO_STATEMENT_TYPE`.
 pub const INTOTO_STATEMENT_TYPE: &str = "https://in-toto.io/Statement/v1";
+/// `AUDIT_STREAM_SCHEMA`.
+pub const AUDIT_STREAM_SCHEMA: &str = "sabline.audit-stream/1";
 /// `findings.REPOSITORY`: where the producer is.
 pub const REPOSITORY: &str = "https://github.com/gowrishankar-infra/sabline-lang";
 /// The producer's name, which is the one thing a receipt is supposed to
@@ -76,11 +83,60 @@ pub struct Recorder {
     pub compiled: bool,
     /// line -> the key fingerprints an HMAC call there has named.
     keys_at: HashMap<u32, HashSet<String>>,
+    /// The audit stream's events so far, when one was asked for.
+    pub stream: Option<Vec<Json>>,
 }
 
 impl Recorder {
-    /// `note(kind, **fields)`: one more of this, at this place.
+    /// A recorder that keeps the audit stream as well.
+    pub fn streaming() -> Recorder {
+        Recorder { stream: Some(Vec::new()), ..Recorder::default() }
+    }
+
+    /// `tell(event)`: one event of the audit stream, when one was asked for.
+    pub fn tell(&mut self, event: Json) {
+        if let Some(stream) = &mut self.stream {
+            stream.push(event);
+        }
+    }
+
+    /// `set_subjects(subjects)`, as far as the stream is concerned.
+    pub fn tell_subjects(&mut self, subjects: &[Json]) {
+        self.tell(Json::obj([
+            ("event", Json::text("subjects")),
+            ("subject", Json::List(subjects.to_vec())),
+        ]));
+    }
+
+    /// A builtin call the budget let through.
+    pub fn effect(&mut self, effect: &str, builtin: &str, line: u32) {
+        if self.stream.is_some() {
+            self.tell(Json::obj([
+                ("event", Json::text("effect")),
+                ("effect", Json::text(effect)),
+                ("builtin", Json::text(builtin)),
+                ("line", Json::Int(i64::from(line))),
+            ]));
+        }
+    }
+
+    /// An operation a grant let through, by the grant's own text.
+    pub fn grant(&mut self, grant: &str) {
+        if self.stream.is_some() {
+            self.tell(Json::obj([
+                ("event", Json::text("grant")),
+                ("grant", Json::text(grant)),
+            ]));
+        }
+    }
+
+    /// `note(kind, **fields)`: one more of this, at this place - and, in the
+    /// stream, this one.
     fn note(&mut self, kind: Kind, line: u32) {
+        if self.stream.is_some() {
+            let event = event_of(&kind, line);
+            self.tell(event);
+        }
         match self.sites.iter_mut().find(|s| s.kind == kind && s.line == line) {
             Some(site) => site.times += 1,
             None => self.sites.push(Site { kind, line, times: 1 }),
@@ -122,6 +178,80 @@ impl Recorder {
     pub fn note_stop(&mut self, code: &'static str, line: u32) {
         self.stop = Some((code, line));
     }
+}
+
+/// What the stream says of one refusal or declassification: what the
+/// receipt keeps of it, without the count.
+fn event_of(kind: &Kind, line: u32) -> Json {
+    let line = Json::Int(i64::from(line));
+    match kind {
+        Kind::Refusal { code, effect, stopped } => Json::obj([
+            ("event", Json::text("refusal")),
+            ("code", code.map_or(Json::Null, Json::text)),
+            ("effect", effect.clone().map_or(Json::Null, Json::Str)),
+            ("line", line),
+            ("stopped", Json::Bool(*stopped)),
+        ]),
+        Kind::Declassify { reason, key_fingerprint } => {
+            let mut fields = vec![
+                ("event".to_string(), Json::text("declassify")),
+                ("reason".to_string(), Json::Text(reason.clone())),
+                ("line".to_string(), line),
+            ];
+            if let Some(print) = key_fingerprint {
+                fields.push(("key_fingerprint".to_string(), Json::Str(print.clone())));
+            }
+            Json::Obj(fields.into_iter().collect())
+        }
+    }
+}
+
+/// The run parameters a receipt says and the stream's `start` says, but for
+/// the confinement, which is not known before the run.
+fn parameters(run: &Run<'_>) -> Option<Vec<(&'static str, Json)>> {
+    let freeze_time = match run.freeze_time {
+        Some(t) => Json::Str(instant(t)?),
+        None => Json::Null,
+    };
+    Some(vec![
+        ("seed", run.seed.map_or(Json::Null, |s| Json::Num(s.to_string()))),
+        ("freeze_time", freeze_time),
+        ("timeout", Json::Null),
+        ("max_memory_mb", Json::Null),
+        ("max_read_bytes", Json::Int(i64::try_from(run.max_read).unwrap_or(i64::MAX))),
+    ])
+}
+
+fn producer() -> Json {
+    Json::obj([
+        ("name", Json::text(PRODUCER)),
+        ("uri", Json::text(REPOSITORY)),
+        ("version", Json::text(crate::VERSION)),
+    ])
+}
+
+/// `stream_start`: the audit stream's first event - what the run was given,
+/// before it ran. `false` for a frozen clock past what an instant can say,
+/// which has neither a stream nor a receipt.
+pub fn stream_start(recorder: &mut Recorder, run: &Run<'_>) -> bool {
+    let Some(given) = parameters(run) else { return false };
+    recorder.tell(Json::obj([
+        ("event", Json::text("start")),
+        ("schema", Json::text(AUDIT_STREAM_SCHEMA)),
+        ("producer", producer()),
+        ("startedAt", Json::text(run.started_at.clone())),
+        ("budget", Json::text(run.budget.clone())),
+        (
+            "run_parameters",
+            Json::Obj(given.into_iter().map(|(k, v)| (k.to_string(), v)).collect()),
+        ),
+    ]));
+    true
+}
+
+/// `stream_end`: the audit stream's last event, the receipt.
+pub fn stream_end(recorder: &mut Recorder, receipt: &Json) {
+    recorder.tell(Json::obj([("event", Json::text("end")), ("receipt", receipt.clone())]));
 }
 
 /// `key_fingerprint(key)`: twelve hex digits of a SHA-256 over a fixed label
@@ -321,10 +451,7 @@ fn none_or(s: Option<&str>) -> String {
 /// docstring in the Python package says why): `None` for a frozen clock
 /// past what an instant can say, which has no receipt.
 pub fn statement(recorder: &Recorder, run: &Run<'_>) -> Option<Json> {
-    let freeze_time = match run.freeze_time {
-        Some(t) => Json::Str(instant(t)?),
-        None => Json::Null,
-    };
+    let mut given = parameters(run)?;
     let mut refusals: Vec<(u32, String, String, bool, Json)> = Vec::new();
     let mut declassifications: Vec<(u32, Text, String, Json)> = Vec::new();
     for site in &recorder.sites {
@@ -397,28 +524,15 @@ pub fn statement(recorder: &Recorder, run: &Run<'_>) -> Option<Json> {
             "predicate",
             Json::obj([
                 ("schema", Json::text(RECEIPT_SCHEMA)),
-                (
-                    "producer",
-                    Json::obj([
-                        ("name", Json::text(PRODUCER)),
-                        ("uri", Json::text(REPOSITORY)),
-                        ("version", Json::text(crate::VERSION)),
-                    ]),
-                ),
+                ("producer", producer()),
                 ("specification", Json::text(RECEIPT_SPEC)),
                 ("startedAt", Json::text(run.started_at.clone())),
                 ("wall_time_ms", Json::Num(format!("{:.1}", run.wall_time_ms))),
                 ("budget", Json::text(run.budget.clone())),
-                (
-                    "run_parameters",
-                    Json::obj([
-                        ("seed", run.seed.map_or(Json::Null, |s| Json::Num(s.to_string()))),
-                        ("freeze_time", freeze_time),
-                        ("timeout", Json::Null),
-                        ("max_memory_mb", Json::Null),
-                        ("max_read_bytes", count(run.max_read)),
-                        // nothing was asked of the operating system:
-                        // `_confinement_fields({})`
+                ("run_parameters", {
+                    // nothing was asked of the operating system:
+                    // `_confinement_fields({})`
+                    given.extend([
                         ("confinement", Json::text("none")),
                         (
                             "confinement_reason",
@@ -426,8 +540,9 @@ pub fn statement(recorder: &Recorder, run: &Run<'_>) -> Option<Json> {
                         ),
                         ("confinement_layers", Json::List(Vec::new())),
                         ("os_policy_sha256", Json::Null),
-                    ]),
-                ),
+                    ]);
+                    Json::Obj(given.into_iter().map(|(k, v)| (k.to_string(), v)).collect())
+                }),
                 (
                     "effects_used",
                     Json::Obj(
@@ -503,6 +618,34 @@ mod tests {
         );
         assert_eq!(refusal_effect("E313", "anything").as_deref(), Some("fs"));
         assert_eq!(refusal_effect("E600", "anything"), None);
+    }
+
+    #[test]
+    fn the_stream_says_each_occurrence_in_order_and_only_when_asked() {
+        let mut quiet = Recorder::default();
+        quiet.effect("io", "print", 1);
+        quiet.note_declassify(Text::from("why"), 2);
+        assert!(quiet.stream.is_none());
+        let mut r = Recorder::streaming();
+        r.effect("declassify", "declassify", 2);
+        r.note_declassify(Text::from("why"), 2);
+        r.note_declassify(Text::from("why"), 2);
+        r.grant("fs:read:/d");
+        r.note_error("E313", 9, "anything");
+        let said: Vec<String> =
+            r.stream.as_ref().unwrap().iter().map(Json::canonical).collect();
+        assert_eq!(
+            said,
+            [
+                r#"{"builtin":"declassify","effect":"declassify","event":"effect","line":2}"#,
+                r#"{"event":"declassify","line":2,"reason":"why"}"#,
+                r#"{"event":"declassify","line":2,"reason":"why"}"#,
+                r#"{"event":"grant","grant":"fs:read:/d"}"#,
+                r#"{"code":"E313","effect":"fs","event":"refusal","line":9,"stopped":true}"#,
+            ]
+        );
+        // and the receipt keeps the two as one place, counted twice
+        assert_eq!(r.sites.iter().map(|s| s.times).collect::<Vec<_>>(), [2, 1]);
     }
 
     #[test]

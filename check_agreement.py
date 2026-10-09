@@ -91,6 +91,11 @@ byte, and one more document for the whole gate:
   RECEIPT_NORMALISED names, which are plan/9.0.md's list and nothing else,
   and comparing the confinement fields by rule: sabline-rt's level at least
   Python's, and every receipt where they differ printed;
+- the audit stream of each of those runs, sabline.audit-stream/1, event for
+  event in order - every effect, grant, refusal and declassification as it
+  happened, between a `start` and an `end` that carries the receipt - with
+  the same fields normalised where they appear, in `start` and in the
+  receipt, and nothing else;
 - the builtin tables both runtimes' checkers read, so that a builtin added
   to one and not the other is a difference before any program calls it;
 - and for every budget agreement_budgets.py holds - sabline-spec's L1
@@ -461,7 +466,7 @@ def rt_binary() -> Path:
 BATCH_HEADER = b"sabline.ast-batch/1\n"
 CHECK_BATCH_HEADER = b"sabline.check-batch/1\n"
 BUDGET_BATCH_HEADER = b"sabline.budget-batch/1\n"
-RUN_BATCH_HEADER = b"sabline.run-batch/2\n"
+RUN_BATCH_HEADER = b"sabline.run-batch/3\n"
 
 # What the gate does not compare in a receipt, and nothing else: plan/9.0.md,
 # "What is normalised, and nothing else is". Each is a place the gate stops
@@ -626,18 +631,21 @@ def compare(python: list[tuple[str, bytes]],
 
 def runs_and_receipts(records: list[tuple[str, bytes]]
                       ) -> tuple[list[tuple[str, bytes]],
+                                 list[tuple[str, bytes]],
                                  list[tuple[str, bytes]]]:
-    """A run batch's records, two a program, as its run documents and its
-    receipts."""
-    if len(records) % 2:
+    """A run batch's records, three a program, as its run documents, its
+    receipts and its audit streams."""
+    if len(records) % 3:
         raise SystemExit(f"check_agreement.py: a run batch of {len(records)} "
-                         f"records is not a document and a receipt a program")
-    documents, receipts = records[::2], records[1::2]
-    for (path, _), (again, _) in zip(documents, receipts):
-        if path != again:
-            raise SystemExit(f"check_agreement.py: the receipt after {path}'s "
-                             f"run document is {again}'s")
-    return documents, receipts
+                         f"records is not a document, a receipt and a stream "
+                         f"a program")
+    documents, receipts, streams = records[::3], records[1::3], records[2::3]
+    for (path, _), (again, _), (third, _) in zip(documents, receipts, streams):
+        if not path == again == third:
+            raise SystemExit(f"check_agreement.py: the receipt and stream after "
+                             f"{path}'s run document are {again}'s and "
+                             f"{third}'s")
+    return documents, receipts, streams
 
 
 def _normalised(receipt: Any) -> tuple[Any, dict[str, Any] | None]:
@@ -709,6 +717,66 @@ def compare_receipts(python: list[tuple[str, bytes]],
         elif held_a != held_b:
             by_rule.append(f"{name}: python {held_a}, sabline-rt {held_b}")
     return out, by_rule
+
+
+def _normalised_stream(stream: Any) -> tuple[Any, dict[str, Any] | None]:
+    """An audit stream with exactly RECEIPT_NORMALISED replaced where it
+    appears - in `start` and in the receipt `end` carries - and the
+    receipt's confinement fields taken out to be compared by rule."""
+    if not isinstance(stream, list):
+        return stream, None
+    held = None
+    for event in stream:
+        if not isinstance(event, dict):
+            continue
+        if event.get("event") == "start":
+            producer = event.get("producer")
+            if isinstance(producer, dict):
+                for key in ("name", "version"):
+                    if key in producer:
+                        producer[key] = NORMALISED
+            if "startedAt" in event:
+                event["startedAt"] = NORMALISED
+        elif event.get("event") == "subjects":
+            for subject in event.get("subject") or []:
+                if isinstance(subject, dict) and \
+                        subject.get("name") == "<source>":
+                    subject["name"] = NORMALISED
+        elif event.get("event") == "end":
+            event["receipt"], held = _normalised(event.get("receipt"))
+    return stream, held
+
+
+def compare_streams(python: list[tuple[str, bytes]],
+                    rust: list[tuple[str, bytes]],
+                    names: list[str]) -> list[str]:
+    """Every program whose audit streams differ, after the normalisation,
+    one line each."""
+    if len(python) != len(rust) or len(python) != len(names):
+        raise SystemExit(f"check_agreement.py: {len(names)} runs, "
+                         f"{len(python)} python streams and {len(rust)} "
+                         f"sabline-rt streams")
+    out = []
+    for (_, left), (_, right), name in zip(python, rust, names):
+        a, held_a = _normalised_stream(json.loads(left))
+        b, held_b = _normalised_stream(json.loads(right))
+        if isinstance(a, list) and isinstance(b, list) and len(a) != len(b):
+            kinds = [e.get("event") if isinstance(e, dict) else None
+                     for e in a]
+            others = [e.get("event") if isinstance(e, dict) else None
+                      for e in b]
+            at = next((i for i, (x, y) in enumerate(zip(kinds, others))
+                       if x != y), min(len(kinds), len(others)))
+            out.append(f"{name}: python streams {len(a)} events and "
+                       f"sabline-rt {len(b)}, first apart at event {at}: "
+                       f"{kinds[at] if at < len(kinds) else 'nothing'} and "
+                       f"{others[at] if at < len(others) else 'nothing'}")
+            continue
+        found = _first_difference(a, b, "stream") or _confinement_rule(
+            held_a, held_b)
+        if found is not None:
+            out.append(f"{name}: {found}")
+    return out
 
 
 def tables(binary: Path) -> tuple[bytes, bytes]:
@@ -834,17 +902,23 @@ def main(argv: list[str]) -> int:
     checked = compare(python_checks, rust_checks, names)
     budgeted = compare(python_budgets, rust_budgets,
                        [name for name, _, _ in budgets])
-    python_runs, python_receipts = runs_and_receipts(python_runs)
-    rust_runs, rust_receipts = runs_and_receipts(rust_runs)
-    python_budgeted, python_budgeted_receipts = runs_and_receipts(
-        python_budgeted)
-    rust_budgeted, rust_budgeted_receipts = runs_and_receipts(rust_budgeted)
+    python_runs, python_receipts, python_streams = runs_and_receipts(
+        python_runs)
+    rust_runs, rust_receipts, rust_streams = runs_and_receipts(rust_runs)
+    (python_budgeted, python_budgeted_receipts,
+     python_budgeted_streams) = runs_and_receipts(python_budgeted)
+    (rust_budgeted, rust_budgeted_receipts,
+     rust_budgeted_streams) = runs_and_receipts(rust_budgeted)
     ran = compare(python_runs, rust_runs, [name for name, _ in runs])
     ran_budgeted = compare(python_budgeted, rust_budgeted,
                            [name for name, _, _ in budgeted_runs])
     receipted, by_rule = compare_receipts(
         python_receipts + python_budgeted_receipts,
         rust_receipts + rust_budgeted_receipts,
+        [name for name, _ in runs] + [name for name, _, _ in budgeted_runs])
+    streamed = compare_streams(
+        python_streams + python_budgeted_streams,
+        rust_streams + rust_budgeted_streams,
         [name for name, _ in runs] + [name for name, _, _ in budgeted_runs])
     python_tables, rust_tables = tables(binary)
     tabled = ([] if python_tables == rust_tables else
@@ -869,6 +943,7 @@ def main(argv: list[str]) -> int:
             ("the interpreters, under their budgets", len(budgeted_runs),
              ran_budgeted),
             ("the receipts", len(runs) + len(budgeted_runs), receipted),
+            ("the audit streams", len(runs) + len(budgeted_runs), streamed),
             ("the builtin tables", 1, tabled))
     print(f"  receipts normalised: {'; '.join(RECEIPT_NORMALISED)}; "
           f"{', '.join(CONFINEMENT_FIELDS)} by rule")

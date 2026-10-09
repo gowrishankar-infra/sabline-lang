@@ -96,6 +96,51 @@ A signed receipt says its signer ran this Sabline on these bytes, under
 this budget, and saw this run. It is no stronger than the machine it ran
 on, and it says nothing about any other run.
 
+## The audit stream: a receipt as it happens (9.0)
+
+```sh
+sabline agent.vel --allow io,fs:read:data --audit-stream run.jsonl
+```
+
+```python
+events = []
+result = sabline.run(source, allow={"io"}, audit_stream=events.append)
+```
+
+A receipt is read once a run has ended. The audit stream is for a host
+that would watch it instead: the receipt's fields as they are produced, one
+JSON object a line, `sabline.audit-stream/1`, written and flushed as each
+happens:
+
+<!-- illustrative: one object a line, with the long fields elided -->
+```json
+{"event":"start","schema":"sabline.audit-stream/1","producer":{...},"startedAt":"...","budget":"fs:read:/work/data,io","run_parameters":{"seed":null,...}}
+{"event":"subjects","subject":[{"name":"agent.vel","digest":{"sha256":"..."}}]}
+{"event":"effect","effect":"fs","builtin":"read_file","line":4}
+{"event":"grant","grant":"fs:read:/work/data"}
+{"event":"declassify","reason":"its length only","line":7}
+{"event":"refusal","code":"E313","effect":"fs","line":9,"stopped":true}
+{"event":"end","receipt":{...the run's receipt...}}
+```
+
+`effect` is every builtin call the budget let through - what
+`effects_used` counts - and `grant` each operation a grant let through, by
+its text; `refusal`, `declassify` and `tool` are what the receipt keeps of
+each, once per occurrence rather than once per place, and without a count.
+`start` says what the run was given before it ran; its confinement is not
+known until its first statement, and is in the receipt `end` carries. **The
+stream holds no value the program handled**, by the rule above, and
+`check_library.py`'s Secret cases hold it to that as they hold the receipt.
+A stream file that cannot be opened stops the run before it starts (exit
+2); a library function that raises is not called again and the run goes on.
+A run in a worker - `timeout=`, `max_memory_mb=`, a `Pool` - sends each
+event from the worker as it happens, and a run the worker was killed in
+still ends its stream with the receipt the pool made. `sabline eval`'s
+`--receipt-url` posts something else: the receipt's entries once per place
+and every thousandth time after, for a collector that keeps a receipt
+whatever happens to the run. sabline-rt writes the same stream, compared
+event for event by the agreement gate.
+
 ## A receipt compared, and a run made again (8.3)
 
 <!-- illustrative: needs receipts written by earlier runs -->

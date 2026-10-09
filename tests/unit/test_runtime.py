@@ -261,7 +261,7 @@ class ReceiptOfARun(Run):
         path = os.path.join(self.dir, "p.vel")
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(source)
-        return run_dump.run_and_receipt(path, **given)
+        return run_dump.run_recorded(path, **given)[:2]
 
     def test_it_is_what_the_command_line_writes(self) -> None:
         import json

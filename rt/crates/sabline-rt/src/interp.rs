@@ -746,6 +746,7 @@ impl Runtime {
     fn spend(&mut self, effect: &str, what: &str, line: u32) -> R<()> {
         if self.budget.effects.contains(effect) {
             *self.effect_uses.entry(effect.to_string()).or_insert(0) += 1;
+            self.recorder.effect(effect, what, line); // the audit stream (9.0)
             return Ok(());
         }
         let have = self.budget.spec();
@@ -769,6 +770,7 @@ impl Runtime {
 
     /// `_grant_used(grant)`: one more operation this grant let through.
     fn grant_used(&mut self, grant: String) {
+        self.recorder.grant(&grant); // the audit stream (9.0)
         match self.grant_uses.iter_mut().find(|(g, _)| *g == grant) {
             Some(slot) => slot.1 += 1,
             None => self.grant_uses.push((grant, 1)),
