@@ -62,6 +62,7 @@ pub mod digest;
 pub mod dump;
 pub mod effects;
 pub mod errors;
+pub mod host;
 pub mod interp;
 pub mod json;
 pub mod lexer;

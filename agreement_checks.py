@@ -479,18 +479,44 @@ LIBRARY_WITH_A_FUNCTION_VALUE = (
     "fn positive(xs: List of Int) -> Bool {\n"
     "    return all_of(xs, fn(x: Int) -> Bool { return x > 0 })\n"
     "}\n")
+LIBRARY_MAKING_FUNCTION_VALUES = (
+    "fn adder(n: Int) -> fn(Int) -> Int {\n"
+    "    return fn(x: Int) -> Int { return x + n }\n}\n"
+    "fn any_pair(xss: List of List of Int) -> Bool {\n"
+    "    return any_of(xss, fn(xs: List of Int) -> Bool {\n"
+    "        return all_of(xs, fn(x: Int) -> Bool { return big(x) })\n    })\n}\n"
+    "fn big(x: Int) -> Bool {\n    return x > 1\n}\n"
+    "fn apply(f: fn(Int) -> Int, x: Int) -> Int\n"
+    "    requires f(x) > 100\n{\n    return f(x)\n}\n")
 TREES = (
     # a library that makes a function value, imported under a name: the
     # loader renames the library's functions, the lifted one among them,
-    # and not the name the value refers to it by, so the type checker
-    # cannot find it (checker.py's "unknown function value"). Imported
-    # flat, the same library compiles.
+    # and - from 9.0 - the name the value refers to it by, so it compiles
+    # as it does imported flat. Until 9.0 the type checker could not find
+    # the lifted function under its new name, and refused the program with
+    # E402 "unknown function value 'fn#1'", in both runtimes.
     ("library-function-value-under-a-name", {
         "main.vel": 'import "lib.vel" as lib\n' + _main("print(lib.positive([1, 2]))"),
         "lib.vel": LIBRARY_WITH_A_FUNCTION_VALUE}),
     ("library-function-value-flat", {
         "main.vel": 'import "lib.vel"\n' + _main("print(positive([1, 2]))"),
         "lib.vel": LIBRARY_WITH_A_FUNCTION_VALUE}),
+    # the same, further: a value that carries names, one handed back to the
+    # program and printed and called, values inside values calling the
+    # library's own function by name, and a broken promise about one -
+    # under a name and flat
+    ("library-function-values-under-a-name", {
+        "main.vel": 'import "lib.vel" as lib\n' + _main(
+            "let f = lib.adder(2)\nprint(f)\nprint(f(3))\n"
+            "print(lib.any_pair([[1, 2], [3, 4]]))\nprint(lib.any_pair([[1]]))\n"
+            "print(lib.apply(f, 1))"),
+        "lib.vel": LIBRARY_MAKING_FUNCTION_VALUES}),
+    ("library-function-values-flat", {
+        "main.vel": 'import "lib.vel"\n' + _main(
+            "let f = adder(2)\nprint(f)\nprint(f(3))\n"
+            "print(any_pair([[1, 2], [3, 4]]))\nprint(any_pair([[1]]))\n"
+            "print(apply(f, 1))"),
+        "lib.vel": LIBRARY_MAKING_FUNCTION_VALUES}),
     # a library under a name that imports one of its own, flat and named
     ("library-imports-a-library", {
         "main.vel": 'import "outer.vel" as outer\n' + _main("print(outer.twice_of(2))"),

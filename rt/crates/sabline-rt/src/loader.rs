@@ -303,13 +303,16 @@ fn function_exprs_mut(f: &mut Function, visit: &mut dyn FnMut(&mut Expr)) {
 /// renamed `alias.name`, and so does every reference it makes to its own
 /// functions. A call to a builtin older than 4.3 reaches the builtin and
 /// keeps its name. A lifted function value is renamed with the rest, and
-/// the `Closure` that names it is not - the reference's walk skips every
-/// field called `name` - which is copied, not corrected.
+/// so is the `Closure` that names it: until 9.0 it was not, in either
+/// runtime, and a library making a function value was refused, imported
+/// with a name, as "unknown function value 'fn#1'" (E402).
 pub fn qualify(fs: &mut [Function], alias: &str) {
     let local: HashSet<String> = fs.iter().map(|f| f.name.clone()).collect();
     let mut rename = |e: &mut Expr| match e {
         Expr::Call { name, .. } if is_builtin(name) && !is_new_builtin(name) => {}
-        Expr::Call { name, .. } | Expr::Var { name, .. } if local.contains(name.as_str()) => {
+        Expr::Call { name, .. } | Expr::Var { name, .. } | Expr::Closure { name, .. }
+            if local.contains(name.as_str()) =>
+        {
             *name = format!("{alias}.{name}");
         }
         _ => {}

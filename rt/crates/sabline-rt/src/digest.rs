@@ -57,6 +57,22 @@ const K: [u32; 64] = [
     0xc67178f2,
 ];
 
+/// `hmac.new(key, message, hashlib.sha256).digest()`: RFC 2104 over
+/// SHA-256, a key longer than the 64-byte block hashed first.
+pub fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
+    let mut block = [0u8; 64];
+    if key.len() > 64 {
+        block[..32].copy_from_slice(&sha256(key));
+    } else {
+        block[..key.len()].copy_from_slice(key);
+    }
+    let mut inner: Vec<u8> = block.iter().map(|b| b ^ 0x36).collect();
+    inner.extend_from_slice(message);
+    let mut outer: Vec<u8> = block.iter().map(|b| b ^ 0x5c).collect();
+    outer.extend_from_slice(&sha256(&inner));
+    sha256(&outer)
+}
+
 /// SHA-256 of `data`.
 pub fn sha256(data: &[u8]) -> [u8; 32] {
     let mut h: [u32; 8] = [
@@ -230,6 +246,22 @@ pub fn url_quote(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hmac_sha256_is_rfc_4231() {
+        // test cases 2 and 6: a short key, and one longer than the block
+        assert_eq!(
+            hex(&hmac_sha256(b"Jefe", b"what do ya want for nothing?")),
+            "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+        );
+        assert_eq!(
+            hex(&hmac_sha256(
+                &[0xaa; 131],
+                b"Test Using Larger Than Block-Size Key - Hash Key First"
+            )),
+            "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"
+        );
+    }
 
     #[test]
     fn sha256_is_fips_180_4() {

@@ -39,15 +39,17 @@ and one that does not is described by its first paragraph - and a canonical
 link: a page at the top names itself, and its copies in latest/ and
 major.minor/ name it too, since they are the same page. The top alone also
 gets robots.txt, which lets the named crawlers and every other one in;
-sitemap.xml, every page at the top with the date its sources last changed in
-git (or today, for a source changed and not yet committed); the IndexNow key
-file, which indexnow.yml's ping is checked against; the paper, with a landing
-page carrying the citation_* tags Google Scholar reads; and the image
-OpenGraph cards show. check_site.py holds all of it, and fails when a page's
-sources change in a commit that does not also rewrite sitemap.xml.
+sitemap.xml, every page at the top with the day its sources last changed -
+the day a build first saw them as they are, by a digest of what git holds
+of them, kept in docs/sitemap-dates.json (9.0); the IndexNow key file, which
+indexnow.yml's ping is checked against; the paper, with a landing page
+carrying the citation_* tags Google Scholar reads; and the image OpenGraph
+cards show. check_site.py holds all of it, and fails when a commit holds a
+page's sources and a sitemap that was not built from them.
 """
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import os
@@ -1545,50 +1547,115 @@ def _covers(source: str, path: str) -> bool:
     return path == source or (source.endswith("/") and path.startswith(source))
 
 
-def source_dates(sources: set[str]) -> dict[str, str]:
-    """{source: YYYY-MM-DD}: the day of the last commit that changed it, or
-    today for one changed and not yet committed (or not known to git at
-    all, as in an export without its history)."""
-    today = datetime.now(timezone.utc).date().isoformat()
-    ordered = sorted(sources)
-    found: dict[str, str] = {}
-    # %cs is the committer's own timezone, and `today` above is UTC: a
-    # commit made in the evening UTC, east of it, would date a page
-    # tomorrow and read as a sitemap pointing at the future (check_site's
-    # SITEMAP rule, and a crawler's own reading of <lastmod>). The day is
-    # asked for in UTC instead.
-    log = _git("log", "--date=format-local:%Y-%m-%d", "--format=%x00%cd",
-               "--name-only", "--no-renames", "--", *ordered)
-    day = ""
-    for line in (log or "").splitlines():
-        if line.startswith("\x00"):
-            day = line[1:]
-        elif line and day:
-            for s in ordered:
-                if s not in found and _covers(s, line):
-                    found[s] = day
-    dirty = _git("status", "--porcelain", "--untracked-files=all", "--",
-                 *ordered)
-    for line in (dirty or "").splitlines():
-        path = line[3:].strip().strip('"')
-        for s in ordered:
-            if _covers(s, path):
-                found[s] = today
-    return {s: found.get(s, today) for s in ordered}
+# What sitemap.xml's dates are made from (9.0, M3): for every address, a
+# digest of its sources as git holds them and the day a build first saw that
+# digest. It is beside the sitemap in docs/, so that whatever commits a
+# rebuilt docs/ - release.yml's move_pins job among them - commits what the
+# sitemap was dated by with it; it is served with the site, and holds
+# nothing but the site's addresses, their dates and digests. Until 9.0 a page was dated by the day of
+# the last commit that changed its sources, and a squash merge made on a
+# later UTC day than the build re-dated every source it carried: main's
+# sitemap was then stale the moment it merged (#147, fixed by #148). And on
+# a Windows checkout git status called ~200 unchanged files modified, which
+# dated them today. A page is dated by what its sources hold now, so
+# neither the day of a merge nor a checkout's line ends can move it.
+SITEMAP_DATES = OUT / "sitemap-dates.json"
 
 
-def sitemap(pages: list[Page]) -> bytes:
-    """sitemap.xml: every page at the top, canonical address and the day its
-    sources last changed; and the paper's PDF."""
+def _blobs(sources: list[str], ref: str | None = None) -> dict[str, str] | None:
+    """{path: git blob id} of every file the sources name - a source ending
+    in / is every file under it - as commit `ref` holds them, or with no ref
+    as the working tree does, untracked files that are not ignored included,
+    each hashed as git would store it (its end-of-line rule applied, so a
+    checkout's CR LF hashes as the LF the repository holds). None when git
+    cannot be asked."""
+    if ref is not None:
+        listed = _git("ls-tree", "-r", "-z", ref, "--", *sources)
+        if listed is None:
+            return None
+        out = {}
+        for entry in listed.split("\0"):
+            meta, _, path = entry.partition("\t")
+            if path and meta.split(" ")[1:2] == ["blob"]:
+                out[path] = meta.split(" ")[2]
+        return out
+    listed = _git("ls-files", "--cached", "--others", "--exclude-standard",
+                  "-z", "--", *sources)
+    if listed is None:
+        return None
+    files = sorted({p for p in listed.split("\0") if p and (HERE / p).is_file()})
+    if not files:
+        return {}
+    hashed = _git("hash-object", "--", *files)
+    if hashed is None:
+        return None
+    return dict(zip(files, hashed.split()))
+
+
+def source_digests(wanted: dict[str, tuple[str, ...]],
+                   ref: str | None = None) -> dict[str, str] | None:
+    """{key: digest} of each key's sources as `_blobs` finds them: a page's
+    sources, file by file, each with its blob id, or with "-" for a source
+    that names no file. None when git cannot be asked."""
+    every = sorted({s for ss in wanted.values() for s in ss})
+    blobs = _blobs(every, ref)
+    if blobs is None:
+        return None
+    out = {}
+    for key, sources in wanted.items():
+        h = hashlib.sha256()
+        for s in sorted(sources):
+            for path in sorted(p for p in blobs if _covers(s, p)) or [s]:
+                h.update(f"{path} {blobs.get(path, '-')}\n".encode("utf-8"))
+        out[key] = h.hexdigest()[:20]
+    return out
+
+
+def sitemap_wanted(pages: list[Page]) -> dict[str, tuple[str, ...]]:
+    """{canonical address: its sources}, for every address the sitemap
+    lists: every page at the top, the playground and the paper's PDF."""
     wanted = {p.path: page_sources(p) for p in pages}
     wanted["playground.html"] = ("playground/index.html",)
     wanted["papers/sabline.pdf"] = (PAPER_PDF,)
-    dates = source_dates({s for ss in wanted.values() for s in ss})
-    rows = []
-    for path in sorted(wanted, key=lambda q: (q != "index.html", q)):
-        day = max(dates[s] for s in wanted[path])
-        rows.append(f"<url><loc>{html.escape(canonical(path))}</loc>"
-                    f"<lastmod>{day}</lastmod></url>")
+    order = sorted(wanted, key=lambda q: (q != "index.html", q))
+    return {canonical(path): wanted[path] for path in order}
+
+
+def sitemap_dates(wanted: dict[str, tuple[str, ...]]) -> dict[str, dict[str, str]]:
+    """{address: {"lastmod": day, "sources": digest}}: each address's
+    sources digested, and dated by SITEMAP_DATES - the day it first saw
+    that digest - or today, UTC, for a digest it has not seen. Without git,
+    every page is today's."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    try:
+        recorded = json.loads(SITEMAP_DATES.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        recorded = {}
+    digests = source_digests(wanted) or {}
+    out = {}
+    for url in wanted:
+        digest = digests.get(url, "")
+        seen = recorded.get(url) or {}
+        day = (seen.get("lastmod") if digest and seen.get("sources") == digest
+               else None) or today
+        out[url] = {"lastmod": day, "sources": digest}
+    return out
+
+
+def dates_file(dates: dict[str, dict[str, str]]) -> bytes:
+    """SITEMAP_DATES as written: one address a line, so that two pull
+    requests changing two pages merge."""
+    lines = [f"{json.dumps(url)}: {json.dumps(row, sort_keys=True)}"
+             for url, row in dates.items()]
+    return ("{\n" + ",\n".join(lines) + "\n}\n").encode("utf-8")
+
+
+def sitemap(dates: dict[str, dict[str, str]]) -> bytes:
+    """sitemap.xml: every page at the top, canonical address and the day its
+    sources last changed; and the paper's PDF."""
+    rows = [f"<url><loc>{html.escape(url)}</loc>"
+            f"<lastmod>{row['lastmod']}</lastmod></url>"
+            for url, row in dates.items()]
     return ('<?xml version="1.0" encoding="UTF-8"?>\n'
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
             + "\n".join(rows) + "\n</urlset>\n").encode("utf-8")
@@ -1605,10 +1672,12 @@ def robots() -> bytes:
             + f"\nSitemap: {SITE}/sitemap.xml\n").encode("utf-8")
 
 
-def write_top(out: Path, pages: list[Page], tree: Tree) -> None:
+def write_top(out: Path, pages: list[Page], tree: Tree) -> dict[str, dict[str, str]]:
     """What the top of the site alone holds for search: robots.txt,
-    sitemap.xml, the IndexNow key, OpenGraph's image, and the paper's PDF."""
-    files = {"robots.txt": robots(), "sitemap.xml": sitemap(pages),
+    sitemap.xml, the IndexNow key, OpenGraph's image, and the paper's PDF.
+    What the sitemap was dated by is given back, for main() to keep."""
+    dates = sitemap_dates(sitemap_wanted(pages))
+    files = {"robots.txt": robots(), "sitemap.xml": sitemap(dates),
              f"{INDEXNOW_KEY}.txt": INDEXNOW_KEY.encode("ascii"),
              "assets/og.png": (ASSETS / "og.png").read_bytes()}
     pdf = HERE / PAPER_PDF
@@ -1617,6 +1686,7 @@ def write_top(out: Path, pages: list[Page], tree: Tree) -> None:
     for name, data in files.items():
         write_file(out / name, data)
         tree.files[name] = len(data)
+    return dates
 
 
 def replace_dir(stage: Path, final: Path) -> None:
@@ -1637,6 +1707,7 @@ class Built:
     versions: list[tuple[str, str]]
     missing: list[str]
     removed: list[str] = field(default_factory=list)
+    dates: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 # Every page this generator writes carries it, and nothing else here does.
@@ -1690,7 +1761,7 @@ def build(out: Path = OUT) -> Built:
     pages, sections, anchors = collect(out)
     versions = built_versions(out)
     trees = [write_tree(out, "", pages, sections, anchors)]
-    write_top(out, pages, trees[0])
+    dates = write_top(out, pages, trees[0])
     play = HERE / "playground" / "index.html"
     if play.is_file():
         write_file(out / "playground.html", lf_bytes(play))
@@ -1705,11 +1776,15 @@ def build(out: Path = OUT) -> Built:
     # last, so that everything this build writes at the top is already
     # there to be counted as written
     removed = sweep_top(out, list(trees[0].files))
-    return Built(trees, pages, versions, list(MISSING), removed)
+    return Built(trees, pages, versions, list(MISSING), removed, dates)
 
 
 def main() -> int:
     built = build(OUT)
+    # what the sitemap was dated by, kept for the next build: only here, so
+    # that a build into a scratch directory (check_site.py) changes nothing
+    # of this checkout's
+    write_file(SITEMAP_DATES, dates_file(built.dates))
     top = built.trees[0]
     sizes = [(n, p) for p, n in top.files.items()
              if p.endswith(".html") and p != "playground.html"]

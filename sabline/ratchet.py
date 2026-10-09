@@ -34,6 +34,7 @@ from .nodes import (
 )
 from .tables import ALL_EFFECTS, BUILTINS, HAVE_Z3
 from .loader import load_program
+from .parser import lifted
 from .budget import BudgetError, _host_matches, _pct_encode, parse_host_port
 from .effects import check_effects
 from .checker import check_main, check_types
@@ -758,7 +759,7 @@ def _program_capabilities(path: str, rel: str) -> dict[Any, Any]:
                             "message": e.message} for e in errors[:5]]
         return out
     here = os.path.abspath(path)
-    own = [f for f in funcs if not f.name.startswith("fn#")
+    own = [f for f in funcs if not lifted(f.name)
            and os.path.abspath(f.src_file or path) == here]
     # running this file runs `main`, wherever it is defined: a file that
     # imports its main from outside the checked tree still needs what

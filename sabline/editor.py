@@ -7,7 +7,7 @@ import sys
 
 from .version import VERSION
 from .errors import SablineError
-from .parser import expr_str
+from .parser import expr_str, lifted
 from .tables import BUILTINS, FALLIBLE_BUILTINS, HAVE_Z3
 from .loader import load_program
 from .effects import check_effects
@@ -106,7 +106,7 @@ def inspect_source(path: str, source: str | None = None,
     report["records"] = [r.name for r in records]
     report["inline_loops"] = []          # loops inside lifted lambdas
     for f in funcs:
-        if f.name.startswith("fn#"):
+        if lifted(f.name):
             for lp in loops_by[f.name]:
                 report["inline_loops"].append(
                     dict(lp, function=f.name, file=f.src_file or path))
@@ -178,7 +178,7 @@ def editor_answer(method: str, params: dict[Any, Any], text: str, uri: str) -> A
     if method == "textDocument/codeLens":
         lenses = []
         for f in mine:
-            if f.name.startswith("fn#"):
+            if lifted(f.name):
                 continue
             if f.requires or f.ensures:
                 title = ("promises proven before running"
@@ -237,7 +237,7 @@ def editor_answer(method: str, params: dict[Any, Any], text: str, uri: str) -> A
     if method == "textDocument/completion":
         items = []
         for f in funcs:
-            if f.name.startswith("fn#"):
+            if lifted(f.name):
                 continue
             items.append({"label": f.name, "kind": 3,
                           "detail": signature(f),
@@ -269,7 +269,7 @@ def editor_answer(method: str, params: dict[Any, Any], text: str, uri: str) -> A
                      "start": {"line": max(f.line - 1, 0), "character": 0},
                      "end": {"line": max(f.line - 1, 0), "character": 80}},
                  "detail": signature(f)}
-                for f in mine if not f.name.startswith("fn#")]
+                for f in mine if not lifted(f.name)]
 
     # hover and definition both need the word under the cursor
     line_no = params["position"]["line"]
@@ -293,7 +293,7 @@ def editor_answer(method: str, params: dict[Any, Any], text: str, uri: str) -> A
     found = table.get(word)
 
     if method == "textDocument/definition":
-        if found is None or found.name.startswith("fn#"):
+        if found is None or lifted(found.name):
             return None
         target = found.src_file or path
         return {"uri": "file://" + os.path.abspath(target).replace(

@@ -5,24 +5,26 @@
 //! `check_agreement.py` compares this document with the Python package's,
 //! byte for byte, over every program it holds. The run is `sabline
 //! <file>`'s - the checkers as the command line runs them, then the
-//! program - with the budget `io`, a fixed input, fixed arguments and a
-//! step limit, and without the prover, native code or the operating
+//! program - with the budget `io`, a fixed input, fixed arguments, a
+//! step limit and a size limit, and without the prover, native code or the operating
 //! system's confinement. sabline/run_dump.py's docstring says why each of
 //! those is fixed or left out; this module copies what it fixes.
 
 use std::collections::HashSet;
 
-use crate::budget::{Budget, DEFAULT_ALLOW};
+use crate::budget::budget_from;
 use crate::checker::check_types;
 use crate::effects::check_effects;
 use crate::errors::SablineError;
-use crate::interp::{Io, RunError, Runtime, Stop};
+use crate::host::Environ;
+use crate::interp::{Io, RunError, RunParams, Runtime, Stop};
 use crate::json::Json;
 use crate::loader::load_program;
 use crate::text::Text;
 
-/// The format's version, carried in every document.
-pub const RUN_VERSION: i64 = 1;
+/// The format's version, carried in every document: 2 from the size
+/// limit, whose stop the document names in `stopped_by`.
+pub const RUN_VERSION: i64 = 2;
 
 /// What `read_line` and `ask` read.
 pub const STDIN: &str = "1\n2\nthree\n";
@@ -32,6 +34,10 @@ pub const ARGS: [&str; 2] = ["first", "2"];
 
 /// How many calls and loop turns before a run is stopped.
 pub const STEPS: u64 = 20000;
+
+/// How much a run may make before it is stopped, counted as
+/// `interp::size_of` counts it: `run_dump.SIZE`.
+pub const SIZE: u64 = 1 << 22;
 
 fn error_json(
     code: &str,
@@ -79,6 +85,7 @@ struct Doc {
     stdout: Text,
     stderr: Text,
     stopped: Json,
+    stopped_by: Json,
     raised: Json,
 }
 
@@ -92,13 +99,72 @@ impl Doc {
             ("stdout", Json::Text(self.stdout)),
             ("stderr", Json::Text(self.stderr)),
             ("stopped", self.stopped),
+            ("stopped_by", self.stopped_by),
             ("raised", self.raised),
         ])
     }
 }
 
-/// The document for one program.
+/// What a line of the list gives besides the program's path: the budget,
+/// as `--allow` and `--deny` give it, and the run's parameters.
+#[derive(Debug, Clone, Default)]
+pub struct Given {
+    /// `--allow`, or `None` for `io`.
+    pub allow: Option<String>,
+    /// `--deny`.
+    pub deny: Option<String>,
+    /// The seed, the frozen clock and the read ceiling.
+    pub params: RunParams,
+    /// Variables set for the run over the process's environment.
+    pub environ: Vec<(String, String)>,
+}
+
+impl Given {
+    /// A line of the list: a path, or a JSON object naming one with any of
+    /// `allow`, `deny`, `seed`, `freeze_time` and `max_read`.
+    pub fn of_line(line: &str) -> Result<(String, Given), String> {
+        if !line.starts_with('{') {
+            return Ok((line.to_string(), Given::default()));
+        }
+        let Json::Obj(fields) = Json::parse(line)? else {
+            return Err(format!("not an object: {line}"));
+        };
+        let text = |k: &str| match fields.get(k) {
+            Some(Json::Str(s)) => Some(s.clone()),
+            _ => None,
+        };
+        let int = |k: &str| match fields.get(k) {
+            Some(Json::Int(n)) => Some(*n),
+            _ => None,
+        };
+        let path = text("path").ok_or_else(|| format!("no path: {line}"))?;
+        let mut params = RunParams {
+            seed: int("seed").map(i128::from),
+            freeze_time: int("freeze_time"),
+            ..RunParams::default()
+        };
+        if let Some(n) = int("max_read") {
+            params.max_read = n.max(0) as u64;
+        }
+        let mut environ = Vec::new();
+        if let Some(Json::Obj(vars)) = fields.get("environ") {
+            for (name, value) in vars {
+                if let Json::Str(v) = value {
+                    environ.push((name.clone(), v.clone()));
+                }
+            }
+        }
+        Ok((path, Given { allow: text("allow"), deny: text("deny"), params, environ }))
+    }
+}
+
+/// The document for one program, under the budget `io`.
 pub fn run_document(path: &str, install_dir: &str) -> Json {
+    run_document_given(path, install_dir, &Given::default())
+}
+
+/// The document for one program, under what its line of the list gives.
+pub fn run_document_given(path: &str, install_dir: &str, given: &Given) -> Json {
     let mut doc = Doc {
         refused: Json::Null,
         error: Json::Null,
@@ -106,7 +172,13 @@ pub fn run_document(path: &str, install_dir: &str) -> Json {
         stdout: Text::default(),
         stderr: Text::default(),
         stopped: Json::Null,
+        stopped_by: Json::Null,
         raised: Json::Null,
+    };
+    let Ok(budget) = budget_from(given.allow.as_deref(), given.deny.as_deref()) else {
+        doc.raised = Json::text("BudgetError");
+        doc.exit = Json::Null;
+        return doc.json();
     };
     let loaded = match load_program(path, install_dir) {
         Ok(loaded) => loaded,
@@ -141,10 +213,16 @@ pub fn run_document(path: &str, install_dir: &str) -> Json {
         doc.exit = Json::Int(1);
         return doc.json();
     }
-    let budget = Budget::parse(DEFAULT_ALLOW).unwrap_or_default();
     let io = Io::new(STDIN, ARGS.iter().map(|a| Text::from(*a)).collect());
-    let mut rt =
-        Runtime::new(&loaded.funcs, &loaded.records, budget, io).with_step_limit(STEPS);
+    let mut environ = Environ::of_process();
+    for (name, value) in &given.environ {
+        environ.set(name, value);
+    }
+    let mut rt = Runtime::new(&loaded.funcs, &loaded.records, budget, io)
+        .with_environ(environ)
+        .with_params(given.params.clone())
+        .with_step_limit(STEPS)
+        .with_size_limit(SIZE);
     match rt.interpret() {
         Ok(()) => {}
         Err(Stop::Error(e)) => {
@@ -154,6 +232,12 @@ pub fn run_document(path: &str, install_dir: &str) -> Json {
         Err(Stop::Exit(code)) => doc.exit = Json::Int(code),
         Err(Stop::Steps(line)) => {
             doc.stopped = Json::Int(i64::from(line));
+            doc.stopped_by = Json::text("steps");
+            doc.exit = Json::Null;
+        }
+        Err(Stop::Size(line)) => {
+            doc.stopped = Json::Int(i64::from(line));
+            doc.stopped_by = Json::text("size");
             doc.exit = Json::Null;
         }
         Err(Stop::Fail(_)) => {

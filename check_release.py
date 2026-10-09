@@ -44,6 +44,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.parse
 from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -242,6 +243,41 @@ def in_process(*words: str) -> tuple[int, str]:
     with contextlib.redirect_stdout(out):
         code = release_checks.main(list(words))
     return code, out.getvalue()
+
+
+class CountedClock:
+    """A clock that moves only when it is slept on, for what --timeout and
+    --interval do. Under the machine's own clock a check that polls for
+    0.3 s gets as many polls as the runner is fast: until 9.0's second M3
+    checkpoint, `consistent`'s "asked again until then" asked for two, and
+    a runner whose first poll of the stand-in took longer than 0.3 s gave
+    none and failed it. Here the deadline is reached only by sleeping
+    towards it, so every runner makes the same polls - at 0, 0.05 ... 0.25
+    of a 0.3 s timeout - however long each takes. Everything else is the
+    `time` module's."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def monotonic(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(time, name)
+
+
+@contextlib.contextmanager
+def counted_clock() -> Any:
+    """release_checks run on a CountedClock for as long as this lasts."""
+    real = release_checks.time
+    release_checks.time = cast(Any, CountedClock())
+    try:
+        yield
+    finally:
+        release_checks.time = real
 
 
 # ---- a stand-in for PyPI, npm, the MCP registry, the Marketplace and GitHub --
@@ -2750,11 +2786,13 @@ def main() -> int:
         routes[("GET", "/pypi/sabline-lang/json")] = (200, {"info": {
             "version": "7.1.1"}})
         StandIn.routes = routes
-        code, out = polled("consistent", "7.2.0", "--timeout", "0.3",
-                           "--interval", "0.05", "--annotate")
+        with counted_clock():
+            code, out = polled("consistent", "7.2.0", "--timeout", "0.3",
+                               "--interval", "0.05", "--annotate")
         ok("...a target still behind when --timeout runs out is asked again "
-           "until then, and fails red naming it",
-           code == 1 and out.count("not yet: PyPI (latest is 7.1.1)") >= 2
+           "until then - six times, by a clock that moves only when slept "
+           "on - and fails red naming it",
+           code == 1 and out.count("not yet: PyPI (latest is 7.1.1)") == 6
            and "::error::inconsistent: PyPI (latest is 7.1.1)" in out, out)
 
         # The extension lagging behind the rest. Until this check asked the
@@ -2772,13 +2810,15 @@ def main() -> int:
         routes = all_at("7.2.0")
         routes[extension] = extension_behind
         StandIn.routes = routes
-        code, out = polled("consistent", "7.2.0", "--timeout", "0.3",
-                           "--interval", "0.05", "--annotate")
-        ok("...and one still behind when --timeout runs out fails red, naming "
-           "the Marketplace and nothing else",
+        with counted_clock():
+            code, out = polled("consistent", "7.2.0", "--timeout", "0.3",
+                               "--interval", "0.05", "--annotate")
+        ok("...and one still behind when --timeout runs out - asked six times "
+           "on the counted clock - fails red, naming the Marketplace and "
+           "nothing else",
            code == 1
            and out.count("not yet: the VS Code Marketplace (latest is "
-                         "7.1.2)") >= 2
+                         "7.1.2)") == 6
            and "::error::inconsistent: the VS Code Marketplace (latest is "
                "7.1.2) - does not report 7.2.0" in out, out)
         routes = all_at("7.2.0")
@@ -2815,9 +2855,10 @@ def main() -> int:
            code == 0 and "not yet: 7.2.0 is not on the VS Code Marketplace\n"
            in out and "::notice::PUBLISHED" in out, out)
         StandIn.routes = {query: without}
-        code, out = polled("published", "vscode", "7.2.0", "--require",
-                           "--timeout", "0.3", "--interval", "0.05",
-                           "--annotate")
+        with counted_clock():
+            code, out = polled("published", "vscode", "7.2.0", "--require",
+                               "--timeout", "0.3", "--interval", "0.05",
+                               "--annotate")
         ok("...one still not listed when --timeout runs out is exit 1, "
            "NOT PUBLISHED, as an error",
            code == 1 and "::error::NOT PUBLISHED - 7.2.0 is not on the VS "

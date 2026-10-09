@@ -55,6 +55,7 @@ from .tools import run_tool
 from .loader import blame, unknown_function
 from .values import (
     log_line,
+    Bound,
     FailSignal,
     HandleValue,
     MoneyValue,
@@ -245,11 +246,17 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
         spend(effect, name, line)                  # ran sorted() on
                                                    # every single call
     if name == "print":
-        print(to_text(args[0]))
+        shown = to_text(args[0])
+        if _state._SIZE_LIMIT is not None:      # what it writes is made
+            made(shown, line)
+        print(shown)
         return None
     if name == "ask":
+        prompt = str(args[0]) + " "
+        if _state._SIZE_LIMIT is not None:
+            made(prompt, line)
         try:
-            return input(str(args[0]) + " ")
+            return input(prompt)
         except (EOFError, KeyboardInterrupt):
             raise SablineError("E607", "no input available to read", line,
                                fixes=["run this program in a terminal where "
@@ -834,7 +841,10 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
         # one line per call, whatever the value holds (8.3): a line feed, a
         # carriage return, an escape or a NUL is written as an escape, so a
         # value cannot forge a line of the log
-        print(log_line(to_text(args[0])), file=sys.stderr)
+        shown = log_line(to_text(args[0]))
+        if _state._SIZE_LIMIT is not None:
+            made(shown, line)
+        print(shown, file=sys.stderr)
         return None
     if name == "env":
         return os.environ.get(str(args[0]), str(args[1]))
@@ -893,6 +903,55 @@ class StepLimit(Exception):
         self.line = line
 
 
+class SizeLimit(Exception):
+    """A run stopped at `line`, by the operation that took what it had made
+    past `_state._SIZE_LIMIT`. Like StepLimit: only `sabline run-dump` sets
+    the limit and only it catches this, and nothing a program writes can
+    handle it."""
+
+    def __init__(self, line: int) -> None:
+        super().__init__(line)
+        self.line = line
+
+
+# The builtins whose answer is a value the program already holds rather
+# than one they made: an item of a list or a map, the default it was given,
+# the value declassified. to_text of a text is the text itself, too.
+HANDS_BACK = frozenset({"get", "get_or", "declassify"})
+
+
+def size_of(v: Any) -> int:
+    """What a value counts towards the size limit: a text its UTF-8 bytes
+    (a lone surrogate three, as the encoders write it), a list or a map its
+    items, and anything else - a number, a record, an amount, a function
+    value - nothing. Only the value itself: a list's items were counted
+    when they were made.
+
+    What makes a value, and so is counted: an operator `+` that makes a
+    text or a list; a list or a map written in the program; the answer of
+    every builtin but those in HANDS_BACK (and to_text of a text); and the
+    text print and log write and ask asks with. The count is checked as
+    each is made, so a run stops at the operation that takes it past the
+    limit, before that value is used or that text written."""
+    cls = v.__class__
+    if cls is str:
+        return len(v) if v.isascii() else len(v.encode("utf-8", "surrogatepass"))
+    if cls is list or cls is dict:
+        return len(v)
+    return 0
+
+
+def made(v: Any, line: int) -> Any:
+    """Count `v` as made at `line`, and stop the run there if that takes
+    it past the size limit. `v` is given back."""
+    total = _state._SIZE_MADE[0] + size_of(v)
+    _state._SIZE_MADE[0] = total
+    limit = _state._SIZE_LIMIT
+    if limit is not None and total > limit:
+        raise SizeLimit(line)
+    return v
+
+
 def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -> dict[str, Any]:
     native = native or {}
     table = {f.name: f for f in funcs}
@@ -911,6 +970,9 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
     step_limit = _state._STEP_LIMIT
     watched = stop_file is not None or step_limit is not None
     stop_ticks = [0]
+    # and its size limit: what this run makes is counted from nothing
+    sized = _state._SIZE_LIMIT is not None
+    _state._SIZE_MADE[0] = 0
 
     def stop_point(line: int) -> None:
         stop_ticks[0] += 1
@@ -926,12 +988,25 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
 
     def call(name: str, args: list[Any], line: int) -> Any:
         if name in ("all_of", "any_of"):
+            # a loop, not all() over a generator: all() is C calling back
+            # into Python, so a function value that reaches all_of again
+            # nested C frames, and from CPython 3.12 on its C recursion
+            # limit ended the run before DEPTH_LIMIT did - as E609 "nested
+            # too deeply to print", at line 0 - where 3.10 gave the depth
+            # limit's own E609 (9.0, M3)
             xs, p = args
-            hits = (call_function(p, [v], line) for v in xs)
-            return all(hits) if name == "all_of" else any(hits)
+            every = name == "all_of"
+            for v in xs:
+                if bool(call_function(p, [v], line)) is not every:
+                    return not every
+            return every
         if name in BUILTINS and name not in hidden:
+            if sized:
+                return builtin_made(name, args, line)
             return run_builtin(name, args, line)
         if name[0] == "@":
+            if sized:
+                return builtin_made(name[1:], args, line)
             return run_builtin(name[1:], args, line)
         if name in native:                 # machine code, C-like speed
             if _state.TRACE["on"]:                # still visible when tracing
@@ -948,6 +1023,15 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
         if fn is None:
             raise unknown_function(name, line, table)
         return call_function(fn, args, line)
+
+    def builtin_made(name: str, args: list[Any], line: int) -> Any:
+        """A builtin, under the size limit: its answer is counted as made,
+        unless it handed back a value the program already held."""
+        out = run_builtin(name, args, line)
+        if name in HANDS_BACK or (name == "to_text"
+                                  and args[0].__class__ is str):
+            return out
+        return made(out, line)
 
     depth = [0]
     DEPTH_LIMIT = 2000        # deep enough for real recursion, shallow
@@ -1101,14 +1185,6 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
 
     _hot = (Num, FloatNum, Str, Bool)
 
-    class Bound:
-        """A function value carrying the values it was made with."""
-        __slots__ = ("fn", "caught")
-
-        def __init__(self, fn: Any, caught: Any) -> None:
-            self.fn = fn
-            self.caught = caught
-
     def eval_(node: Any, env: Any) -> Any:
         cls = node.__class__
         if cls is Closure:
@@ -1167,8 +1243,13 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
         if cls is FieldGet:
             return eval_(node.obj, env).fields[node.field]
         if cls is ListLit:
+            if sized:
+                return made([eval_(i, env) for i in node.items], node.line)
             return [eval_(i, env) for i in node.items]
         if cls is MapLit:
+            if sized:
+                return made({eval_(k, env): eval_(v, env)
+                             for k, v in node.entries}, node.line)
             return {eval_(k, env): eval_(v, env) for k, v in node.entries}
         if cls is BinOp:
             if node.op == "and":
@@ -1178,7 +1259,11 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
             l, r = eval_(node.left, env), eval_(node.right, env)  # noqa: E741
             if node.op == "+":
                 if isinstance(l, str) or isinstance(r, str):
+                    if sized:
+                        return made(to_text(l) + to_text(r), node.line)
                     return to_text(l) + to_text(r)
+                if sized and l.__class__ is list:
+                    return made(l + r, node.line)
                 return checked_int(l + r, "+", node.line)
             if node.op == "-":
                 return checked_int(l - r, "-", node.line)

@@ -29,6 +29,7 @@ from .recorder import (
     _utc_now_ms,
 )
 from .loader import load_program
+from .parser import lifted
 from .values import FailSignal
 from .budget import (
     Budget,
@@ -255,7 +256,7 @@ def _secrets_named(path: str, source: str | None) -> dict[Any, Any] | None:
             visit(getattr(node, f.name), where, line)
 
     for fn in funcs:
-        shown = ("an inline function value" if fn.name.startswith("fn#")
+        shown = ("an inline function value" if lifted(fn.name)
                  else fn.name)
         visit(fn.body, shown, fn.line)
     out.sort(key=lambda d: (d["function"], d["line"], d["reason"]))

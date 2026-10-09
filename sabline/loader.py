@@ -8,7 +8,7 @@ from . import state as _state
 from .version import _INSTALL_DIR
 from .errors import SablineError
 from .lexer import lex
-from .nodes import Call, Var
+from .nodes import Call, Closure, Var
 from .parser import Parser
 from .tables import BUILTINS, NEW_BUILTINS
 from typing import Any
@@ -24,7 +24,11 @@ def qualify(fs: list[Any], alias: str) -> None:
 
     References the library makes to its own functions are renamed too,
     so a namespaced import behaves exactly like the flat one from the
-    inside - only the importer sees the prefix.
+    inside - only the importer sees the prefix. A function value written
+    inline is one of those functions, lifted (`fn#N`), and the `Closure`
+    that names it is one of those references: until 9.0 it kept the bare
+    name, and a library that made a function value was refused, imported
+    with a name, as "unknown function value 'fn#1'" (E402).
     """
     import dataclasses
     local = {f.name for f in fs}
@@ -48,7 +52,7 @@ def qualify(fs: list[Any], alias: str) -> None:
         # it was imported with a name - a `for` loop's included.
         if isinstance(node, Call) and node.name in BUILTINS                 and node.name not in NEW_BUILTINS:
             pass
-        elif isinstance(node, (Call, Var)) and node.name in new_name:
+        elif isinstance(node, (Call, Var, Closure)) and node.name in new_name:
             node.name = new_name[node.name]
         for fld in dataclasses.fields(node):
             if fld.name == "name":

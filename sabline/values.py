@@ -169,6 +169,21 @@ class HandleValue:
         return f"<{self.what} #{self.id}>"
 
 
+class Bound:
+    """A function value carrying the values it was made with: the lifted
+    function, and {name: value} read once when the value was made. It
+    prints as the function it is, `fn` and the lifted name (9.0, M3); it
+    printed as a Python object, with its address, before."""
+    __slots__ = ("fn", "caught")
+
+    def __init__(self, fn: Any, caught: Any) -> None:
+        self.fn = fn
+        self.caught = caught
+
+    def __repr__(self) -> str:
+        return f"fn {self.fn.name}"
+
+
 class RecordValue:
     def __init__(self, rname: str, fields: dict[Any, Any]) -> None:
         self.rname, self.fields = rname, fields
@@ -192,8 +207,8 @@ class RecordValue:
 def to_text(v: Any) -> str:
     if v.__class__ is MoneyValue:
         return money_text(v)
-    if isinstance(v, Function):
-        return f"fn {v.name}"
+    if isinstance(v, (Function, Bound)):
+        return repr(v)
     if isinstance(v, dict):
         return "{" + ", ".join(f"{to_text(k)}: {to_text(x)}"
                                for k, x in v.items()) + "}"

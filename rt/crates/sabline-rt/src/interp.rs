@@ -25,12 +25,14 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::bigint::BigInt;
-use crate::budget::{Budget, DEFAULT_ALLOW};
+use crate::budget::{pct_encode, Budget, DEFAULT_ALLOW};
 use crate::digest;
 use crate::errors::SablineError;
+use crate::host::{self, Environ, Twister};
 use crate::loader::unknown_function;
 use crate::nodes::{Expr, Function, RecordDef, Stmt};
 use crate::pyjson;
+use crate::pypath::{self, os_path};
 use crate::show::{expr_str, nice_name};
 use crate::tables::{
     builtin, is_builtin, is_new_builtin, CURRENCIES, MONEY_BUILTINS, ROUNDING,
@@ -80,6 +82,25 @@ impl From<SablineError> for RunError {
     }
 }
 
+/// What a run is given besides its budget and its input: `--seed`,
+/// `--freeze-time` and `--max-read`, as `_state.SEED`, `_state.FROZEN_TIME`
+/// and `_state.MAX_READ_BYTES` hold them.
+#[derive(Debug, Clone)]
+pub struct RunParams {
+    /// What `random` is seeded with, or `None` for the system's randomness.
+    pub seed: Option<i128>,
+    /// What `now` answers, in seconds since 1970, or `None` for the clock.
+    pub freeze_time: Option<i64>,
+    /// The read ceiling, in bytes (E316).
+    pub max_read: u64,
+}
+
+impl Default for RunParams {
+    fn default() -> Self {
+        RunParams { seed: None, freeze_time: None, max_read: 64 * 1024 * 1024 }
+    }
+}
+
 /// What ended a stretch of a run early.
 #[derive(Debug, Clone)]
 pub enum Stop {
@@ -91,6 +112,8 @@ pub enum Stop {
     Exit(i64),
     /// The step limit, at this line.
     Steps(u32),
+    /// The size limit, at this line.
+    Size(u32),
     /// A Python exception the reference would raise, by name: a defect in
     /// the reference, or a part of it not ported, that the comparison
     /// shows rather than hides.
@@ -164,9 +187,19 @@ pub struct Runtime {
     depth: u32,
     ticks: u64,
     step_limit: Option<u64>,
+    size_limit: Option<u64>,
+    size_made: u64,
     budget: Budget,
+    params: RunParams,
+    rng: Option<Twister>,
+    environ: Option<Environ>,
+    fs_count: u64,
     /// How many builtin calls each effect let through: `EFFECT_USES`.
     pub effect_uses: HashMap<String, u64>,
+    /// What each grant let through, by the grant's own text and in the
+    /// order first used: `GRANT_USES`, what a receipt's `grants_used` is
+    /// made from.
+    pub grant_uses: Vec<(String, u64)>,
     /// The program's input and output.
     pub io: Io,
 }
@@ -201,10 +234,31 @@ impl Runtime {
             depth: 0,
             ticks: 0,
             step_limit: None,
+            size_limit: None,
+            size_made: 0,
             budget,
+            params: RunParams::default(),
+            rng: None,
+            environ: None,
+            fs_count: 0,
             effect_uses: HashMap::new(),
+            grant_uses: Vec::new(),
             io,
         }
+    }
+
+    /// Run with this environment rather than the process's own.
+    pub fn with_environ(mut self, environ: Environ) -> Runtime {
+        self.environ = Some(environ);
+        self
+    }
+
+    /// Run with these parameters: `set_run_params(seed, freeze_time)` and
+    /// `--max-read`.
+    pub fn with_params(mut self, params: RunParams) -> Runtime {
+        self.rng = params.seed.map(Twister::seeded);
+        self.params = params;
+        self
     }
 
     /// Stop the run after this many calls and loop turns:
@@ -212,6 +266,44 @@ impl Runtime {
     pub fn with_step_limit(mut self, limit: u64) -> Runtime {
         self.step_limit = Some(limit);
         self
+    }
+
+    /// Stop the run at the operation that takes what it has made past this
+    /// size: `_state._SIZE_LIMIT`.
+    pub fn with_size_limit(mut self, limit: u64) -> Runtime {
+        self.size_limit = Some(limit);
+        self
+    }
+
+    /// `made(v, line)`: count `v` as made at `line`, and stop the run there
+    /// if that takes the count past the size limit.
+    fn made(&mut self, v: &Value, line: u32) -> R<()> {
+        self.count_made(size_of(v), line)
+    }
+
+    /// `made(text, line)` of a text a builtin writes rather than answers.
+    fn made_text(&mut self, t: &Text, line: u32) -> R<()> {
+        self.count_made(utf8_len(t), line)
+    }
+
+    fn count_made(&mut self, n: u64, line: u32) -> R<()> {
+        self.size_made += n;
+        match self.size_limit {
+            Some(limit) if self.size_made > limit => Err(Stop::Size(line)),
+            _ => Ok(()),
+        }
+    }
+
+    /// `builtin_made`: a builtin, under the size limit - its answer
+    /// counted as made, unless it handed back a value the program held.
+    fn builtin_made(&mut self, name: &str, args: Vec<Value>, line: u32) -> R<Value> {
+        let hands_back = HANDS_BACK.contains(&name)
+            || (name == "to_text" && matches!(args.first(), Some(Value::Text(_))));
+        let out = self.run_builtin(name, args, line)?;
+        if !hands_back {
+            self.made(&out, line)?;
+        }
+        Ok(out)
     }
 
     /// `interpret(funcs)`: call `main`.
@@ -252,9 +344,15 @@ impl Runtime {
             return Ok(Value::Bool(all));
         }
         if is_builtin(name) && !self.hidden.contains(name) {
+            if self.size_limit.is_some() {
+                return self.builtin_made(name, args, line);
+            }
             return self.run_builtin(name, args, line);
         }
         if let Some(bare) = name.strip_prefix('@') {
+            if self.size_limit.is_some() {
+                return self.builtin_made(bare, args, line);
+            }
             return self.run_builtin(bare, args, line);
         }
         let Some(func) = self.table.get(name).cloned() else {
@@ -580,15 +678,25 @@ impl Runtime {
                     .ok_or(Stop::Raised("KeyError")),
                 _ => Err(Stop::Raised("AttributeError")),
             },
-            Expr::ListLit { items, .. } => Ok(Value::list(self.eval_args(items, env)?)),
-            Expr::MapLit { entries, .. } => {
+            Expr::ListLit { items, line } => {
+                let out = Value::list(self.eval_args(items, env)?);
+                if self.size_limit.is_some() {
+                    self.made(&out, *line)?;
+                }
+                Ok(out)
+            }
+            Expr::MapLit { entries, line } => {
                 let mut d = Dict::new();
                 for (k, v) in entries {
                     let key = self.eval(k, env)?;
                     let val = self.eval(v, env)?;
                     d.set(key, val)?;
                 }
-                Ok(Value::Map(Rc::new(d)))
+                let out = Value::Map(Rc::new(d));
+                if self.size_limit.is_some() {
+                    self.made(&out, *line)?;
+                }
+                Ok(out)
             }
             Expr::BinOp { op, left, right, line } => {
                 if op == "and" {
@@ -601,7 +709,15 @@ impl Runtime {
                 }
                 let l = self.eval(left, env)?;
                 let r = self.eval(right, env)?;
-                binop(op, &l, &r, *line)
+                let out = binop(op, &l, &r, *line)?;
+                // a `+` that made a text or a list is counted as made
+                if op == "+"
+                    && self.size_limit.is_some()
+                    && matches!(out, Value::Text(_) | Value::List(_))
+                {
+                    self.made(&out, *line)?;
+                }
+                Ok(out)
             }
         }
     }
@@ -627,6 +743,190 @@ impl Runtime {
                 format!("allow it: sabline <file> --allow {wider}"),
                 format!("a run with no --allow gets {DEFAULT_ALLOW} (5.0); --allow all grants every effect"),
                 "or use a program that does not need it".to_string(),
+            ],
+            file: None,
+        }))
+    }
+
+    /// `_grant_used(grant)`: one more operation this grant let through.
+    fn grant_used(&mut self, grant: String) {
+        match self.grant_uses.iter_mut().find(|(g, _)| *g == grant) {
+            Some(slot) => slot.1 += 1,
+            None => self.grant_uses.push((grant, 1)),
+        }
+    }
+
+    /// `_credential_root(real)`: the credential root an already normcased
+    /// realpath sits at or below - a directory family's directory, or the
+    /// file itself for one file or a pattern - or `None`.
+    fn credential_root(&mut self, real: &str) -> R<Option<String>> {
+        let environ = self.environ.get_or_insert_with(Environ::of_process);
+        let Some(home) = host::home(environ) else { return Err(Stop::Raised("NotPorted")) };
+        let home = os_path::normcase(&pypath::realpath(&home));
+        let nc = |parts: &[&str]| {
+            let mut p = home.clone();
+            for part in parts {
+                p = os_path::join(&p, part);
+            }
+            os_path::normcase(&p)
+        };
+        for parts in [&[".aws"][..], &[".ssh"], &[".config", "gcloud"]] {
+            let root = nc(parts);
+            if real == root || real.starts_with(&format!("{root}{}", pypath::SEP)) {
+                return Ok(Some(root));
+            }
+        }
+        for parts in [&[".docker", "config.json"][..], &[".kube", "config"], &[".netrc"]] {
+            let root = nc(parts);
+            if real == root {
+                return Ok(Some(root));
+            }
+        }
+        let base = os_path::basename(real);
+        // fnmatch(base, normcase("*.pem")): base is normcased already
+        if base == os_path::normcase(".env")
+            || base.ends_with(&os_path::normcase(".pem"))
+            || base.ends_with(&os_path::normcase(".key"))
+        {
+            return Ok(Some(real.to_string()));
+        }
+        Ok(None)
+    }
+
+    /// `allow_path(kind, path, what, line)`: refuse a file operation
+    /// outside the paths this run granted, comparing the operation's
+    /// `normcase(realpath(path))` with each grant's, and give that path
+    /// back for the operation to use. `kind` is `read`, `write` or `any`.
+    fn allow_path(&mut self, kind: &str, path: &Text, what: &str, line: u32) -> R<String> {
+        // a path holding a lone surrogate is a str CPython can resolve on
+        // Windows and cannot on POSIX; os_path works on Rust strings
+        let Some(given) = path.to_str() else { return Err(Stop::Raised("NotPorted")) };
+        let real = os_path::normcase(&pypath::realpath(&given));
+        let sep = pypath::SEP;
+        let under = |p: &str, prefix: &str| {
+            p == prefix || p.starts_with(&format!("{}{sep}", prefix.trim_end_matches(sep)))
+        };
+        let wants: Vec<&str> = if kind == "any" { vec!["read", "write"] } else { vec![kind] };
+        let reaches = |tail: &str| {
+            TextBuf::new()
+                .str(&format!("'{what}' reaches '"))
+                .text(path)
+                .str(&format!("' (resolved: {real}), {tail}"))
+                .done()
+        };
+        let cred =
+            if kind == "read" || kind == "any" { self.credential_root(&real)? } else { None };
+        if let Some(cred) = cred {
+            if what == "read_file" {
+                return Err(Stop::Error(RunError {
+                    code: "E318",
+                    message: reaches(
+                        "a documented credential location; a plain read returns ordinary text \
+                         that can be printed or sent",
+                    ),
+                    line,
+                    fixes: vec![
+                        "read it with read_file_secret, which returns a Secret the compiler \
+                         will not let escape"
+                            .to_string(),
+                        format!("and grant its exact path: --allow fs:read:{real}"),
+                    ],
+                    file: None,
+                }));
+            }
+            let grants = self.budget.fs.clone();
+            let named = grants.as_ref().is_some_and(|gs| {
+                gs.iter().any(|(gk, prefix)| {
+                    wants.contains(&gk.as_str())
+                        && prefix.as_ref().is_some_and(|p| under(&real, p) && under(p, &cred))
+                })
+            });
+            if !named {
+                return Err(Stop::Error(RunError {
+                    code: "E318",
+                    message: reaches(
+                        "a documented credential location the fs grants do not name \
+                         explicitly; a broad grant does not include it",
+                    ),
+                    line,
+                    fixes: vec![
+                        format!("grant its exact path: --allow fs:read:{real}"),
+                        "or use a program that does not read credentials".to_string(),
+                    ],
+                    file: None,
+                }));
+            }
+            for (gk, prefix) in grants.iter().flatten() {
+                if let Some(p) = prefix {
+                    if wants.contains(&gk.as_str()) && under(&real, p) {
+                        self.grant_used(format!("fs:{gk}:{}", pct_encode(p)));
+                        break;
+                    }
+                }
+            }
+            return Ok(real);
+        }
+        let Some(grants) = self.budget.fs.clone() else {
+            self.grant_used("fs".to_string());
+            return Ok(real);
+        };
+        for (gk, prefix) in &grants {
+            if wants.contains(&gk.as_str()) && prefix.as_ref().is_none_or(|p| under(&real, p))
+            {
+                let shown = match prefix {
+                    Some(p) => format!("fs:{gk}:{}", pct_encode(p)),
+                    None => format!("fs:{gk}"),
+                };
+                self.grant_used(shown);
+                return Ok(real);
+            }
+        }
+        let need = if kind == "any" { "read" } else { kind };
+        let dir = os_path::dirname(&real);
+        let dir = if dir.is_empty() { real.clone() } else { dir };
+        Err(Stop::Error(RunError {
+            code: "E313",
+            message: reaches("which this run's fs grants do not cover"),
+            line,
+            fixes: vec![
+                format!("allow it: --allow fs:{need}:{dir}"),
+                "or use a program that stays inside the granted paths".to_string(),
+            ],
+            file: None,
+        }))
+    }
+
+    /// `count_op("fs", what, line)`: spend one of the run's file
+    /// operations, E315 past the count.
+    fn count_op(&mut self, what: &str, line: u32) -> R<()> {
+        self.fs_count += 1;
+        let n = self.fs_count;
+        let Some(limit) = &self.budget.fs_limit else { return Ok(()) };
+        // a count is CPython's int, of any size: one past u128 is never met
+        let over = limit.digits().parse::<u128>().is_ok_and(|l| u128::from(n) > l);
+        if !over {
+            return Ok(());
+        }
+        let th = if (10..=20).contains(&(n % 100)) {
+            "th"
+        } else {
+            match n % 10 {
+                1 => "st",
+                2 => "nd",
+                3 => "rd",
+                _ => "th",
+            }
+        };
+        Err(Stop::Error(RunError {
+            code: "E315",
+            message: Text::from(format!(
+                "'{what}' is the {n}{th} fs operation, and this run allows {}",
+                limit.digits()
+            )),
+            line,
+            fixes: vec![
+                format!("allow more: --allow fs@{n}"),
+                "or use a program that does less".to_string(),
             ],
             file: None,
         }))
@@ -687,13 +987,20 @@ impl Runtime {
         }
         match name {
             "print" => {
-                self.io.stdout.push_text(&to_text(&arg(0)));
+                let shown = to_text(&arg(0));
+                if self.size_limit.is_some() {
+                    self.made_text(&shown, line)?;
+                }
+                self.io.stdout.push_text(&shown);
                 self.io.stdout.push_str("\n");
                 Ok(Value::None)
             }
             "ask" => {
-                self.io.stdout.push_text(&py_str(&arg(0)));
-                self.io.stdout.push_str(" ");
+                let prompt = py_str(&arg(0)).concat(&Text::from(" "));
+                if self.size_limit.is_some() {
+                    self.made_text(&prompt, line)?;
+                }
+                self.io.stdout.push_text(&prompt);
                 let got = self.io.readline();
                 if got.is_empty() {
                     return Err(error(
@@ -1025,6 +1332,9 @@ impl Runtime {
             "args" => Ok(Value::list(self.io.args.iter().cloned().map(Value::Text).collect())),
             "log" => {
                 let line_text = log_line(&to_text(&arg(0)));
+                if self.size_limit.is_some() {
+                    self.made_text(&line_text, line)?;
+                }
                 self.io.stderr.push_text(&line_text);
                 self.io.stderr.push_str("\n");
                 Ok(Value::None)
@@ -1074,10 +1384,156 @@ impl Runtime {
                 }
                 Ok(Value::Text(out.done()))
             }
-            // a builtin whose work is a file, the network, a clock,
-            // randomness, the environment, Python, a tool or a signature:
-            // spent above, and refused there by every budget the gate runs
-            // under; its work is not ported yet
+            "env" => {
+                let (key, default) = (text_of(&arg(0))?, text_of(&arg(1))?);
+                let environ = self.environ.get_or_insert_with(Environ::of_process);
+                Ok(Value::Text(environ.get(&key).cloned().unwrap_or(default)))
+            }
+            "now" => Ok(Value::Int(match self.params.freeze_time {
+                // --freeze-time fixes the instant; the clock effect was
+                // spent above all the same (8.0)
+                Some(t) => t,
+                None => std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |d| d.as_secs() as i64),
+            })),
+            "random" => {
+                let n = arg(0);
+                if !matches!(py_compare(">", &n, &Value::Int(0)), Ok(true)) {
+                    return Err(error(
+                        "E405",
+                        "random(n) needs n greater than 0",
+                        line,
+                        &["pass a positive number, e.g. random(6)"],
+                    ));
+                }
+                let Value::Int(n) = n else { return Err(Stop::Raised("NotPorted")) };
+                let rng = self.rng.get_or_insert_with(Twister::unseeded);
+                Ok(Value::Int(rng.randrange(n as u64) as i64))
+            }
+            // the effect was spent above; a Secret is a compile-time
+            // distinction, so here the value is simply itself (8.1)
+            "declassify" => Ok(arg(0)),
+            "hmac_sha256" | "hmac_sha256_chain" => {
+                let mut key = digest::utf8_surrogatepass(&text_of(&arg(0))?);
+                let messages =
+                    if name == "hmac_sha256" { vec![arg(1)] } else { iterate(&arg(1))? };
+                if messages.is_empty() {
+                    return Err(Stop::Error(RunError {
+                        code: "E609",
+                        message: Text::from(format!("'{name}' was given nothing to sign")),
+                        line,
+                        fixes: vec!["pass at least one message".to_string()],
+                        file: None,
+                    }));
+                }
+                for message in &messages {
+                    let m = digest::utf8_surrogatepass(&text_of(message)?);
+                    key = digest::hmac_sha256(&key, &m).to_vec();
+                }
+                Ok(Value::text(&digest::hex(&key)))
+            }
+            "file_exists" => {
+                let path = text_of(&arg(0))?;
+                if path.points().contains(&0) {
+                    return Ok(Value::Bool(false)); // names no file (8.2)
+                }
+                let real = self.allow_path("any", &path, name, line)?;
+                self.count_op(name, line)?;
+                Ok(Value::Bool(std::fs::metadata(&real).is_ok()))
+            }
+            "read_file" | "read_file_secret" => {
+                let path = text_of(&arg(0))?;
+                if path.points().contains(&0) {
+                    return Err(fail(
+                        TextBuf::new()
+                            .str("cannot read file '")
+                            .text(&nul_shown(&path))
+                            .str("': a path cannot hold a NUL character")
+                            .done(),
+                    ));
+                }
+                let real = self.allow_path("read", &path, name, line)?;
+                self.count_op(name, line)?;
+                if let Ok(meta) = std::fs::metadata(&real) {
+                    let (size, ceiling) = (meta.len(), self.params.max_read);
+                    if size > ceiling {
+                        return Err(Stop::Error(RunError {
+                            code: "E316",
+                            message: TextBuf::new()
+                                .str("'")
+                                .text(&path)
+                                .str(&format!(
+                                    "' is {size} bytes, over the read ceiling of {ceiling} \
+                                     bytes - a file is read whole, into memory, so a large \
+                                     one is capped"
+                                ))
+                                .done(),
+                            line,
+                            fixes: vec![
+                                format!(
+                                    "raise the ceiling: --max-read {} (megabytes)",
+                                    (size / (1024 * 1024) + 1).max(1)
+                                ),
+                                "or read less, or read it in another program".to_string(),
+                            ],
+                            file: None,
+                        }));
+                    }
+                }
+                match std::fs::read(&real) {
+                    Ok(raw) => host::read_text(&raw)
+                        .map(Value::Text)
+                        .ok_or(Stop::Raised("UnicodeDecodeError")),
+                    Err(_) => Err(fail(quoted_after("cannot read file ", &path))),
+                }
+            }
+            "write_file" => {
+                let path = text_of(&arg(0))?;
+                let fixes_nul = ["build the path from text that holds no NUL"];
+                if path.points().contains(&0) {
+                    return Err(error(
+                        "E608",
+                        TextBuf::new()
+                            .str("could not write '")
+                            .text(&nul_shown(&path))
+                            .str("': a path cannot hold a NUL character")
+                            .done(),
+                        line,
+                        &fixes_nul,
+                    ));
+                }
+                let real = self.allow_path("write", &path, name, line)?;
+                self.count_op(name, line)?;
+                let refused = |e: &std::io::Error| {
+                    error(
+                        "E608",
+                        TextBuf::new()
+                            .str("could not write '")
+                            .text(&path)
+                            .str("': ")
+                            .str(&host::strerror(e))
+                            .done(),
+                        line,
+                        &[
+                            "check the folder exists and is writable",
+                            "or write somewhere else",
+                        ],
+                    )
+                };
+                use std::io::Write;
+                let mut file = std::fs::File::create(&real).map_err(|e| refused(&e))?;
+                // opened, and so emptied, before the text is encoded, as
+                // CPython's open() and then write() do
+                let Some(bytes) = host::written_bytes(&to_text(&arg(1))) else {
+                    return Err(Stop::Raised("UnicodeEncodeError"));
+                };
+                file.write_all(&bytes).map_err(|e| refused(&e))?;
+                Ok(Value::None)
+            }
+            // a builtin whose work is the network, Python or a tool: spent
+            // above, and refused there by every budget that does not grant
+            // it; its work is not ported yet
             _ if is_builtin(name) => Err(Stop::Raised("NotPorted")),
             _ => Ok(Value::None),
         }
@@ -1085,6 +1541,37 @@ impl Runtime {
 }
 
 // ---- what the builtins and operators share --------------------------------
+
+/// A text's length in UTF-8, a lone surrogate three bytes:
+/// `len(t.encode("utf-8", "surrogatepass"))`.
+fn utf8_len(t: &Text) -> u64 {
+    t.points()
+        .iter()
+        .map(|&c| match c {
+            0..=0x7F => 1,
+            0x80..=0x7FF => 2,
+            0x800..=0xFFFF => 3,
+            _ => 4,
+        })
+        .sum()
+}
+
+/// `HANDS_BACK`: the builtins whose answer is a value the program already
+/// holds rather than one they made - an item of a list or a map, the
+/// default it was given, the value declassified.
+const HANDS_BACK: [&str; 3] = ["get", "get_or", "declassify"];
+
+/// `size_of(v)`: what a value counts towards the size limit - a text its
+/// UTF-8 bytes (a lone surrogate three, as the encoders write it), a list
+/// or a map its items, anything else nothing.
+pub fn size_of(v: &Value) -> u64 {
+    match v {
+        Value::Text(t) => utf8_len(t),
+        Value::List(xs) => xs.len() as u64,
+        Value::Map(m) => m.len() as u64,
+        _ => 0,
+    }
+}
 
 impl Text {
     /// `int(t)` of a text whose body after one leading minus is decimal.
@@ -1099,6 +1586,24 @@ impl Text {
 
 fn quoted(t: &Text, rest: &str) -> Text {
     TextBuf::new().str("'").text(t).str("'").str(rest).done()
+}
+
+/// `before` and the text in quotes.
+fn quoted_after(before: &str, t: &Text) -> Text {
+    TextBuf::new().str(before).str("'").text(t).str("'").done()
+}
+
+/// `str(t).replace(chr(0), chr(92) + '0')`: a NUL written as `\0`.
+fn nul_shown(t: &Text) -> Text {
+    let mut out = TextBuf::new();
+    for &c in t.points() {
+        if c == 0 {
+            out.push_str("\\0");
+        } else {
+            out.push_text(&Text::from(vec![c]));
+        }
+    }
+    out.done()
 }
 
 /// `str(v)` where the reference writes `str(args[i])` of what the type

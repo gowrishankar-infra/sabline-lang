@@ -582,13 +582,17 @@ fn write_repr(out: &mut TextBuf, v: &Value) {
             }
             out.push_str(")");
         }
-        // The reference writes a function value's dataclass fields, or the
-        // address of a Bound object: neither is a text two runtimes can
-        // agree on, and plan/9.0-m3-progress.md records it. This text is
-        // not the reference's, so a program that prints one differs.
-        Value::Func(f) => out.push_str(&format!("<function value {}>", f.name)),
+        // `fn` and the function's name - the lifted `fn#N` for one written
+        // inline - whether or not it carries names: `Function.__repr__` and
+        // `Bound.__repr__` (9.0, M3), which until then wrote the node's
+        // dataclass fields and a Python object's address
+        Value::Func(f) => {
+            out.push_str("fn ");
+            out.push_str(&f.name);
+        }
         Value::Bound(b) => {
-            out.push_str(&format!("<function value {} carrying names>", b.func.name))
+            out.push_str("fn ");
+            out.push_str(&b.func.name);
         }
     }
 }

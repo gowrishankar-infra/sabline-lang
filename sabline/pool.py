@@ -65,7 +65,7 @@ MUTABLE_GLOBALS = ("PROGRAM_ARGS", "EFFECT_BUDGET", "FFI_MODULES",
                    "RUN_RECORDER", "IMPORT_ROOT", "STOP_FILE", "RESPONSES",
                    "PROGRAM_FILES", "TOOL_GRANTS", "TOOL_LIMITS",
                    "TOOL_COUNTS", "GRANT_USES", "TOOL_SESSION",
-                   "_STEP_LIMIT")
+                   "_STEP_LIMIT", "_SIZE_LIMIT", "_SIZE_MADE")
 
 
 def program_state_baseline() -> dict[str, Any]:
@@ -106,6 +106,9 @@ def reset_program_state(budget: "Budget | None" = None,
         TOOL_SESSION        the tool session of `sabline run --tools` (8.5)
         _STEP_LIMIT         the calls and loop turns `sabline run-dump`
                             stops a run after (9.0)
+        _SIZE_LIMIT, _SIZE_MADE
+                            how much it lets a run make, and what this
+                            one has made (9.0)
 
     Nothing about one program's proofs survives to reach the next: a
     proof is made when it is needed and kept nowhere (8.2).
@@ -131,6 +134,8 @@ def reset_program_state(budget: "Budget | None" = None,
     vars(_state)["RESPONSES"] = None      # recorded responses are one run's (8.3)
     vars(_state)["TOOL_SESSION"] = None          # so is a tool session (8.5)
     vars(_state)["_STEP_LIMIT"] = None            # and the gate's step limit
+    vars(_state)["_SIZE_LIMIT"] = None            # and its size limit
+    _state._SIZE_MADE[0] = 0
     (budget if budget is not None else Budget()).install()
     if baseline is None:
         return
