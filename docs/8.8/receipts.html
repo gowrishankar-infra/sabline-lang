@@ -151,6 +151,38 @@ signed both ways and verified in the release workflow before it is attached
 <p>A signed receipt says its signer ran this Sabline on these bytes, under
 this budget, and saw this run. It is no stronger than the machine it ran
 on, and it says nothing about any other run.</p>
+<h2 id="the-audit-stream-a-receipt-as-it-happens-90">The audit stream: a receipt as it happens (9.0) <a class="anchor" href="#the-audit-stream-a-receipt-as-it-happens-90" aria-label="Link to this section">#</a></h2>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline agent.vel --allow io,fs:read:data --audit-stream run.jsonl</code></pre></div>
+<div class="code"><div class="code-bar"><span class="code-lang">Python</span></div><pre tabindex="0"><code>events = []
+result = sabline.run(source, allow={"io"}, audit_stream=events.append)</code></pre></div>
+<p>A receipt is read once a run has ended. The audit stream is for a host
+that would watch it instead: the receipt's fields as they are produced, one
+JSON object a line, <code>sabline.audit-stream/1</code>, written and flushed as each
+happens:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">JSON</span></div><pre tabindex="0"><code>{"event":"start","schema":"sabline.audit-stream/1","producer":{...},"startedAt":"...","budget":"fs:read:/work/data,io","run_parameters":{"seed":null,...}}
+{"event":"subjects","subject":[{"name":"agent.vel","digest":{"sha256":"..."}}]}
+{"event":"effect","effect":"fs","builtin":"read_file","line":4}
+{"event":"grant","grant":"fs:read:/work/data"}
+{"event":"declassify","reason":"its length only","line":7}
+{"event":"refusal","code":"E313","effect":"fs","line":9,"stopped":true}
+{"event":"end","receipt":{...the run's receipt...}}</code></pre></div>
+<p><code>effect</code> is every builtin call the budget let through - what
+<code>effects_used</code> counts - and <code>grant</code> each operation a grant let through, by
+its text; <code>refusal</code>, <code>declassify</code> and <code>tool</code> are what the receipt keeps of
+each, once per occurrence rather than once per place, and without a count.
+<code>start</code> says what the run was given before it ran; its confinement is not
+known until its first statement, and is in the receipt <code>end</code> carries. <strong>The
+stream holds no value the program handled</strong>, by the rule above, and
+<code>check_library.py</code>'s Secret cases hold it to that as they hold the receipt.
+A stream file that cannot be opened stops the run before it starts (exit
+2); a library function that raises is not called again and the run goes on.
+A run in a worker - <code>timeout=</code>, <code>max_memory_mb=</code>, a <code>Pool</code> - sends each
+event from the worker as it happens, and a run the worker was killed in
+still ends its stream with the receipt the pool made. <code>sabline eval</code>'s
+<code>--receipt-url</code> posts something else: the receipt's entries once per place
+and every thousandth time after, for a collector that keeps a receipt
+whatever happens to the run. sabline-rt writes the same stream, compared
+event for event by the agreement gate.</p>
 <h2 id="a-receipt-compared-and-a-run-made-again-83">A receipt compared, and a run made again (8.3) <a class="anchor" href="#a-receipt-compared-and-a-run-made-again-83" aria-label="Link to this section">#</a></h2>
 <div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline receipts diff run.json --audit task.vel          # against the program's audit
 sabline receipts diff run.json --against receipts/       # against earlier runs of the same bytes
@@ -187,7 +219,7 @@ you would its output.</p>
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/receipts.md">docs/receipts.md</a> by build_docs.py, for Sabline 8.8.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#a-receipt-of-what-one-run-did-81">A receipt of what one run did (8.1)</a></li><li><a href="#a-receipt-compared-and-a-run-made-again-83">A receipt compared, and a run made again (8.3)</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#a-receipt-of-what-one-run-did-81">A receipt of what one run did (8.1)</a></li><li><a href="#the-audit-stream-a-receipt-as-it-happens-90">The audit stream: a receipt as it happens (9.0)</a></li><li><a href="#a-receipt-compared-and-a-run-made-again-83">A receipt compared, and a run made again (8.3)</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

@@ -122,11 +122,18 @@ pub struct Given {
     pub params: RunParams,
     /// Variables set for the run over the process's environment.
     pub environ: Vec<(String, String)>,
+    /// A step limit and a size limit of the line's own, in place of `STEPS`
+    /// and `SIZE`: what the differential fuzzer runs under, and the gate
+    /// never gives.
+    pub steps: Option<u64>,
+    /// See `steps`.
+    pub size: Option<u64>,
 }
 
 impl Given {
     /// A line of the list: a path, or a JSON object naming one with any of
-    /// `allow`, `deny`, `seed`, `freeze_time` and `max_read`.
+    /// `allow`, `deny`, `seed`, `freeze_time`, `max_read`, `environ`,
+    /// `steps` and `size`.
     pub fn of_line(line: &str) -> Result<(String, Given), String> {
         if !line.starts_with('{') {
             return Ok((line.to_string(), Given::default()));
@@ -159,7 +166,18 @@ impl Given {
                 }
             }
         }
-        Ok((path, Given { allow: text("allow"), deny: text("deny"), params, environ }))
+        let limit = |k: &str| int(k).map(|n| n.max(0) as u64);
+        Ok((
+            path,
+            Given {
+                allow: text("allow"),
+                deny: text("deny"),
+                params,
+                environ,
+                steps: limit("steps"),
+                size: limit("size"),
+            },
+        ))
     }
 }
 
@@ -331,8 +349,8 @@ pub fn run_recorded(path: &str, install_dir: &str, given: &Given) -> (Json, Json
     let mut rt = Runtime::new(&loaded.funcs, &loaded.records, budget, io)
         .with_environ(environ)
         .with_params(given.params.clone())
-        .with_step_limit(STEPS)
-        .with_size_limit(SIZE);
+        .with_step_limit(given.steps.unwrap_or(STEPS))
+        .with_size_limit(given.size.unwrap_or(SIZE));
     rt.recorder = recorder;
     rt.recorder.compiled = true;
     let mut ending = Ending::default();

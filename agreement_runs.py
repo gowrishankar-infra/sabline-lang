@@ -368,6 +368,18 @@ print(json_of(p))
         'let m = money(-9223372036854775807 - 1, "INR")\nprint(m)\nprint(-m)')),
     ("money-added-past-64-bits", _main(
         'let m = money(9223372036854775807, "INR")\nprint(m + money(1, "INR"))')),
+    # an amount past 64 bits is E407 where it is made (9.0): until then the
+    # reference held money(2^63) exactly and only arithmetic refused it, and
+    # sabline-rt, which holds 64 bits, said NotPorted - the run fuzzer's
+    # first finding
+    ("money-made-past-64-bits", _main(
+        'let m = money(9223372036854775808, "INR")\nprint(units_of(m))')),
+    ("money-made-past-64-bits-below", _main(
+        'print(money(-9223372036854775807 - 1, "INR"))\n'
+        'print(money(0 - 9223372036854775808, "INR"))')),
+    ("money-with-units-past-64-bits", _main(
+        'let m = money(1, "INR")\nprint(with_units(m, 9223372036854775807))\n'
+        'print(with_units(m, 9223372036854775808))')),
     ("money-parse-and-divide", _main('''
 check parse_money("12.50", "INR") {
     ok m { print(m) }

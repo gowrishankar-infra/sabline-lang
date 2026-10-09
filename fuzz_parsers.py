@@ -4,7 +4,7 @@
 A Sabline error is a SablineError with a stable code, and a fallible
 builtin fails with FailSignal. Anything else that escapes - a Python
 traceback, a RecursionError, a process that dies or stops making progress
-- is a bug, whatever the input. Seven targets:
+- is a bug, whatever the input. Eight targets:
 
     parser     lex, parse, then check_effects / check_types, on arbitrary
                text and on mutated real programs (examples/, stdlib/)
@@ -26,6 +26,12 @@ traceback, a RecursionError, a process that dies or stops making progress
                which must write the same check document: each stage's
                problems and every loop's verdict (9.0, M2; needs Rust, and
                is never skipped for want of it)
+    agreement_runs
+               generated programs run by both interpreters, under a budget
+               of every effect sabline-rt does the work of, in a tree of
+               their own: the same run document, the same receipt and the
+               same audit stream (9.0, M3; needs Rust, and is never skipped
+               for want of it)
 
     python fuzz_parsers.py 30               30 iterations per target, under
                                             a random seed and then each of
@@ -74,7 +80,7 @@ sys.path.insert(0, str(HERE))
 from suite_dirs import isolate  # noqa: E402
 
 TARGETS = ("parser", "json", "csv", "py_json", "contracts", "agreement",
-           "agreement_checks")
+           "agreement_checks", "agreement_runs")
 
 # A child is given its parent's work directory; only the parent makes one.
 if "--work" in sys.argv[1:-1]:
@@ -1697,8 +1703,7 @@ class CheckerGen:
             return [f"{pad}{name} = {self.expr(ty, env)}"]
         if kind == "print":
             self.used.add("io")
-            ty = r.choice(K_TYPES if self.ill else
-                          [t for t in K_TYPES if t != "Secret of Text"])
+            ty = r.choice([t for t in K_TYPES if self.printable(t)])
             return [f"{pad}{r.choice(['print', 'log'])}({self.expr(ty, env)})"]
         if kind == "if":
             out = [f"{pad}if {self.expr('Bool', env)} {{"]
@@ -1829,6 +1834,11 @@ class CheckerGen:
         env[flag] = "Bool"
         return out + [f"{pad}}}"]
 
+    def printable(self, ty: str) -> bool:
+        """Whether a print statement may write a value of this type: any
+        but a Secret, unless the program is meant to be wrong."""
+        return self.ill or ty != "Secret of Text"
+
     # functions and programs ---------------------------------------------------
 
     def function(self, k: int) -> str:
@@ -1876,7 +1886,8 @@ class CheckerGen:
                 body += [f"    check {call} {{", f"        ok{ok} {{", "        }",
                          "        fail why {", "            print(why)",
                          "        }", "    }"]
-            elif _ret not in (None, "Secret of Text") and r.random() < 0.5:
+            elif _ret not in (None, "Secret of Text") and \
+                    self.printable(_ret) and r.random() < 0.5:
                 body.append(f"    print({call})")
             else:
                 body.append(f"    {call}")
@@ -1967,6 +1978,200 @@ class CheckerAgreementTarget(Target):
                              + first_difference(mine, theirs))
 
 
+# ---------------------------------------------------------------------------
+# agreement_runs: generated programs run by both interpreters (9.0, M3)
+# ---------------------------------------------------------------------------
+
+class RunGen(CheckerGen):
+    """CheckerGen's programs, for a run - with the one shape taken out that
+    reaches the size limit's known residual (plan/9.0-m3-progress.md).
+
+    A value is counted when it is made, so a list holding one large text
+    many times costs only its items, and writing it out makes a text as
+    long as all of them together in one operation, far past the limit,
+    before anything can count it. In CheckerGen's programs that is a List
+    of Text built with push, printed - by a print statement, or as a
+    function's result - so here a List of Text is never printed. A map
+    holds each key once, and split and chars make no more than they are
+    given, so nothing else it writes multiplies a text."""
+
+    def printable(self, ty: str) -> bool:
+        return ty != "List of Text" and super().printable(ty)
+
+
+# What a run is given: every effect whose work sabline-rt does, in a tree of
+# its own made afresh for each runtime - the relative paths CheckerGen reads
+# and writes land in it - the clock frozen, randomness seeded, the variables
+# it reads set, and limits of its own. 2,000 steps keeps an iteration short.
+# 2^18 bytes keeps the residual small: a list of n references to a text of
+# L bytes, built by push, costs L + n(n+1)/2, so the most one operation can
+# write out under it is about 73 MB, where under the gate's 2^22 it is
+# about 4.7 GB.
+RUN_GIVEN = {
+    "allow": "io,clock,rand,env,declassify,fs:read:.,fs:write:.",
+    "seed": 7, "freeze_time": 1767225600,
+    "environ": {"SABLINE_FUZZ": "fuzz", "SABLINE_FUZZ_0": "",
+                "SABLINE_FUZZ_1": "one", "SABLINE_FUZZ_2": "a,b",
+                "SABLINE_FUZZ_3": "\u00e9"},
+    "steps": 2000, "size": 1 << 18,
+}
+RUN_TREE_FILES = {"in.txt": b"1,2\nthree\n"}
+
+
+def reference_split(document: str, source: bytes) -> str | None:
+    """Where the reference says something different by CPython version -
+    so that there is no one answer for sabline-rt to give - which the
+    gate's corpora leave out: the input's reason, or None. Each is told by
+    the version this runs under and by the reference's own words, so that
+    nothing else is passed over with it."""
+    if sys.version_info >= (3, 13) and \
+            "Illegal trailing comma before end of" in document:
+        return "json's trailing comma, which CPython 3.13 words its own way"
+    if sys.version_info < (3, 11) and \
+            "Exceeds the limit (4300) for integer string" in document:
+        return "int()'s digit limit, which CPython 3.10 words its own way"
+    if sys.version_info < (3, 12) and b"base64_decode" in source:
+        return "base64 padding, which CPython 3.10 accepts and 3.12 refuses"
+    return None
+
+
+class RunAgreementTarget(Target):
+    """Generated programs run by both interpreters, which must agree
+    exactly: the run document byte for byte, and the receipt and the audit
+    stream after normalising what `check_agreement.py` normalises and
+    nothing else - the comparison the gate makes of every program it runs,
+    of programs nobody wrote, steered by the lines of the Python
+    interpreter each reaches.
+
+    **The residual.** RunGen does not write the one shape that makes a
+    value far larger than the size limit in one operation, and RUN_GIVEN's
+    limit keeps it small for the inputs the engine makes by mutation. An
+    input that still reaches it - the reference's run ends in MemoryError -
+    is counted and said at the end, and is never a difference: it is a
+    known property of the limit, not a disagreement. **The splits**: an
+    input that reaches one of the three places the reference answers
+    differently by CPython version (reference_split) is counted and said
+    the same way, as the gate's corpora leave those out.
+
+    As in `agreement`, sabline-rt is built if it is not built, and nothing
+    here skips.
+    """
+
+    name = "agreement_runs"
+    runtime = True
+    max_len = 32 * 1024
+    pairs = PARSER_PAIRS
+
+    def setup(self) -> None:
+        super().setup()
+        self.binary = str(rt_binary())
+        self.runs = importlib.import_module("sabline.run_dump")
+        self.canonical = importlib.import_module("sabline.ast_dump").canonical
+        self.gate = importlib.import_module("check_agreement")
+        self.tokens = (PARSER_TOKENS + CHECKER_TOKENS
+                       + sorted(n.encode() for n in V.BUILTINS))
+        self.entry = str(WORK / "agreement_runs_input.vel")
+        self.listing = WORK / "agreement_runs_list.txt"
+        self.tree = WORK / "agreement_runs_tree"
+        self.residual = 0
+        self.splits = 0
+
+    def seeds(self, rng: Any) -> Any:
+        out = [as_bytes(RunGen(rng).program()) for _ in range(24)]
+        try:            # the runs' corpus the gate carries
+            out += [p for _, p in importlib.import_module(
+                "agreement_runs").cases() if isinstance(p, bytes)]
+        except ImportError:
+            pass
+        return out + [p.read_bytes() for p in sorted(HERE.glob("examples/*.vel"))]
+
+    def generate(self, rng: Any) -> Any:
+        return as_bytes(RunGen(rng).program())
+
+    def fresh_tree(self) -> None:
+        shutil.rmtree(self.tree, ignore_errors=True)
+        self.tree.mkdir(parents=True)
+        for name, raw in RUN_TREE_FILES.items():
+            (self.tree / name).write_bytes(raw)
+
+    def execute(self, data: Any) -> None:
+        try:
+            plain = imports_are_plain(V.lex(as_text(data)))
+        except V.SablineError:
+            plain = True
+        if not plain:
+            return                # as agreement_checks: no path but a plain one
+        Path(self.entry).write_bytes(data)
+        self.fresh_tree()
+        here = os.getcwd()
+        os.chdir(self.tree)
+        try:
+            doc, receipt, stream = self.runs.run_recorded(self.entry, **RUN_GIVEN)
+        finally:
+            os.chdir(here)
+        if doc.get("raised") == "MemoryError":
+            self.residual += 1    # the residual: counted, never a finding
+            return
+        if reference_split(self.canonical(doc), data) is not None:
+            self.splits += 1      # the reference disagrees with itself
+            return
+        self.fresh_tree()
+        self.listing.write_text(json.dumps(dict(RUN_GIVEN, path=self.entry)) + "\n",
+                                encoding="utf-8")
+        try:
+            done = subprocess.run([self.binary, "run", "--install-dir", str(HERE),
+                                   "--list", str(self.listing)],
+                                  capture_output=True, cwd=str(self.tree))
+        except OSError as e:
+            raise SystemExit(f"fuzz_parsers: {self.binary} cannot be run "
+                             f"({e}); the comparison would be one interpreter "
+                             f"against itself")
+        if done.returncode not in (0, 1):
+            raise Difference(
+                f"sabline-rt ended {done.returncode}, which is neither a run "
+                f"that ended well nor one that did not: "
+                f"{done.stderr.decode('utf-8', 'replace')[:2000]}")
+        theirs = _records(done.stdout, self.gate.RUN_BATCH_HEADER)
+        if len(theirs) != 3:
+            raise Difference(f"sabline-rt wrote {len(theirs)} records for one "
+                             f"program, not a document, a receipt and a stream")
+        mine = self.canonical(doc).encode("ascii")
+        if mine != theirs[0]:
+            raise Difference("the two run documents differ: "
+                             + first_difference(mine, theirs[0]))
+        # each read back from the bytes written, as the gate reads them:
+        # the stream's end holds the very receipt, and normalising edits
+        a, held_a = self.gate._normalised(json.loads(self.canonical(receipt)))
+        b, held_b = self.gate._normalised(json.loads(theirs[1]))
+        found = (self.gate._first_difference(a, b, "receipt")
+                 or self.gate._confinement_rule(held_a, held_b))
+        if found:
+            raise Difference("the two receipts differ: " + found)
+        a, held_a = self.gate._normalised_stream(json.loads(self.canonical(stream)))
+        b, held_b = self.gate._normalised_stream(json.loads(theirs[2]))
+        found = (self.gate._first_difference(a, b, "stream")
+                 or self.gate._confinement_rule(held_a, held_b))
+        if found:
+            raise Difference("the two audit streams differ: " + found)
+
+
+def _records(stream: bytes, heading: bytes) -> list[bytes]:
+    """The records of one framed batch stream, as check_agreement.dumps
+    reads them."""
+    if not stream.startswith(heading):
+        raise Difference(f"sabline-rt did not write a batch stream: "
+                         f"{stream[:400]!r}")
+    out, at = [], len(heading)
+    while at < len(stream):
+        end = stream.find(b"\n", at)
+        if end < 0 or not stream.startswith(b"--- ", at):
+            raise Difference(f"sabline-rt's batch stream breaks at byte {at}")
+        size = int(stream[at + 4:end].split(b" ", 1)[0])
+        out.append(stream[end + 1:end + 1 + size])
+        at = end + 2 + size
+    return out
+
+
 def first_difference(mine: bytes, theirs: bytes) -> str:
     """Where two canonical documents differ: a path through the tree, or
     the byte they first differ at when one will not read."""
@@ -2004,7 +2209,8 @@ def make_target(name: str) -> Target:
     return {"parser": ParserTarget, "json": JsonTarget, "csv": CsvTarget,
             "py_json": PyJsonTarget, "contracts": ContractsTarget,
             "agreement": AgreementTarget,
-            "agreement_checks": CheckerAgreementTarget}[name]()
+            "agreement_checks": CheckerAgreementTarget,
+            "agreement_runs": RunAgreementTarget}[name]()
 
 
 # ---------------------------------------------------------------------------
@@ -2036,7 +2242,12 @@ def fuzz_builtin(target: Any, rng: Any, iterations: Any, seconds: Any, journal: 
         return {"iterations": state["n"], "seeds": state["seeds"],
                 "corpus": len(corpus), "coverage": cov.method,
                 "lines": sorted("%s:%d" % at for at in cov.seen),
-                "slowest": round(state["slowest"], 2)}
+                "slowest": round(state["slowest"], 2),
+                # inputs that reached the size limit's known residual
+                # (agreement_runs), counted and never a finding
+                "residual": getattr(target, "residual", 0),
+                # and the reference's splits by CPython version, as well
+                "splits": getattr(target, "splits", 0)}
 
     def left() -> bool:
         return cast(bool, time.monotonic() < deadline if deadline is not None
@@ -2260,6 +2471,8 @@ def absorb(total: dict[Any, Any], events: list[Any]) -> Any:
         if last.get("slowest", 0) >= total["slowest"]:
             total["slowest"] = last["slowest"]
             total["slow_file"] = last.get("slow_file", total["slow_file"])
+        total["residual"] += last.get("residual", 0)
+        total["splits"] += last.get("splits", 0)
     return last
 
 
@@ -2270,7 +2483,7 @@ def supervise(index: Any, name: Any, args: Any, engine: Any, seed: Any, iters: A
     total: dict[str, Any]
     total = {"iterations": 0, "seeds": 0, "corpus": 0, "lines": set(),
              "signatures": {}, "error": None, "coverage": "", "slowest": 0.0,
-             "slow_file": None}
+             "slow_file": None, "residual": 0, "splits": 0}
     t0 = time.monotonic()
     journal_path = WORK / (name + ".journal")
     known_path = WORK / (name + ".known")
@@ -2482,6 +2695,16 @@ def main(argv: Any = None) -> int:
             print("%-10s iterations %d%s  corpus %d  lines covered %d  findings %d  %.1fs"
                   % (name, t["iterations"], seeds, t["corpus"], len(t["lines"]),
                      len(t["signatures"]), t["seconds"]), flush=True)
+            if t.get("residual"):
+                print("           %d input(s) reached the size limit's known "
+                      "residual - a run that made one value far past the "
+                      "limit in one operation (not a finding)" % t["residual"],
+                      flush=True)
+            if t.get("splits"):
+                print("           %d input(s) reached a place the reference "
+                      "answers differently by CPython version, which the "
+                      "gate's corpora leave out (not a finding)" % t["splits"],
+                      flush=True)
             if t["slowest"] >= SLOW_SECONDS:
                 print("           slowest input took %.1fs (not a finding)%s"
                       % (t["slowest"], "; saved: " + ascii_text(t["slow_file"])

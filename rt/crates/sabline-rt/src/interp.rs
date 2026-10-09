@@ -2058,8 +2058,10 @@ fn run_money(name: &str, args: &[Value], line: u32) -> R<Value> {
                     file: None,
                 }));
             };
+            // an amount's units are an Int's 64 bits (SPEC.md 4.3): one past
+            // them is E407 where it is made, as where arithmetic makes one
             let units =
-                i64::try_from(py_int(&arg(0))?).map_err(|_| Stop::Raised("NotPorted"))?;
+                i64::try_from(py_int(&arg(0))?).map_err(|_| money_too_big(name, line))?;
             Ok(Value::Money(Money { units, currency }))
         }
         "units_of" => match arg(0) {
@@ -2076,7 +2078,7 @@ fn run_money(name: &str, args: &[Value], line: u32) -> R<Value> {
         "with_units" => {
             let m = money_arg(&arg(0))?;
             let units =
-                i64::try_from(py_int(&arg(1))?).map_err(|_| Stop::Raised("NotPorted"))?;
+                i64::try_from(py_int(&arg(1))?).map_err(|_| money_too_big(name, line))?;
             Ok(Value::Money(Money { units, currency: m.currency }))
         }
         "text_of" => Ok(Value::text(&money_text(&money_arg(&arg(0))?))),

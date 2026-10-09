@@ -179,7 +179,10 @@ def run_money(name: str, args: list[Any], line: int) -> Any:
         if cur not in CURRENCIES:              # kept out before running
             raise SablineError("E551",
                 f"'{cur}' is not a currency Sabline knows", line)
-        return MoneyValue(int(args[0]), cur)
+        # an amount's units are an Int's 64 bits (SPEC.md 4.3): one past
+        # them is E407 where it is made, as where arithmetic makes one;
+        # until 9.0 it was held, and only arithmetic on it refused it
+        return checked_int(MoneyValue(int(args[0]), cur), "money", line)
     if name == "units_of":
         x = args[0]
         if x.__class__ is MoneyValue:
@@ -188,8 +191,9 @@ def run_money(name: str, args: list[Any], line: int) -> Any:
         for m in x:                            # as a loop adding them
             total = checked_int(total + m.units, "units_of", line)
         return total
-    if name == "with_units":
-        return MoneyValue(int(args[1]), args[0].currency)
+    if name == "with_units":                   # as money (9.0)
+        return checked_int(MoneyValue(int(args[1]), args[0].currency),
+                           "with_units", line)
     if name == "text_of":
         return money_text(args[0])
     if name == "parse_money":

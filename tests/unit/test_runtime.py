@@ -251,6 +251,26 @@ class APromiseNamesItsOwnFile(Run):
         self.assertEqual(self.where(err), ("E600", "p.vel", 3))
 
 
+class AnAmountPastSixtyFourBits(Run):
+    """9.0: an amount's units are an Int's 64 bits (SPEC.md 4.3), so one
+    past them is E407 where money() or with_units() makes it. Until then the
+    reference held it exactly and only arithmetic on it refused it."""
+
+    def test_money_and_with_units_refuse_it_where_it_is_made(self) -> None:
+        for body, line, op in (
+                ('print(units_of(money(9223372036854775808, "INR")))', 1, "money"),
+                ('let m = money(1, "INR")\nprint(with_units(m, 9223372036854775807))\n'
+                 'print(with_units(m, 9223372036854775808))', 3, "with_units")):
+            doc = self.run_text(main_of(body))
+            self.assertEqual((doc["error"]["code"], doc["error"]["line"]),
+                             ("E407", line + 1), doc)
+            self.assertIn(f"this '{op}' made an amount too big to hold",
+                          doc["error"]["message"])
+        doc = self.run_text(main_of('print(money(-9223372036854775807 - 1, "INR"))'))
+        self.assertEqual((doc["error"], doc["stdout"]),
+                         (None, "INR -92233720368547758.08\n"))
+
+
 class ReceiptOfARun(Run):
     """The run document's receipt (M3, third checkpoint): what `sabline
     <file> --receipt` writes of the same run, with nothing asked of the

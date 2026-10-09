@@ -84,8 +84,14 @@ moved where.</p>
 <p>api: <code>sabline conformance</code> takes <code>--runtime python|rust</code> (9.0, M2): with
 <code>rust</code>, sabline-rt answers the case kinds it implements and every result
 says which runtime answered it; without the flag nothing changes.</p>
+<p>api: a run takes <code>--audit-stream FILE</code>, and <code>sabline.run</code>, <code>Pool.run</code> and
+<code>PoolRegistry.run</code> take <code>audit_stream=</code> (9.0, decisions/0007 32b): the run's
+audit stream, <code>sabline.audit-stream/1</code>, one JSON object an event as it
+happens - written to FILE a line each, or handed to the function. Without
+either nothing changes.</p>
 <h2 id="9x">9.x <a class="anchor" href="#9x" aria-label="Link to this section">#</a></h2>
-<ul><li><a href="changelog-9.html#900-alpha7---m3-the-builtins-under-every-budget-as-far-as-they-got">9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got</a></li>
+<ul><li><a href="changelog-9.html#900-alpha8---m3-receipts-and-the-audit-stream-field-for-field">9.0.0-alpha.8 - M3: receipts and the audit stream, field for field</a></li>
+<li><a href="changelog-9.html#900-alpha7---m3-the-builtins-under-every-budget-as-far-as-they-got">9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got</a></li>
 <li><a href="changelog-9.html#900-alpha6---m3-the-interpreter-as-far-as-it-got">9.0.0-alpha.6 - M3: the interpreter, as far as it got</a></li>
 <li><a href="changelog-9.html#900-alpha5---m2-the-checkers-the-budget-parser-and-a-loop-bounded-by-its-input">9.0.0-alpha.5 - M2: the checkers, the budget parser, and a loop bounded by its input</a></li>
 <li><a href="changelog-9.html#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li>

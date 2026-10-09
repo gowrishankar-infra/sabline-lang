@@ -40,6 +40,9 @@ naming one, `{"path": ...}`, with any of what a command line could add:
     environ         variables set for the run, {name: value}, over the
                     environment the process was started with: what env()
                     reads, and where `~` is
+    steps, size     limits of the line's own, in place of STEPS and SIZE:
+                    what the differential fuzzer runs under (fuzz_parsers.py
+                    --target agreement_runs), which the gate never gives
 
 The document does not repeat them: the gate gives both runtimes the same
 line. A budget that does not parse is the document's `raised`,
@@ -195,20 +198,23 @@ def _error(e: SablineError, path: str) -> dict[str, Any]:
 def run_document(path: str, allow: str | None = None, deny: str | None = None,
                  seed: int | None = None, freeze_time: int | None = None,
                  max_read: int | None = None,
-                 environ: dict[str, str] | None = None) -> dict[str, Any]:
+                 environ: dict[str, str] | None = None,
+                 steps: int | None = None,
+                 size: int | None = None) -> dict[str, Any]:
     """The document for one program, run as `sabline <path>` runs it, with
     the five things above fixed - the budget, seed, clock and read ceiling
     as given - and the three left out."""
     return run_recorded(path, allow=allow, deny=deny, seed=seed,
                         freeze_time=freeze_time, max_read=max_read,
-                        environ=environ)[0]
+                        environ=environ, steps=steps, size=size)[0]
 
 
 def run_recorded(path: str, allow: str | None = None,
                  deny: str | None = None, seed: int | None = None,
                  freeze_time: int | None = None,
                  max_read: int | None = None,
-                 environ: dict[str, str] | None = None
+                 environ: dict[str, str] | None = None,
+                 steps: int | None = None, size: int | None = None
                  ) -> tuple[dict[str, Any], dict[str, Any] | None,
                             list[dict[str, Any]] | None]:
     """The run document, the receipt of the same run (the module's
@@ -259,8 +265,8 @@ def run_recorded(path: str, allow: str | None = None,
     recorder = _RunRecorder(stream=events.append if parameters else None)
     name = posixpath.normpath(path.replace(os.sep, "/"))
     _state.PROGRAM_ARGS[:] = list(ARGS)
-    vars(_state)["_STEP_LIMIT"] = STEPS
-    vars(_state)["_SIZE_LIMIT"] = SIZE
+    vars(_state)["_STEP_LIMIT"] = STEPS if steps is None else steps
+    vars(_state)["_SIZE_LIMIT"] = SIZE if size is None else size
     vars(_state)["BEFORE_FIRST_STATEMENT"] = None
     vars(_state)["RUN_RECORDER"] = recorder
     out, err = io.StringIO(), io.StringIO()

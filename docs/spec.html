@@ -530,6 +530,12 @@ fail.</p>
 <code>tool_secret</code>. <code>get</code> on a <strong>list</strong> is not fallible: list bounds are the
 prover's domain (§9.4), and <code>get_or(m, k, default)</code> gives a total map
 lookup.</p>
+<p><code>read_file</code> and <code>read_file_secret</code> fail on a file that is not UTF-8
+text - <code>cannot read file 'x': it is not UTF-8 text</code> - as on one that
+cannot be opened; until 9.0 the first ended the run with a traceback no
+<code>check</code> could catch. <code>write_file</code> is not fallible: a text holding a lone
+surrogate, which is not UTF-8, is E608, as a file that cannot be written
+is, and nothing is written - a file that was there is left as it was.</p>
 <h2 id="9-contracts-and-proof">9. Contracts and proof <a class="anchor" href="#9-contracts-and-proof" aria-label="Link to this section">#</a></h2>
 <h3 id="91-what-you-write">9.1 What you write <a class="anchor" href="#91-what-you-write" aria-label="Link to this section">#</a></h3>
 <div class="code"><div class="code-bar"><span class="code-lang">Sabline</span></div><pre tabindex="0"><code><span class="k">fn</span> f(x: Int) -&gt; Int
@@ -674,6 +680,13 @@ library writes inline is one of its functions and one of its references,
 and is prefixed with them (<code>geo.fn#1</code>); until 9.0 it was not, and a
 library that made one was refused under a name with E402. A local name
 may not shadow an import name (E514).</p>
+<p>An error names the file it is in, which for a library's is the library's.
+A broken promise (E600, E601), and an error raised while a promise is
+checked, is in the file the promise is written in, whoever called the
+function; until 9.0 the caller was blamed, so a library's named the
+importer's file with the library's line, flat or named. A promise the
+prover finds can be broken at a call (E701) is in the caller's file, at
+the call.</p>
 <p>Imports are resolved relative to the importing file, with the bundled
 standard library searched last. A file already in the program is not
 read again, so two files that import each other, or a file that

@@ -82,12 +82,14 @@ jobs:
       # Both parsers on the same generated input, which must answer the
       # same tree or the same code, message, fixes and line; then both
       # checkers on generated programs, which must write the same check
-      # document.
+      # document; then both interpreters, which must write the same run
+      # document, receipt and audit stream.
       - name: The differential fuzzer, 20 minutes a target
         run: |
           cargo build --release --manifest-path rt/Cargo.toml
           python fuzz_parsers.py --target agreement --minutes 20 --crashes rt-fuzz-crashes
           python fuzz_parsers.py --target agreement_checks --minutes 20 --crashes rt-fuzz-crashes
+          python fuzz_parsers.py --target agreement_runs --minutes 20 --crashes rt-fuzz-crashes
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         if: always()
         with:

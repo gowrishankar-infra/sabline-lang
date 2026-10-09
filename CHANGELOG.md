@@ -15,10 +15,131 @@ audit stream, `sabline.audit-stream/1`, one JSON object an event as it
 happens - written to FILE a line each, or handed to the function. Without
 either nothing changes.
 
-## 9.0.0-alpha.8 - M3: receipts, field for field
+## 9.0.0-alpha.8 - M3: receipts and the audit stream, field for field
 
 M3's third checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,
-`Secret` and receipts*), and still not its end.
+`Secret` and receipts*), and still not its end: **sabline-rt records each
+run's `sabline.receipt/1` and its audit stream as the reference does, and
+the agreement gate compares both for every program it runs** - the receipt
+field for field after normalising exactly plan/9.0.md's list, the stream
+event for event - and a differential fuzzer runs generated programs in both.
+The maintainer's two decisions on the questions the second checkpoint left
+are in both runtimes. M3's exit criteria are not met and none is claimed:
+the network, Python and tools are refused by every budget that does not
+grant them and not ported under one that does, `sabline run` does not go
+through sabline-rt yet, and the organisation ceiling file is not started.
+The Python package is the reference, and where the two disagree sabline-rt
+has a defect.
+
+This is a **pre-release** of the `sabline-rt` crate, and it publishes that
+and nothing else. 8.8.0 is still what `pip install sabline-lang`, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and `sabline --version` still says 8.8.0. What the Python package on
+main gained below ships with 9.0.
+
+### What exists
+
+**Receipts** (`src/receipt.rs`, from `sabline/recorder.py` and
+`sabline/receipts.py`): the run's subjects by sha256, the standard library
+as `<stdlib>/NAME` and a file on another drive by its path; the budget; the
+seed, the frozen clock as an instant and the read ceiling; how many builtin
+calls each effect let through and how many operations each grant did; every
+refusal by code, effect and line, and every declassification by reason and
+line, each once per place with a count, an HMAC's with its key's
+fingerprint and `many` past sixteen keys at one place; and how the run
+ended. The run document writes it after each run (`sabline.run-batch/3`).
+It is the command line's receipt of the same run, with three things the run
+document fixes: nothing is asked of the operating system, so the confinement
+is `none`, `nothing was asked of the operating system`, in both; a run the
+step limit stops is a timeout (E610) and one the size limit stops is out of
+memory (E611), with what it used and refused until then; and there is none
+where the command line writes none.
+
+**The audit stream** (decisions/0007, item 32b), in both runtimes: the
+receipt's fields as they are produced, one JSON object an event,
+`sabline.audit-stream/1` - `start`, `subjects`, then as each happens
+`effect` (every builtin call the budget let through), `grant`, `refusal`,
+`declassify` and `tool`, and `end` with the receipt. `sabline <file>
+--audit-stream FILE` writes it a line each; `sabline.run`, `Pool.run` and
+`PoolRegistry.run` take `audit_stream=`, and a run in a worker sends each
+event as it happens, so a run the clock killed still ends its stream with
+the pool's receipt. No event holds a value the program handled, and
+`check_library.py`'s Secret cases hold the stream to that as they hold the
+receipt - the decision's condition. docs/receipts.md says what each event
+holds. OpenTelemetry is not scheduled.
+
+**A run target for the differential fuzzer**: `fuzz_parsers.py --target
+agreement_runs` runs generated programs in both interpreters, under every
+effect whose work sabline-rt does, in a tree made afresh for each, and
+compares the run document, the receipt and the stream; CI runs it on every
+leg and for two minutes beside the gate, and the monthly run for twenty.
+It respects the size limit's known residual: its generator never writes the
+one shape that reaches it (a list holding one text many times, written
+out), it runs under a size limit of its own (2^18) where the worst a
+mutated input can make in one operation is about 73 MB, and an input that
+reaches it anyway is counted and said, never a finding. The three places
+the reference answers differently by CPython version, which the gate's
+corpora leave out, it leaves out the same way, counted.
+
+### The agreement gate
+
+    the parsers: 6808 compared, 6808 agree, 0 differ
+    the checkers: 6808 compared, 6808 agree, 0 differ
+    the budget parser: 2967 compared, 2967 agree, 0 differ
+    the interpreters: 6808 compared, 6808 agree, 0 differ
+    the interpreters, under their budgets: 121 compared, 121 agree, 0 differ
+    the receipts: 6929 compared, 6929 agree, 0 differ
+    the audit streams: 6929 compared, 6929 agree, 0 differ
+    the builtin tables: 1 compared, 1 agree, 0 differ
+  agreement gate: 37371 comparisons, 37371 agreements, 0 differences
+
+The same on CPython 3.10, 3.12 and 3.13. A receipt's normalisation is
+`RECEIPT_NORMALISED` - the producer's name and version, `startedAt`,
+`wall_time_ms`, a `<source>` subject's name - and the four confinement
+fields by rule (present in both, and sabline-rt's level at least Python's);
+`check_gate.py` holds that list to plan/9.0.md's, so a field cannot join
+one without the other. The runs under their budgets gain fifteen: a lone
+surrogate written over a file and to a new one, and what was there after;
+and what a receipt records - a declassification in a loop, two reasons on
+one line, an HMAC under twenty keys, grants counted, `exit_with` with and
+without a status, a refused effect, a frozen clock before 1970, after 3001,
+at both ends of what an instant can say and past them, and a run that does
+not end. The read of a file that is not UTF-8 now reads four, each caught,
+and carries on. The programs the gate holds gain ten: seven of several
+files - a promise broken in a library, three ways, flat and named, and one
+called back - and three amounts made past 64 bits.
+
+`check_gate.py`'s injections gain five, each of which turns the gate red:
+the file a broken promise names, a receipt's field dropped, a field beside
+the normalised ones, how many keys a receipt names at one place, and an
+audit stream's event dropped.
+
+### Found on the way, and fixed
+
+**A receipt of a run with a frozen clock was a traceback on Windows.**
+`sabline x.vel --freeze-time 1960-01-01T00:00:00Z --receipt r.json` ran the
+program, then ended in an `OSError` while writing the receipt, leaving the
+file empty: the instant was made with `datetime.fromtimestamp`, which asks
+the C runtime's `gmtime`, and on Windows that stops at 1969-12-31T12:00Z and
+at 3001-01-19T21:59:59Z. It is calendar arithmetic now, the years 1 to
+9999 on every system, written with four digits.
+
+compatibility: for 9.0's Python package, a receipt of a run frozen outside
+1969-12-31T12:00Z to 3001-01-19T21:59:59Z is written on Windows, where the
+run ended in a traceback after it finished; elsewhere nothing changed.
+
+**An amount past 64 bits was made, and held** - the run fuzzer's first
+finding, on its first day. SPEC.md 4.3 says an amount's units are an `Int`,
+with the same 64-bit range and the same E407 past it; `money(9223372036854775808,
+"INR")` made one anyway, printed `INR 92233720368547758.08`, and only
+arithmetic on it refused it, while sabline-rt, which holds 64 bits, answered
+`NotPorted`. `money` and `with_units` refuse it with E407 where it is made
+now, in both runtimes, as `+` does: "this 'money' made an amount too big to
+hold". `parse_money` already refused one.
+
+compatibility: for 9.0's Python package, `money` and `with_units` of units
+outside -2^63 to 2^63-1 are E407 where they are made, where the amount was
+made and held and only arithmetic on it refused it.
 
 ### Decided, and done in both runtimes
 
@@ -58,6 +179,18 @@ checked, name that file - in the error a run prints, `--json`'s `file`
 and every report built from them - where they named the file that called
 it; and `sabline check`'s one-line output names the file an error is in.
 The code, the message and the line are unchanged.
+
+### What is not done
+
+`plan/9.0-m3-progress.md` lists it in order: `sabline run` and
+`sabline.run` through sabline-rt (decisions/0002), which is what lets the
+suites of M3's fourth criterion be asked of it; the network's, Python's and
+the tools' work, each a design question; the organisation ceiling file
+(decisions/0007, 32c); and performance. It records two questions for the
+maintainer: whether the reference should stop answering differently by
+CPython version in the three places the gate and the fuzzer leave out, and
+whether the size limit should count a value written out before it is made,
+which would close its residual.
 
 ## 9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got
 
