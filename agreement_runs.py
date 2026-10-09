@@ -938,4 +938,53 @@ BUDGETED: tuple[tuple[str, str, dict[str, Any]], ...] = (
         'let k = env("SABLINE_GATE_VALUE", "")\nprint(hmac_sha256(k, "m"))',
         uses="io, env, declassify"), {"allow": "io,env"}),
     ("budget-of-nothing", _main('print("never")'), {"allow": ""}),
+    # ---- what a receipt records (M3, third checkpoint) ---------------------
+    # each place a declassification happens, once, with its count: a loop,
+    # two reasons on one line, an HMAC under more keys than one site may
+    # name (sixteen, then "many") and the same key again, and a chain
+    ("receipt-declassified-in-a-loop", _main(
+        'let k = env("SABLINE_GATE_VALUE", "")\nlet i = 0\n'
+        'while i < 25 {\n    let shown = declassify(k, "counted in a loop")\n'
+        '    i = i + 1\n}\n'
+        'print(declassify(k, "one reason") + declassify(k, "another, on one line"))\n'
+        'print(length(declassify(k, "a length")))',
+        uses="io, env, declassify"), {"allow": "io,env,declassify"}),
+    ("receipt-hmac-under-many-keys", _main(
+        'let k = env("SABLINE_GATE_VALUE", "")\nlet i = 0\n'
+        'while i < 20 {\n    print(hmac_sha256(k + to_text(i), "m"))\n'
+        '    i = i + 1\n}\n'
+        'print(hmac_sha256(k + "0", "again"))\n'
+        'print(hmac_sha256_chain(k, ["a", "b"]))',
+        uses="io, env, declassify"), {"allow": "io,env,declassify"}),
+    # what each grant let through, counted, two grants of one effect
+    ("receipt-grants-counted", _main(
+        _reads("{DATA}/a.txt", "{DATA}/a.txt", "{DATA}/sub/deep.txt") + "\n"
+        'write_file("{OUT}/g.txt", "x")\nwrite_file("{OUT}/g.txt", "y")\n'
+        'print(file_exists("{OUT}/g.txt"))', uses="io, fs"),
+     {"allow": "io,fs:read:{DATA}@5,fs:write:{OUT},fs:read:{OUT}"}),
+    # how a run ended: its own status, refused before it began, stopped
+    # by the step limit with what it had used until then
+    ("receipt-exit-with-a-status", _main('print("x")\nexit_with(3)'),
+     {"allow": "io"}),
+    ("receipt-exit-with-nothing-wrong", _main('print("x")\nexit_with(0)'),
+     {"allow": "io"}),
+    ("receipt-refused-an-effect", _main('print(now())', uses="io, clock"),
+     {"allow": "io"}),
+    # a frozen clock said as an instant: before 1970 and after 3001, which the
+    # reference's receipt could not say on Windows until 9.0, the two ends of
+    # what it can, and past them, which has no receipt
+    ("receipt-frozen-in-1960", _main("print(now())", uses="io, clock"),
+     {"allow": "io,clock", "freeze_time": -315619200}),
+    ("receipt-frozen-in-4000", _main("print(now())", uses="io, clock"),
+     {"allow": "io,clock", "freeze_time": 64060588800}),
+    ("receipt-frozen-at-the-first-instant", _main("print(now())", uses="io, clock"),
+     {"allow": "io,clock", "freeze_time": -62135596800}),
+    ("receipt-frozen-at-the-last-instant", _main("print(now())", uses="io, clock"),
+     {"allow": "io,clock", "freeze_time": 253402300799}),
+    ("receipt-frozen-past-an-instant", _main("print(now())", uses="io, clock"),
+     {"allow": "io,clock", "freeze_time": 253402300800}),
+    ("receipt-of-a-run-that-does-not-end", _main(
+        'let k = env("SABLINE_GATE_VALUE", "")\n'
+        'while true {\n    let shown = declassify(k, "until it is stopped")\n}',
+        uses="io, env, declassify"), {"allow": "io,env,declassify"}),
 )

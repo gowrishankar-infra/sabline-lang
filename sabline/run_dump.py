@@ -71,12 +71,35 @@ other), and the operating system's confinement (M4).
 Text is compared as text - code points, lone surrogates included - and
 written as ASCII JSON, so a document says exactly what was printed
 whatever the console would have made of it.
+
+**The receipt** (M3, third checkpoint). Each run's document is followed in
+the stream by its sabline.receipt/1 Statement - what `sabline <file>
+--receipt FILE` writes (cli.py's `_cli_run_with_receipt`), recorded the
+same way, of the same run: its subjects by digest, the budget, the run's
+parameters, what each effect and grant let through, every refusal and
+declassification by line and count, and how it ended. `null` where the
+command line would write none: a budget that does not parse, and a Python
+exception that escaped the run. Three things differ from a receipt the
+command line writes, each because of what the run document fixes:
+nothing is asked of the operating system, so the confinement is `none`
+with the reason that says so, in both runtimes; a run the step limit stops
+is recorded as a timeout (E610) and one the size limit stops as out of
+memory (E611), which is how each would have ended without the limit, with
+what it used and refused until then; and a frozen clock outside the
+years 1 to 9999, which an instant in a receipt cannot say, has no
+receipt. check_agreement.py
+compares the receipts after normalising exactly plan/9.0.md's list - the
+producer's name and version, startedAt, wall_time_ms, a `<source>`
+subject's name, and the confinement fields by rule - and nothing else.
 """
 import contextlib
+import hashlib
 import io
 import json
 import os
+import posixpath
 import sys
+import time
 from typing import Any
 
 from . import state as _state
@@ -88,6 +111,9 @@ from .errors import SablineError, _too_deep_error
 from .loader import load_program
 from .parser import Parser
 from .pool import reset_program_state
+from .receipts import _receipt_subjects, _run_parameters, receipt_statement
+from .recorder import _note_error, _note_stop, _RunRecorder, _utc_now_ms
+from .results import Problem, RunResult
 from .runtime import SizeLimit, StepLimit, interpret
 from .tables import DEFAULT_ALLOW
 from .values import FailSignal
@@ -102,8 +128,9 @@ the budget, seed, frozen clock and read ceiling to run it under:
 The canonical run document: what `sabline <file>` does with each program,
 without the prover, native code or the operating system's confinement,
 under the budget io with a fixed input, fixed arguments, a step limit and
-a size limit, which check_agreement.py compares with sabline-rt's. rt/README.md states
-the format. It is not a stable interface and nothing else reads it.
+a size limit, which check_agreement.py compares with sabline-rt's - each
+followed by the run's receipt. rt/README.md states the format. It is not a
+stable interface and nothing else reads it.
 
 Exit 0 when every program ran to its end with status 0, 1 when one did
 not, 2 when the command line itself was wrong."""
@@ -113,8 +140,9 @@ not, 2 when the command line itself was wrong."""
 RUN_VERSION = 2
 
 # The header of the framed stream `--list` writes; the records are framed
-# as the AST dump's are.
-BATCH_HEADER = "sabline.run-batch/1"
+# as the AST dump's are, two for each program: its run document, then its
+# receipt (2, from the receipt).
+BATCH_HEADER = "sabline.run-batch/2"
 
 # What read_line and ask read. Three lines and then the end of the input,
 # so that a loop over the input runs and then leaves, and one that waits
@@ -151,6 +179,20 @@ def run_document(path: str, allow: str | None = None, deny: str | None = None,
     """The document for one program, run as `sabline <path>` runs it, with
     the five things above fixed - the budget, seed, clock and read ceiling
     as given - and the three left out."""
+    return run_and_receipt(path, allow=allow, deny=deny, seed=seed,
+                           freeze_time=freeze_time, max_read=max_read,
+                           environ=environ)[0]
+
+
+def run_and_receipt(path: str, allow: str | None = None,
+                    deny: str | None = None, seed: int | None = None,
+                    freeze_time: int | None = None,
+                    max_read: int | None = None,
+                    environ: dict[str, str] | None = None
+                    ) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """The run document, and the receipt of the same run (the module's
+    docstring says how it differs from the command line's), or None where
+    the command line writes none."""
     if sys.getrecursionlimit() < RECURSION_LIMIT:
         try:
             sys.setrecursionlimit(RECURSION_LIMIT)
@@ -168,9 +210,18 @@ def run_document(path: str, allow: str | None = None, deny: str | None = None,
     except BudgetError:
         document["raised"] = "BudgetError"
         document["exit"] = None
-        return document
+        return document, None
+    # read before the run, as the command line reads it for the receipt
+    try:
+        with open(path, "rb") as fh:
+            entry_bytes = fh.read()
+    except OSError:
+        entry_bytes = b""
     reset_program_state(budget)
     set_run_params(seed, freeze_time)
+    recorder = _RunRecorder()
+    loaded: list[Any] = []
+    limit = None
     overlaid = {name: os.environ.get(name) for name in environ or {}}
     os.environ.update(environ or {})
     ceiling = _state.MAX_READ_BYTES
@@ -180,14 +231,16 @@ def run_document(path: str, allow: str | None = None, deny: str | None = None,
     vars(_state)["_STEP_LIMIT"] = STEPS
     vars(_state)["_SIZE_LIMIT"] = SIZE
     vars(_state)["BEFORE_FIRST_STATEMENT"] = None
+    vars(_state)["RUN_RECORDER"] = recorder
     out, err = io.StringIO(), io.StringIO()
     old_stdin = sys.stdin
     running = False
+    started_at, t0 = _utc_now_ms(), time.monotonic()
     try:
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             sys.stdin = io.StringIO(STDIN)
             try:
-                funcs, records = load_program(path)
+                funcs, records = load_program(path, loaded=loaded)
                 errors: list[SablineError] = []
                 check_effects(funcs, errors)
                 check_types(funcs, records, errors)
@@ -202,31 +255,44 @@ def run_document(path: str, allow: str | None = None, deny: str | None = None,
                     unique.sort(key=lambda e: (e.file or path, e.line))
                     document["refused"] = [_error(e, path) for e in unique]
                     document["exit"] = 1
+                    _note_stop(unique[0].code, unique[0].line)
                 else:
+                    recorder.compiled = True
                     running = True
                     interpret(funcs, {})
             except SystemExit as e:
                 document["exit"] = (e.code if isinstance(e.code, int)
                                     else 0 if e.code is None else 1)
             except SablineError as e:
+                _note_error(e)
                 document["error"] = _error(e, path)
                 document["exit"] = 1
             except RecursionError:
                 deep = _too_deep_error(running)
+                _note_error(deep)
                 document["error"] = _error(deep, path)
                 document["exit"] = 1
             except StepLimit as e:
                 document["stopped"] = e.line
                 document["stopped_by"] = "steps"
                 document["exit"] = None
+                limit = "steps"
             except SizeLimit as e:
                 document["stopped"] = e.line
                 document["stopped_by"] = "size"
                 document["exit"] = None
+                limit = "size"
             except (FailSignal, Exception) as e:   # a defect in the reference
                 document["raised"] = type(e).__name__
                 document["exit"] = None
+        wall_time_ms = (time.monotonic() - t0) * 1000
+        # what the receipt reads of the run, before it is all put back
+        recorder.close()
+        effects_used = dict(_state.EFFECT_USES)
+        parameters_of = (_state.SEED, _state.FROZEN_TIME)
+        read_ceiling = _state.MAX_READ_BYTES
     finally:
+        vars(_state)["RUN_RECORDER"] = None
         sys.stdin = old_stdin
         vars(_state)["_STEP_LIMIT"] = None
         vars(_state)["_SIZE_LIMIT"] = None
@@ -239,7 +305,32 @@ def run_document(path: str, allow: str | None = None, deny: str | None = None,
         reset_program_state(Budget.parse(DEFAULT_ALLOW))
     document["stdout"] = out.getvalue()
     document["stderr"] = err.getvalue()
-    return document
+    if document["raised"] is not None:
+        return document, None                  # the command line wrote none
+    name = posixpath.normpath(path.replace(os.sep, "/"))
+    if loaded:
+        recorder.subjects = _receipt_subjects(path, name, entry_bytes, loaded)
+    stop = recorder.stop or {}
+    status = document["exit"]
+    result = RunResult(status == 0 and not stop, "", "",
+                       [Problem(stop["code"], "", stop.get("line"), path, [])]
+                       if stop else [], None, status,
+                       timed_out=limit == "steps",
+                       out_of_memory=limit == "size",
+                       effects_used=effects_used)
+    try:
+        # nothing was asked of the operating system: the confinement is
+        # none, and says why (the module's docstring)
+        parameters = _run_parameters(*parameters_of, None, None,
+                                     confinement={})
+    except (ValueError, OverflowError, OSError):
+        return document, None                  # no instant: no receipt
+    parameters["max_read_bytes"] = read_ceiling
+    receipt = receipt_statement(
+        recorder, name=name, entry_bytes=entry_bytes, budget=budget.spec(),
+        parameters=parameters, result=result, started_at=started_at,
+        wall_time_ms=wall_time_ms)
+    return document, receipt
 
 
 def run_dump_main(argv: Any) -> int:
@@ -266,11 +357,12 @@ def run_dump_main(argv: Any) -> int:
             if path.startswith("{"):
                 given = json.loads(path)
                 path = given.pop("path")
-            document = run_document(path, **given)
+            document, receipt = run_and_receipt(path, **given)
             every = every and document["exit"] == 0
-            body = canonical(document).encode("ascii")
-            _out(f"--- {len(body)} {path}\n".encode("utf-8"))
-            _out(body + b"\n")
+            for record in (document, receipt):
+                body = canonical(record).encode("ascii")
+                _out(f"--- {len(body)} {path}\n".encode("utf-8"))
+                _out(body + b"\n")
         return 0 if every else 1
     print(USAGE, file=sys.stderr)
     return 2

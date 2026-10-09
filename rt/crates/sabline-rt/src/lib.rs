@@ -9,8 +9,10 @@
 //! budget, every builtin spent against it, and the work of every builtin
 //! short of the network, Python and a tool ([`interp`], [`host`]). The work
 //! of those three is not ported yet; a budget that does not grant them
-//! refuses them first, as the reference does. It does not prove, does not
-//! hold a budget at the operating system and does not write a receipt.
+//! refuses them first, as the reference does. It records each run's
+//! receipt ([`receipt`]) into the run document the gate compares. It does
+//! not prove, does not hold a budget at the operating system, and has no
+//! command that runs a program for you.
 //! Do not use it to decide whether a program is safe to run: the Python
 //! package is what does that, and it is the reference.
 //!
@@ -22,7 +24,7 @@
 //! the gate holds to the same grants, or the same refusal; and a run of
 //! every program under the budget `io`, and of every program written for a
 //! budget under its own, prints what the reference prints, ends with its
-//! status and stops with its error.
+//! status, stops with its error and records its receipt.
 //! `check_agreement.py` is what says so;
 //! rt/README.md says how to run it.
 //!
@@ -72,6 +74,7 @@ pub mod parser;
 pub mod pyjson;
 pub mod pypath;
 pub mod pyrepr;
+pub mod receipt;
 pub mod run_dump;
 pub mod show;
 pub mod source;

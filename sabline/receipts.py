@@ -49,6 +49,24 @@ def _confinement_fields(confinement: Any) -> dict[str, Any]:
             "os_policy_sha256": said.get("policy_sha256")}
 
 
+def _instant(epoch: int) -> str:
+    """Epoch seconds as RFC 3339 in UTC, to the second, for any instant in
+    the years 1 to 9999; ValueError outside them. Calendar arithmetic, not
+    `datetime.fromtimestamp`, which asks the C runtime's gmtime: on Windows
+    that stops at 1969-12-31T12:00:00Z and 3001-01-19T21:59:59Z, and until
+    9.0 a receipt of a run frozen outside those ended in an OSError
+    traceback there, after the run, with the receipt's file left empty."""
+    import datetime
+    try:
+        when = (datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+                + datetime.timedelta(seconds=int(epoch)))
+    except OverflowError:
+        raise ValueError(f"the frozen clock, {epoch}, is not an instant in "
+                         f"the years 1 to 9999")
+    return (f"{when.year:04d}-{when.month:02d}-{when.day:02d}T"
+            f"{when.hour:02d}:{when.minute:02d}:{when.second:02d}Z")
+
+
 def _run_parameters(seed: Any, freeze_time: Any, timeout: Any, max_memory_mb: Any,
                     confinement: Any = None) -> dict[str, Any]:
     """What a run was given besides its budget, as its receipt says it.
@@ -56,15 +74,12 @@ def _run_parameters(seed: Any, freeze_time: Any, timeout: Any, max_memory_mb: An
     the report of what the operating system held (sabline/confine.py); not
     given, it is what was applied to this process, and none when nothing
     was."""
-    import datetime
     from . import confine as _confine
     frozen = _frozen_epoch(freeze_time)
     if confinement is None:
         confinement = _confine.current() or _state.WORKER_CONFINEMENT
     return {"seed": None if seed is None else int(seed),
-            "freeze_time": None if frozen is None else
-            datetime.datetime.fromtimestamp(frozen, datetime.timezone.utc)
-            .strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "freeze_time": None if frozen is None else _instant(frozen),
             "timeout": timeout,
             "max_memory_mb": (None if max_memory_mb is None
                               else int(max_memory_mb)),

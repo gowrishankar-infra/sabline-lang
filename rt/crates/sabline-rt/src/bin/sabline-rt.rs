@@ -173,8 +173,9 @@ fn check_list_of(
 }
 
 /// The header of the framed stream `run --list` writes; the records are
-/// framed as `ast --list`'s are.
-const RUN_BATCH_HEADER: &str = "sabline.run-batch/1";
+/// framed as `ast --list`'s are, two for each program: its run document,
+/// then its receipt (2, from the receipt).
+const RUN_BATCH_HEADER: &str = "sabline.run-batch/2";
 
 fn run_list_of(
     dir: String,
@@ -191,12 +192,15 @@ fn run_list_of(
             }
             let (path, given) = sabline_rt::run_dump::Given::of_line(line)?;
             let path = path.as_str();
-            let document = sabline_rt::run_dump::run_document_given(path, &dir, &given);
+            let (document, receipt) =
+                sabline_rt::run_dump::run_and_receipt(path, &dir, &given);
             every &= sabline_rt::run_dump::ran_clean(&document);
-            let body = document.canonical();
-            out(format!("--- {} {path}\n", body.len()).as_bytes())?;
-            out(body.as_bytes())?;
-            out(b"\n")?;
+            for record in [document, receipt] {
+                let body = record.canonical();
+                out(format!("--- {} {path}\n", body.len()).as_bytes())?;
+                out(body.as_bytes())?;
+                out(b"\n")?;
+            }
         }
         Ok(if every { ExitCode::SUCCESS } else { ExitCode::from(1) })
     }

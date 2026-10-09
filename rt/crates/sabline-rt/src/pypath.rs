@@ -189,6 +189,33 @@ pub mod nt {
         }
     }
 
+    /// `ntpath.relpath(path, start)`, against `cwd`: `None` where CPython
+    /// raises `ValueError`, because the two are on different drives. Each
+    /// part is compared as `normcase` has it, so `C:\A` is `c:\a`.
+    pub fn relpath(path: &str, start: &str, cwd: &str) -> Option<String> {
+        let (start_drive, _, start_rest) = splitroot(&abspath(&normpath(start), cwd));
+        let (path_drive, _, path_rest) = splitroot(&abspath(&normpath(path), cwd));
+        if normcase(&start_drive) != normcase(&path_drive) {
+            return None;
+        }
+        let parts = |rest: &str| -> Vec<String> {
+            if rest.is_empty() {
+                Vec::new()
+            } else {
+                rest.split(SEP).map(str::to_string).collect()
+            }
+        };
+        let (start_list, path_list) = (parts(&start_rest), parts(&path_rest));
+        let shared = start_list
+            .iter()
+            .zip(&path_list)
+            .take_while(|(a, b)| normcase(a) == normcase(b))
+            .count();
+        let mut rel = vec!["..".to_string(); start_list.len() - shared];
+        rel.extend(path_list[shared..].iter().cloned());
+        Some(if rel.is_empty() { ".".to_string() } else { rel.join("\\") })
+    }
+
     /// What `ntpath.realpath` asks of the system.
     pub trait Disk {
         /// `_getfinalpathname(path)`: the path the system holds the file
@@ -379,6 +406,19 @@ pub mod posix {
         }
     }
 
+    /// `posixpath.relpath(path, start)`, against `cwd`. It never fails:
+    /// `Option` only so that it reads as `nt::relpath` does.
+    pub fn relpath(path: &str, start: &str, cwd: &str) -> Option<String> {
+        let parts = |p: &str| -> Vec<String> {
+            abspath(p, cwd).split('/').filter(|x| !x.is_empty()).map(str::to_string).collect()
+        };
+        let (start_list, path_list) = (parts(start), parts(path));
+        let shared = start_list.iter().zip(&path_list).take_while(|(a, b)| a == b).count();
+        let mut rel = vec!["..".to_string(); start_list.len() - shared];
+        rel.extend(path_list[shared..].iter().cloned());
+        Some(if rel.is_empty() { ".".to_string() } else { rel.join("/") })
+    }
+
     /// What `posixpath.realpath` asks of the system.
     pub trait Disk {
         /// Whether `os.lstat(path)` says a symbolic link; `None` when
@@ -476,6 +516,12 @@ pub fn abspath(path: &str) -> String {
     os_path::abspath(path, &getcwd())
 }
 
+/// `os.path.relpath(path, start)`: `None` where CPython raises
+/// `ValueError` (on Windows, two drives).
+pub fn relpath(path: &str, start: &str) -> Option<String> {
+    os_path::relpath(path, start, &getcwd())
+}
+
 /// The disk itself, as each flavour's `realpath` asks it.
 pub struct RealDisk;
 
@@ -563,6 +609,12 @@ mod tests {
         assert!(nt::isabs(r"D:\a"));
         assert!(!nt::isabs("D:a"));
         assert!(!nt::isabs("a"));
+        let rel = |p: &str, start: &str| nt::relpath(p, start, r"C:\w");
+        assert_eq!(rel(r"C:\a\B\c.vel", r"c:\A\b").as_deref(), Some("c.vel"));
+        assert_eq!(rel(r"C:\a\x.vel", r"C:\a\b\c").as_deref(), Some(r"..\..\x.vel"));
+        assert_eq!(rel(r"C:\a", r"C:\a").as_deref(), Some("."));
+        assert_eq!(rel("x.vel", r"C:\w").as_deref(), Some("x.vel"));
+        assert_eq!(rel(r"D:\a", r"C:\a"), None, "ValueError: on mount 'D:', start on 'C:'");
     }
 
     #[test]
@@ -583,6 +635,11 @@ mod tests {
         assert_eq!(posix::normpath("//x"), "//x");
         assert_eq!(posix::normpath("///x"), "/x");
         assert_eq!(posix::abspath("a.vel", "/w"), "/w/a.vel");
+        let rel = |p: &str, start: &str| posix::relpath(p, start, "/w");
+        assert_eq!(rel("/a/b/c.vel", "/a/x/y").as_deref(), Some("../../b/c.vel"));
+        assert_eq!(rel("/a", "/a").as_deref(), Some("."));
+        assert_eq!(rel("/", "/a/b").as_deref(), Some("../.."));
+        assert_eq!(rel("x.vel", "/w").as_deref(), Some("x.vel"));
     }
 
     /// A disk of directories and links, the one CPython was given with

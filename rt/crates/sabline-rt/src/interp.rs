@@ -34,6 +34,7 @@ use crate::loader::unknown_function;
 use crate::nodes::{Expr, Function, RecordDef, Stmt};
 use crate::pyjson;
 use crate::pypath::{self, os_path};
+use crate::receipt::Recorder;
 use crate::show::{expr_str, nice_name};
 use crate::tables::{
     builtin, is_builtin, is_new_builtin, CURRENCIES, MONEY_BUILTINS, ROUNDING,
@@ -213,6 +214,9 @@ pub struct Runtime {
     /// order first used: `GRANT_USES`, what a receipt's `grants_used` is
     /// made from.
     pub grant_uses: Vec<(String, u64)>,
+    /// What a receipt records while the program runs: each declassification
+    /// and each HMAC's key, by line (`RUN_RECORDER`).
+    pub recorder: Recorder,
     /// The program's input and output.
     pub io: Io,
 }
@@ -256,6 +260,7 @@ impl Runtime {
             fs_count: 0,
             effect_uses: HashMap::new(),
             grant_uses: Vec::new(),
+            recorder: Recorder::default(),
             io,
         }
     }
@@ -1426,10 +1431,16 @@ impl Runtime {
                 Ok(Value::Int(rng.randrange(n as u64) as i64))
             }
             // the effect was spent above; a Secret is a compile-time
-            // distinction, so here the value is simply itself (8.1)
-            "declassify" => Ok(arg(0)),
+            // distinction, so here the value is simply itself (8.1). A
+            // receipt records that it happened, where, and the reason
+            // written in the call - never the value
+            "declassify" => {
+                self.recorder.note_declassify(to_text(&arg(1)), line);
+                Ok(arg(0))
+            }
             "hmac_sha256" | "hmac_sha256_chain" => {
-                let mut key = digest::utf8_surrogatepass(&text_of(&arg(0))?);
+                let first = digest::utf8_surrogatepass(&text_of(&arg(0))?);
+                let mut key = first.clone();
                 let messages =
                     if name == "hmac_sha256" { vec![arg(1)] } else { iterate(&arg(1))? };
                 if messages.is_empty() {
@@ -1445,6 +1456,9 @@ impl Runtime {
                     let m = digest::utf8_surrogatepass(&text_of(message)?);
                     key = digest::hmac_sha256(&key, &m).to_vec();
                 }
+                // a receipt names the key by its fingerprint, and never
+                // otherwise (8.5)
+                self.recorder.note_hmac(&first, line);
                 Ok(Value::text(&digest::hex(&key)))
             }
             "file_exists" => {

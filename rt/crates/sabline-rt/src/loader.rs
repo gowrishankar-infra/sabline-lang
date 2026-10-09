@@ -47,6 +47,7 @@ pub struct Loaded {
 struct Loader<'a> {
     install_dir: &'a str,
     loaded: Loaded,
+    files: &'a mut Vec<String>,
     fn_src: HashMap<String, String>,
     rec_src: HashMap<String, String>,
     visited: HashSet<String>,
@@ -58,9 +59,21 @@ struct Loader<'a> {
 /// `install_dir` is where the shipped standard library is looked for, as
 /// `install_dir/stdlib/<name>`.
 pub fn load_program(entry: &str, install_dir: &str) -> Answer<Loaded> {
+    load_program_recording(entry, install_dir, &mut Vec::new())
+}
+
+/// `load_program(entry, loaded=files)`: the same, and the path of each file
+/// read put in `files` in the order it was read - the entry first - whether
+/// or not the program then loads. A receipt names them (9.0, M3).
+pub fn load_program_recording(
+    entry: &str,
+    install_dir: &str,
+    files: &mut Vec<String>,
+) -> Answer<Loaded> {
     let mut loader = Loader {
         install_dir,
         loaded: Loaded::default(),
+        files,
         fn_src: HashMap::new(),
         rec_src: HashMap::new(),
         visited: HashSet::new(),
@@ -126,6 +139,8 @@ impl Loader<'_> {
                 None => refused,
             });
         };
+        // read, so named by a receipt, whether or not it parses
+        self.files.push(path.to_string());
         let source = translate_newlines(text);
         let parsed = lex(&source, false).and_then(|tokens| {
             Parser::continuing(tokens, self.lambda_n).parse_program_counted()

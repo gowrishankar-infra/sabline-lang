@@ -251,5 +251,94 @@ class APromiseNamesItsOwnFile(Run):
         self.assertEqual(self.where(err), ("E600", "p.vel", 3))
 
 
+class ReceiptOfARun(Run):
+    """The run document's receipt (M3, third checkpoint): what `sabline
+    <file> --receipt` writes of the same run, with nothing asked of the
+    operating system, a limit's stop recorded as the end it stands for,
+    and none where the command line writes none."""
+
+    def receipt(self, source: str, **given: Any) -> Any:
+        path = os.path.join(self.dir, "p.vel")
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(source)
+        return run_dump.run_and_receipt(path, **given)
+
+    def test_it_is_what_the_command_line_writes(self) -> None:
+        import json
+        import subprocess
+        import sys
+        source = main_of(
+            'let k = env("PATH", "")\nlet i = 0\n'
+            'while i < 3 {\n    print(length(hmac_sha256(k, "m")))\n    i = i + 1\n}\n'
+            'print(length(declassify(k, "a length")))\nprint(now())',
+            uses="io, env, declassify, clock")
+        _, ours = self.receipt(source, allow="io,env,declassify")
+        written = os.path.join(self.dir, "r.json")
+        subprocess.run([sys.executable, os.path.join(_support.REPO, "sabline.py"),
+                        "p.vel", "--allow", "io,env,declassify", "--no-confine",
+                        "--receipt", written], cwd=self.dir, capture_output=True)
+        with open(written, encoding="utf-8") as fh:
+            theirs = json.load(fh)
+        for doc in (ours, theirs):
+            for key in ("startedAt", "wall_time_ms", "run_parameters"):
+                doc["predicate"].pop(key)
+            doc["subject"][0]["name"] = "p.vel"
+        self.assertEqual(ours, theirs)
+        self.assertEqual(ours["predicate"]["exit"],
+                         {"status": 1, "outcome": "refused", "code": "E310"})
+        self.assertEqual([d["times"] for d in ours["predicate"]["declassifications"]],
+                         [3, 1])
+
+    def test_nothing_is_asked_of_the_operating_system(self) -> None:
+        _, receipt = self.receipt(main_of('print("x")'))
+        said = receipt["predicate"]["run_parameters"]
+        self.assertEqual(
+            {k: said[k] for k in ("confinement", "confinement_reason",
+                                  "confinement_layers", "os_policy_sha256")},
+            {"confinement": "none",
+             "confinement_reason": "nothing was asked of the operating system",
+             "confinement_layers": [], "os_policy_sha256": None})
+
+    def test_a_limits_stop_is_the_end_it_stands_for(self) -> None:
+        _, steps = self.receipt(main_of("while true {\n    print(1)\n}"))
+        self.assertEqual(steps["predicate"]["exit"],
+                         {"status": None, "outcome": "timeout", "code": "E610"})
+        # main's own call is the first of the 20,000 steps
+        self.assertEqual(steps["predicate"]["effects_used"], {"io": 19999})
+        _, size = self.receipt(main_of('let s = "ab"\nwhile true {\n    s = s + s\n}'))
+        self.assertEqual(size["predicate"]["exit"]["outcome"], "out_of_memory")
+
+    def test_none_where_the_command_line_writes_none(self) -> None:
+        self.assertIsNone(self.receipt(main_of('print("x")'), allow="io,fs:nowhere")[1])
+        # 10000-01-01T00:00:00Z: past what an instant in a receipt can say
+        self.assertIsNone(self.receipt(main_of('print("x")'),
+                                       freeze_time=253402300800)[1])
+
+    def test_a_frozen_clock_is_said_on_every_system(self) -> None:
+        # until 9.0, on Windows, a receipt of a run frozen before
+        # 1969-12-31T12:00Z or after 3001-01-19T21:59:59Z was an OSError
+        # traceback once the run had ended, and an empty receipt file
+        import json
+        import subprocess
+        import sys
+        for epoch, said in ((-315619200, "1960-01-01T00:00:00Z"),
+                            (64060588800, "4000-01-01T00:00:00Z"),
+                            (253402300799, "9999-12-31T23:59:59Z"),
+                            (-62135596800, "0001-01-01T00:00:00Z")):
+            _, receipt = self.receipt(main_of('print("x")'), freeze_time=epoch)
+            self.assertEqual(receipt["predicate"]["run_parameters"]["freeze_time"],
+                             said)
+        written = os.path.join(self.dir, "r.json")
+        done = subprocess.run(
+            [sys.executable, os.path.join(_support.REPO, "sabline.py"), "p.vel",
+             "--freeze-time", "1960-01-01T00:00:00Z", "--no-confine",
+             "--receipt", written], cwd=self.dir, capture_output=True,
+            text=True, encoding="utf-8")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        with open(written, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["predicate"]["run_parameters"]
+                             ["freeze_time"], "1960-01-01T00:00:00Z")
+
+
 if __name__ == "__main__":
     unittest.main()
