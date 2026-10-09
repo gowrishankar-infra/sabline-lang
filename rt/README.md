@@ -8,13 +8,15 @@ there is a second runtime and what stays in the Python package;
 (effects, types with `Secret of T` and `Money of C`, the rules for
 `main`, and each loop's termination verdict) and the budget parser, and
 from M3 the interpreter**: a program run under a budget, every builtin
-spent against it, and the work of every builtin that is pure or is the
-console's. The work of a builtin that reads a file, reaches the network,
-reads a clock, the environment or randomness, calls Python or a tool, or
-signs is not ported yet: under a budget that does not grant its effect -
-`io`, the default, grants none of them - it is refused before its work
-would start, exactly as the reference refuses it, and that is all a run
-here reaches of it. It does not prove, does not hold a budget at the
+spent against it, and the work of every builtin short of the network,
+Python and a tool - the pure ones, the console's, a file read, written
+and looked for under the budget's grants, counts, read ceiling and
+credential rule, the clock and randomness (frozen and seeded as
+`--freeze-time` and `--seed` give them), the environment, `declassify`
+and the two HMACs. The work of a builtin that reaches the network, calls
+Python or a tool is not ported yet: under a budget that does not grant
+its effect it is refused before its work would start, exactly as the
+reference refuses it. It does not prove, does not hold a budget at the
 operating system and does not write a receipt, so it cannot tell you
 whether a program is safe to run. The Python package
 is what does that, and where the two disagree the Python package is right
@@ -29,7 +31,8 @@ same line; and `sabline check` and sabline-rt find the same problems in it,
 stage by stage, in the same order, with the same messages, and give each
 loop the same verdict for the same reason; and run under the budget `io`,
 with the same input, it prints the same text to each channel, ends with
-the same status and stops with the same error. And for every budget the
+the same status and stops with the same error - and so does every program
+written for a budget, run under its own in a tree of files. And for every budget the
 gate holds - sabline-spec's L1 budget cases, what is made from them, and
 the edges - both parse it to the same grants and counts, or refuse it with
 the same words.
@@ -48,19 +51,20 @@ the same words.
       truncations of every example: 1830 programs
       the adversarial corpus: 113 programs
       the checkers' corpus: 3785 programs
-      the runs' corpus: 200 programs
+      the runs' corpus: 222 programs
       paths that are not files: 2 programs
+      programs run under their own budgets: 106
       the L1 budget cases: 280 budgets
       their mutations: 2558 budgets
       the budgets' edges: 115 budgets
       paths through a tree: 14 budgets
-      (parsed and checked, not run: tests/error_messages/E611_run_memory_cap.vel - ...)
-      the parsers: 6774 compared, 6774 agree, 0 differ
-      the checkers: 6774 compared, 6774 agree, 0 differ
+      the parsers: 6798 compared, 6798 agree, 0 differ
+      the checkers: 6798 compared, 6798 agree, 0 differ
       the budget parser: 2967 compared, 2967 agree, 0 differ
-      the interpreters: 6773 compared, 6773 agree, 0 differ
+      the interpreters: 6798 compared, 6798 agree, 0 differ
+      the interpreters, under their budgets: 106 compared, 106 agree, 0 differ
       the builtin tables: 1 compared, 1 agree, 0 differ
-    agreement gate: 23289 comparisons, 23289 agreements, 0 differences
+    agreement gate: 23468 comparisons, 23468 agreements, 0 differences
 
 ## Building it
 
@@ -253,17 +257,18 @@ The fourth comparison surface (9.0, M3): what a run of one program did.
     sabline-rt run --install-dir <dir> --list <paths-file> from this crate
 
 Each program is run as `sabline <file>` runs it - the checkers as the
-command line runs them, then `main` - with four things fixed so that the
+command line runs them, then `main` - with five things fixed so that the
 same program gives the same document on every machine and in both
 runtimes, and three left out because sabline-rt does not have them in
 9.0:
 
 | Fixed | As |
 |---|---|
-| the budget | `io`, what a run with no `--allow` gets |
+| the budget | `io`, what a run with no `--allow` gets, unless the list's line gives one |
 | the input | `1\n2\nthree\n`, read as the library's `stdin=` is read |
 | the arguments | `["first", "2"]` |
 | a step limit | 20,000 calls and loop turns, after which the run is stopped where it is |
+| a size limit | 4,194,304 of what the run makes, counted as below, after which the run is stopped at the operation that passed it |
 
 | Left out | Because |
 |---|---|
@@ -277,24 +282,56 @@ taken it; a count of calls and loop turns stops it at the same one in
 both, so its output up to there is compared too. In the Python package
 it is `state._STEP_LIMIT`, `None` everywhere but `run-dump`.
 
+**The size limit** is its partner, for a program that grows without end:
+a text doubled forty times exhausts memory long before it makes 20,000
+calls, and how far each runtime gets before its machine stops it is the
+machine's. So both count what a run makes, the same way, and stop at the
+operation that takes the count past the limit - never by wall-clock time
+and never by real memory, whose cap stays the operating system's (E611,
+M4). What makes a value, and so is counted: a `+` that makes a text or a
+list; a list or a map written in the program; the answer of every builtin
+but `get`, `get_or` and `declassify`, which hand back a value the program
+already holds (and `to_text` of a text, which is itself); and the text
+`print` and `log` write and `ask` asks with, before it is written. A text
+counts its UTF-8 bytes, a lone surrogate three; a list or a map its items;
+anything else nothing. Every program the gate holds that ends makes less
+than a fortieth of the limit. In the Python package it is
+`state._SIZE_LIMIT` and `runtime.size_of`, `None` - nothing counted -
+everywhere but `run-dump`.
+
+**A line of the list** is a program's path, run as above; or a JSON object
+naming one with what a command line could add: `allow` and `deny` (the
+budget), `seed`, `freeze_time` (epoch seconds), `max_read` (the read
+ceiling, in bytes) and `environ` (variables set for the run over the
+process's environment, which is how the gate gives both runtimes the same
+`~`). The document does not repeat them; the gate gives both the same line.
+
 ```json
-{"run":1,"refused":null,"error":null,"exit":0,
- "stdout":"...","stderr":"...","stopped":null,"raised":null}
+{"run":2,"refused":null,"error":null,"exit":0,
+ "stdout":"...","stderr":"...","stopped":null,"stopped_by":null,
+ "raised":null}
 ```
 
 `refused` is the problems the check found, one each in file and line
 order, when it found any; `error` the error the run stopped with, its
-message quoting what the program held; `exit` the status, `null` when the
-step limit stopped it; `stdout` and `stderr` the text written to each,
+message quoting what the program held; `exit` the status, `null` when a
+limit stopped it; `stdout` and `stderr` the text written to each,
 compared as text - code points, a lone surrogate included - rather than
-as whatever bytes a console would have made of it; `stopped` the line the
-step limit stopped it at; and `raised` the name of a Python exception that
-escaped the reference, which is a defect there and a difference here. The
-stream is framed as the others are, with the header `sabline.run-batch/1`.
+as whatever bytes a console would have made of it; `stopped` the line a
+limit stopped it at and `stopped_by` which, `"steps"` or `"size"`; and
+`raised` the name of a Python exception that escaped the reference, which
+is a defect there and a difference here. The stream is framed as the
+others are, with the header `sabline.run-batch/1`.
 
-`check_agreement.py` runs every program it holds, and prints the ones it
-does not: `RUN_EXCLUDED`, each with its reason, and one today - a program
-that doubles a text forty times to be stopped by the memory cap it tests.
+`check_agreement.py` runs every program it holds, and would print the
+ones it does not: `RUN_EXCLUDED`, each with its reason, which is empty.
+Its one program until the size limit - a text doubled forty times, to be
+stopped by the memory cap it tests - is stopped by the size limit now, at
+the same operation in both. And it runs every program written for a
+budget under that budget - the runs' corpus's own table, check_sandbox.py's
+rows and sabline-spec's L2 cases, each of the last two whose budget grants
+only effects whose work is ported - in a tree of files made afresh for each
+runtime, with `~` the tree's home.
 
 ## What had to be written down to be copied
 
@@ -426,14 +463,41 @@ running program sees is CPython's object model (`src/value.rs`,
   CPython 3.11 is `a2b_base64`'s strict mode: 3.10 decodes padding at the
   start of a quad (`"YWJj=="`) that 3.11 and later refuse. The crate is
   3.11's and later; the gate holds no such text.
+* **What a run reaches of the machine is CPython's** (`src/host.rs`):
+  `env()` reads `os.environ`, which on Windows upper-cases every name -
+  `env("path", "")` finds `Path` - and leaves out the C runtime's hidden
+  `=C:` variables, and elsewhere decodes bytes as `os.fsdecode` does; `~`
+  is `os.path.expanduser`'s, `USERPROFILE` before `HOMEDRIVE` and
+  `HOMEPATH`; `random(n)` under a seed is `random.Random(seed).randrange`
+  - the Mersenne Twister seeded by `init_by_array` from the seed's
+  absolute value in 32-bit words, and `_randbelow`'s rejection loop over
+  `getrandbits`; a file is read as `open(path, encoding="utf-8")` reads
+  it, strictly, with universal newlines (`\r\n` and `\r` alone are `\n`)
+  and a byte-order mark kept; written as `open(path, "w")` writes it, each
+  `\n` this system's line end and the file emptied before a text that
+  cannot be encoded is refused; and an operating system's refusal to open
+  one is `OSError.strerror`'s words - the C library's `strerror`, or on
+  Windows the C runtime's text for the `errno` its `_dosmaperr` gives the
+  system's error.
+* **A file builtin is guarded as `budget.allow_path` guards it**:
+  `normcase(realpath(path))` against each grant's, the credential rule
+  (E318) before the ordinary one - the documented locations under `~`,
+  and any `.env`, `*.pem` or `*.key`, matched as `fnmatch` matches on this
+  system - then E313 with the directory to grant; the count (E315) spent
+  after the grant and before the work, so a failed read spends one; and
+  the read ceiling (E316) asked of `os.path.getsize` before the read.
 
-**Two defects in the reference were found by comparing runs** and fixed in
-the reference, as M1 fixed E000's message: a broken promise naming a record
+**Defects in the reference found by comparing runs** were fixed in the
+reference, as M1 fixed E000's message: a broken promise naming a record
 printed the record's memory address, so the same promise gave a different
-message on every run (`RecordValue` now has a `repr`); and one is not fixed
-and is recorded in `plan/9.0-m3-progress.md` - a function value printed or
-named in a message is written as Python writes the object, an address
-included, which this crate does not copy.
+message on every run (`RecordValue` now has a `repr`); a function value
+printed or named in a message was written as Python writes the object, an
+address included, and prints as `fn` and its name now (SPEC.md 12a); and
+`all_of` and `any_of` were Python's `all()` over a generator, so a function
+value reaching them again nested C calls and, from CPython 3.12, met the C
+recursion limit before the depth limit - the same program gave E609's
+"nested too deeply to print" at line 0 there and the depth limit's E609 on
+3.10. They loop now, and the depth limit fires on every CPython.
 
 ## No `unsafe`
 
@@ -523,9 +587,11 @@ recursion limit to 20,000 before it parses.
 | `src/bigint.rs` | a whole number of any size, for the values of a run past 64 bits |
 | `src/value.rs` | a running program's values, compared, hashed and written as CPython does |
 | `src/pyjson.rs` | `json.loads`, `json.dumps`, and `int()` and `float()` of a text |
-| `src/digest.rs` | SHA-256, hexadecimal, base64 and `url_encode` |
-| `src/interp.rs` | the interpreter, and every builtin's spending against the budget |
+| `src/digest.rs` | SHA-256, HMAC-SHA-256, hexadecimal, base64 and `url_encode` |
+| `src/host.rs` | what a run reaches of the machine, as CPython reaches it: `os.environ`, `~`, `random.Random`, a file's text, `OSError.strerror` |
+| `src/interp.rs` | the interpreter, every builtin's spending against the budget, the file grants, counts and ceiling, and the size limit |
 | `src/run_dump.rs` | what a run did, as the canonical run document |
 | `src/bin/sabline-rt.rs` | `sabline-rt ast`, `check`, `tables`, `budget` and `run` |
 | `tests/limits.rs` | the depth caps, and the stack they need |
+| `tests/runs.rs` | a library's function value under a name, how a function value prints, the size limit, a file grant |
 | `fuzz/` | the `cargo fuzz` targets |

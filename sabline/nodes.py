@@ -148,3 +148,11 @@ class Function:
     type_vars: list[str] = field(default_factory=list)
     is_lambda: bool = False
     captures: list[tuple[str, str]] = field(default_factory=list)   # [(name, type)]
+
+    def __repr__(self) -> str:
+        # A function is also a value a program holds, and this is how one
+        # prints - to_text, a broken promise's message, a list holding one:
+        # `fn` and its name, the lifted `fn#N` for one written inline (9.0,
+        # M3). It was the dataclass's repr, every field of the node, which
+        # no second runtime could be asked to write.
+        return f"fn {self.name}"

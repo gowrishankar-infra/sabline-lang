@@ -1,0 +1,7 @@
+import "lib.vel" as lib
+
+fn main() uses io {
+    print(lib.above([3, 4], 2))
+    let f = lib.adder(1)
+    print(f(2))
+}

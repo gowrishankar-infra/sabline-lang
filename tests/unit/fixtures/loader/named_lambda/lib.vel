@@ -1,0 +1,7 @@
+fn above(xs: List of Int, floor: Int) -> Bool {
+    return all_of(xs, fn(x: Int) -> Bool { return x > floor })
+}
+
+fn adder(n: Int) -> fn(Int) -> Int {
+    return fn(x: Int) -> Int { return x + n }
+}

@@ -185,11 +185,13 @@ fn run_list_of(
         let mut every = true;
         out(format!("{RUN_BATCH_HEADER}\n").as_bytes())?;
         for line in text.lines() {
-            let path = line.trim_end_matches('\r');
-            if path.is_empty() {
+            let line = line.trim_end_matches('\r');
+            if line.is_empty() {
                 continue;
             }
-            let document = sabline_rt::run_dump::run_document(path, &dir);
+            let (path, given) = sabline_rt::run_dump::Given::of_line(line)?;
+            let path = path.as_str();
+            let document = sabline_rt::run_dump::run_document_given(path, &dir, &given);
             every &= sabline_rt::run_dump::ran_clean(&document);
             let body = document.canonical();
             out(format!("--- {} {path}\n", body.len()).as_bytes())?;

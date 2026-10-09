@@ -669,8 +669,11 @@ outside the rules above.</p>
 <p>A plain import merges the imported file's functions and records, with
 duplicate names rejected. A named import prefixes that file's
 functions; the library's internal references are rewritten with it, so
-a library behaves identically from the inside. A local name may not
-shadow an import name (E514).</p>
+a library behaves identically from the inside. A function value the
+library writes inline is one of its functions and one of its references,
+and is prefixed with them (<code>geo.fn#1</code>); until 9.0 it was not, and a
+library that made one was refused under a name with E402. A local name
+may not shadow an import name (E514).</p>
 <p>Imports are resolved relative to the importing file, with the bundled
 standard library searched last. A file already in the program is not
 read again, so two files that import each other, or a file that
@@ -766,6 +769,15 @@ capture cannot smuggle behaviour past a signature.</p>
 function value fall back to runtime checks rather than being proven.
 That is the conservative direction, and a false promise on such a
 function is still caught while running.</p>
+<p>A function value prints as <code>fn</code> and its name: the name it was declared
+with, or for one written inline the name it was lifted to, <code>fn#1</code>
+(<code>geo.fn#1</code> from a library imported as <code>geo</code>), whether or not it carries
+values. That is what <code>print</code>, <code>log</code>, <code>to_text</code>, <code>format</code> and <code>+</code> with a
+text write, and what a broken promise's message shows of one, inside a
+list, a map or a record too: <code>[fn double, fn fn#1]</code>. Until 9.0 a broken
+promise's message showed a function's whole definition there, and a value
+carrying names printed, everywhere, as an object with an address that
+changed from run to run.</p>
 <h2 id="13a-early-loop-exit-considered-and-answered">13a. Early loop exit: considered, and answered <a class="anchor" href="#13a-early-loop-exit-considered-and-answered" aria-label="Link to this section">#</a></h2>
 <p>Sabline has no <code>break</code> or <code>continue</code>. An adversarial review argued the
 absence <em>hurts</em> the invariant story it presumably protects: exiting via

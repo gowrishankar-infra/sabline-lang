@@ -30,7 +30,9 @@ so this suite holds them to each other. It fails when:
 - a pre-release before the enforcement point is not one of the four
   named below, so the exemption cannot grow by accident;
 - a row names a version this checkout has no tag for (where this is a
-  git checkout; where it is not, that part says it skipped).
+  git checkout with tags; where it is not, that part says it skipped) -
+  but the version rt/Cargo.toml names, whose row is written before
+  release.yml tags it, as the pull request that releases it is merged.
 
 The four pre-releases published before the rule existed are exempt from
 the heading rule and from nothing else. They are NOT retitled: they
@@ -58,6 +60,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PLAN = HERE / "plan" / "9.0.md"
 CHANGELOG = HERE / "CHANGELOG.md"
+CRATE = HERE / "rt" / "Cargo.toml"
 TABLE_HEADING = "### Versions, and the milestone each one was in"
 
 # The heading rule begins here. A pre-release below it is exempt; one at
@@ -198,8 +201,18 @@ def tags() -> set[str] | None:
 
 # ---- the rules, as a function of the two texts -----------------------------
 
-def verdicts(plan: str, changelog: str,
-             have_tags: set[str] | None) -> list[tuple[str, str, bool, str]]:
+def crate_version() -> str | None:
+    """The version rt/Cargo.toml's workspace names, or None."""
+    try:
+        text = CRATE.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    m = re.search(r'^version = "([^"]+)"', text, re.MULTILINE)
+    return m.group(1) if m else None
+
+
+def verdicts(plan: str, changelog: str, have_tags: set[str] | None,
+             releasing: str | None = None) -> list[tuple[str, str, bool, str]]:
     """(rule, label, held, detail) for every rule, over these two texts.
 
     `rule` is the short name an injection names when it says which rule
@@ -304,8 +317,13 @@ def verdicts(plan: str, changelog: str,
         not late, late)
 
     if have_tags is not None:
-        untagged = [v for v in table_versions if f"v{v}" not in have_tags]
-        say("tags", "every version in the table has a tag in this checkout",
+        # but the one this commit releases: its row is written in the pull
+        # request, and release.yml tags it when the merge's tests pass -
+        # nobody tags by hand, so a row may wait for its tag
+        untagged = [v for v in table_versions if f"v{v}" not in have_tags
+                    and v != releasing]
+        say("tags", "every version in the table has a tag in this checkout, "
+            "but the one rt/Cargo.toml names, which release.yml tags",
             not untagged,
             f"no tag for {', '.join(untagged)}" if untagged else "")
     return out
@@ -412,13 +430,20 @@ def injections(plan: str, changelog: str) -> list[tuple[str, str, str, str]]:
                           "## 9.0.0-alpha.0 - The first one\n\nA pre-release."
                           "\n\n## 9.0.0-alpha.1 -", 1)))
 
-    # 9. A row for a version the CHANGELOG has never heard of.
+    # 9. A row for a version the CHANGELOG has never heard of: the one after
+    # the newest it has, which no entry can name yet. (It named alpha.7
+    # until alpha.7 was given an entry, and then caught it for the wrong
+    # reason: a row twice.)
+    released = [v for v, _ in changelog_entries(changelog)
+                if re.fullmatch(r"\d+\.\d+\.\d+-[a-z]+\.\d+", v)]
+    newest = max(released, key=version_key)
+    unreleased = re.sub(r"\d+$", lambda m: str(int(m.group(0)) + 1), newest)
     out.append((
-        "the table gains a row for 9.0.0-alpha.7, which was never released",
+        f"the table gains a row for {unreleased}, which was never released",
         "entry-for-each-row",
         plan.replace(a_row(plan, "9.0.0-alpha.4"),
                      a_row(plan, "9.0.0-alpha.4")
-                     + "\n| `9.0.0-alpha.7` | M3 | the tag. |"),
+                     + f"\n| `{unreleased}` | M3 | the tag. |"),
         changelog))
     return out
 
@@ -433,7 +458,8 @@ def main(argv: list[str] | None = None) -> int:
     if not only_self:
         print("the documents as they are")
         print("-" * 62)
-        for _, label, held, detail in verdicts(plan, changelog, have):
+        for _, label, held, detail in verdicts(plan, changelog, have,
+                                               crate_version()):
             ok(label, held, detail)
         if have is None:
             skip("every row's version is tagged",

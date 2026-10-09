@@ -63,11 +63,14 @@ SEARCH     (8.7) every page at the top has a title and a meta description
            directory, beside a PDF under 5 MB. The landing page links every
            guide, every comparison and the paper - and the incident
            catalogue's flagship page once it exists.
-STALE      (8.7) sitemap.xml, as committed, is not stale: no page's sources
-           changed in a commit that left sitemap.xml alone later than the
-           page's date says. It reads git's history, so a shallow clone
-           (test.yml's legs) skips it, and --require-chrome (site.yml, which
-           checks out the whole history) makes that skip wrong.
+STALE      (8.7; 9.0) sitemap.xml, as committed, is not stale: HEAD holds,
+           for every page, sources whose digest is the one the sitemap was
+           dated by (docs/sitemap-dates.json, as committed), and the date
+           that record gives it. A commit that changed a page's sources and
+           not the sitemap is stale; which UTC day a pull request merged on
+           is not read, nor is any commit but HEAD, so a shallow clone
+           checks it too. Without git it is skipped, which --require-chrome
+           (site.yml) makes wrong.
 EARLIER    no page names an earlier address of the site more often than
            the document it is made from; a predicate type's page may name
            the earlier spelling of its type, in the line that says so.
@@ -780,23 +783,23 @@ def sitemap_rows(xml: str) -> dict[str, str]:
                            r"</url>", xml))
 
 
-def stale_pages(committed: dict[str, str], sources: dict[str, tuple[str, ...]],
-                commits: list[tuple[str, set[str]]]) -> list[str]:
-    """The addresses whose sources changed, in a commit that left
-    docs/sitemap.xml alone, on a day later than the committed sitemap's date
-    for them. `commits` is (day, files) for every commit in the history."""
-    last: dict[str, str] = {}
-    for day, files in commits:
-        if "docs/sitemap.xml" in files:
-            continue
-        for url, wanted in sources.items():
-            if any(f == s or (s.endswith("/") and f.startswith(s))
-                   for f in files for s in wanted):
-                last[url] = max(last.get(url, ""), day)
-    return sorted(f"{url}: its sources changed on {day}, the sitemap says "
-                  f"{committed.get(url, 'nothing')}"
-                  for url, day in last.items()
-                  if url not in committed or day > committed[url])
+def stale_pages(committed: dict[str, str], record: dict[str, Any],
+                digests: dict[str, str]) -> list[str]:
+    """The addresses a commit holding `committed` (sitemap.xml's dates),
+    `record` (docs/sitemap-dates.json) and sources digesting to `digests`
+    has stale: one whose sources are not the ones its sitemap date was
+    given for, one the record dates differently from the sitemap, and one
+    neither lists."""
+    out = []
+    for url, digest in digests.items():
+        row = record.get(url) or {}
+        if row.get("sources") != digest:
+            out.append(f"{url}: its sources are not the ones the sitemap was "
+                       f"dated by (the sitemap says {committed.get(url, 'nothing')})")
+        elif committed.get(url) != row.get("lastmod"):
+            out.append(f"{url}: the sitemap says {committed.get(url, 'nothing')}, "
+                       f"what it was built from says {row.get('lastmod')}")
+    return sorted(out)
 
 
 def git(*args: str) -> str | None:
@@ -815,51 +818,46 @@ def git(*args: str) -> str | None:
 
 
 def check_stale(built: build_docs.Built, require: bool) -> None:
-    """STALE: the sitemap as committed, against git's history (8.7)."""
-    section("sitemap.xml, as committed, against the history")
-    fake = {"https://x/a.html": "2026-09-20"}
-    shown = stale_pages(fake, {"https://x/a.html": ("docs/a.md",)},
-                        [("2026-09-22", {"docs/a.md"}),
-                         ("2026-09-21", {"docs/a.md", "docs/sitemap.xml"})])
-    fine = stale_pages(fake, {"https://x/a.html": ("docs/a.md",)},
-                       [("2026-09-22", {"docs/a.md", "docs/sitemap.xml"}),
-                        ("2026-09-19", {"docs/a.md"})])
-    ok("the rule itself: a source changed after its date, in a commit that "
-       "left the sitemap alone, is stale; one changed with the sitemap is not",
-       len(shown) == 1 and not fine, (shown, fine))
-    shallow = git("rev-parse", "--is-shallow-repository")
+    """STALE: the sitemap as committed, against what HEAD holds of the pages'
+    sources (8.7; from 9.0 by content, not by the days of commits)."""
+    section("sitemap.xml, as committed, against what its pages are made from")
+    url = "https://x/a.html"
+    record = {url: {"lastmod": "2026-09-20", "sources": "aaa"}}
+    fresh = stale_pages({url: "2026-09-20"}, record, {url: "aaa"})
+    changed = stale_pages({url: "2026-09-20"}, record, {url: "bbb"})
+    misdated = stale_pages({url: "2026-09-19"}, record, {url: "aaa"})
+    unlisted = stale_pages({}, {}, {url: "aaa"})
+    ok("the rule itself: sources that are the ones the sitemap was dated by "
+       "are fresh; sources changed since, a date the record does not give and "
+       "a page neither lists are stale",
+       not fresh and len(changed) == len(misdated) == len(unlisted) == 1,
+       (fresh, changed, misdated, unlisted))
+    record_path = build_docs.SITEMAP_DATES.relative_to(HERE).as_posix()
     committed_xml = git("show", "HEAD:docs/sitemap.xml")
-    if shallow is None or shallow.strip() != "false" or committed_xml is None:
-        why = ("no git history here" if shallow is None else
-               "a shallow clone has no history to read"
-               if shallow.strip() != "false" else
-               "HEAD has no docs/sitemap.xml")
+    committed_record = git("show", f"HEAD:{record_path}")
+    sources = build_docs.sitemap_wanted(built.pages)
+    digests = (build_docs.source_digests(sources, ref="HEAD")
+               if committed_xml is not None else None)
+    if committed_xml is None or committed_record is None or digests is None:
+        why = ("git cannot be asked here" if git("rev-parse", "HEAD") is None
+               else "HEAD has no docs/sitemap.xml" if committed_xml is None
+               else f"HEAD has no {record_path}")
         if require:
-            ok(f"the history is here to read ({why})", False)
+            ok(f"what the sitemap is made from is here to read ({why})", False)
         else:
             skip(f"whether sitemap.xml is stale: {why} (site.yml checks it)")
         return
-    committed = sitemap_rows(committed_xml)
-    sources = {build_docs.canonical(p.path): build_docs.page_sources(p)
-               for p in built.pages}
-    sources[build_docs.canonical("playground.html")] = ("playground/index.html",)
-    sources[build_docs.canonical("papers/sabline.pdf")] = (build_docs.PAPER_PDF,)
-    wanted = sorted({s for ss in sources.values() for s in ss})
-    log = git("log", "--date=format-local:%Y-%m-%d", "--format=%x00%cd",
-              "--name-only", "--no-renames", "HEAD",
-              "--", *wanted, "docs/sitemap.xml") or ""
-    commits: list[tuple[str, set[str]]] = []
-    for line in log.splitlines():
-        if line.startswith("\x00"):
-            commits.append((line[1:], set()))
-        elif line and commits:
-            commits[-1][1].add(line)
-    stale = stale_pages(committed, sources, commits)
-    missing = sorted(set(sources) - set(committed))
-    ok(f"sitemap.xml as committed lists every page and is not stale "
-       f"({len(commits)} commits read)", not stale and not missing,
-       "\n          ".join((stale + [f"not listed: {m}" for m in missing])[:10])
-       + "\n          (python build_docs.py, and commit docs/sitemap.xml)")
+    try:
+        record = json.loads(committed_record)
+    except ValueError as e:
+        ok(f"{record_path} as committed is JSON", False, str(e))
+        return
+    stale = stale_pages(sitemap_rows(committed_xml), record, digests)
+    ok(f"sitemap.xml as committed lists every page and is not stale: each "
+       f"of its {len(digests)} addresses is dated for the sources HEAD holds",
+       not stale, "\n          ".join(stale[:10])
+       + f"\n          (python build_docs.py, and commit docs/sitemap.xml "
+         f"and {record_path})")
 
 
 CONTRAST = re.compile(r"^\s*(text|ui)\s+--([\w-]+) on --([\w-]+)\s+([\d.]+) light"

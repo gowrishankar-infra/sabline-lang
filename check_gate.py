@@ -24,8 +24,9 @@ third is the one that matters:
    and from M2 a checker's code, a checker's message, a loop's verdict, a
    row of the builtin tables, one shape of the input-bounded loop
    verdict, a budget refusal's message and a budget's count, and from M3
-   a value a run prints, a run's error code and message, and where the
-   step limit stops a run - and asserts the gate goes red for each,
+   a value a run prints, a run's error code and message, where the
+   step limit stops a run, where the size limit stops one and what it
+   counts of a text - and asserts the gate goes red for each,
    one injection per comparison class. A gate that has never been shown
    to fail is a gate nobody has tested. `check_mutant_kills.py`'s idea,
    applied to the gate itself.
@@ -183,6 +184,35 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
         "rt/crates/sabline-rt/src/interp.rs",
         "Some(limit) if self.ticks > limit => Err(Stop::Steps(line)),",
         "Some(limit) if self.ticks >= limit => Err(Stop::Steps(line)),",
+    ),
+    # The size limit (9.0, M3): where it stops a run - at the operation that
+    # takes what was made past it, not the one that reaches it - and what it
+    # counts of a text, which is UTF-8's bytes and not its characters.
+    (
+        "where the size limit stops a run",
+        "rt/crates/sabline-rt/src/interp.rs",
+        "Some(limit) if self.size_made > limit => Err(Stop::Size(line)),",
+        "Some(limit) if self.size_made >= limit => Err(Stop::Size(line)),",
+    ),
+    (
+        "what the size limit counts of a text",
+        "rt/crates/sabline-rt/src/interp.rs",
+        "0x80..=0x7FF => 2,",
+        "0x80..=0x7FF => 1,",
+    ),
+    # The runs under their own budgets (9.0, M3): a file grant's refusal,
+    # and randomness under a seed, which is CPython's Mersenne Twister.
+    (
+        "a file grant's refusal",
+        "rt/crates/sabline-rt/src/interp.rs",
+        'reaches("which this run\'s fs grants do not cover")',
+        'reaches("which the fs grants of this run do not cover")',
+    ),
+    (
+        "randomness under a seed",
+        "rt/crates/sabline-rt/src/host.rs",
+        "1_812_433_253u32",
+        "1_812_433_255u32",
     ),
 )
 

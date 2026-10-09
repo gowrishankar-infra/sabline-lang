@@ -102,6 +102,20 @@ STOP_FILE: str | None = None
 # counts nothing.
 _STEP_LIMIT: int | None = None
 
+# How much a run may make before it is stopped (9.0, M3), or None - the
+# step limit's partner, and set only where it is. A program that grows
+# without end - a text doubled forty times - exhausts memory long before
+# it reaches the step limit, and how far each runtime gets before the
+# machine stops it is the machine's. So `sabline run-dump` counts what a
+# run makes, the same way in both runtimes, and stops the run at the
+# operation that takes the count past this: a text counts its UTF-8 bytes,
+# a list or a map its items (runtime.size_of says which operations make
+# one). Never wall-clock time and never real memory: those differ by
+# machine, and the real memory cap stays the operating system's (E611).
+# None - everywhere else - counts nothing.
+_SIZE_LIMIT: int | None = None
+_SIZE_MADE = [0]        # what the run in progress has made, so counted
+
 
 # The tool responses of code mode (8.3): what py, py_int, py_float and
 # py_json gave back, recorded by `sabline program.vel --record-responses FILE`

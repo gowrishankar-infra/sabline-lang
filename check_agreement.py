@@ -10,8 +10,10 @@ adds the checkers, which is what `sabline check` finds in each program,
 stage by stage, and each loop's termination verdict, the builtin tables
 both checkers read, and the budget parser. M3 adds the interpreters - every
 program run by both, under the budget io, and what each run printed,
-the status it ended with and the error it stopped with compared - and,
-later in M3, receipts.
+the status it ended with and the error it stopped with compared; and from
+its second checkpoint the programs written for a budget run under their
+own, in a tree of files made afresh for each runtime - and, later in M3,
+receipts.
 
 **What it runs over** (plan/9.0.md's table, the rows that hold a program):
 
@@ -77,10 +79,11 @@ byte, and one more document for the whole gate:
   every loop's verdict and the reason for it;
 - the run document (sabline/run_dump.py and the crate's `run_dump`
   module), which holds what `sabline <file>` does with the program under
-  the budget io, a fixed input, fixed arguments and a step limit: the
-  problems that refused it, or what it printed to each channel, the status
-  it ended with and the error it stopped with - for every program but the
-  ones RUN_EXCLUDED names, each with its reason;
+  the budget io, a fixed input, fixed arguments, a step limit and a size
+  limit: the problems that refused it, or what it printed to each channel,
+  the status it ended with, the error it stopped with and which limit
+  stopped it - for every program but the ones RUN_EXCLUDED names, each
+  with its reason;
 - the builtin tables both runtimes' checkers read, so that a builtin added
   to one and not the other is a difference before any program calls it;
 - and for every budget agreement_budgets.py holds - sabline-spec's L1
@@ -204,6 +207,80 @@ def _from_module(name: str, pick: Any) -> list[tuple[str, str]]:
     sys.path.insert(0, str(ROOT))
     module = __import__(name)
     return list(pick(module))
+
+
+# The effects whose builtins' work sabline-rt has (M3, the second
+# checkpoint). A program the corpora write for a budget runs under that
+# budget when it grants nothing else; one granting the network, Python or a
+# tool runs under io alone, as every program does, until that work is
+# ported - its refusal under io is compared, its work is not yet.
+PORTED_EFFECTS = frozenset({"io", "fs", "clock", "rand", "env", "declassify"})
+
+
+def _granted(allow: str | None, deny: str | None) -> set[str] | None:
+    """The effects a budget's text names, less those denied: each item's
+    name before its first ':' or '@'. None for `all`, which grants every
+    effect."""
+    names = set()
+    for item in (DEFAULT_RUN_ALLOW if allow is None else allow).split(","):
+        name = item.strip().split(":")[0].split("@")[0].strip()
+        if name == "all":
+            return None
+        if name:
+            names.add(name)
+    return names - {n.strip() for n in (deny or "").split(",")}
+
+
+DEFAULT_RUN_ALLOW = "io"
+
+
+def _ported(allow: str | None, deny: str | None) -> bool:
+    granted = _granted(allow, deny)
+    return granted is not None and granted <= PORTED_EFFECTS
+
+
+def _budgeted_corpus(corpus: Path) -> list[tuple[str, str, dict[str, Any]]]:
+    """Every program to run under its own budget: the runs' corpus's
+    budgeted table, check_sandbox.py's escapes and honest programs, and
+    sabline-spec's L2 run cases - each of the last two whose budget grants
+    only PORTED_EFFECTS - named, with its source and what the run is given
+    (its budget, and agreement_runs.BUDGETED's seed, clock and ceiling)."""
+    sys.path.insert(0, str(ROOT))
+    import agreement_runs
+    out: list[tuple[str, str, dict[str, Any]]] = [
+        (f"budgeted/{name}", source, dict(given))
+        for name, source, given in agreement_runs.BUDGETED]
+
+    def budget(allow: Any, deny: Any) -> dict[str, Any]:
+        return {k: v for k, v in (("allow", allow), ("deny", deny))
+                if v is not None}
+
+    sandbox = __import__("check_sandbox")
+    for kind in ("ESCAPES", "HONEST"):
+        for row in getattr(sandbox, kind, ()):
+            name, source = _sandbox_row(row)
+            allow, deny = row.get("allow"), row.get("deny")
+            if source is not None and allow is not None and _ported(allow, deny):
+                out.append((f"sandbox-budgeted/{kind.lower()}/{name}", source,
+                            budget(allow, deny)))
+    for path in sorted((corpus / "L2").rglob("*.json")):
+        case = json.loads(path.read_text(encoding="utf-8"))
+        given = case.get("input") or {}
+        if case.get("kind") == "run" and isinstance(given.get("source"), str) \
+                and _ported(given.get("allow"), given.get("deny")):
+            out.append((f"L2-budgeted/{case.get('id', path.stem)}",
+                        given["source"],
+                        budget(given.get("allow"), given.get("deny"))))
+    return out
+
+
+def _filled(text: Any, values: dict[str, str]) -> Any:
+    """`text` with each placeholder the tree defines replaced."""
+    if not isinstance(text, str):
+        return text
+    for key, value in values.items():
+        text = text.replace(key, value)
+    return text
 
 
 def _lie_corpus() -> list[tuple[str, str]]:
@@ -382,13 +459,11 @@ RUN_BATCH_HEADER = b"sabline.run-batch/1\n"
 # The programs the gate does not run, each with the reason, which the gate
 # prints. A program joins this list only with its own argument in the pull
 # request that adds it, because each is a place the gate stops looking -
-# and it is still parsed and checked like every other program.
-RUN_EXCLUDED = {
-    "tests/error_messages/E611_run_memory_cap.vel":
-        "it doubles a text forty times, to be stopped by the memory cap "
-        "it tests (E611); a run here has no cap, and how far it gets "
-        "before the machine stops it is the machine's, not the program's",
-}
+# and it is still parsed and checked like every other program. It is empty:
+# the one program it held, tests/error_messages/E611_run_memory_cap.vel,
+# which doubles a text forty times, is stopped by the run document's size
+# limit from 9.0's second M3 checkpoint, at the same operation in both.
+RUN_EXCLUDED: dict[str, str] = {}
 
 
 def _run_name(name: str) -> str:
@@ -527,6 +602,8 @@ def tables(binary: Path) -> tuple[bytes, bytes]:
 
 def main(argv: list[str]) -> int:
     programs, counts, corpus = collect(argv)
+    budgeted_runs = _budgeted_corpus(corpus)
+    counts.append(f"programs run under their own budgets: {len(budgeted_runs)}")
     sys.path.insert(0, str(ROOT))
     import agreement_budgets                 # the budgets' corpus (M2)
     budgets, budget_counts = agreement_budgets.cases(corpus)
@@ -601,6 +678,33 @@ def main(argv: list[str]) -> int:
                             RUN_BATCH_HEADER)
         rust_runs = dumps([str(binary), "run", "--install-dir", str(ROOT),
                            "--list"], run_paths, RUN_BATCH_HEADER)
+        # the interpreters under their budgets (M3): each run in the same
+        # tree, made afresh before each runtime's turn, so that what one
+        # runtime wrote is not there for the other to find; `~` is the
+        # tree's home for both, set by the run document, not by this file
+        import agreement_runs
+        under = here / "tree"
+        values = agreement_runs.tree(under)
+        written = here / "budgeted"
+        written.mkdir()
+        lines = []
+        for i, (_, source, given) in enumerate(budgeted_runs):
+            program = written / f"{i:05d}.vel"
+            program.write_bytes(_filled(source, values).encode("utf-8"))
+            entry: dict[str, Any] = {"path": str(program)}
+            entry.update({k: _filled(v, values) for k, v in given.items()})
+            entry["environ"] = agreement_runs.run_variables(values)
+            lines.append(json.dumps(entry))
+        budgeted_paths = here / "budgeted.txt"
+        budgeted_paths.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        python_budgeted = dumps([sys.executable, str(ROOT / "sabline.py"),
+                                 "run-dump", "--list"], budgeted_paths,
+                                RUN_BATCH_HEADER, under)
+        shutil.rmtree(under)
+        agreement_runs.tree(under)
+        rust_budgeted = dumps([str(binary), "run", "--install-dir", str(ROOT),
+                               "--list"], budgeted_paths, RUN_BATCH_HEADER,
+                              under)
 
     # the names the gate reports are the corpus names, not the temporary
     # paths it wrote them to
@@ -610,6 +714,8 @@ def main(argv: list[str]) -> int:
     budgeted = compare(python_budgets, rust_budgets,
                        [name for name, _, _ in budgets])
     ran = compare(python_runs, rust_runs, [name for name, _ in runs])
+    ran_budgeted = compare(python_budgeted, rust_budgeted,
+                           [name for name, _, _ in budgeted_runs])
     python_tables, rust_tables = tables(binary)
     tabled = ([] if python_tables == rust_tables else
               [f"the builtin tables: {_told(python_tables, rust_tables)}"])
@@ -630,12 +736,14 @@ def main(argv: list[str]) -> int:
             ("the checkers", len(programs), checked),
             ("the budget parser", len(budgets), budgeted),
             ("the interpreters", len(runs), ran),
+            ("the interpreters, under their budgets", len(budgeted_runs),
+             ran_budgeted),
             ("the builtin tables", 1, tabled))
     for what, many, found in rows:
         print(f"  {what}: {many} compared, {many - len(found)} agree, "
               f"{len(found)} differ")
     total = sum(many for _, many, _ in rows)
-    differences = [f"{what}: {line}" for what, _, found in rows[:4]
+    differences = [f"{what}: {line}" for what, _, found in rows[:-1]
                    for line in found] + tabled
     print(f"agreement gate: {total} comparisons, "
           f"{total - len(differences)} agreements, "

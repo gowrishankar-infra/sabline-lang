@@ -10,10 +10,17 @@
 use crate::nodes::Expr;
 use crate::pyrepr::py_float_repr;
 
+/// `lifted(name)`: whether a function's name is one the parser generated
+/// for a function value written inline - `fn#N`, or `lib.fn#N` once a
+/// library imported with a name has had its functions renamed.
+pub fn lifted(name: &str) -> bool {
+    name.rsplit('.').next().unwrap_or(name).starts_with("fn#")
+}
+
 /// `nice_name(name)`: a lifted function value is "this function value",
 /// anything else is its name in quotes.
 pub fn nice_name(name: &str) -> String {
-    if name.starts_with("fn#") {
+    if lifted(name) {
         "this function value".to_string()
     } else {
         format!("'{name}'")

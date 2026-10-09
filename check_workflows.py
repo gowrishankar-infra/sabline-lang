@@ -33,9 +33,9 @@ practices, reports kept as files; one stylesheet, one script, no third party
 and 100 KB a page; and test.yml running check_site.py. Each rule is also
 broken once in a copy, and must be caught.
 
-site.yml checks out the whole history (8.7): check_site.py reads git to
-tell whether a page's sources changed in a commit that did not rewrite
-sitemap.xml, and a shallow clone has no history to read.
+site.yml checked out the whole history from 8.7 to 9.0, because
+check_site.py read it to tell whether sitemap.xml was stale; from 9.0 it
+reads HEAD alone, and the rule that the checkout be deep is gone with it.
 
 Then indexnow.yml (8.7), which tells IndexNow what a push to main changed:
 it runs on page_build alone and only in this repository, with a read-only
@@ -526,12 +526,6 @@ def site_problems(doc: dict[Any, Any], text: str, rc: dict[str, Any],
                      f"third party and 100 KB a page: {sizes}, {counts}")
     if "python check_site.py" not in test_yml:
         found.append("test.yml does not run check_site.py")
-    checkouts = [s for job in jobs.values() for s in steps(job)
-                 if str(s.get("uses", "")).startswith("actions/checkout@")]
-    if not checkouts or any((s.get("with") or {}).get("fetch-depth") != 0
-                            for s in checkouts):
-        found.append("the checkout is shallow, and check_site.py needs the "
-                     "history to tell whether sitemap.xml is stale")
     return found
 
 
@@ -595,8 +589,6 @@ def site() -> None:
            doc=lambda d: d.__setitem__("permissions", {"contents": "write"}))
     broken("when test.yml stops running check_site.py", "test.yml",
            test_yml=lambda y: y.replace("python check_site.py", "python other.py"))
-    broken("with a shallow checkout", "shallow",
-           doc=lambda d: d["jobs"]["site"]["steps"][0]["with"].pop("fetch-depth"))
 
 
 def indexnow_problems(doc: dict[Any, Any], text: str) -> list[str]:

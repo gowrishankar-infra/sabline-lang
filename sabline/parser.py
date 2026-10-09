@@ -709,9 +709,16 @@ class Parser:
                             fixes=fixes)
 
 
+def lifted(name: str) -> bool:
+    """Whether a function's name is one the parser generated for a function
+    value written inline: `fn#N`, or `lib.fn#N` once a library imported
+    with a name has had its functions renamed (loader.qualify)."""
+    return name.rpartition(".")[2].startswith("fn#")
+
+
 def nice_name(name: str) -> str:
     """Lifted lambdas get generated names; show something readable."""
-    if name.startswith("fn#"):
+    if lifted(name):
         return "this function value"
     return f"'{name}'"
 

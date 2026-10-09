@@ -20,7 +20,7 @@ import _support
 from sabline import state
 from sabline.errors import SablineError
 from sabline.loader import load_program
-from sabline.nodes import Call, Var
+from sabline.nodes import Call, Closure, Var
 from typing import Any
 
 STAGE = "loader"
@@ -200,6 +200,67 @@ class NamedImports(LoaderTest):
         calls = referenced([split.body, split.requires, split.ensures])
         self.assertIn("units_of", calls)
         self.assertFalse(any(n.startswith("@") for n in calls))
+
+
+class NamedFunctionValues(LoaderTest):
+    """A function value written inline in a library imported with a name:
+    the lifted function is one of the library's, so it carries the prefix,
+    and the Closure that names it is one of the library's references to
+    them, so it carries the prefix too (9.0). Until then the Closure kept
+    the bare `fn#N`, and the type checker refused the program with E402
+    "unknown function value"; imported flat it compiled."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        from sabline.parser import Parser
+        Parser.lambda_n = 0            # the counter runs across loads
+        self.funcs, _ = load_program(path("named_lambda", "main.vel"))
+        self.fns = by_name(self.funcs)
+
+    def closures(self, fn: Any) -> list[str]:
+        out: list[str] = []
+
+        def walk(node: Any) -> None:
+            if isinstance(node, (list, tuple)):
+                for x in node:
+                    walk(x)
+                return
+            if not dataclasses.is_dataclass(node):
+                return
+            if isinstance(node, Closure):
+                out.append(node.name)
+            for f in dataclasses.fields(node):
+                walk(getattr(node, f.name))
+
+        walk(fn.body)
+        return out
+
+    def test_the_lifted_functions_carry_the_prefix(self) -> None:
+        lifted = sorted(n for n in names(self.funcs) if "#" in n)
+        self.assertEqual(lifted, ["lib.fn#1", "lib.fn#2"])
+
+    def test_the_closures_name_them_by_it(self) -> None:
+        self.assertEqual(self.closures(self.fns["lib.above"]), ["lib.fn#1"])
+        self.assertEqual(self.closures(self.fns["lib.adder"]), ["lib.fn#2"])
+        for name in self.closures(self.fns["lib.above"]) + \
+                self.closures(self.fns["lib.adder"]):
+            self.assertIn(name, self.fns)
+
+    def test_the_program_checks_as_the_flat_import_does(self) -> None:
+        from sabline.checker import check_types
+        from sabline.effects import check_effects
+        problems: list[Any] = []
+        funcs, records = load_program(path("named_lambda", "main.vel"))
+        check_effects(funcs, problems)
+        check_types(funcs, records, problems)
+        self.assertEqual([(e.code, e.message) for e in problems], [])
+
+    def test_a_lifted_name_reads_as_a_function_value_either_way(self) -> None:
+        from sabline.parser import lifted, nice_name
+        self.assertTrue(lifted("fn#3") and lifted("lib.fn#3")
+                        and lifted("outer.inner.fn#3"))
+        self.assertFalse(lifted("lib.fnx") or lifted("main"))
+        self.assertEqual(nice_name("lib.fn#3"), "this function value")
 
 
 def setUpModule() -> None:

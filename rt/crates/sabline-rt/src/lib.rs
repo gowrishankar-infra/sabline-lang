@@ -7,9 +7,8 @@
 //! of C`, the rules for `main`, each loop's termination verdict, and what
 //! a budget grants - **and from M3 the interpreter**: a program run under a
 //! budget, every builtin spent against it, and the work of every builtin
-//! that is pure or is the console's ([`interp`]). The work of the builtins
-//! that reach a file, the network, a clock, randomness, the environment,
-//! Python or a tool is not ported yet; a budget that does not grant them
+//! short of the network, Python and a tool ([`interp`], [`host`]). The work
+//! of those three is not ported yet; a budget that does not grant them
 //! refuses them first, as the reference does. It does not prove, does not
 //! hold a budget at the operating system and does not write a receipt.
 //! Do not use it to decide whether a program is safe to run: the Python
@@ -21,8 +20,9 @@
 //! the same line; its checkers find what `sabline check` finds, stage by
 //! stage and message for message; its budget parser reads every budget
 //! the gate holds to the same grants, or the same refusal; and a run of
-//! every program under the budget `io` prints what the reference prints,
-//! ends with its status and stops with its error.
+//! every program under the budget `io`, and of every program written for a
+//! budget under its own, prints what the reference prints, ends with its
+//! status and stops with its error.
 //! `check_agreement.py` is what says so;
 //! rt/README.md says how to run it.
 //!
@@ -62,6 +62,7 @@ pub mod digest;
 pub mod dump;
 pub mod effects;
 pub mod errors;
+pub mod host;
 pub mod interp;
 pub mod json;
 pub mod lexer;
