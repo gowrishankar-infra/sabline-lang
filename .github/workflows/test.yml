@@ -279,15 +279,21 @@ jobs:
         run: cargo build --release --manifest-path rt/Cargo.toml
       - name: Both runtimes agree, program for program
         run: python check_agreement.py sabline-spec/tests
-      # Three differences injected into sabline-rt, one per comparison
-      # class, each of which the gate must go red for; and the scan that
-      # says the gate reads nothing that could disable it.
+      # Differences injected into sabline-rt - fourteen from M3, at least
+      # one for each kind of thing the gate compares, a run's output, code,
+      # message and step limit among them - each of which the gate must go
+      # red for; and the scan that says the gate reads nothing that could
+      # disable it.
       - name: The gate cannot be turned off, and it detects
         run: python check_gate.py sabline-spec/tests
       # Both parsers on generated input, briefly. monthly.yml runs it for
       # twenty minutes and cargo-fuzz for an hour.
       - name: The same generated input to both parsers
         run: python fuzz_parsers.py --target agreement --minutes 2
+      # Generated programs to both checkers, which must write the same
+      # check document (M2): the programs nobody wrote, beside the gate's.
+      - name: The same generated programs to both checkers
+        run: python fuzz_parsers.py --target agreement_checks --minutes 2
       # Five suites' check-time questions asked of sabline-rt (M2), each
       # held to the answer it holds the Python package to. A question that
       # runs a program (M3), the prover's and an audit's are counted as not

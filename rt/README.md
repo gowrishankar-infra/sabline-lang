@@ -4,12 +4,19 @@ The Sabline runtime, in Rust. `decisions/0002-runtime-in-rust.md` says why
 there is a second runtime and what stays in the Python package;
 `plan/9.0.md` is the ladder it climbs and the gate that holds it.
 
-**This crate holds a lexer, a parser and - from M2 - the loader, the
-checkers (effects, types with `Secret of T` and `Money of C`, the rules
-for `main`, and each loop's termination verdict) and the budget parser.**
-It does not prove, does not run a program, does not enforce a budget and
-does not write a receipt, so it cannot tell you whether a program is safe
-to run. The Python package
+**This crate holds a lexer, a parser, from M2 the loader, the checkers
+(effects, types with `Secret of T` and `Money of C`, the rules for
+`main`, and each loop's termination verdict) and the budget parser, and
+from M3 the interpreter**: a program run under a budget, every builtin
+spent against it, and the work of every builtin that is pure or is the
+console's. The work of a builtin that reads a file, reaches the network,
+reads a clock, the environment or randomness, calls Python or a tool, or
+signs is not ported yet: under a budget that does not grant its effect -
+`io`, the default, grants none of them - it is refused before its work
+would start, exactly as the reference refuses it, and that is all a run
+here reaches of it. It does not prove, does not hold a budget at the
+operating system and does not write a receipt, so it cannot tell you
+whether a program is safe to run. The Python package
 is what does that, and where the two disagree the Python package is right
 and sabline-rt has a defect - that is what a reference implementation is,
 and `plan/9.0.md`'s demotion criteria are the only thing that ever changes
@@ -20,9 +27,11 @@ project has, sabline-rt builds the same tree the Python parser builds, or
 refuses it with the same code, the same message, the same fixes and the
 same line; and `sabline check` and sabline-rt find the same problems in it,
 stage by stage, in the same order, with the same messages, and give each
-loop the same verdict for the same reason. And for every budget the gate
-holds - sabline-spec's L1 budget cases, what is made from them, and the
-edges - both parse it to the same grants and counts, or refuse it with
+loop the same verdict for the same reason; and run under the budget `io`,
+with the same input, it prints the same text to each channel, ends with
+the same status and stops with the same error. And for every budget the
+gate holds - sabline-spec's L1 budget cases, what is made from them, and
+the edges - both parse it to the same grants and counts, or refuse it with
 the same words.
 
     python check_agreement.py ../sabline-spec/tests
@@ -38,17 +47,20 @@ the same words.
       check_termination.py: 64 programs
       truncations of every example: 1830 programs
       the adversarial corpus: 113 programs
-      the checkers' corpus: 3781 programs
+      the checkers' corpus: 3785 programs
+      the runs' corpus: 200 programs
       paths that are not files: 2 programs
       the L1 budget cases: 280 budgets
       their mutations: 2558 budgets
       the budgets' edges: 115 budgets
       paths through a tree: 14 budgets
-      the parsers: 6570 compared, 6570 agree, 0 differ
-      the checkers: 6570 compared, 6570 agree, 0 differ
+      (parsed and checked, not run: tests/error_messages/E611_run_memory_cap.vel - ...)
+      the parsers: 6774 compared, 6774 agree, 0 differ
+      the checkers: 6774 compared, 6774 agree, 0 differ
       the budget parser: 2967 compared, 2967 agree, 0 differ
+      the interpreters: 6773 compared, 6773 agree, 0 differ
       the builtin tables: 1 compared, 1 agree, 0 differ
-    agreement gate: 16108 comparisons, 16108 agreements, 0 differences
+    agreement gate: 23289 comparisons, 23289 agreements, 0 differences
 
 ## Building it
 
@@ -233,6 +245,57 @@ through.
 budget cases through this binary, and labels every other case as answered
 by the Python package (`check_conformance_rust.py` holds it to that).
 
+## The run document
+
+The fourth comparison surface (9.0, M3): what a run of one program did.
+
+    sabline run-dump --list <paths-file>                   from the Python package
+    sabline-rt run --install-dir <dir> --list <paths-file> from this crate
+
+Each program is run as `sabline <file>` runs it - the checkers as the
+command line runs them, then `main` - with four things fixed so that the
+same program gives the same document on every machine and in both
+runtimes, and three left out because sabline-rt does not have them in
+9.0:
+
+| Fixed | As |
+|---|---|
+| the budget | `io`, what a run with no `--allow` gets |
+| the input | `1\n2\nthree\n`, read as the library's `stdin=` is read |
+| the arguments | `["first", "2"]` |
+| a step limit | 20,000 calls and loop turns, after which the run is stopped where it is |
+
+| Left out | Because |
+|---|---|
+| the prover | decisions/0002 keeps it in Python; a run here leaves every promise to be checked while running, which is the lie corpus's point |
+| native code | `fuzz_native.py` holds the Python runtime's two engines to each other |
+| the operating system's confinement | M4 |
+
+The step limit is the gate's and nothing else's. A wall-clock limit would
+stop a program that does not end wherever each runtime's own speed had
+taken it; a count of calls and loop turns stops it at the same one in
+both, so its output up to there is compared too. In the Python package
+it is `state._STEP_LIMIT`, `None` everywhere but `run-dump`.
+
+```json
+{"run":1,"refused":null,"error":null,"exit":0,
+ "stdout":"...","stderr":"...","stopped":null,"raised":null}
+```
+
+`refused` is the problems the check found, one each in file and line
+order, when it found any; `error` the error the run stopped with, its
+message quoting what the program held; `exit` the status, `null` when the
+step limit stopped it; `stdout` and `stderr` the text written to each,
+compared as text - code points, a lone surrogate included - rather than
+as whatever bytes a console would have made of it; `stopped` the line the
+step limit stopped it at; and `raised` the name of a Python exception that
+escaped the reference, which is a defect there and a difference here. The
+stream is framed as the others are, with the header `sabline.run-batch/1`.
+
+`check_agreement.py` runs every program it holds, and prints the ones it
+does not: `RUN_EXCLUDED`, each with its reason, and one today - a program
+that doubles a text forty times to be stopped by the memory cap it tests.
+
 ## What had to be written down to be copied
 
 Four things in the reference are decided somewhere other than the lexer
@@ -323,6 +386,55 @@ writes a float as CPython's `repr` does, `1e-05` and `1e+16` included
   digits)". The crate writes the later, and the gate holds no count that
   long, because no single answer would match every leg.
 
+**The interpreter copies more than any stage before it**, because what a
+running program sees is CPython's object model (`src/value.rs`,
+`src/text.rs`, `src/interp.rs` say more):
+
+* **A Text is code points** (`text::Text`), not UTF-8: `length` counts
+  them, `code_at` gives one, and a lone surrogate - which a program meets
+  the moment it reads `"\ud800"` out of a JSON document - is a value like
+  any other. `upper`, `lower` and the characters `repr` leaves alone come
+  from tables generated from CPython (`src/unicode_text.rs`,
+  `scripts/gen_unicode_text.py`), with `lower`'s one rule that depends on
+  context - a capital sigma at the end of a word - copied from CPython's
+  `handle_capital_sigma`.
+* **`to_text` and `str` are different functions**, and both are needed:
+  `print` writes `true` and `[a, b]`, and a broken promise's message names
+  its values as an f-string writes them, `True` and `['a', 'b']`, with
+  `repr()`'s choice of quotes and escapes.
+* **A whole number is a Python `int`.** Arithmetic is checked on its
+  result, so a literal past 64 bits is a value (`print(99999999999999999999)`
+  prints it), and so is `%` of one; `src/bigint.rs` holds such a value.
+  Division floors and a remainder takes the divisor's sign; a float's
+  floor division and remainder are CPython's `float_divmod`; `round` is
+  half to even; an `int` and a `float` compare exactly.
+* **A container compares its items by identity first**, as CPython's
+  `PyObject_RichCompareBool` does, so a record holding a NaN equals
+  itself and a NaN does not. Every NaN a run makes carries an identity of
+  its own (`value::fresh_float`).
+* **A map is a `dict`**: insertion order, a key already there keeping its
+  place and the key first given for it, and `1`, `1.0` and `true` one key.
+* **The JSON builtins are `json.loads` and `json.dumps`** (`src/pyjson.rs`,
+  a transliteration of `_json.c`'s scanner): which texts parse, the value
+  each gives, and every message, with its line, column and character. The
+  messages are CPython 3.10's to 3.12's; 3.13 says "Illegal trailing comma
+  before end of object" where they say "Expecting property name enclosed
+  in double quotes", so the gate holds no document with such a comma.
+  `int()` and `float()` of a text, which `json_int` and `json_float` use,
+  are copied with their Unicode digits, white space and underscores.
+* **`base64_decode` is `b64decode(..., validate=True)`**, which from
+  CPython 3.11 is `a2b_base64`'s strict mode: 3.10 decodes padding at the
+  start of a quad (`"YWJj=="`) that 3.11 and later refuse. The crate is
+  3.11's and later; the gate holds no such text.
+
+**Two defects in the reference were found by comparing runs** and fixed in
+the reference, as M1 fixed E000's message: a broken promise naming a record
+printed the record's memory address, so the same promise gave a different
+message on every run (`RecordValue` now has a `repr`); and one is not fixed
+and is recorded in `plan/9.0-m3-progress.md` - a function value printed or
+named in a message is written as Python writes the object, an address
+included, which this crate does not copy.
+
 ## No `unsafe`
 
 The workspace sets `unsafe_code = "forbid"`, so there is none in this
@@ -406,6 +518,14 @@ recursion limit to 20,000 before it parses.
 | `src/check_dump.rs` | what `sabline check` finds, as the canonical check document |
 | `src/budget.rs` | the budget parser, and the budget document |
 | `src/unicode_digit.rs` | every digit `str.isdigit()` accepts that is not decimal (generated) |
-| `src/bin/sabline-rt.rs` | `sabline-rt ast`, `check`, `tables` and `budget` |
+| `src/text.rs` | a Text as code points, and CPython's `str` algorithms over them |
+| `src/unicode_text.rs` | CPython's `upper`, `lower` and `isprintable` (generated) |
+| `src/bigint.rs` | a whole number of any size, for the values of a run past 64 bits |
+| `src/value.rs` | a running program's values, compared, hashed and written as CPython does |
+| `src/pyjson.rs` | `json.loads`, `json.dumps`, and `int()` and `float()` of a text |
+| `src/digest.rs` | SHA-256, hexadecimal, base64 and `url_encode` |
+| `src/interp.rs` | the interpreter, and every builtin's spending against the budget |
+| `src/run_dump.rs` | what a run did, as the canonical run document |
+| `src/bin/sabline-rt.rs` | `sabline-rt ast`, `check`, `tables`, `budget` and `run` |
 | `tests/limits.rs` | the depth caps, and the stack they need |
 | `fuzz/` | the `cargo fuzz` targets |

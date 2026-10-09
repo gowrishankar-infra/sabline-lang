@@ -94,6 +94,14 @@ TRACE = {"on": False, "depth": 0, "calls": 0, "limit": 4000}
 # nothing.
 STOP_FILE: str | None = None
 
+# How many calls and loop turns a run may make before it is stopped (9.0,
+# M3), or None. Set only by `sabline run-dump`, the agreement gate's
+# comparison surface for runs, so that a program that does not end stops
+# at the same call or loop turn in both runtimes: a wall-clock limit would
+# stop each where its own speed had taken it. None - everywhere else -
+# counts nothing.
+_STEP_LIMIT: int | None = None
+
 
 # The tool responses of code mode (8.3): what py, py_int, py_float and
 # py_json gave back, recorded by `sabline program.vel --record-responses FILE`
