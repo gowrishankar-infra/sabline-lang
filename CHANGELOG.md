@@ -83,15 +83,15 @@ corpora leave out, it leaves out the same way, counted.
 
 ### The agreement gate
 
-    the parsers: 6812 compared, 6812 agree, 0 differ
-    the checkers: 6812 compared, 6812 agree, 0 differ
+    the parsers: 6813 compared, 6813 agree, 0 differ
+    the checkers: 6813 compared, 6813 agree, 0 differ
     the budget parser: 2967 compared, 2967 agree, 0 differ
-    the interpreters: 6812 compared, 6812 agree, 0 differ
+    the interpreters: 6813 compared, 6813 agree, 0 differ
     the interpreters, under their budgets: 122 compared, 122 agree, 0 differ
-    the receipts: 6934 compared, 6934 agree, 0 differ
-    the audit streams: 6934 compared, 6934 agree, 0 differ
+    the receipts: 6935 compared, 6935 agree, 0 differ
+    the audit streams: 6935 compared, 6935 agree, 0 differ
     the builtin tables: 1 compared, 1 agree, 0 differ
-  agreement gate: 37394 comparisons, 37394 agreements, 0 differences
+  agreement gate: 37399 comparisons, 37399 agreements, 0 differences
 
 The same on CPython 3.10, 3.12 and 3.13. A receipt's normalisation is
 `RECEIPT_NORMALISED` - the producer's name and version, `startedAt`,
@@ -106,7 +106,7 @@ without a status, a refused effect, a frozen clock before 1970, after 3001,
 at both ends of what an instant can say and past them, and a run that does
 not end; and `random` under a seed with bounds past 64 bits. The read of a
 file that is not UTF-8 now reads four, each caught, and carries on. The
-programs the gate holds gain fourteen: seven of several files - a promise
+programs the gate holds gain fifteen: seven of several files - a promise
 broken in a library, three ways, flat and named, and one called back -
 three amounts made past 64 bits, and whole numbers past 128 bits in every
 builtin that takes one.
@@ -143,13 +143,14 @@ compatibility: for 9.0's Python package, `money` and `with_units` of units
 outside -2^63 to 2^63-1 are E407 where they are made, where the amount was
 made and held and only arithmetic on it refused it.
 
-**A whole number past 128 bits stopped sabline-rt in thirteen builtins** -
+**A whole number past 128 bits stopped sabline-rt in thirteen builtins, and an amount times one** -
 the fuzzer's next finding, on CI's Windows leg: a mutated example with a
 400-digit amount. The reference's integers have no size, and a literal is
 the one place a program gets one past 64 bits; sabline-rt read them through
 an `i128` and answered `TypeError` in `money`, `with_units`, the five
 `_or_fail` builtins, `set_at`, `slice`, `code_at`, `exit_with`, `percent_of`,
-`divide_or_fail` and `random`. They are exact now (`py_big`, a `BigInt`
+`divide_or_fail` and `random`, and `money(0, "INR") * n` with `n` past
+128 bits was E407 where it is zero. They are exact now (`py_big`, a `BigInt`
 `round_ratio`, and `randrange` of a bound past 64 bits as CPython draws it:
 `getrandbits` of its bit length in 32-bit words, rejected until below it).
 Nothing in the reference changed.

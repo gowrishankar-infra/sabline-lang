@@ -134,15 +134,15 @@ reaches it anyway is counted and said, never a finding. The three places
 the reference answers differently by CPython version, which the gate's
 corpora leave out, it leaves out the same way, counted.</p>
 <h3 id="the-agreement-gate">The agreement gate <a class="anchor" href="#the-agreement-gate" aria-label="Link to this section">#</a></h3>
-<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6812 compared, 6812 agree, 0 differ
-the checkers: 6812 compared, 6812 agree, 0 differ
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6813 compared, 6813 agree, 0 differ
+the checkers: 6813 compared, 6813 agree, 0 differ
 the budget parser: 2967 compared, 2967 agree, 0 differ
-the interpreters: 6812 compared, 6812 agree, 0 differ
+the interpreters: 6813 compared, 6813 agree, 0 differ
 the interpreters, under their budgets: 122 compared, 122 agree, 0 differ
-the receipts: 6934 compared, 6934 agree, 0 differ
-the audit streams: 6934 compared, 6934 agree, 0 differ
+the receipts: 6935 compared, 6935 agree, 0 differ
+the audit streams: 6935 compared, 6935 agree, 0 differ
 the builtin tables: 1 compared, 1 agree, 0 differ</code></pre></div>
-<p>agreement gate: 37394 comparisons, 37394 agreements, 0 differences</p>
+<p>agreement gate: 37399 comparisons, 37399 agreements, 0 differences</p>
 <p>The same on CPython 3.10, 3.12 and 3.13. A receipt's normalisation is
 <code>RECEIPT_NORMALISED</code> - the producer's name and version, <code>startedAt</code>,
 <code>wall_time_ms</code>, a <code>&lt;source&gt;</code> subject's name - and the four confinement
@@ -156,7 +156,7 @@ without a status, a refused effect, a frozen clock before 1970, after 3001,
 at both ends of what an instant can say and past them, and a run that does
 not end; and <code>random</code> under a seed with bounds past 64 bits. The read of a
 file that is not UTF-8 now reads four, each caught, and carries on. The
-programs the gate holds gain fourteen: seven of several files - a promise
+programs the gate holds gain fifteen: seven of several files - a promise
 broken in a library, three ways, flat and named, and one called back -
 three amounts made past 64 bits, and whole numbers past 128 bits in every
 builtin that takes one.</p>
@@ -185,13 +185,14 @@ hold". <code>parse_money</code> already refused one.</p>
 <p>compatibility: for 9.0's Python package, <code>money</code> and <code>with_units</code> of units
 outside -2^63 to 2^63-1 are E407 where they are made, where the amount was
 made and held and only arithmetic on it refused it.</p>
-<p><strong>A whole number past 128 bits stopped sabline-rt in thirteen builtins</strong> -
+<p><strong>A whole number past 128 bits stopped sabline-rt in thirteen builtins, and an amount times one</strong> -
 the fuzzer's next finding, on CI's Windows leg: a mutated example with a
 400-digit amount. The reference's integers have no size, and a literal is
 the one place a program gets one past 64 bits; sabline-rt read them through
 an <code>i128</code> and answered <code>TypeError</code> in <code>money</code>, <code>with_units</code>, the five
 <code>_or_fail</code> builtins, <code>set_at</code>, <code>slice</code>, <code>code_at</code>, <code>exit_with</code>, <code>percent_of</code>,
-<code>divide_or_fail</code> and <code>random</code>. They are exact now (<code>py_big</code>, a <code>BigInt</code>
+<code>divide_or_fail</code> and <code>random</code>, and <code>money(0, "INR") * n</code> with <code>n</code> past
+128 bits was E407 where it is zero. They are exact now (<code>py_big</code>, a <code>BigInt</code>
 <code>round_ratio</code>, and <code>randrange</code> of a bound past 64 bits as CPython draws it:
 <code>getrandbits</code> of its bit length in 32-bit words, rejected until below it).
 Nothing in the reference changed.</p>

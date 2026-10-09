@@ -273,6 +273,9 @@ check mul_or_fail(3037000500, 3037000500) {
             f'percent_of(money(5, "INR"), 1, {_HUGE}, "half_up")',
             f'percent_of(money(0, "INR"), {_HUGE}, 100, "down")',
             f'percent_of(money(5, "INR"), 1, 0 - {_HUGE}, "half_even")')))),
+    ("int-past-128-bits-times-an-amount", _each(
+        f'money(0, "INR") * {_HUGE}', f'{_HUGE} * money(0, "INR")',
+        f'money(1, "INR") * {_HUGE}')),
     ("int-past-128-bits-percent-of", _each(
         f'percent_of(money(5, "INR"), {_HUGE}, 100, "half_up")')),
     ("int-past-128-bits-code-at", _each(f'code_at("abc", {_HUGE})')),

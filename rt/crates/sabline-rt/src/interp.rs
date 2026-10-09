@@ -1983,10 +1983,13 @@ fn arith(op: char, l: &Value, r: &Value, line: u32) -> R<Value> {
         (Value::Money(m), n) | (n, Value::Money(m))
             if op == '*' && matches!(n, Value::Int(_) | Value::Big(_)) =>
         {
-            let k = n.as_i128().ok_or_else(|| money_too_big("*", line))?;
-            let units =
-                i128::from(m.units).checked_mul(k).ok_or_else(|| money_too_big("*", line))?;
-            money_checked(units, &m.currency, "*", line)
+            // exactly, as the reference multiplies: zero times a number past
+            // 128 bits is zero, and only the product must fit
+            let k = n.as_big().ok_or(Stop::Raised("TypeError"))?;
+            match BigInt::from_i128(i128::from(m.units)).mul(&k).to_i64() {
+                Some(units) => money_checked(i128::from(units), &m.currency, "*", line),
+                None => Err(money_too_big("*", line)),
+            }
         }
         (Value::List(a), Value::List(b)) if op == '+' => {
             let mut out = (**a).clone();
