@@ -1297,8 +1297,12 @@ def main() -> int:
                     print(json.dumps(rep_["errors"], indent=2))
                 else:
                     for err in rep_["errors"]:
-                        print(f"{target}:{err['line']}: [{err['code']}] "
-                              f"{err['message']}", file=sys.stderr)
+                        # the file the error is in, which is an imported
+                        # one's for an error there (9.0): the target's name
+                        # with a library's line pointed at nothing
+                        print(f"{err.get('file') or target}:{err['line']}: "
+                              f"[{err['code']}] {err['message']}",
+                              file=sys.stderr)
             else:
                 own = [f for f in rep_["functions"]
                        if os.path.abspath(f["file"])
@@ -1414,7 +1418,10 @@ def main() -> int:
                       f"{', '.join(effs) if effs else 'nothing'}")
                 for err in r["errors"]:
                     worst = 1
-                    print(f"    line {err['line']}: [{err['code']}] "
+                    where = err.get("file") or v
+                    of = ("" if os.path.abspath(where) == os.path.abspath(v)
+                          else f" of {where}")      # an imported file's
+                    print(f"    line {err['line']}{of}: [{err['code']}] "
                           f"{err['message'][:70]}")
             return worst
         rep_ = inspect_source(target)

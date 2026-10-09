@@ -318,8 +318,8 @@ pub fn read_text(raw: &[u8]) -> Option<Text> {
 
 /// What `open(path, "w", encoding="utf-8").write(text)` puts in the file:
 /// each `\n` as this system's line end (`\r\n` on Windows), as UTF-8 -
-/// `None` for a text holding a lone surrogate, which CPython refuses
-/// (`UnicodeEncodeError`) after the file is opened.
+/// `None` for a text holding a lone surrogate, which is not UTF-8, and
+/// which `write_file` refuses (E608) before it opens the file.
 pub fn written_bytes(text: &Text) -> Option<Vec<u8>> {
     let s = text.to_str()?;
     Some(if cfg!(windows) { s.replace('\n', "\r\n").into_bytes() } else { s.into_bytes() })

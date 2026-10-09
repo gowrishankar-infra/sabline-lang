@@ -724,6 +724,9 @@ def tree(root: Any) -> dict[str, str]:
         data / "bom.txt": b"\xef\xbb\xbfmarked",
         data / "empty.txt": b"",
         data / "latin1.txt": b"caf\xe9",
+        data / "cut.txt": b"ab\xe2\x82",              # cut inside a character
+        data / "half-a-pair.txt": b"\xed\xa0\x80",    # a surrogate, as CESU-8
+        data / "late.txt": b"fine\n" * 50 + b"\xff",    # wrong only at the end
         data / "hundred.txt": b"x" * 100,
         data / "sub" / "deep.txt": b"deep",
         data / ".env": b"TOKEN=t\n",
@@ -773,7 +776,12 @@ BUDGETED: tuple[tuple[str, str, dict[str, Any]], ...] = (
     ("read-lines-as-universal-newlines", _main(_try(
         'read_file("{DATA}/crlf.txt")', "split(t, \"\\n\")"), uses="io, fs"),
      {"allow": "io,fs:read:{DATA}"}),
-    ("read-what-is-not-utf8", _main(_reads("{DATA}/latin1.txt"), uses="io, fs"),
+    # a file that is not UTF-8 is a failure the program handles (9.0): until
+    # then it ended the run with a traceback no `check` could catch
+    ("read-what-is-not-utf8", _main(_reads(
+        "{DATA}/latin1.txt", "{DATA}/cut.txt", "{DATA}/half-a-pair.txt",
+        "{DATA}/late.txt") + "\n" + _secret("{DATA}/latin1.txt")
+        + '\nprint("carried on")', uses="io, fs"),
      {"allow": "io,fs:read:{DATA}"}),
     ("read-outside-the-grant", _main(_reads(
         "{DATA}/a.txt", "{OUTSIDE}", "{DATA}/../../outside.txt",
@@ -812,6 +820,25 @@ BUDGETED: tuple[tuple[str, str, dict[str, Any]], ...] = (
      {"allow": "io,fs:write:{OUT}"}),
     ("write-a-folder", _main('write_file("{OUT}", "x")', uses="io, fs"),
      {"allow": "io,fs"}),
+    # a text holding a lone surrogate is not UTF-8, and writing one is E608
+    # with nothing written (9.0): over a file, which is left as it was, and
+    # to a new one, which is not made. The third program looks, after the
+    # first two - a batch runs in order, in one tree
+    ("write-a-lone-surrogate-over-a-file", _reader(["\ud800"]) + _main(
+        'write_file("{OUT}/s.txt", "kept")\nprint("wrote kept")\n'
+        'check the(0) {\n    ok t {\n        write_file("{OUT}/s.txt", "a" + t)\n'
+        '        print("WROTE IT")\n    }\n    fail why {\n        print(why)\n    }\n}',
+        uses="io, fs"),
+     {"allow": "io,fs:write:{OUT}"}),
+    ("write-a-lone-surrogate-to-a-new-file", _reader(["\ud800"]) + _main(
+        'check the(0) {\n    ok t {\n        write_file("{OUT}/s-new.txt", [t])\n'
+        '        print("WROTE IT")\n    }\n    fail why {\n        print(why)\n    }\n}',
+        uses="io, fs"),
+     {"allow": "io,fs:write:{OUT}"}),
+    ("after-a-lone-surrogate", _main(
+        _reads("{OUT}/s.txt") + '\nprint(file_exists("{OUT}/s-new.txt"))',
+        uses="io, fs"),
+     {"allow": "io,fs:write:{OUT},fs:read:{OUT}"}),
     ("exists-under-each-grant", _main(
         'print(file_exists("{DATA}/a.txt"))\nprint(file_exists("{DATA}/nope"))\n'
         'print(file_exists("{DATA}/sub"))\nprint(file_exists("{DATA}/link.txt"))\n'

@@ -9,6 +9,50 @@ api: `sabline conformance` takes `--runtime python|rust` (9.0, M2): with
 `rust`, sabline-rt answers the case kinds it implements and every result
 says which runtime answered it; without the flag nothing changes.
 
+## 9.0.0-alpha.8 - M3: receipts, field for field
+
+M3's third checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,
+`Secret` and receipts*), and still not its end.
+
+### Decided, and done in both runtimes
+
+**A file that is not UTF-8 text is a failure the program can handle.**
+`read_file` and `read_file_secret` of one fail with `cannot read file 'x':
+it is not UTF-8 text`, which `check` catches; until now the run ended with
+a Python traceback, and sabline-rt copied it. **Writing a text holding a
+lone surrogate is a failure too, with nothing written**: `write_file` is
+not fallible, so it is E608, as a file that cannot be written is, and the
+text is encoded before the file is opened - a file that was there is left
+as it was, and a new one is not made. Until now `open()` emptied the file
+and then the traceback ended the run. SPEC.md 8 says it.
+
+**A promise names the file it is written in.** A library function's broken
+`requires` (E600) named the importing file with the library's line, because
+the promise is checked before the callee's body and the caller's frame
+blamed it - flat or named alike, in both runtimes. It names the library's
+file now, and so does what had the same fault: a broken `ensures` (E601),
+an error raised while a promise is checked (an E602 in a `requires`), and
+the program's own promise broken when a library calls it back, which named
+the library's file. The prover's E701 was already right - the caller's
+file, at the call - but `sabline check`'s one-line output printed the target
+it was given with the line of an error in an imported file; it prints the
+error's own file now, as `--json`, SARIF and `run` did, and `sabline
+explain` says `line 8 of lib.vel` for one. SPEC.md 10 says it.
+
+compatibility: for 9.0's Python package, `read_file` and `read_file_secret`
+of a file that is not UTF-8 fail, where the run ended with a
+`UnicodeDecodeError` traceback; and `write_file` of a text holding a lone
+surrogate is E608 and writes nothing, where the run ended with a
+`UnicodeEncodeError` traceback after emptying the file. A program that ran
+to its end before runs the same; no exit code a finished run gave changed.
+
+compatibility: for 9.0's Python package, a broken `requires` or `ensures`
+of a function in an imported file, and an error raised while one is
+checked, name that file - in the error a run prints, `--json`'s `file`
+and every report built from them - where they named the file that called
+it; and `sabline check`'s one-line output names the file an error is in.
+The code, the message and the line are unchanged.
+
 ## 9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got
 
 M3's second checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,

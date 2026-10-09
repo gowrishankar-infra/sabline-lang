@@ -160,5 +160,96 @@ class RunDocumentEntries(Run):
         self.assertNotIn(name, os.environ)
 
 
+def _caught(expr: str, shown: str = "t") -> str:
+    return (f"check {expr} {{\n    ok t {{\n        print({shown})\n    }}\n"
+            "    fail w {\n        print(w)\n    }\n}")
+
+
+class FilesThatAreNotUtf8(Run):
+    """9.0: a file that is not UTF-8 is a failure a program handles, and a
+    text holding a lone surrogate is not written - until then both ended
+    the run with a traceback, the second after the file was emptied."""
+
+    def file(self, name: str, raw: bytes) -> str:
+        path = os.path.join(self.dir, name)
+        with open(path, "wb") as fh:
+            fh.write(raw)
+        return path.replace(os.sep, "/")
+
+    def test_a_read_of_one_fails_and_the_run_goes_on(self) -> None:
+        for raw in (b"caf\xe9", b"ab\xe2\x82", b"\xed\xa0\x80", b"ok\n" * 9 + b"\xff"):
+            path = self.file("bad.txt", raw)
+            doc = self.run_text(main_of(
+                _caught(f'read_file("{path}")') + "\n"
+                + _caught(f'read_file_secret("{path}")', '"a secret"')
+                + '\nprint("on")',
+                uses="io, fs"), allow="io,fs")
+            said = f"cannot read file '{path}': it is not UTF-8 text\n"
+            self.assertEqual((doc["raised"], doc["exit"], doc["stdout"]),
+                             (None, 0, said + said + "on\n"), raw)
+
+    def write_surrogate(self, path: str) -> dict[str, Any]:
+        reader = ("fn half() -> Text or fail {\n"
+                  '    return try json_get("[\\"\\\\ud800\\"]", "0")\n}\n')
+        return self.run_text(reader + main_of(
+            "check half() {\n    ok t {\n"
+            f'        write_file("{path}", "a" + t)\n'
+            '        print("WROTE IT")\n    }\n'
+            "    fail w {\n        print(w)\n    }\n}", uses="io, fs"),
+            allow="io,fs")
+
+    def test_a_lone_surrogate_is_e608_and_leaves_a_file_as_it_was(self) -> None:
+        path = self.file("kept.txt", b"kept")
+        doc = self.write_surrogate(path)
+        self.assertEqual((doc["raised"], doc["stdout"], doc["error"]["code"]),
+                         (None, "", "E608"))
+        self.assertEqual(doc["error"]["message"],
+                         f"could not write '{path}': the text holds a lone "
+                         "surrogate, which is not UTF-8")
+        with open(path, "rb") as fh:
+            self.assertEqual(fh.read(), b"kept")
+
+    def test_a_lone_surrogate_makes_no_file(self) -> None:
+        path = os.path.join(self.dir, "new.txt").replace(os.sep, "/")
+        self.assertEqual(self.write_surrogate(path)["error"]["code"], "E608")
+        self.assertFalse(os.path.exists(path))
+
+
+class APromiseNamesItsOwnFile(Run):
+    """9.0: a broken promise - and an error raised while one is checked -
+    names the file the promise is written in. Until then the caller's frame
+    blamed it, so a library's named the importer's file with the library's
+    line, and the program's own, called back by a library, the library's."""
+
+    LIB = ("fn half(x: Int) -> Int\n    requires x > 0\n{\n    return x / 2\n}\n"
+           "fn negated(x: Int) -> Int\n    ensures result < 0\n{\n    return x\n}\n"
+           "fn third(xs: List of Int) -> Int\n    requires get(xs, 2) > 0\n{\n"
+           "    return get(xs, 2)\n}\n"
+           "fn call_with(f: fn(Int) -> Int, x: Int) -> Int {\n    return f(x)\n}\n")
+
+    def broken(self, imported: str, body: str, own: str = "") -> dict[str, Any]:
+        with open(os.path.join(self.dir, "lib.vel"), "w", encoding="utf-8",
+                  newline="\n") as fh:
+            fh.write(self.LIB)
+        return self.run_text(f'import "lib.vel"{imported}\n' + own + main_of(body))["error"]
+
+    def where(self, err: dict[str, Any]) -> tuple[str, str, int]:
+        return err["code"], os.path.basename(err["file"]), err["line"]
+
+    def test_a_librarys_requires_and_ensures_flat_and_named(self) -> None:
+        for imported, p in (("", ""), (" as lib", "lib.")):
+            self.assertEqual(self.where(self.broken(imported, f"print({p}half(0 - 4))")),
+                             ("E600", "lib.vel", 2))
+            self.assertEqual(self.where(self.broken(imported, f"print({p}negated(1))")),
+                             ("E601", "lib.vel", 7))
+            self.assertEqual(self.where(self.broken(imported, f"print({p}third([1]))")),
+                             ("E602", "lib.vel", 12))
+
+    def test_the_programs_own_promise_called_back(self) -> None:
+        own = "fn positive_only(x: Int) -> Int\n    requires x > 0\n{\n    return x\n}\n"
+        err = self.broken(" as lib", "print(lib.call_with(positive_only, 0 - 2))", own)
+        self.assertEqual(self.where(err), ("E600", "p.vel", 3))
+
+
 if __name__ == "__main__":
     unittest.main()

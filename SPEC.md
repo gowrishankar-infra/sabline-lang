@@ -546,6 +546,13 @@ Fallible builtins: `to_int`, `read_file`, `read_file_secret`, `fetch`,
 prover's domain (§9.4), and `get_or(m, k, default)` gives a total map
 lookup.
 
+`read_file` and `read_file_secret` fail on a file that is not UTF-8
+text - `cannot read file 'x': it is not UTF-8 text` - as on one that
+cannot be opened; until 9.0 the first ended the run with a traceback no
+`check` could catch. `write_file` is not fallible: a text holding a lone
+surrogate, which is not UTF-8, is E608, as a file that cannot be written
+is, and nothing is written - a file that was there is left as it was.
+
 ## 9. Contracts and proof
 
 ### 9.1 What you write
@@ -716,6 +723,14 @@ library writes inline is one of its functions and one of its references,
 and is prefixed with them (`geo.fn#1`); until 9.0 it was not, and a
 library that made one was refused under a name with E402. A local name
 may not shadow an import name (E514).
+
+An error names the file it is in, which for a library's is the library's.
+A broken promise (E600, E601), and an error raised while a promise is
+checked, is in the file the promise is written in, whoever called the
+function; until 9.0 the caller was blamed, so a library's named the
+importer's file with the library's line, flat or named. A promise the
+prover finds can be broken at a call (E701) is in the caller's file, at
+the call.
 
 Imports are resolved relative to the importing file, with the bundled
 standard library searched last. A file already in the program is not

@@ -488,6 +488,23 @@ LIBRARY_MAKING_FUNCTION_VALUES = (
     "fn big(x: Int) -> Bool {\n    return x > 1\n}\n"
     "fn apply(f: fn(Int) -> Int, x: Int) -> Int\n"
     "    requires f(x) > 100\n{\n    return f(x)\n}\n")
+LIBRARY_MAKING_PROMISES = (
+    "fn half(x: Int) -> Int\n    requires x > 0\n{\n    return x / 2\n}\n"
+    "fn negated(x: Int) -> Int\n    ensures result < 0\n{\n    return x\n}\n"
+    "fn third(xs: List of Int) -> Int\n    requires get(xs, 2) > 0\n{\n"
+    "    return get(xs, 2)\n}\n"
+    "fn call_with(f: fn(Int) -> Int, x: Int) -> Int {\n    return f(x)\n}\n")
+# A program that calls a library's promises, breaking the one `which` names.
+# Each break ends the run, so each is a tree of its own.
+PROMISES_BROKEN = (
+    ("requires", "print({lib}half(4))\nprint({lib}half(0 - 4))"),
+    ("ensures", "print({lib}negated(0 - 1))\nprint({lib}negated(1))"),
+    ("requires-that-errs", "print({lib}third([1, 2, 3]))\nprint({lib}third([1]))"),
+)
+# the program's own function, with a promise, called back by the library:
+# the promise is the program's, so its file is main.vel
+PROMISE_CALLED_BACK = (
+    "fn positive_only(x: Int) -> Int\n    requires x > 0\n{\n    return x\n}\n")
 TREES = (
     # a library that makes a function value, imported under a name: the
     # loader renames the library's functions, the lifted one among them,
@@ -530,6 +547,26 @@ TREES = (
         "lib.vel": "fn count(t: Text) -> Int {\n    let i = 0\n"
                    "    while i < length(t) {\n        i = i + 1\n    }\n"
                    '    return i + "x"\n}\n'}),
+)
+# A library's broken promise - and an error raised while its promise is
+# checked - names the library's file, where the promise's line is: from
+# 9.0, in both runtimes. Until then the caller's frame blamed it, and the
+# run named the importer's file with the library's line. Flat and named;
+# and the program's own promise, broken when the library calls it back,
+# names the program's file, which until 9.0 the library's frame took.
+TREES += tuple(
+    (f"library-promise-broken-{which}-{how}", {
+        "main.vel": (f'import "lib.vel"{alias}\n'
+                     + _main(body.replace("{lib}", prefix))),
+        "lib.vel": LIBRARY_MAKING_PROMISES})
+    for which, body in PROMISES_BROKEN
+    for how, alias, prefix in (("flat", "", ""), ("named", " as lib", "lib.")))
+TREES += (
+    ("library-calls-back-a-broken-promise", {
+        "main.vel": ('import "lib.vel" as lib\n' + PROMISE_CALLED_BACK
+                     + _main("print(lib.call_with(positive_only, 2))\n"
+                             "print(lib.call_with(positive_only, 0 - 2))")),
+        "lib.vel": LIBRARY_MAKING_PROMISES}),
 )
 
 

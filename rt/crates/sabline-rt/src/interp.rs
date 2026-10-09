@@ -139,6 +139,18 @@ fn error(code: &'static str, message: impl Into<Text>, line: u32, fixes: &[&str]
     })
 }
 
+/// `loader.blame`: an error with no file yet takes the function's - the
+/// innermost frame wins.
+fn blamed(src_file: &str, stop: Stop) -> Stop {
+    match stop {
+        Stop::Error(mut e) if e.file.is_none() && !src_file.is_empty() => {
+            e.file = Some(src_file.to_string());
+            Stop::Error(e)
+        }
+        other => other,
+    }
+}
+
 fn fail(reason: impl Into<Text>) -> Stop {
     Stop::Fail(Value::Text(reason.into()))
 }
@@ -409,9 +421,14 @@ impl Runtime {
         let entry = if promised { env.clone() } else { HashMap::new() };
         let (hush, hush_result) = self.secret.get(name).cloned().unwrap_or_default();
 
+        // a promise is the callee's: its line is in the callee's file, so is
+        // the file a broken one (or an error in it) names - until 9.0 the
+        // caller's frame blamed it, which named the importer's file with the
+        // library's line
+        let src = func.src_file.as_str();
         for (expr, cline) in &func.requires {
             let mut scope = entry.clone();
-            if !self.eval(expr, &mut scope)?.truthy() {
+            if !self.eval(expr, &mut scope).map_err(|s| blamed(src, s))?.truthy() {
                 let message = TextBuf::new()
                     .str(&format!(
                         "broken promise: {} requires {}  (",
@@ -421,16 +438,18 @@ impl Runtime {
                     .text(&vals(expr, &entry, None, &hush, hush_result))
                     .str(")")
                     .done();
-                return Err(Stop::Error(RunError {
-                    code: "E600",
-                    message,
-                    line: *cline,
-                    fixes: vec![
-                        "check the value before calling this function".to_string(),
-                        "or loosen the promise if it is too strict".to_string(),
-                    ],
-                    file: None,
-                }));
+                return Err(blamed(
+                    src,
+                    error(
+                        "E600",
+                        message,
+                        *cline,
+                        &[
+                            "check the value before calling this function",
+                            "or loosen the promise if it is too strict",
+                        ],
+                    ),
+                ));
             }
         }
 
@@ -452,21 +471,13 @@ impl Runtime {
         }
         self.depth -= 1;
         if let Err(stop) = outcome {
-            return Err(match stop {
-                Stop::Error(mut e) => {
-                    if e.file.is_none() && !func.src_file.is_empty() {
-                        e.file = Some(func.src_file.clone());
-                    }
-                    Stop::Error(e)
-                }
-                other => other,
-            });
+            return Err(blamed(src, stop));
         }
 
         for (expr, cline) in &func.ensures {
             let mut check_env = entry.clone();
             check_env.insert("result".to_string(), retval.clone());
-            if !self.eval(expr, &mut check_env)?.truthy() {
+            if !self.eval(expr, &mut check_env).map_err(|s| blamed(src, s))?.truthy() {
                 let message = TextBuf::new()
                     .str(&format!(
                         "broken promise: {} ensures {}  (",
@@ -476,16 +487,18 @@ impl Runtime {
                     .text(&vals(expr, &entry, Some(&retval), &hush, hush_result))
                     .str(")")
                     .done();
-                return Err(Stop::Error(RunError {
-                    code: "E601",
-                    message,
-                    line: *cline,
-                    fixes: vec![
-                        "the code does not keep this promise - fix the code".to_string(),
-                        "or fix the promise if it is wrong".to_string(),
-                    ],
-                    file: None,
-                }));
+                return Err(blamed(
+                    src,
+                    error(
+                        "E601",
+                        message,
+                        *cline,
+                        &[
+                            "the code does not keep this promise - fix the code",
+                            "or fix the promise if it is wrong",
+                        ],
+                    ),
+                ));
             }
         }
         Ok(retval)
@@ -1483,9 +1496,14 @@ impl Runtime {
                     }
                 }
                 match std::fs::read(&real) {
-                    Ok(raw) => host::read_text(&raw)
-                        .map(Value::Text)
-                        .ok_or(Stop::Raised("UnicodeDecodeError")),
+                    Ok(raw) => host::read_text(&raw).map(Value::Text).ok_or_else(|| {
+                        fail(
+                            TextBuf::new()
+                                .text(&quoted_after("cannot read file ", &path))
+                                .str(": it is not UTF-8 text")
+                                .done(),
+                        )
+                    }),
                     Err(_) => Err(fail(quoted_after("cannot read file ", &path))),
                 }
             }
@@ -1522,13 +1540,24 @@ impl Runtime {
                         ],
                     )
                 };
+                // encoded before the file is opened, so a text that is not
+                // UTF-8 writes nothing and leaves a file that was there as
+                // it was
+                let Some(bytes) = host::written_bytes(&to_text(&arg(1))) else {
+                    return Err(error(
+                        "E608",
+                        TextBuf::new()
+                            .str("could not write '")
+                            .text(&path)
+                            .str("': the text holds a lone surrogate, which is not UTF-8")
+                            .done(),
+                        line,
+                        &["write the text without it: a lone surrogate is half of a \
+                           character, as a JSON escape like \\ud800 gives on its own"],
+                    ));
+                };
                 use std::io::Write;
                 let mut file = std::fs::File::create(&real).map_err(|e| refused(&e))?;
-                // opened, and so emptied, before the text is encoded, as
-                // CPython's open() and then write() do
-                let Some(bytes) = host::written_bytes(&to_text(&arg(1))) else {
-                    return Err(Stop::Raised("UnicodeEncodeError"));
-                };
                 file.write_all(&bytes).map_err(|e| refused(&e))?;
                 Ok(Value::None)
             }
