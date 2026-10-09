@@ -701,7 +701,7 @@ def cases() -> list[tuple[str, bytes]]:
 GATE_VALUE = "a value the gate set"
 
 
-def environ(values: dict[str, str]) -> dict[str, str]:
+def run_variables(values: dict[str, str]) -> dict[str, str]:
     """The variables both runtimes set for a run in the tree."""
     return {"HOME": values["{HOME}"], "USERPROFILE": values["{HOME}"],
             "SABLINE_GATE_VALUE": GATE_VALUE}

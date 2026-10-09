@@ -693,7 +693,7 @@ def main(argv: list[str]) -> int:
             program.write_bytes(_filled(source, values).encode("utf-8"))
             entry: dict[str, Any] = {"path": str(program)}
             entry.update({k: _filled(v, values) for k, v in given.items()})
-            entry["environ"] = agreement_runs.environ(values)
+            entry["environ"] = agreement_runs.run_variables(values)
             lines.append(json.dumps(entry))
         budgeted_paths = here / "budgeted.txt"
         budgeted_paths.write_text("\n".join(lines) + "\n", encoding="utf-8")
