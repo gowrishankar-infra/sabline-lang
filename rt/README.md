@@ -324,8 +324,8 @@ as whatever bytes a console would have made of it; `stopped` the line a
 limit stopped it at and `stopped_by` which, `"steps"` or `"size"`; and
 `raised` the name of a Python exception that escaped the reference, which
 is a defect there and a difference here. The stream is framed as the
-others are, with the header `sabline.run-batch/2`, and holds two records
-for each program: its run document, then its receipt.
+others are, with the header `sabline.run-batch/3`, and holds three records
+for each program: its run document, its receipt, and its audit stream.
 
 **The receipt** (M3, third checkpoint) is the run's `sabline.receipt/1`
 in-toto Statement, as `sabline <file> --receipt FILE` writes it - the
@@ -351,6 +351,21 @@ exactly plan/9.0.md's list, which is `RECEIPT_NORMALISED` and
 `startedAt`, `wall_time_ms`, a `<source>` subject's name, and the four
 confinement fields, compared by rule - present in both, and sabline-rt's
 level at least Python's - with every receipt where they differ printed.
+
+**The audit stream** (decisions/0007, 32b) is the receipt's fields as they
+are produced, one JSON object an event: `start`, `subjects`, then as each
+happens `effect` (every builtin call the budget let through), `grant`,
+`refusal` and `declassify`, and `end` with the receipt
+(`Recorder::streaming`, `stream_start`, `stream_end`). The run document's
+third record is the list of them, `null` where the receipt is, and the gate
+compares it event for event, normalising in `start` and in the receipt `end`
+carries exactly what it normalises in a receipt.
+
+**A line of the list may also give `steps` and `size`**, limits of its own
+in place of the run document's; the gate never does. They are what
+`fuzz_parsers.py --target agreement_runs` runs generated programs under -
+2,000 steps and 2^18 bytes - so that the size limit's known residual stays
+small for inputs the engine makes by mutation.
 
 `check_agreement.py` runs every program it holds, and would print the
 ones it does not: `RUN_EXCLUDED`, each with its reason, which is empty.
