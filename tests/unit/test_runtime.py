@@ -231,7 +231,9 @@ class APromiseNamesItsOwnFile(Run):
         with open(os.path.join(self.dir, "lib.vel"), "w", encoding="utf-8",
                   newline="\n") as fh:
             fh.write(self.LIB)
-        return self.run_text(f'import "lib.vel"{imported}\n' + own + main_of(body))["error"]
+        error: dict[str, Any] = self.run_text(
+            f'import "lib.vel"{imported}\n' + own + main_of(body))["error"]
+        return error
 
     def where(self, err: dict[str, Any]) -> tuple[str, str, int]:
         return err["code"], os.path.basename(err["file"]), err["line"]

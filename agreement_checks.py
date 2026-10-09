@@ -505,7 +505,7 @@ PROMISES_BROKEN = (
 # the promise is the program's, so its file is main.vel
 PROMISE_CALLED_BACK = (
     "fn positive_only(x: Int) -> Int\n    requires x > 0\n{\n    return x\n}\n")
-TREES = (
+TREES: tuple[tuple[str, dict[str, str]], ...] = (
     # a library that makes a function value, imported under a name: the
     # loader renames the library's functions, the lifted one among them,
     # and - from 9.0 - the name the value refers to it by, so it compiles
