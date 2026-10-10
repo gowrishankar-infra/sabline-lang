@@ -1723,10 +1723,14 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
     loaded, checked and proved here, as `_cli_run` does, then run by
     sabline-rt (sabline/through_rt.py). None where the run stays this
     package's: a program the checks or the prover refuse - nothing runs,
-    and the package reports it as it always has, receipt and all - and a
-    budget that grants the network, Python or a tool to a program that can
-    reach it, which sabline-rt does not do yet."""
+    and the package reports it as it always has, receipt and all; a budget
+    that grants the network, Python or a tool to a program that can reach
+    it, which sabline-rt does not do yet; and `sabline trace`, whose every
+    call is the package's interpreter's to show."""
     import posixpath
+    import time as _t
+    if _state.TRACE["on"]:
+        return None
     try:
         funcs, records = load_program(filename)
         errors: list[SablineError] = []
@@ -1756,6 +1760,7 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
                 stream(e)
             except OSError:
                 stream_failed[0] = True
+    t0 = _t.perf_counter()
     try:
         doc, receipt = through_rt.run(
             filename, allow=budget.spec(), seed=_state.SEED,
@@ -1788,6 +1793,9 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
               f"defect in it", file=sys.stderr)
     else:
         status = int(doc.get("exit") or 0)
+        if "--time" in sys.argv and status == 0:
+            print(f"[--time] ran in {(_t.perf_counter() - t0) * 1000:.1f} ms "
+                  f"(sabline-rt)", file=sys.stderr)
     if stream is not None:
         try:
             stream.close()
