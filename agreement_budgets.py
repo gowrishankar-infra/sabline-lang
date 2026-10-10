@@ -37,12 +37,13 @@ directory, with the tree in it, before it asks either.
 **What is not in it, on purpose.** A path whose letters Windows' own case
 table and Unicode's disagree on (`ẞ`, Cherokee - pypath.rs says why), a
 path longer than Windows' 260 characters, a NUL in a path, a loop of
-links, and a count of more than 4,300 digits: CPython itself answers each
-of those differently from one version or one Windows to the next, so no
-single answer could be held to. The last is `int()`'s own refusal, which
-CPython 3.10 words "Exceeds the limit (4300) for integer string
-conversion" and 3.12 and later "(4300 digits)"; sabline-rt writes the
-later, and CI's 3.10 legs are where the two meet.
+links: CPython itself answers each of those differently from one version
+or one Windows to the next, so no single answer could be held to. A count
+or a port of more than 4,300 digits is held: `int()` refuses it, in words
+CPython 3.10 and 3.12 give differently - "Exceeds the limit (4300)" and
+"(4300 digits)" - so the reference refuses first, in 3.12's words, on
+every CPython (`values.whole_number`, 9.0 M3), and CI's 3.10 legs are
+where that is shown.
 """
 import json
 import os
@@ -90,6 +91,14 @@ EDGES: tuple[Case, ...] = (
     ("fs-count-64-bits", "fs@18446744073709551616", None),
     ("fs-count-huge", "fs@" + "9" * 300, None),
     ("fs-count-at-limit", "fs@" + "1" * 4300, None),
+    ("fs-count-past-limit", "fs@" + "1" * 4301, None),
+    ("fs-count-past-limit-by-zeros", "fs@" + "0" * 4300 + "7", None),
+    ("fs-read-count-past-limit", "fs:read:.@" + "2" * 5000, None),
+    ("net-port-past-limit", "net:example.com:" + "4" * 4301, None),
+    ("net-bracket-port-past-limit", "net:[::1]:" + "8" * 4301, None),
+    ("net-count-past-limit", "net:example.com@" + "3" * 4301, None),
+    ("tool-count-past-limit", "tool:search@" + "5" * 4301, None),
+    ("tool-plain-count-past-limit", "tool@" + "6" * 4301, None),
     ("fs-least-count", "fs:read@9,fs:write@3,fs@5", None),
     ("fs-unicode-digits-count", "fs@\u0663", None),
     ("fs-superscript-count", "fs@\u00b2", None),

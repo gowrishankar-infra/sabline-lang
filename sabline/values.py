@@ -63,6 +63,57 @@ def money_text(m: "MoneyValue") -> str:
     return f"{m.currency} {sign}{major}.{minor:0{digits}d}"
 
 
+# CPython's default sys.get_int_max_str_digits(), from 3.10.7 on
+INT_MAX_STR_DIGITS = 4300
+
+
+def whole_number(digits: str) -> int:
+    """int(digits) for a run of ASCII digits, with or without one leading
+    minus: what a budget's count and port and a JSON document's whole
+    number are read with. CPython refuses more than 4,300 digits, leading
+    zeros counted, and words the refusal by version - 3.10 "(4300)", 3.12
+    and later "(4300 digits)" - so this refuses first, in 3.12's words, on
+    every CPython (9.0, M3), as sabline-rt does."""
+    n = len(digits) - (digits[:1] == "-")
+    if n > INT_MAX_STR_DIGITS:
+        raise ValueError(
+            f"Exceeds the limit ({INT_MAX_STR_DIGITS} digits) for integer "
+            f"string conversion: value has {n} digits; use "
+            f"sys.set_int_max_str_digits() to increase the limit")
+    return int(digits)
+
+
+# CPython 3.13's two messages for a comma before a closing bracket, and
+# what 3.10 to 3.12 say there - one place later, at the bracket
+_TRAILING_COMMA = {
+    "Illegal trailing comma before end of array": "Expecting value",
+    "Illegal trailing comma before end of object":
+        "Expecting property name enclosed in double quotes",
+}
+
+
+def read_json(text: str) -> Any:
+    """json.loads(text), answering as CPython 3.12 does on every CPython
+    (9.0, M3), so that a program reading a document is told one thing
+    whichever Python runs it, and sabline-rt the same: a whole number is
+    read by whole_number - only a text longer than its limit can hold one
+    past it, so a shorter one keeps CPython's own fast path - and 3.13's
+    trailing-comma message is given in 3.12's words, at 3.12's place."""
+    import json
+    try:
+        if len(text) > INT_MAX_STR_DIGITS:
+            return json.loads(text, parse_int=whole_number)
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        said = _TRAILING_COMMA.get(e.msg)
+        if said is None:
+            raise
+        at = e.pos + 1                 # past the comma and the white space
+        while at < len(text) and text[at] in " \t\n\r":
+            at += 1
+        raise json.JSONDecodeError(said, e.doc, at) from None
+
+
 _MONEY_TEXT = re.compile(r"(?:([A-Z]{3}) *)?(-)?([0-9]+)(?:\.([0-9]+))?")
 
 

@@ -67,11 +67,12 @@ TEXTS = (
     # the characters a log line escapes, and two that look like space
     "\x00\x07\x7f\x9f", "line\nbreak\rreturn", "\u2028\u2029", "\u0085",
     "\u200b", "\xa0",
-    # what the decoders read. Not here: base64 with padding at the start
-    # of a quad ("YWJj==", "="), which CPython 3.10 decodes and 3.12 and
-    # 3.13 refuse - the reference differs from itself there
+    # what the decoders read, padding at the start of a quad among it
+    # ("YWJj==", "="), which CPython 3.10 decoded and 3.12 refuses - the
+    # reference refuses it on every CPython (9.0, M3)
     "68656c6c6f", "aGVsbG8=", "YQ", "YQ=", "YWJj", "8J+YgA==", "gA==",
-    "ZmY", "Zg==Zg==", "YW=Jj", "YQ===",
+    "ZmY", "Zg==Zg==", "YW=Jj", "YQ===", "YWJj==", "=", "==", "YWJj=",
+    "YWJjYQ===",
 )
 
 
@@ -550,6 +551,39 @@ while i < 25 {
         ok doc {
             check json_get(doc, "") {
                 ok v { print(v) }
+                fail why { print(why) }
+            }
+        }
+        fail why { print(why) }
+    }
+    i = i + 1
+}
+''')),
+    # what CPython words by version and the reference words as 3.12 does on
+    # every CPython (9.0, M3): a comma before a closing bracket, which 3.13
+    # calls an "Illegal trailing comma" a character earlier, and a whole
+    # number past 4,300 digits, which 3.10 refuses "(4300)" and 3.12 "(4300
+    # digits)"; and a long document whose numbers are short, read as any
+    # other
+    ("json-a-trailing-comma-and-a-long-number", _reader([
+        "[1,]", "[1, ]", "[1,\n\t ]", '{"a": 1,}', '{"a": 1 ,\r\n }',
+        "[[1,], 2]", '[{"a": 1,}]', "[1,,]", "{,}", "[,]", '{"a": [2,],}',
+        "1" * 4300, "1" * 4301, "-" + "9" * 4301, "[" + "0," * 2200 + "1" * 4301 + "]",
+        "[" + "1.5," * 1200 + "1" * 4300 + "]",
+        '{"pad": "' + "x" * 4400 + '", "n": [-12, 0, 7]}',
+        "1" * 4301 + ".5", "1" * 4301 + "e2", "[" + "1" * 5000 + ",]"]) + _main('''
+let i = 0
+while i < 20 {
+    check the(i) {
+        ok doc {
+            check json_get(doc, "") {
+                ok v {
+                    print(format("{} characters", length(v)))
+                    check json_len(doc, "") {
+                        ok n { print(n) }
+                        fail why { print(why) }
+                    }
+                }
                 fail why { print(why) }
             }
         }

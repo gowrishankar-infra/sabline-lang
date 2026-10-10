@@ -10,11 +10,13 @@
 //! The decoder here is a transliteration of `_json.c`'s scanner, as it is
 //! in CPython 3.10 to 3.12.
 //!
-//! One thing CPython does that is version-dependent and not copied: from
-//! 3.13 a comma before a closing bracket is "Illegal trailing comma before
-//! end of object/array", where 3.12 says "Expecting property name enclosed
-//! in double quotes" or "Expecting value". This copies 3.12, the version
-//! the agreement job runs; rt/README.md says so.
+//! Two things CPython words by version, and the reference words as 3.12
+//! does on every CPython (`values.read_json`, 9.0 M3), so this copies
+//! 3.12: from 3.13 a comma before a closing bracket is "Illegal trailing
+//! comma before end of object/array" at the comma, where 3.12 says
+//! "Expecting property name enclosed in double quotes" or "Expecting
+//! value" at the bracket; and a whole number past 4,300 digits, which 3.10
+//! refuses "(4300)" and 3.12 "(4300 digits)".
 
 use std::rc::Rc;
 

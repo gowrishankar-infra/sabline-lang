@@ -461,11 +461,11 @@ writes a float as CPython's `repr` does, `1e-05` and `1e+16` included
 * **A count is any size, up to 4,300 digits**: `int()` has no upper
   bound, and from CPython 3.10.7 refuses to read more than 4,300 digits,
   leading zeros included, with a message of its own that becomes the
-  budget's refusal. `budget::Count` holds the digits. That message is
-  the one place the supported CPythons disagree with each other: 3.10
-  says "Exceeds the limit (4300) for ...", 3.12 and later "(4300
-  digits)". The crate writes the later, and the gate holds no count that
-  long, because no single answer would match every leg.
+  budget's refusal. `budget::Count` holds the digits. CPython words that
+  message by version - 3.10 "Exceeds the limit (4300) for ...", 3.12 and
+  later "(4300 digits)" - so the reference refuses first, in 3.12's
+  words, on every CPython (`values.whole_number`, 9.0 M3), and the crate
+  writes the same; the gate holds counts and ports past the limit.
 
 **The interpreter copies more than any stage before it**, because what a
 running program sees is CPython's object model (`src/value.rs`,
@@ -498,15 +498,18 @@ running program sees is CPython's object model (`src/value.rs`,
 * **The JSON builtins are `json.loads` and `json.dumps`** (`src/pyjson.rs`,
   a transliteration of `_json.c`'s scanner): which texts parse, the value
   each gives, and every message, with its line, column and character. The
-  messages are CPython 3.10's to 3.12's; 3.13 says "Illegal trailing comma
-  before end of object" where they say "Expecting property name enclosed
-  in double quotes", so the gate holds no document with such a comma.
+  messages are CPython 3.12's: 3.13 says "Illegal trailing comma before
+  end of object" where 3.10 to 3.12 say "Expecting property name enclosed
+  in double quotes", a character earlier, and the reference gives 3.12's
+  words at 3.12's place on every CPython (`values.read_json`, 9.0 M3), as
+  it does for a whole number past 4,300 digits.
   `int()` and `float()` of a text, which `json_int` and `json_float` use,
   are copied with their Unicode digits, white space and underscores.
 * **`base64_decode` is `b64decode(..., validate=True)`**, which from
   CPython 3.11 is `a2b_base64`'s strict mode: 3.10 decodes padding at the
-  start of a quad (`"YWJj=="`) that 3.11 and later refuse. The crate is
-  3.11's and later; the gate holds no such text.
+  start of a quad (`"YWJj=="`) that 3.11 and later refuse. The reference
+  takes only what strict mode takes on every CPython (`runtime._BASE64`,
+  9.0 M3), and so does the crate.
 * **What a run reaches of the machine is CPython's** (`src/host.rs`):
   `env()` reads `os.environ`, which on Windows upper-cases every name -
   `env("path", "")` finds `Path` - and leaves out the C runtime's hidden

@@ -3,6 +3,7 @@
 import functools
 import os
 import queue
+import re
 import sys
 import threading
 
@@ -63,6 +64,7 @@ from .values import (
     ReturnSignal,
     money_text,
     parse_money_text,
+    read_json,
     round_ratio,
     to_text,
 )
@@ -112,6 +114,13 @@ def key_fingerprint(key: bytes) -> str:
 FINGERPRINTS_PER_SITE = 16
 
 
+# What base64_decode takes: whole quads of the alphabet, the last one
+# padded as the encoder pads it - exactly what CPython 3.12's strict
+# decoder takes, and so what sabline-rt's takes.
+_BASE64 = re.compile(
+    r"(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?")
+
+
 def run_digest(name: str, args: list[Any], line: int) -> Any:
     """sha256, the encoders and the two HMACs (8.5). The HMACs' `declassify`
     effect was spent before this ran."""
@@ -135,7 +144,11 @@ def run_digest(name: str, args: list[Any], line: int) -> Any:
                 raw = bytes.fromhex(text) if text.isascii() and not any(
                     c.isspace() for c in text) else None
             else:
-                raw = base64.b64decode(text.encode("ascii"), validate=True)
+                # CPython 3.12's strictness on every CPython (9.0, M3):
+                # 3.10 decoded padding at the start of a quad, "YWJj=="
+                # and "=", which 3.12 refuses
+                raw = (base64.b64decode(text.encode("ascii"), validate=True)
+                       if _BASE64.fullmatch(text) else None)
         except (ValueError, binascii.Error, UnicodeEncodeError):
             raw = None
         if raw is None:
@@ -375,7 +388,7 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
         def split_args(raw: Any) -> tuple[Any, ...]:
             """A JSON list of arguments; a trailing object is keywords."""
             try:
-                vals = _json.loads(str(raw))
+                vals = read_json(str(raw))
             except Exception as e:
                 raise FailSignal(f"the arguments are not valid JSON: {e}")
             if not isinstance(vals, list):
@@ -474,7 +487,7 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
 
         def walk(doc_text: Any, path_text: Any, what: Any) -> Any:
             try:
-                cur = _json.loads(str(doc_text))
+                cur = read_json(str(doc_text))
             except Exception as e:
                 raise FailSignal(f"this is not valid JSON: {e}")
             if str(path_text) == "":
@@ -558,7 +571,7 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
         # lists and nested data survive the trip intact
         module, func, args_json = args[0], args[1], args[2]
         try:
-            call_args = _json.loads(str(args_json))
+            call_args = read_json(str(args_json))
         except Exception as e:
             raise FailSignal(f"the arguments are not valid JSON: {e}")
         if not isinstance(call_args, list):
@@ -780,7 +793,7 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
         if not (url.startswith("http://") or url.startswith("https://")):
             url = "https://" + url
         try:
-            headers = _json.loads(headers_json) if headers_json.strip() \
+            headers = read_json(headers_json) if headers_json.strip() \
                 else {}
         except Exception as e:
             raise FailSignal(f"the headers are not valid JSON: {e}")

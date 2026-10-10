@@ -15,6 +15,18 @@ audit stream, `sabline.audit-stream/1`, one JSON object an event as it
 happens - written to FILE a line each, or handed to the function. Without
 either nothing changes.
 
+compatibility: for 9.0's Python package, the three answers that depended on
+the CPython running it are CPython 3.12's on every CPython (9.0, M3). A
+JSON document with a comma before its closing bracket fails "Expecting
+value" or "Expecting property name enclosed in double quotes" at the
+bracket, where 3.13 said "Illegal trailing comma before end of array" (or
+object) at the comma; a whole number of more than 4,300 digits - in a JSON
+document, or a budget's count or port - is refused "Exceeds the limit (4300
+digits) ...", where 3.10 said "(4300)"; and `base64_decode` fails on
+padding at the start of a group of four (`"YWJj=="`, `"="`), which 3.10
+decoded. Messages are outside STABILITY.md; the last refuses on 3.10 what
+3.12 and 3.13 already refused.
+
 ## 9.0.0-alpha.8 - M3: receipts and the audit stream, field for field
 
 M3's third checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,

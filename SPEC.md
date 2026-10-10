@@ -772,7 +772,10 @@ library could not index a list or use a `for` loop).
 `sha256(text)` gives 64 hexadecimal digits; `hex_encode` and
 `base64_encode` (RFC 4648, padded) encode; `hex_decode` and
 `base64_decode` decode, and fail on text that is not the encoding or
-whose bytes are not UTF-8; `url_encode` percent-encodes every byte but
+whose bytes are not UTF-8 - for `base64_decode`, text that is not whole
+groups of four of the alphabet, the last padded as `base64_encode` pads
+it (9.0: under CPython 3.10 the reference took padding at the start of a
+group, `"YWJj=="`, which 3.12 refuses); `url_encode` percent-encodes every byte but
 the unreserved characters of RFC 3986 (`A-Z a-z 0-9 - . _ ~`).
 
 ## 11. Compilation and execution

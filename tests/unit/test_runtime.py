@@ -273,6 +273,65 @@ class AnAmountPastSixtyFourBits(Run):
                          (None, "INR -92233720368547758.08\n"))
 
 
+class OneAnswerOnEveryCPython(Run):
+    """9.0, M3: the three places the reference answered by CPython version
+    answer as 3.12 does on every CPython - json's trailing comma, which
+    3.13 words "Illegal trailing comma" a character earlier; int()'s digit
+    limit, which 3.10 words "(4300)"; and base64 with padding at the start
+    of a quad, which 3.10 decoded. This file runs on every leg, so each
+    assertion is made on 3.10, 3.12 and 3.13 alike."""
+
+    LIMIT = ("Exceeds the limit (4300 digits) for integer string conversion: "
+             "value has {} digits; use sys.set_int_max_str_digits() to "
+             "increase the limit")
+
+    def test_a_trailing_comma_is_said_as_3_12_says_it(self) -> None:
+        from sabline.values import read_json
+        for text, said in (
+                ("[1,]", "Expecting value: line 1 column 4 (char 3)"),
+                ("[1, \n ]", "Expecting value: line 2 column 2 (char 6)"),
+                ('{"a": 1,}', "Expecting property name enclosed in double "
+                              "quotes: line 1 column 9 (char 8)"),
+                ('[{"a": [2,],}]', "Expecting value: line 1 column 11 (char 10)")):
+            with self.assertRaises(ValueError) as refused:
+                read_json(text)
+            self.assertEqual(str(refused.exception), said, text)
+
+    def test_a_long_whole_number_is_refused_in_3_12s_words(self) -> None:
+        from sabline.values import read_json, whole_number
+        self.assertEqual(whole_number("1" * 4300), int("1" * 4300))
+        self.assertEqual(whole_number("-" + "1" * 4300), -int("1" * 4300))
+        for digits, n in (("1" * 4301, 4301), ("-" + "9" * 4301, 4301),
+                          ("0" * 4300 + "1", 4301)):
+            with self.assertRaises(ValueError) as refused:
+                whole_number(digits)
+            self.assertEqual(str(refused.exception), self.LIMIT.format(n))
+        with self.assertRaises(ValueError) as refused:
+            read_json("[0, " + "7" * 5000 + "]")
+        self.assertEqual(str(refused.exception), self.LIMIT.format(5000))
+        # a long document of short numbers reads as any other
+        self.assertEqual(read_json('{"p": "' + "x" * 5000 + '", "n": [-1, 20]}')["n"],
+                         [-1, 20])
+
+    def test_a_budget_count_and_port_past_it(self) -> None:
+        from sabline.budget import Budget
+        for allow in ("fs@" + "1" * 4301, "net:x:" + "4" * 4301,
+                      "net:[::1]:" + "4" * 4301, "tool:t@" + "5" * 4301):
+            with self.assertRaises(ValueError) as refused:
+                Budget.parse(allow)
+            self.assertIn(self.LIMIT.format(4301), str(refused.exception), allow)
+
+    def test_base64_padding_at_the_start_of_a_quad_is_refused(self) -> None:
+        doc = self.run_text(main_of(
+            'for t in ["YWJj==", "=", "==", "YWJj=", "YWI=", ""] {\n'
+            '    check base64_decode(t) {\n'
+            '        ok d { print(format("[{}]", d)) }\n'
+            '        fail why { print(why) }\n'
+            '    }\n'
+            '}'))
+        self.assertEqual(doc["stdout"], "that text is not base64\n" * 4 + "[ab]\n[]\n")
+
+
 class ReceiptOfARun(Run):
     """The run document's receipt (M3, third checkpoint): what `sabline
     <file> --receipt` writes of the same run, with nothing asked of the
