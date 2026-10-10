@@ -46,6 +46,7 @@ pub struct Loaded {
 
 struct Loader<'a> {
     install_dir: &'a str,
+    entry_source: Option<&'a str>,
     loaded: Loaded,
     files: &'a mut Vec<String>,
     fn_src: HashMap<String, String>,
@@ -70,8 +71,22 @@ pub fn load_program_recording(
     install_dir: &str,
     files: &mut Vec<String>,
 ) -> Answer<Loaded> {
+    load_program_given(entry, None, install_dir, files)
+}
+
+/// `load_program(entry, entry_source, loaded=files)`: the same, with the
+/// entry's text given rather than read from `entry` - `sabline.run(source,
+/// path=...)`, whose path is where imports resolve from and need not hold
+/// that text (9.0, M3).
+pub fn load_program_given(
+    entry: &str,
+    entry_source: Option<&str>,
+    install_dir: &str,
+    files: &mut Vec<String>,
+) -> Answer<Loaded> {
     let mut loader = Loader {
         install_dir,
+        entry_source,
         loaded: Loaded::default(),
         files,
         fn_src: HashMap::new(),
@@ -103,7 +118,12 @@ impl Loader<'_> {
             return Ok(()); // already loaded (diamond or cycle)
         }
         self.visited.insert(ap.clone());
-        let bytes = match std::fs::read(path) {
+        let given = if importer.is_none() { self.entry_source } else { None };
+        let read = match given {
+            Some(text) => Ok(text.as_bytes().to_vec()),
+            None => std::fs::read(path),
+        };
+        let bytes = match read {
             Ok(bytes) => bytes,
             Err(_) => {
                 if let Some(importer) = importer {

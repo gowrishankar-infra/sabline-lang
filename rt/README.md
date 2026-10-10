@@ -395,6 +395,44 @@ rows and sabline-spec's L2 cases, each of the last two whose budget grants
 only effects whose work is ported - in a tree of files made afresh for each
 runtime, with `~` the tree's home.
 
+## A run for a user: `sabline-rt exec`
+
+The run document is the gate's; `sabline-rt exec --install-dir DIR` is a
+user's (9.0, M3). It is what `sabline run` and `sabline.run` go through
+when `SABLINE_REFERENCE_RUNTIME` is `rust` (`sabline/through_rt.py`;
+decisions/0002: the command stays in Python and the run inside it goes
+through sabline-rt). The Python package still reads the flags, builds the
+budget, and loads, checks and proves the program - the prover is the
+package's for good - and then sabline-rt runs it, with no step limit and no
+size limit, under the budget the package parsed (`Budget.spec()`, which
+parses to the same budget).
+
+The two talk in JSON lines (`src/exec.rs` has the whole conversation). The
+request is the first line on standard input: the path, the budget, the
+seed, the frozen clock, the read ceiling, the arguments, the name the
+receipt gives the program, the program's text when the file at its path
+only says where imports resolve from (`sabline.run(source, path=...)`, for
+which the loader takes `load_program_given`'s `entry_source`), and whether
+the audit stream is wanted. Then a frame on standard output for each thing
+the run does, as it does it: what `print` and `log` write, `read_line` and
+`ask` as questions the parent answers with a line, each audit event, and
+last the run document and the receipt. **Why frames**: what the program
+prints reaches its user through the package's own `sys.stdout`, and what it
+reads comes from `sys.stdin`, with their encoding, buffering, newline
+translation and `input()`'s way with a terminal - so a run through
+sabline-rt writes and reads exactly what the same run in the package does.
+`Io::relayed` makes the run's input and output a `Relay`, and the
+recorder's `live` sends each event as it is told; both carry the frame's
+line, since a line can cross to the writing thread and a `Text` (an `Rc`)
+cannot. A parent that goes away takes the run with it: its end of the pipe
+closes, the reading thread sees the end of standard input while the run is
+going, and the process exits with status 3.
+
+`check_through_rt.py` holds the two entry points to the package's own runs
+of the gate's programs - output byte for byte, status, the error printed,
+the receipt and the stream - and `tests/exec.rs` drives the binary as the
+package does.
+
 ## What had to be written down to be copied
 
 Four things in the reference are decided somewhere other than the lexer
@@ -655,8 +693,11 @@ recursion limit to 20,000 before it parses.
 | `src/digest.rs` | SHA-256, HMAC-SHA-256, hexadecimal, base64 and `url_encode` |
 | `src/host.rs` | what a run reaches of the machine, as CPython reaches it: `os.environ`, `~`, `random.Random`, a file's text, `OSError.strerror` |
 | `src/interp.rs` | the interpreter, every builtin's spending against the budget, the file grants, counts and ceiling, and the size limit |
-| `src/run_dump.rs` | what a run did, as the canonical run document |
-| `src/bin/sabline-rt.rs` | `sabline-rt ast`, `check`, `tables`, `budget` and `run` |
+| `src/run_dump.rs` | what a run did, as the canonical run document, and a relayed run |
+| `src/receipt.rs` | the recorder, `sabline.receipt/1` and the audit stream |
+| `src/exec.rs` | `sabline-rt exec`'s conversation: the request, the answers, the frames |
+| `src/bin/sabline-rt.rs` | `sabline-rt ast`, `check`, `tables`, `budget`, `run` and `exec` |
 | `tests/limits.rs` | the depth caps, and the stack they need |
-| `tests/runs.rs` | a library's function value under a name, how a function value prints, the size limit, a file grant |
+| `tests/runs.rs` | a library's function value under a name, how a function value prints, the size limit and what is written out, a file grant |
+| `tests/exec.rs` | `sabline-rt exec` driven as the Python package drives it |
 | `fuzz/` | the `cargo fuzz` targets |

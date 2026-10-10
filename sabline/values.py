@@ -84,12 +84,13 @@ def whole_number(digits: str) -> int:
 
 
 # CPython 3.13's two messages for a comma before a closing bracket, and
-# what 3.10 to 3.12 say there - one place later, at the bracket
-_TRAILING_COMMA = {
-    "Illegal trailing comma before end of array": "Expecting value",
-    "Illegal trailing comma before end of object":
-        "Expecting property name enclosed in double quotes",
-}
+# what 3.10 to 3.12 say there - one place later, at the bracket. Pairs, not
+# a dict: nothing at module level a run could change (check_pool.py)
+_TRAILING_COMMA = (
+    ("Illegal trailing comma before end of array", "Expecting value"),
+    ("Illegal trailing comma before end of object",
+     "Expecting property name enclosed in double quotes"),
+)
 
 
 def read_json(text: str) -> Any:
@@ -105,7 +106,7 @@ def read_json(text: str) -> Any:
             return json.loads(text, parse_int=whole_number)
         return json.loads(text)
     except json.JSONDecodeError as e:
-        said = _TRAILING_COMMA.get(e.msg)
+        said = dict(_TRAILING_COMMA).get(e.msg)
         if said is None:
             raise
         at = e.pos + 1                 # past the comma and the white space

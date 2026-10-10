@@ -395,6 +395,7 @@ from .formatter import fmt_main
 from .project import build_program, doctor, new_project, packages
 from .session import repl
 from .results import Problem, RunResult
+from . import through_rt
 from .library import (
     _audit_here,
     _cap_this_process,
@@ -1682,6 +1683,12 @@ def _write_later(fh: Any, path: str, text: str) -> None:
 
 def _cli_run_receipt_or_not(filename: str, as_json: bool,
                             budget: "Budget") -> int:
+    try:
+        runtime = through_rt.chosen()
+    except through_rt.RuntimeChoiceError as e:
+        print(f"sabline: {e}", file=sys.stderr)
+        return 2
+    receipt_to = stream_to = None
     if "--receipt" in sys.argv or "--audit-stream" in sys.argv:
         try:
             receipt_to = _flag_value(sys.argv, "--receipt")
@@ -1689,9 +1696,119 @@ def _cli_run_receipt_or_not(filename: str, as_json: bool,
         except BudgetError as e:
             print(str(e), file=sys.stderr)
             return 2
+    if runtime == "rust":
+        status = _cli_run_through_rt(filename, as_json, budget, receipt_to,
+                                     stream_to)
+        if status is not None:
+            return status
+    if receipt_to is not None or stream_to is not None:
         return _cli_run_with_receipt(filename, as_json, budget, receipt_to,
                                      stream_to)
     return _cli_run(filename, as_json)
+
+
+def _ask_as_input_does(prompt: str) -> str | None:
+    """`ask` relayed from sabline-rt: input(prompt), as the package's own
+    run calls it, or None for the end of the input."""
+    try:
+        return input(prompt)
+    except (EOFError, KeyboardInterrupt):
+        return None
+
+
+def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
+                        receipt_to: str | None,
+                        stream_to: str | None) -> int | None:
+    """`sabline file.vel` with SABLINE_REFERENCE_RUNTIME=rust (9.0, M3):
+    loaded, checked and proved here, as `_cli_run` does, then run by
+    sabline-rt (sabline/through_rt.py). None where the run stays this
+    package's: a program the checks or the prover refuse - nothing runs,
+    and the package reports it as it always has, receipt and all - and a
+    budget that grants the network, Python or a tool to a program that can
+    reach it, which sabline-rt does not do yet."""
+    import posixpath
+    try:
+        funcs, records = load_program(filename)
+        errors: list[SablineError] = []
+        check_effects(funcs, errors)
+        check_types(funcs, records, errors)
+        if not errors:
+            check_proofs(funcs, records, errors, set())
+    except (SablineError, RecursionError):
+        return None
+    if errors:
+        return None
+    missing = through_rt.not_ported(funcs, budget)
+    if missing:
+        print(through_rt.fallback_notice(missing), file=sys.stderr)
+        return None
+    stream = None
+    if stream_to is not None:
+        stream = _audit_stream_to(stream_to)
+        if stream is None:
+            return 2
+    receipt_fh = _open_for_later(receipt_to) if receipt_to else None
+    stream_failed = [False]
+
+    def event(e: dict[str, Any]) -> None:
+        if stream is not None and not stream_failed[0]:
+            try:
+                stream(e)
+            except OSError:
+                stream_failed[0] = True
+    try:
+        doc, receipt = through_rt.run(
+            filename, allow=budget.spec(), seed=_state.SEED,
+            freeze_time=_state.FROZEN_TIME, max_read=_state.MAX_READ_BYTES,
+            args=list(_state.PROGRAM_ARGS),
+            name=posixpath.normpath(filename.replace(os.sep, "/")),
+            out=sys.stdout.write, err=sys.stderr.write,
+            read_line=sys.stdin.readline, ask=_ask_as_input_does,
+            event=event if stream is not None else None)
+    except through_rt.Unavailable as e:
+        print(f"sabline: {e}", file=sys.stderr)
+        return 2
+    status = 1
+    if doc.get("refused"):
+        # sabline-rt's checkers refused what this package's passed: a
+        # difference the agreement gate exists to find
+        problems = [SablineError(p["code"], p["message"], p["line"],
+                                 p.get("fixes"), p.get("file"))
+                    for p in doc["refused"]]
+        print("\n\n".join(e.machine(filename) if as_json else e.human(filename)
+                           for e in problems), file=sys.stderr)
+    elif doc.get("error"):
+        failed = doc["error"]
+        err = SablineError(failed["code"], failed["message"], failed["line"],
+                           failed.get("fixes"), failed.get("file"))
+        print(err.machine(filename) if as_json else err.human(filename),
+              file=sys.stderr)
+    elif doc.get("raised"):
+        print(f"sabline: sabline-rt stopped with {doc['raised']}, which is a "
+              f"defect in it", file=sys.stderr)
+    else:
+        status = int(doc.get("exit") or 0)
+    if stream is not None:
+        try:
+            stream.close()
+        except OSError:
+            stream_failed[0] = True
+        if stream_failed[0]:
+            print(f"sabline: the audit stream to {stream_to} stopped before "
+                  f"the run ended", file=sys.stderr)
+            if status == 0:
+                status = 2
+    if receipt_to is not None:
+        try:
+            _write_later(receipt_fh, receipt_to,
+                         json.dumps(receipt, indent=2, ensure_ascii=False)
+                         + "\n")
+        except OSError as e:
+            print(f"sabline: the receipt could not be written to "
+                  f"{receipt_to}: {e.strerror or e}", file=sys.stderr)
+            if status == 0:
+                status = 2
+    return status
 
 
 def _audit_stream_to(path: str) -> Any:

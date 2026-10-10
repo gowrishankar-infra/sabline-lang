@@ -24,6 +24,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use std::sync::mpsc::{Receiver, Sender};
 
 use crate::bigint::BigInt;
 use crate::budget::{pct_encode, Budget, DEFAULT_ALLOW};
@@ -156,6 +157,33 @@ fn fail(reason: impl Into<Text>) -> Stop {
     Stop::Fail(Value::Text(reason.into()))
 }
 
+/// What one frame of a relayed run is: something written, or a question
+/// for whoever runs it (`sabline-rt exec`).
+#[derive(Debug, Clone, PartialEq)]
+pub enum Frame {
+    /// What `print` writes to `sys.stdout`, its line feed included.
+    Out(Text),
+    /// What `log` writes to `sys.stderr`, its line feed included.
+    Err(Text),
+    /// `read_line`: a line of `sys.stdin`, as `readline()` reads it.
+    ReadLine,
+    /// `ask`: the prompt, and an answer as `input(prompt)` gives one.
+    Ask(Text),
+    /// One event of the audit stream, as it happens.
+    Event(crate::json::Json),
+}
+
+/// Where a relayed run's frames go, and where the answers to its questions
+/// come from - each as the line it is written as (`crate::exec`), since a
+/// line can go to another thread and a Text cannot.
+#[derive(Debug)]
+pub struct Relay {
+    /// Every frame, in the order the run makes them.
+    pub frames: Sender<String>,
+    /// The answer to each `ReadLine` and `Ask`, in turn.
+    pub answers: Receiver<String>,
+}
+
 /// What the program reads and writes: `sys.stdin`, `sys.stdout`,
 /// `sys.stderr` and `args()`.
 #[derive(Debug, Default)]
@@ -168,6 +196,12 @@ pub struct Io {
     at: usize,
     /// What `args()` answers.
     pub args: Vec<Text>,
+    /// With a relay, nothing is kept here: what the program writes and
+    /// reads is whoever runs it's, a frame each, as it happens - so that
+    /// `sabline run` through sabline-rt writes through the Python
+    /// package's own `sys.stdout` and reads its `sys.stdin`, with their
+    /// encoding, buffering and newline translation (9.0, M3).
+    pub relay: Option<Relay>,
 }
 
 impl Io {
@@ -177,14 +211,66 @@ impl Io {
         Io { stdin: stdin.chars().map(|c| c as u32).collect(), args, ..Io::default() }
     }
 
+    /// Input, output and questions relayed to whoever runs the program.
+    pub fn relayed(relay: Relay, args: Vec<Text>) -> Io {
+        Io { args, relay: Some(relay), ..Io::default() }
+    }
+
+    fn send(&self, frame: Frame) -> Option<Text> {
+        let relay = self.relay.as_ref()?;
+        let question = matches!(frame, Frame::ReadLine | Frame::Ask(_));
+        // a frame nobody takes is a run nobody is waiting for
+        if relay.frames.send(crate::exec::frame(frame).canonical()).is_err() || !question {
+            return None;
+        }
+        relay.answers.recv().ok().and_then(|line| crate::exec::answer(&line))
+    }
+
+    /// What `print` writes: kept, or relayed.
+    fn write_out(&mut self, t: &Text) {
+        if self.relay.is_some() {
+            self.send(Frame::Out(t.clone()));
+        } else {
+            self.stdout.push_text(t);
+        }
+    }
+
+    /// What `log` writes: kept, or relayed.
+    fn write_err(&mut self, t: &Text) {
+        if self.relay.is_some() {
+            self.send(Frame::Err(t.clone()));
+        } else {
+            self.stderr.push_text(t);
+        }
+    }
+
     /// `sys.stdin.readline()`: up to and including the next line feed, or
     /// the rest, or `""` at the end.
     fn readline(&mut self) -> Text {
+        if self.relay.is_some() {
+            return self.send(Frame::ReadLine).unwrap_or_default();
+        }
         let rest = &self.stdin[self.at..];
         let n = rest.iter().position(|&c| c == 0x0A).map_or(rest.len(), |i| i + 1);
         let line = Text::from(rest[..n].to_vec());
         self.at += n;
         line
+    }
+
+    /// `input(prompt)`: the prompt written, then a line without its line
+    /// feed, or `None` at the end of the input.
+    fn ask(&mut self, prompt: &Text) -> Option<Text> {
+        if self.relay.is_some() {
+            return self.send(Frame::Ask(prompt.clone()));
+        }
+        self.stdout.push_text(prompt);
+        let got = self.readline();
+        let p = got.points();
+        match p.last() {
+            None => None,
+            Some(&0x0A) => Some(got.slice(0, p.len() - 1)),
+            Some(_) => Some(got),
+        }
     }
 }
 
@@ -1075,8 +1161,7 @@ impl Runtime {
                 if self.size_limit.is_some() {
                     self.made_text(&shown, line)?;
                 }
-                self.io.stdout.push_text(&shown);
-                self.io.stdout.push_str("\n");
+                self.io.write_out(&shown.concat(&Text::from("\n")));
                 Ok(Value::None)
             }
             "ask" => {
@@ -1084,22 +1169,15 @@ impl Runtime {
                 if self.size_limit.is_some() {
                     self.made_text(&prompt, line)?;
                 }
-                self.io.stdout.push_text(&prompt);
-                let got = self.io.readline();
-                if got.is_empty() {
-                    return Err(error(
+                match self.io.ask(&prompt) {
+                    Some(got) => Ok(Value::Text(got)),
+                    None => Err(error(
                         "E607",
                         "no input available to read",
                         line,
                         &["run this program in a terminal where you can type an answer"],
-                    ));
+                    )),
                 }
-                let p = got.points();
-                Ok(Value::Text(if p.last() == Some(&0x0A) {
-                    got.slice(0, p.len() - 1)
-                } else {
-                    got
-                }))
             }
             "to_int" => {
                 let given = text_of(&arg(0))?;
@@ -1447,8 +1525,7 @@ impl Runtime {
                 if self.size_limit.is_some() {
                     self.made_text(&line_text, line)?;
                 }
-                self.io.stderr.push_text(&line_text);
-                self.io.stderr.push_str("\n");
+                self.io.write_err(&line_text.concat(&Text::from("\n")));
                 Ok(Value::None)
             }
             "exit_with" => {

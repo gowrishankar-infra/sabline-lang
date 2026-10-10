@@ -89,12 +89,20 @@ publishes nothing.
 
 ## The reference-runtime variable, for 9.0
 
-`SABLINE_REFERENCE_RUNTIME` is reserved, and nothing reads it in 8.2. From
+`SABLINE_REFERENCE_RUNTIME` was reserved in 8.2, when nothing read it. From
 9.0 it is the repository variable that names which runtime the conformance,
 differential and benchmark jobs treat as the reference when there is more
-than one; its only value today would be `python`, the package in `sabline/`,
-and unset means that. Until 9.0 says otherwise, do not set it, and do not
-use the name for anything else.
+than one, and the runtime a run uses.
+
+From 9.0's M3 a run reads it: `rust` sends `sabline run` and `sabline.run`
+through sabline-rt (`sabline/through_rt.py` says what that is and is not -
+no confinement before M4, and a budget granting the network, Python or a
+tool to a program that uses it stays the package's, saying so); unset or
+`python` is the package in `sabline/`, as before; anything else is refused.
+It is opt-in until M7, which flips its default (plan/9.0.md). The agreement
+gate reads none of it and compares both runtimes whatever it says, and
+`check_gate.py` sets it both ways to show that. Do not use the name for
+anything else.
 
 ## Secrets and variables
 

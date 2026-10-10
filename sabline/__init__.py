@@ -17,7 +17,8 @@ _MODULES = (
     "tables", "confine", "state", "recorder", "loader", "values",
     "wrappers", "budget", "tools", "effects", "checker", "termination",
     "check_dump", "prover", "native", "runtime", "witnesses", "editor", "formatter",
-    "project", "session", "results", "library", "pool", "run_dump",
+    "project", "session", "results", "through_rt", "library", "pool",
+    "run_dump",
     "findings", "mcp_manifest", "doors", "migrate", "ratchet",
     "conform", "attestation", "receipts", "statements", "receipt_diff",
     "viewer", "demo", "skill",
@@ -34,7 +35,8 @@ from . import effects, checker, termination  # noqa: E402,F401
 from . import check_dump  # noqa: E402,F401
 from . import prover, native, runtime  # noqa: E402,F401
 from . import witnesses  # noqa: E402,F401
-from . import editor, formatter, project, session, results, library  # noqa: E402,F401
+from . import editor, formatter, project, session, results  # noqa: E402,F401
+from . import through_rt, library  # noqa: E402,F401
 from . import pool, run_dump, findings, mcp_manifest, doors, migrate, ratchet  # noqa: E402,F401
 from . import conform, attestation, receipts, statements  # noqa: E402,F401
 from . import receipt_diff, viewer, demo, skill  # noqa: E402,F401

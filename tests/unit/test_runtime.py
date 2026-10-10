@@ -20,7 +20,7 @@ from sabline import state as _state
 from sabline.nodes import Function
 from sabline.runtime import SizeLimit, made, size_of
 from sabline.values import Bound, to_text
-from typing import Any
+from typing import Any, Callable
 
 STAGE = "runtime"
 
@@ -66,6 +66,16 @@ class FunctionValuesPrint(Run):
         self.assertEqual(doc["stdout"], "fn double\nfn fn#1\n[fn double, fn fn#1]\n")
         self.assertEqual(doc["error"]["code"], "E600")
         self.assertIn("(fs = [fn double, fn fn#1])", doc["error"]["message"])
+
+    def test_the_count_starts_at_one_in_every_program(self) -> None:
+        # however many programs the process loaded before - sabline.run
+        # called again, a pool's worker, a door - as sabline-rt counts them
+        # (9.0, M3; until then a second sabline.run printed `fn fn#4`)
+        from sabline.library import run
+        source = main_of("let f = fn(x: Int) -> Int { return x }\n"
+                         "let g = fn(x: Int) -> Int { return x + 1 }\nprint([f, g])")
+        self.assertEqual({run(source).output for _ in range(3)},
+                         {"[fn fn#1, fn fn#2]\n"})
 
 
 class AllOfAndAnyOf(Run):
@@ -145,7 +155,8 @@ class WrittenOutIsCountedFirst(Run):
                  "\x85\x9f", "line\nbreak\rreturn\ttab", "  ",
                  "\b\f", "{}", "\xa0​"]
         f = Function("double", [("x", "Int")], "Int", set(), [], [], [], 1)
-        leaves = [lambda: rng.choice(texts), lambda: rng.randint(-10**20, 10**20),
+        leaves: list[Callable[[], Any]] = [
+                  lambda: rng.choice(texts), lambda: rng.randint(-10**20, 10**20),
                   lambda: rng.choice([0.0, -0.0, 1.5, 1e16, 1e-05, float("nan"),
                                       float("inf"), float("-inf"), 2.5e-300]),
                   lambda: rng.choice([True, False]),
@@ -160,9 +171,11 @@ class WrittenOutIsCountedFirst(Run):
             if pick < 0.6:
                 return [value(depth + 1) for _ in range(rng.randint(0, 4))]
             if pick < 0.8:
-                keys = rng.choice([lambda: rng.choice(texts), lambda: rng.randint(-5, 5),
-                                   lambda: rng.choice([1.5, float("nan"), -0.0]),
-                                   lambda: rng.choice([True, False])])
+                kinds: list[Callable[[], Any]] = [
+                    lambda: rng.choice(texts), lambda: rng.randint(-5, 5),
+                    lambda: rng.choice([1.5, float("nan"), -0.0]),
+                    lambda: rng.choice([True, False])]
+                keys = rng.choice(kinds)
                 return {keys(): value(depth + 1) for _ in range(rng.randint(0, 4))}
             return RecordValue("Pt", {"x": value(depth + 1), "yé": value(depth + 1)})
         return [value(0) for _ in range(n)]
@@ -429,6 +442,65 @@ class OneAnswerOnEveryCPython(Run):
             '    }\n'
             '}'))
         self.assertEqual(doc["stdout"], "that text is not base64\n" * 4 + "[ab]\n[]\n")
+
+
+class TheVariableChoosesTheRuntime(Run):
+    """SABLINE_REFERENCE_RUNTIME (9.0, M3): `rust` sends `sabline run` and
+    `sabline.run` through sabline-rt, unset or `python` leaves them to the
+    package, anything else is refused; and a run whose budget grants the
+    network, Python or a tool to a program that uses it stays the
+    package's. check_through_rt.py holds what goes through sabline-rt to
+    the package's own runs."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.saved = os.environ.pop("SABLINE_REFERENCE_RUNTIME", None)
+
+    def tearDown(self) -> None:
+        os.environ.pop("SABLINE_REFERENCE_RUNTIME", None)
+        if self.saved is not None:
+            os.environ["SABLINE_REFERENCE_RUNTIME"] = self.saved
+
+    def test_what_it_takes(self) -> None:
+        from sabline import through_rt
+        for said, runtime in (("", "python"), ("python", "python"),
+                              (" rust ", "rust")):
+            os.environ["SABLINE_REFERENCE_RUNTIME"] = said
+            self.assertEqual(through_rt.chosen(), runtime, said)
+        for said in ("Rust", "rs", "pyhton"):
+            os.environ["SABLINE_REFERENCE_RUNTIME"] = said
+            with self.assertRaises(through_rt.RuntimeChoiceError):
+                through_rt.chosen()
+
+    def test_the_command_line_refuses_what_names_no_runtime(self) -> None:
+        import subprocess
+        import sys
+        path = os.path.join(self.dir, "p.vel")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(main_of('print("hi")'))
+        done = subprocess.run(
+            [sys.executable, "-m", "sabline", path], capture_output=True,
+            text=True, env=dict(os.environ, SABLINE_REFERENCE_RUNTIME="rsut"))
+        self.assertEqual((done.returncode, done.stdout), (2, ""))
+        self.assertIn("SABLINE_REFERENCE_RUNTIME is 'rsut'", done.stderr)
+
+    def test_the_network_python_or_a_tool_it_can_reach_stays_the_packages(self) -> None:
+        from sabline import through_rt
+        from sabline.budget import Budget
+        from sabline.loader import load_program
+        path = os.path.join(self.dir, "p.vel")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("fn get(u: Text) -> Text uses net {\n    return \"\"\n}\n"
+                     + main_of('print("hi")'))
+        funcs, _ = load_program(path)
+        self.assertEqual(through_rt.not_ported(funcs, Budget.parse("io,net")), ["net"])
+        self.assertEqual(through_rt.not_ported(funcs, Budget.parse("io")), [])
+        # a budget granting what the program never uses goes through
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(main_of('print("hi")'))
+        funcs, _ = load_program(path)
+        self.assertEqual(through_rt.not_ported(funcs, Budget.parse(
+            "io,env,fs,net,clock,rand,ffi,declassify,tool")), [])
 
 
 class ReceiptOfARun(Run):

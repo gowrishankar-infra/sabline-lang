@@ -459,17 +459,23 @@ def environment_changes_nothing(corpus: str) -> list[str]:
         return ["the gate is red before anything was set, so this says "
                 "nothing"]
     plain = _compared(output)
-    code, output = _gate(ROOT, corpus, DISABLING)
-    with_env = _compared(output)
-    named = ", ".join(f"{k}={v!r}" for k, v in DISABLING.items())
-    if with_env != plain:
-        return [f"with {named} the gate made {with_env} comparisons where "
-                f"it made {plain}"]
-    if code != 0:
-        return [f"with {named} the gate went red over the same {plain} "
-                f"comparisons, which means it read one of them"]
-    print(f"  with {len(DISABLING)} disabling variables set: still "
-          f"{with_env} comparisons, still green")
+    # and again with the variable naming sabline-rt: from M3 it routes a
+    # user's run through sabline-rt (sabline/through_rt.py), and the gate
+    # must still hold the package's interpreter to it, not sabline-rt to
+    # itself
+    for given in (DISABLING, {**DISABLING, "SABLINE_REFERENCE_RUNTIME": "rust"}):
+        code, output = _gate(ROOT, corpus, given)
+        with_env = _compared(output)
+        named = ", ".join(f"{k}={v!r}" for k, v in given.items())
+        if with_env != plain:
+            return [f"with {named} the gate made {with_env} comparisons where "
+                    f"it made {plain}"]
+        if code != 0:
+            return [f"with {named} the gate went red over the same {plain} "
+                    f"comparisons, which means it read one of them"]
+        print(f"  with {len(given)} disabling variables set "
+              f"(SABLINE_REFERENCE_RUNTIME={given['SABLINE_REFERENCE_RUNTIME']}): "
+              f"still {with_env} comparisons, still green")
     return []
 
 
