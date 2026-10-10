@@ -214,7 +214,55 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
         "1_812_433_253u32",
         "1_812_433_255u32",
     ),
+    # The third checkpoint (9.0, M3): the file a library's broken promise
+    # names, and the receipt - one field dropped, which is plan/9.0.md's own
+    # example; a field beside the normalised ones, so that the
+    # normalisation is shown to take exactly what it names; and how many
+    # keys one place may name before the receipt says "many".
+    (
+        "the file a broken promise names",
+        "rt/crates/sabline-rt/src/interp.rs",
+        'src,\n                    error(\n                        "E600",',
+        '"",\n                    error(\n                        "E600",',
+    ),
+    (
+        "a receipt's field dropped",
+        "rt/crates/sabline-rt/src/receipt.rs",
+        '                ("complete", Json::Bool(true)),\n',
+        "",
+    ),
+    (
+        "a receipt's field beside the normalised ones",
+        "rt/crates/sabline-rt/src/receipt.rs",
+        '("uri", Json::text(REPOSITORY)),',
+        '("uri", Json::text("https://example.invalid/sabline-rt")),',
+    ),
+    (
+        "how many keys a receipt names at one place",
+        "rt/crates/sabline-rt/src/receipt.rs",
+        "seen.len() >= FINGERPRINTS_PER_SITE",
+        "seen.len() > FINGERPRINTS_PER_SITE",
+    ),
+    # The audit stream (decisions/0007, 32b): one event dropped - a grant's,
+    # which every receipt still counts, so only the stream's row can see it.
+    (
+        "an audit stream's event dropped",
+        "rt/crates/sabline-rt/src/interp.rs",
+        "self.recorder.grant(&grant); // the audit stream (9.0)",
+        "// the audit stream (9.0)",
+    ),
 )
+
+# plan/9.0.md's list of what the gate normalises in a receipt, and nothing
+# else is: check_agreement.py's RECEIPT_NORMALISED and CONFINEMENT_FIELDS
+# must name exactly the fields the plan's section names, so that a field
+# cannot join the gate's list without joining the plan's.
+PLAN = ROOT / "plan" / "9.0.md"
+NORMALISED_SECTION = ("### What is normalised, and nothing else is",
+                      "### That it cannot be turned off")
+# what the section quotes that is not a field: the two producers' names,
+# and the name a program given as text has
+NOT_FIELDS = {"sabline-lang", "sabline-rt", "<source>"}
 
 
 # ---- 1. the gate reads nothing that could disable it ------------------------
@@ -252,6 +300,35 @@ def reads_nothing_that_disables_it() -> list[str]:
                                 f"use of the command line it may make is "
                                 f"{ALLOWED_ARGV}")
     return problems
+
+
+def normalises_only_the_plans_list() -> list[str]:
+    """That the gate's receipt normalisation names exactly the fields
+    plan/9.0.md's section does."""
+    import re
+    plan = PLAN.read_text(encoding="utf-8")
+    start, end = (plan.find(heading) for heading in NORMALISED_SECTION)
+    if start < 0 or end < start:
+        return [f"plan/9.0.md has no section '{NORMALISED_SECTION[0]}'"]
+    planned = set(re.findall(r"`([^`]+)`", plan[start:end])) - NOT_FIELDS
+    tree = ast.parse(GATE.read_text(encoding="utf-8"))
+    said: dict[str, Any] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and \
+                isinstance(node.targets[0], ast.Name) and \
+                node.targets[0].id in ("RECEIPT_NORMALISED", "CONFINEMENT_FIELDS"):
+            said[node.targets[0].id] = ast.literal_eval(node.value)
+    if len(said) != 2:
+        return ["check_agreement.py has no RECEIPT_NORMALISED or no "
+                "CONFINEMENT_FIELDS"]
+    gate = {entry.split(",")[0].removeprefix("predicate.")
+            for entry in said["RECEIPT_NORMALISED"]} | set(said["CONFINEMENT_FIELDS"])
+    if gate != planned:
+        return [f"the gate normalises {sorted(gate)} and plan/9.0.md names "
+                f"{sorted(planned)}"]
+    print(f"  the gate's receipt normalisation is plan/9.0.md's list: "
+          f"{len(gate)} fields")
+    return []
 
 
 # ---- running the gate -------------------------------------------------------
@@ -401,6 +478,7 @@ def main(argv: list[str]) -> int:
         print(f"  {GATE.name}, {EDGES.name}, {CHECKS.name}, "
               f"{BUDGETS.name} and {RUNS.name}: no environment, no "
               f"configuration, one use of the command line")
+    problems += normalises_only_the_plans_list()
 
     print("nothing in the environment changes what it compares")
     problems += environment_changes_nothing(corpus)

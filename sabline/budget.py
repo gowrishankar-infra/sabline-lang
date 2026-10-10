@@ -891,6 +891,9 @@ def _grant_used(grant: str, count: bool = True) -> None:
     operator's text, never the path or host the program gave."""
     if count:
         _state.GRANT_USES[grant] = _state.GRANT_USES.get(grant, 0) + 1
+        rec = _state.RUN_RECORDER
+        if rec is not None and rec.stream is not None:
+            rec.grant(grant)                        # the audit stream (9.0)
 
 
 def host_refusal(url: str, count: bool = False) -> str | None:
@@ -1198,6 +1201,9 @@ def spend(effect: str, what: str, line: int) -> None:
     """
     if effect in _state.EFFECT_BUDGET:
         _state.EFFECT_USES[effect] = _state.EFFECT_USES.get(effect, 0) + 1
+        rec = _state.RUN_RECORDER
+        if rec is not None and rec.stream is not None:
+            rec.effect(effect, what, line)          # the audit stream (9.0)
         return
     # Since 5.0 a run with no --allow gets io, so this is the first
     # thing many people meet after upgrading. It has to name the effect,

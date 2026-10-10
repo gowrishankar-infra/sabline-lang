@@ -206,6 +206,9 @@ def _each(*lines: str) -> str:
 # made, two short of run_dump.SIZE
 _DOUBLED = 'let s = "x"\nlet i = 0\nwhile i < 21 {\n    s = s + s\n    i = i + 1\n}\n'
 
+# a whole number of fifty-one digits, past 128 bits: what only a literal makes
+_HUGE = "1" + "0" * 50
+
 
 # A program per behaviour, named for it. Most print what they reach and end
 # with status 0; the ones that end otherwise end there on purpose.
@@ -249,6 +252,34 @@ check mul_or_fail(3037000500, 3037000500) {
     fail why { print(why) }
 }
 ''')),
+    # a literal past 128 bits reaching a builtin that takes an Int: the
+    # reference's integers have no size, and sabline-rt's i128 gave up on
+    # them with TypeError - the run fuzzer's third finding (9.0)
+    ("int-past-128-bits-in-builtins", _main("\n".join(
+        f"check {call} {{\n    ok q {{ print(q) }}\n    fail why {{ print(why) }}\n}}"
+        for call in (
+            f"add_or_fail({_HUGE}, 1)", f"add_or_fail({_HUGE}, 0 - {_HUGE})",
+            f"sub_or_fail(0, {_HUGE})", f"mul_or_fail({_HUGE}, 0)",
+            f"mul_or_fail({_HUGE}, 2)", f"div_or_fail({_HUGE}, 3)",
+            f"div_or_fail(7, {_HUGE})", f"div_or_fail(0 - 7, {_HUGE})",
+            f"mod_or_fail({_HUGE}, 7)", f"mod_or_fail(0 - 7, {_HUGE})",
+            f"set_at([1, 2], {_HUGE}, 3)", f"set_at([1, 2], 0 - {_HUGE}, 3)",
+            f"slice([1, 2], 0, {_HUGE})", f"slice([1, 2], {_HUGE}, {_HUGE})",
+            f"slice([1, 2], 0 - {_HUGE}, 1)",
+            f'divide_or_fail(money(5, "INR"), {_HUGE}, "half_up")',
+            f'divide_or_fail(money(-5, "INR"), {_HUGE}, "down")',
+            f'divide_or_fail(money(5, "INR"), 0 - {_HUGE}, "half_even")')) + "\n"
+        + "\n".join(f"print({x})" for x in (
+            f'percent_of(money(5, "INR"), 1, {_HUGE}, "half_up")',
+            f'percent_of(money(0, "INR"), {_HUGE}, 100, "down")',
+            f'percent_of(money(5, "INR"), 1, 0 - {_HUGE}, "half_even")')))),
+    ("int-past-128-bits-times-an-amount", _each(
+        f'money(0, "INR") * {_HUGE}', f'{_HUGE} * money(0, "INR")',
+        f'money(1, "INR") * {_HUGE}')),
+    ("int-past-128-bits-percent-of", _each(
+        f'percent_of(money(5, "INR"), {_HUGE}, 100, "half_up")')),
+    ("int-past-128-bits-code-at", _each(f'code_at("abc", {_HUGE})')),
+    ("int-past-128-bits-exit-with", _main(f"exit_with({_HUGE})")),
     # ---- floats ---------------------------------------------------------
     ("float-printing", _each(
         "0.1 + 0.2", "1.0", "-0.0", "0.0 - 0.0", "10000000000000000.0",
@@ -368,6 +399,18 @@ print(json_of(p))
         'let m = money(-9223372036854775807 - 1, "INR")\nprint(m)\nprint(-m)')),
     ("money-added-past-64-bits", _main(
         'let m = money(9223372036854775807, "INR")\nprint(m + money(1, "INR"))')),
+    # an amount past 64 bits is E407 where it is made (9.0): until then the
+    # reference held money(2^63) exactly and only arithmetic refused it, and
+    # sabline-rt, which holds 64 bits, said NotPorted - the run fuzzer's
+    # first finding
+    ("money-made-past-64-bits", _main(
+        'let m = money(9223372036854775808, "INR")\nprint(units_of(m))')),
+    ("money-made-past-64-bits-below", _main(
+        'print(money(-9223372036854775807 - 1, "INR"))\n'
+        'print(money(0 - 9223372036854775808, "INR"))')),
+    ("money-with-units-past-64-bits", _main(
+        'let m = money(1, "INR")\nprint(with_units(m, 9223372036854775807))\n'
+        'print(with_units(m, 9223372036854775808))')),
     ("money-parse-and-divide", _main('''
 check parse_money("12.50", "INR") {
     ok m { print(m) }
@@ -724,6 +767,9 @@ def tree(root: Any) -> dict[str, str]:
         data / "bom.txt": b"\xef\xbb\xbfmarked",
         data / "empty.txt": b"",
         data / "latin1.txt": b"caf\xe9",
+        data / "cut.txt": b"ab\xe2\x82",              # cut inside a character
+        data / "half-a-pair.txt": b"\xed\xa0\x80",    # a surrogate, as CESU-8
+        data / "late.txt": b"fine\n" * 50 + b"\xff",    # wrong only at the end
         data / "hundred.txt": b"x" * 100,
         data / "sub" / "deep.txt": b"deep",
         data / ".env": b"TOKEN=t\n",
@@ -773,7 +819,12 @@ BUDGETED: tuple[tuple[str, str, dict[str, Any]], ...] = (
     ("read-lines-as-universal-newlines", _main(_try(
         'read_file("{DATA}/crlf.txt")', "split(t, \"\\n\")"), uses="io, fs"),
      {"allow": "io,fs:read:{DATA}"}),
-    ("read-what-is-not-utf8", _main(_reads("{DATA}/latin1.txt"), uses="io, fs"),
+    # a file that is not UTF-8 is a failure the program handles (9.0): until
+    # then it ended the run with a traceback no `check` could catch
+    ("read-what-is-not-utf8", _main(_reads(
+        "{DATA}/latin1.txt", "{DATA}/cut.txt", "{DATA}/half-a-pair.txt",
+        "{DATA}/late.txt") + "\n" + _secret("{DATA}/latin1.txt")
+        + '\nprint("carried on")', uses="io, fs"),
      {"allow": "io,fs:read:{DATA}"}),
     ("read-outside-the-grant", _main(_reads(
         "{DATA}/a.txt", "{OUTSIDE}", "{DATA}/../../outside.txt",
@@ -812,6 +863,25 @@ BUDGETED: tuple[tuple[str, str, dict[str, Any]], ...] = (
      {"allow": "io,fs:write:{OUT}"}),
     ("write-a-folder", _main('write_file("{OUT}", "x")', uses="io, fs"),
      {"allow": "io,fs"}),
+    # a text holding a lone surrogate is not UTF-8, and writing one is E608
+    # with nothing written (9.0): over a file, which is left as it was, and
+    # to a new one, which is not made. The third program looks, after the
+    # first two - a batch runs in order, in one tree
+    ("write-a-lone-surrogate-over-a-file", _reader(["\ud800"]) + _main(
+        'write_file("{OUT}/s.txt", "kept")\nprint("wrote kept")\n'
+        'check the(0) {\n    ok t {\n        write_file("{OUT}/s.txt", "a" + t)\n'
+        '        print("WROTE IT")\n    }\n    fail why {\n        print(why)\n    }\n}',
+        uses="io, fs"),
+     {"allow": "io,fs:write:{OUT}"}),
+    ("write-a-lone-surrogate-to-a-new-file", _reader(["\ud800"]) + _main(
+        'check the(0) {\n    ok t {\n        write_file("{OUT}/s-new.txt", [t])\n'
+        '        print("WROTE IT")\n    }\n    fail why {\n        print(why)\n    }\n}',
+        uses="io, fs"),
+     {"allow": "io,fs:write:{OUT}"}),
+    ("after-a-lone-surrogate", _main(
+        _reads("{OUT}/s.txt") + '\nprint(file_exists("{OUT}/s-new.txt"))',
+        uses="io, fs"),
+     {"allow": "io,fs:write:{OUT},fs:read:{OUT}"}),
     ("exists-under-each-grant", _main(
         'print(file_exists("{DATA}/a.txt"))\nprint(file_exists("{DATA}/nope"))\n'
         'print(file_exists("{DATA}/sub"))\nprint(file_exists("{DATA}/link.txt"))\n'
@@ -875,6 +945,14 @@ BUDGETED: tuple[tuple[str, str, dict[str, Any]], ...] = (
     ("random-seeded-negative", _main(
         "let i = 0\nwhile i < 12 {\n    print(random(100))\n    i = i + 1\n}",
         uses="io, rand"), {"allow": "io,rand", "seed": -5}),
+    # a bound past 64 bits, as CPython's randrange draws it: getrandbits of
+    # the bound's bit length in 32-bit words, rejected until below it (9.0)
+    ("random-seeded-past-64-bits", _main(
+        "print(random(18446744073709551615))\nprint(random(18446744073709551616))\n"
+        "let i = 0\nwhile i < 6 {\n"
+        "    print(random(340282366920938463463374607431768211457))\n    i = i + 1\n}\n"
+        f"print(random({_HUGE}))\nprint(random(6))", uses="io, rand"),
+     {"allow": "io,rand", "seed": 2026}),
     ("random-seeded-zero", _main("print(random(10))\nprint(random(10))",
                                  uses="io, rand"),
      {"allow": "io,rand", "seed": 0}),
@@ -911,4 +989,53 @@ BUDGETED: tuple[tuple[str, str, dict[str, Any]], ...] = (
         'let k = env("SABLINE_GATE_VALUE", "")\nprint(hmac_sha256(k, "m"))',
         uses="io, env, declassify"), {"allow": "io,env"}),
     ("budget-of-nothing", _main('print("never")'), {"allow": ""}),
+    # ---- what a receipt records (M3, third checkpoint) ---------------------
+    # each place a declassification happens, once, with its count: a loop,
+    # two reasons on one line, an HMAC under more keys than one site may
+    # name (sixteen, then "many") and the same key again, and a chain
+    ("receipt-declassified-in-a-loop", _main(
+        'let k = env("SABLINE_GATE_VALUE", "")\nlet i = 0\n'
+        'while i < 25 {\n    let shown = declassify(k, "counted in a loop")\n'
+        '    i = i + 1\n}\n'
+        'print(declassify(k, "one reason") + declassify(k, "another, on one line"))\n'
+        'print(length(declassify(k, "a length")))',
+        uses="io, env, declassify"), {"allow": "io,env,declassify"}),
+    ("receipt-hmac-under-many-keys", _main(
+        'let k = env("SABLINE_GATE_VALUE", "")\nlet i = 0\n'
+        'while i < 20 {\n    print(hmac_sha256(k + to_text(i), "m"))\n'
+        '    i = i + 1\n}\n'
+        'print(hmac_sha256(k + "0", "again"))\n'
+        'print(hmac_sha256_chain(k, ["a", "b"]))',
+        uses="io, env, declassify"), {"allow": "io,env,declassify"}),
+    # what each grant let through, counted, two grants of one effect
+    ("receipt-grants-counted", _main(
+        _reads("{DATA}/a.txt", "{DATA}/a.txt", "{DATA}/sub/deep.txt") + "\n"
+        'write_file("{OUT}/g.txt", "x")\nwrite_file("{OUT}/g.txt", "y")\n'
+        'print(file_exists("{OUT}/g.txt"))', uses="io, fs"),
+     {"allow": "io,fs:read:{DATA}@5,fs:write:{OUT},fs:read:{OUT}"}),
+    # how a run ended: its own status, refused before it began, stopped
+    # by the step limit with what it had used until then
+    ("receipt-exit-with-a-status", _main('print("x")\nexit_with(3)'),
+     {"allow": "io"}),
+    ("receipt-exit-with-nothing-wrong", _main('print("x")\nexit_with(0)'),
+     {"allow": "io"}),
+    ("receipt-refused-an-effect", _main('print(now())', uses="io, clock"),
+     {"allow": "io"}),
+    # a frozen clock said as an instant: before 1970 and after 3001, which the
+    # reference's receipt could not say on Windows until 9.0, the two ends of
+    # what it can, and past them, which has no receipt
+    ("receipt-frozen-in-1960", _main("print(now())", uses="io, clock"),
+     {"allow": "io,clock", "freeze_time": -315619200}),
+    ("receipt-frozen-in-4000", _main("print(now())", uses="io, clock"),
+     {"allow": "io,clock", "freeze_time": 64060588800}),
+    ("receipt-frozen-at-the-first-instant", _main("print(now())", uses="io, clock"),
+     {"allow": "io,clock", "freeze_time": -62135596800}),
+    ("receipt-frozen-at-the-last-instant", _main("print(now())", uses="io, clock"),
+     {"allow": "io,clock", "freeze_time": 253402300799}),
+    ("receipt-frozen-past-an-instant", _main("print(now())", uses="io, clock"),
+     {"allow": "io,clock", "freeze_time": 253402300800}),
+    ("receipt-of-a-run-that-does-not-end", _main(
+        'let k = env("SABLINE_GATE_VALUE", "")\n'
+        'while true {\n    let shown = declassify(k, "until it is stopped")\n}',
+        uses="io, env, declassify"), {"allow": "io,env,declassify"}),
 )

@@ -179,7 +179,10 @@ def run_money(name: str, args: list[Any], line: int) -> Any:
         if cur not in CURRENCIES:              # kept out before running
             raise SablineError("E551",
                 f"'{cur}' is not a currency Sabline knows", line)
-        return MoneyValue(int(args[0]), cur)
+        # an amount's units are an Int's 64 bits (SPEC.md 4.3): one past
+        # them is E407 where it is made, as where arithmetic makes one;
+        # until 9.0 it was held, and only arithmetic on it refused it
+        return checked_int(MoneyValue(int(args[0]), cur), "money", line)
     if name == "units_of":
         x = args[0]
         if x.__class__ is MoneyValue:
@@ -188,8 +191,9 @@ def run_money(name: str, args: list[Any], line: int) -> Any:
         for m in x:                            # as a loop adding them
             total = checked_int(total + m.units, "units_of", line)
         return total
-    if name == "with_units":
-        return MoneyValue(int(args[1]), args[0].currency)
+    if name == "with_units":                   # as money (9.0)
+        return checked_int(MoneyValue(int(args[1]), args[0].currency),
+                           "with_units", line)
     if name == "text_of":
         return money_text(args[0])
     if name == "parse_money":
@@ -718,6 +722,11 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
             return open(real, encoding="utf-8").read()
         except OSError:
             raise FailSignal(f"cannot read file '{args[0]}'")
+        except UnicodeDecodeError:
+            # until 9.0 this ended the run with a traceback that no
+            # `check` could catch
+            raise FailSignal(f"cannot read file '{args[0]}': it is not "
+                             f"UTF-8 text")
     if name in DIGEST_BUILTINS or name in HMAC_BUILTINS:
         return run_digest(name, args, line)
     if name in TOOL_BUILTINS:
@@ -739,9 +748,22 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
                 fixes=["build the path from text that holds no NUL"])
         real = allow_path("write", str(args[0]), name, line)
         count_op("fs", name, line)
+        text = to_text(args[1])
+        try:
+            text.encode("utf-8")
+        except UnicodeEncodeError:
+            # refused before the file is opened, so nothing is written and
+            # a file that was there is left as it was; until 9.0 open()
+            # emptied it and a traceback ended the run
+            raise SablineError("E608",
+                f"could not write '{args[0]}': the text holds a lone "
+                f"surrogate, which is not UTF-8", line,
+                fixes=["write the text without it: a lone surrogate is "
+                       "half of a character, as a JSON escape like "
+                       "\\ud800 gives on its own"])
         try:
             with open(real, "w", encoding="utf-8") as fh:
-                fh.write(to_text(args[1]))
+                fh.write(text)
             return None
         except OSError as e:
             raise SablineError("E608",
@@ -1090,13 +1112,21 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
                              else f"{scope[n]}")
                 for n in names)
 
-        for expr, cline in fn.requires:
-            if not eval_(expr, dict(entry)):
-                raise SablineError("E600",
-                    f"broken promise: {nice_name(name)} requires "
-                    f"{expr_str(expr)}  ({vals(expr)})", cline,
-                    fixes=["check the value before calling this function",
-                           "or loosen the promise if it is too strict"])
+        # a promise is the callee's: its line is in the callee's file, so
+        # is the file a broken one (or an error in it) names - until 9.0
+        # the caller's frame blamed it, which named the importer's file
+        # with the library's line
+        try:
+            for expr, cline in fn.requires:
+                if not eval_(expr, dict(entry)):
+                    raise SablineError("E600",
+                        f"broken promise: {nice_name(name)} requires "
+                        f"{expr_str(expr)}  ({vals(expr)})", cline,
+                        fixes=["check the value before calling this "
+                               "function",
+                               "or loosen the promise if it is too strict"])
+        except SablineError as e:
+            raise blame(fn, e)
 
         retval = None
         trace_enter(name, fn.params, args, hush)
@@ -1116,15 +1146,20 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
             depth[0] -= 1
         trace_leave(name, retval, secret=hush_result)
 
-        for expr, cline in fn.ensures:
-            check_env = dict(entry)
-            check_env["result"] = retval
-            if not eval_(expr, check_env):
-                raise SablineError("E601",
-                    f"broken promise: {nice_name(name)} ensures "
-                    f"{expr_str(expr)}  ({vals(expr, (retval,))})", cline,
-                    fixes=["the code does not keep this promise - fix the code",
-                           "or fix the promise if it is wrong"])
+        try:
+            for expr, cline in fn.ensures:
+                check_env = dict(entry)
+                check_env["result"] = retval
+                if not eval_(expr, check_env):
+                    raise SablineError("E601",
+                        f"broken promise: {nice_name(name)} ensures "
+                        f"{expr_str(expr)}  ({vals(expr, (retval,))})",
+                        cline,
+                        fixes=["the code does not keep this promise - fix "
+                               "the code",
+                               "or fix the promise if it is wrong"])
+        except SablineError as e:
+            raise blame(fn, e)               # the callee's, as above
         return retval
 
     def run(node: Any, env: Any) -> None:

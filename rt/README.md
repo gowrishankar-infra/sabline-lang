@@ -16,8 +16,10 @@ credential rule, the clock and randomness (frozen and seeded as
 and the two HMACs. The work of a builtin that reaches the network, calls
 Python or a tool is not ported yet: under a budget that does not grant
 its effect it is refused before its work would start, exactly as the
-reference refuses it. It does not prove, does not hold a budget at the
-operating system and does not write a receipt, so it cannot tell you
+reference refuses it. From M3's third checkpoint it records each run's
+receipt as the reference does, into the run document the gate compares.
+It does not prove, does not hold a budget at the operating system, and
+has no command that runs a program for you, so it cannot tell you
 whether a program is safe to run. The Python package
 is what does that, and where the two disagree the Python package is right
 and sabline-rt has a defect - that is what a reference implementation is,
@@ -31,8 +33,9 @@ same line; and `sabline check` and sabline-rt find the same problems in it,
 stage by stage, in the same order, with the same messages, and give each
 loop the same verdict for the same reason; and run under the budget `io`,
 with the same input, it prints the same text to each channel, ends with
-the same status and stops with the same error - and so does every program
-written for a budget, run under its own in a tree of files. And for every budget the
+the same status and stops with the same error, and records the same
+receipt of the run - and so does every program written for a budget, run
+under its own in a tree of files. And for every budget the
 gate holds - sabline-spec's L1 budget cases, what is made from them, and
 the edges - both parse it to the same grants and counts, or refuse it with
 the same words.
@@ -321,7 +324,48 @@ as whatever bytes a console would have made of it; `stopped` the line a
 limit stopped it at and `stopped_by` which, `"steps"` or `"size"`; and
 `raised` the name of a Python exception that escaped the reference, which
 is a defect there and a difference here. The stream is framed as the
-others are, with the header `sabline.run-batch/1`.
+others are, with the header `sabline.run-batch/3`, and holds three records
+for each program: its run document, its receipt, and its audit stream.
+
+**The receipt** (M3, third checkpoint) is the run's `sabline.receipt/1`
+in-toto Statement, as `sabline <file> --receipt FILE` writes it - the
+program and each file it read by sha256, `<stdlib>/NAME` for the shipped
+standard library; the budget's text; the seed, the frozen clock as an
+instant and the read ceiling; how many builtin calls each effect let
+through and how many operations each grant did; every refusal by code,
+effect and line, and every declassification by reason and line, each with
+a count, an HMAC's with its key's fingerprint and `many` past sixteen keys
+at one place; and how the run ended. It is `src/receipt.rs`, transliterated
+from `sabline/recorder.py` and `sabline/receipts.py`. Three things differ
+from the command line's, because of what the run document fixes: nothing is
+asked of the operating system, so the confinement is `none`, `nothing was
+asked of the operating system`, in both; a run the step limit stops is a
+timeout (E610) and one the size limit stops is out of memory (E611), with
+what it used and refused until then; and it is `null` where the command line
+writes none - a budget that does not parse, a failure that escaped, a frozen
+clock outside the years 1 to 9999.
+
+`check_agreement.py` compares receipts field for field after normalising
+exactly plan/9.0.md's list, which is `RECEIPT_NORMALISED` and
+`check_gate.py` holds it to the plan: the producer's name and version,
+`startedAt`, `wall_time_ms`, a `<source>` subject's name, and the four
+confinement fields, compared by rule - present in both, and sabline-rt's
+level at least Python's - with every receipt where they differ printed.
+
+**The audit stream** (decisions/0007, 32b) is the receipt's fields as they
+are produced, one JSON object an event: `start`, `subjects`, then as each
+happens `effect` (every builtin call the budget let through), `grant`,
+`refusal` and `declassify`, and `end` with the receipt
+(`Recorder::streaming`, `stream_start`, `stream_end`). The run document's
+third record is the list of them, `null` where the receipt is, and the gate
+compares it event for event, normalising in `start` and in the receipt `end`
+carries exactly what it normalises in a receipt.
+
+**A line of the list may also give `steps` and `size`**, limits of its own
+in place of the run document's; the gate never does. They are what
+`fuzz_parsers.py --target agreement_runs` runs generated programs under -
+2,000 steps and 2^18 bytes - so that the size limit's known residual stays
+small for inputs the engine makes by mutation.
 
 `check_agreement.py` runs every program it holds, and would print the
 ones it does not: `RUN_EXCLUDED`, each with its reason, which is empty.

@@ -4,7 +4,8 @@ import os
 
 from . import state as _state
 from .version import VERSION
-from .recorder import RECEIPT_PREDICATE_TYPE, RECEIPT_SCHEMA, RECEIPT_SPEC
+from .recorder import (AUDIT_STREAM_SCHEMA, RECEIPT_PREDICATE_TYPE, RECEIPT_SCHEMA,
+                       RECEIPT_SPEC)
 from .budget import _frozen_epoch
 from .findings import REPOSITORY
 from .attestation import INTOTO_STATEMENT_TYPE, _sha256_of, _subject_name
@@ -49,6 +50,24 @@ def _confinement_fields(confinement: Any) -> dict[str, Any]:
             "os_policy_sha256": said.get("policy_sha256")}
 
 
+def _instant(epoch: int) -> str:
+    """Epoch seconds as RFC 3339 in UTC, to the second, for any instant in
+    the years 1 to 9999; ValueError outside them. Calendar arithmetic, not
+    `datetime.fromtimestamp`, which asks the C runtime's gmtime: on Windows
+    that stops at 1969-12-31T12:00:00Z and 3001-01-19T21:59:59Z, and until
+    9.0 a receipt of a run frozen outside those ended in an OSError
+    traceback there, after the run, with the receipt's file left empty."""
+    import datetime
+    try:
+        when = (datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+                + datetime.timedelta(seconds=int(epoch)))
+    except OverflowError:
+        raise ValueError(f"the frozen clock, {epoch}, is not an instant in "
+                         f"the years 1 to 9999")
+    return (f"{when.year:04d}-{when.month:02d}-{when.day:02d}T"
+            f"{when.hour:02d}:{when.minute:02d}:{when.second:02d}Z")
+
+
 def _run_parameters(seed: Any, freeze_time: Any, timeout: Any, max_memory_mb: Any,
                     confinement: Any = None) -> dict[str, Any]:
     """What a run was given besides its budget, as its receipt says it.
@@ -56,20 +75,42 @@ def _run_parameters(seed: Any, freeze_time: Any, timeout: Any, max_memory_mb: An
     the report of what the operating system held (sabline/confine.py); not
     given, it is what was applied to this process, and none when nothing
     was."""
-    import datetime
     from . import confine as _confine
     frozen = _frozen_epoch(freeze_time)
     if confinement is None:
         confinement = _confine.current() or _state.WORKER_CONFINEMENT
     return {"seed": None if seed is None else int(seed),
-            "freeze_time": None if frozen is None else
-            datetime.datetime.fromtimestamp(frozen, datetime.timezone.utc)
-            .strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "freeze_time": None if frozen is None else _instant(frozen),
             "timeout": timeout,
             "max_memory_mb": (None if max_memory_mb is None
                               else int(max_memory_mb)),
             "max_read_bytes": _state.MAX_READ_BYTES,
             **_confinement_fields(confinement)}
+
+
+CONFINEMENT_KEYS = ("confinement", "confinement_reason", "confinement_layers",
+                    "os_policy_sha256")
+
+
+def stream_start(recorder: Any, *, budget: str, parameters: dict[str, Any],
+                 started_at: str) -> None:
+    """The audit stream's first event (9.0): what the run was given, before
+    it ran - its confinement is not known until its first statement, and is
+    in the receipt the last event carries."""
+    if recorder.stream is None:
+        return
+    recorder.tell({
+        "event": "start", "schema": AUDIT_STREAM_SCHEMA,
+        "producer": {"name": "sabline-lang", "uri": REPOSITORY,
+                     "version": VERSION},
+        "startedAt": started_at, "budget": budget,
+        "run_parameters": {k: v for k, v in parameters.items()
+                           if k not in CONFINEMENT_KEYS}})
+
+
+def stream_end(recorder: Any, receipt: dict[str, Any] | None) -> None:
+    """The audit stream's last event: the run's receipt."""
+    recorder.tell({"event": "end", "receipt": receipt})
 
 
 def _grants_used(uses: Any) -> list[dict[str, Any]]:

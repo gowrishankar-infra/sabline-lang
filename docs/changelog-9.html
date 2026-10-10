@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <title>Changelog: 9.x - Sabline 8.8.0</title>
-<meta name="description" content="What changed in Sabline 9.0.0-alpha.1 to 9.0.0-alpha.7, release by release, newest first, as CHANGELOG.md records it.">
+<meta name="description" content="What changed in Sabline 9.0.0-alpha.1 to 9.0.0-alpha.8, release by release, newest first, as CHANGELOG.md records it.">
 <meta name="sabline-version" content="8.8.0">
 <link rel="canonical" href="https://sabline.dev/changelog-9.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sabline">
 <meta property="og:title" content="Changelog: 9.x - Sabline 8.8.0">
-<meta property="og:description" content="What changed in Sabline 9.0.0-alpha.1 to 9.0.0-alpha.7, release by release, newest first, as CHANGELOG.md records it.">
+<meta property="og:description" content="What changed in Sabline 9.0.0-alpha.1 to 9.0.0-alpha.8, release by release, newest first, as CHANGELOG.md records it.">
 <meta property="og:url" content="https://sabline.dev/changelog-9.html">
 <meta property="og:image" content="https://sabline.dev/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -76,6 +76,168 @@
 <main id="content" class="doc" tabindex="-1">
 <h1 id="changelog">Changelog: 9.x</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="900-alpha8---m3-receipts-and-the-audit-stream-field-for-field">9.0.0-alpha.8 - M3: receipts and the audit stream, field for field <a class="anchor" href="#900-alpha8---m3-receipts-and-the-audit-stream-field-for-field" aria-label="Link to this section">#</a></h2>
+<p>M3's third checkpoint (<code>plan/9.0.md</code>, <em>M3 - the interpreter, the budget,
+<code>Secret</code> and receipts</em>), and still not its end: <strong>sabline-rt records each
+run's <code>sabline.receipt/1</code> and its audit stream as the reference does, and
+the agreement gate compares both for every program it runs</strong> - the receipt
+field for field after normalising exactly plan/9.0.md's list, the stream
+event for event - and a differential fuzzer runs generated programs in both.
+The maintainer's two decisions on the questions the second checkpoint left
+are in both runtimes. M3's exit criteria are not met and none is claimed:
+the network, Python and tools are refused by every budget that does not
+grant them and not ported under one that does, <code>sabline run</code> does not go
+through sabline-rt yet, and the organisation ceiling file is not started.
+The Python package is the reference, and where the two disagree sabline-rt
+has a defect.</p>
+<p>This is a <strong>pre-release</strong> of the <code>sabline-rt</code> crate, and it publishes that
+and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
+main gained below ships with 9.0.</p>
+<h3 id="what-exists">What exists <a class="anchor" href="#what-exists" aria-label="Link to this section">#</a></h3>
+<p><strong>Receipts</strong> (<code>src/receipt.rs</code>, from <code>sabline/recorder.py</code> and
+<code>sabline/receipts.py</code>): the run's subjects by sha256, the standard library
+as <code>&lt;stdlib&gt;/NAME</code> and a file on another drive by its path; the budget; the
+seed, the frozen clock as an instant and the read ceiling; how many builtin
+calls each effect let through and how many operations each grant did; every
+refusal by code, effect and line, and every declassification by reason and
+line, each once per place with a count, an HMAC's with its key's
+fingerprint and <code>many</code> past sixteen keys at one place; and how the run
+ended. The run document writes it after each run (<code>sabline.run-batch/3</code>).
+It is the command line's receipt of the same run, with three things the run
+document fixes: nothing is asked of the operating system, so the confinement
+is <code>none</code>, <code>nothing was asked of the operating system</code>, in both; a run the
+step limit stops is a timeout (E610) and one the size limit stops is out of
+memory (E611), with what it used and refused until then; and there is none
+where the command line writes none.</p>
+<p><strong>The audit stream</strong> (decisions/0007, item 32b), in both runtimes: the
+receipt's fields as they are produced, one JSON object an event,
+<code>sabline.audit-stream/1</code> - <code>start</code>, <code>subjects</code>, then as each happens
+<code>effect</code> (every builtin call the budget let through), <code>grant</code>, <code>refusal</code>,
+<code>declassify</code> and <code>tool</code>, and <code>end</code> with the receipt. <code>sabline &lt;file&gt; --audit-stream FILE</code> writes it a line each; <code>sabline.run</code>, <code>Pool.run</code> and
+<code>PoolRegistry.run</code> take <code>audit_stream=</code>, and a run in a worker sends each
+event as it happens, so a run the clock killed still ends its stream with
+the pool's receipt. No event holds a value the program handled, and
+<code>check_library.py</code>'s Secret cases hold the stream to that as they hold the
+receipt - the decision's condition. docs/receipts.md says what each event
+holds. OpenTelemetry is not scheduled.</p>
+<p><strong>A run target for the differential fuzzer</strong>: <code>fuzz_parsers.py --target agreement_runs</code> runs generated programs in both interpreters, under every
+effect whose work sabline-rt does, in a tree made afresh for each, and
+compares the run document, the receipt and the stream; CI runs it on every
+leg and for two minutes beside the gate, and the monthly run for twenty.
+It respects the size limit's known residual: its generator never writes the
+one shape that reaches it (a list holding one text many times, written
+out), it runs under a size limit of its own (2^18) where the worst a
+mutated input can make in one operation is about 73 MB, and an input that
+reaches it anyway is counted and said, never a finding. The three places
+the reference answers differently by CPython version, which the gate's
+corpora leave out, it leaves out the same way, counted.</p>
+<h3 id="the-agreement-gate">The agreement gate <a class="anchor" href="#the-agreement-gate" aria-label="Link to this section">#</a></h3>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6813 compared, 6813 agree, 0 differ
+the checkers: 6813 compared, 6813 agree, 0 differ
+the budget parser: 2967 compared, 2967 agree, 0 differ
+the interpreters: 6813 compared, 6813 agree, 0 differ
+the interpreters, under their budgets: 122 compared, 122 agree, 0 differ
+the receipts: 6935 compared, 6935 agree, 0 differ
+the audit streams: 6935 compared, 6935 agree, 0 differ
+the builtin tables: 1 compared, 1 agree, 0 differ</code></pre></div>
+<p>agreement gate: 37399 comparisons, 37399 agreements, 0 differences</p>
+<p>The same on CPython 3.10, 3.12 and 3.13. A receipt's normalisation is
+<code>RECEIPT_NORMALISED</code> - the producer's name and version, <code>startedAt</code>,
+<code>wall_time_ms</code>, a <code>&lt;source&gt;</code> subject's name - and the four confinement
+fields by rule (present in both, and sabline-rt's level at least Python's);
+<code>check_gate.py</code> holds that list to plan/9.0.md's, so a field cannot join
+one without the other. The runs under their budgets gain sixteen: a lone
+surrogate written over a file and to a new one, and what was there after;
+and what a receipt records - a declassification in a loop, two reasons on
+one line, an HMAC under twenty keys, grants counted, <code>exit_with</code> with and
+without a status, a refused effect, a frozen clock before 1970, after 3001,
+at both ends of what an instant can say and past them, and a run that does
+not end; and <code>random</code> under a seed with bounds past 64 bits. The read of a
+file that is not UTF-8 now reads four, each caught, and carries on. The
+programs the gate holds gain fifteen: seven of several files - a promise
+broken in a library, three ways, flat and named, and one called back -
+three amounts made past 64 bits, and whole numbers past 128 bits in every
+builtin that takes one.</p>
+<p><code>check_gate.py</code>'s injections gain five, each of which turns the gate red:
+the file a broken promise names, a receipt's field dropped, a field beside
+the normalised ones, how many keys a receipt names at one place, and an
+audit stream's event dropped.</p>
+<h3 id="found-on-the-way-and-fixed">Found on the way, and fixed <a class="anchor" href="#found-on-the-way-and-fixed" aria-label="Link to this section">#</a></h3>
+<p><strong>A receipt of a run with a frozen clock was a traceback on Windows.</strong>
+<code>sabline x.vel --freeze-time 1960-01-01T00:00:00Z --receipt r.json</code> ran the
+program, then ended in an <code>OSError</code> while writing the receipt, leaving the
+file empty: the instant was made with <code>datetime.fromtimestamp</code>, which asks
+the C runtime's <code>gmtime</code>, and on Windows that stops at 1969-12-31T12:00Z and
+at 3001-01-19T21:59:59Z. It is calendar arithmetic now, the years 1 to
+9999 on every system, written with four digits.</p>
+<p>compatibility: for 9.0's Python package, a receipt of a run frozen outside
+1969-12-31T12:00Z to 3001-01-19T21:59:59Z is written on Windows, where the
+run ended in a traceback after it finished; elsewhere nothing changed.</p>
+<p><strong>An amount past 64 bits was made, and held</strong> - the run fuzzer's first
+finding, on its first day. SPEC.md 4.3 says an amount's units are an <code>Int</code>,
+with the same 64-bit range and the same E407 past it; <code>money(9223372036854775808, "INR")</code> made one anyway, printed <code>INR 92233720368547758.08</code>, and only
+arithmetic on it refused it, while sabline-rt, which holds 64 bits, answered
+<code>NotPorted</code>. <code>money</code> and <code>with_units</code> refuse it with E407 where it is made
+now, in both runtimes, as <code>+</code> does: "this 'money' made an amount too big to
+hold". <code>parse_money</code> already refused one.</p>
+<p>compatibility: for 9.0's Python package, <code>money</code> and <code>with_units</code> of units
+outside -2^63 to 2^63-1 are E407 where they are made, where the amount was
+made and held and only arithmetic on it refused it.</p>
+<p><strong>A whole number past 128 bits stopped sabline-rt in thirteen builtins, and an amount times one</strong> -
+the fuzzer's next finding, on CI's Windows leg: a mutated example with a
+400-digit amount. The reference's integers have no size, and a literal is
+the one place a program gets one past 64 bits; sabline-rt read them through
+an <code>i128</code> and answered <code>TypeError</code> in <code>money</code>, <code>with_units</code>, the five
+<code>_or_fail</code> builtins, <code>set_at</code>, <code>slice</code>, <code>code_at</code>, <code>exit_with</code>, <code>percent_of</code>,
+<code>divide_or_fail</code> and <code>random</code>, and <code>money(0, "INR") * n</code> with <code>n</code> past
+128 bits was E407 where it is zero. They are exact now (<code>py_big</code>, a <code>BigInt</code>
+<code>round_ratio</code>, and <code>randrange</code> of a bound past 64 bits as CPython draws it:
+<code>getrandbits</code> of its bit length in 32-bit words, rejected until below it).
+Nothing in the reference changed.</p>
+<h3 id="decided-and-done-in-both-runtimes">Decided, and done in both runtimes <a class="anchor" href="#decided-and-done-in-both-runtimes" aria-label="Link to this section">#</a></h3>
+<p><strong>A file that is not UTF-8 text is a failure the program can handle.</strong>
+<code>read_file</code> and <code>read_file_secret</code> of one fail with <code>cannot read file 'x': it is not UTF-8 text</code>, which <code>check</code> catches; until now the run ended with
+a Python traceback, and sabline-rt copied it. <strong>Writing a text holding a
+lone surrogate is a failure too, with nothing written</strong>: <code>write_file</code> is
+not fallible, so it is E608, as a file that cannot be written is, and the
+text is encoded before the file is opened - a file that was there is left
+as it was, and a new one is not made. Until now <code>open()</code> emptied the file
+and then the traceback ended the run. SPEC.md 8 says it.</p>
+<p><strong>A promise names the file it is written in.</strong> A library function's broken
+<code>requires</code> (E600) named the importing file with the library's line, because
+the promise is checked before the callee's body and the caller's frame
+blamed it - flat or named alike, in both runtimes. It names the library's
+file now, and so does what had the same fault: a broken <code>ensures</code> (E601),
+an error raised while a promise is checked (an E602 in a <code>requires</code>), and
+the program's own promise broken when a library calls it back, which named
+the library's file. The prover's E701 was already right - the caller's
+file, at the call - but <code>sabline check</code>'s one-line output printed the target
+it was given with the line of an error in an imported file; it prints the
+error's own file now, as <code>--json</code>, SARIF and <code>run</code> did, and <code>sabline explain</code> says <code>line 8 of lib.vel</code> for one. SPEC.md 10 says it.</p>
+<p>compatibility: for 9.0's Python package, <code>read_file</code> and <code>read_file_secret</code>
+of a file that is not UTF-8 fail, where the run ended with a
+<code>UnicodeDecodeError</code> traceback; and <code>write_file</code> of a text holding a lone
+surrogate is E608 and writes nothing, where the run ended with a
+<code>UnicodeEncodeError</code> traceback after emptying the file. A program that ran
+to its end before runs the same; no exit code a finished run gave changed.</p>
+<p>compatibility: for 9.0's Python package, a broken <code>requires</code> or <code>ensures</code>
+of a function in an imported file, and an error raised while one is
+checked, name that file - in the error a run prints, <code>--json</code>'s <code>file</code>
+and every report built from them - where they named the file that called
+it; and <code>sabline check</code>'s one-line output names the file an error is in.
+The code, the message and the line are unchanged.</p>
+<h3 id="what-is-not-done">What is not done <a class="anchor" href="#what-is-not-done" aria-label="Link to this section">#</a></h3>
+<p><code>plan/9.0-m3-progress.md</code> lists it in order: <code>sabline run</code> and
+<code>sabline.run</code> through sabline-rt (decisions/0002), which is what lets the
+suites of M3's fourth criterion be asked of it; the network's, Python's and
+the tools' work, each a design question; the organisation ceiling file
+(decisions/0007, 32c); and performance. It records two questions for the
+maintainer: whether the reference should stop answering differently by
+CPython version in the three places the gate and the fuzzer leave out, and
+whether the size limit should count a value written out before it is made,
+which would close its residual.</p>
 <h2 id="900-alpha7---m3-the-builtins-under-every-budget-as-far-as-they-got">9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got <a class="anchor" href="#900-alpha7---m3-the-builtins-under-every-budget-as-far-as-they-got" aria-label="Link to this section">#</a></h2>
 <p>M3's second checkpoint (<code>plan/9.0.md</code>, <em>M3 - the interpreter, the budget,
 <code>Secret</code> and receipts</em>), and still not its end: <strong>sabline-rt now does the
@@ -96,7 +258,7 @@ and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm
 Marketplace and the MCP registry give, the Action pins still name 8.8.0's
 commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
 main gained below ships with 9.0.</p>
-<h3 id="what-exists">What exists <a class="anchor" href="#what-exists" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-1">What exists <a class="anchor" href="#what-exists-1" aria-label="Link to this section">#</a></h3>
 <p><strong>The builtins' work</strong> (<code>src/interp.rs</code>, and <code>src/host.rs</code> for what a run
 reaches of the machine): <code>read_file</code>, <code>read_file_secret</code>, <code>write_file</code> and
 <code>file_exists</code>, each guarded as <code>budget.allow_path</code> guards it -
@@ -126,7 +288,7 @@ same operation in both; so are the benchmark's five programs that grow
 forever, which made the gate slower than anything else did. It is
 <code>state._SIZE_LIMIT</code> in the Python package, set by <code>run-dump</code> and nothing
 else.</p>
-<h3 id="the-agreement-gate">The agreement gate <a class="anchor" href="#the-agreement-gate" aria-label="Link to this section">#</a></h3>
+<h3 id="the-agreement-gate-1">The agreement gate <a class="anchor" href="#the-agreement-gate-1" aria-label="Link to this section">#</a></h3>
 <div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6798 compared, 6798 agree, 0 differ
 the checkers: 6798 compared, 6798 agree, 0 differ
 the budget parser: 2967 compared, 2967 agree, 0 differ
@@ -149,7 +311,7 @@ not.</p>
 <p><code>check_gate.py</code>'s injections gain four, each of which turns the gate red:
 where the size limit stops a run, what it counts of a text, a file grant's
 refusal, and randomness under a seed.</p>
-<h3 id="decided-and-done-in-both-runtimes">Decided, and done in both runtimes <a class="anchor" href="#decided-and-done-in-both-runtimes" aria-label="Link to this section">#</a></h3>
+<h3 id="decided-and-done-in-both-runtimes-1">Decided, and done in both runtimes <a class="anchor" href="#decided-and-done-in-both-runtimes-1" aria-label="Link to this section">#</a></h3>
 <p><strong>A function value prints as its name</strong>: <code>fn double</code>, and for one written
 inline the name it was lifted to, <code>fn fn#1</code>, whether or not it carries
 values (SPEC.md 12a). Until now a broken promise's message showed a
@@ -167,7 +329,7 @@ The adversarial pass held thirteen libraries each way - values carrying
 names, nested, handed back and called, calling the library's own functions,
 looping, failing, breaking a promise, recursing through <code>all_of</code> - to the
 same run, flat and named, in both runtimes.</p>
-<h3 id="found-on-the-way-and-fixed">Found on the way, and fixed <a class="anchor" href="#found-on-the-way-and-fixed" aria-label="Link to this section">#</a></h3>
+<h3 id="found-on-the-way-and-fixed-1">Found on the way, and fixed <a class="anchor" href="#found-on-the-way-and-fixed-1" aria-label="Link to this section">#</a></h3>
 <p><strong><code>all_of</code> and <code>any_of</code> recursed in C.</strong> They were Python's <code>all()</code> over a
 generator, so a function value that reached them again nested C calls, and
 from CPython 3.12 the C recursion limit ended the run first - as E609
@@ -206,7 +368,7 @@ makes a function value under a name compiles, where it was refused with
 E402; and a function value that reaches <code>all_of</code> or <code>any_of</code> again stops at
 the depth limit's E609 on every CPython, where 3.12 and 3.13 gave the
 nested-value E609 at line 0. No program that ran before runs differently.</p>
-<h3 id="what-is-not-done">What is not done <a class="anchor" href="#what-is-not-done" aria-label="Link to this section">#</a></h3>
+<h3 id="what-is-not-done-1">What is not done <a class="anchor" href="#what-is-not-done-1" aria-label="Link to this section">#</a></h3>
 <p><code>plan/9.0-m3-progress.md</code> lists it in order - receipts and then the audit
 stream, the network's, Python's and the tools' work (each a design
 question), a run target for the fuzzer, <code>sabline run</code> through sabline-rt,
@@ -232,7 +394,7 @@ and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm
 Marketplace and the MCP registry give, the Action pins still name 8.8.0's
 commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
 main gained below ships with 9.0.</p>
-<h3 id="what-exists-1">What exists <a class="anchor" href="#what-exists-1" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-2">What exists <a class="anchor" href="#what-exists-2" aria-label="Link to this section">#</a></h3>
 <p><strong>The interpreter</strong> (<code>src/interp.rs</code>): <code>sabline/runtime.py</code>'s run,
 transliterated - calls, function values and what they carry, <code>check</code> and
 <code>try</code>, promises checked while running with their messages, loop
@@ -270,7 +432,7 @@ check document from both (two minutes in the agreement job, twenty
 monthly), and the gate carries programs of more than one file, which reach
 the type checker's "unknown function value" for a library imported under a
 name.</p>
-<h3 id="the-agreement-gate-1">The agreement gate <a class="anchor" href="#the-agreement-gate-1" aria-label="Link to this section">#</a></h3>
+<h3 id="the-agreement-gate-2">The agreement gate <a class="anchor" href="#the-agreement-gate-2" aria-label="Link to this section">#</a></h3>
 <div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6774 compared, 6774 agree, 0 differ
 the checkers: 6774 compared, 6774 agree, 0 differ
 the budget parser: 2967 compared, 2967 agree, 0 differ
@@ -303,7 +465,7 @@ the first gave. Twelve programs in the gate's corpora did it. A record is
 now written as a dataclass is, <code>Pt(x=1, y='z')</code>, beside an amount's
 <code>MoneyValue(units=150, currency='INR')</code>. Messages are not covered by
 STABILITY.md; no code changed.</p>
-<h3 id="what-is-not-done-1">What is not done <a class="anchor" href="#what-is-not-done-1" aria-label="Link to this section">#</a></h3>
+<h3 id="what-is-not-done-2">What is not done <a class="anchor" href="#what-is-not-done-2" aria-label="Link to this section">#</a></h3>
 <p><code>plan/9.0-m3-progress.md</code> lists it in order - the builtins' work for the
 other budgets, then receipts and the audit stream, a run target for the
 fuzzer, <code>sabline run</code> through sabline-rt, the organisation ceiling file -
@@ -325,7 +487,7 @@ and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm
 Marketplace and the MCP registry give, the Action pins still name 8.8.0's
 commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
 main gained below ships with 9.0.</p>
-<h3 id="what-exists-2">What exists <a class="anchor" href="#what-exists-2" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-3">What exists <a class="anchor" href="#what-exists-3" aria-label="Link to this section">#</a></h3>
 <p><strong>The checkers, ported</strong> (pull request #144): the loader with its imports
 and the shipped standard library, the effect checker, the type checker -
 <code>Secret of T</code>, <code>Money of C</code>, generics, records, maps, function values - the
@@ -374,7 +536,7 @@ cases are <code>sabline capabilities check</code>, which decisions/0002 keeps in
 Python, so they stay Python-answered (<code>plan/9.0.md</code>, amended 2026-10-08).
 <code>check_conformance_rust.py</code> holds the runner to that labelling, and to a
 wrong answer from sabline-rt failing its case.</p>
-<h3 id="the-agreement-gate-2">The agreement gate <a class="anchor" href="#the-agreement-gate-2" aria-label="Link to this section">#</a></h3>
+<h3 id="the-agreement-gate-3">The agreement gate <a class="anchor" href="#the-agreement-gate-3" aria-label="Link to this section">#</a></h3>
 <div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6570 compared, 6570 agree, 0 differ
 the checkers: 6570 compared, 6570 agree, 0 differ
 the budget parser: 2967 compared, 2967 agree, 0 differ
@@ -398,7 +560,7 @@ loop (18b), and 25! and a product modulo 2^61 - 1, which do not fit 64
 bits (18c, 18d). On the competitor page, Deno, WASI and the Python sandbox
 are each ahead on one row fewer. docs/known-open.md's row for correct
 programs the rules refuse says 18a is closed on main and ships with 9.0.</p>
-<h3 id="what-is-not-done-2">What is not done <a class="anchor" href="#what-is-not-done-2" aria-label="Link to this section">#</a></h3>
+<h3 id="what-is-not-done-3">What is not done <a class="anchor" href="#what-is-not-done-3" aria-label="Link to this section">#</a></h3>
 <p>M2's exit criteria are met, as amended, for every question a checker
 answers. The five suites' questions that run a program wait for M3's
 interpreter; the prover's and the audit's stay Python's for good
@@ -588,7 +750,7 @@ the Marketplace lists and what the MCP registry serves; the Action pins
 still name 8.6.0's commit; <code>sabline --version</code> still says 8.6.0. The
 Python package's version files were not touched, and the release gate
 refuses a pre-release whose commit moved one.</p>
-<h3 id="what-exists-3">What exists <a class="anchor" href="#what-exists-3" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-4">What exists <a class="anchor" href="#what-exists-4" aria-label="Link to this section">#</a></h3>
 <p><strong><code>rt/</code>, a Cargo workspace holding one crate, <code>sabline-rt</code>.</strong> Edition
 2021, minimum Rust 1.82, <strong>no dependencies at all</strong>. A lexer, a parser and
 a canonical dump of the tree, in fourteen files. <code>#![forbid(unsafe_code)]</code>
@@ -768,7 +930,7 @@ performance floor of its own.</p>
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.8.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha7---m3-the-builtins-under-every-budget-as-far-as-they-got">9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got</a></li><li><a href="#900-alpha6---m3-the-interpreter-as-far-as-it-got">9.0.0-alpha.6 - M3: the interpreter, as far as it got</a></li><li><a href="#900-alpha5---m2-the-checkers-the-budget-parser-and-a-loop-bounded-by-its-input">9.0.0-alpha.5 - M2: the checkers, the budget parser, and a loop bounded by its input</a></li><li><a href="#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li><li><a href="#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li><li><a href="#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li><li><a href="#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha8---m3-receipts-and-the-audit-stream-field-for-field">9.0.0-alpha.8 - M3: receipts and the audit stream, field for field</a></li><li><a href="#900-alpha7---m3-the-builtins-under-every-budget-as-far-as-they-got">9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got</a></li><li><a href="#900-alpha6---m3-the-interpreter-as-far-as-it-got">9.0.0-alpha.6 - M3: the interpreter, as far as it got</a></li><li><a href="#900-alpha5---m2-the-checkers-the-budget-parser-and-a-loop-bounded-by-its-input">9.0.0-alpha.5 - M2: the checkers, the budget parser, and a loop bounded by its input</a></li><li><a href="#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li><li><a href="#900-alpha3---the-crate-is-published-by-a-workflow-of-its-own">9.0.0-alpha.3 - The crate is published by a workflow of its own</a></li><li><a href="#900-alpha2---the-parser-twice-and-a-release-that-publishes">9.0.0-alpha.2 - The parser, twice, and a release that publishes</a></li><li><a href="#900-alpha1---the-parser-twice">9.0.0-alpha.1 - The parser, twice</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

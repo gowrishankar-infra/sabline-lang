@@ -294,6 +294,10 @@ jobs:
       # check document (M2): the programs nobody wrote, beside the gate's.
       - name: The same generated programs to both checkers
         run: python fuzz_parsers.py --target agreement_checks --minutes 2
+      # Generated programs run by both interpreters (M3), which must write
+      # the same run document, receipt and audit stream.
+      - name: The same generated programs run by both interpreters
+        run: python fuzz_parsers.py --target agreement_runs --minutes 2
       # Five suites' check-time questions asked of sabline-rt (M2), each
       # held to the answer it holds the Python package to. A question that
       # runs a program (M3), the prover's and an audit's are counted as not

@@ -160,5 +160,207 @@ class RunDocumentEntries(Run):
         self.assertNotIn(name, os.environ)
 
 
+def _caught(expr: str, shown: str = "t") -> str:
+    return (f"check {expr} {{\n    ok t {{\n        print({shown})\n    }}\n"
+            "    fail w {\n        print(w)\n    }\n}")
+
+
+class FilesThatAreNotUtf8(Run):
+    """9.0: a file that is not UTF-8 is a failure a program handles, and a
+    text holding a lone surrogate is not written - until then both ended
+    the run with a traceback, the second after the file was emptied."""
+
+    def file(self, name: str, raw: bytes) -> str:
+        path = os.path.join(self.dir, name)
+        with open(path, "wb") as fh:
+            fh.write(raw)
+        return path.replace(os.sep, "/")
+
+    def test_a_read_of_one_fails_and_the_run_goes_on(self) -> None:
+        for raw in (b"caf\xe9", b"ab\xe2\x82", b"\xed\xa0\x80", b"ok\n" * 9 + b"\xff"):
+            path = self.file("bad.txt", raw)
+            doc = self.run_text(main_of(
+                _caught(f'read_file("{path}")') + "\n"
+                + _caught(f'read_file_secret("{path}")', '"a secret"')
+                + '\nprint("on")',
+                uses="io, fs"), allow="io,fs")
+            said = f"cannot read file '{path}': it is not UTF-8 text\n"
+            self.assertEqual((doc["raised"], doc["exit"], doc["stdout"]),
+                             (None, 0, said + said + "on\n"), raw)
+
+    def write_surrogate(self, path: str) -> dict[str, Any]:
+        reader = ("fn half() -> Text or fail {\n"
+                  '    return try json_get("[\\"\\\\ud800\\"]", "0")\n}\n')
+        return self.run_text(reader + main_of(
+            "check half() {\n    ok t {\n"
+            f'        write_file("{path}", "a" + t)\n'
+            '        print("WROTE IT")\n    }\n'
+            "    fail w {\n        print(w)\n    }\n}", uses="io, fs"),
+            allow="io,fs")
+
+    def test_a_lone_surrogate_is_e608_and_leaves_a_file_as_it_was(self) -> None:
+        path = self.file("kept.txt", b"kept")
+        doc = self.write_surrogate(path)
+        self.assertEqual((doc["raised"], doc["stdout"], doc["error"]["code"]),
+                         (None, "", "E608"))
+        self.assertEqual(doc["error"]["message"],
+                         f"could not write '{path}': the text holds a lone "
+                         "surrogate, which is not UTF-8")
+        with open(path, "rb") as fh:
+            self.assertEqual(fh.read(), b"kept")
+
+    def test_a_lone_surrogate_makes_no_file(self) -> None:
+        path = os.path.join(self.dir, "new.txt").replace(os.sep, "/")
+        self.assertEqual(self.write_surrogate(path)["error"]["code"], "E608")
+        self.assertFalse(os.path.exists(path))
+
+
+class APromiseNamesItsOwnFile(Run):
+    """9.0: a broken promise - and an error raised while one is checked -
+    names the file the promise is written in. Until then the caller's frame
+    blamed it, so a library's named the importer's file with the library's
+    line, and the program's own, called back by a library, the library's."""
+
+    LIB = ("fn half(x: Int) -> Int\n    requires x > 0\n{\n    return x / 2\n}\n"
+           "fn negated(x: Int) -> Int\n    ensures result < 0\n{\n    return x\n}\n"
+           "fn third(xs: List of Int) -> Int\n    requires get(xs, 2) > 0\n{\n"
+           "    return get(xs, 2)\n}\n"
+           "fn call_with(f: fn(Int) -> Int, x: Int) -> Int {\n    return f(x)\n}\n")
+
+    def broken(self, imported: str, body: str, own: str = "") -> dict[str, Any]:
+        with open(os.path.join(self.dir, "lib.vel"), "w", encoding="utf-8",
+                  newline="\n") as fh:
+            fh.write(self.LIB)
+        error: dict[str, Any] = self.run_text(
+            f'import "lib.vel"{imported}\n' + own + main_of(body))["error"]
+        return error
+
+    def where(self, err: dict[str, Any]) -> tuple[str, str, int]:
+        return err["code"], os.path.basename(err["file"]), err["line"]
+
+    def test_a_librarys_requires_and_ensures_flat_and_named(self) -> None:
+        for imported, p in (("", ""), (" as lib", "lib.")):
+            self.assertEqual(self.where(self.broken(imported, f"print({p}half(0 - 4))")),
+                             ("E600", "lib.vel", 2))
+            self.assertEqual(self.where(self.broken(imported, f"print({p}negated(1))")),
+                             ("E601", "lib.vel", 7))
+            self.assertEqual(self.where(self.broken(imported, f"print({p}third([1]))")),
+                             ("E602", "lib.vel", 12))
+
+    def test_the_programs_own_promise_called_back(self) -> None:
+        own = "fn positive_only(x: Int) -> Int\n    requires x > 0\n{\n    return x\n}\n"
+        err = self.broken(" as lib", "print(lib.call_with(positive_only, 0 - 2))", own)
+        self.assertEqual(self.where(err), ("E600", "p.vel", 3))
+
+
+class AnAmountPastSixtyFourBits(Run):
+    """9.0: an amount's units are an Int's 64 bits (SPEC.md 4.3), so one
+    past them is E407 where money() or with_units() makes it. Until then the
+    reference held it exactly and only arithmetic on it refused it."""
+
+    def test_money_and_with_units_refuse_it_where_it_is_made(self) -> None:
+        for body, line, op in (
+                ('print(units_of(money(9223372036854775808, "INR")))', 1, "money"),
+                ('let m = money(1, "INR")\nprint(with_units(m, 9223372036854775807))\n'
+                 'print(with_units(m, 9223372036854775808))', 3, "with_units")):
+            doc = self.run_text(main_of(body))
+            self.assertEqual((doc["error"]["code"], doc["error"]["line"]),
+                             ("E407", line + 1), doc)
+            self.assertIn(f"this '{op}' made an amount too big to hold",
+                          doc["error"]["message"])
+        doc = self.run_text(main_of('print(money(-9223372036854775807 - 1, "INR"))'))
+        self.assertEqual((doc["error"], doc["stdout"]),
+                         (None, "INR -92233720368547758.08\n"))
+
+
+class ReceiptOfARun(Run):
+    """The run document's receipt (M3, third checkpoint): what `sabline
+    <file> --receipt` writes of the same run, with nothing asked of the
+    operating system, a limit's stop recorded as the end it stands for,
+    and none where the command line writes none."""
+
+    def receipt(self, source: str, **given: Any) -> Any:
+        path = os.path.join(self.dir, "p.vel")
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(source)
+        return run_dump.run_recorded(path, **given)[:2]
+
+    def test_it_is_what_the_command_line_writes(self) -> None:
+        import json
+        import subprocess
+        import sys
+        source = main_of(
+            'let k = env("PATH", "")\nlet i = 0\n'
+            'while i < 3 {\n    print(length(hmac_sha256(k, "m")))\n    i = i + 1\n}\n'
+            'print(length(declassify(k, "a length")))\nprint(now())',
+            uses="io, env, declassify, clock")
+        _, ours = self.receipt(source, allow="io,env,declassify")
+        written = os.path.join(self.dir, "r.json")
+        subprocess.run([sys.executable, os.path.join(_support.REPO, "sabline.py"),
+                        "p.vel", "--allow", "io,env,declassify", "--no-confine",
+                        "--receipt", written], cwd=self.dir, capture_output=True)
+        with open(written, encoding="utf-8") as fh:
+            theirs = json.load(fh)
+        for doc in (ours, theirs):
+            for key in ("startedAt", "wall_time_ms", "run_parameters"):
+                doc["predicate"].pop(key)
+            doc["subject"][0]["name"] = "p.vel"
+        self.assertEqual(ours, theirs)
+        self.assertEqual(ours["predicate"]["exit"],
+                         {"status": 1, "outcome": "refused", "code": "E310"})
+        self.assertEqual([d["times"] for d in ours["predicate"]["declassifications"]],
+                         [3, 1])
+
+    def test_nothing_is_asked_of_the_operating_system(self) -> None:
+        _, receipt = self.receipt(main_of('print("x")'))
+        said = receipt["predicate"]["run_parameters"]
+        self.assertEqual(
+            {k: said[k] for k in ("confinement", "confinement_reason",
+                                  "confinement_layers", "os_policy_sha256")},
+            {"confinement": "none",
+             "confinement_reason": "nothing was asked of the operating system",
+             "confinement_layers": [], "os_policy_sha256": None})
+
+    def test_a_limits_stop_is_the_end_it_stands_for(self) -> None:
+        _, steps = self.receipt(main_of("while true {\n    print(1)\n}"))
+        self.assertEqual(steps["predicate"]["exit"],
+                         {"status": None, "outcome": "timeout", "code": "E610"})
+        # main's own call is the first of the 20,000 steps
+        self.assertEqual(steps["predicate"]["effects_used"], {"io": 19999})
+        _, size = self.receipt(main_of('let s = "ab"\nwhile true {\n    s = s + s\n}'))
+        self.assertEqual(size["predicate"]["exit"]["outcome"], "out_of_memory")
+
+    def test_none_where_the_command_line_writes_none(self) -> None:
+        self.assertIsNone(self.receipt(main_of('print("x")'), allow="io,fs:nowhere")[1])
+        # 10000-01-01T00:00:00Z: past what an instant in a receipt can say
+        self.assertIsNone(self.receipt(main_of('print("x")'),
+                                       freeze_time=253402300800)[1])
+
+    def test_a_frozen_clock_is_said_on_every_system(self) -> None:
+        # until 9.0, on Windows, a receipt of a run frozen before
+        # 1969-12-31T12:00Z or after 3001-01-19T21:59:59Z was an OSError
+        # traceback once the run had ended, and an empty receipt file
+        import json
+        import subprocess
+        import sys
+        for epoch, said in ((-315619200, "1960-01-01T00:00:00Z"),
+                            (64060588800, "4000-01-01T00:00:00Z"),
+                            (253402300799, "9999-12-31T23:59:59Z"),
+                            (-62135596800, "0001-01-01T00:00:00Z")):
+            _, receipt = self.receipt(main_of('print("x")'), freeze_time=epoch)
+            self.assertEqual(receipt["predicate"]["run_parameters"]["freeze_time"],
+                             said)
+        written = os.path.join(self.dir, "r.json")
+        done = subprocess.run(
+            [sys.executable, os.path.join(_support.REPO, "sabline.py"), "p.vel",
+             "--freeze-time", "1960-01-01T00:00:00Z", "--no-confine",
+             "--receipt", written], cwd=self.dir, capture_output=True,
+            text=True, encoding="utf-8")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        with open(written, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["predicate"]["run_parameters"]
+                             ["freeze_time"], "1960-01-01T00:00:00Z")
+
+
 if __name__ == "__main__":
     unittest.main()

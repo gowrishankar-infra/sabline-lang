@@ -34,6 +34,7 @@ use crate::loader::unknown_function;
 use crate::nodes::{Expr, Function, RecordDef, Stmt};
 use crate::pyjson;
 use crate::pypath::{self, os_path};
+use crate::receipt::Recorder;
 use crate::show::{expr_str, nice_name};
 use crate::tables::{
     builtin, is_builtin, is_new_builtin, CURRENCIES, MONEY_BUILTINS, ROUNDING,
@@ -139,6 +140,18 @@ fn error(code: &'static str, message: impl Into<Text>, line: u32, fixes: &[&str]
     })
 }
 
+/// `loader.blame`: an error with no file yet takes the function's - the
+/// innermost frame wins.
+fn blamed(src_file: &str, stop: Stop) -> Stop {
+    match stop {
+        Stop::Error(mut e) if e.file.is_none() && !src_file.is_empty() => {
+            e.file = Some(src_file.to_string());
+            Stop::Error(e)
+        }
+        other => other,
+    }
+}
+
 fn fail(reason: impl Into<Text>) -> Stop {
     Stop::Fail(Value::Text(reason.into()))
 }
@@ -201,6 +214,9 @@ pub struct Runtime {
     /// order first used: `GRANT_USES`, what a receipt's `grants_used` is
     /// made from.
     pub grant_uses: Vec<(String, u64)>,
+    /// What a receipt records while the program runs: each declassification
+    /// and each HMAC's key, by line (`RUN_RECORDER`).
+    pub recorder: Recorder,
     /// The program's input and output.
     pub io: Io,
 }
@@ -244,6 +260,7 @@ impl Runtime {
             fs_count: 0,
             effect_uses: HashMap::new(),
             grant_uses: Vec::new(),
+            recorder: Recorder::default(),
             io,
         }
     }
@@ -409,9 +426,14 @@ impl Runtime {
         let entry = if promised { env.clone() } else { HashMap::new() };
         let (hush, hush_result) = self.secret.get(name).cloned().unwrap_or_default();
 
+        // a promise is the callee's: its line is in the callee's file, so is
+        // the file a broken one (or an error in it) names - until 9.0 the
+        // caller's frame blamed it, which named the importer's file with the
+        // library's line
+        let src = func.src_file.as_str();
         for (expr, cline) in &func.requires {
             let mut scope = entry.clone();
-            if !self.eval(expr, &mut scope)?.truthy() {
+            if !self.eval(expr, &mut scope).map_err(|s| blamed(src, s))?.truthy() {
                 let message = TextBuf::new()
                     .str(&format!(
                         "broken promise: {} requires {}  (",
@@ -421,16 +443,18 @@ impl Runtime {
                     .text(&vals(expr, &entry, None, &hush, hush_result))
                     .str(")")
                     .done();
-                return Err(Stop::Error(RunError {
-                    code: "E600",
-                    message,
-                    line: *cline,
-                    fixes: vec![
-                        "check the value before calling this function".to_string(),
-                        "or loosen the promise if it is too strict".to_string(),
-                    ],
-                    file: None,
-                }));
+                return Err(blamed(
+                    src,
+                    error(
+                        "E600",
+                        message,
+                        *cline,
+                        &[
+                            "check the value before calling this function",
+                            "or loosen the promise if it is too strict",
+                        ],
+                    ),
+                ));
             }
         }
 
@@ -452,21 +476,13 @@ impl Runtime {
         }
         self.depth -= 1;
         if let Err(stop) = outcome {
-            return Err(match stop {
-                Stop::Error(mut e) => {
-                    if e.file.is_none() && !func.src_file.is_empty() {
-                        e.file = Some(func.src_file.clone());
-                    }
-                    Stop::Error(e)
-                }
-                other => other,
-            });
+            return Err(blamed(src, stop));
         }
 
         for (expr, cline) in &func.ensures {
             let mut check_env = entry.clone();
             check_env.insert("result".to_string(), retval.clone());
-            if !self.eval(expr, &mut check_env)?.truthy() {
+            if !self.eval(expr, &mut check_env).map_err(|s| blamed(src, s))?.truthy() {
                 let message = TextBuf::new()
                     .str(&format!(
                         "broken promise: {} ensures {}  (",
@@ -476,16 +492,18 @@ impl Runtime {
                     .text(&vals(expr, &entry, Some(&retval), &hush, hush_result))
                     .str(")")
                     .done();
-                return Err(Stop::Error(RunError {
-                    code: "E601",
-                    message,
-                    line: *cline,
-                    fixes: vec![
-                        "the code does not keep this promise - fix the code".to_string(),
-                        "or fix the promise if it is wrong".to_string(),
-                    ],
-                    file: None,
-                }));
+                return Err(blamed(
+                    src,
+                    error(
+                        "E601",
+                        message,
+                        *cline,
+                        &[
+                            "the code does not keep this promise - fix the code",
+                            "or fix the promise if it is wrong",
+                        ],
+                    ),
+                ));
             }
         }
         Ok(retval)
@@ -728,6 +746,7 @@ impl Runtime {
     fn spend(&mut self, effect: &str, what: &str, line: u32) -> R<()> {
         if self.budget.effects.contains(effect) {
             *self.effect_uses.entry(effect.to_string()).or_insert(0) += 1;
+            self.recorder.effect(effect, what, line); // the audit stream (9.0)
             return Ok(());
         }
         let have = self.budget.spec();
@@ -751,6 +770,7 @@ impl Runtime {
 
     /// `_grant_used(grant)`: one more operation this grant let through.
     fn grant_used(&mut self, grant: String) {
+        self.recorder.grant(&grant); // the audit stream (9.0)
         match self.grant_uses.iter_mut().find(|(g, _)| *g == grant) {
             Some(slot) => slot.1 += 1,
             None => self.grant_uses.push((grant, 1)),
@@ -1106,58 +1126,75 @@ impl Runtime {
             }
             "slice" => {
                 let xs = arg(0);
-                let (start, stop) = (py_int(&arg(1))?, py_int(&arg(2))?);
+                let (start, stop) = (py_big(&arg(1))?, py_big(&arg(2))?);
                 let n = length_of(&xs)? as i128;
-                if start < 0 || stop > n || start > stop {
+                let within = |b: &BigInt| b.to_i128().filter(|i| (0..=n).contains(i));
+                let (Some(from), Some(to)) = (within(&start), within(&stop)) else {
                     return Err(fail(format!(
-                        "a slice from {start} to {stop} does not fit a list of {n}"
+                        "a slice from {} to {} does not fit a list of {n}",
+                        start.to_decimal(),
+                        stop.to_decimal()
+                    )));
+                };
+                if from > to {
+                    return Err(fail(format!(
+                        "a slice from {from} to {to} does not fit a list of {n}"
                     )));
                 }
                 let items = sequence(&xs)?;
-                Ok(Value::list(items[start as usize..stop as usize].to_vec()))
+                Ok(Value::list(items[from as usize..to as usize].to_vec()))
             }
+            // whole numbers of any size, as Python's are: a literal can be
+            // past 128 bits, and the answer is what the reference gives for
+            // it (the run fuzzer's third finding)
             "set_at" => {
                 let xs = arg(0);
-                let at = py_int(&arg(1))?;
-                let n = length_of(&xs)? as i128;
-                if at < 0 || at >= n {
-                    return Err(fail(format!("there is no position {at} in a list of {n}")));
-                }
+                let at = py_big(&arg(1))?;
+                let n = length_of(&xs)?;
+                let index = at.to_i128().filter(|i| (0..n as i128).contains(i));
+                let Some(index) = index else {
+                    return Err(fail(format!(
+                        "there is no position {} in a list of {n}",
+                        at.to_decimal()
+                    )));
+                };
                 let mut out = iterate(&xs)?;
-                out[at as usize] = arg(2);
+                out[index as usize] = arg(2);
                 Ok(Value::list(out))
             }
             "div_or_fail" | "mod_or_fail" => {
-                let (a, b) = (py_int(&arg(0))?, py_int(&arg(1))?);
-                if b == 0 {
+                let (a, b) = (py_big(&arg(0))?, py_big(&arg(1))?);
+                if b.is_zero() {
                     let word =
                         if name == "div_or_fail" { "divide" } else { "take a remainder" };
                     return Err(fail(format!("cannot {word} by zero")));
                 }
-                let (q, r) = floor_divmod(a, b);
+                let (q, r) = a.divmod_floor(&b);
                 let answer = if name == "div_or_fail" { q } else { r };
-                if answer < i128::from(INT_MIN) || answer > i128::from(INT_MAX) {
+                if answer.to_i64().is_none() {
                     return Err(fail(format!(
-                        "dividing {a} by {b} makes a number too big to hold"
+                        "dividing {} by {} makes a number too big to hold",
+                        a.to_decimal(),
+                        b.to_decimal()
                     )));
                 }
-                Ok(Value::int128(answer))
+                Ok(Value::int(answer))
             }
             "add_or_fail" | "sub_or_fail" | "mul_or_fail" => {
-                let (a, b) = (py_int(&arg(0))?, py_int(&arg(1))?);
+                let (a, b) = (py_big(&arg(0))?, py_big(&arg(1))?);
                 let (answer, word) = match name {
-                    "add_or_fail" => (a.checked_add(b), "adding"),
-                    "sub_or_fail" => (a.checked_sub(b), "subtracting"),
-                    _ => (a.checked_mul(b), "multiplying"),
+                    "add_or_fail" => (a.add(&b), "adding"),
+                    "sub_or_fail" => (a.sub(&b), "subtracting"),
+                    _ => (a.mul(&b), "multiplying"),
                 };
-                match answer {
-                    Some(v) if v >= i128::from(INT_MIN) && v <= i128::from(INT_MAX) => {
-                        Ok(Value::int128(v))
-                    }
-                    _ => {
-                        Err(fail(format!("{word} {a} and {b} makes a number too big to hold")))
-                    }
+                if answer.to_i64().is_none() {
+                    return Err(fail(format!(
+                        "{word} {} and {} makes a number too big to hold",
+                        a.to_decimal(),
+                        b.to_decimal()
+                    )));
                 }
+                Ok(Value::int(answer))
             }
             "push" => Err(Stop::Raised("TypeError")),
             "put" => {
@@ -1173,12 +1210,15 @@ impl Runtime {
             }
             "code_at" => {
                 let t = text_of(&arg(0))?;
-                let i = py_int(&arg(1))?;
-                if i < 0 || i >= t.len() as i128 {
+                let at = py_big(&arg(1))?;
+                let i =
+                    at.to_i128().filter(|i| (0..t.len() as i128).contains(i)).unwrap_or(-1);
+                if i < 0 {
                     return Err(Stop::Error(RunError {
                         code: "E602",
                         message: Text::from(format!(
-                            "position {i} is outside the text (it has {} character(s))",
+                            "position {} is outside the text (it has {} character(s))",
+                            at.to_decimal(),
                             t.len()
                         )),
                         line,
@@ -1341,12 +1381,14 @@ impl Runtime {
                 Ok(Value::None)
             }
             "exit_with" => {
-                let code = py_int(&arg(0))?;
-                if !(0..=255).contains(&code) {
+                let given = py_big(&arg(0))?;
+                let code = given.to_i128().filter(|c| (0..=255).contains(c)).unwrap_or(-1);
+                if code < 0 {
                     return Err(Stop::Error(RunError {
                         code: "E408",
                         message: Text::from(format!(
-                            "an exit code must be between 0 and 255, not {code}"
+                            "an exit code must be between 0 and 255, not {}",
+                            given.to_decimal()
                         )),
                         line,
                         fixes: vec![
@@ -1408,15 +1450,24 @@ impl Runtime {
                         &["pass a positive number, e.g. random(6)"],
                     ));
                 }
-                let Value::Int(n) = n else { return Err(Stop::Raised("NotPorted")) };
                 let rng = self.rng.get_or_insert_with(Twister::unseeded);
-                Ok(Value::Int(rng.randrange(n as u64) as i64))
+                match n {
+                    Value::Int(n) => Ok(Value::Int(rng.randrange(n as u64) as i64)),
+                    // a bound past 64 bits, which a literal can be
+                    other => Ok(Value::int(rng.randbelow_big(&py_big(&other)?))),
+                }
             }
             // the effect was spent above; a Secret is a compile-time
-            // distinction, so here the value is simply itself (8.1)
-            "declassify" => Ok(arg(0)),
+            // distinction, so here the value is simply itself (8.1). A
+            // receipt records that it happened, where, and the reason
+            // written in the call - never the value
+            "declassify" => {
+                self.recorder.note_declassify(to_text(&arg(1)), line);
+                Ok(arg(0))
+            }
             "hmac_sha256" | "hmac_sha256_chain" => {
-                let mut key = digest::utf8_surrogatepass(&text_of(&arg(0))?);
+                let first = digest::utf8_surrogatepass(&text_of(&arg(0))?);
+                let mut key = first.clone();
                 let messages =
                     if name == "hmac_sha256" { vec![arg(1)] } else { iterate(&arg(1))? };
                 if messages.is_empty() {
@@ -1432,6 +1483,9 @@ impl Runtime {
                     let m = digest::utf8_surrogatepass(&text_of(message)?);
                     key = digest::hmac_sha256(&key, &m).to_vec();
                 }
+                // a receipt names the key by its fingerprint, and never
+                // otherwise (8.5)
+                self.recorder.note_hmac(&first, line);
                 Ok(Value::text(&digest::hex(&key)))
             }
             "file_exists" => {
@@ -1483,9 +1537,14 @@ impl Runtime {
                     }
                 }
                 match std::fs::read(&real) {
-                    Ok(raw) => host::read_text(&raw)
-                        .map(Value::Text)
-                        .ok_or(Stop::Raised("UnicodeDecodeError")),
+                    Ok(raw) => host::read_text(&raw).map(Value::Text).ok_or_else(|| {
+                        fail(
+                            TextBuf::new()
+                                .text(&quoted_after("cannot read file ", &path))
+                                .str(": it is not UTF-8 text")
+                                .done(),
+                        )
+                    }),
                     Err(_) => Err(fail(quoted_after("cannot read file ", &path))),
                 }
             }
@@ -1522,13 +1581,24 @@ impl Runtime {
                         ],
                     )
                 };
+                // encoded before the file is opened, so a text that is not
+                // UTF-8 writes nothing and leaves a file that was there as
+                // it was
+                let Some(bytes) = host::written_bytes(&to_text(&arg(1))) else {
+                    return Err(error(
+                        "E608",
+                        TextBuf::new()
+                            .str("could not write '")
+                            .text(&path)
+                            .str("': the text holds a lone surrogate, which is not UTF-8")
+                            .done(),
+                        line,
+                        &["write the text without it: a lone surrogate is half of a \
+                           character, as a JSON escape like \\ud800 gives on its own"],
+                    ));
+                };
                 use std::io::Write;
                 let mut file = std::fs::File::create(&real).map_err(|e| refused(&e))?;
-                // opened, and so emptied, before the text is encoded, as
-                // CPython's open() and then write() do
-                let Some(bytes) = host::written_bytes(&to_text(&arg(1))) else {
-                    return Err(Stop::Raised("UnicodeEncodeError"));
-                };
                 file.write_all(&bytes).map_err(|e| refused(&e))?;
                 Ok(Value::None)
             }
@@ -1747,6 +1817,16 @@ fn checked_int(v: Value, op: &str, line: u32) -> R<Value> {
     Ok(v)
 }
 
+/// The minor units `money` and `with_units` make an amount of: E407 for a
+/// whole number outside 64 bits, however far outside - past 128 bits too,
+/// which `py_int` cannot hold (SPEC.md 4.3; the run fuzzer's second finding).
+fn amount_units(v: &Value, op: &str, line: u32) -> R<i64> {
+    if matches!(v, Value::Big(_)) && v.as_i128().is_none() {
+        return Err(money_too_big(op, line));
+    }
+    i64::try_from(py_int(v)?).map_err(|_| money_too_big(op, line))
+}
+
 fn money_too_big(op: &str, line: u32) -> Stop {
     error(
         "E407",
@@ -1903,10 +1983,13 @@ fn arith(op: char, l: &Value, r: &Value, line: u32) -> R<Value> {
         (Value::Money(m), n) | (n, Value::Money(m))
             if op == '*' && matches!(n, Value::Int(_) | Value::Big(_)) =>
         {
-            let k = n.as_i128().ok_or_else(|| money_too_big("*", line))?;
-            let units =
-                i128::from(m.units).checked_mul(k).ok_or_else(|| money_too_big("*", line))?;
-            money_checked(units, &m.currency, "*", line)
+            // exactly, as the reference multiplies: zero times a number past
+            // 128 bits is zero, and only the product must fit
+            let k = n.as_big().ok_or(Stop::Raised("TypeError"))?;
+            match BigInt::from_i128(i128::from(m.units)).mul(&k).to_i64() {
+                Some(units) => money_checked(i128::from(units), &m.currency, "*", line),
+                None => Err(money_too_big("*", line)),
+            }
         }
         (Value::List(a), Value::List(b)) if op == '+' => {
             let mut out = (**a).clone();
@@ -1957,6 +2040,46 @@ fn arith(op: char, l: &Value, r: &Value, line: u32) -> R<Value> {
 fn currency_of(code: &Text) -> Option<Rc<str>> {
     let s = code.to_str()?;
     CURRENCIES.iter().any(|(c, _)| *c == s).then(|| Rc::from(s.as_str()))
+}
+
+/// `round_ratio(p, q, mode)` on whole numbers of any size.
+fn round_ratio_big(mut p: BigInt, mut q: BigInt, mode: &str) -> BigInt {
+    if q.is_negative() {
+        p = p.neg();
+        q = q.neg();
+    }
+    let one = BigInt::from_i128(1);
+    let (f, r) = p.divmod_floor(&q);
+    if r.is_zero() {
+        return f;
+    }
+    if mode == "down" {
+        return if p.is_negative() { f.add(&one) } else { f };
+    }
+    let twice = r.add(&r);
+    if twice > q {
+        return f.add(&one);
+    }
+    if twice < q {
+        return f;
+    }
+    if mode == "half_up" {
+        return if p.is_negative() { f } else { f.add(&one) };
+    }
+    if f.divmod_floor(&BigInt::from_i128(2)).1.is_zero() {
+        f
+    } else {
+        f.add(&one)
+    }
+}
+
+/// `int(v)`, exactly: a whole number of any size, as `py_int`'s errors.
+fn py_big(v: &Value) -> R<BigInt> {
+    match v {
+        Value::Big(b) => Ok((**b).clone()),
+        Value::Float(_) | Value::Int(_) | Value::Bool(_) => py_int(v).map(BigInt::from_i128),
+        other => other.as_big().ok_or(Stop::Raised("TypeError")),
+    }
 }
 
 /// `round_ratio(p, q, mode)`: p / q exactly, rounded by `mode`.
@@ -2013,8 +2136,9 @@ fn run_money(name: &str, args: &[Value], line: u32) -> R<Value> {
                     file: None,
                 }));
             };
-            let units =
-                i64::try_from(py_int(&arg(0))?).map_err(|_| Stop::Raised("NotPorted"))?;
+            // an amount's units are an Int's 64 bits (SPEC.md 4.3): one past
+            // them is E407 where it is made, as where arithmetic makes one
+            let units = amount_units(&arg(0), name, line)?;
             Ok(Value::Money(Money { units, currency }))
         }
         "units_of" => match arg(0) {
@@ -2030,8 +2154,7 @@ fn run_money(name: &str, args: &[Value], line: u32) -> R<Value> {
         },
         "with_units" => {
             let m = money_arg(&arg(0))?;
-            let units =
-                i64::try_from(py_int(&arg(1))?).map_err(|_| Stop::Raised("NotPorted"))?;
+            let units = amount_units(&arg(1), name, line)?;
             Ok(Value::Money(Money { units, currency: m.currency }))
         }
         "text_of" => Ok(Value::text(&money_text(&money_arg(&arg(0))?))),
@@ -2053,9 +2176,10 @@ fn run_money(name: &str, args: &[Value], line: u32) -> R<Value> {
                 }));
             }
             let m = money_arg(&arg(0))?;
+            let units = BigInt::from_i128(i128::from(m.units));
             if name == "percent_of" {
-                let (num, den) = (py_int(&arg(1))?, py_int(&arg(2))?);
-                if den == 0 {
+                let (num, den) = (py_big(&arg(1))?, py_big(&arg(2))?);
+                if den.is_zero() {
                     return Err(error(
                         "E403",
                         "percent_of with a denominator of zero",
@@ -2063,19 +2187,23 @@ fn run_money(name: &str, args: &[Value], line: u32) -> R<Value> {
                         &["check the denominator first"],
                     ));
                 }
-                let units = round_ratio(i128::from(m.units) * num, den, &mode_s);
-                return money_checked(units, &m.currency, "percent_of", line);
+                // the product is exact, however large: only the answer must fit
+                let answer = round_ratio_big(units.mul(&num), den, &mode_s);
+                return match answer.to_i64() {
+                    Some(u) => Ok(Value::Money(Money { units: u, currency: m.currency })),
+                    None => Err(money_too_big("percent_of", line)),
+                };
             }
-            let by = py_int(&arg(1))?;
-            if by == 0 {
+            let by = py_big(&arg(1))?;
+            if by.is_zero() {
                 return Err(fail("cannot divide an amount by zero"));
             }
-            let units = round_ratio(i128::from(m.units), by, &mode_s);
-            match i64::try_from(units) {
-                Ok(u) => Ok(Value::Money(Money { units: u, currency: m.currency })),
-                Err(_) => Err(fail(format!(
-                    "dividing {} by {by} makes an amount too big to hold",
-                    money_text(&m)
+            match round_ratio_big(units, by.clone(), &mode_s).to_i64() {
+                Some(u) => Ok(Value::Money(Money { units: u, currency: m.currency })),
+                None => Err(fail(format!(
+                    "dividing {} by {} makes an amount too big to hold",
+                    money_text(&m),
+                    by.to_decimal()
                 ))),
             }
         }

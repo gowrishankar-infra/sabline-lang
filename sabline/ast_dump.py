@@ -363,6 +363,11 @@ def canonical(document: Any) -> str:
         if isinstance(value, int):
             out.append(str(value))
             continue
+        if isinstance(value, float):
+            # a receipt's wall_time_ms (9.0, M3), as json.dumps writes it;
+            # no tree or check document holds one
+            out.append(float.__repr__(value))
+            continue
         if isinstance(value, list):
             if not value:
                 out.append("[]")

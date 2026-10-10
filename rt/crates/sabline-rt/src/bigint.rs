@@ -149,6 +149,19 @@ impl BigInt {
         BigInt { neg, mag }
     }
 
+    /// A non-negative number from its 32-bit words, least significant first.
+    pub fn from_words(words: Vec<u32>) -> BigInt {
+        BigInt::make(false, words)
+    }
+
+    /// `abs(n).bit_length()`.
+    pub fn bit_length(&self) -> u32 {
+        match self.mag.last() {
+            None => 0,
+            Some(top) => 32 * (self.mag.len() as u32 - 1) + (32 - top.leading_zeros()),
+        }
+    }
+
     /// From a machine integer.
     pub fn from_i128(n: i128) -> BigInt {
         let mut m = n.unsigned_abs();

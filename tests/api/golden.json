@@ -217,6 +217,7 @@
    "--agents",
    "--allow",
    "--audit",
+   "--audit-stream",
    "--bind",
    "--check-memory-mb",
    "--check-timeout",
@@ -1927,7 +1928,7 @@
      "check": "(self, source, *, path=None, prove=True)",
      "close": "(self)",
      "closed": "property",
-     "run": "(self, source, *, stdin='', args=None, path=None, seed=None, freeze_time=None, _name=None)",
+     "run": "(self, source, *, stdin='', args=None, path=None, seed=None, freeze_time=None, _name=None, audit_stream=None)",
      "worker_pids": "(self)"
     },
     "signature": "(size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None, confine=True)"
@@ -1943,7 +1944,7 @@
      "__init__": "(self, size=4, keep=8, confine=True)",
      "close": "(self)",
      "pool": "(self, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None)",
-     "run": "(self, source, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, stdin='', args=None, path=None, seed=None, freeze_time=None, import_root=None, _name=None)"
+     "run": "(self, source, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, stdin='', args=None, path=None, seed=None, freeze_time=None, import_root=None, _name=None, audit_stream=None)"
     },
     "signature": "(size=4, keep=8, confine=True)"
    },
@@ -2768,7 +2769,7 @@
    "run": {
     "covered": true,
     "kind": "function",
-    "signature": "(source, *, path=None, allow=None, deny=None, args=None, stdin='', native=True, timeout=None, max_memory_mb=None, seed=None, freeze_time=None, import_root=None, confine=True)"
+    "signature": "(source, *, path=None, allow=None, deny=None, args=None, stdin='', native=True, timeout=None, max_memory_mb=None, seed=None, freeze_time=None, import_root=None, confine=True, audit_stream=None)"
    },
    "run_builtin": {
     "kind": "function",

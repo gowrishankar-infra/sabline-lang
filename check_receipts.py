@@ -26,6 +26,7 @@ and a tampered recording stops the run with E616.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -378,9 +379,58 @@ def replays() -> None:
        "why", done.returncode == 2, done.stdout[-300:])
 
 
+def audit_streams() -> None:
+    """`sabline <file> --audit-stream FILE` (9.0, decisions/0007 32b): the
+    receipt's fields as they happen, a JSON object a line, the receipt last;
+    no secret in it; not one of the program's arguments; and a file that
+    cannot be opened stops the run before it starts."""
+    print()
+    print("the audit stream")
+    print("-" * 62)
+    key = "STREAMKEY" + "q7x2"
+    write("streamed.vel",
+          'fn main() uses io, env, declassify, fs {\n'
+          '    let k = env("STREAM_KEY", "")\n'
+          '    print(length(declassify(k, "its length only")))\n'
+          '    print(length(hmac_sha256(k, "m")))\n'
+          '    print(args())\n'
+          '    check read_file("data/missing.txt") {\n'
+          '        ok t { print(t) }\n'
+          '        fail w { print("no file") }\n'
+          '    }\n'
+          '}\n')
+    env = dict(os.environ, STREAM_KEY=key)
+    done = sabline_cmd("streamed.vel", "--allow",
+                       "io,env,declassify,fs:read:data", "--no-confine",
+                       "--audit-stream", "s.jsonl", "--receipt", "s.json",
+                       env=env)
+    lines = (WORK / "s.jsonl").read_text(encoding="utf-8").splitlines()
+    events = [json.loads(line) for line in lines]
+    kinds_ = [e.get("event") for e in events]
+    ok("a run with --audit-stream writes one JSON object a line: start, "
+       "subjects, each effect, grant and declassification as it happened, "
+       "and end",
+       done.returncode == 0 and kinds_[:2] == ["start", "subjects"]
+       and kinds_[-1] == "end" and "grant" in kinds_
+       and kinds_.count("declassify") == 2
+       and events[0].get("schema") == "sabline.audit-stream/1",
+       f"{done.returncode} {kinds_} {done.stderr[-300:]}")
+    ok("...whose last carries the receipt --receipt wrote",
+       events[-1].get("receipt") == load("s.json"), events[-1])
+    ok("...and the secret is in neither, nor is the stream's path in args()",
+       key not in "".join(lines) and key not in json.dumps(load("s.json"))
+       and "s.jsonl" not in done.stdout, done.stdout[-200:])
+    done = sabline_cmd("streamed.vel", "--allow", "io", "--audit-stream",
+                       "no/such/folder/s.jsonl", env=env)
+    ok("a stream that cannot be opened stops the run before it starts, "
+       "exit 2", done.returncode == 2 and done.stdout == ""
+       and "audit stream" in done.stderr, done.stderr[-300:])
+
+
 def main() -> int:
     diffs()
     replays()
+    audit_streams()
     print("-" * 62)
     print(f"{PASSED} correct, {FAILED} wrong")
     return 1 if FAILED else 0

@@ -1175,7 +1175,7 @@ spelling of `sabline deps --verify`. `sabline.verify/1` is provisional.
 
 ## A receipt of what one run did (8.1)
 
-A run with `--receipt`, or `result.receipt` from `run()`, gives an in-toto Statement of what one run did - the budget it had, how often it used each effect, where the budget refused, how it ended - and never a value the program handled. What it holds, field by field, and how to sign and verify one, is on a page of its own: [docs/receipts.md](docs/receipts.md).
+A run with `--receipt`, or `result.receipt` from `run()`, gives an in-toto Statement of what one run did - the budget it had, how often it used each effect, where the budget refused, how it ended - and never a value the program handled. What it holds, field by field, and how to sign and verify one, is on a page of its own: [docs/receipts.md](docs/receipts.md). From 9.0, `--audit-stream FILE`, or `audit_stream=` given a function, gives the same fields as they happen - every effect, grant, refusal and declassification, a JSON object each, the receipt last - for a host that would watch a run rather than read it afterwards; the same page says what each event holds.
 
 ## Hosting a run that calls tools (8.5)
 

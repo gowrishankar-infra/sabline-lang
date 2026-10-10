@@ -3562,7 +3562,9 @@ def main() -> int:
                     '    let shown = declassify(k, "the test prints it on '
                     'purpose")\n'
                     '    print(shown)\n}\n')
-    r = sabline.run(DECLASSIFIED, allow={"io", "env", "declassify"})
+    stream81: list[Any] = []
+    r = sabline.run(DECLASSIFIED, allow={"io", "env", "declassify"},
+                    audit_stream=stream81.append)
     doc = r.receipt or {}
     pred = doc.get("predicate", {})
     receipts81.append(doc)
@@ -3590,14 +3592,28 @@ def main() -> int:
     ok("the program printed the declassified secret; its receipt does not "
        "hold it", KEY in r.output and KEY not in json.dumps(doc),
        r.output[:80])
+    # the audit stream (9.0, decisions/0007 32b): the receipt's fields as
+    # they happen, held to the same rule as the receipt - a condition of
+    # its acceptance, not a note
+    ok("...nor does its audit stream, which says each effect and the "
+       "declassification as they happened and ends with the receipt",
+       [e.get("event") for e in stream81] == [
+           "start", "subjects", "effect", "effect", "declassify", "effect",
+           "end"]
+       and stream81[4] == {"event": "declassify", "line": 3,
+                           "reason": "the test prints it on purpose"}
+       and stream81[-1].get("receipt") == doc
+       and KEY not in json.dumps(stream81), str(stream81)[:300])
     SINK = ('fn main() uses io, env, declassify, net {\n'
             '    let host = declassify(env("RECEIPT_KEY", ""), "a host is '
             'not secret")\n'
             '    check fetch("https://" + host + ".example.org/") {\n'
             '        ok b { print("sent") }\n'
             '        fail w { print("failed") }\n    }\n}\n')
+    sink81: list[Any] = []
     r = sabline.run(SINK, allow={"io", "env", "declassify",
-                                 "net:api.example.com"})
+                                 "net:api.example.com"},
+                    audit_stream=sink81.append)
     doc = r.receipt or {}
     receipts81.append(doc)
     said81 = json.dumps(r.as_dict()["problems"]).lower()
@@ -3610,13 +3626,20 @@ def main() -> int:
        and doc["predicate"]["exit"]["outcome"] == "refused"
        and KEY.lower() in said81
        and KEY.lower() not in json.dumps(doc).lower(), str(doc)[:300])
+    ok("...and in the audit stream as the same, as it happened, with no "
+       "host either",
+       {"event": "refusal", "code": "E314", "effect": "net", "line": 3,
+        "stopped": True} in sink81
+       and KEY.lower() not in json.dumps(sink81).lower(), str(sink81)[:300])
     FOREVER81 = ('fn main() uses io, env, declassify {\n'
                  '    let n = declassify(length(env("RECEIPT_KEY", "")), '
                  '"only its length")\n'
                  '    let i = 0\n    while i >= 0 {\n        i = i + 1\n'
                  '        if i > 1000000 {\n            i = 0\n        }\n'
                  '    }\n    print(n)\n}\n')
-    r = sabline.run(FOREVER81, allow={"io", "env", "declassify"}, timeout=2)
+    forever81: list[Any] = []
+    r = sabline.run(FOREVER81, allow={"io", "env", "declassify"}, timeout=2,
+                    audit_stream=forever81.append)
     pred = (r.receipt or {}).get("predicate", {})
     receipts81.append(r.receipt)
     ok("a run the clock stopped still has a receipt: incomplete, timeout, "
@@ -3628,6 +3651,13 @@ def main() -> int:
            {"reason": "only its length", "line": 2, "times": 1}]
        and pred.get("run_parameters", {}).get("timeout") == 2
        and KEY not in json.dumps(r.receipt), str(pred)[:300])
+    ok("...and its audit stream, sent from the worker as it ran, ends with "
+       "that receipt and holds no secret",
+       bool(forever81) and forever81[0].get("event") == "start"
+       and {"event": "declassify", "line": 2, "reason": "only its length"}
+       in forever81
+       and forever81[-1] == {"event": "end", "receipt": r.receipt}
+       and KEY not in json.dumps(forever81), str(forever81)[:300])
 
     pdir = Path(_t81.mkdtemp(prefix="sabline-receipt-", dir=WORK))
     (pdir / "helper.vel").write_text("fn helper() -> Int {\n    return 7\n}\n",

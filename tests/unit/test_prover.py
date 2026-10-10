@@ -126,6 +126,30 @@ class Reports(unittest.TestCase):
                                "    return a / b\n}")
         self.assertIn("divide by zero: b = 0", errors[0].message)
 
+    def test_check_names_the_file_an_error_is_in(self) -> None:
+        # 9.0: an E701 raised inside an imported library is the library's,
+        # as its line is; `sabline check` printed the target's name with
+        # the library's line until then (`--json` and `run` had it right)
+        import subprocess
+        import sys
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, text in (
+                    ("lib.vel", "fn half(x: Int) -> Int\n    requires x > 0\n"
+                                "{\n    return x / 2\n}\n"
+                                "fn worse() -> Int {\n    return half(0 - 8)\n}\n"),
+                    ("main.vel", 'import "lib.vel"\n'
+                                 "fn main() uses io {\n    print(worse())\n}\n")):
+                with open(os.path.join(tmp, name), "w", encoding="utf-8") as fh:
+                    fh.write(text)
+            done = subprocess.run(
+                [sys.executable, os.path.join(_support.REPO, "sabline.py"),
+                 "check", "main.vel"], cwd=tmp, capture_output=True,
+                text=True, encoding="utf-8")
+        self.assertEqual(done.returncode, 1)
+        self.assertTrue(done.stderr.startswith("lib.vel:7: [E701] "),
+                        done.stderr)
+
 
 class Budgets(unittest.TestCase):
     """SPEC.md 9.3: 120 seconds for a function that mentions Float and 3

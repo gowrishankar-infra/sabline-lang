@@ -57,7 +57,8 @@ from .results import (
 if TYPE_CHECKING:
     from .pool import Pool
     from .ratchet import COUNTED_EFFECTS, _as_count, _operation_bounds
-    from .receipts import _receipt_subjects, _run_parameters, receipt_statement
+    from .receipts import (_receipt_subjects, _run_parameters,
+                           receipt_statement, stream_end, stream_start)
 
 # Used inside functions only, from modules after this one: sabline/__init__.py
 # binds each here once every module is loaded.
@@ -69,6 +70,8 @@ __forward__ = {
     "_receipt_subjects": "receipts",
     "_run_parameters": "receipts",
     "receipt_statement": "receipts",
+    "stream_end": "receipts",
+    "stream_start": "receipts",
 }
 
 # ---------------------------------------------------------------------------
@@ -744,7 +747,8 @@ def run(source: str, *, path: str | None = None,
         native: bool = True, timeout: float | None = None,
         max_memory_mb: int | None = None,
         seed: int | None = None, freeze_time: Any = None,
-        import_root: Any = None, confine: bool = True) -> RunResult:
+        import_root: Any = None, confine: bool = True,
+        audit_stream: Any = None) -> RunResult:
     """Run a program under an effect budget and capture what it did.
 
     allow={"io"} means it cannot read files, reach the network, call
@@ -787,13 +791,21 @@ def run(source: str, *, path: str | None = None,
     neither limit happens in the caller's process, which Sabline does not
     confine - it could not be taken off again - and its receipt says
     `none`, and why.
+
+    `audit_stream` (9.0), a function, is handed each event of the run's
+    audit stream as it happens - one dict, which json.dumps writes as one
+    line of sabline.audit-stream/1: `start`, `subjects`, every `effect`,
+    `grant`, `refusal`, `declassify` and `tool`, and `end` with the
+    receipt. None of them holds a value the program handled. A function
+    that raises is not called again, and the run goes on.
     """
     if timeout is not None or max_memory_mb is not None:
         return _run_bounded(source, path=path, allow=allow, deny=deny,
                             args=args, stdin=stdin, native=native,
                             timeout=timeout, max_memory_mb=max_memory_mb,
                             seed=seed, freeze_time=freeze_time,
-                            import_root=import_root, confine=confine)
+                            import_root=import_root, confine=confine,
+                            audit_stream=audit_stream)
     budget = _budget_from(allow, deny)
     saved = _state.IMPORT_ROOT
     if import_root is not None:
@@ -801,7 +813,8 @@ def run(source: str, *, path: str | None = None,
     try:
         return _run_in_process(source, path=path, budget=budget,
                                args=args, stdin=stdin, native=native,
-                               seed=seed, freeze_time=freeze_time)
+                               seed=seed, freeze_time=freeze_time,
+                               stream=audit_stream)
     finally:
         vars(_state)["IMPORT_ROOT"] = saved
 
@@ -809,7 +822,8 @@ def run(source: str, *, path: str | None = None,
 @_on_big_stack
 def _run_in_process(source: Any, *, path: Any, budget: Any, args: Any, stdin: Any,
                     native: Any, seed: Any = None, freeze_time: Any = None,
-                    emit: Any = None, name: Any = None) -> RunResult:
+                    emit: Any = None, name: Any = None, stream: Any = None,
+                    stream_ends: bool = True) -> RunResult:
     """run() with the budget already parsed, in THIS process.
 
     The budget is installed, the program runs under it, and whatever
@@ -820,12 +834,19 @@ def _run_in_process(source: Any, *, path: Any, budget: Any, args: Any, stdin: An
     The result carries the run's receipt (8.1). `emit`, when given, is
     handed each thing the receipt records as it happens: a pool worker
     streams them to its parent, which keeps them if the worker is killed
-    before it can answer.
+    before it can answer. `stream` is handed the audit stream's events
+    (9.0); `stream_ends=False` leaves its first and last to the caller - a
+    pool, which knows the limits and makes the final receipt.
     """
     import time as _time
-    recorder = _RunRecorder(emit)
+    recorder = _RunRecorder(emit, stream)
     saved_recorder = _state.RUN_RECORDER
     started_at, t0 = _utc_now_ms(), _time.monotonic()
+    if stream is not None and stream_ends:
+        stream_start(recorder, budget=budget.spec(),
+                     parameters=_run_parameters(seed, freeze_time, None,
+                                                None, confinement={}),
+                     started_at=started_at)
     vars(_state)["RUN_RECORDER"] = recorder
     try:
         result = _run_program(source, path=path, budget=budget, args=args,
@@ -848,6 +869,8 @@ def _run_in_process(source: Any, *, path: Any, budget: Any, args: Any, stdin: An
                                    confinement=confinement),
         result=result, started_at=started_at,
         wall_time_ms=(_time.monotonic() - t0) * 1000)
+    if stream_ends:
+        stream_end(recorder, result.receipt)
     return result
 
 
@@ -1257,7 +1280,8 @@ def memory_cap_is_enforced() -> bool:
 
 def _run_bounded(source: Any, *, path: Any, allow: Any, deny: Any, args: Any, stdin: Any, native: Any,
                  timeout: Any, max_memory_mb: Any, seed: Any = None, freeze_time: Any = None,
-                 import_root: Any = None, confine: bool = True) -> RunResult:
+                 import_root: Any = None, confine: bool = True,
+                 audit_stream: Any = None) -> RunResult:
     """run() in a child process that can be killed: a pool of one worker,
     made for this run and closed after it.
 
@@ -1275,7 +1299,8 @@ def _run_bounded(source: Any, *, path: Any, allow: Any, deny: Any, args: Any, st
         # imports are, and is confined at its first statement (8.4)
         pool._confine_at = "run"
         return pool.run(source, stdin=stdin, args=args, path=path,
-                        seed=seed, freeze_time=freeze_time)
+                        seed=seed, freeze_time=freeze_time,
+                        audit_stream=audit_stream)
 
 
 def card() -> str:

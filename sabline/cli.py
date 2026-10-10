@@ -154,6 +154,10 @@ Usage:
   sabline <file> --allow all --deny net    every effect but these
   sabline <file> --receipt FILE            and write the run's receipt
                                            (sabline.receipt/1, in-toto)
+  sabline <file> --audit-stream FILE       and write each effect, grant,
+                                           refusal and declassification as
+                                           it happens, a JSON object a line
+                                           (sabline.audit-stream/1)
   sabline <file> --no-confine              do not ask the operating system to
                                            hold the budget too (8.4; it is
                                            asked by default, and stderr says
@@ -414,7 +418,8 @@ from .migrate import migrate_main
 from .ratchet import capabilities_main, review_main
 from .conform import conformance_main
 from .attestation import attest_main
-from .receipts import _receipt_subjects, _run_parameters, receipt_statement
+from .receipts import (_receipt_subjects, _run_parameters, receipt_statement,
+                       stream_end, stream_start)
 from .statements import verify_main
 from .evaluation import eval_main
 from .receipt_diff import receipts_main
@@ -1297,8 +1302,12 @@ def main() -> int:
                     print(json.dumps(rep_["errors"], indent=2))
                 else:
                     for err in rep_["errors"]:
-                        print(f"{target}:{err['line']}: [{err['code']}] "
-                              f"{err['message']}", file=sys.stderr)
+                        # the file the error is in, which is an imported
+                        # one's for an error there (9.0): the target's name
+                        # with a library's line pointed at nothing
+                        print(f"{err.get('file') or target}:{err['line']}: "
+                              f"[{err['code']}] {err['message']}",
+                              file=sys.stderr)
             else:
                 own = [f for f in rep_["functions"]
                        if os.path.abspath(f["file"])
@@ -1414,7 +1423,10 @@ def main() -> int:
                       f"{', '.join(effs) if effs else 'nothing'}")
                 for err in r["errors"]:
                     worst = 1
-                    print(f"    line {err['line']}: [{err['code']}] "
+                    where = err.get("file") or v
+                    of = ("" if os.path.abspath(where) == os.path.abspath(v)
+                          else f" of {where}")      # an imported file's
+                    print(f"    line {err['line']}{of}: [{err['code']}] "
                           f"{err['message'][:70]}")
             return worst
         rep_ = inspect_source(target)
@@ -1553,7 +1565,8 @@ def main() -> int:
     FLAGS = {"--json", "--no-native", "--time", "--check", "--no-confine"}
     VALUED = {"--allow", "--deny", "--timeout", "--max-memory-mb",
               "--max-read", "--seed", "--freeze-time", "--receipt",
-              "--record-responses", "--tools", "--tool-timeout"}
+              "--audit-stream", "--record-responses", "--tools",
+              "--tool-timeout"}
     rest, skip = [], False
     for a in sys.argv[2:]:
         if skip:
@@ -1669,25 +1682,53 @@ def _write_later(fh: Any, path: str, text: str) -> None:
 
 def _cli_run_receipt_or_not(filename: str, as_json: bool,
                             budget: "Budget") -> int:
-    if "--receipt" in sys.argv:
+    if "--receipt" in sys.argv or "--audit-stream" in sys.argv:
         try:
             receipt_to = _flag_value(sys.argv, "--receipt")
+            stream_to = _flag_value(sys.argv, "--audit-stream")
         except BudgetError as e:
             print(str(e), file=sys.stderr)
             return 2
-        return _cli_run_with_receipt(filename, as_json, budget,
-                                     cast(str, receipt_to))
+        return _cli_run_with_receipt(filename, as_json, budget, receipt_to,
+                                     stream_to)
     return _cli_run(filename, as_json)
 
 
+def _audit_stream_to(path: str) -> Any:
+    """`--audit-stream FILE` (9.0): a function writing each event to FILE,
+    one JSON object a line, flushed as it is written; None when the file
+    cannot be opened. Opened before the run, so a confined run can still
+    write it (8.4)."""
+    try:
+        fh = open(path, "w", encoding="utf-8", newline="\n")
+    except OSError as e:
+        print(f"sabline: the audit stream cannot be written to {path}: "
+              f"{e.strerror or e}", file=sys.stderr)
+        return None
+
+    def write(event: dict[str, Any]) -> None:
+        fh.write(json.dumps(event, ensure_ascii=False, sort_keys=True,
+                            separators=(",", ":")) + "\n")
+        fh.flush()
+    write.close = fh.close              # type: ignore[attr-defined]
+    return write
+
+
 def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
-                          receipt_to: str) -> int:
+                          receipt_to: str | None,
+                          stream_to: str | None = None) -> int:
     """`sabline file.vel --receipt FILE` (8.1): the run, then its
     sabline.receipt/1 Statement written to FILE - whether it ended well,
     was refused, failed or called exit_with. The receipt is written once
     the program has finished, so nothing the program wrote to that path
     survives it. A receipt that cannot be written is said on stderr, and a
-    run that was otherwise clean exits 2."""
+    run that was otherwise clean exits 2.
+
+    `--audit-stream FILE` (9.0), with it or alone: the receipt's fields as
+    they are produced, a JSON object a line, the receipt itself last. A
+    file that cannot be opened stops the run before it starts, exit 2; one
+    that stops taking lines is said on stderr, and a run that was
+    otherwise clean exits 2."""
     import posixpath
     import time as _t
     try:
@@ -1695,16 +1736,31 @@ def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
             entry_bytes = fh.read()
     except OSError:
         entry_bytes = b""
-    recorder = _RunRecorder()
+    stream = None
+    if stream_to is not None:
+        stream = _audit_stream_to(stream_to)
+        if stream is None:
+            return 2
+    recorder = _RunRecorder(stream=stream)
     loaded: list[Any] = []
     started_at, t0 = _utc_now_ms(), _t.monotonic()
     status, raised = 1, None
+    name = posixpath.normpath(filename.replace(os.sep, "/"))
     # opened now, written when the run has ended: a confined run cannot
     # open a file outside its budget then (8.4)
-    receipt_fh = _open_for_later(receipt_to)
+    receipt_fh = _open_for_later(receipt_to) if receipt_to else None
+    stream_start(recorder, budget=budget.spec(), parameters=_run_parameters(
+        _state.SEED, _state.FROZEN_TIME, None, None, confinement={}),
+        started_at=started_at)
     vars(_state)["RUN_RECORDER"] = recorder
+
+    def loaded_now() -> None:
+        if loaded and stream is not None:
+            recorder.set_subjects(_receipt_subjects(filename, name,
+                                                    entry_bytes, loaded))
     try:
-        status = _cli_run(filename, as_json, loaded=loaded)
+        status = _cli_run(filename, as_json, loaded=loaded,
+                          on_loaded=loaded_now)
     except SystemExit as e:
         raised = e
         status = e.code if isinstance(e.code, int) else \
@@ -1712,7 +1768,6 @@ def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
     finally:
         recorder.close()
         vars(_state)["RUN_RECORDER"] = None
-    name = posixpath.normpath(filename.replace(os.sep, "/"))
     if loaded:
         recorder.subjects = _receipt_subjects(filename, name, entry_bytes,
                                               loaded)
@@ -1731,9 +1786,22 @@ def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
                 "confinement is applied")),
         result=result, started_at=started_at,
         wall_time_ms=(_t.monotonic() - t0) * 1000)
+    if stream is not None:
+        stream_end(recorder, doc)
+        try:
+            stream.close()
+        except OSError:
+            recorder.stream_failed = True
+        if recorder.stream_failed:
+            print(f"sabline: the audit stream to {stream_to} stopped before "
+                  f"the run ended", file=sys.stderr)
+            if raised is None and status == 0:
+                status = 2
     try:
-        _write_later(receipt_fh, receipt_to,
-                     json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
+        if receipt_to is not None:
+            _write_later(receipt_fh, receipt_to,
+                         json.dumps(doc, indent=2, ensure_ascii=False)
+                         + "\n")
     except OSError as e:
         print(f"sabline: the receipt could not be written to {receipt_to}: "
               f"{e.strerror or e}", file=sys.stderr)
@@ -1744,14 +1812,21 @@ def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
     return status
 
 
-def _cli_run(filename: str, as_json: bool, loaded: list[Any] | None = None) -> int:
+def _cli_run(filename: str, as_json: bool, loaded: list[Any] | None = None,
+             on_loaded: Any = None) -> int:
     """`sabline file.vel`: compile, prove, and run, under the budget main()
-    installed. `loaded` gets the files read, for a receipt."""
+    installed. `loaded` gets the files read, for a receipt; `on_loaded` is
+    called once they have been, whether or not they loaded (the audit
+    stream's subjects)."""
     running = False
     if loaded is None:
         loaded = []
     try:
-        funcs, records = load_program(filename, loaded=loaded)
+        try:
+            funcs, records = load_program(filename, loaded=loaded)
+        finally:
+            if on_loaded is not None:
+                on_loaded()
         _state.PROGRAM_FILES[:] = [filename] + [str(p) for p in loaded]
         errors: list[SablineError] = []
         check_effects(funcs, errors)  # superpower 1: no hidden effects

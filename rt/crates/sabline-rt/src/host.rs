@@ -13,6 +13,7 @@
 
 use std::collections::HashMap;
 
+use crate::bigint::BigInt;
 use crate::text::{Text, TextBuf};
 
 // ---- the environment ---------------------------------------------------------
@@ -281,6 +282,31 @@ impl Twister {
         low | (high << 32)
     }
 
+    /// `getrandbits(k)` for any `k > 0`: CPython's `random_getrandbits`,
+    /// 32-bit words from the least significant, the last shifted down to
+    /// what is left of `k`.
+    fn getrandbits_big(&mut self, k: u32) -> BigInt {
+        let mut words = Vec::with_capacity(((k - 1) / 32 + 1) as usize);
+        let mut left = k;
+        while left > 0 {
+            let r = self.next_u32();
+            words.push(if left < 32 { r >> (32 - left) } else { r });
+            left = left.saturating_sub(32);
+        }
+        BigInt::from_words(words)
+    }
+
+    /// `randrange(n)` for a bound past 64 bits: the same rejection loop, on
+    /// whole numbers of any size.
+    pub fn randbelow_big(&mut self, n: &BigInt) -> BigInt {
+        let k = n.bit_length();
+        let mut r = self.getrandbits_big(k);
+        while r >= *n {
+            r = self.getrandbits_big(k);
+        }
+        r
+    }
+
     /// `randrange(n)` for `n > 0`: `_randbelow_with_getrandbits(n)`.
     pub fn randrange(&mut self, n: u64) -> u64 {
         let k = 64 - n.leading_zeros();
@@ -318,8 +344,8 @@ pub fn read_text(raw: &[u8]) -> Option<Text> {
 
 /// What `open(path, "w", encoding="utf-8").write(text)` puts in the file:
 /// each `\n` as this system's line end (`\r\n` on Windows), as UTF-8 -
-/// `None` for a text holding a lone surrogate, which CPython refuses
-/// (`UnicodeEncodeError`) after the file is opened.
+/// `None` for a text holding a lone surrogate, which is not UTF-8, and
+/// which `write_file` refuses (E608) before it opens the file.
 pub fn written_bytes(text: &Text) -> Option<Vec<u8>> {
     let s = text.to_str()?;
     Some(if cfg!(windows) { s.replace('\n', "\r\n").into_bytes() } else { s.into_bytes() })

@@ -9,8 +9,12 @@
 //! step limit and a size limit, and without the prover, native code or the operating
 //! system's confinement. sabline/run_dump.py's docstring says why each of
 //! those is fixed or left out; this module copies what it fixes.
+//!
+//! Each document is followed by the run's receipt ([`crate::receipt`]),
+//! recorded as `sabline <file> --receipt` records it, or `null` where the
+//! command line writes none.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::budget::budget_from;
 use crate::checker::check_types;
@@ -19,7 +23,8 @@ use crate::errors::SablineError;
 use crate::host::Environ;
 use crate::interp::{Io, RunError, RunParams, Runtime, Stop};
 use crate::json::Json;
-use crate::loader::load_program;
+use crate::loader::load_program_recording;
+use crate::receipt::{self, Ending};
 use crate::text::Text;
 
 /// The format's version, carried in every document: 2 from the size
@@ -117,11 +122,18 @@ pub struct Given {
     pub params: RunParams,
     /// Variables set for the run over the process's environment.
     pub environ: Vec<(String, String)>,
+    /// A step limit and a size limit of the line's own, in place of `STEPS`
+    /// and `SIZE`: what the differential fuzzer runs under, and the gate
+    /// never gives.
+    pub steps: Option<u64>,
+    /// See `steps`.
+    pub size: Option<u64>,
 }
 
 impl Given {
     /// A line of the list: a path, or a JSON object naming one with any of
-    /// `allow`, `deny`, `seed`, `freeze_time` and `max_read`.
+    /// `allow`, `deny`, `seed`, `freeze_time`, `max_read`, `environ`,
+    /// `steps` and `size`.
     pub fn of_line(line: &str) -> Result<(String, Given), String> {
         if !line.starts_with('{') {
             return Ok((line.to_string(), Given::default()));
@@ -154,7 +166,18 @@ impl Given {
                 }
             }
         }
-        Ok((path, Given { allow: text("allow"), deny: text("deny"), params, environ }))
+        let limit = |k: &str| int(k).map(|n| n.max(0) as u64);
+        Ok((
+            path,
+            Given {
+                allow: text("allow"),
+                deny: text("deny"),
+                params,
+                environ,
+                steps: limit("steps"),
+                size: limit("size"),
+            },
+        ))
     }
 }
 
@@ -165,6 +188,82 @@ pub fn run_document(path: &str, install_dir: &str) -> Json {
 
 /// The document for one program, under what its line of the list gives.
 pub fn run_document_given(path: &str, install_dir: &str, given: &Given) -> Json {
+    run_recorded(path, install_dir, given).0
+}
+
+/// What a run's receipt and audit stream are made from besides the
+/// recorder: the program as it was given and read, and when it started.
+struct Facts<'a> {
+    path: &'a str,
+    install_dir: &'a str,
+    given: &'a Given,
+    spec: String,
+    name: String,
+    entry_bytes: Vec<u8>,
+    files: Vec<String>,
+    started_at: String,
+    t0: std::time::Instant,
+}
+
+impl Facts<'_> {
+    fn subjects(&self) -> Vec<Json> {
+        receipt::subjects(
+            self.path,
+            &self.name,
+            &self.entry_bytes,
+            &self.files,
+            self.install_dir,
+        )
+    }
+
+    fn run<'r>(
+        &'r self,
+        effect_uses: &'r HashMap<String, u64>,
+        grant_uses: &'r [(String, u64)],
+        ending: Ending,
+        subjects: Vec<Json>,
+    ) -> receipt::Run<'r> {
+        receipt::Run {
+            name: &self.name,
+            subjects,
+            budget: self.spec.clone(),
+            seed: self.given.params.seed,
+            freeze_time: self.given.params.freeze_time,
+            max_read: self.given.params.max_read,
+            effect_uses,
+            grant_uses,
+            started_at: self.started_at.clone(),
+            wall_time_ms: self.t0.elapsed().as_secs_f64() * 1000.0,
+            ending,
+        }
+    }
+
+    /// The receipt and the audit stream of a run that has ended, or two
+    /// nulls for a frozen clock past what an instant can say.
+    fn ended(
+        &self,
+        recorder: &mut receipt::Recorder,
+        effect_uses: &HashMap<String, u64>,
+        grant_uses: &[(String, u64)],
+        ending: Ending,
+    ) -> (Json, Json) {
+        let run = self.run(effect_uses, grant_uses, ending, self.subjects());
+        match receipt::statement(recorder, &run) {
+            Some(receipt) => {
+                receipt::stream_end(recorder, &receipt);
+                let stream = Json::List(recorder.stream.take().unwrap_or_default());
+                (receipt, stream)
+            }
+            None => (Json::Null, Json::Null),
+        }
+    }
+}
+
+/// The run document, the receipt of the same run, and its audit stream as a
+/// list of events - the last two `Json::Null` where the command line writes
+/// no receipt: a budget that does not parse, a failure that escaped, and a
+/// frozen clock past what an instant can say.
+pub fn run_recorded(path: &str, install_dir: &str, given: &Given) -> (Json, Json, Json) {
     let mut doc = Doc {
         refused: Json::Null,
         error: Json::Null,
@@ -178,22 +277,49 @@ pub fn run_document_given(path: &str, install_dir: &str, given: &Given) -> Json 
     let Ok(budget) = budget_from(given.allow.as_deref(), given.deny.as_deref()) else {
         doc.raised = Json::text("BudgetError");
         doc.exit = Json::Null;
-        return doc.json();
+        return (doc.json(), Json::Null, Json::Null);
     };
-    let loaded = match load_program(path, install_dir) {
+    // read before the run, as the command line reads it for the receipt
+    let mut facts = Facts {
+        path,
+        install_dir,
+        given,
+        spec: budget.spec(),
+        name: receipt::entry_name(path),
+        entry_bytes: std::fs::read(path).unwrap_or_default(),
+        files: Vec::new(),
+        started_at: receipt::utc_now_ms(),
+        t0: std::time::Instant::now(),
+    };
+    let none = HashMap::new();
+    let failed = Ending { status: Some(1), ..Ending::default() };
+    let mut recorder = receipt::Recorder::streaming();
+    if !receipt::stream_start(&mut recorder, &facts.run(&none, &[], failed, Vec::new())) {
+        recorder.stream = None; // no instant: neither a stream nor a receipt
+    }
+    let loaded = load_program_recording(path, install_dir, &mut facts.files);
+    // the audit stream's subjects, once loading is over
+    if !facts.files.is_empty() && recorder.stream.is_some() {
+        recorder.tell_subjects(&facts.subjects());
+    }
+    let loaded = match loaded {
         Ok(loaded) => loaded,
         Err(e) => {
+            recorder.note_error(e.code, e.line, &e.message);
             doc.error = checked(&e, path);
             doc.exit = Json::Int(1);
-            return doc.json();
+            let (receipt, stream) = facts.ended(&mut recorder, &none, &[], failed);
+            return (doc.json(), receipt, stream);
         }
     };
     let mut errors = Vec::new();
     check_effects(&loaded.funcs, install_dir, &mut errors);
     if let Err(stopped) = check_types(&loaded.funcs, &loaded.records, &mut errors) {
+        recorder.note_error(stopped.code, stopped.line, &stopped.message);
         doc.error = checked(&stopped, path);
         doc.exit = Json::Int(1);
-        return doc.json();
+        let (receipt, stream) = facts.ended(&mut recorder, &none, &[], failed);
+        return (doc.json(), receipt, stream);
     }
     if !errors.is_empty() {
         let mut seen: HashSet<(&'static str, String, u32, String)> = HashSet::new();
@@ -211,7 +337,9 @@ pub fn run_document_given(path: &str, install_dir: &str, given: &Given) -> Json 
         });
         doc.refused = Json::List(unique.iter().map(|e| checked(e, path)).collect());
         doc.exit = Json::Int(1);
-        return doc.json();
+        recorder.note_stop(unique[0].code, unique[0].line);
+        let (receipt, stream) = facts.ended(&mut recorder, &none, &[], failed);
+        return (doc.json(), receipt, stream);
     }
     let io = Io::new(STDIN, ARGS.iter().map(|a| Text::from(*a)).collect());
     let mut environ = Environ::of_process();
@@ -221,37 +349,56 @@ pub fn run_document_given(path: &str, install_dir: &str, given: &Given) -> Json 
     let mut rt = Runtime::new(&loaded.funcs, &loaded.records, budget, io)
         .with_environ(environ)
         .with_params(given.params.clone())
-        .with_step_limit(STEPS)
-        .with_size_limit(SIZE);
+        .with_step_limit(given.steps.unwrap_or(STEPS))
+        .with_size_limit(given.size.unwrap_or(SIZE));
+    rt.recorder = recorder;
+    rt.recorder.compiled = true;
+    let mut ending = Ending::default();
+    let mut escaped = false;
     match rt.interpret() {
-        Ok(()) => {}
+        Ok(()) => ending.status = Some(0),
         Err(Stop::Error(e)) => {
+            rt.recorder.note_error(e.code, e.line, &e.message.to_string_lossy());
             doc.error = ran(&e, path);
             doc.exit = Json::Int(1);
+            ending.status = Some(1);
         }
-        Err(Stop::Exit(code)) => doc.exit = Json::Int(code),
+        Err(Stop::Exit(code)) => {
+            doc.exit = Json::Int(code);
+            ending.status = Some(code);
+        }
         Err(Stop::Steps(line)) => {
             doc.stopped = Json::Int(i64::from(line));
             doc.stopped_by = Json::text("steps");
             doc.exit = Json::Null;
+            ending.timed_out = true;
         }
         Err(Stop::Size(line)) => {
             doc.stopped = Json::Int(i64::from(line));
             doc.stopped_by = Json::text("size");
             doc.exit = Json::Null;
+            ending.out_of_memory = true;
         }
         Err(Stop::Fail(_)) => {
             doc.raised = Json::text("FailSignal");
             doc.exit = Json::Null;
+            escaped = true;
         }
         Err(Stop::Raised(what)) => {
             doc.raised = Json::text(what);
             doc.exit = Json::Null;
+            escaped = true;
         }
     }
     doc.stdout = std::mem::take(&mut rt.io.stdout).done();
     doc.stderr = std::mem::take(&mut rt.io.stderr).done();
-    doc.json()
+    if escaped {
+        return (doc.json(), Json::Null, Json::Null); // the command line wrote none
+    }
+    let mut recorder = std::mem::take(&mut rt.recorder);
+    let (receipt, stream) =
+        facts.ended(&mut recorder, &rt.effect_uses, &rt.grant_uses, ending);
+    (doc.json(), receipt, stream)
 }
 
 /// Whether a document is of a run that ended with status 0.

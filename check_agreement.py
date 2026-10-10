@@ -12,8 +12,8 @@ both checkers read, and the budget parser. M3 adds the interpreters - every
 program run by both, under the budget io, and what each run printed,
 the status it ended with and the error it stopped with compared; and from
 its second checkpoint the programs written for a budget run under their
-own, in a tree of files made afresh for each runtime - and, later in M3,
-receipts.
+own, in a tree of files made afresh for each runtime - and from its third
+each run's receipt.
 
 **What it runs over** (plan/9.0.md's table, the rows that hold a program):
 
@@ -84,6 +84,18 @@ byte, and one more document for the whole gate:
   the status it ended with, the error it stopped with and which limit
   stopped it - for every program but the ones RUN_EXCLUDED names, each
   with its reason;
+- the receipt of each of those runs, sabline.receipt/1 - its subjects by
+  digest, the budget, the run's parameters, what each effect and grant let
+  through, every refusal and declassification by line and count, and how
+  it ended - field for field, after normalising exactly the fields
+  RECEIPT_NORMALISED names, which are plan/9.0.md's list and nothing else,
+  and comparing the confinement fields by rule: sabline-rt's level at least
+  Python's, and every receipt where they differ printed;
+- the audit stream of each of those runs, sabline.audit-stream/1, event for
+  event in order - every effect, grant, refusal and declassification as it
+  happened, between a `start` and an `end` that carries the receipt - with
+  the same fields normalised where they appear, in `start` and in the
+  receipt, and nothing else;
 - the builtin tables both runtimes' checkers read, so that a builtin added
   to one and not the other is a difference before any program calls it;
 - and for every budget agreement_budgets.py holds - sabline-spec's L1
@@ -454,7 +466,34 @@ def rt_binary() -> Path:
 BATCH_HEADER = b"sabline.ast-batch/1\n"
 CHECK_BATCH_HEADER = b"sabline.check-batch/1\n"
 BUDGET_BATCH_HEADER = b"sabline.budget-batch/1\n"
-RUN_BATCH_HEADER = b"sabline.run-batch/1\n"
+RUN_BATCH_HEADER = b"sabline.run-batch/3\n"
+
+# What the gate does not compare in a receipt, and nothing else: plan/9.0.md,
+# "What is normalised, and nothing else is". Each is a place the gate stops
+# looking, so a field joins this list only with its own argument in the
+# pull request that adds it, and check_gate.py holds the list to the plan's.
+# The value is replaced where the field is there, never put where it is not,
+# so a receipt that drops one of these is still a difference.
+RECEIPT_NORMALISED = (
+    # sabline-lang and sabline-rt, and their versions: they are supposed to
+    # differ
+    "predicate.producer.name",
+    "predicate.producer.version",
+    # a clock and a duration
+    "predicate.startedAt",
+    "predicate.wall_time_ms",
+    # a program given as text: identical in practice, listed because it is
+    # derived from a path
+    "subject[*].name, where it is <source>",
+)
+# Compared by rule, not by equality: each is present in both, the level is
+# one of CONFINEMENT_LEVELS, and sabline-rt's is at least Python's. M4
+# makes it strictly greater on Windows, where equality would fail for the
+# right reason. Every receipt where they differ is printed.
+CONFINEMENT_FIELDS = ("confinement", "confinement_reason",
+                      "confinement_layers", "os_policy_sha256")
+CONFINEMENT_LEVELS = ("none", "partial", "full")
+NORMALISED = "<normalised>"
 
 # The programs the gate does not run, each with the reason, which the gate
 # prints. A program joins this list only with its own argument in the pull
@@ -590,6 +629,156 @@ def compare(python: list[tuple[str, bytes]],
     return out
 
 
+def runs_and_receipts(records: list[tuple[str, bytes]]
+                      ) -> tuple[list[tuple[str, bytes]],
+                                 list[tuple[str, bytes]],
+                                 list[tuple[str, bytes]]]:
+    """A run batch's records, three a program, as its run documents, its
+    receipts and its audit streams."""
+    if len(records) % 3:
+        raise SystemExit(f"check_agreement.py: a run batch of {len(records)} "
+                         f"records is not a document, a receipt and a stream "
+                         f"a program")
+    documents, receipts, streams = records[::3], records[1::3], records[2::3]
+    for (path, _), (again, _), (third, _) in zip(documents, receipts, streams):
+        if not path == again == third:
+            raise SystemExit(f"check_agreement.py: the receipt and stream after "
+                             f"{path}'s run document are {again}'s and "
+                             f"{third}'s")
+    return documents, receipts, streams
+
+
+def _normalised(receipt: Any) -> tuple[Any, dict[str, Any] | None]:
+    """A receipt with exactly RECEIPT_NORMALISED replaced, and its
+    confinement fields taken out to be compared by rule."""
+    if not isinstance(receipt, dict):
+        return receipt, None
+    predicate = receipt.get("predicate")
+    if isinstance(predicate, dict):
+        producer = predicate.get("producer")
+        if isinstance(producer, dict):
+            for key in ("name", "version"):
+                if key in producer:
+                    producer[key] = NORMALISED
+        for key in ("startedAt", "wall_time_ms"):
+            if key in predicate:
+                predicate[key] = NORMALISED
+    for subject in receipt.get("subject") or []:
+        if isinstance(subject, dict) and subject.get("name") == "<source>":
+            subject["name"] = NORMALISED
+    parameters = predicate.get("run_parameters") if isinstance(
+        predicate, dict) else None
+    if not isinstance(parameters, dict):
+        return receipt, None
+    return receipt, {key: parameters.pop(key) for key in CONFINEMENT_FIELDS
+                     if key in parameters}
+
+
+def _confinement_rule(python: dict[str, Any] | None,
+                      rust: dict[str, Any] | None) -> str | None:
+    """Why two receipts' confinement fails the rule, or None."""
+    if python is None or rust is None:
+        return None if python == rust else "only one has run_parameters"
+    for name, fields in (("python", python), ("sabline-rt", rust)):
+        missing = [k for k in CONFINEMENT_FIELDS if k not in fields]
+        if missing:
+            return f"{name}'s has no {', '.join(missing)}"
+        if fields["confinement"] not in CONFINEMENT_LEVELS:
+            return f"{name}'s level is {fields['confinement']!r}"
+    if (CONFINEMENT_LEVELS.index(rust["confinement"])
+            < CONFINEMENT_LEVELS.index(python["confinement"])):
+        return (f"sabline-rt's confinement is {rust['confinement']} where "
+                f"python's is {python['confinement']}")
+    return None
+
+
+def compare_receipts(python: list[tuple[str, bytes]],
+                     rust: list[tuple[str, bytes]],
+                     names: list[str]) -> tuple[list[str], list[str]]:
+    """Every program whose receipts differ, after the normalisation, one
+    line each; and every one whose confinement differs within the rule."""
+    if len(python) != len(rust) or len(python) != len(names):
+        raise SystemExit(f"check_agreement.py: {len(names)} runs, "
+                         f"{len(python)} python receipts and {len(rust)} "
+                         f"sabline-rt receipts")
+    out, by_rule = [], []
+    for (left_path, left), (right_path, right), name in zip(python, rust,
+                                                            names):
+        if left_path != right_path:
+            raise SystemExit("check_agreement.py: the two batches are not in "
+                             "the same order")
+        a, held_a = _normalised(json.loads(left))
+        b, held_b = _normalised(json.loads(right))
+        found = _first_difference(a, b, "receipt")
+        if found is None:
+            found = _confinement_rule(held_a, held_b)
+        if found is not None:
+            out.append(f"{name}: {found}")
+        elif held_a != held_b:
+            by_rule.append(f"{name}: python {held_a}, sabline-rt {held_b}")
+    return out, by_rule
+
+
+def _normalised_stream(stream: Any) -> tuple[Any, dict[str, Any] | None]:
+    """An audit stream with exactly RECEIPT_NORMALISED replaced where it
+    appears - in `start` and in the receipt `end` carries - and the
+    receipt's confinement fields taken out to be compared by rule."""
+    if not isinstance(stream, list):
+        return stream, None
+    held = None
+    for event in stream:
+        if not isinstance(event, dict):
+            continue
+        if event.get("event") == "start":
+            producer = event.get("producer")
+            if isinstance(producer, dict):
+                for key in ("name", "version"):
+                    if key in producer:
+                        producer[key] = NORMALISED
+            if "startedAt" in event:
+                event["startedAt"] = NORMALISED
+        elif event.get("event") == "subjects":
+            for subject in event.get("subject") or []:
+                if isinstance(subject, dict) and \
+                        subject.get("name") == "<source>":
+                    subject["name"] = NORMALISED
+        elif event.get("event") == "end":
+            event["receipt"], held = _normalised(event.get("receipt"))
+    return stream, held
+
+
+def compare_streams(python: list[tuple[str, bytes]],
+                    rust: list[tuple[str, bytes]],
+                    names: list[str]) -> list[str]:
+    """Every program whose audit streams differ, after the normalisation,
+    one line each."""
+    if len(python) != len(rust) or len(python) != len(names):
+        raise SystemExit(f"check_agreement.py: {len(names)} runs, "
+                         f"{len(python)} python streams and {len(rust)} "
+                         f"sabline-rt streams")
+    out = []
+    for (_, left), (_, right), name in zip(python, rust, names):
+        a, held_a = _normalised_stream(json.loads(left))
+        b, held_b = _normalised_stream(json.loads(right))
+        if isinstance(a, list) and isinstance(b, list) and len(a) != len(b):
+            kinds = [e.get("event") if isinstance(e, dict) else None
+                     for e in a]
+            others = [e.get("event") if isinstance(e, dict) else None
+                      for e in b]
+            at = next((i for i, (x, y) in enumerate(zip(kinds, others))
+                       if x != y), min(len(kinds), len(others)))
+            out.append(f"{name}: python streams {len(a)} events and "
+                       f"sabline-rt {len(b)}, first apart at event {at}: "
+                       f"{kinds[at] if at < len(kinds) else 'nothing'} and "
+                       f"{others[at] if at < len(others) else 'nothing'}")
+            continue
+        found = _first_difference(a, b, "stream") or _confinement_rule(
+            held_a, held_b)
+        if found is not None:
+            out.append(f"{name}: {found}")
+    return out
+
+
 def tables(binary: Path) -> tuple[bytes, bytes]:
     """The builtin tables each runtime's checkers read, as one document
     each: a builtin added to one and not the other is a difference on the
@@ -713,9 +902,24 @@ def main(argv: list[str]) -> int:
     checked = compare(python_checks, rust_checks, names)
     budgeted = compare(python_budgets, rust_budgets,
                        [name for name, _, _ in budgets])
+    python_runs, python_receipts, python_streams = runs_and_receipts(
+        python_runs)
+    rust_runs, rust_receipts, rust_streams = runs_and_receipts(rust_runs)
+    (python_budgeted, python_budgeted_receipts,
+     python_budgeted_streams) = runs_and_receipts(python_budgeted)
+    (rust_budgeted, rust_budgeted_receipts,
+     rust_budgeted_streams) = runs_and_receipts(rust_budgeted)
     ran = compare(python_runs, rust_runs, [name for name, _ in runs])
     ran_budgeted = compare(python_budgeted, rust_budgeted,
                            [name for name, _, _ in budgeted_runs])
+    receipted, by_rule = compare_receipts(
+        python_receipts + python_budgeted_receipts,
+        rust_receipts + rust_budgeted_receipts,
+        [name for name, _ in runs] + [name for name, _, _ in budgeted_runs])
+    streamed = compare_streams(
+        python_streams + python_budgeted_streams,
+        rust_streams + rust_budgeted_streams,
+        [name for name, _ in runs] + [name for name, _, _ in budgeted_runs])
     python_tables, rust_tables = tables(binary)
     tabled = ([] if python_tables == rust_tables else
               [f"the builtin tables: {_told(python_tables, rust_tables)}"])
@@ -738,7 +942,13 @@ def main(argv: list[str]) -> int:
             ("the interpreters", len(runs), ran),
             ("the interpreters, under their budgets", len(budgeted_runs),
              ran_budgeted),
+            ("the receipts", len(runs) + len(budgeted_runs), receipted),
+            ("the audit streams", len(runs) + len(budgeted_runs), streamed),
             ("the builtin tables", 1, tabled))
+    print(f"  receipts normalised: {'; '.join(RECEIPT_NORMALISED)}; "
+          f"{', '.join(CONFINEMENT_FIELDS)} by rule")
+    for line in by_rule:
+        print(f"  (confinement differs, within the rule: {line})")
     for what, many, found in rows:
         print(f"  {what}: {many} compared, {many - len(found)} agree, "
               f"{len(found)} differ")
