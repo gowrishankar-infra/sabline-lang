@@ -747,6 +747,105 @@ while i < 5
 )
 
 
+# ---- what is written out is counted before it is made (9.0, M3) ------------
+#
+# The maintainer's decision of 2026-10-10: an operation that writes a value
+# out - to_text, print, log, format, `+`, json_of, the encoders, a broken
+# promise's or invariant's message - counts what it is about to make before
+# making it. Two kinds of program hold the two runtimes to it.
+#
+# LAUGHS: a list of two of the level below, forty levels deep - eighty-two
+# items made, and 2^40 copies of its text when written out - written out
+# every way there is. Each run stops at that operation in both, with nothing
+# made; before the decision the reference would have tried to make a
+# terabyte.
+#
+# THE ROOM: a run that has made exactly SIZE - room, then writes one value
+# out, for every room from a little under what the operation makes to a
+# little over - so that one of them is exactly at the limit and the next one
+# past it. Both runtimes count what is about to be made with a walk of their
+# own; a walk that counted one byte differently in one of them would stop a
+# run the other does not.
+
+SIZE = 1 << 22                   # run_dump.SIZE, which the gate runs under
+
+
+def _laughs(indent: str = "") -> str:
+    return (f'{indent}let a0 = ["ha"]\n' + "".join(
+        f"{indent}let a{k} = [a{k - 1}, a{k - 1}]\n" for k in range(1, 41)))
+
+
+LAUGHS: tuple[tuple[str, str], ...] = tuple(
+    (name, _main(_laughs() + line + '\nprint("after")'))
+    for name, line in (
+        ("print", "print(a40)"), ("log", "log(a40)"),
+        ("to-text", "let t = to_text(a40)"),
+        ("format", 'let t = format("<{}>", a40)'),
+        ("plus", 'let t = "x" + to_text(a40)'),
+        ("json-of", "let t = json_of(a40)"),
+        ("json-of-a-map", 'let t = json_of({"k": a40, "j": a40})'),
+    )) + (
+    ("promise", "fn short(xs: " + "List of " * 41 + "Text) -> Int\n"
+     "    requires length(xs) > 2\n{\n    return 0\n}\n"
+     + _main(_laughs() + "print(short(a40))")),
+    ("promise-on-the-result", "fn big() -> " + "List of " * 41 + "Text\n"
+     "    ensures length(result) > 2\n{\n" + _laughs("    ")
+     + "    return a40\n}\n" + _main("print(length(big()))")),
+    ("invariant", _main(_laughs() + "let i = 0\nwhile i < 3\n"
+                        "    invariant length(a40) > 2\n{\n    i = i + 1\n}")),
+    # one text of a megabyte, eight times in a list: eight items made, and
+    # eight megabytes when written out
+    ("one-text-many-times", _main(
+        'let s = "x"\nlet i = 0\nwhile i < 20 {\n    s = s + s\n    i = i + 1\n}\n'
+        'let xs = [s, s, s, s, s, s, s, s]\nprint(length(xs))\nprint(xs)')),
+)
+
+
+def _leaving(room: int) -> str:
+    """Statements that make exactly SIZE - room: a literal of `a` letters
+    doubled ten times, which makes 2,046 a (the literal itself is not
+    made), and a list of what is left over, an item each."""
+    a, rest = divmod(SIZE - room, 2046)
+    return (f'let pad = "{"x" * a}"\nlet i = 0\nwhile i < 10 {{\n'
+            "    pad = pad + pad\n    i = i + 1\n}\n"
+            + (f"let rest = [{', '.join(['0'] * rest)}]\n" if rest
+               else "let rest = 0\n"))
+
+
+# Each writer once: what is written, and about how much the statement makes
+# - the items its literals make and the bytes it writes out - which the rooms
+# are centred on. "about": the rooms run eight either side of it.
+ROOM_WRITERS: tuple[tuple[str, str, str, int], ...] = (
+    # name, what comes before main, the statement, about how much
+    ("print", "", 'print([["ab", "c"], ["é"]])', 5 + 15),
+    ("print-a-map", "", 'print({-12: [true], 7: [false, true]})', 5 + 33),
+    ("log", "", 'log(["a\\nb", "c\\t"])', 2 + 13),
+    ("to-text", "", 'let t = to_text([money(1250, "KWD"), money(-5, "KWD")])', 2 + 23),
+    ("format", "", 'let t = format("<{}|{}>", [1, 2], "é")', 2 + 12),
+    ("plus-text", "", 'let t = "ab" + "cé"', 5),
+    ("json-of", "", 'let t = json_of({"k": ["é\\n", "x"], "n": ["y"]})', 5 + 31),
+    ("json-of-money", "", 'let t = json_of([money(5, "INR"), money(-1, "INR")])', 2 + 70),
+    ("hex-encode", "", 'let t = hex_encode("été")', 10),
+    ("base64-encode", "", 'let t = base64_encode("abcd")', 8),
+    ("url-encode", "", 'let t = url_encode("a b/é~")', 14),
+    ("promise", "fn short(xs: List of Text) -> Int\n    requires length(xs) > 2\n"
+     "{\n    return 0\n}\n", 'print(short(["ab", "cé"]))', 2 + 68),
+    ("invariant", "", 'let seen = ["a", "é"]\nlet n = 0\nwhile n < 2\n'
+     "    invariant length(seen) > 2\n{\n    n = n + 1\n}", 2 + 70),
+)
+
+
+def room_cases() -> list[tuple[str, str]]:
+    """Each writer, after making exactly SIZE - room, for every room from
+    eight under about how much it makes to eight over."""
+    out = []
+    for name, before, statement, about in ROOM_WRITERS:
+        for room in range(max(about - 8, 0), about + 9):
+            out.append((f"{name}/{room}", before + _main(
+                _leaving(room) + statement + '\nprint("after")')))
+    return out
+
+
 def cases() -> list[tuple[str, bytes]]:
     """Every program here, named, as file bytes."""
     out: list[tuple[str, bytes]] = []
@@ -757,6 +856,10 @@ def cases() -> list[tuple[str, bytes]]:
                     _named_by_a_promise(i).encode("utf-8")))
     out += [(f"run-edge/{name}", source.encode("utf-8"))
             for name, source in EDGES]
+    out += [(f"run-laughs/{name}", source.encode("utf-8"))
+            for name, source in LAUGHS]
+    out += [(f"run-room/{name}", source.encode("utf-8"))
+            for name, source in room_cases()]
     return out
 
 

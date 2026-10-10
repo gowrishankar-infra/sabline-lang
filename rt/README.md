@@ -302,6 +302,24 @@ than a fortieth of the limit. In the Python package it is
 `state._SIZE_LIMIT` and `runtime.size_of`, `None` - nothing counted -
 everywhere but `run-dump`.
 
+**What is written out is counted before it is made** (the maintainer's
+decision of 2026-10-10). A value can hold one text many times - a list of
+the same text n times costs n items, and a list of two of the level below,
+nested forty deep, costs eighty-two and writes out as a terabyte - so an
+operation that writes a value out counts what it is about to make first,
+and the run stops there if that passes the limit, before the value exists:
+`to_text` of what is not a text, `print`, `log`, `format`, a `+` that
+makes a text or a list, `json_of`, the three encoders, and the message of
+a broken promise or loop invariant, which names values. `Runtime::ahead`
+asks; the counting is the writers' own - `value::write_text`, `write_str`
+and `pyjson::dump_into` write to a `text::Sink`, which is a `TextBuf` that
+keeps what is written or a `Measure` that counts it and is full past its
+room - so what is counted is what would be written, by construction. The
+reference counts with walks of its own (`values.written_size`,
+`shown_size`, `json_size`), held to its writers by `test_runtime.py`, and
+the gate's room cases (`agreement_runs.room_cases`) put every writer at
+the limit, one byte under and one byte over, in both.
+
 **A line of the list** is a program's path, run as above; or a JSON object
 naming one with what a command line could add: `allow` and `deny` (the
 budget), `seed`, `freeze_time` (epoch seconds), `max_read` (the read
@@ -362,10 +380,10 @@ compares it event for event, normalising in `start` and in the receipt `end`
 carries exactly what it normalises in a receipt.
 
 **A line of the list may also give `steps` and `size`**, limits of its own
-in place of the run document's; the gate never does. They are what
-`fuzz_parsers.py --target agreement_runs` runs generated programs under -
-2,000 steps and 2^18 bytes - so that the size limit's known residual stays
-small for inputs the engine makes by mutation.
+in place of the run document's; the gate never does. `fuzz_parsers.py
+--target agreement_runs` gives `steps`, 2,000, which keeps an iteration
+short; until what is written out was counted before it was made it gave a
+`size` of 2^18 as well, to keep the residual that left small.
 
 `check_agreement.py` runs every program it holds, and would print the
 ones it does not: `RUN_EXCLUDED`, each with its reason, which is empty.

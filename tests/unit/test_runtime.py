@@ -123,6 +123,105 @@ class SizeLimitCounts(Run):
         self.assertEqual(_state._SIZE_MADE[0], 0)
 
 
+class WrittenOutIsCountedFirst(Run):
+    """9.0, M3 (the maintainer's decision): what an operation writes out is
+    counted before it is made. The walks give exactly the bytes their
+    writers write, and stop once past the room they are given - so that a
+    value holding one text many times, or a list nested two of the level
+    below at every level, stops the run at the operation that would write
+    it, before it exists."""
+
+    def tearDown(self) -> None:
+        vars(_state)["_SIZE_LIMIT"] = None
+        _state._SIZE_MADE[0] = 0
+
+    @staticmethod
+    def values(seed: int, n: int) -> list[Any]:
+        import random
+        from sabline.values import MoneyValue, RecordValue
+        rng = random.Random(seed)
+        texts = ["", "a", "it's", 'say "hi"', "back\\slash", "été",
+                 "\U0001F600", "\ud800", "a\udc00b", "\x00\x07\x1f\x7f",
+                 "\x85\x9f", "line\nbreak\rreturn\ttab", "  ",
+                 "\b\f", "{}", "\xa0​"]
+        f = Function("double", [("x", "Int")], "Int", set(), [], [], [], 1)
+        leaves = [lambda: rng.choice(texts), lambda: rng.randint(-10**20, 10**20),
+                  lambda: rng.choice([0.0, -0.0, 1.5, 1e16, 1e-05, float("nan"),
+                                      float("inf"), float("-inf"), 2.5e-300]),
+                  lambda: rng.choice([True, False]),
+                  lambda: MoneyValue(rng.randint(-10**6, 10**6),
+                                     rng.choice(["INR", "JPY", "KWD"])),
+                  lambda: f, lambda: Bound(f, {"k": 1})]
+
+        def value(depth: int) -> Any:
+            pick = rng.random()
+            if depth > 3 or pick < 0.4:
+                return rng.choice(leaves)()
+            if pick < 0.6:
+                return [value(depth + 1) for _ in range(rng.randint(0, 4))]
+            if pick < 0.8:
+                keys = rng.choice([lambda: rng.choice(texts), lambda: rng.randint(-5, 5),
+                                   lambda: rng.choice([1.5, float("nan"), -0.0]),
+                                   lambda: rng.choice([True, False])])
+                return {keys(): value(depth + 1) for _ in range(rng.randint(0, 4))}
+            return RecordValue("Pt", {"x": value(depth + 1), "yé": value(depth + 1)})
+        return [value(0) for _ in range(n)]
+
+    def test_each_walk_is_exactly_its_writer(self) -> None:
+        from sabline.runtime import run_builtin
+        from sabline.values import (json_size, log_line, shown_size,
+                                    utf8_size, written_size)
+        big = 1 << 40
+        for v in self.values(7, 3000):
+            self.assertEqual(written_size(v, big), utf8_size(to_text(v)), v)
+            self.assertEqual(written_size(v, big, log=True),
+                             utf8_size(log_line(to_text(v))), v)
+            self.assertEqual(shown_size(v, big), utf8_size(f"{v}"), v)
+            try:
+                written = run_builtin("json_of", [v], 1)
+            except TypeError:            # a function value: json_of refuses it
+                continue
+            self.assertEqual(json_size(v, big), utf8_size(written), v)
+
+    def test_each_walk_stops_past_its_room_and_not_before(self) -> None:
+        from sabline.values import json_size, shown_size, written_size
+        for v in self.values(11, 1500):
+            for walk in (written_size, shown_size, json_size):
+                exact = walk(v, 1 << 40)
+                for room in (0, exact // 2, exact - 1, exact, exact + 1):
+                    got = walk(v, max(room, 0))
+                    self.assertEqual(got > room, exact > room, (walk, v, room))
+
+    def test_a_list_nested_two_of_the_one_below_is_never_made(self) -> None:
+        # forty levels: written out, 2^40 copies of the text - a terabyte -
+        # where each level costs two items. Every way of writing it out
+        # stops the run at that line, under the run document's limit, with
+        # nothing made past it
+        laughs = 'let a0 = ["ha"]\n' + "".join(
+            f"let a{k} = [a{k - 1}, a{k - 1}]\n" for k in range(1, 41))
+        for line, op in (("print(a40)", "print"), ("log(a40)", "log"),
+                         ('let t = to_text(a40)', "to_text"),
+                         ('let t = format("{}", a40)', "format"),
+                         ('let t = "x" + to_text(a40)', "to_text"),
+                         ('let t = json_of(a40)', "json_of")):
+            doc = self.run_text(main_of(laughs + line + "\nprint(\"after\")"))
+            self.assertEqual((doc["stopped"], doc["stopped_by"], doc["stdout"]),
+                             (43, "size", ""), op)
+        doc = self.run_text(laughs.replace("let ", "    let ").join((
+            "fn short(xs: " + "List of " * 41 + "Text) -> Int\n    requires length(xs) > 2\n{\n"
+            "    return 0\n}\nfn main() uses io {\n", "    print(short(a40))\n}\n")))
+        self.assertEqual((doc["stopped"], doc["stopped_by"]), (2, "size"))
+
+    def test_one_text_many_times_stops_where_it_would_be_written(self) -> None:
+        # a megabyte, then a list of it eight times: eight items made, and
+        # eight megabytes when written - past the limit, so the print stops
+        doc = self.run_text(main_of(
+            'let s = "x"\nlet i = 0\nwhile i < 20 {\n    s = s + s\n    i = i + 1\n}\n'
+            "let xs = [s, s, s, s, s, s, s, s]\nprint(length(xs))\nprint(xs)"))
+        self.assertEqual((doc["stdout"], doc["stopped"], doc["stopped_by"]),
+                         ("8\n", 10, "size"))
+
+
 class RunDocumentEntries(Run):
 
     def test_a_budget_seed_and_clock(self) -> None:

@@ -275,6 +275,149 @@ def to_text(v: Any) -> str:
     return str(v)
 
 
+# ---- what writing a value out makes, counted before it is made (9.0, M3) ----
+#
+# The size limit counts what a run makes (runtime.size_of). Writing a value
+# out makes a text as long as everything in it, and a value can hold one
+# text many times - a list of the same text n times costs n items, and a
+# list of two of the level below, nested, doubles at every level - so the
+# operations that write a value out count what they are about to make
+# before they make it (runtime.ahead), by these walks. Each gives exactly
+# the UTF-8 bytes - a lone surrogate three, as size_of counts it - of what
+# its writer writes, so stopping before writing stops where counting after
+# would have; and each stops once its count passes `room`, so it costs no
+# more than the limit allows whatever the value holds. test_runtime.py
+# holds each to its writer.
+
+def utf8_size(text: str) -> int:
+    """A text's UTF-8 bytes, a lone surrogate three: runtime.size_of's."""
+    return len(text) if text.isascii() else len(text.encode("utf-8",
+                                                            "surrogatepass"))
+
+
+def written_size(v: Any, room: int, log: bool = False) -> int:
+    """What to_text(v) is, in bytes - and with `log`, what log_line makes
+    of it - counted without writing it, stopping past `room`."""
+    size = log_size if log else utf8_size
+    total, todo = 0, [v]
+    while todo and total <= room:
+        x = todo.pop()
+        if x.__class__ is MoneyValue:
+            total += len(money_text(x))
+        elif isinstance(x, (Function, Bound)):
+            total += size(repr(x))
+        elif isinstance(x, dict):      # {k: v, ...}: the brackets, ": " each
+            total += 4 * len(x) if x else 2      # and ", " between
+            if total <= room:
+                for k, y in x.items():
+                    todo += (k, y)
+        elif isinstance(x, RecordValue):         # name(k: v, ...)
+            total += size(x.rname) + (4 * len(x.fields) if x.fields else 2)
+            for k in x.fields:
+                total += size(k)
+            if total <= room:
+                todo += x.fields.values()
+        elif isinstance(x, HandleValue):
+            total += size(f"<{x.what} #{x.id}>")
+        elif isinstance(x, bool):
+            total += 4 if x else 5
+        elif isinstance(x, list):      # [a, b]: the brackets, ", " between
+            total += 2 * len(x) if x else 2
+            if total <= room:
+                todo += x
+        else:
+            total += size(str(x))
+    return total
+
+
+def shown_size(v: Any, room: int) -> int:
+    """What str(v) is, in bytes - how a broken promise's message names a
+    value: a text as itself, an amount as money_text writes it, anything
+    else as repr() writes it, and so each text inside a list, a map or a
+    record quoted and escaped - counted without writing it, stopping past
+    `room`."""
+    total, todo = 0, [(v, True)]
+    while todo and total <= room:
+        x, top = todo.pop()
+        cls = x.__class__
+        if cls is str:
+            total += utf8_size(x) if top else len(repr(x).encode(
+                "utf-8", "surrogatepass"))
+        elif cls is MoneyValue:
+            total += len(money_text(x) if top else repr(x))
+        elif cls is list:
+            total += 2 * len(x) if x else 2
+            if total <= room:
+                todo += ((y, False) for y in x)
+        elif cls is dict:
+            total += 4 * len(x) if x else 2
+            if total <= room:
+                for k, y in x.items():
+                    todo += ((k, False), (y, False))
+        elif cls is RecordValue:                 # name(k=v, ...)
+            total += utf8_size(x.rname) + (3 * len(x.fields)
+                                           if x.fields else 2)
+            for k in x.fields:
+                total += utf8_size(k)
+            if total <= room:
+                todo += ((y, False) for y in x.fields.values())
+        else:
+            total += utf8_size(repr(x))
+    return total
+
+
+# what json.dumps writes a character of a text as, past the character
+# itself: a quote and a backslash one more, five control characters as a
+# two-character escape, the rest of C0 as \u00XX
+_JSON_ESCAPED = re.compile(r'[\x00-\x1f\\"]')
+
+
+def _json_text_size(text: str) -> int:
+    extra = 0
+    for c in _JSON_ESCAPED.findall(text):
+        extra += 1 if c in '"\\\n\r\t\b\f' else 5
+    return 2 + utf8_size(text) + extra
+
+
+def json_size(v: Any, room: int) -> int:
+    """What json_of(v) is, in bytes - json.dumps(ensure_ascii=False) of
+    what runtime's plain() makes of v: a map's keys as str() writes them,
+    and two that write alike one key, as plain's dict makes them; a record
+    an object of its fields; an amount {"currency": ..., "units": ...} -
+    counted without writing it, stopping past `room`. A value json.dumps
+    has no form for counts nothing: json_of refuses it."""
+    import json
+    total, todo = 0, [v]
+    while todo and total <= room:
+        x = todo.pop()
+        if isinstance(x, (dict, RecordValue)):
+            entries = ({str(k): y for k, y in x.items()}
+                       if isinstance(x, dict) else x.fields)
+            total += 4 * len(entries) if entries else 2
+            for k in entries:
+                total += _json_text_size(k)
+            if total <= room:
+                todo += entries.values()
+        elif isinstance(x, list):
+            total += 2 * len(x) if x else 2
+            if total <= room:
+                todo += x
+        elif x.__class__ is MoneyValue:
+            total += len(json.dumps({"currency": x.currency,
+                                     "units": x.units}))
+        elif isinstance(x, str):
+            total += _json_text_size(x)
+        elif x is None or x is True:
+            total += 4
+        elif x is False:
+            total += 5
+        elif isinstance(x, int):
+            total += len(str(x))
+        elif isinstance(x, float):
+            total += len(json.dumps(x))
+    return total
+
+
 # What one line of a log may not hold (8.3): a character that ends the line
 # it is on or starts another in whatever reads the error channel - every C0
 # control but tab, DEL, the C1 controls, and the two Unicode separators some
@@ -298,3 +441,15 @@ def log_line(text: str) -> str:
         return ("\\x%02x" % ord(c) if ord(c) < 0x100
                 else "\\u%04x" % ord(c))
     return _LOG_CONTROL.sub(one, text)
+
+
+def log_size(text: str) -> int:
+    """What log_line(text) is, in UTF-8 bytes, counted without writing it:
+    each character _LOG_CONTROL matches is its escape - \\n and \\r two
+    bytes for one, the rest of C0 and DEL four for one, C1 four for two,
+    the two separators six for three."""
+    n = utf8_size(text)
+    for m in _LOG_CONTROL.finditer(text):
+        o = ord(m.group(0))
+        n += 1 if o in (0x0A, 0x0D) else 3 if o < 0x80 else 2 if o < 0x100 else 3
+    return n

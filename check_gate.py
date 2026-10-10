@@ -26,7 +26,9 @@ third is the one that matters:
    verdict, a budget refusal's message and a budget's count, and from M3
    a value a run prints, a run's error code and message, where the
    step limit stops a run, where the size limit stops one and what it
-   counts of a text - and asserts the gate goes red for each,
+   counts of a text, a receipt's fields and an audit stream's events, and
+   what an operation counts before it writes a value out - and asserts
+   the gate goes red for each,
    one injection per comparison class. A gate that has never been shown
    to fail is a gate nobody has tested. `check_mutant_kills.py`'s idea,
    applied to the gate itself.
@@ -250,6 +252,22 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
         "rt/crates/sabline-rt/src/interp.rs",
         "self.recorder.grant(&grant); // the audit stream (9.0)",
         "// the audit stream (9.0)",
+    ),
+    # What is written out is counted before it is made (the maintainer's
+    # decision of 2026-10-10): a run whose writer makes exactly what is left
+    # stopped there, and json_of's walk one byte over for a map - each seen
+    # only by the room cases in agreement_runs.py.
+    (
+        "what is written out stopped exactly at the limit",
+        "rt/crates/sabline-rt/src/interp.rs",
+        "            if size(room) > room {",
+        "            if size(room) >= room {",
+    ),
+    (
+        "what json_of is about to make, counted a byte over",
+        "rt/crates/sabline-rt/src/interp.rs",
+        "out.0 += if entries.is_empty() { 2 } else { 4 * entries.len() as u64 };",
+        "out.0 += if entries.is_empty() { 2 } else { 4 * entries.len() as u64 + 1 };",
     ),
 )
 

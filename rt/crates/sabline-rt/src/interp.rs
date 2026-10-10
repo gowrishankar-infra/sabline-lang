@@ -39,11 +39,11 @@ use crate::show::{expr_str, nice_name};
 use crate::tables::{
     builtin, is_builtin, is_new_builtin, CURRENCIES, MONEY_BUILTINS, ROUNDING,
 };
-use crate::text::{isspace, Text, TextBuf};
+use crate::text::{isspace, log_control, utf8_bytes, Measure, Sink, Text, TextBuf};
 use crate::types::{carries_secret, records_carrying};
 use crate::value::{
     currency_digits, fresh_float, item_eq, money_text, py_compare, py_eq, py_repr, py_str,
-    to_text, Bound, Dict, Money, Raised, Record, Value,
+    to_text, write_str, write_text, written_size, Bound, Dict, Money, Raised, Record, Value,
 };
 
 /// The smallest whole number.
@@ -304,6 +304,22 @@ impl Runtime {
         self.count_made(utf8_len(t), line)
     }
 
+    /// `ahead(size, line)`: under the size limit, stop the run at `line`
+    /// if what an operation is about to write out - `size(room)` bytes,
+    /// counted by a writer that stops past `room` - would take what the run
+    /// has made past the limit: counted before it is made, so that no one
+    /// operation makes a value far past the limit (9.0, M3). Nothing is
+    /// counted here; `made` counts what is then made.
+    fn ahead(&self, line: u32, size: impl FnOnce(u64) -> u64) -> R<()> {
+        if let Some(limit) = self.size_limit {
+            let room = limit.saturating_sub(self.size_made);
+            if size(room) > room {
+                return Err(Stop::Size(line));
+            }
+        }
+        Ok(())
+    }
+
     fn count_made(&mut self, n: u64, line: u32) -> R<()> {
         self.size_made += n;
         match self.size_limit {
@@ -434,15 +450,22 @@ impl Runtime {
         for (expr, cline) in &func.requires {
             let mut scope = entry.clone();
             if !self.eval(expr, &mut scope).map_err(|s| blamed(src, s))?.truthy() {
-                let message = TextBuf::new()
-                    .str(&format!(
-                        "broken promise: {} requires {}  (",
-                        nice_name(name),
-                        expr_str(expr)
-                    ))
-                    .text(&vals(expr, &entry, None, &hush, hush_result))
-                    .str(")")
-                    .done();
+                let head = format!(
+                    "broken promise: {} requires {}  (",
+                    nice_name(name),
+                    expr_str(expr)
+                );
+                // it names values: counted before it is written
+                self.ahead(*cline, |room| {
+                    let mut m = Measure::new(room);
+                    m.push_str(&head);
+                    vals_into(&mut m, expr, &entry, None, &hush, hush_result);
+                    m.push_str(")");
+                    m.bytes()
+                })?;
+                let mut message = TextBuf::new().str(&head);
+                vals_into(&mut message, expr, &entry, None, &hush, hush_result);
+                let message = message.str(")").done();
                 return Err(blamed(
                     src,
                     error(
@@ -483,15 +506,21 @@ impl Runtime {
             let mut check_env = entry.clone();
             check_env.insert("result".to_string(), retval.clone());
             if !self.eval(expr, &mut check_env).map_err(|s| blamed(src, s))?.truthy() {
-                let message = TextBuf::new()
-                    .str(&format!(
-                        "broken promise: {} ensures {}  (",
-                        nice_name(name),
-                        expr_str(expr)
-                    ))
-                    .text(&vals(expr, &entry, Some(&retval), &hush, hush_result))
-                    .str(")")
-                    .done();
+                let head = format!(
+                    "broken promise: {} ensures {}  (",
+                    nice_name(name),
+                    expr_str(expr)
+                );
+                self.ahead(*cline, |room| {
+                    let mut m = Measure::new(room);
+                    m.push_str(&head);
+                    vals_into(&mut m, expr, &entry, Some(&retval), &hush, hush_result);
+                    m.push_str(")");
+                    m.bytes()
+                })?;
+                let mut message = TextBuf::new().str(&head);
+                vals_into(&mut message, expr, &entry, Some(&retval), &hush, hush_result);
+                let message = message.str(")").done();
                 return Err(blamed(
                     src,
                     error(
@@ -528,20 +557,39 @@ impl Runtime {
                 let mut names: Vec<String> =
                     expr_vars(inv).into_iter().filter(|n| env.contains_key(n)).collect();
                 names.sort();
-                let mut shown = TextBuf::new();
-                for (i, n) in names.iter().enumerate() {
-                    if i > 0 {
-                        shown.push_str(", ");
+                let head = format!("loop broke its promise: invariant {}  (", expr_str(inv));
+                let write = |out: &mut dyn FnMut(&str, Option<&Value>)| {
+                    for (i, n) in names.iter().enumerate() {
+                        if i > 0 {
+                            out(", ", None);
+                        }
+                        out(n, None);
+                        out(" = ", None);
+                        out("", Some(&env[n]));
                     }
-                    shown.push_str(n);
-                    shown.push_str(" = ");
-                    shown.push_text(&to_text(&env[n]));
-                }
-                let message = TextBuf::new()
-                    .str(&format!("loop broke its promise: invariant {}  (", expr_str(inv)))
-                    .text(&shown.done())
-                    .str(")")
-                    .done();
+                };
+                self.ahead(*iline, |room| {
+                    let mut m = Measure::new(room);
+                    m.push_str(&head);
+                    write(&mut |s, v| {
+                        if !m.full() {
+                            m.push_str(s);
+                            if let Some(v) = v {
+                                write_text(&mut m, v);
+                            }
+                        }
+                    });
+                    m.push_str(")");
+                    m.bytes()
+                })?;
+                let mut shown = TextBuf::new().str(&head);
+                write(&mut |s, v| {
+                    shown.push_str(s);
+                    if let Some(v) = v {
+                        write_text(&mut shown, v);
+                    }
+                });
+                let message = shown.str(")").done();
                 return Err(error(
                     "E704",
                     message,
@@ -728,6 +776,20 @@ impl Runtime {
                 }
                 let l = self.eval(left, env)?;
                 let r = self.eval(right, env)?;
+                if op == "+" && self.size_limit.is_some() {
+                    if matches!(l, Value::Text(_)) || matches!(r, Value::Text(_)) {
+                        self.ahead(*line, |room| {
+                            let first = written_size(&l, room, false);
+                            if first > room {
+                                first
+                            } else {
+                                first + written_size(&r, room - first, false)
+                            }
+                        })?;
+                    } else if let (Value::List(a), Value::List(b)) = (&l, &r) {
+                        self.ahead(*line, |_| (a.len() + b.len()) as u64)?;
+                    }
+                }
                 let out = binop(op, &l, &r, *line)?;
                 // a `+` that made a text or a list is counted as made
                 if op == "+"
@@ -1008,6 +1070,7 @@ impl Runtime {
         }
         match name {
             "print" => {
+                self.ahead(line, |room| written_size(&arg(0), room, false))?;
                 let shown = to_text(&arg(0));
                 if self.size_limit.is_some() {
                     self.made_text(&shown, line)?;
@@ -1063,7 +1126,12 @@ impl Runtime {
                     ))),
                 }
             }
-            "to_text" => Ok(Value::Text(to_text(&arg(0)))),
+            "to_text" => {
+                if !matches!(arg(0), Value::Text(_)) {
+                    self.ahead(line, |room| written_size(&arg(0), room, false))?;
+                }
+                Ok(Value::Text(to_text(&arg(0))))
+            }
             "to_float" => Ok(Value::Float(py_float(&arg(0))?)),
             "round" => {
                 let x = arg(0);
@@ -1274,6 +1342,7 @@ impl Runtime {
                 }
             },
             "json_of" => {
+                self.ahead(line, |room| json_size(&arg(0), room))?;
                 let plain = plain(&arg(0))?;
                 match pyjson::dumps(&plain) {
                     Ok(t) => Ok(Value::Text(t)),
@@ -1340,15 +1409,16 @@ impl Runtime {
             "sha256" => Ok(Value::text(&digest::hex(&digest::sha256(
                 &digest::utf8_surrogatepass(&text_of(&arg(0))?),
             )))),
-            "hex_encode" => {
-                Ok(Value::text(&digest::hex(&digest::utf8_surrogatepass(&text_of(&arg(0))?))))
+            "hex_encode" | "base64_encode" | "url_encode" => {
+                let t = text_of(&arg(0))?;
+                self.ahead(line, |_| encoded_size(name, &t))?;
+                let data = digest::utf8_surrogatepass(&t);
+                Ok(Value::text(&match name {
+                    "hex_encode" => digest::hex(&data),
+                    "base64_encode" => digest::b64encode(&data),
+                    _ => digest::url_quote(&data),
+                }))
             }
-            "base64_encode" => Ok(Value::text(&digest::b64encode(
-                &digest::utf8_surrogatepass(&text_of(&arg(0))?),
-            ))),
-            "url_encode" => Ok(Value::text(&digest::url_quote(&digest::utf8_surrogatepass(
-                &text_of(&arg(0))?,
-            )))),
             "hex_decode" | "base64_decode" => {
                 let t = text_of(&arg(0))?;
                 let what = if name == "hex_decode" { "hexadecimal" } else { "base64" };
@@ -1372,6 +1442,7 @@ impl Runtime {
             }
             "args" => Ok(Value::list(self.io.args.iter().cloned().map(Value::Text).collect())),
             "log" => {
+                self.ahead(line, |room| written_size(&arg(0), room, true))?;
                 let line_text = log_line(&to_text(&arg(0)));
                 if self.size_limit.is_some() {
                     self.made_text(&line_text, line)?;
@@ -1420,6 +1491,16 @@ impl Runtime {
                         file: None,
                     }));
                 }
+                self.ahead(line, |room| {
+                    let mut total: u64 = pieces.iter().map(utf8_len).sum();
+                    for val in &args[1..] {
+                        if total > room {
+                            break;
+                        }
+                        total += written_size(val, room - total, false);
+                    }
+                    total
+                })?;
                 let mut out = TextBuf::new().text(&pieces[0]);
                 for (piece, val) in pieces[1..].iter().zip(&args[1..]) {
                     out.push_text(&to_text(val));
@@ -1616,15 +1697,7 @@ impl Runtime {
 /// A text's length in UTF-8, a lone surrogate three bytes:
 /// `len(t.encode("utf-8", "surrogatepass"))`.
 fn utf8_len(t: &Text) -> u64 {
-    t.points()
-        .iter()
-        .map(|&c| match c {
-            0..=0x7F => 1,
-            0x80..=0x7FF => 2,
-            0x800..=0xFFFF => 3,
-            _ => 4,
-        })
-        .sum()
+    t.points().iter().map(|&c| utf8_bytes(c)).sum()
 }
 
 /// `HANDS_BACK`: the builtins whose answer is a value the program already
@@ -1767,12 +1840,7 @@ fn contains_in(haystack: &Value, needle: &Value) -> R<bool> {
 pub fn log_line(t: &Text) -> Text {
     let mut out = TextBuf::new();
     for &c in t.points() {
-        let control = (c <= 0x08)
-            || (0x0A..=0x1F).contains(&c)
-            || (0x7F..=0x9F).contains(&c)
-            || c == 0x2028
-            || c == 0x2029;
-        if !control {
+        if !log_control(c) {
             out.push_text(&Text::from(vec![c]));
         } else if c == 0x0A {
             out.push_str("\\n");
@@ -2412,6 +2480,87 @@ fn plain(v: &Value) -> R<Value> {
     })
 }
 
+/// What `json_of(v)` is, in UTF-8 bytes - `json.dumps` of what [`plain`]
+/// makes of `v` - counted without making that copy, stopping past `room`
+/// (9.0, M3: `values.json_size`). A map's keys are what `str()` writes and
+/// two that write alike are one key, as plain's dict makes them; a record
+/// is an object of its fields; an amount `{"currency": ..., "units": ...}`.
+/// The leaves are written by `pyjson`'s own writer into a count. A value
+/// `json.dumps` has no form for counts nothing: json_of refuses it.
+fn json_size(v: &Value, room: u64) -> u64 {
+    let mut out = pyjson::JsonBytes::default();
+    let mut todo: Vec<Value> = vec![v.clone()];
+    while let Some(x) = todo.pop() {
+        if out.0 > room {
+            break;
+        }
+        let entries: Vec<(Text, Value)> = match &x {
+            Value::Map(m) => {
+                let mut d = Dict::new();
+                for (k, y) in m.entries() {
+                    let _ = d.set(Value::Text(py_str(k)), y.clone());
+                }
+                d.entries()
+                    .iter()
+                    .map(|(k, y)| {
+                        (if let Value::Text(t) = k { t.clone() } else { py_str(k) }, y.clone())
+                    })
+                    .collect()
+            }
+            Value::Record(r) => {
+                r.fields.iter().map(|(f, y)| (Text::from(f.as_str()), y.clone())).collect()
+            }
+            Value::Money(m) => vec![
+                (Text::from("currency"), Value::text(&m.currency)),
+                (Text::from("units"), Value::Int(m.units)),
+            ],
+            Value::List(xs) => {
+                out.0 += if xs.is_empty() { 2 } else { 2 * xs.len() as u64 };
+                if out.0 <= room {
+                    todo.extend(xs.iter().cloned());
+                }
+                continue;
+            }
+            leaf => {
+                let mut one = pyjson::JsonBytes::default();
+                if pyjson::dump_into(&mut one, leaf).is_ok() {
+                    out.0 += one.0;
+                }
+                continue;
+            }
+        };
+        // {"k": v, ...}: the braces, ": " each and ", " between
+        out.0 += if entries.is_empty() { 2 } else { 4 * entries.len() as u64 };
+        for (k, _) in &entries {
+            pyjson::dump_string(&mut out, k);
+        }
+        if out.0 <= room {
+            todo.extend(entries.into_iter().map(|(_, y)| y));
+        }
+    }
+    out.0
+}
+
+/// What `hex_encode`, `base64_encode` or `url_encode` makes of `t`, in
+/// bytes: two a byte, four for every three begun, and one for an
+/// unreserved byte and three for any other (`runtime.encoded_size`).
+fn encoded_size(name: &str, t: &Text) -> u64 {
+    let data = digest::utf8_surrogatepass(t);
+    let n = data.len() as u64;
+    match name {
+        "hex_encode" => 2 * n,
+        "base64_encode" => 4 * n.div_ceil(3),
+        _ => {
+            n + 2 * data
+                .iter()
+                .filter(|b| {
+                    !(b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~'))
+                })
+                .count() as u64
+        }
+    }
+}
+
 // ---- promises ----------------------------------------------------------------
 
 /// `expr_vars(e)`: the names an expression reads.
@@ -2448,13 +2597,14 @@ fn vars_into(e: &Expr, out: &mut HashSet<String>) {
 /// `vals(expr)`: each name the promise reads, sorted, as `name = value`
 /// with the value as an f-string writes it - or `<secret>` for a name
 /// whose type holds a secret.
-fn vals(
+fn vals_into<S: Sink>(
+    out: &mut S,
     expr: &Expr,
     entry: &HashMap<String, Value>,
     result: Option<&Value>,
     hush: &HashSet<String>,
     hush_result: bool,
-) -> Text {
+) {
     let mut scope: HashMap<&str, &Value> =
         entry.iter().map(|(k, v)| (k.as_str(), v)).collect();
     if let Some(r) = result {
@@ -2463,8 +2613,10 @@ fn vals(
     let mut names: Vec<String> =
         expr_vars(expr).into_iter().filter(|n| scope.contains_key(n.as_str())).collect();
     names.sort();
-    let mut out = TextBuf::new();
     for (i, n) in names.iter().enumerate() {
+        if out.full() {
+            return;
+        }
         if i > 0 {
             out.push_str(", ");
         }
@@ -2473,8 +2625,7 @@ fn vals(
         if hush.contains(n) || (n == "result" && hush_result) {
             out.push_str(REDACTED);
         } else {
-            out.push_text(&py_str(scope[n.as_str()]));
+            write_str(out, scope[n.as_str()]);
         }
     }
-    out.done()
 }

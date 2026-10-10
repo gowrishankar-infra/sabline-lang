@@ -368,6 +368,116 @@ impl TextBuf {
     }
 }
 
+/// Where a value is written out: a [`TextBuf`], which keeps what is
+/// written, or a [`Measure`], which only counts it. The writers in
+/// `value.rs` write to either, so what a Measure counts is what a TextBuf
+/// would hold, by construction (9.0, M3: the size limit counts what an
+/// operation writes out before it is made).
+pub trait Sink {
+    /// Add a Rust string.
+    fn push_str(&mut self, s: &str);
+    /// Add a Text.
+    fn push_text(&mut self, t: &Text);
+    /// Whether nothing more need be written: a Measure past its room.
+    fn full(&self) -> bool {
+        false
+    }
+}
+
+impl Sink for TextBuf {
+    fn push_str(&mut self, s: &str) {
+        TextBuf::push_str(self, s);
+    }
+
+    fn push_text(&mut self, t: &Text) {
+        TextBuf::push_text(self, t);
+    }
+}
+
+/// A code point's UTF-8 bytes, a lone surrogate three, as
+/// `runtime.size_of` counts them.
+pub fn utf8_bytes(c: u32) -> u64 {
+    match c {
+        0..=0x7F => 1,
+        0x80..=0x7FF => 2,
+        0x800..=0xFFFF => 3,
+        _ => 4,
+    }
+}
+
+/// Whether a log line writes `c` as an escape: `values._LOG_CONTROL`, every
+/// C0 control but tab, DEL, C1, and the two Unicode separators.
+pub fn log_control(c: u32) -> bool {
+    c <= 0x08
+        || (0x0A..=0x1F).contains(&c)
+        || (0x7F..=0x9F).contains(&c)
+        || c == 0x2028
+        || c == 0x2029
+}
+
+/// What a log line makes of `c`, in bytes: `\n` and `\r` two, `\xNN` four,
+/// `\uNNNN` six, and anything else its UTF-8.
+pub fn log_bytes(c: u32) -> u64 {
+    if !log_control(c) {
+        utf8_bytes(c)
+    } else if c == 0x0A || c == 0x0D {
+        2
+    } else if c < 0x100 {
+        4
+    } else {
+        6
+    }
+}
+
+/// A [`Sink`] that counts the UTF-8 bytes written - or, made with
+/// [`Measure::log`], the bytes `log_line` would make of them - and is full
+/// once the count is past its room, so that measuring a value that writes
+/// out far past the size limit costs no more than the limit.
+pub struct Measure {
+    bytes: u64,
+    room: u64,
+    log: bool,
+}
+
+impl Measure {
+    /// Counting UTF-8 bytes, full past `room`.
+    pub fn new(room: u64) -> Self {
+        Measure { bytes: 0, room, log: false }
+    }
+
+    /// Counting what a log line makes, full past `room`.
+    pub fn log(room: u64) -> Self {
+        Measure { bytes: 0, room, log: true }
+    }
+
+    /// What has been counted: exact while it is no more than the room.
+    pub fn bytes(&self) -> u64 {
+        self.bytes
+    }
+
+    fn add(&mut self, c: u32) {
+        self.bytes += if self.log { log_bytes(c) } else { utf8_bytes(c) };
+    }
+}
+
+impl Sink for Measure {
+    fn push_str(&mut self, s: &str) {
+        for c in s.chars() {
+            self.add(c as u32);
+        }
+    }
+
+    fn push_text(&mut self, t: &Text) {
+        for &c in t.points() {
+            self.add(c);
+        }
+    }
+
+    fn full(&self) -> bool {
+        self.bytes > self.room
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -62,11 +62,15 @@ from .values import (
     MoneyValue,
     RecordValue,
     ReturnSignal,
+    json_size,
     money_text,
     parse_money_text,
     read_json,
     round_ratio,
+    shown_size,
     to_text,
+    utf8_size,
+    written_size,
 )
 from .budget import (
     _RedirectRefused,
@@ -127,6 +131,9 @@ def run_digest(name: str, args: list[Any], line: int) -> Any:
     import base64
     import binascii
     import hashlib
+    if name in ("hex_encode", "base64_encode", "url_encode") \
+            and _state._SIZE_LIMIT is not None:
+        ahead(lambda room: encoded_size(name, args[0]), line)
     if name == "sha256":
         return hashlib.sha256(_utf8(args[0])).hexdigest()
     if name == "hex_encode":
@@ -263,6 +270,8 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
         spend(effect, name, line)                  # ran sorted() on
                                                    # every single call
     if name == "print":
+        if _state._SIZE_LIMIT is not None:      # counted before it is made
+            ahead(lambda room: written_size(args[0], room), line)
         shown = to_text(args[0])
         if _state._SIZE_LIMIT is not None:      # what it writes is made
             made(shown, line)
@@ -292,6 +301,8 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
                              f"(whole numbers go from {INT_MIN} to {INT_MAX})")
         return value
     if name == "to_text":
+        if _state._SIZE_LIMIT is not None and args[0].__class__ is not str:
+            ahead(lambda room: written_size(args[0], room), line)
         return to_text(args[0])
     if name == "to_float":
         return float(args[0])
@@ -522,6 +533,9 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
             return cur
 
         if name == "json_of":
+            if _state._SIZE_LIMIT is not None:
+                ahead(lambda room: json_size(args[0], room), line)
+
             def plain(v: Any) -> Any:
                 if isinstance(v, dict):
                     return {str(k): plain(x) for k, x in v.items()}
@@ -876,6 +890,8 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
         # one line per call, whatever the value holds (8.3): a line feed, a
         # carriage return, an escape or a NUL is written as an escape, so a
         # value cannot forge a line of the log
+        if _state._SIZE_LIMIT is not None:
+            ahead(lambda room: written_size(args[0], room, log=True), line)
         shown = log_line(to_text(args[0]))
         if _state._SIZE_LIMIT is not None:
             made(shown, line)
@@ -905,6 +921,15 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
                 f"value(s)", line,
                 fixes=[f"pass exactly {holes} value(s) after the text",
                        "each {} in the text takes one value"])
+        if _state._SIZE_LIMIT is not None:
+            def format_size(room: int) -> int:
+                total = sum(utf8_size(p) for p in pieces)
+                for val in args[1:]:
+                    if total > room:
+                        break
+                    total += written_size(val, room - total)
+                return total
+            ahead(format_size, line)
         out = pieces[0]
         for piece, val in zip(pieces[1:], args[1:]):
             out += to_text(val) + piece
@@ -967,7 +992,9 @@ def size_of(v: Any) -> int:
     every builtin but those in HANDS_BACK (and to_text of a text); and the
     text print and log write and ask asks with. The count is checked as
     each is made, so a run stops at the operation that takes it past the
-    limit, before that value is used or that text written."""
+    limit, before that value is used or that text written; and what an
+    operation writes out is counted before it is made (ahead), so that it
+    stops before that value exists."""
     cls = v.__class__
     if cls is str:
         return len(v) if v.isascii() else len(v.encode("utf-8", "surrogatepass"))
@@ -985,6 +1012,66 @@ def made(v: Any, line: int) -> Any:
     if limit is not None and total > limit:
         raise SizeLimit(line)
     return v
+
+
+def ahead(size: Callable[[int], int], line: int) -> None:
+    """Under the size limit, stop the run at `line` if what an operation
+    is about to write out would take what the run has made past the limit
+    - counted before it is made, so that no one operation makes a value
+    far past the limit (9.0, M3: the maintainer's decision). `size(room)`
+    is one of values.py's walks, which give the exact bytes and stop once
+    past `room`. Nothing is counted here: made() counts what is then made,
+    which is those bytes, so the run stops at the operation where counting
+    after would have stopped it, before the value exists.
+
+    The operations: to_text of what is not a text, print, log, format, `+`
+    that makes a text or a list, json_of, the three encoders, and the
+    message of a broken promise or loop invariant, which names values. A
+    builtin's answer that is not one of those - split, chars, keys, push,
+    put, a JSON document's part - is no larger than what it was given, and
+    is counted when made."""
+    limit = _state._SIZE_LIMIT
+    if limit is not None:
+        room = limit - _state._SIZE_MADE[0]
+        if size(room) > room:
+            raise SizeLimit(line)
+
+
+def message_size(head: str, named: list[tuple[str, Any]],
+                 measure: Callable[[Any, int], int], room: int) -> int:
+    """What `head + ", ".join(f"{n} = {v}") + ")"` is in bytes - a broken
+    promise's message, or a loop invariant's - each value as `measure`
+    writes it, stopping past `room`."""
+    total = utf8_size(head) + 1 + 2 * max(len(named) - 1, 0)
+    for n, v in named:
+        if total > room:
+            break
+        total += utf8_size(n) + 3
+        total += measure(v, room - total)
+    return total
+
+
+def _both_size(l: Any, r: Any, room: int) -> int:  # noqa: E741
+    """What `to_text(l) + to_text(r)` is in bytes, stopping past `room`."""
+    first = written_size(l, room)
+    return first if first > room else first + written_size(r, room - first)
+
+
+# the characters url_encode leaves as they are: RFC 3986's unreserved
+_UNRESERVED = (b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+               b"0123456789-._~")
+
+
+def encoded_size(name: str, text: Any) -> int:
+    """What hex_encode, base64_encode or url_encode makes of `text`, in
+    bytes: two a byte, four for every three begun, and one for an
+    unreserved byte and three for any other."""
+    data = _utf8(text)
+    if name == "hex_encode":
+        return 2 * len(data)
+    if name == "base64_encode":
+        return 4 * ((len(data) + 2) // 3)
+    return len(data) + 2 * len(data.translate(None, _UNRESERVED))
 
 
 def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -> dict[str, Any]:
@@ -1114,16 +1201,19 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
         hush: set[str] | frozenset[str] = getattr(fn, "secret_params", frozenset())
         hush_result = getattr(fn, "secret_result", False)
 
-        def vals(expr: Any, extra: Any = None) -> str:
+        def named(expr: Any, extra: Any = None) -> list[tuple[str, Any]]:
+            """The names a promise reads, each with its value - REDACTED
+            for one whose type is secret."""
             scope = dict(entry)
             if extra is not None:
                 scope["result"] = extra[0]
-            names = sorted(n for n in expr_vars(expr) if n in scope)
-            return ", ".join(
-                f"{n} = " + (REDACTED if (n in hush or
-                                          (n == "result" and hush_result))
-                             else f"{scope[n]}")
-                for n in names)
+            return [(n, REDACTED if (n in hush or
+                                     (n == "result" and hush_result))
+                     else scope[n])
+                    for n in sorted(n for n in expr_vars(expr) if n in scope)]
+
+        def vals(expr: Any, extra: Any = None) -> str:
+            return ", ".join(f"{n} = {v}" for n, v in named(expr, extra))
 
         # a promise is the callee's: its line is in the callee's file, so
         # is the file a broken one (or an error in it) names - until 9.0
@@ -1132,9 +1222,12 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
         try:
             for expr, cline in fn.requires:
                 if not eval_(expr, dict(entry)):
-                    raise SablineError("E600",
-                        f"broken promise: {nice_name(name)} requires "
-                        f"{expr_str(expr)}  ({vals(expr)})", cline,
+                    head = (f"broken promise: {nice_name(name)} requires "
+                            f"{expr_str(expr)}  (")
+                    if sized:            # it names values: counted first
+                        ahead(lambda room: message_size(
+                            head, named(expr), shown_size, room), cline)
+                    raise SablineError("E600", f"{head}{vals(expr)})", cline,
                         fixes=["check the value before calling this "
                                "function",
                                "or loosen the promise if it is too strict"])
@@ -1164,9 +1257,14 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
                 check_env = dict(entry)
                 check_env["result"] = retval
                 if not eval_(expr, check_env):
+                    head = (f"broken promise: {nice_name(name)} ensures "
+                            f"{expr_str(expr)}  (")
+                    if sized:
+                        ahead(lambda room: message_size(
+                            head, named(expr, (retval,)), shown_size, room),
+                            cline)
                     raise SablineError("E601",
-                        f"broken promise: {nice_name(name)} ensures "
-                        f"{expr_str(expr)}  ({vals(expr, (retval,))})",
+                        f"{head}{vals(expr, (retval,))})",
                         cline,
                         fixes=["the code does not keep this promise - fix "
                                "the code",
@@ -1213,6 +1311,12 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
                     if not eval_(inv_expr, env):
                         names = sorted(n for n in expr_vars(inv_expr)
                                        if n in env)
+                        if sized:
+                            ahead(lambda room: message_size(
+                                "loop broke its promise: invariant "
+                                f"{expr_str(inv_expr)}  (",
+                                [(n, env[n]) for n in names], written_size,
+                                room), iline)
                         vals = ", ".join(f"{n} = {to_text(env[n])}"
                                          for n in names)
                         raise SablineError("E704",
@@ -1308,9 +1412,11 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
             if node.op == "+":
                 if isinstance(l, str) or isinstance(r, str):
                     if sized:
+                        ahead(lambda room: _both_size(l, r, room), node.line)
                         return made(to_text(l) + to_text(r), node.line)
                     return to_text(l) + to_text(r)
                 if sized and l.__class__ is list:
+                    ahead(lambda room: len(l) + len(r), node.line)
                     return made(l + r, node.line)
                 return checked_int(l + r, "+", node.line)
             if node.op == "-":
