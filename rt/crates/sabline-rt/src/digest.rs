@@ -176,9 +176,9 @@ pub fn b64encode(bytes: &[u8]) -> String {
 /// this is that: the alphabet and nothing else, a quad of data characters
 /// at a time, padding only where it completes a quad - not at the start
 /// of one, and nothing after it - and no data character left over. CPython
-/// 3.10 read the same text without strict mode, and differs from this on
-/// one kind of text, padding at the start of a quad (`"YWJj=="`, `"="`),
-/// which it passed over; the gate holds no such text (agreement_runs.py).
+/// 3.10 read the same text without strict mode and passed over padding at
+/// the start of a quad (`"YWJj=="`, `"="`); the reference takes only what
+/// strict mode takes on every CPython (`runtime._BASE64`, 9.0 M3).
 pub fn b64decode_validated(t: &Text) -> Option<Vec<u8>> {
     let p = t.points();
     let mut out = Vec::with_capacity(p.len() * 3 / 4);

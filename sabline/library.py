@@ -45,6 +45,7 @@ from .prover import check_proofs
 from .native import compile_native
 from .runtime import _on_big_stack, interpret
 from .editor import contract_coverage, inspect_source
+from . import through_rt
 from .results import (
     AUDIT_SCHEMA,
     AuditResult,
@@ -807,6 +808,18 @@ def run(source: str, *, path: str | None = None,
                             import_root=import_root, confine=confine,
                             audit_stream=audit_stream)
     budget = _budget_from(allow, deny)
+    # SABLINE_REFERENCE_RUNTIME=rust (9.0, M3): this run through sabline-rt.
+    # Not a bounded one, above: its worker is confined at its first
+    # statement (8.4), and a confined worker cannot start a process, so
+    # through sabline-rt the caller would start it under the limits itself
+    # - the pool's own redesign, which M3 leaves to the next checkpoint
+    if through_rt.chosen() == "rust" and import_root is None:
+        routed = _run_through_rt(source, path=path, budget=budget, args=args,
+                                 stdin=stdin, seed=seed,
+                                 freeze_time=freeze_time, name=None,
+                                 stream=audit_stream, stream_ends=True)
+        if routed is not None:
+            return routed
     saved = _state.IMPORT_ROOT
     if import_root is not None:
         vars(_state)["IMPORT_ROOT"] = os.path.realpath(str(import_root))
@@ -872,6 +885,92 @@ def _run_in_process(source: Any, *, path: Any, budget: Any, args: Any, stdin: An
     if stream_ends:
         stream_end(recorder, result.receipt)
     return result
+
+
+def _run_through_rt(source: Any, *, path: Any, budget: Any, args: Any,
+                    stdin: Any, seed: Any, freeze_time: Any, name: Any,
+                    stream: Any, stream_ends: bool) -> RunResult | None:
+    """run() with SABLINE_REFERENCE_RUNTIME=rust (9.0, M3): checked and
+    proved here, as `_run_program` does, then run by sabline-rt
+    (sabline/through_rt.py), its output and logs caught, its input `stdin`
+    read as a StringIO is, its receipt sabline-rt's. None where the run
+    stays this package's: a program the checks or the prover refuse, which
+    runs nothing; a budget granting the network, Python or a tool to a
+    program that can reach it, which sabline-rt does not do yet; an import
+    root, which its loader does not take yet (run() does not ask); and a
+    source that is not UTF-8 text."""
+    import io as _io
+    if _state.IMPORT_ROOT is not None:
+        return None
+    try:
+        source.encode("utf-8")
+    except UnicodeEncodeError:
+        return None
+    checked = _check_here(source, path=path)
+    if not checked.ok:
+        return None
+    where, temp = _source_to_file(source, path)
+    try:
+        try:
+            funcs, _records = load_program(where, source if path else None)
+        except (SablineError, RecursionError):
+            return None
+        missing = through_rt.not_ported(funcs, budget)
+        if missing:
+            print(through_rt.fallback_notice(missing), file=sys.stderr)
+            return None
+        out, err = _io.StringIO(), _io.StringIO()
+        given = _io.StringIO(stdin)
+
+        def ask(prompt: str) -> str | None:
+            out.write(prompt)            # as input() writes it to stdout=
+            line = given.readline()
+            if not line:
+                return None
+            return line[:-1] if line.endswith("\n") else line
+
+        alive = [stream is not None]
+
+        def event(e: dict[str, Any]) -> None:
+            # a pool's run leaves its first and last to the pool; a function
+            # that raises is not called again, and the run goes on
+            if not alive[0] or (not stream_ends and e.get("event") in ("start", "end")):
+                return
+            try:
+                stream(e)
+            except Exception:
+                alive[0] = False
+        doc, receipt = through_rt.run(
+            where, allow=budget.spec(), seed=seed, freeze_time=freeze_time,
+            max_read=_state.MAX_READ_BYTES, args=[str(a) for a in args or []],
+            name=_entry_name(path, name), source=source if path else None,
+            out=out.write, err=err.write, read_line=given.readline, ask=ask,
+            event=event if stream is not None else None)
+    finally:
+        _drop_source_file(temp)
+    problems: list[Problem] = []
+    refused, code = None, 0
+    if doc.get("refused"):
+        problems = [Problem(p["code"], p["message"], p["line"], p.get("file"),
+                            p.get("fixes") or []) for p in doc["refused"]]
+        code = 1
+    elif doc.get("error"):
+        e = doc["error"]
+        problems = [Problem(e["code"], e["message"], e["line"], e.get("file"),
+                            e.get("fixes") or [])]
+        refused = _refused_from(e["code"], e["message"])
+        code = 1
+    elif doc.get("raised"):
+        problems = [Problem("E000", f"sabline-rt stopped with "
+                            f"{doc['raised']}, which is a defect in it", 0,
+                            where, [])]
+        code = 1
+    else:
+        code = int(doc.get("exit") or 0)
+    used = (receipt or {}).get("predicate", {}).get("effects_used") or {}
+    return RunResult(code == 0 and not problems, out.getvalue(),
+                     err.getvalue(), problems, refused, code,
+                     effects_used=dict(used), receipt=receipt)
 
 
 def _run_program(source: Any, *, path: Any, budget: Any, args: Any, stdin: Any, native: Any, seed: Any,

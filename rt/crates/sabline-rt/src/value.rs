@@ -20,7 +20,7 @@ use crate::bigint::BigInt;
 use crate::nodes::Function;
 use crate::pyrepr::py_float_repr;
 use crate::tables::CURRENCIES;
-use crate::text::{Text, TextBuf};
+use crate::text::{Measure, Sink, Text, TextBuf};
 
 /// One value.
 #[derive(Clone, Debug)]
@@ -462,7 +462,26 @@ pub fn to_text(v: &Value) -> Text {
     out.done()
 }
 
-fn write_text(out: &mut TextBuf, v: &Value) {
+/// What `to_text(v)` is, in UTF-8 bytes - and with `log`, what `log_line`
+/// makes of it - counted without writing it, by the same writer: exact
+/// while it is no more than `room`, and past `room` as soon as the count
+/// passes it (9.0, M3: `values.written_size`).
+pub fn written_size(v: &Value, room: u64, log: bool) -> u64 {
+    let mut m = if log { Measure::log(room) } else { Measure::new(room) };
+    write_text(&mut m, v);
+    m.bytes()
+}
+
+/// What `str(v)` is, in UTF-8 bytes - how a broken promise's message names
+/// a value - counted the same way (`values.shown_size`).
+pub fn shown_size(v: &Value, room: u64) -> u64 {
+    let mut m = Measure::new(room);
+    write_str(&mut m, v);
+    m.bytes()
+}
+
+/// `to_text(v)`, written to `out`.
+pub fn write_text<S: Sink>(out: &mut S, v: &Value) {
     match v {
         Value::Money(m) => out.push_str(&money_text(m)),
         Value::Func(f) => {
@@ -472,6 +491,9 @@ fn write_text(out: &mut TextBuf, v: &Value) {
         Value::Map(d) => {
             out.push_str("{");
             for (i, (k, x)) in d.entries().iter().enumerate() {
+                if out.full() {
+                    return;
+                }
                 if i > 0 {
                     out.push_str(", ");
                 }
@@ -485,6 +507,9 @@ fn write_text(out: &mut TextBuf, v: &Value) {
             out.push_str(&r.name);
             out.push_str("(");
             for (i, (k, x)) in r.fields.iter().enumerate() {
+                if out.full() {
+                    return;
+                }
                 if i > 0 {
                     out.push_str(", ");
                 }
@@ -498,6 +523,9 @@ fn write_text(out: &mut TextBuf, v: &Value) {
         Value::List(xs) => {
             out.push_str("[");
             for (i, x) in xs.iter().enumerate() {
+                if out.full() {
+                    return;
+                }
                 if i > 0 {
                     out.push_str(", ");
                 }
@@ -520,7 +548,8 @@ pub fn py_str(v: &Value) -> Text {
     out.done()
 }
 
-fn write_str(out: &mut TextBuf, v: &Value) {
+/// `str(v)`, written to `out`.
+pub fn write_str<S: Sink>(out: &mut S, v: &Value) {
     match v {
         Value::Text(t) => out.push_text(t),
         Value::Money(m) => out.push_str(&money_text(m)),
@@ -535,7 +564,7 @@ pub fn py_repr(v: &Value) -> Text {
     out.done()
 }
 
-fn write_repr(out: &mut TextBuf, v: &Value) {
+fn write_repr<S: Sink>(out: &mut S, v: &Value) {
     match v {
         Value::None => out.push_str("None"),
         Value::Bool(b) => out.push_str(if *b { "True" } else { "False" }),
@@ -545,6 +574,9 @@ fn write_repr(out: &mut TextBuf, v: &Value) {
         Value::List(xs) => {
             out.push_str("[");
             for (i, x) in xs.iter().enumerate() {
+                if out.full() {
+                    return;
+                }
                 if i > 0 {
                     out.push_str(", ");
                 }
@@ -555,6 +587,9 @@ fn write_repr(out: &mut TextBuf, v: &Value) {
         Value::Map(d) => {
             out.push_str("{");
             for (i, (k, x)) in d.entries().iter().enumerate() {
+                if out.full() {
+                    return;
+                }
                 if i > 0 {
                     out.push_str(", ");
                 }
@@ -573,6 +608,9 @@ fn write_repr(out: &mut TextBuf, v: &Value) {
             out.push_str(&r.name);
             out.push_str("(");
             for (i, (k, x)) in r.fields.iter().enumerate() {
+                if out.full() {
+                    return;
+                }
                 if i > 0 {
                     out.push_str(", ");
                 }
@@ -638,5 +676,35 @@ mod tests {
             py_str(&Value::list(vec![m])),
             Text::from("[MoneyValue(units=-5, currency='INR')]")
         );
+    }
+
+    #[test]
+    fn a_measure_counts_what_the_writer_writes_and_stops_past_its_room() {
+        use crate::text::utf8_bytes;
+        let bytes = |t: &Text| -> u64 { t.points().iter().map(|&c| utf8_bytes(c)).sum() };
+        let texts: Vec<Value> =
+            ["", "it's", "say \"hi\"", "\u{e9}t\u{e9}", "\u{1F600}", "a\nb\x07\u{85}"]
+                .iter()
+                .map(|s| Value::text(s))
+                .chain([Value::Text(Text::from(vec![0xD800]))])
+                .collect();
+        let m = Value::Money(Money { units: 1250, currency: Rc::from("KWD") });
+        let mut d = Dict::new();
+        d.set(Value::text("k\u{e9}"), Value::list(texts.clone())).unwrap();
+        d.set(Value::Int(-3), m.clone()).unwrap();
+        let rec = Value::Record(Rc::new(Record {
+            name: "Pt".to_string(),
+            fields: vec![("x".to_string(), Value::Float(f64::NAN)), ("y".to_string(), m)],
+        }));
+        let nested = Value::list(vec![Value::Map(Rc::new(d)), rec, Value::Bool(false)]);
+        for v in texts.iter().chain([&nested]) {
+            let big = u64::MAX / 2;
+            assert_eq!(written_size(v, big, false), bytes(&to_text(v)), "{v:?}");
+            assert_eq!(shown_size(v, big), bytes(&py_str(v)), "{v:?}");
+            let exact = written_size(v, big, false);
+            for room in [0, exact / 2, exact.saturating_sub(1), exact, exact + 1] {
+                assert_eq!(written_size(v, room, false) > room, exact > room, "{v:?} {room}");
+            }
+        }
     }
 }

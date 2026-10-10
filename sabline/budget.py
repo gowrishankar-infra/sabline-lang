@@ -14,7 +14,8 @@ from .tables import (
     INT_MIN,
     REDACTED,
 )
-from .values import FailSignal, MoneyValue, log_line, to_text
+from .values import (FailSignal, MoneyValue, log_line, to_text,
+                     whole_number)
 from typing import Any, TypeVar, cast
 
 _Num = TypeVar("_Num", bound="int | MoneyValue")
@@ -291,7 +292,7 @@ class Budget:
                 raise BudgetError(
                     f"'{item}': a grant takes at most one @count; write "
                     f"an @ inside a path as %40")
-            return body, int(item[at + 1:])
+            return body, whole_number(item[at + 1:])
         if at > 0:
             raise BudgetError(f"'{item}': what follows @ must be a whole "
                               f"number of operations, written 0-9")
@@ -367,7 +368,7 @@ class Budget:
         body, n = item, None
         at = item.rfind("@")
         if at > 0 and _ascii_digits(item[at + 1:]):
-            body, n = item[:at], int(item[at + 1:])
+            body, n = item[:at], whole_number(item[at + 1:])
         elif item.startswith("tool@"):
             raise BudgetError(f"'{item}': what follows @ must be a whole "
                               f"number of calls, written 0-9")
@@ -670,14 +671,14 @@ def parse_host_port(text: str) -> tuple[Any, ...]:
         if rest:
             if not rest.startswith(":") or not _ascii_digits(rest[1:]):
                 raise BudgetError(f"'{text}': expected :port after ]")
-            port = int(rest[1:])
+            port = whole_number(rest[1:])
     else:
         # structure is read on the encoded text - `@` and `/` are still
         # errors as raw characters, since a host that means to hold them
         # writes them percent-encoded (spec v0.2 §5.2)
         host, sep, tail = text.rpartition(":")
         if sep and _ascii_digits(tail):
-            port = int(tail)
+            port = whole_number(tail)
         else:
             host = text
         if "/" in host or "@" in host or not host:

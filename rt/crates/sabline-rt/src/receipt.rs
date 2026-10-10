@@ -85,6 +85,9 @@ pub struct Recorder {
     keys_at: HashMap<u32, HashSet<String>>,
     /// The audit stream's events so far, when one was asked for.
     pub stream: Option<Vec<Json>>,
+    /// Where each event goes as it happens instead, for a relayed run
+    /// (`sabline-rt exec`): the stream is then never kept here.
+    pub live: Option<std::sync::mpsc::Sender<String>>,
 }
 
 impl Recorder {
@@ -95,7 +98,12 @@ impl Recorder {
 
     /// `tell(event)`: one event of the audit stream, when one was asked for.
     pub fn tell(&mut self, event: Json) {
-        if let Some(stream) = &mut self.stream {
+        if let Some(live) = &self.live {
+            if self.stream.is_some() {
+                let _ = live
+                    .send(crate::exec::frame(crate::interp::Frame::Event(event)).canonical());
+            }
+        } else if let Some(stream) = &mut self.stream {
             stream.push(event);
         }
     }

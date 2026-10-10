@@ -20,7 +20,7 @@ from sabline import state as _state
 from sabline.nodes import Function
 from sabline.runtime import SizeLimit, made, size_of
 from sabline.values import Bound, to_text
-from typing import Any
+from typing import Any, Callable
 
 STAGE = "runtime"
 
@@ -66,6 +66,16 @@ class FunctionValuesPrint(Run):
         self.assertEqual(doc["stdout"], "fn double\nfn fn#1\n[fn double, fn fn#1]\n")
         self.assertEqual(doc["error"]["code"], "E600")
         self.assertIn("(fs = [fn double, fn fn#1])", doc["error"]["message"])
+
+    def test_the_count_starts_at_one_in_every_program(self) -> None:
+        # however many programs the process loaded before - sabline.run
+        # called again, a pool's worker, a door - as sabline-rt counts them
+        # (9.0, M3; until then a second sabline.run printed `fn fn#4`)
+        from sabline.library import run
+        source = main_of("let f = fn(x: Int) -> Int { return x }\n"
+                         "let g = fn(x: Int) -> Int { return x + 1 }\nprint([f, g])")
+        self.assertEqual({run(source).output for _ in range(3)},
+                         {"[fn fn#1, fn fn#2]\n"})
 
 
 class AllOfAndAnyOf(Run):
@@ -121,6 +131,108 @@ class SizeLimitCounts(Run):
         result = run(main_of('let s = "abc"\nprint(s + s)'))
         self.assertEqual(result.output, "abcabc\n")
         self.assertEqual(_state._SIZE_MADE[0], 0)
+
+
+class WrittenOutIsCountedFirst(Run):
+    """9.0, M3 (the maintainer's decision): what an operation writes out is
+    counted before it is made. The walks give exactly the bytes their
+    writers write, and stop once past the room they are given - so that a
+    value holding one text many times, or a list nested two of the level
+    below at every level, stops the run at the operation that would write
+    it, before it exists."""
+
+    def tearDown(self) -> None:
+        vars(_state)["_SIZE_LIMIT"] = None
+        _state._SIZE_MADE[0] = 0
+
+    @staticmethod
+    def values(seed: int, n: int) -> list[Any]:
+        import random
+        from sabline.values import MoneyValue, RecordValue
+        rng = random.Random(seed)
+        texts = ["", "a", "it's", 'say "hi"', "back\\slash", "été",
+                 "\U0001F600", "\ud800", "a\udc00b", "\x00\x07\x1f\x7f",
+                 "\x85\x9f", "line\nbreak\rreturn\ttab", "  ",
+                 "\b\f", "{}", "\xa0​"]
+        f = Function("double", [("x", "Int")], "Int", set(), [], [], [], 1)
+        leaves: list[Callable[[], Any]] = [
+                  lambda: rng.choice(texts), lambda: rng.randint(-10**20, 10**20),
+                  lambda: rng.choice([0.0, -0.0, 1.5, 1e16, 1e-05, float("nan"),
+                                      float("inf"), float("-inf"), 2.5e-300]),
+                  lambda: rng.choice([True, False]),
+                  lambda: MoneyValue(rng.randint(-10**6, 10**6),
+                                     rng.choice(["INR", "JPY", "KWD"])),
+                  lambda: f, lambda: Bound(f, {"k": 1})]
+
+        def value(depth: int) -> Any:
+            pick = rng.random()
+            if depth > 3 or pick < 0.4:
+                return rng.choice(leaves)()
+            if pick < 0.6:
+                return [value(depth + 1) for _ in range(rng.randint(0, 4))]
+            if pick < 0.8:
+                kinds: list[Callable[[], Any]] = [
+                    lambda: rng.choice(texts), lambda: rng.randint(-5, 5),
+                    lambda: rng.choice([1.5, float("nan"), -0.0]),
+                    lambda: rng.choice([True, False])]
+                keys = rng.choice(kinds)
+                return {keys(): value(depth + 1) for _ in range(rng.randint(0, 4))}
+            return RecordValue("Pt", {"x": value(depth + 1), "yé": value(depth + 1)})
+        return [value(0) for _ in range(n)]
+
+    def test_each_walk_is_exactly_its_writer(self) -> None:
+        from sabline.runtime import run_builtin
+        from sabline.values import (json_size, log_line, shown_size,
+                                    utf8_size, written_size)
+        big = 1 << 40
+        for v in self.values(7, 3000):
+            self.assertEqual(written_size(v, big), utf8_size(to_text(v)), v)
+            self.assertEqual(written_size(v, big, log=True),
+                             utf8_size(log_line(to_text(v))), v)
+            self.assertEqual(shown_size(v, big), utf8_size(f"{v}"), v)
+            try:
+                written = run_builtin("json_of", [v], 1)
+            except TypeError:            # a function value: json_of refuses it
+                continue
+            self.assertEqual(json_size(v, big), utf8_size(written), v)
+
+    def test_each_walk_stops_past_its_room_and_not_before(self) -> None:
+        from sabline.values import json_size, shown_size, written_size
+        for v in self.values(11, 1500):
+            for walk in (written_size, shown_size, json_size):
+                exact = walk(v, 1 << 40)
+                for room in (0, exact // 2, exact - 1, exact, exact + 1):
+                    got = walk(v, max(room, 0))
+                    self.assertEqual(got > room, exact > room, (walk, v, room))
+
+    def test_a_list_nested_two_of_the_one_below_is_never_made(self) -> None:
+        # forty levels: written out, 2^40 copies of the text - a terabyte -
+        # where each level costs two items. Every way of writing it out
+        # stops the run at that line, under the run document's limit, with
+        # nothing made past it
+        laughs = 'let a0 = ["ha"]\n' + "".join(
+            f"let a{k} = [a{k - 1}, a{k - 1}]\n" for k in range(1, 41))
+        for line, op in (("print(a40)", "print"), ("log(a40)", "log"),
+                         ('let t = to_text(a40)', "to_text"),
+                         ('let t = format("{}", a40)', "format"),
+                         ('let t = "x" + to_text(a40)', "to_text"),
+                         ('let t = json_of(a40)', "json_of")):
+            doc = self.run_text(main_of(laughs + line + "\nprint(\"after\")"))
+            self.assertEqual((doc["stopped"], doc["stopped_by"], doc["stdout"]),
+                             (43, "size", ""), op)
+        doc = self.run_text(laughs.replace("let ", "    let ").join((
+            "fn short(xs: " + "List of " * 41 + "Text) -> Int\n    requires length(xs) > 2\n{\n"
+            "    return 0\n}\nfn main() uses io {\n", "    print(short(a40))\n}\n")))
+        self.assertEqual((doc["stopped"], doc["stopped_by"]), (2, "size"))
+
+    def test_one_text_many_times_stops_where_it_would_be_written(self) -> None:
+        # a megabyte, then a list of it eight times: eight items made, and
+        # eight megabytes when written - past the limit, so the print stops
+        doc = self.run_text(main_of(
+            'let s = "x"\nlet i = 0\nwhile i < 20 {\n    s = s + s\n    i = i + 1\n}\n'
+            "let xs = [s, s, s, s, s, s, s, s]\nprint(length(xs))\nprint(xs)"))
+        self.assertEqual((doc["stdout"], doc["stopped"], doc["stopped_by"]),
+                         ("8\n", 10, "size"))
 
 
 class RunDocumentEntries(Run):
@@ -271,6 +383,124 @@ class AnAmountPastSixtyFourBits(Run):
         doc = self.run_text(main_of('print(money(-9223372036854775807 - 1, "INR"))'))
         self.assertEqual((doc["error"], doc["stdout"]),
                          (None, "INR -92233720368547758.08\n"))
+
+
+class OneAnswerOnEveryCPython(Run):
+    """9.0, M3: the three places the reference answered by CPython version
+    answer as 3.12 does on every CPython - json's trailing comma, which
+    3.13 words "Illegal trailing comma" a character earlier; int()'s digit
+    limit, which 3.10 words "(4300)"; and base64 with padding at the start
+    of a quad, which 3.10 decoded. This file runs on every leg, so each
+    assertion is made on 3.10, 3.12 and 3.13 alike."""
+
+    LIMIT = ("Exceeds the limit (4300 digits) for integer string conversion: "
+             "value has {} digits; use sys.set_int_max_str_digits() to "
+             "increase the limit")
+
+    def test_a_trailing_comma_is_said_as_3_12_says_it(self) -> None:
+        from sabline.values import read_json
+        for text, said in (
+                ("[1,]", "Expecting value: line 1 column 4 (char 3)"),
+                ("[1, \n ]", "Expecting value: line 2 column 2 (char 6)"),
+                ('{"a": 1,}', "Expecting property name enclosed in double "
+                              "quotes: line 1 column 9 (char 8)"),
+                ('[{"a": [2,],}]', "Expecting value: line 1 column 11 (char 10)")):
+            with self.assertRaises(ValueError) as refused:
+                read_json(text)
+            self.assertEqual(str(refused.exception), said, text)
+
+    def test_a_long_whole_number_is_refused_in_3_12s_words(self) -> None:
+        from sabline.values import read_json, whole_number
+        self.assertEqual(whole_number("1" * 4300), int("1" * 4300))
+        self.assertEqual(whole_number("-" + "1" * 4300), -int("1" * 4300))
+        for digits, n in (("1" * 4301, 4301), ("-" + "9" * 4301, 4301),
+                          ("0" * 4300 + "1", 4301)):
+            with self.assertRaises(ValueError) as refused:
+                whole_number(digits)
+            self.assertEqual(str(refused.exception), self.LIMIT.format(n))
+        with self.assertRaises(ValueError) as refused:
+            read_json("[0, " + "7" * 5000 + "]")
+        self.assertEqual(str(refused.exception), self.LIMIT.format(5000))
+        # a long document of short numbers reads as any other
+        self.assertEqual(read_json('{"p": "' + "x" * 5000 + '", "n": [-1, 20]}')["n"],
+                         [-1, 20])
+
+    def test_a_budget_count_and_port_past_it(self) -> None:
+        from sabline.budget import Budget
+        for allow in ("fs@" + "1" * 4301, "net:x:" + "4" * 4301,
+                      "net:[::1]:" + "4" * 4301, "tool:t@" + "5" * 4301):
+            with self.assertRaises(ValueError) as refused:
+                Budget.parse(allow)
+            self.assertIn(self.LIMIT.format(4301), str(refused.exception), allow)
+
+    def test_base64_padding_at_the_start_of_a_quad_is_refused(self) -> None:
+        doc = self.run_text(main_of(
+            'for t in ["YWJj==", "=", "==", "YWJj=", "YWI=", ""] {\n'
+            '    check base64_decode(t) {\n'
+            '        ok d { print(format("[{}]", d)) }\n'
+            '        fail why { print(why) }\n'
+            '    }\n'
+            '}'))
+        self.assertEqual(doc["stdout"], "that text is not base64\n" * 4 + "[ab]\n[]\n")
+
+
+class TheVariableChoosesTheRuntime(Run):
+    """SABLINE_REFERENCE_RUNTIME (9.0, M3): `rust` sends `sabline run` and
+    `sabline.run` through sabline-rt, unset or `python` leaves them to the
+    package, anything else is refused; and a run whose budget grants the
+    network, Python or a tool to a program that uses it stays the
+    package's. check_through_rt.py holds what goes through sabline-rt to
+    the package's own runs."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.saved = os.environ.pop("SABLINE_REFERENCE_RUNTIME", None)
+
+    def tearDown(self) -> None:
+        os.environ.pop("SABLINE_REFERENCE_RUNTIME", None)
+        if self.saved is not None:
+            os.environ["SABLINE_REFERENCE_RUNTIME"] = self.saved
+
+    def test_what_it_takes(self) -> None:
+        from sabline import through_rt
+        for said, runtime in (("", "python"), ("python", "python"),
+                              (" rust ", "rust")):
+            os.environ["SABLINE_REFERENCE_RUNTIME"] = said
+            self.assertEqual(through_rt.chosen(), runtime, said)
+        for said in ("Rust", "rs", "pyhton"):
+            os.environ["SABLINE_REFERENCE_RUNTIME"] = said
+            with self.assertRaises(through_rt.RuntimeChoiceError):
+                through_rt.chosen()
+
+    def test_the_command_line_refuses_what_names_no_runtime(self) -> None:
+        import subprocess
+        import sys
+        path = os.path.join(self.dir, "p.vel")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(main_of('print("hi")'))
+        done = subprocess.run(
+            [sys.executable, "-m", "sabline", path], capture_output=True,
+            text=True, env=dict(os.environ, SABLINE_REFERENCE_RUNTIME="rsut"))
+        self.assertEqual((done.returncode, done.stdout), (2, ""))
+        self.assertIn("SABLINE_REFERENCE_RUNTIME is 'rsut'", done.stderr)
+
+    def test_the_network_python_or_a_tool_it_can_reach_stays_the_packages(self) -> None:
+        from sabline import through_rt
+        from sabline.budget import Budget
+        from sabline.loader import load_program
+        path = os.path.join(self.dir, "p.vel")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("fn get(u: Text) -> Text uses net {\n    return \"\"\n}\n"
+                     + main_of('print("hi")'))
+        funcs, _ = load_program(path)
+        self.assertEqual(through_rt.not_ported(funcs, Budget.parse("io,net")), ["net"])
+        self.assertEqual(through_rt.not_ported(funcs, Budget.parse("io")), [])
+        # a budget granting what the program never uses goes through
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(main_of('print("hi")'))
+        funcs, _ = load_program(path)
+        self.assertEqual(through_rt.not_ported(funcs, Budget.parse(
+            "io,env,fs,net,clock,rand,ffi,declassify,tool")), [])
 
 
 class ReceiptOfARun(Run):

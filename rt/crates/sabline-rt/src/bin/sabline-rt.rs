@@ -9,6 +9,16 @@
 //! sabline-rt tables                the builtin tables the checkers read
 //! sabline-rt budget --list <file>  one budget document per line of <file>,
 //!                                  each line `[allow, deny]` as JSON (M2)
+//! sabline-rt run --install-dir DIR --list <file>
+//!                                  the run document, receipt and audit
+//!                                  stream of each line's program (M3)
+//! sabline-rt exec --install-dir DIR
+//!                                  one program run for whoever started
+//!                                  this process, a frame at a time on
+//!                                  standard input and output: what
+//!                                  `sabline run` and `sabline.run` go
+//!                                  through under SABLINE_REFERENCE_RUNTIME
+//!                                  =rust (M3; `src/exec.rs` says how)
 //! sabline-rt --version
 //! ```
 //!
@@ -46,6 +56,8 @@ fn main() -> ExitCode {
             eprintln!("       sabline-rt check --install-dir <dir> --list <paths-file>");
             eprintln!("       sabline-rt tables");
             eprintln!("       sabline-rt budget --list <budgets-file>");
+            eprintln!("       sabline-rt run --install-dir <dir> --list <paths-file>");
+            eprintln!("       sabline-rt exec --install-dir <dir>");
             eprintln!("       sabline-rt --version");
             ExitCode::from(2)
         }
@@ -75,6 +87,7 @@ fn run(words: &[&str]) -> Result<ExitCode, String> {
         ["run", "--install-dir", dir, "--list", list] => {
             on_a_big_stack(run_list_of((*dir).to_string(), (*list).to_string()))
         }
+        ["exec", "--install-dir", dir] => exec((*dir).to_string()),
         _ => Err(format!("sabline-rt: cannot read '{}'", words.join(" "))),
     }
 }
@@ -205,6 +218,88 @@ fn run_list_of(
         }
         Ok(if every { ExitCode::SUCCESS } else { ExitCode::from(1) })
     }
+}
+
+/// `sabline-rt exec`: the request from the first line of standard input,
+/// the run on a thread with the stack a parse needs, every frame it makes
+/// written as it is made, and the end frame last (`src/exec.rs`). A thread
+/// reads standard input for the whole run: its lines are the answers to the
+/// run's questions, and its end while the run is going - which a parent
+/// that is still there never gives before the end frame - is a parent
+/// gone, so the process exits. Before the run starts the end is only the
+/// end, and a request that does not read is refused as any other is.
+fn exec(dir: String) -> Result<ExitCode, String> {
+    use std::io::BufRead;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::mpsc::channel;
+
+    use sabline_rt::exec;
+    use sabline_rt::interp::Relay;
+
+    static RUNNING: AtomicBool = AtomicBool::new(false);
+    static INPUT_ENDED: AtomicBool = AtomicBool::new(false);
+    static ENDED: AtomicBool = AtomicBool::new(false);
+    let orphaned = || std::process::exit(i32::from(exec::ORPHANED));
+    let (lines, lines_in) = channel::<String>();
+    std::thread::spawn(move || {
+        let stdin = std::io::stdin();
+        let mut stdin = stdin.lock();
+        loop {
+            let mut line = String::new();
+            match stdin.read_line(&mut line) {
+                Ok(n) if n > 0 && lines.send(line).is_ok() => {}
+                _ => {
+                    INPUT_ENDED.store(true, Ordering::SeqCst);
+                    if RUNNING.load(Ordering::SeqCst) && !ENDED.load(Ordering::SeqCst) {
+                        orphaned();
+                    }
+                    return;
+                }
+            }
+        }
+    });
+    let first =
+        lines_in.recv().map_err(|_| "sabline-rt exec: no request on standard input")?;
+    let (frames, frames_in) = channel::<String>();
+    // the request is read on the run's own thread: what it gives holds
+    // texts, which stay on the thread that made them
+    let run = std::thread::Builder::new()
+        .stack_size(sabline_rt::PARSE_STACK)
+        .spawn(move || -> Result<(String, String), String> {
+            let (path, given) = exec::request(&first)?;
+            // from here an end of the input is a parent gone - and one that
+            // came already, between the request and now, was too
+            RUNNING.store(true, Ordering::SeqCst);
+            if INPUT_ENDED.load(Ordering::SeqCst) {
+                orphaned();
+            }
+            // the rest of standard input is the answers, a line each
+            let relay = Relay { frames, answers: lines_in };
+            let (document, receipt) =
+                sabline_rt::run_dump::run_relayed(&path, &dir, &given, relay);
+            Ok((document.canonical(), receipt.canonical()))
+        })
+        .map_err(|e| format!("sabline-rt exec: no thread for the run: {e}"))?;
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+    let mut write = |line: String| -> Result<(), String> {
+        stdout
+            .write_all(line.as_bytes())
+            .and_then(|()| stdout.write_all(b"\n"))
+            .and_then(|()| stdout.flush())
+            .map_err(|_| "sabline-rt exec: standard output is closed".to_string())
+    };
+    // every frame as it is made, until the run lets go of the relay
+    for line in frames_in {
+        if write(line).is_err() {
+            orphaned();
+        }
+    }
+    let (document, receipt) =
+        run.join().map_err(|_| "sabline-rt exec: the run panicked")??;
+    ENDED.store(true, Ordering::SeqCst);
+    write(format!("{{\"end\":{{\"document\":{document},\"receipt\":{receipt}}}}}"))?;
+    Ok(ExitCode::SUCCESS)
 }
 
 /// The header of the framed stream `budget --list` writes; the records are

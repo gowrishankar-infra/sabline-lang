@@ -21,9 +21,9 @@ use crate::checker::check_types;
 use crate::effects::check_effects;
 use crate::errors::SablineError;
 use crate::host::Environ;
-use crate::interp::{Io, RunError, RunParams, Runtime, Stop};
+use crate::interp::{Io, Relay, RunError, RunParams, Runtime, Stop};
 use crate::json::Json;
-use crate::loader::load_program_recording;
+use crate::loader::load_program_given;
 use crate::receipt::{self, Ending};
 use crate::text::Text;
 
@@ -128,6 +128,19 @@ pub struct Given {
     pub steps: Option<u64>,
     /// See `steps`.
     pub size: Option<u64>,
+    /// What `args()` answers, in place of `ARGS`: a relayed run's own.
+    pub args: Option<Vec<Text>>,
+    /// The name the receipt gives the program, in place of its path's: the
+    /// library's `<source>`, or the path as the command line was given it.
+    pub name: Option<String>,
+    /// A relayed run is a user's, not the gate's: no step limit and no size
+    /// limit, and an audit stream only when one was asked for.
+    pub relayed: bool,
+    /// Whether a relayed run's audit stream was asked for.
+    pub stream: bool,
+    /// The entry's text, in place of the file at its path: the library's
+    /// `sabline.run(source, path=...)`.
+    pub source: Option<String>,
 }
 
 impl Given {
@@ -176,6 +189,7 @@ impl Given {
                 environ,
                 steps: limit("steps"),
                 size: limit("size"),
+                ..Given::default()
             },
         ))
     }
@@ -264,6 +278,32 @@ impl Facts<'_> {
 /// no receipt: a budget that does not parse, a failure that escaped, and a
 /// frozen clock past what an instant can say.
 pub fn run_recorded(path: &str, install_dir: &str, given: &Given) -> (Json, Json, Json) {
+    run_inner(path, install_dir, given, None)
+}
+
+/// A run for whoever started this process (`sabline-rt exec`, 9.0 M3):
+/// what the program writes and asks for, and each event of its audit stream
+/// when one was asked for, go to `relay` as they happen; what comes back is
+/// the run document - its `stdout` and `stderr` empty, since both were
+/// relayed - and the receipt. No step limit and no size limit: those are
+/// the gate's, and a user's run has neither.
+pub fn run_relayed(
+    path: &str,
+    install_dir: &str,
+    given: &Given,
+    relay: Relay,
+) -> (Json, Json) {
+    let given = Given { relayed: true, ..given.clone() };
+    let (doc, receipt, _) = run_inner(path, install_dir, &given, Some(relay));
+    (doc, receipt)
+}
+
+fn run_inner(
+    path: &str,
+    install_dir: &str,
+    given: &Given,
+    relay: Option<Relay>,
+) -> (Json, Json, Json) {
     let mut doc = Doc {
         refused: Json::Null,
         error: Json::Null,
@@ -285,19 +325,28 @@ pub fn run_recorded(path: &str, install_dir: &str, given: &Given) -> (Json, Json
         install_dir,
         given,
         spec: budget.spec(),
-        name: receipt::entry_name(path),
-        entry_bytes: std::fs::read(path).unwrap_or_default(),
+        name: given.name.clone().unwrap_or_else(|| receipt::entry_name(path)),
+        entry_bytes: match &given.source {
+            Some(text) => text.as_bytes().to_vec(),
+            None => std::fs::read(path).unwrap_or_default(),
+        },
         files: Vec::new(),
         started_at: receipt::utc_now_ms(),
         t0: std::time::Instant::now(),
     };
     let none = HashMap::new();
     let failed = Ending { status: Some(1), ..Ending::default() };
-    let mut recorder = receipt::Recorder::streaming();
+    let mut recorder = if given.relayed && !given.stream {
+        receipt::Recorder::default()
+    } else {
+        receipt::Recorder::streaming()
+    };
+    recorder.live = relay.as_ref().map(|r| r.frames.clone());
     if !receipt::stream_start(&mut recorder, &facts.run(&none, &[], failed, Vec::new())) {
         recorder.stream = None; // no instant: neither a stream nor a receipt
     }
-    let loaded = load_program_recording(path, install_dir, &mut facts.files);
+    let loaded =
+        load_program_given(path, given.source.as_deref(), install_dir, &mut facts.files);
     // the audit stream's subjects, once loading is over
     if !facts.files.is_empty() && recorder.stream.is_some() {
         recorder.tell_subjects(&facts.subjects());
@@ -341,16 +390,24 @@ pub fn run_recorded(path: &str, install_dir: &str, given: &Given) -> (Json, Json
         let (receipt, stream) = facts.ended(&mut recorder, &none, &[], failed);
         return (doc.json(), receipt, stream);
     }
-    let io = Io::new(STDIN, ARGS.iter().map(|a| Text::from(*a)).collect());
+    let args =
+        given.args.clone().unwrap_or_else(|| ARGS.iter().map(|a| Text::from(*a)).collect());
+    let io = match relay {
+        Some(relay) => Io::relayed(relay, args),
+        None => Io::new(STDIN, args),
+    };
     let mut environ = Environ::of_process();
     for (name, value) in &given.environ {
         environ.set(name, value);
     }
     let mut rt = Runtime::new(&loaded.funcs, &loaded.records, budget, io)
         .with_environ(environ)
-        .with_params(given.params.clone())
-        .with_step_limit(given.steps.unwrap_or(STEPS))
-        .with_size_limit(given.size.unwrap_or(SIZE));
+        .with_params(given.params.clone());
+    if !given.relayed {
+        rt = rt
+            .with_step_limit(given.steps.unwrap_or(STEPS))
+            .with_size_limit(given.size.unwrap_or(SIZE));
+    }
     rt.recorder = recorder;
     rt.recorder.compiled = true;
     let mut ending = Ending::default();

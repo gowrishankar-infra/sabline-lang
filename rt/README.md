@@ -302,6 +302,24 @@ than a fortieth of the limit. In the Python package it is
 `state._SIZE_LIMIT` and `runtime.size_of`, `None` - nothing counted -
 everywhere but `run-dump`.
 
+**What is written out is counted before it is made** (the maintainer's
+decision of 2026-10-10). A value can hold one text many times - a list of
+the same text n times costs n items, and a list of two of the level below,
+nested forty deep, costs eighty-two and writes out as a terabyte - so an
+operation that writes a value out counts what it is about to make first,
+and the run stops there if that passes the limit, before the value exists:
+`to_text` of what is not a text, `print`, `log`, `format`, a `+` that
+makes a text or a list, `json_of`, the three encoders, and the message of
+a broken promise or loop invariant, which names values. `Runtime::ahead`
+asks; the counting is the writers' own - `value::write_text`, `write_str`
+and `pyjson::dump_into` write to a `text::Sink`, which is a `TextBuf` that
+keeps what is written or a `Measure` that counts it and is full past its
+room - so what is counted is what would be written, by construction. The
+reference counts with walks of its own (`values.written_size`,
+`shown_size`, `json_size`), held to its writers by `test_runtime.py`, and
+the gate's room cases (`agreement_runs.room_cases`) put every writer at
+the limit, one byte under and one byte over, in both.
+
 **A line of the list** is a program's path, run as above; or a JSON object
 naming one with what a command line could add: `allow` and `deny` (the
 budget), `seed`, `freeze_time` (epoch seconds), `max_read` (the read
@@ -362,10 +380,10 @@ compares it event for event, normalising in `start` and in the receipt `end`
 carries exactly what it normalises in a receipt.
 
 **A line of the list may also give `steps` and `size`**, limits of its own
-in place of the run document's; the gate never does. They are what
-`fuzz_parsers.py --target agreement_runs` runs generated programs under -
-2,000 steps and 2^18 bytes - so that the size limit's known residual stays
-small for inputs the engine makes by mutation.
+in place of the run document's; the gate never does. `fuzz_parsers.py
+--target agreement_runs` gives `steps`, 2,000, which keeps an iteration
+short; until what is written out was counted before it was made it gave a
+`size` of 2^18 as well, to keep the residual that left small.
 
 `check_agreement.py` runs every program it holds, and would print the
 ones it does not: `RUN_EXCLUDED`, each with its reason, which is empty.
@@ -376,6 +394,44 @@ budget under that budget - the runs' corpus's own table, check_sandbox.py's
 rows and sabline-spec's L2 cases, each of the last two whose budget grants
 only effects whose work is ported - in a tree of files made afresh for each
 runtime, with `~` the tree's home.
+
+## A run for a user: `sabline-rt exec`
+
+The run document is the gate's; `sabline-rt exec --install-dir DIR` is a
+user's (9.0, M3). It is what `sabline run` and `sabline.run` go through
+when `SABLINE_REFERENCE_RUNTIME` is `rust` (`sabline/through_rt.py`;
+decisions/0002: the command stays in Python and the run inside it goes
+through sabline-rt). The Python package still reads the flags, builds the
+budget, and loads, checks and proves the program - the prover is the
+package's for good - and then sabline-rt runs it, with no step limit and no
+size limit, under the budget the package parsed (`Budget.spec()`, which
+parses to the same budget).
+
+The two talk in JSON lines (`src/exec.rs` has the whole conversation). The
+request is the first line on standard input: the path, the budget, the
+seed, the frozen clock, the read ceiling, the arguments, the name the
+receipt gives the program, the program's text when the file at its path
+only says where imports resolve from (`sabline.run(source, path=...)`, for
+which the loader takes `load_program_given`'s `entry_source`), and whether
+the audit stream is wanted. Then a frame on standard output for each thing
+the run does, as it does it: what `print` and `log` write, `read_line` and
+`ask` as questions the parent answers with a line, each audit event, and
+last the run document and the receipt. **Why frames**: what the program
+prints reaches its user through the package's own `sys.stdout`, and what it
+reads comes from `sys.stdin`, with their encoding, buffering, newline
+translation and `input()`'s way with a terminal - so a run through
+sabline-rt writes and reads exactly what the same run in the package does.
+`Io::relayed` makes the run's input and output a `Relay`, and the
+recorder's `live` sends each event as it is told; both carry the frame's
+line, since a line can cross to the writing thread and a `Text` (an `Rc`)
+cannot. A parent that goes away takes the run with it: its end of the pipe
+closes, the reading thread sees the end of standard input while the run is
+going, and the process exits with status 3.
+
+`check_through_rt.py` holds the two entry points to the package's own runs
+of the gate's programs - output byte for byte, status, the error printed,
+the receipt and the stream - and `tests/exec.rs` drives the binary as the
+package does.
 
 ## What had to be written down to be copied
 
@@ -461,11 +517,11 @@ writes a float as CPython's `repr` does, `1e-05` and `1e+16` included
 * **A count is any size, up to 4,300 digits**: `int()` has no upper
   bound, and from CPython 3.10.7 refuses to read more than 4,300 digits,
   leading zeros included, with a message of its own that becomes the
-  budget's refusal. `budget::Count` holds the digits. That message is
-  the one place the supported CPythons disagree with each other: 3.10
-  says "Exceeds the limit (4300) for ...", 3.12 and later "(4300
-  digits)". The crate writes the later, and the gate holds no count that
-  long, because no single answer would match every leg.
+  budget's refusal. `budget::Count` holds the digits. CPython words that
+  message by version - 3.10 "Exceeds the limit (4300) for ...", 3.12 and
+  later "(4300 digits)" - so the reference refuses first, in 3.12's
+  words, on every CPython (`values.whole_number`, 9.0 M3), and the crate
+  writes the same; the gate holds counts and ports past the limit.
 
 **The interpreter copies more than any stage before it**, because what a
 running program sees is CPython's object model (`src/value.rs`,
@@ -498,15 +554,18 @@ running program sees is CPython's object model (`src/value.rs`,
 * **The JSON builtins are `json.loads` and `json.dumps`** (`src/pyjson.rs`,
   a transliteration of `_json.c`'s scanner): which texts parse, the value
   each gives, and every message, with its line, column and character. The
-  messages are CPython 3.10's to 3.12's; 3.13 says "Illegal trailing comma
-  before end of object" where they say "Expecting property name enclosed
-  in double quotes", so the gate holds no document with such a comma.
+  messages are CPython 3.12's: 3.13 says "Illegal trailing comma before
+  end of object" where 3.10 to 3.12 say "Expecting property name enclosed
+  in double quotes", a character earlier, and the reference gives 3.12's
+  words at 3.12's place on every CPython (`values.read_json`, 9.0 M3), as
+  it does for a whole number past 4,300 digits.
   `int()` and `float()` of a text, which `json_int` and `json_float` use,
   are copied with their Unicode digits, white space and underscores.
 * **`base64_decode` is `b64decode(..., validate=True)`**, which from
   CPython 3.11 is `a2b_base64`'s strict mode: 3.10 decodes padding at the
-  start of a quad (`"YWJj=="`) that 3.11 and later refuse. The crate is
-  3.11's and later; the gate holds no such text.
+  start of a quad (`"YWJj=="`) that 3.11 and later refuse. The reference
+  takes only what strict mode takes on every CPython (`runtime._BASE64`,
+  9.0 M3), and so does the crate.
 * **What a run reaches of the machine is CPython's** (`src/host.rs`):
   `env()` reads `os.environ`, which on Windows upper-cases every name -
   `env("path", "")` finds `Path` - and leaves out the C runtime's hidden
@@ -634,8 +693,11 @@ recursion limit to 20,000 before it parses.
 | `src/digest.rs` | SHA-256, HMAC-SHA-256, hexadecimal, base64 and `url_encode` |
 | `src/host.rs` | what a run reaches of the machine, as CPython reaches it: `os.environ`, `~`, `random.Random`, a file's text, `OSError.strerror` |
 | `src/interp.rs` | the interpreter, every builtin's spending against the budget, the file grants, counts and ceiling, and the size limit |
-| `src/run_dump.rs` | what a run did, as the canonical run document |
-| `src/bin/sabline-rt.rs` | `sabline-rt ast`, `check`, `tables`, `budget` and `run` |
+| `src/run_dump.rs` | what a run did, as the canonical run document, and a relayed run |
+| `src/receipt.rs` | the recorder, `sabline.receipt/1` and the audit stream |
+| `src/exec.rs` | `sabline-rt exec`'s conversation: the request, the answers, the frames |
+| `src/bin/sabline-rt.rs` | `sabline-rt ast`, `check`, `tables`, `budget`, `run` and `exec` |
 | `tests/limits.rs` | the depth caps, and the stack they need |
-| `tests/runs.rs` | a library's function value under a name, how a function value prints, the size limit, a file grant |
+| `tests/runs.rs` | a library's function value under a name, how a function value prints, the size limit and what is written out, a file grant |
+| `tests/exec.rs` | `sabline-rt exec` driven as the Python package drives it |
 | `fuzz/` | the `cargo fuzz` targets |

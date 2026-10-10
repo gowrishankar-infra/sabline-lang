@@ -243,3 +243,41 @@ fn a_promise_names_the_file_it_is_written_in() {
     assert_eq!(stopped_at(stopped), ("E600", "main.vel".to_string(), 3));
     let _ = fs::remove_dir_all(dir);
 }
+
+#[test]
+fn what_is_written_out_is_counted_before_it_is_made() {
+    // forty levels, each a list of two of the one below: 82 items made,
+    // and 2^40 copies of the text when written out - a terabyte. Every way
+    // of writing it out stops at its line under the run document's limit,
+    // before anything is made (9.0, M3: the maintainer's decision)
+    let mut laughs = String::from("    let a0 = [\"ha\"]\n");
+    for k in 1..=40 {
+        laughs.push_str(&format!("    let a{k} = [a{}, a{}]\n", k - 1, k - 1));
+    }
+    for (case, line) in [
+        ("print", "print(a40)"),
+        ("log", "log(a40)"),
+        ("to-text", "let t = to_text(a40)"),
+        ("format", "let t = format(\"{}\", a40)"),
+        ("plus", "let t = \"x\" + to_text(a40)"),
+        ("json-of", "let t = json_of(a40)"),
+    ] {
+        let main =
+            format!("fn main() uses io {{\n{laughs}    {line}\n    print(\"after\")\n}}\n");
+        let (dir, path) = written(&format!("laughs-{case}"), &[("main.vel", &main)]);
+        let (out, stopped) = run(&path, "io", Some(4_194_304));
+        assert_eq!(out, "", "{case}");
+        assert!(matches!(stopped, Err(Stop::Size(43))), "{case}: {stopped:?}");
+        let _ = fs::remove_dir_all(dir);
+    }
+    // a broken promise's message names the value: counted first too
+    let main = format!(
+        "fn short(xs: {}Text) -> Int\n    requires length(xs) > 2\n{{\n    return 0\n}}\n\
+         fn main() uses io {{\n{laughs}    print(short(a40))\n}}\n",
+        "List of ".repeat(41)
+    );
+    let (dir, path) = written("laughs-promise", &[("main.vel", &main)]);
+    let (_, stopped) = run(&path, "io", Some(4_194_304));
+    assert!(matches!(stopped, Err(Stop::Size(2))), "{stopped:?}");
+    let _ = fs::remove_dir_all(dir);
+}

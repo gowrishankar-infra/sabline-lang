@@ -28,7 +28,10 @@ on every machine and in both runtimes:
                     says - after which the run is stopped at the operation
                     that went past it: a program that grows without end
                     stops at the same operation in both, where memory
-                    would stop each where its own machine ran out
+                    would stop each where its own machine ran out. What an
+                    operation writes out is counted before it is made
+                    (runtime.ahead), so no one operation makes a value far
+                    past it
 
 **A line of the list** is a program's path, run as above; or a JSON object
 naming one, `{"path": ...}`, with any of what a command line could add:

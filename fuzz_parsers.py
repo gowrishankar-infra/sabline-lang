@@ -1982,57 +1982,24 @@ class CheckerAgreementTarget(Target):
 # agreement_runs: generated programs run by both interpreters (9.0, M3)
 # ---------------------------------------------------------------------------
 
-class RunGen(CheckerGen):
-    """CheckerGen's programs, for a run - with the one shape taken out that
-    reaches the size limit's known residual (plan/9.0-m3-progress.md).
-
-    A value is counted when it is made, so a list holding one large text
-    many times costs only its items, and writing it out makes a text as
-    long as all of them together in one operation, far past the limit,
-    before anything can count it. In CheckerGen's programs that is a List
-    of Text built with push, printed - by a print statement, or as a
-    function's result - so here a List of Text is never printed. A map
-    holds each key once, and split and chars make no more than they are
-    given, so nothing else it writes multiplies a text."""
-
-    def printable(self, ty: str) -> bool:
-        return ty != "List of Text" and super().printable(ty)
-
-
 # What a run is given: every effect whose work sabline-rt does, in a tree of
 # its own made afresh for each runtime - the relative paths CheckerGen reads
 # and writes land in it - the clock frozen, randomness seeded, the variables
-# it reads set, and limits of its own. 2,000 steps keeps an iteration short.
-# 2^18 bytes keeps the residual small: a list of n references to a text of
-# L bytes, built by push, costs L + n(n+1)/2, so the most one operation can
-# write out under it is about 73 MB, where under the gate's 2^22 it is
-# about 4.7 GB.
+# it reads set, and a step limit of its own: 2,000 keeps an iteration short.
+# The size limit is the gate's own. Until the maintainer's decision of
+# 2026-10-10 this ran under 2^18 and its generator never printed a List of
+# Text, because a value was counted only once made and one operation could
+# write one out far past the limit; what is written out is counted before
+# it is made now (runtime.ahead), so neither is needed.
 RUN_GIVEN = {
     "allow": "io,clock,rand,env,declassify,fs:read:.,fs:write:.",
     "seed": 7, "freeze_time": 1767225600,
     "environ": {"SABLINE_FUZZ": "fuzz", "SABLINE_FUZZ_0": "",
                 "SABLINE_FUZZ_1": "one", "SABLINE_FUZZ_2": "a,b",
                 "SABLINE_FUZZ_3": "\u00e9"},
-    "steps": 2000, "size": 1 << 18,
+    "steps": 2000,
 }
 RUN_TREE_FILES = {"in.txt": b"1,2\nthree\n"}
-
-
-def reference_split(document: str, source: bytes) -> str | None:
-    """Where the reference says something different by CPython version -
-    so that there is no one answer for sabline-rt to give - which the
-    gate's corpora leave out: the input's reason, or None. Each is told by
-    the version this runs under and by the reference's own words, so that
-    nothing else is passed over with it."""
-    if sys.version_info >= (3, 13) and \
-            "Illegal trailing comma before end of" in document:
-        return "json's trailing comma, which CPython 3.13 words its own way"
-    if sys.version_info < (3, 11) and \
-            "Exceeds the limit (4300) for integer string" in document:
-        return "int()'s digit limit, which CPython 3.10 words its own way"
-    if sys.version_info < (3, 12) and b"base64_decode" in source:
-        return "base64 padding, which CPython 3.10 accepts and 3.12 refuses"
-    return None
 
 
 class RunAgreementTarget(Target):
@@ -2043,15 +2010,14 @@ class RunAgreementTarget(Target):
     of programs nobody wrote, steered by the lines of the Python
     interpreter each reaches.
 
-    **The residual.** RunGen does not write the one shape that makes a
-    value far larger than the size limit in one operation, and RUN_GIVEN's
-    limit keeps it small for the inputs the engine makes by mutation. An
-    input that still reaches it - the reference's run ends in MemoryError -
-    is counted and said at the end, and is never a difference: it is a
-    known property of the limit, not a disagreement. **The splits**: an
-    input that reaches one of the three places the reference answers
-    differently by CPython version (reference_split) is counted and said
-    the same way, as the gate's corpora leave those out.
+    Nothing is passed over. A run that ends in MemoryError on the
+    reference's side is a finding: what an operation writes out is counted
+    before it is made, so no input can make a value far past the size
+    limit in one operation (until 2026-10-10 such an input was counted as
+    the limit's known residual). And nothing is left out for the CPython
+    running it: the three places the reference once answered by version -
+    json's trailing comma, int()'s digit limit, base64's padding - it
+    answers as 3.12 does on every CPython (9.0, M3).
 
     As in `agreement`, sabline-rt is built if it is not built, and nothing
     here skips.
@@ -2073,11 +2039,9 @@ class RunAgreementTarget(Target):
         self.entry = str(WORK / "agreement_runs_input.vel")
         self.listing = WORK / "agreement_runs_list.txt"
         self.tree = WORK / "agreement_runs_tree"
-        self.residual = 0
-        self.splits = 0
 
     def seeds(self, rng: Any) -> Any:
-        out = [as_bytes(RunGen(rng).program()) for _ in range(24)]
+        out = [as_bytes(CheckerGen(rng).program()) for _ in range(24)]
         try:            # the runs' corpus the gate carries
             out += [p for _, p in importlib.import_module(
                 "agreement_runs").cases() if isinstance(p, bytes)]
@@ -2086,7 +2050,7 @@ class RunAgreementTarget(Target):
         return out + [p.read_bytes() for p in sorted(HERE.glob("examples/*.vel"))]
 
     def generate(self, rng: Any) -> Any:
-        return as_bytes(RunGen(rng).program())
+        return as_bytes(CheckerGen(rng).program())
 
     def fresh_tree(self) -> None:
         shutil.rmtree(self.tree, ignore_errors=True)
@@ -2110,11 +2074,9 @@ class RunAgreementTarget(Target):
         finally:
             os.chdir(here)
         if doc.get("raised") == "MemoryError":
-            self.residual += 1    # the residual: counted, never a finding
-            return
-        if reference_split(self.canonical(doc), data) is not None:
-            self.splits += 1      # the reference disagrees with itself
-            return
+            raise Difference("the reference ran out of memory: an operation "
+                             "made a value past the size limit before it "
+                             "was counted")
         self.fresh_tree()
         self.listing.write_text(json.dumps(dict(RUN_GIVEN, path=self.entry)) + "\n",
                                 encoding="utf-8")
@@ -2242,12 +2204,7 @@ def fuzz_builtin(target: Any, rng: Any, iterations: Any, seconds: Any, journal: 
         return {"iterations": state["n"], "seeds": state["seeds"],
                 "corpus": len(corpus), "coverage": cov.method,
                 "lines": sorted("%s:%d" % at for at in cov.seen),
-                "slowest": round(state["slowest"], 2),
-                # inputs that reached the size limit's known residual
-                # (agreement_runs), counted and never a finding
-                "residual": getattr(target, "residual", 0),
-                # and the reference's splits by CPython version, as well
-                "splits": getattr(target, "splits", 0)}
+                "slowest": round(state["slowest"], 2)}
 
     def left() -> bool:
         return cast(bool, time.monotonic() < deadline if deadline is not None
@@ -2471,8 +2428,6 @@ def absorb(total: dict[Any, Any], events: list[Any]) -> Any:
         if last.get("slowest", 0) >= total["slowest"]:
             total["slowest"] = last["slowest"]
             total["slow_file"] = last.get("slow_file", total["slow_file"])
-        total["residual"] += last.get("residual", 0)
-        total["splits"] += last.get("splits", 0)
     return last
 
 
@@ -2483,7 +2438,7 @@ def supervise(index: Any, name: Any, args: Any, engine: Any, seed: Any, iters: A
     total: dict[str, Any]
     total = {"iterations": 0, "seeds": 0, "corpus": 0, "lines": set(),
              "signatures": {}, "error": None, "coverage": "", "slowest": 0.0,
-             "slow_file": None, "residual": 0, "splits": 0}
+             "slow_file": None}
     t0 = time.monotonic()
     journal_path = WORK / (name + ".journal")
     known_path = WORK / (name + ".known")
@@ -2695,16 +2650,6 @@ def main(argv: Any = None) -> int:
             print("%-10s iterations %d%s  corpus %d  lines covered %d  findings %d  %.1fs"
                   % (name, t["iterations"], seeds, t["corpus"], len(t["lines"]),
                      len(t["signatures"]), t["seconds"]), flush=True)
-            if t.get("residual"):
-                print("           %d input(s) reached the size limit's known "
-                      "residual - a run that made one value far past the "
-                      "limit in one operation (not a finding)" % t["residual"],
-                      flush=True)
-            if t.get("splits"):
-                print("           %d input(s) reached a place the reference "
-                      "answers differently by CPython version, which the "
-                      "gate's corpora leave out (not a finding)" % t["splits"],
-                      flush=True)
             if t["slowest"] >= SLOW_SECONDS:
                 print("           slowest input took %.1fs (not a finding)%s"
                       % (t["slowest"], "; saved: " + ascii_text(t["slow_file"])

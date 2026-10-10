@@ -10,17 +10,19 @@
 //! The decoder here is a transliteration of `_json.c`'s scanner, as it is
 //! in CPython 3.10 to 3.12.
 //!
-//! One thing CPython does that is version-dependent and not copied: from
-//! 3.13 a comma before a closing bracket is "Illegal trailing comma before
-//! end of object/array", where 3.12 says "Expecting property name enclosed
-//! in double quotes" or "Expecting value". This copies 3.12, the version
-//! the agreement job runs; rt/README.md says so.
+//! Two things CPython words by version, and the reference words as 3.12
+//! does on every CPython (`values.read_json`, 9.0 M3), so this copies
+//! 3.12: from 3.13 a comma before a closing bracket is "Illegal trailing
+//! comma before end of object/array" at the comma, where 3.12 says
+//! "Expecting property name enclosed in double quotes" or "Expecting
+//! value" at the bracket; and a whole number past 4,300 digits, which 3.10
+//! refuses "(4300)" and 3.12 "(4300 digits)".
 
 use std::rc::Rc;
 
 use crate::bigint::BigInt;
 use crate::pyrepr::py_float_repr;
-use crate::text::{is_surrogate, isspace, Text};
+use crate::text::{is_surrogate, isspace, utf8_bytes, Text};
 use crate::unicode_nd::decimal_value;
 use crate::value::{fresh_float, Dict, Value};
 
@@ -341,12 +343,47 @@ pub fn dumps(value: &Value) -> Result<Text, DumpError> {
     Ok(Text::from(out))
 }
 
-fn push(out: &mut Vec<u32>, s: &str) {
-    out.extend(s.chars().map(|c| c as u32));
+/// Where `json.dumps` writes: the code points themselves, or a count of
+/// the UTF-8 bytes they are - so that what json_of is about to make is
+/// counted by the writer that makes it (9.0, M3).
+pub trait JsonOut {
+    /// One code point.
+    fn point(&mut self, c: u32);
+    /// An ASCII string.
+    fn ascii(&mut self, s: &str);
 }
 
-fn dump_string(out: &mut Vec<u32>, t: &Text) {
-    out.push(0x22);
+impl JsonOut for Vec<u32> {
+    fn point(&mut self, c: u32) {
+        self.push(c);
+    }
+
+    fn ascii(&mut self, s: &str) {
+        self.extend(s.chars().map(|c| c as u32));
+    }
+}
+
+/// A [`JsonOut`] counting UTF-8 bytes, a lone surrogate three.
+#[derive(Default)]
+pub struct JsonBytes(pub u64);
+
+impl JsonOut for JsonBytes {
+    fn point(&mut self, c: u32) {
+        self.0 += utf8_bytes(c);
+    }
+
+    fn ascii(&mut self, s: &str) {
+        self.0 += s.len() as u64;
+    }
+}
+
+fn push<O: JsonOut>(out: &mut O, s: &str) {
+    out.ascii(s);
+}
+
+/// A text as `json.dumps(..., ensure_ascii=False)` writes it.
+pub fn dump_string<O: JsonOut>(out: &mut O, t: &Text) {
+    out.point(0x22);
     for &c in t.points() {
         match c {
             0x22 => push(out, "\\\""),
@@ -357,10 +394,10 @@ fn dump_string(out: &mut Vec<u32>, t: &Text) {
             0x08 => push(out, "\\b"),
             0x0C => push(out, "\\f"),
             _ if c < 0x20 => push(out, &format!("\\u{c:04x}")),
-            _ => out.push(c),
+            _ => out.point(c),
         }
     }
-    out.push(0x22);
+    out.point(0x22);
 }
 
 fn float_json(x: f64) -> String {
@@ -373,7 +410,8 @@ fn float_json(x: f64) -> String {
     }
 }
 
-fn dump_into(out: &mut Vec<u32>, value: &Value) -> Result<(), DumpError> {
+/// `json.dumps(value, ensure_ascii=False)` into `out`.
+pub fn dump_into<O: JsonOut>(out: &mut O, value: &Value) -> Result<(), DumpError> {
     match value {
         Value::None => push(out, "null"),
         Value::Bool(b) => push(out, if *b { "true" } else { "false" }),
@@ -387,17 +425,17 @@ fn dump_into(out: &mut Vec<u32>, value: &Value) -> Result<(), DumpError> {
         Value::Float(x) => push(out, &float_json(*x)),
         Value::Text(t) => dump_string(out, t),
         Value::List(xs) => {
-            out.push(0x5B);
+            out.point(0x5B);
             for (i, x) in xs.iter().enumerate() {
                 if i > 0 {
                     push(out, ", ");
                 }
                 dump_into(out, x)?;
             }
-            out.push(0x5D);
+            out.point(0x5D);
         }
         Value::Map(d) => {
-            out.push(0x7B);
+            out.point(0x7B);
             for (i, (k, x)) in d.entries().iter().enumerate() {
                 if i > 0 {
                     push(out, ", ");
@@ -417,7 +455,7 @@ fn dump_into(out: &mut Vec<u32>, value: &Value) -> Result<(), DumpError> {
                 push(out, ": ");
                 dump_into(out, x)?;
             }
-            out.push(0x7D);
+            out.point(0x7D);
         }
         _ => return Err(DumpError::Type),
     }

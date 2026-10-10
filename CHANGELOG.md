@@ -15,6 +15,173 @@ audit stream, `sabline.audit-stream/1`, one JSON object an event as it
 happens - written to FILE a line each, or handed to the function. Without
 either nothing changes.
 
+api: `SABLINE_REFERENCE_RUNTIME=rust` sends `sabline run` and `sabline.run`
+through sabline-rt (9.0, M3; the variable MAINTENANCE.md reserved). Unset,
+or `python`, nothing changes; any other value is refused - exit 2 on the
+command line, a `ValueError` from the library - where until now nothing
+read it. `sabline/through_rt.py` says what a run through sabline-rt is and
+is not.
+
+## 9.0.0-alpha.9 - M3: sabline run through sabline-rt, and what is written out counted first
+
+M3's fourth checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,
+`Secret` and receipts*), and still not its end: **`sabline run` and
+`sabline.run` go through sabline-rt when `SABLINE_REFERENCE_RUNTIME` is
+`rust`** (decisions/0002: the command stays in Python and the run inside
+it goes through sabline-rt), and with that the suites of M3's fourth
+criterion can be asked of it. The maintainer's two decisions on the
+questions the third checkpoint left are in both runtimes. M3's exit
+criteria are not met and none is claimed: the network, Python and tools are
+not ported, a bounded run and the pool are not routed yet, sabline-rt
+confines nothing (M4), and the organisation ceiling file is not started.
+The Python package is the reference, and where the two disagree sabline-rt
+has a defect.
+
+This is a **pre-release** of the `sabline-rt` crate, and it publishes that
+and nothing else. 8.8.0 is still what `pip install sabline-lang`, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and `sabline --version` still says 8.8.0. What the Python package on
+main gained below ships with 9.0.
+
+### What exists
+
+**`sabline run` and `sabline.run` through sabline-rt.** The package still
+reads the flags, builds the budget, and loads, checks and proves the
+program - the prover is the package's for good, and what it finds decides
+whether a program runs - and then, instead of interpreting it, asks
+`sabline-rt exec` to (`sabline/through_rt.py`, `rt/.../src/exec.rs`). The
+two talk in JSON lines: a request, then a frame for each thing the run
+does as it does it - what `print` and `log` write, `read_line` and `ask` as
+questions the package answers, each audit event - and last the run
+document and the receipt. What the program prints is written through the
+package's own `sys.stdout` and what it reads comes from `sys.stdin` (or the
+library's `stdin=`), so a run through sabline-rt writes and reads exactly
+what the same run in the package does; `--receipt` and `--audit-stream`
+write sabline-rt's receipt and stream, whose producer is `sabline-rt`.
+sabline-rt's loader takes the entry's text (`sabline.run(source,
+path=...)`), and a parent that goes away takes the run with it.
+
+What a run through sabline-rt is not, each said where it applies: a budget
+granting the network, Python or a tool to a program that uses one stays
+the package's, and says so on the error channel (a question for the
+maintainer, below); nothing is asked of the operating system, and the
+receipt's confinement says `none`; a run with `timeout=` or
+`max_memory_mb=`, and the pool, stay the package's - their worker is
+confined at its first statement and cannot start a process; and an
+`import_root` stays the package's.
+
+**`check_through_rt.py`** holds both entry points to the package's own
+runs, with the variable unset and `rust`, over every program of the run
+corpus and examples/ that ends within the run document's limits - 325 of
+them: the output byte for byte, the status, the error printed, the
+receipt and the audit stream by the gate's own normalisation, and
+`RunResult` field for field; a program the checks or the prover refuse
+must stay the package's. 0 differences; CI runs it beside the gate.
+
+**The seven suites of M3's fourth criterion, asked through sabline-rt**
+(each run whole with the variable set): `check_fallible.py`,
+`check_money.py`, `check_hostile.py` and `check_self_budget.py` pass;
+`check_library.py` 302 of 303 - the one asks that a receipt's producer
+version is the package's, which a receipt made by sabline-rt is not;
+`check_receipts.py` 38 of 41 - the three replay a run recorded through
+sabline-rt, confinement `none`, in the package, which confines it; and
+`check_pool.py` passes, its runs being the package's.
+
+### The agreement gate
+
+    the parsers: 7053 compared, 7053 agree, 0 differ
+    the checkers: 7053 compared, 7053 agree, 0 differ
+    the budget parser: 2975 compared, 2975 agree, 0 differ
+    the interpreters: 7053 compared, 7053 agree, 0 differ
+    the interpreters, under their budgets: 122 compared, 122 agree, 0 differ
+    the receipts: 7175 compared, 7175 agree, 0 differ
+    the audit streams: 7175 compared, 7175 agree, 0 differ
+    the builtin tables: 1 compared, 1 agree, 0 differ
+  agreement gate: 38607 comparisons, 38607 agreements, 0 differences
+
+The same on CPython 3.10, 3.12 and 3.13. The programs the gate holds gain
+what its corpora left out for the CPython running them - base64 padding at
+the start of a group, a JSON trailing comma and numbers past 4,300 digits,
+and eight budgets with counts and ports past 4,300 digits - and, for the
+size limit, eleven programs that write out a list nested forty deep or one
+text many times, every way a value is written out, and 220 that leave
+exactly the room around each writer's output, a byte under and a byte
+over. `check_gate.py`'s injections gain two, each of which turns the gate
+red: a writer stopped exactly at the limit, and json_of's count a byte
+over; and its disabling variables are set a second time with
+`SABLINE_REFERENCE_RUNTIME=rust`, which must not change what the gate
+compares.
+
+### Decided, and done in both runtimes
+
+The maintainer's answers of 2026-10-10 (`plan/9.0.md`, *Decided on
+2026-10-10*):
+
+**The reference says one thing on every CPython - 3.12's words.**
+`values.read_json` gives 3.12's trailing-comma message at 3.12's place,
+`values.whole_number` refuses past 4,300 digits in 3.12's words wherever
+the reference reads one (a JSON document, a budget's count and port), and
+`runtime._BASE64` takes only what 3.12's strict decoder takes. sabline-rt
+already copied 3.12; a brute-force comparison of 597,871 base64 texts and
+300,010 JSON texts gives one answer on 3.10, 3.12 and 3.13. The gate's
+corpora hold those cases now, and the fuzzer passes none over.
+
+compatibility: for 9.0's Python package, the three answers that depended on
+the CPython running it are CPython 3.12's on every CPython (9.0, M3). A
+JSON document with a comma before its closing bracket fails "Expecting
+value" or "Expecting property name enclosed in double quotes" at the
+bracket, where 3.13 said "Illegal trailing comma before end of array" (or
+object) at the comma; a whole number of more than 4,300 digits - in a JSON
+document, or a budget's count or port - is refused "Exceeds the limit (4300
+digits) ...", where 3.10 said "(4300)"; and `base64_decode` fails on
+padding at the start of a group of four (`"YWJj=="`, `"="`), which 3.10
+decoded. Messages are outside STABILITY.md; the last refuses on 3.10 what
+3.12 and 3.13 already refused.
+
+**What is written out is counted before it is made.** An operation that
+writes a value out - `to_text` of what is not a text, `print`, `log`,
+`format`, a `+` that makes a text or a list, `json_of`, the three encoders,
+and a broken promise's or loop invariant's message - counts what it is
+about to make first, and the run stops there, before the value exists. A
+list of two of the level below, forty deep, costs eighty-two items and
+writes out as a terabyte; it is stopped at the operation that would write
+it, in both. The reference counts with walks of its own
+(`values.written_size`, `shown_size`, `json_size`, `log_size`), held to its
+writers over 4,500 generated values; sabline-rt's writers write to a
+`Sink` that keeps or only counts, so what it counts is what it would
+write. The fuzzer's generator prints a `List of Text` again, it runs under
+the gate's own size limit, and a `MemoryError` is a finding now - 8,515
+runs, none.
+
+### Found on the way, and fixed
+
+1. **A function value written inline printed a name that depended on the
+   process** (the reference): `Parser.lambda_n` was a class attribute that
+   nothing reset, so a program run by `sabline.run` in a process that had
+   loaded others - `sabline.run` called again, a pool's worker, a door -
+   printed `fn fn#21` where the command line printed `fn fn#1`.
+   `check_through_rt.py` found it. `load_program` counts from 1 for every
+   program now, as sabline-rt's loader does.
+
+compatibility: for 9.0's Python package, a function value written inline is
+named `fn#N` counted from 1 in every program, wherever it runs; in a
+process that had loaded other programs the count went on from theirs.
+
+### What is not done
+
+In the order to do it (`plan/9.0-m3-progress.md`): the question below; a
+bounded run and the pool through sabline-rt, started by the caller under
+the limits; the commands that contain a run (`replay`, `eval`, `serve`,
+`mcp`, `test`); the five suites' run questions under `--runtime rust`; the
+network, Python and tools; the organisation ceiling file (0007, 32c); and
+M8's performance.
+
+**A question for the maintainer**, in the progress file: what a run
+through sabline-rt does under a budget granting the network, Python or a
+tool to a program that uses it - stays the package's and says so (today),
+is refused before it starts, or runs in sabline-rt until the first call it
+cannot make.
+
 ## 9.0.0-alpha.8 - M3: receipts and the audit stream, field for field
 
 M3's third checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,

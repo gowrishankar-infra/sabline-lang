@@ -123,6 +123,13 @@ def load_program(entry: str, entry_source: str | None = None,
             sys.setrecursionlimit(20000)
         except Exception:
             pass
+    # A function value written inline is named `fn#N`, and what a run prints
+    # of it is that name (9.0, M3), so N counts from 1 in every program.
+    # Parser.lambda_n is the parser's class attribute and nothing reset it,
+    # so in a process that had loaded other programs - sabline.run called
+    # again, a pool's worker, a door - the count went on from theirs, and
+    # the same program printed `fn fn#21`; sabline-rt counts per program.
+    Parser.lambda_n = 0
     funcs, records = [], []
     fn_src: dict[str, str] = {}
     rec_src: dict[str, str] = {}
