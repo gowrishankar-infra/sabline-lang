@@ -198,7 +198,9 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
     ),
     (
         "what the size limit counts of a text",
-        "rt/crates/sabline-rt/src/interp.rs",
+        # text::utf8_bytes from 9.0's fourth M3 checkpoint, which what is
+        # written out is counted with as well (text::Measure)
+        "rt/crates/sabline-rt/src/text.rs",
         "0x80..=0x7FF => 2,",
         "0x80..=0x7FF => 1,",
     ),
