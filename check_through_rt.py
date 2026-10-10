@@ -34,14 +34,17 @@ counterexample is z3's, and z3 may find a different one each time.
 start and duration, which the gate normalises too; confinement, which
 sabline-rt does not do before M4 - the command line runs with
 `--no-confine`, and the library's own run is unconfined - so the gate's
-rule holds both at `none`; and the one line a run through sabline-rt adds
-to the error channel when it falls back to the Python package, which none
-of these does. And it requires the other way round too: a run through
+rule holds both at `none`; the one line a run through sabline-rt adds to
+the error channel when it falls back to the Python package, which none of
+these does; and the note the package's native compiler gives where
+llvmlite is not installed, which a run through sabline-rt - interpreted,
+with no native code to speed up - has no reason to give. And it requires the other way round too: a run through
 sabline-rt is one - its receipt's producer is `sabline-rt` - and the
 package's is not.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -58,6 +61,11 @@ import sabline  # noqa: E402
 from sabline import run_dump, through_rt  # noqa: E402
 
 SKIPPED_KINDS = ("run-laughs/", "run-room/")
+
+# sabline/native.py's note where llvmlite is missing, which only the
+# package's own run gives (it is the native compiler's)
+NATIVE_NOTE = re.compile(rb"note: llvmlite is not installed - running fully "
+                         rb"interpreted[^\n]*\n")
 
 
 def programs(work: Path) -> list[tuple[str, Path]]:
@@ -93,8 +101,9 @@ def command_line(path: Path, runtime: str, out: Path) -> dict[str, Any]:
          *run_dump.ARGS],
         input=run_dump.STDIN.encode("utf-8"), capture_output=True, env=env,
         cwd=str(path.parent), timeout=600)
-    return {"stdout": done.stdout, "stderr": done.stderr, "status": done.returncode,
-            "receipt": _read(receipt), "stream": _lines(stream)}
+    return {"stdout": done.stdout, "stderr": NATIVE_NOTE.sub(b"", done.stderr),
+            "status": done.returncode, "receipt": _read(receipt),
+            "stream": _lines(stream)}
 
 
 def _read(path: Path) -> Any:
