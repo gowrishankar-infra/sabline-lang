@@ -114,29 +114,36 @@ counted them as not asked. Every run writes who answered it
 (`SABLINE_THROUGH_RT_LOG`), and what a suite prints goes to the same log,
 so each run is counted against the question it was made for. A question
 that fails is a failure unless it is listed by design, with its rung. In
-CI on Linux and Windows. On Linux:
+CI on Linux and Windows. On Windows:
 
-| Suite | Questions | Failed | Ran a program | sabline-rt alone | A run the package made |
-|---|---|---|---|---|---|
-| check_library.py | 306 | 1, by design | 59 | 50 | 8 (net) |
-| check_money.py | 81 | 0 | 41 | 40 | 0 |
-| check_hostile.py | 69 | 0 | 38 | 27 | 2 (ffi) |
-| check_self_budget.py | 116 | 0 | (below) | | |
-| check_pool.py | 39 | 0 | 26 | 21 | 4 (ffi) |
-| check_receipts.py | 41 | 0 | 15 | 10 | 4 (ffi, eval) |
-| check_fallible.py --runtime rust | 33 | 0 | 25 | 19 | 6 (ffi, net) |
-| check_secret.py --runtime rust | 67 | 0 | 14 | 12 | 1 (trace) |
-| check_error_messages.py --runtime rust | 96 | 0 | 24 | 20 | 4 (ffi, net, tool) |
-| check_termination.py, check_refusals.py --runtime rust | 84 | 0 | 0 | - | - |
+| Suite | Questions | Failed | Ran a program | sabline-rt alone | A run the package made | Runs: sabline-rt / package |
+|---|---|---|---|---|---|---|
+| check_library.py | 309 | 1, by design | 58 | 49 | 8 (net) | 53 / 8 |
+| check_money.py | 81 | 0 | 41 | 40 | 0 | 40 / 0 |
+| check_hostile.py | 74 | 0 | 39 | 29 | 1 (ffi) | 29 / 1 |
+| check_self_budget.py | 116 | 0 | 51 | 20 | 30 (ffi, net) | 186 / 101 |
+| check_pool.py | 39 | 0 | 26 | 21 | 4 (ffi) | 507 / 7 |
+| check_receipts.py | 41 | 0 | 15 | 10 | 4 (ffi, eval) | 15 / 6 |
+| check_fallible.py --runtime rust | 33 | 0 | 25 | 19 | 6 (ffi, net) | 19 / 6 |
+| check_secret.py --runtime rust | 67 | 0 | 14 | 12 | 1 (trace) | 12 / 1 |
+| check_error_messages.py --runtime rust | 96 | 0 | 24 | 20 | 4 (ffi, net, tool) | 20 / 4 |
+| check_termination.py --runtime rust | 67 | 0 | 0 | - | - | - |
+| check_refusals.py --runtime rust | 17 | 0 | 0 | - | - | - |
 
-(The rest of the questions that ran a program had a run the checks
-refused, so nothing ran.)
+The rest of the questions that ran a program had a run the checks or the
+prover refused, so nothing ran; the questions not counted as passed or
+failed are POSIX-only cases, audits and commands that stay Python
+(decisions/0002), checks under a ceiling or an import root, and the
+prover's. Linux (WSL; CI's ubuntu leg runs the same) gave the same verdicts
+with its own platform's question counts.
 
-**`check_through_rt.py`** holds every entry point to the package's own runs
-- the command line, `sabline.run` with limits and without, a Pool, every
-budgeted row of the gate through a PoolRegistry and through `sabline.run`
-both ways, and `sabline test` on every way a test can end -
-CHECK_THROUGH_RT_NUMBERS.
+**`check_through_rt.py`** holds every entry point to the package's own runs:
+325 programs through the command line and `sabline.run`, every fourth of
+them bounded and on a Pool too (82), every budgeted row of the gate that
+ends (76) through `sabline.run` with limits and without and through a
+PoolRegistry, in a tree made afresh for each runtime with a frozen clock
+given as an instant, and `sabline test` on every way a test can end - **0
+differences**, in about ten minutes here; in CI beside the gate.
 
 ### The agreement gate
 
