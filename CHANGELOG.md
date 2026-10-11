@@ -204,7 +204,8 @@ relayed runs, 23 more under their own budgets (18 of the ceiling's, 5 of
 the examples'), and their receipts and audit streams. `check_through_rt.py`:
 325 programs, 4 under `sabline test`, 228 runs under their own budgets, 12
 examples under theirs and 88 relayed runs, through every entry point - 0
-differences. CHECK_GATE_LINE
+differences. `check_gate.py` holds the gate to 33 injections now, each of
+which must turn it red, in CI's agreement job on every push.
 
 ### Found on the way, and fixed
 
