@@ -82,6 +82,8 @@ ERROR_TABLE = {
     "E324": "the host did not keep the tools protocol: no answer in time, a "
             "closed door, a line that is not JSON, another call's id, or a "
             "cost that is not a number",
+    "E325": "a budget wider than this machine's organisation ceiling, or a "
+            "ceiling that cannot be read (9.0; sabline ceiling shows it)",
     "E400": "there is no 'main' function",
     "E401": "the wrong number of arguments, or parameters on 'main'",
     "E402": "an unknown variable, or break or continue, which the language "

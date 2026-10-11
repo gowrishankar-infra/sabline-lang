@@ -251,3 +251,69 @@ fn a_request_that_does_not_read_is_refused_with_status_2() {
     assert_eq!(out.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&out.stderr).contains("no 'path'"));
 }
+
+#[test]
+fn a_call_to_python_is_relayed_and_what_the_host_says_is_the_runs() {
+    // the host's answers stand in for the Python package's: a value, a
+    // handle, what it recorded, and an error that ends the run
+    let path = program(
+        "relay",
+        "fn main() uses io, ffi {\n    check py(\"math\", \"sqrt\", [\"16\"]) {\n        \
+         ok v {\n            print(v)\n        }\n        fail w {\n            print(w)\n        \
+         }\n    }\n    check py_new(\"collections\", \"Counter\", \"[]\") {\n        ok h {\n            \
+         print([h, h])\n        }\n        fail w {\n            print(w)\n        }\n    }\n    \
+         check py(\"json\", \"dumps\", [\"x\"]) {\n        ok v {\n            print(v)\n        \
+         }\n        fail w {\n            print(w)\n        }\n    }\n}\n",
+    );
+    let mut child = exec();
+    let mut stdin = child.stdin.take().unwrap();
+    let mut frames = BufReader::new(child.stdout.take().unwrap()).lines();
+    stdin
+        .write_all(
+            line_of(&[
+                ("path", Json::text(path.to_string_lossy())),
+                ("allow", Json::text("io,ffi:math,ffi:collections")),
+                ("stream", Json::Bool(true)),
+            ])
+            .as_bytes(),
+        )
+        .unwrap();
+    let answers = [
+        r#"{"answer": {"value": "4.0", "did": [], "counted": {}}}"#,
+        r#"{"answer": {"value": {"handle": 2, "what": "Counter"}, "did": [], "counted": {}}}"#,
+        r#"{"answer": {"error": {"code": "E311", "message": "'py' reaches into Python module 'json', which this run does not allow", "line": 18, "fixes": ["or use a program that does not need it"], "file": null}, "did": [], "counted": {}}}"#,
+    ];
+    let (mut calls, mut out, mut end) = (Vec::new(), Vec::new(), String::new());
+    for frame in frames.by_ref() {
+        let frame = frame.unwrap();
+        if frame.starts_with("{\"call\"") {
+            stdin.write_all(answers[calls.len()].as_bytes()).unwrap();
+            stdin.write_all(b"\n").unwrap();
+            calls.push(frame);
+        } else if frame.starts_with("{\"out\"") {
+            out.push(frame);
+        } else if frame.starts_with("{\"end\"") {
+            end = frame;
+            break;
+        }
+    }
+    drop(stdin);
+    assert!(child.wait().unwrap().success());
+    assert_eq!(
+        calls,
+        [
+            r#"{"call":{"args":["math","sqrt",["16"]],"line":2,"name":"py"}}"#,
+            r#"{"call":{"args":["collections","Counter","[]"],"line":10,"name":"py_new"}}"#,
+            r#"{"call":{"args":["json","dumps",["x"]],"line":18,"name":"py"}}"#,
+        ]
+    );
+    assert_eq!(out, [r#"{"out":"4.0\n"}"#, r#"{"out":"[<Counter #2>, <Counter #2>]\n"}"#]);
+    // the error is the run's: E311 at the line the host said, and the receipt
+    // a refusal of the ffi effect, which the run spent three times
+    assert!(end.contains(r#""code":"E311""#), "{end}");
+    assert!(end.contains(r#""effects_used":{"ffi":3,"io":2}"#), "{end}");
+    assert!(
+        end.contains(r#"{"code":"E311","effect":"ffi","line":18,"stopped":true,"times":1}"#),
+        "{end}"
+    );
+}

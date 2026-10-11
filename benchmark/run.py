@@ -5,6 +5,7 @@
     python benchmark/run.py --quick    # one program per category, table on stdout
     python benchmark/run.py --check    # also compare verdicts with results.json
     python benchmark/run.py --only 03a,10c
+    python benchmark/run.py --no-native   # Sabline's runs interpreted
 
 For every program in corpus.json and every tool (Sabline, Deno, plain
 Python) this records one verdict:
@@ -48,6 +49,9 @@ VERDICTS = ("caught-before-run", "caught-during-run", "missed",
 SCOPED_KINDS = ("fs-scope", "net-scope", "env")
 PORTS_IN_USE: list[Any] = []          # every listener port, masked in evidence
 EXT = {"sabline": ".vel", "deno": ".js", "python": ".py"}
+# whether Sabline's runs may use native code: --no-native says no, which is
+# the reference check_benchmark_through_rt.py holds sabline-rt to (9.0)
+NATIVE = [True]
 
 sys.path.insert(0, ROOT)
 import sabline  # noqa: E402  (the checkout being benchmarked)
@@ -635,7 +639,8 @@ def sabline_row(prog: Any, stdin_text: Any, work_path: Any, needs_filled: Any = 
             os.environ["PYTHONPATH"] = placed["pythonpath"]
         try:
             r = sabline.run(source, path=path, allow=needs, stdin=stdin_text,
-                            timeout=TIMEOUT, max_memory_mb=MEMORY_MB)
+                            timeout=TIMEOUT, max_memory_mb=MEMORY_MB,
+                            native=NATIVE[0])
         finally:
             if placed and placed.get("pythonpath"):
                 if saved_path is None:
@@ -1582,7 +1587,11 @@ def main(argv: Any = None) -> int:
     ap.add_argument("--deno", help="path to the deno executable")
     ap.add_argument("--json", default=os.path.join(HERE, "results.json"))
     ap.add_argument("--md", default=os.path.join(HERE, "RESULTS.md"))
+    ap.add_argument("--no-native", action="store_true",
+                    help="run Sabline's programs interpreted")
     args = ap.parse_args(argv)
+    if args.no_native:
+        NATIVE[0] = False
 
     try:
         categories, programs = load_corpus()

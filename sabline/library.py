@@ -1,5 +1,6 @@
 """Sabline from inside another program: check, audit, run, card.
 """
+import contextlib
 import os
 import re
 import sys
@@ -45,6 +46,7 @@ from .prover import check_proofs
 from .native import compile_native
 from .runtime import _on_big_stack, interpret
 from .editor import contract_coverage, inspect_source
+from . import ceiling as _ceiling
 from . import through_rt
 from .results import (
     AUDIT_SCHEMA,
@@ -893,25 +895,29 @@ def _why_not_through_rt(source: Any, path: Any, budget: Any) -> str | None:
     """Why sabline-rt may not run this program, so that the run stays this
     package's - or None when it may (SABLINE_REFERENCE_RUNTIME=rust, 9.0,
     M3). `checks`: the checks or the prover refuse it, so nothing runs, and
-    the package reports it as it always has; the effects, comma-separated,
-    that the budget grants a program that can reach them and sabline-rt does
-    not do yet (the network, Python, a tool); `source`: a text that is not
-    UTF-8, which sabline-rt does not take. Checked and proved here, as
+    the package reports it as it always has; `source`: a text that is not
+    UTF-8, which sabline-rt does not take; `ceiling`: an organisation
+    ceiling refuses its budget (E325), and the package reports that as it
+    reports a refusal of the checks. Checked and proved here, as
     `_run_program` checks it, under whatever import root is set - which is
-    also what a pool's worker asks, under the pool's limits."""
+    also what a pool's worker asks, under the pool's limits. A program of
+    the network, Python or a tool goes through sabline-rt too, which relays
+    those calls back (sabline/through_rt.py); `budget` is not asked."""
     try:
         source.encode("utf-8")
     except UnicodeEncodeError:
         return "source"
+    if _ceiling.refusal(_ceiling.installed(), budget) is not None:
+        return "ceiling"
     if not _check_here(source, path=path).ok:
         return "checks"
     where, temp = _source_to_file(source, path)
     try:
         try:
-            funcs, _records = load_program(where, source if path else None)
+            load_program(where, source if path else None)
         except (SablineError, RecursionError):
             return "checks"
-        return ",".join(through_rt.not_ported(funcs, budget)) or None
+        return None
     finally:
         _drop_source_file(temp)
 
@@ -926,16 +932,47 @@ def _kept_in_package(entry: str, why: str) -> None:
         print(said, file=sys.stderr)
 
 
+@contextlib.contextmanager
+def _hosting(budget: Any, *, seed: Any, freeze_time: Any,
+             args: Any) -> Any:
+    """This process made the run's host for what sabline-rt relays (9.0,
+    M3): the run's budget installed, its seed, clock and arguments set, as
+    `_run_program` sets them for the package's own run - so that a call to
+    the network, Python or a tool is made here under the same budget, the
+    same counts and the same handles - and all of it put back afterwards,
+    handles a program left open included."""
+    saved = Budget.snapshot()
+    saved_args = list(_state.PROGRAM_ARGS)
+    saved_handles, saved_next = dict(_state.PY_OBJECTS), _state.PY_NEXT[0]
+    saved_params = (_state.SEED, _state.FROZEN_TIME, _state._RNG)
+    try:
+        budget.install()
+        set_run_params(seed, freeze_time)
+        _state.PROGRAM_ARGS[:] = list(args or [])
+        yield
+    finally:
+        Budget.restore(saved)
+        _state.PROGRAM_ARGS[:] = saved_args
+        _state.PY_OBJECTS.clear()
+        _state.PY_OBJECTS.update(saved_handles)
+        _state.PY_NEXT[0] = saved_next
+        g = vars(_state)
+        g["SEED"], g["FROZEN_TIME"], g["_RNG"] = saved_params
+
+
 def _through_rt_here(source: Any, *, path: Any, budget: Any, args: Any,
                      stdin: Any, seed: Any, freeze_time: Any, name: Any,
                      import_root: Any, event: Any, timeout: Any = None,
-                     max_memory_mb: Any = None,
+                     max_memory_mb: Any = None, call: Any = None,
+                     on_kill: Any = None,
                      ) -> tuple["through_rt.Ended", str, str, str]:
     """sabline-rt's run of a program this package has checked: (how it
     ended, what it printed, what it logged, the file it was run from). Its
     input is `stdin`, read as a StringIO is, and `ask` behaves as `input()`
     does with a StringIO stdin. `timeout` and `max_memory_mb` as a pool
-    holds them (sabline/through_rt.py)."""
+    holds them (sabline/through_rt.py). `call` is the host of what it
+    relays - a pool's worker, with `on_kill` to stop it at the deadline -
+    or, not given, this process, made the run's for the run (`_hosting`)."""
     import io as _io
     from .budget import _frozen_epoch
     # as set_run_params reads them: the request takes epoch seconds, where
@@ -952,14 +989,19 @@ def _through_rt_here(source: Any, *, path: Any, budget: Any, args: Any,
         if not line:
             return None
         return line[:-1] if line.endswith("\n") else line
+    host = _hosting(budget, seed=seed, freeze_time=freeze_time, args=args) \
+        if call is None else contextlib.nullcontext()
     try:
-        ended = through_rt.run(
-            where, allow=budget.spec(), seed=seed, freeze_time=frozen,
-            max_read=_state.MAX_READ_BYTES, args=[str(a) for a in args or []],
-            name=_entry_name(path, name), source=source if path else None,
-            import_root=import_root, out=out.write, err=err.write,
-            read_line=given.readline, ask=ask, event=event, timeout=timeout,
-            max_memory_mb=max_memory_mb)
+        with host:
+            ended = through_rt.run(
+                where, allow=budget.spec(), seed=seed, freeze_time=frozen,
+                max_read=_state.MAX_READ_BYTES,
+                args=[str(a) for a in args or []],
+                name=_entry_name(path, name), source=source if path else None,
+                import_root=import_root, out=out.write, err=err.write,
+                read_line=given.readline, ask=ask, event=event,
+                timeout=timeout, max_memory_mb=max_memory_mb, call=call,
+                on_kill=on_kill)
     finally:
         _drop_source_file(temp)
     return ended, out.getvalue(), err.getvalue(), where
@@ -1042,6 +1084,9 @@ def _run_program(source: Any, *, path: Any, budget: Any, args: Any, stdin: Any, 
     used: dict[Any, Any] = {}
     try:
         budget.install()
+        # this machine's organisation ceilings (9.0), before the program is
+        # read: a budget wider than one is E325, naming it
+        _ceiling.hold(budget)
         set_run_params(seed, freeze_time)     # --seed / --freeze-time (8.0)
         _state.PROGRAM_ARGS[:] = list(args or [])
         read: list[Any] = []

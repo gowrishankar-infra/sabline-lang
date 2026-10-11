@@ -6,9 +6,13 @@
 //! gate - a limit on how many calls and loop turns it may make, and on how
 //! much it may make. Every builtin a run under any budget reaches is spent
 //! against that budget first, as the reference spends it, and the work of
-//! every builtin is ported but three kinds: the network, Python and a tool,
-//! which are refused by every budget that does not grant them and answer
-//! `NotPorted` under one that does (plan/9.0-m3-progress.md). A file
+//! every builtin is ported but three kinds: the network, Python and a tool.
+//! Those are spent here, and refused by every budget that does not grant
+//! them, and under one that does their work is relayed to whoever started
+//! the run - the Python package, which makes the call with the code it
+//! makes it with in its own runtime, so that what the call does is the same
+//! by construction (decided on 2026-10-11; [`RELAYED`], `Frame::Call`). A
+//! run nobody relays for - the gate's own batch - answers `NotPorted`. A file
 //! builtin is guarded as `budget.allow_path` guards it, counted as
 //! `count_op` counts it and held to the read ceiling; what a run reaches of
 //! the machine - the environment, `~`, randomness, a file's text - is
@@ -171,7 +175,35 @@ pub enum Frame {
     Ask(Text),
     /// One event of the audit stream, as it happens.
     Event(crate::json::Json),
+    /// A builtin whose work is the host's - the network, Python, a tool
+    /// ([`RELAYED`]) - asked of it: `{"name", "args", "line"}`, the budget
+    /// already spent. Answered by one line, `{"answer": ...}`.
+    Call(crate::json::Json),
 }
+
+/// The builtins whose work a run relays to the process that started it
+/// (9.0, M3): every builtin of the network, Python and tools, which is the
+/// host's to make - urllib with its redirects and its proxy refusal, the
+/// granted module, the tool session. The effect is spent here first, as for
+/// every builtin; what the call does after that, its grants, counts and
+/// refusals included, is the host's, made with the Python package's own
+/// code, and told back with what it recorded.
+pub const RELAYED: [&str; 14] = [
+    "fetch",
+    "post",
+    "fetch_status",
+    "request",
+    "py",
+    "py_int",
+    "py_float",
+    "py_json",
+    "py_new",
+    "py_do",
+    "py_field",
+    "py_close",
+    "tool",
+    "tool_secret",
+];
 
 /// Where a relayed run's frames go, and where the answers to its questions
 /// come from - each as the line it is written as (`crate::exec`), since a
@@ -200,8 +232,13 @@ pub struct Io {
     /// reads is whoever runs it's, a frame each, as it happens - so that
     /// `sabline run` through sabline-rt writes through the Python
     /// package's own `sys.stdout` and reads its `sys.stdin`, with their
-    /// encoding, buffering and newline translation (9.0, M3).
+    /// encoding, buffering and newline translation (9.0, M3). A relayed
+    /// builtin ([`RELAYED`]) is asked of it too.
     pub relay: Option<Relay>,
+    /// Whether what the program writes and reads goes through the relay,
+    /// or stays here while only the relayed builtins go: the gate's run
+    /// document of a run whose host is the Python package (`dump`).
+    relay_io: bool,
 }
 
 impl Io {
@@ -213,7 +250,18 @@ impl Io {
 
     /// Input, output and questions relayed to whoever runs the program.
     pub fn relayed(relay: Relay, args: Vec<Text>) -> Io {
-        Io { args, relay: Some(relay), ..Io::default() }
+        Io { args, relay: Some(relay), relay_io: true, ..Io::default() }
+    }
+
+    /// Input and output kept here, as [`Io::new`] keeps them, and only the
+    /// relayed builtins asked of whoever runs the program: the gate's run
+    /// document of a run hosted by the Python package.
+    pub fn hosted(stdin: &str, args: Vec<Text>, relay: Relay) -> Io {
+        Io { relay: Some(relay), ..Io::new(stdin, args) }
+    }
+
+    fn relays_io(&self) -> bool {
+        self.relay.is_some() && self.relay_io
     }
 
     fn send(&self, frame: Frame) -> Option<Text> {
@@ -226,9 +274,17 @@ impl Io {
         relay.answers.recv().ok().and_then(|line| crate::exec::answer(&line))
     }
 
+    /// A relayed builtin asked of the host, and the line it answered with;
+    /// `None` when nobody runs the program for it to ask.
+    fn call(&self, call: crate::json::Json) -> Option<String> {
+        let relay = self.relay.as_ref()?;
+        relay.frames.send(crate::exec::frame(Frame::Call(call)).canonical()).ok()?;
+        relay.answers.recv().ok()
+    }
+
     /// What `print` writes: kept, or relayed.
     fn write_out(&mut self, t: &Text) {
-        if self.relay.is_some() {
+        if self.relays_io() {
             self.send(Frame::Out(t.clone()));
         } else {
             self.stdout.push_text(t);
@@ -237,7 +293,7 @@ impl Io {
 
     /// What `log` writes: kept, or relayed.
     fn write_err(&mut self, t: &Text) {
-        if self.relay.is_some() {
+        if self.relays_io() {
             self.send(Frame::Err(t.clone()));
         } else {
             self.stderr.push_text(t);
@@ -247,7 +303,7 @@ impl Io {
     /// `sys.stdin.readline()`: up to and including the next line feed, or
     /// the rest, or `""` at the end.
     fn readline(&mut self) -> Text {
-        if self.relay.is_some() {
+        if self.relays_io() {
             return self.send(Frame::ReadLine).unwrap_or_default();
         }
         let rest = &self.stdin[self.at..];
@@ -260,7 +316,7 @@ impl Io {
     /// `input(prompt)`: the prompt written, then a line without its line
     /// feed, or `None` at the end of the input.
     fn ask(&mut self, prompt: &Text) -> Option<Text> {
-        if self.relay.is_some() {
+        if self.relays_io() {
             return self.send(Frame::Ask(prompt.clone()));
         }
         self.stdout.push_text(prompt);
@@ -305,6 +361,12 @@ pub struct Runtime {
     pub recorder: Recorder,
     /// The program's input and output.
     pub io: Io,
+    /// The ceiling record of the host's tool session (`sabline run
+    /// --tools`), as the host last said it - given with the request and
+    /// told again after each tool call - or `None` where there is no
+    /// session: a receipt lists the run's tool calls and the ceiling only
+    /// when there is one.
+    pub tool_ceiling: Option<crate::json::Json>,
 }
 
 impl Runtime {
@@ -348,6 +410,7 @@ impl Runtime {
             grant_uses: Vec::new(),
             recorder: Recorder::default(),
             io,
+            tool_ceiling: None,
         }
     }
 
@@ -926,9 +989,140 @@ impl Runtime {
     /// `_grant_used(grant)`: one more operation this grant let through.
     fn grant_used(&mut self, grant: String) {
         self.recorder.grant(&grant); // the audit stream (9.0)
+        self.grant_counted(grant, 1);
+    }
+
+    /// `GRANT_USES[grant] += n`, without the audit stream's event: what a
+    /// tool call counts, and what a relayed call told back it counted.
+    fn grant_counted(&mut self, grant: String, n: u64) {
         match self.grant_uses.iter_mut().find(|(g, _)| *g == grant) {
-            Some(slot) => slot.1 += 1,
-            None => self.grant_uses.push((grant, 1)),
+            Some(slot) => slot.1 += n,
+            None => self.grant_uses.push((grant, n)),
+        }
+    }
+
+    /// A relayed builtin ([`RELAYED`]): its effect is spent, so its work is
+    /// asked of the host, which makes it with the Python package's own code
+    /// and answers with how it ended - a value, a failure the program can
+    /// handle, an error, an exit, or the Python exception that escaped -
+    /// and with what it recorded while it made it, which is recorded here
+    /// in the order it was: each grant's event in the audit stream, each
+    /// refusal and tool call the receipt keeps, what each grant let through,
+    /// and the tool session's ceiling record. What it answers is this run's
+    /// as if this runtime had made it. `NotPorted` where nobody runs the
+    /// program to ask - the gate's own batch.
+    fn relayed(&mut self, name: &str, args: &[Value], line: u32) -> R<Value> {
+        use crate::json::Json;
+        if self.io.relay.is_none() {
+            return Err(Stop::Raised("NotPorted"));
+        }
+        let encoded = args.iter().map(value_out).collect::<R<Vec<_>>>()?;
+        let call = Json::obj([
+            ("name", Json::text(name)),
+            ("args", Json::List(encoded)),
+            ("line", Json::Int(i64::from(line))),
+        ]);
+        let Some(said) = self.io.call(call) else { return Err(Stop::Raised("NotPorted")) };
+        let Ok(Value::Map(frame)) =
+            pyjson::loads(&Text::from(said.trim_end_matches(['\r', '\n'])))
+        else {
+            return Err(Stop::Raised("HostAnswer"));
+        };
+        let Some(Value::Map(answer)) = map_field(&frame, "answer") else {
+            return Err(Stop::Raised("HostAnswer"));
+        };
+        if let Some(Value::List(did)) = map_field(&answer, "did") {
+            for done in did.iter() {
+                let Value::Map(done) = done else { continue };
+                if let Some(Value::Text(grant)) = map_field(done, "grant") {
+                    self.recorder.grant(&grant.to_string_lossy());
+                } else if let Some(Value::Map(note)) = map_field(done, "note") {
+                    self.host_note(&note);
+                }
+            }
+        }
+        if let Some(Value::Map(counted)) = map_field(&answer, "counted") {
+            for (grant, n) in counted.entries() {
+                if let (Value::Text(g), Some(n)) = (grant, n.as_i128()) {
+                    self.grant_counted(g.to_string_lossy(), u64::try_from(n).unwrap_or(0));
+                }
+            }
+        }
+        if let Some(ceiling) = map_field(&answer, "tool_ceiling") {
+            self.tool_ceiling = Some(json_of(&ceiling));
+        }
+        if let Some(v) = map_field(&answer, "value") {
+            return value_in(&v);
+        }
+        if let Some(reason) = map_field(&answer, "fail") {
+            return Err(Stop::Fail(value_in(&reason)?));
+        }
+        if let Some(Value::Map(e)) = map_field(&answer, "error") {
+            let text = |k: &str| match map_field(&e, k) {
+                Some(Value::Text(t)) => Some(t),
+                _ => None,
+            };
+            let fixes = match map_field(&e, "fixes") {
+                Some(Value::List(xs)) => xs
+                    .iter()
+                    .filter_map(|x| match x {
+                        Value::Text(t) => Some(t.to_string_lossy()),
+                        _ => None,
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
+            return Err(Stop::Error(RunError {
+                code: static_name(
+                    &text("code").map(|t| t.to_string_lossy()).unwrap_or_default(),
+                ),
+                message: text("message").unwrap_or_default(),
+                line: map_field(&e, "line")
+                    .and_then(|l| l.as_i128())
+                    .and_then(|l| u32::try_from(l).ok())
+                    .unwrap_or(0),
+                fixes,
+                file: text("file").map(|t| t.to_string_lossy()),
+            }));
+        }
+        if let Some(code) = map_field(&answer, "exit") {
+            return Err(Stop::Exit(
+                code.as_i128().and_then(|c| i64::try_from(c).ok()).unwrap_or(1),
+            ));
+        }
+        let raised = match map_field(&answer, "raised") {
+            Some(Value::Text(t)) => static_name(&t.to_string_lossy()),
+            _ => "HostAnswer",
+        };
+        Err(Stop::Raised(raised))
+    }
+
+    /// A refusal or a tool call the host's recorder noted while it made a
+    /// relayed call: `rec.note(kind, **fields)`, here.
+    fn host_note(&mut self, note: &Dict) {
+        let text = |k: &str| match map_field(note, k) {
+            Some(Value::Text(t)) => Some(t.to_string_lossy()),
+            _ => None,
+        };
+        let line = map_field(note, "line")
+            .and_then(|l| l.as_i128())
+            .and_then(|l| u32::try_from(l).ok())
+            .unwrap_or(0);
+        let flag = |k: &str| map_field(note, k).is_some_and(|v| v.truthy());
+        match text("kind").as_deref() {
+            Some("refusal") => self.recorder.note_refusal(
+                text("code").map(|c| static_name(&c)),
+                text("effect"),
+                line,
+                flag("stopped"),
+            ),
+            Some("tool") => self.recorder.note_tool(
+                text("tool").unwrap_or_default(),
+                text("held").unwrap_or_default(),
+                flag("secret"),
+                line,
+            ),
+            _ => {}
         }
     }
 
@@ -1769,11 +1963,135 @@ impl Runtime {
             }
             // a builtin whose work is the network, Python or a tool: spent
             // above, and refused there by every budget that does not grant
-            // it; its work is not ported yet
+            // it; its work is the host's
+            _ if RELAYED.contains(&name) => self.relayed(name, &args, line),
             _ if is_builtin(name) => Err(Stop::Raised("NotPorted")),
             _ => Ok(Value::None),
         }
     }
+}
+
+// ---- what a relayed call carries -----------------------------------------------
+
+/// `d[k]` of a map the host sent, by a text key.
+fn map_field(d: &Dict, key: &str) -> Option<Value> {
+    d.get(&Value::text(key)).ok().flatten().cloned()
+}
+
+/// A value as a relayed call's frame carries it to the host: a text, a
+/// number, a yes/no, nothing, a list of them, or a handle as
+/// `{"handle": id, "what": name}`. Nothing a relayed builtin is given is
+/// anything else; a value that is would be the `TypeError` the host's
+/// `json.dumps` raises.
+fn value_out(v: &Value) -> R<crate::json::Json> {
+    use crate::json::Json;
+    Ok(match v {
+        Value::None => Json::Null,
+        Value::Bool(b) => Json::Bool(*b),
+        Value::Int(n) => Json::Int(*n),
+        Value::Big(b) => Json::Num(b.to_decimal()),
+        Value::Float(x) => Json::Num(pyjson::float_json(*x)),
+        Value::Text(t) => Json::Text(t.clone()),
+        Value::List(xs) => Json::List(xs.iter().map(value_out).collect::<R<Vec<_>>>()?),
+        Value::Handle(h) => {
+            Json::obj([("handle", Json::Int(h.id)), ("what", Json::Text(h.what.clone()))])
+        }
+        _ => return Err(Stop::Raised("TypeError")),
+    })
+}
+
+/// A value the host answered with, as the frame carries it: `value_out`'s
+/// forms, and a map as `{"dict": [[key, value], ...]}` - which only a
+/// recorded response handed back by `sabline replay` can be.
+fn value_in(v: &Value) -> R<Value> {
+    Ok(match v {
+        Value::Float(x) => Value::Float(fresh_float(*x)),
+        Value::List(xs) => Value::list(xs.iter().map(value_in).collect::<R<Vec<_>>>()?),
+        Value::Map(d) => {
+            if let (Some(id), Some(Value::Text(what))) =
+                (map_field(d, "handle"), map_field(d, "what"))
+            {
+                let id = id.as_i128().and_then(|n| i64::try_from(n).ok()).unwrap_or(0);
+                return Ok(Value::Handle(Rc::new(crate::value::Handle { id, what })));
+            }
+            let Some(Value::List(pairs)) = map_field(d, "dict") else {
+                return Err(Stop::Raised("HostAnswer"));
+            };
+            let mut out = Dict::new();
+            for pair in pairs.iter() {
+                let Value::List(kv) = pair else { return Err(Stop::Raised("HostAnswer")) };
+                if kv.len() != 2 {
+                    return Err(Stop::Raised("HostAnswer"));
+                }
+                out.set(value_in(&kv[0])?, value_in(&kv[1])?)?;
+            }
+            Value::Map(Rc::new(out))
+        }
+        other => other.clone(),
+    })
+}
+
+/// A JSON value the host sent, kept to be written out again: the tool
+/// session's ceiling record, which a receipt carries as the host said it.
+pub fn json_of(v: &Value) -> crate::json::Json {
+    use crate::json::Json;
+    match v {
+        Value::None => Json::Null,
+        Value::Bool(b) => Json::Bool(*b),
+        Value::Int(n) => Json::Int(*n),
+        Value::Big(b) => Json::Num(b.to_decimal()),
+        Value::Float(x) => Json::Num(pyjson::float_json(*x)),
+        Value::Text(t) => Json::Text(t.clone()),
+        Value::List(xs) => Json::List(xs.iter().map(json_of).collect()),
+        Value::Map(d) => Json::Obj(
+            d.entries()
+                .iter()
+                .map(|(k, x)| (py_str(k).to_string_lossy(), json_of(x)))
+                .collect(),
+        ),
+        other => Json::Text(py_str(other)),
+    }
+}
+
+/// A code or an exception's name the host sent, as the `&'static str` a
+/// stop carries: one of the names a relayed call can end with, or - for
+/// one that is none of them, once in a run, since it ends it - the name
+/// itself, kept for the rest of the process.
+fn static_name(name: &str) -> &'static str {
+    const KNOWN: [&str; 27] = [
+        "E000",
+        "E310",
+        "E311",
+        "E313",
+        "E314",
+        "E315",
+        "E316",
+        "E317",
+        "E318",
+        "E320",
+        "E321",
+        "E322",
+        "E323",
+        "E324",
+        "E616",
+        "TypeError",
+        "ValueError",
+        "KeyError",
+        "AttributeError",
+        "OverflowError",
+        "RecursionError",
+        "UnicodeError",
+        "OSError",
+        "RuntimeError",
+        "IndexError",
+        "NotPorted",
+        "HostAnswer",
+    ];
+    KNOWN
+        .iter()
+        .find(|k| **k == name)
+        .copied()
+        .unwrap_or_else(|| Box::leak(name.to_string().into_boxed_str()))
 }
 
 // ---- what the builtins and operators share --------------------------------

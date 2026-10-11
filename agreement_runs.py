@@ -1219,3 +1219,376 @@ BUDGETED: tuple[tuple[str, str, dict[str, Any]], ...] = (
         'while true {\n    let shown = declassify(k, "until it is stopped")\n}',
         uses="io, env, declassify"), {"allow": "io,env,declassify"}),
 )
+
+
+# ---- the network, Python and tools, relayed (9.0, M3) -----------------------
+#
+# A run through sabline-rt spends the effect of a builtin of the network,
+# Python or a tool, and relays its work to the Python package that started
+# it (sabline/through_rt.py; decided on 2026-10-11), so what the call does is
+# the package's own code in both runtimes. What these hold to the package is
+# everything around the call: the effect spent and counted, the relay out and
+# back, a value, a handle, a failure, a coded error, an exit, and what the
+# host recorded - each grant, each refusal a redirect makes, each tool call,
+# the tool session's ceiling - in the receipt and the audit stream in order.
+# The gate runs them under its own budgets in the same tree, with two
+# stand-in servers on this machine ({PORT_A}, {PORT_B}, and {PORT_SHUT}, where
+# nothing listens), a stand-in tool host (run_dump.StandInHost) and nothing
+# but the standard library granted for Python: what each answers depends on
+# nothing but the request.
+
+_A = "http://127.0.0.1:{PORT_A}"
+_B = "http://localhost:{PORT_B}"
+# what a fixed date and a fixed server say in every reply's headers, so that
+# `request`'s answer is the same in two runs
+STAND_IN_DATE = "Thu, 01 Jan 2026 00:00:00 GMT"
+STAND_IN_SERVER = "stand-in"
+
+
+def servers() -> tuple[dict[str, str], Any]:
+    """Two HTTP servers on 127.0.0.1, answering every request by its path
+    alone, and a port where nothing listens: ({"{PORT_A}": ..., "{PORT_B}":
+    ..., "{PORT_SHUT}": ...}, a function that stops them). Each says which
+    it is, so that a request carried by a proxy says who carried it."""
+    import socket
+    import threading
+    import urllib.parse
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    ports: dict[str, int] = {}
+
+    def handler(me: str) -> Any:
+        class Stand(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.0"
+
+            def version_string(self) -> str:
+                return STAND_IN_SERVER
+
+            def date_time_string(self, timestamp: Any = None) -> str:
+                return STAND_IN_DATE
+
+            def log_message(self, *_a: Any) -> None:
+                pass
+
+            def answer(self, code: int, body: bytes,
+                       extra: tuple[tuple[str, str], ...] = ()) -> None:
+                self.send_response(code)
+                for k, v in extra:
+                    self.send_header(k, v)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def route(self) -> None:
+                # a proxy is asked for the whole URL
+                path = urllib.parse.urlsplit(self.path).path
+                size = int(self.headers.get("Content-Length") or 0)
+                sent = self.rfile.read(size) if size else b""
+                go = {"/go": f"http://localhost:{ports['b']}/landed",
+                      "/far": "http://far.invalid/x",
+                      "/ftp": "ftp://127.0.0.1/x",
+                      "/loop": "/loop"}
+                if path in go:
+                    self.answer(302, b"", (("Location", go[path]),))
+                elif path.startswith("/status/"):
+                    code = int(path[len("/status/"):])
+                    self.answer(code, f"status {code}".encode())
+                elif path == "/echo":
+                    self.answer(200, (
+                        f"{self.command} from {me}: ".encode() + sent
+                        + f" as {self.headers.get('Content-Type')}, gate "
+                          f"{self.headers.get('X-Gate')}".encode()))
+                elif path == "/bytes":
+                    self.answer(200, b"caf\xe9 \xff")
+                elif path == "/landed":
+                    self.answer(200, f"landed at {me}".encode())
+                else:
+                    self.answer(200, f"hello from {me}".encode())
+
+            do_GET = do_POST = do_PUT = do_DELETE = do_PATCH = route
+        return Stand
+
+    made = []
+    for me in ("a", "b"):
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), handler(me))
+        srv.daemon_threads = True
+        ports[me] = srv.server_address[1]
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        made.append(srv)
+    shut = socket.socket()
+    shut.bind(("127.0.0.1", 0))
+    ports["shut"] = shut.getsockname()[1]
+    shut.close()
+
+    def stop() -> None:
+        for srv in made:
+            srv.shutdown()
+            srv.server_close()
+    return ({"{PORT_A}": str(ports["a"]), "{PORT_B}": str(ports["b"]),
+             "{PORT_SHUT}": str(ports["shut"])}, stop)
+
+
+def _tries(*exprs: str, uses: str) -> str:
+    return _main("\n".join(_try(x) for x in exprs), uses=uses)
+
+
+# a manifest for the stand-in tool host: a tool of each kind it answers
+TOOLS = {
+    "schema": "sabline.tools/1",
+    "tools": {
+        "search": {"arguments": {"type": "object", "properties": {
+            "q": {"type": "string", "maxLength": 20}}}, "cost": 0.5},
+        "send": {"arguments": {"type": "object", "properties": {
+            "to": {"type": "string"}, "cc": {"type": "string"}}}},
+        "fail_always": {"arguments": {"type": "object"}},
+        "secret_key": {"arguments": {"type": "object"}, "result": "secret"},
+    },
+    "ceiling": {"calls": 6, "cost": 2, "unit": "credits"},
+}
+
+# (name, source, what the run is given), as BUDGETED's rows
+RELAYED_RUNS: tuple[tuple[str, str, dict[str, Any]], ...] = (
+    # ---- the network ---------------------------------------------------------
+    ("net-what-a-fetch-answers", _tries(
+        f'fetch("{_A}/")', f'fetch_status("{_A}/")',
+        f'fetch_status("{_A}/status/404")', f'fetch("{_A}/status/404")',
+        f'fetch("{_A}/status/500")', f'fetch("{_A}/bytes")',
+        f'fetch("{_A}/loop")', uses="io, net"),
+     {"allow": "io,net:127.0.0.1:{PORT_A}"}),
+    ("net-post-and-request", _tries(
+        f'post("{_A}/echo", "{{\\"a\\": 1}}")', f'post("{_A}/echo", "plain")',
+        f'request("PUT", "{_A}/echo", "body", "{{\\"X-Gate\\": \\"yes\\"}}")',
+        f'request("", "{_A}/status/418", "", "")',
+        f'request("GET", "{_A}/", "", "not json")',
+        f'request("GET", "{_A}/", "", "[1]")', uses="io, net"),
+     {"allow": "io,net:127.0.0.1:{PORT_A}"}),
+    ("net-redirects-followed-and-refused", _tries(
+        f'fetch("{_A}/go")', f'fetch("{_A}/far")', f'fetch("{_A}/ftp")',
+        f'request("GET", "{_A}/far", "", "")', f'fetch("{_A}/far")',
+        uses="io, net"),
+     {"allow": "io,net:127.0.0.1:{PORT_A},net:localhost:{PORT_B}"}),
+    ("net-redirect-to-a-host-not-granted", _tries(
+        f'fetch("{_A}/go")', f'fetch_status("{_A}/go")', uses="io, net"),
+     {"allow": "io,net:127.0.0.1:{PORT_A}"}),
+    ("net-nothing-listening", _tries(
+        'fetch("http://127.0.0.1:{PORT_SHUT}/")',
+        'request("GET", "http://127.0.0.1:{PORT_SHUT}/", "", "")',
+        'fetch("127.0.0.1:{PORT_A}/")',
+        'request("GET", "127.0.0.1:{PORT_A}/", "", "")', uses="io, net"),
+     {"allow": "io,net:127.0.0.1:{PORT_SHUT},net:127.0.0.1:{PORT_A}"}),
+    ("net-plain-grant-and-counted", _tries(
+        f'fetch("{_A}/")', f'fetch("{_A}/")', f'fetch("{_B}/")',
+        uses="io, net"), {"allow": "io,net@5"}),
+    ("net-a-host-not-granted", _tries(
+        f'fetch("{_A}/")', 'fetch("http://127.0.0.1:{PORT_B}/")',
+        uses="io, net"), {"allow": "io,net:127.0.0.1:{PORT_A}"}),
+    ("net-an-address-that-does-not-parse", _tries(
+        'fetch("http://127.0.0.1:port/")', uses="io, net"),
+     {"allow": "io,net"}),
+    ("net-the-count-reached", _tries(
+        f'fetch("{_A}/")', f'fetch("{_A}/")', f'fetch("{_A}/")',
+        uses="io, net"), {"allow": "io,net:127.0.0.1:{PORT_A}@2"}),
+    ("net-a-proxy-not-granted", _tries(
+        f'fetch("{_A}/")', uses="io, net"),
+     {"allow": "io,net:127.0.0.1:{PORT_A}",
+      "environ": {"HTTP_PROXY": "http://127.0.0.1:{PORT_B}",
+                  "NO_PROXY": ""}}),
+    ("net-a-proxy-granted", _tries(
+        f'fetch("{_A}/")', f'request("POST", "{_A}/echo", "via", "")',
+        uses="io, net"),
+     {"allow": "io,net:127.0.0.1:{PORT_A},net:127.0.0.1:{PORT_B}",
+      "environ": {"HTTP_PROXY": "http://127.0.0.1:{PORT_B}",
+                  "NO_PROXY": ""}}),
+    ("net-denied", _tries(f'fetch("{_A}/")', uses="io, net"),
+     {"allow": "io,net", "deny": "net"}),
+    # ---- Python ----------------------------------------------------------------
+    ("ffi-the-py-family", _tries(
+        'py("math", "sqrt", ["16"])', 'py("textwrap", "shorten", ["one two three", "9"])',
+        'py_int("math", "floor", ["2.5"])', 'py_int("math", "factorial", ["30"])',
+        'py("math", "factorial", ["30"])', 'py_float("math", "pow", ["2", "0.5"])',
+        'py_float("math", "copysign", ["0", "-1"])',
+        'py_float("builtins", "float", ["nan"])',
+        'py_float("builtins", "float", ["-inf"])',
+        'py("math", "sqrt", ["-1"])', 'py("math", "nope", ["1"])',
+        'py_int("math", "pi", ["1"])', 'py_int("builtins", "str", ["x"])',
+        'py("builtins", "chr", ["55296"])',
+        'py("no_such_module_here", "f", ["1"])', uses="io, ffi"),
+     {"allow": "io,ffi:math,ffi:textwrap,ffi:builtins"}),
+    ("ffi-a-module-that-does-not-import", _tries(
+        'py("no_such_module_here", "f", ["1"])', uses="io, ffi"),
+     {"allow": "io,ffi"}),
+    ("ffi-handles", _main(
+        _try('py_new("collections", "Counter", "[\\"abracadabra\\"]")',
+             '"made"') + "\n"
+        'check py_new("collections", "Counter", "[\\"abca\\"]") {\n'
+        '    ok h {\n'
+        '        print(h)\n'
+        '        print([h, h])\n'
+        '        print(h == h)\n'
+        + "\n".join("        " + line for line in _try(
+            'py_do(h, "most_common", "[2]")').splitlines()) + "\n"
+        + "\n".join("        " + line for line in _try(
+            'py_field(h, "total")').splitlines()) + "\n"
+        + "\n".join("        " + line for line in _try(
+            'py_field(h, "nothing_here")').splitlines()) + "\n"
+        + "\n".join("        " + line for line in _try(
+            'py_do(h, "update", "[\\"zz\\", {\\"q\\": 1}]")').splitlines()) + "\n"
+        '        py_close(h)\n'
+        + "\n".join("        " + line for line in _try(
+            'py_do(h, "most_common", "[1]")').splitlines()) + "\n"
+        '        py_close(h)\n'
+        '    }\n'
+        '    fail why {\n        print("failed: " + why)\n    }\n'
+        '}\n'
+        + _try('py_json("json", "dumps", "[{\\"handle\\": 99}]")') + "\n"
+        + _try('py_json("collections", "OrderedDict", "[]")') + "\n"
+        + _try('py_json("json", "loads", "[\\"[1, 2.5, null, true]\\"]")'),
+        uses="io, ffi"),
+     {"allow": "io,ffi:collections,ffi:json"}),
+    ("ffi-py-json", _tries(
+        'py_json("json", "dumps", "[[1, 2.5, null], {\\"sort_keys\\": true}]")',
+        'py_json("json", "dumps", "not json")', 'py_json("json", "dumps", "{}")',
+        'py_json("math", "fsum", "[[0.1, 0.2, 0.3]]")',
+        'py_json("math", "inf", "[]")', uses="io, ffi"),
+     {"allow": "io,ffi:json,ffi:math"}),
+    ("ffi-a-module-not-granted", _tries(
+        'py("math", "sqrt", ["4"])', 'py("json", "dumps", ["x"])',
+        uses="io, ffi"), {"allow": "io,ffi:math"}),
+    ("ffi-reached-through-an-attribute", _tries(
+        'py("json", "dumps", ["x"])', 'py("json", "codecs.encode", ["x", "rot13"])',
+        uses="io, ffi"), {"allow": "io,ffi:json"}),
+    ("ffi-an-exit-from-python", _main(
+        'print("before")\n' + _try('py("sys", "exit", ["7"])')
+        + '\nprint("after")', uses="io, ffi"), {"allow": "io,ffi:sys"}),
+    ("ffi-under-all", _tries('py("math", "sqrt", ["2"])', uses="io, ffi"),
+     {"allow": "all"}),
+    ("ffi-denied", _tries('py("math", "sqrt", ["2"])', uses="io, ffi"),
+     {"allow": "io,ffi", "deny": "ffi"}),
+    # ---- tools -----------------------------------------------------------------
+    ("tool-with-no-session", _tries(
+        'tool("search", "{}")', uses="io, tool"), {"allow": "io,tool"}),
+    ("tool-calls-answered", _main(
+        "\n".join(_try(x) for x in (
+            'tool("search", "{\\"q\\": \\"one\\"}")',
+            'tool("search", "{}")', 'tool("fail_always", "{}")',
+            'tool("search", "")')) + "\n"
+        'check tool_secret("secret_key", "{}") {\n'
+        '    ok s {\n        print(length(declassify(s, "its length")))\n    }\n'
+        '    fail why {\n        print("failed: " + why)\n    }\n}\n'
+        + _try('tool("send", "{\\"to\\": \\"a@corp.com\\", \\"cc\\": \\"b@corp.com\\"}")'),
+        uses="io, tool, declassify"),
+     {"allow": "io,declassify,tool:search,tool:fail_always,tool:secret_key,"
+               "tool:send:to=*%40corp.com,tool:send:cc=*%40corp.com",
+      "tools": TOOLS}),
+    ("tool-a-tool-not-offered", _tries(
+        'tool("search", "{}")', 'tool("weather", "{}")', uses="io, tool"),
+     {"allow": "io,tool", "tools": TOOLS}),
+    ("tool-arguments-not-json", _tries(
+        'tool("search", "{\\"q\\": ")', uses="io, tool"),
+     {"allow": "io,tool", "tools": TOOLS}),
+    ("tool-arguments-the-schema-refuses", _tries(
+        'tool("search", "{\\"q\\": \\"a text far longer than twenty\\"}")',
+        uses="io, tool"), {"allow": "io,tool", "tools": TOOLS}),
+    ("tool-outside-the-grant", _tries(
+        'tool("send", "{\\"to\\": \\"a@corp.com\\"}")',
+        'tool("send", "{\\"to\\": \\"a@elsewhere.com\\"}")', uses="io, tool"),
+     {"allow": "io,tool:send:to=*%40corp.com", "tools": TOOLS}),
+    ("tool-the-count-reached", _tries(
+        'tool("search", "{}")', 'tool("search", "{}")', uses="io, tool"),
+     {"allow": "io,tool:search@1", "tools": TOOLS}),
+    ("tool-the-ceiling-reached", _tries(
+        *(['tool("search", "{}")'] * 5), uses="io, tool"),
+     {"allow": "io,tool", "tools": TOOLS}),
+    ("tool-a-secret-as-text", _tries(
+        'tool("secret_key", "{}")', uses="io, tool"),
+     {"allow": "io,tool", "tools": TOOLS}),
+    ("tool-denied", _tries('tool("search", "{}")', uses="io, tool"),
+     {"allow": "io,tool", "deny": "tool", "tools": TOOLS}),
+)
+
+
+# ---- the organisation ceiling (9.0, M3; decisions/0007, 32c) -----------------
+#
+# A ceiling is the machine's, so the run document never reads this one's: a
+# line gives the ceilings a run is held to, as the text of each file and the
+# path it is named by, and both runtimes read each from its text, hold the
+# budget to it before the program is read, refuse what goes past one with
+# E325 in the same words, and name every one in the receipt.
+
+
+def _ceiling(allow: Any, **extra: Any) -> dict[str, str]:
+    """A ceiling file's line: its name and its text, sabline.ceiling/1
+    allowing `allow` - with `extra` fields, or as `text` itself when it is
+    a text that is not one."""
+    import json
+    if extra.get("raw") is not None:
+        return {"path": "{ROOT}/ceiling.json", "text": extra["raw"]}
+    doc = {"schema": "sabline.ceiling/1", "allow": allow}
+    doc.update({k: v for k, v in extra.items() if k != "name"})
+    return {"path": extra.get("name", "{ROOT}/ceiling.json"),
+            "text": json.dumps(doc)}
+
+
+_READS = _main(_reads("{DATA}/a.txt"), uses="io, fs")
+
+CEILING_RUNS: tuple[tuple[str, str, dict[str, Any]], ...] = (
+    ("ceiling-covers-the-budget", _READS,
+     {"allow": "io,fs:read:{DATA}/sub,fs:read:{DATA}",
+      "ceilings": [_ceiling("io,fs:read:{DATA}")]}),
+    ("ceiling-past-an-effect", _READS,
+     {"allow": "io,fs:read:{DATA}", "ceilings": [_ceiling("io")]}),
+    ("ceiling-past-a-path", _READS,
+     {"allow": "io,fs:read:{DATA}",
+      "ceilings": [_ceiling("io,fs:read:{DATA}/sub")]}),
+    ("ceiling-past-a-direction", _READS,
+     {"allow": "io,fs:write:{DATA}", "ceilings": [_ceiling("io,fs:read")]}),
+    ("ceiling-past-any-path", _READS,
+     {"allow": "io,fs", "ceilings": [_ceiling("io,fs:read:{DATA}")]}),
+    ("ceiling-past-a-count", _READS,
+     {"allow": "io,fs:read:{DATA}", "ceilings": [_ceiling("io,fs@2")]}),
+    ("ceiling-within-a-count", _READS,
+     {"allow": "io,fs:read:{DATA}@1", "ceilings": [_ceiling("io,fs@2")]}),
+    ("ceiling-two-both-covering", _READS,
+     {"allow": "io,fs:read:{DATA}",
+      "ceilings": [_ceiling("io,fs,net"),
+                   _ceiling("io,fs:read", name="{ROOT}/second.json")]}),
+    ("ceiling-two-the-second-refusing", _READS,
+     {"allow": "io,fs:read:{DATA}",
+      "ceilings": [_ceiling("io,fs"),
+                   _ceiling("io,fs:write", name="{ROOT}/second.json")]}),
+    ("ceiling-two-in-the-other-order", _READS,
+     {"allow": "io,fs:read:{DATA}",
+      "ceilings": [_ceiling("io,fs:write", name="{ROOT}/second.json"),
+                   _ceiling("io,fs")]}),
+    ("ceiling-all-caps-nothing", _READS,
+     {"allow": "all", "ceilings": [_ceiling("all")]}),
+    ("ceiling-allowing-nothing", _READS,
+     {"allow": "io", "ceilings": [_ceiling("")]}),
+    ("ceiling-held-after-the-deny", _READS,
+     {"allow": "io,fs", "deny": "fs", "ceilings": [_ceiling("io")]}),
+    ("ceiling-past-a-module", _READS,
+     {"allow": "io,ffi:json", "ceilings": [_ceiling("io,ffi:math")]}),
+    ("ceiling-past-any-module", _READS,
+     {"allow": "io,ffi", "ceilings": [_ceiling("io,ffi:math")]}),
+    ("ceiling-past-a-host", _READS,
+     {"allow": "io,net:api.other.com:443",
+      "ceilings": [_ceiling("io,net:*.corp.com:443")]}),
+    ("ceiling-covering-a-host", _READS,
+     {"allow": "io,net:api.corp.com:443",
+      "ceilings": [_ceiling("io,net:*.corp.com:443")]}),
+    ("ceiling-past-a-tool", _READS,
+     {"allow": "io,tool", "ceilings": [_ceiling("io,tool:search")]}),
+    ("ceiling-of-a-file-not-json", _READS,
+     {"allow": "io", "ceilings": [_ceiling(None, raw="{")]}),
+    ("ceiling-of-a-file-not-a-ceiling", _READS,
+     {"allow": "io", "ceilings": [_ceiling(None, raw='{"allow": "io"}')]}),
+    ("ceiling-of-a-file-with-a-field-too-many", _READS,
+     {"allow": "io", "ceilings": [_ceiling("io", owner="it")]}),
+    ("ceiling-whose-allow-is-not-text", _READS,
+     {"allow": "io", "ceilings": [_ceiling(["io"])]}),
+    ("ceiling-whose-allow-is-not-a-budget", _READS,
+     {"allow": "io", "ceilings": [_ceiling("io,wifi")]}),
+    ("ceiling-with-a-description", _READS,
+     {"allow": "io,fs:read:{DATA}",
+      "ceilings": [_ceiling("io,fs", description="this machine's runs")]}),
+)

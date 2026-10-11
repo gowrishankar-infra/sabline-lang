@@ -148,6 +148,19 @@ pub struct Given {
     /// `sabline test`: call each test function of the entry rather than
     /// `main` ([`test_relayed`]).
     pub tests: bool,
+    /// The ceiling record of the host's tool session, when it has one
+    /// (`sabline run --tools`): the receipt then lists the run's tool calls
+    /// and the ceiling, as the host says it after each call.
+    pub tool_ceiling: Option<Json>,
+    /// The gate's run document of a run whose relayed builtins
+    /// (`interp::RELAYED`) the host makes ([`run_hosted`]): the program's
+    /// input, arguments, limits, output and audit stream as a line of the
+    /// list gives them, and only the relayed builtins asked of the host.
+    pub dump: bool,
+    /// The organisation ceilings the run is held to before it is given its
+    /// budget (9.0, [`crate::ceiling`]): each as the path it was read from
+    /// and its text.
+    pub ceilings: Vec<(String, String)>,
 }
 
 impl Given {
@@ -187,6 +200,18 @@ impl Given {
             }
         }
         let limit = |k: &str| int(k).map(|n| n.max(0) as u64);
+        let mut ceilings = Vec::new();
+        if let Some(Json::List(listed)) = fields.get("ceilings") {
+            for c in listed {
+                if let Json::Obj(c) = c {
+                    if let (Some(Json::Str(p)), Some(Json::Str(t))) =
+                        (c.get("path"), c.get("text"))
+                    {
+                        ceilings.push((p.clone(), t.clone()));
+                    }
+                }
+            }
+        }
         Ok((
             path,
             Given {
@@ -197,6 +222,7 @@ impl Given {
                 steps: limit("steps"),
                 size: limit("size"),
                 import_root: text("import_root"),
+                ceilings,
                 ..Given::default()
             },
         ))
@@ -244,6 +270,7 @@ impl Facts<'_> {
         grant_uses: &'r [(String, u64)],
         ending: Ending,
         subjects: Vec<Json>,
+        tools: Option<&'r Json>,
     ) -> receipt::Run<'r> {
         receipt::Run {
             name: &self.name,
@@ -257,6 +284,7 @@ impl Facts<'_> {
             started_at: self.started_at.clone(),
             wall_time_ms: self.t0.elapsed().as_secs_f64() * 1000.0,
             ending,
+            tools,
         }
     }
 
@@ -268,8 +296,9 @@ impl Facts<'_> {
         effect_uses: &HashMap<String, u64>,
         grant_uses: &[(String, u64)],
         ending: Ending,
+        tools: Option<&Json>,
     ) -> (Json, Json) {
-        let run = self.run(effect_uses, grant_uses, ending, self.subjects());
+        let run = self.run(effect_uses, grant_uses, ending, self.subjects(), tools);
         match receipt::statement(recorder, &run) {
             Some(receipt) => {
                 receipt::stream_end(recorder, &receipt);
@@ -304,6 +333,26 @@ pub fn run_relayed(
     let given = Given { relayed: true, ..given.clone() };
     let (doc, receipt, _) = run_inner(path, install_dir, &given, Some(relay));
     (doc, receipt)
+}
+
+/// The gate's run document of a run hosted by the Python package
+/// (`sabline-rt exec` with `dump`, 9.0 M3): the run [`run_recorded`]
+/// makes - its input [`STDIN`], its arguments [`ARGS`], the step and size
+/// limits, what it printed and logged kept in the document and its audit
+/// stream in the third record - but for the relayed builtins
+/// (`interp::RELAYED`), whose work is asked of the host through `relay` as
+/// the run reaches each. `sabline run-dump --through-rt` is that host,
+/// and writes the three records it gets back as they are, so that what the
+/// gate compares of a run of the network, Python or a tool is this crate's
+/// own document, byte for byte.
+pub fn run_hosted(
+    path: &str,
+    install_dir: &str,
+    given: &Given,
+    relay: Relay,
+) -> (Json, Json, Json) {
+    let given = Given { relayed: false, dump: true, ..given.clone() };
+    run_inner(path, install_dir, &given, Some(relay))
 }
 
 /// `sabline test`'s run, relayed (9.0, M3): the program loaded and checked
@@ -361,6 +410,7 @@ pub fn test_relayed(path: &str, install_dir: &str, given: &Given, relay: Relay) 
         Runtime::new(&loaded.funcs, &loaded.records, budget, Io::relayed(relay, args))
             .with_environ(environ)
             .with_params(given.params.clone());
+    rt.tool_ceiling = given.tool_ceiling.clone();
     for (name, line) in &tests {
         let said = match rt.call_named(name, *line) {
             Ok(Value::Bool(true)) => {
@@ -439,9 +489,27 @@ fn run_inner(
     } else {
         receipt::Recorder::streaming()
     };
-    recorder.live = relay.as_ref().map(|r| r.frames.clone());
-    if !receipt::stream_start(&mut recorder, &facts.run(&none, &[], failed, Vec::new())) {
+    // a hosted run keeps its stream for the document, as the gate's batch
+    // does; a relayed one sends each event as it happens
+    if !given.dump {
+        recorder.live = relay.as_ref().map(|r| r.frames.clone());
+    }
+    if !receipt::stream_start(&mut recorder, &facts.run(&none, &[], failed, Vec::new(), None))
+    {
         recorder.stream = None; // no instant: neither a stream nor a receipt
+    }
+    // the organisation ceilings (9.0), before the program is read: a budget
+    // wider than one is E325, naming it; each is named in the receipt
+    let ceilings: Vec<crate::ceiling::Ceiling> =
+        given.ceilings.iter().map(|(p, t)| crate::ceiling::read(p, t)).collect();
+    recorder.ceilings = ceilings.iter().map(crate::ceiling::Ceiling::receipt).collect();
+    if let Some(e) = crate::ceiling::refusal(&ceilings, &budget) {
+        recorder.note_error(e.code, e.line, &e.message);
+        doc.error = checked(&e, path);
+        doc.exit = Json::Int(1);
+        let (receipt, stream) =
+            facts.ended(&mut recorder, &none, &[], failed, given.tool_ceiling.as_ref());
+        return (doc.json(), receipt, stream);
     }
     let loaded = load_program_given(
         path,
@@ -460,7 +528,8 @@ fn run_inner(
             recorder.note_error(e.code, e.line, &e.message);
             doc.error = checked(&e, path);
             doc.exit = Json::Int(1);
-            let (receipt, stream) = facts.ended(&mut recorder, &none, &[], failed);
+            let (receipt, stream) =
+                facts.ended(&mut recorder, &none, &[], failed, given.tool_ceiling.as_ref());
             return (doc.json(), receipt, stream);
         }
     };
@@ -470,7 +539,8 @@ fn run_inner(
         recorder.note_error(stopped.code, stopped.line, &stopped.message);
         doc.error = checked(&stopped, path);
         doc.exit = Json::Int(1);
-        let (receipt, stream) = facts.ended(&mut recorder, &none, &[], failed);
+        let (receipt, stream) =
+            facts.ended(&mut recorder, &none, &[], failed, given.tool_ceiling.as_ref());
         return (doc.json(), receipt, stream);
     }
     if !errors.is_empty() {
@@ -490,12 +560,14 @@ fn run_inner(
         doc.refused = Json::List(unique.iter().map(|e| checked(e, path)).collect());
         doc.exit = Json::Int(1);
         recorder.note_stop(unique[0].code, unique[0].line);
-        let (receipt, stream) = facts.ended(&mut recorder, &none, &[], failed);
+        let (receipt, stream) =
+            facts.ended(&mut recorder, &none, &[], failed, given.tool_ceiling.as_ref());
         return (doc.json(), receipt, stream);
     }
     let args =
         given.args.clone().unwrap_or_else(|| ARGS.iter().map(|a| Text::from(*a)).collect());
     let io = match relay {
+        Some(relay) if given.dump => Io::hosted(STDIN, args, relay),
         Some(relay) => Io::relayed(relay, args),
         None => Io::new(STDIN, args),
     };
@@ -513,6 +585,7 @@ fn run_inner(
     }
     rt.recorder = recorder;
     rt.recorder.compiled = true;
+    rt.tool_ceiling = given.tool_ceiling.clone();
     let mut ending = Ending::default();
     let mut escaped = false;
     match rt.interpret() {
@@ -556,8 +629,13 @@ fn run_inner(
         return (doc.json(), Json::Null, Json::Null); // the command line wrote none
     }
     let mut recorder = std::mem::take(&mut rt.recorder);
-    let (receipt, stream) =
-        facts.ended(&mut recorder, &rt.effect_uses, &rt.grant_uses, ending);
+    let (receipt, stream) = facts.ended(
+        &mut recorder,
+        &rt.effect_uses,
+        &rt.grant_uses,
+        ending,
+        rt.tool_ceiling.as_ref(),
+    );
     (doc.json(), receipt, stream)
 }
 

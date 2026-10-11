@@ -26,9 +26,12 @@ third is the one that matters:
    verdict, a budget refusal's message and a budget's count, and from M3
    a value a run prints, a run's error code and message, where the
    step limit stops a run, where the size limit stops one and what it
-   counts of a text, a receipt's fields and an audit stream's events, and
-   what an operation counts before it writes a value out - and asserts
-   the gate goes red for each,
+   counts of a text, a receipt's fields and an audit stream's events,
+   what an operation counts before it writes a value out, and the relay of
+   the network, Python and tools to the package - a failure, an error's
+   line, a handle's text, and what the host recorded, told and counted -
+   and the organisation ceiling's refusal and its name in the receipt,
+   and asserts the gate goes red for each,
    one injection per comparison class. A gate that has never been shown
    to fail is a gate nobody has tested. `check_mutant_kills.py`'s idea,
    applied to the gate itself.
@@ -67,6 +70,7 @@ NEEDED = ("examples", "stdlib", "benchmark/corpus", "tests/error_messages",
           "agreement_runs.py",
           "check_prover_lies.py",
           "check_sandbox.py", "check_refusals.py", "check_termination.py",
+          "run_tests.py",
           "suite_dirs.py",
           "suite_runtime.py", "LICENSE")
 
@@ -270,6 +274,61 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
         "rt/crates/sabline-rt/src/interp.rs",
         "out.0 += if entries.is_empty() { 2 } else { 4 * entries.len() as u64 };",
         "out.0 += if entries.is_empty() { 2 } else { 4 * entries.len() as u64 + 1 };",
+    ),
+    # The relay (9.0, M3, sixth checkpoint): sabline-rt spends a call to the
+    # network, Python or a tool and the package makes it, so what the gate
+    # holds there is everything around the call - how it ended, as the
+    # program sees it, and what the host recorded, as the receipt and the
+    # stream keep it. Only the relayed runs reach any of these.
+    (
+        "a relayed call's failure handed back as a value",
+        "rt/crates/sabline-rt/src/interp.rs",
+        "return Err(Stop::Fail(value_in(&reason)?));",
+        "return value_in(&reason);",
+    ),
+    (
+        "the line of a relayed call's error",
+        "rt/crates/sabline-rt/src/interp.rs",
+        'line: map_field(&e, "line")',
+        'line: map_field(&e, "lines")',
+    ),
+    (
+        "a handle's text",
+        "rt/crates/sabline-rt/src/value.rs",
+        'out.push_str(&format!(" #{}>", h.id));',
+        'out.push_str(&format!(" {}>", h.id));',
+    ),
+    (
+        "a grant a relayed call told, dropped from the stream",
+        "rt/crates/sabline-rt/src/interp.rs",
+        "self.recorder.grant(&grant.to_string_lossy());",
+        "let _ = grant;",
+    ),
+    (
+        "what a relayed call counted, counted twice",
+        "rt/crates/sabline-rt/src/interp.rs",
+        "self.grant_counted(g.to_string_lossy(), u64::try_from(n).unwrap_or(0));",
+        "self.grant_counted(g.to_string_lossy(), u64::try_from(n).unwrap_or(0) * 2);",
+    ),
+    (
+        "a tool call the host noted, its secret mark lost",
+        "rt/crates/sabline-rt/src/interp.rs",
+        'flag("secret"),',
+        "false,",
+    ),
+    # The organisation ceiling (decisions/0007, 32c): the words of its
+    # refusal, and its name in the receipt, which it is not shipped without.
+    (
+        "an organisation ceiling's refusal",
+        "rt/crates/sabline-rt/src/ceiling.rs",
+        "grant goes past the organisation ceiling {}: {why}",
+        "grant goes past the ceiling {}: {why}",
+    ),
+    (
+        "the ceilings a receipt names, dropped",
+        "rt/crates/sabline-rt/src/receipt.rs",
+        '("ceilings", Json::List(recorder.ceilings.clone())),',
+        '("ceilings", Json::List(Vec::new())),',
     ),
 )
 

@@ -400,7 +400,8 @@ pub fn dump_string<O: JsonOut>(out: &mut O, t: &Text) {
     out.point(0x22);
 }
 
-fn float_json(x: f64) -> String {
+/// A float as `json.dumps` writes one: `repr`, and `NaN` and `Infinity`.
+pub fn float_json(x: f64) -> String {
     if x.is_nan() {
         "NaN".to_string()
     } else if x.is_infinite() {

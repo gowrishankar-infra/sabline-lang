@@ -117,6 +117,11 @@ UNREACHABLE: dict[str, str] = {
             "arguments the manifest does not take; check_runner.py",
     "E324": "given only when the host on the tools door breaks its "
             "protocol; check_runner.py is that host, eleven ways",
+    # 9.0: a code no program reaches, since the file it is about is the
+    # machine's, not the program's or the command line's
+    "E325": "given only where an organisation ceiling is installed; "
+            "check_ceiling.py installs one through SABLINE_CEILING and holds "
+            "each refusal at every entry point, in both runtimes",
     # 8.4: a code no program can reach at all
     "E319": "given only under the fault-injection hook (SABLINE_FAULT_INJECT), "
             "when the operating system's confinement refuses what the "

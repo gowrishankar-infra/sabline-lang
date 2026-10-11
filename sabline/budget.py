@@ -546,43 +546,52 @@ class Budget:
     def covers(self, asked: "Budget") -> str | None:
         """None when everything `asked` wants sits inside this budget;
         else one sentence naming the first thing that does not."""
+        gap = self.gap(asked)
+        return None if gap is None else "this server" + gap[1][len("it"):]
+
+    def gap(self, asked: "Budget") -> tuple[str, str] | None:
+        """The first thing `asked` grants that this budget does not - as the
+        effect it is of, and a clause saying it of this budget as "it" - or
+        None when all of `asked` sits inside it, each grant at each level:
+        the rule a door's --max-allow holds a request's budget to, and an
+        organisation ceiling every run's (9.0, sabline/ceiling.py)."""
         for e in sorted(asked.effects):
             if e not in self.effects:
-                return f"this server does not grant {e}"
+                return e, f"it does not grant {e}"
         if "ffi" in asked.effects and self.modules is not None:
             if asked.modules is None:
-                return "this server grants ffi for named modules only"
+                return "ffi", "it grants ffi for named modules only"
             extra = asked.modules - self.modules
             if extra:
-                return f"this server does not grant ffi:{sorted(extra)[0]}"
+                return "ffi", f"it does not grant ffi:{sorted(extra)[0]}"
         if "fs" in asked.effects:
             if self.limits["fs"] is not None and (
                     asked.limits["fs"] is None
                     or asked.limits["fs"] > self.limits["fs"]):
-                return (f"this server allows at most {self.limits['fs']} "
-                        f"file operations")
+                return "fs", (f"it allows at most {self.limits['fs']} "
+                              f"file operations")
             if self.fs is not None:
                 if asked.fs is None:
-                    return "this server grants fs under named paths only"
+                    return "fs", "it grants fs under named paths only"
                 for kind, prefix in asked.fs:
                     if not any(_fs_grant_covers(sk, sp, kind, prefix)
                                for sk, sp in self.fs):
-                        return (f"this server does not grant fs:{kind}"
-                                + (f":{prefix}" if prefix else ""))
+                        return "fs", (f"it does not grant fs:{kind}"
+                                      + (f":{prefix}" if prefix else ""))
         if "net" in asked.effects:
             if self.limits["net"] is not None and (
                     asked.limits["net"] is None
                     or asked.limits["net"] > self.limits["net"]):
-                return (f"this server allows at most {self.limits['net']} "
-                        f"network operations")
+                return "net", (f"it allows at most {self.limits['net']} "
+                               f"network operations")
             if self.net is not None:
                 if asked.net is None:
-                    return "this server grants net for named hosts only"
+                    return "net", "it grants net for named hosts only"
                 for host, port in asked.net:
                     if not any(_net_grant_covers(sh, sp, host, port)
                                for sh, sp in self.net):
-                        return (f"this server does not grant net:{host}"
-                                + (f":{port}" if port else ""))
+                        return "net", (f"it does not grant net:{host}"
+                                       + (f":{port}" if port else ""))
         if "tool" in asked.effects:
             # grant by grant, as text: what is asked has to be written in
             # the ceiling, or the ceiling has to grant every tool
@@ -590,7 +599,7 @@ class Budget:
             if self.tools is not None or self.tool_limits:
                 for g in asked._tool_items():
                     if g not in mine:
-                        return f"this server does not grant {g}"
+                        return "tool", f"it does not grant {g}"
         return None
 
 

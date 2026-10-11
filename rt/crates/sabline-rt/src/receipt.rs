@@ -11,8 +11,12 @@
 //!
 //! **The audit stream** (decisions/0007, 32b) is the receipt's fields as
 //! they are produced, one JSON object an event: `start`, `subjects`, then
-//! as each happens `effect`, `grant`, `refusal` and `declassify`, and `end`
-//! with the receipt - `sabline/recorder.py`'s `tell`, and docs/receipts.md.
+//! as each happens `effect`, `grant`, `refusal`, `declassify` and `tool`,
+//! and `end` with the receipt - `sabline/recorder.py`'s `tell`, and
+//! docs/receipts.md. A tool call, and a refusal made inside a call to the
+//! network, are recorded by the host that makes the call for a run relayed
+//! to it (`interp::RELAYED`) and told back, and kept here as the Python
+//! package's recorder keeps them.
 //!
 //! The run document (`run_dump`) writes one after each run, and
 //! `check_agreement.py` compares it with the Python package's field for
@@ -46,9 +50,9 @@ pub const PRODUCER: &str = "sabline-rt";
 
 /// `REFUSAL_CODES`: the refusals a receipt lists - the budget's, and the
 /// read ceiling's.
-pub const REFUSAL_CODES: [&str; 12] = [
+pub const REFUSAL_CODES: [&str; 13] = [
     "E310", "E311", "E313", "E314", "E315", "E316", "E317", "E318", "E320", "E321", "E322",
-    "E323",
+    "E323", "E325",
 ];
 
 /// `tables.HMAC_REASON`: the reason an HMAC's declassification is recorded
@@ -62,8 +66,23 @@ pub const FINGERPRINTS_PER_SITE: usize = 16;
 /// What a site is about, beside its line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Kind {
-    Refusal { code: Option<&'static str>, effect: Option<String>, stopped: bool },
-    Declassify { reason: Text, key_fingerprint: Option<String> },
+    Refusal {
+        code: Option<&'static str>,
+        effect: Option<String>,
+        stopped: bool,
+    },
+    Declassify {
+        reason: Text,
+        key_fingerprint: Option<String>,
+    },
+    /// `note("tool", tool=..., line=..., held=..., secret=...)`: `held` is
+    /// the grants that held its arguments, one a line, as the host wrote
+    /// them.
+    Tool {
+        tool: String,
+        held: String,
+        secret: bool,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -88,6 +107,9 @@ pub struct Recorder {
     /// Where each event goes as it happens instead, for a relayed run
     /// (`sabline-rt exec`): the stream is then never kept here.
     pub live: Option<std::sync::mpsc::Sender<String>>,
+    /// The organisation ceilings the run was held to (9.0), as the
+    /// receipt's `run_parameters.ceilings` names them.
+    pub ceilings: Vec<Json>,
 }
 
 impl Recorder {
@@ -186,6 +208,30 @@ impl Recorder {
     pub fn note_stop(&mut self, code: &'static str, line: u32) {
         self.stop = Some((code, line));
     }
+
+    /// `note("refusal", ...)` as the host noted it inside a relayed call: a
+    /// redirect the net grants refused, which the program is told of as a
+    /// failure and may carry on from (`_note_redirect`).
+    pub fn note_refusal(
+        &mut self,
+        code: Option<&'static str>,
+        effect: Option<String>,
+        line: u32,
+        stopped: bool,
+    ) {
+        self.note(Kind::Refusal { code, effect, stopped }, line);
+    }
+
+    /// `note("tool", ...)`: a call to a tool of the host's session, made.
+    pub fn note_tool(&mut self, tool: String, held: String, secret: bool, line: u32) {
+        self.note(Kind::Tool { tool, held, secret }, line);
+    }
+}
+
+/// The grants that held a tool call's arguments, as a receipt lists them:
+/// `held`, one a line, without the empty ones.
+fn held_to(held: &str) -> Json {
+    Json::List(held.split('\n').filter(|g| !g.is_empty()).map(Json::text).collect())
 }
 
 /// What the stream says of one refusal or declassification: what the
@@ -211,6 +257,14 @@ fn event_of(kind: &Kind, line: u32) -> Json {
             }
             Json::Obj(fields.into_iter().collect())
         }
+        // `dict(fields, event="tool")`, its `held` said as `held_to`
+        Kind::Tool { tool, held, secret } => Json::obj([
+            ("event", Json::text("tool")),
+            ("tool", Json::text(tool.clone())),
+            ("line", line),
+            ("secret", Json::Bool(*secret)),
+            ("held_to", held_to(held)),
+        ]),
     }
 }
 
@@ -305,6 +359,17 @@ fn refusal_effect(code: &str, message: &str) -> Option<String> {
         "E313" | "E316" | "E318" => Some("fs".to_string()),
         "E314" | "E317" => Some("net".to_string()),
         "E320" | "E321" | "E322" | "E323" => Some("tool".to_string()),
+        // re.search(r"budget's '(\w+)' grant", message), an effect's name
+        "E325" => {
+            let start = message.find("budget's '")? + "budget's '".len();
+            let word: String = message[start..]
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            (message[start + word.len()..].starts_with("' grant")
+                && ALL_EFFECTS.contains(&word.as_str()))
+            .then_some(word)
+        }
         _ => None,
     }
 }
@@ -448,6 +513,9 @@ pub struct Run<'a> {
     pub wall_time_ms: f64,
     /// How it ended.
     pub ending: Ending,
+    /// The ceiling record of the host's tool session, when the run had one:
+    /// the receipt then lists its tool calls and the ceiling.
+    pub tools: Option<&'a Json>,
 }
 
 fn none_or(s: Option<&str>) -> String {
@@ -462,6 +530,7 @@ pub fn statement(recorder: &Recorder, run: &Run<'_>) -> Option<Json> {
     let mut given = parameters(run)?;
     let mut refusals: Vec<(u32, String, String, bool, Json)> = Vec::new();
     let mut declassifications: Vec<(u32, Text, String, Json)> = Vec::new();
+    let mut tool_calls: Vec<(u32, String, Json)> = Vec::new();
     for site in &recorder.sites {
         let line = Json::Int(i64::from(site.line));
         let times = Json::Int(i64::try_from(site.times).unwrap_or(i64::MAX));
@@ -495,8 +564,20 @@ pub fn statement(recorder: &Recorder, run: &Run<'_>) -> Option<Json> {
                     Json::Obj(entry.into_iter().collect()),
                 ));
             }
+            Kind::Tool { tool, held, secret } => tool_calls.push((
+                site.line,
+                tool.clone(),
+                Json::obj([
+                    ("tool", Json::text(tool.clone())),
+                    ("line", line),
+                    ("times", times),
+                    ("secret", Json::Bool(*secret)),
+                    ("held_to", held_to(held)),
+                ]),
+            )),
         }
     }
+    tool_calls.sort_by(|a, b| (a.0, &a.1).cmp(&(b.0, &b.1)));
     refusals.sort_by(|a, b| (a.0, &a.1, &a.2, a.3).cmp(&(b.0, &b.1, &b.2, b.3)));
     declassifications.sort_by(|a, b| (a.0, &a.1, &a.2).cmp(&(b.0, &b.1, &b.2)));
     let refused = refusals.iter().any(|r| r.3);
@@ -524,7 +605,7 @@ pub fn statement(recorder: &Recorder, run: &Run<'_>) -> Option<Json> {
     let mut grants: Vec<&(String, u64)> = run.grant_uses.iter().collect();
     grants.sort();
     let count = |n: u64| Json::Int(i64::try_from(n).unwrap_or(i64::MAX));
-    Some(Json::obj([
+    let mut statement = Json::obj([
         ("_type", Json::text(INTOTO_STATEMENT_TYPE)),
         ("subject", Json::List(run.subjects.clone())),
         ("predicateType", Json::text(RECEIPT_PREDICATE_TYPE)),
@@ -548,6 +629,8 @@ pub fn statement(recorder: &Recorder, run: &Run<'_>) -> Option<Json> {
                         ),
                         ("confinement_layers", Json::List(Vec::new())),
                         ("os_policy_sha256", Json::Null),
+                        // the organisation ceilings the run was held to (9.0)
+                        ("ceilings", Json::List(recorder.ceilings.clone())),
                     ]);
                     Json::Obj(given.into_iter().map(|(k, v)| (k.to_string(), v)).collect())
                 }),
@@ -587,7 +670,19 @@ pub fn statement(recorder: &Recorder, run: &Run<'_>) -> Option<Json> {
                 ("complete", Json::Bool(true)),
             ]),
         ),
-    ]))
+    ]);
+    // a run with a tool session lists its calls, and the session's ceiling
+    // as the host last said it
+    if let (Some(ceiling), Json::Obj(fields)) = (run.tools, &mut statement) {
+        if let Some(Json::Obj(predicate)) = fields.get_mut("predicate") {
+            predicate.insert(
+                "tool_calls".to_string(),
+                Json::List(tool_calls.into_iter().map(|t| t.2).collect()),
+            );
+            predicate.insert("tool_ceiling".to_string(), ceiling.clone());
+        }
+    }
+    Some(statement)
 }
 
 #[cfg(test)]

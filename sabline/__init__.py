@@ -15,7 +15,8 @@ _MODULES = (
     "version", "naming", "predicates", "errors", "lexer", "nodes", "parser",
     "ast_dump",
     "tables", "confine", "state", "recorder", "loader", "values",
-    "wrappers", "budget", "tools", "effects", "checker", "termination",
+    "wrappers", "budget", "ceiling", "tools", "effects", "checker",
+    "termination",
     "check_dump", "prover", "native", "runtime", "witnesses", "editor", "formatter",
     "project", "session", "results", "through_rt", "library", "pool",
     "run_dump",
@@ -30,7 +31,7 @@ _MODULES = (
 from . import version, naming, predicates, errors, lexer, nodes, parser  # noqa: E402,F401
 from . import ast_dump  # noqa: E402,F401
 from . import tables, confine, state, recorder, loader, values  # noqa: E402,F401
-from . import wrappers, budget, tools  # noqa: E402,F401
+from . import wrappers, budget, ceiling, tools  # noqa: E402,F401
 from . import effects, checker, termination  # noqa: E402,F401
 from . import check_dump  # noqa: E402,F401
 from . import prover, native, runtime  # noqa: E402,F401

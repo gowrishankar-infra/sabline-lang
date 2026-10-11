@@ -58,6 +58,7 @@
 
 pub mod bigint;
 pub mod budget;
+pub mod ceiling;
 pub mod check_dump;
 pub mod checker;
 pub mod digest;

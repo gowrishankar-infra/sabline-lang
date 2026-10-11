@@ -13,7 +13,10 @@ program run by both, under the budget io, and what each run printed,
 the status it ended with and the error it stopped with compared; and from
 its second checkpoint the programs written for a budget run under their
 own, in a tree of files made afresh for each runtime - and from its third
-each run's receipt.
+each run's receipt; and from its sixth the programs of the network,
+Python and tools, whose calls sabline-rt relays to the Python package
+(sabline/through_rt.py), against two stand-in servers and a stand-in tool
+host.
 
 **What it runs over** (plan/9.0.md's table, the rows that hold a program):
 
@@ -83,7 +86,13 @@ byte, and one more document for the whole gate:
   limit: the problems that refused it, or what it printed to each channel,
   the status it ended with, the error it stopped with and which limit
   stopped it - for every program but the ones RUN_EXCLUDED names, each
-  with its reason;
+  with its reason. A program whose budget grants the network, Python or a
+  tool is run by sabline-rt with this checkout's package as the host of
+  those calls - `sabline run-dump --through-rt`, which writes sabline-rt's
+  three records as sabline-rt wrote them - since that is how sabline-rt
+  makes them (decided on 2026-10-11): what is held to the package there is
+  everything around the call, and the call itself is the package's code
+  by construction;
 - the receipt of each of those runs, sabline.receipt/1 - its subjects by
   digest, the budget, the run's parameters, what each effect and grant let
   through, every refusal and declassification by line and count, and how
@@ -251,17 +260,38 @@ def _ported(allow: str | None, deny: str | None) -> bool:
     return granted is not None and granted <= PORTED_EFFECTS
 
 
-def _budgeted_corpus(corpus: Path) -> list[tuple[str, str, dict[str, Any]]]:
-    """Every program to run under its own budget: the runs' corpus's
-    budgeted table, check_sandbox.py's escapes and honest programs, and
-    sabline-spec's L2 run cases - each of the last two whose budget grants
-    only PORTED_EFFECTS - named, with its source and what the run is given
-    (its budget, and agreement_runs.BUDGETED's seed, clock and ceiling)."""
+def _budgeted_corpus(corpus: Path) -> tuple[list[tuple[str, str, dict[str, Any]]],
+                                             list[tuple[str, str, dict[str, Any]]]]:
+    """Every program to run under its own budget, in two lists: those whose
+    budget grants only PORTED_EFFECTS, which sabline-rt runs alone, and
+    those granting the network, Python or a tool, whose calls it relays.
+    The runs' corpus's budgeted table and its relayed one, check_sandbox.py's
+    escapes and honest programs, and sabline-spec's L2 run cases - named,
+    with its source and what the run is given (its budget, and the tables'
+    seed, clock, ceiling, environment and tools)."""
     sys.path.insert(0, str(ROOT))
     import agreement_runs
     out: list[tuple[str, str, dict[str, Any]]] = [
         (f"budgeted/{name}", source, dict(given))
         for name, source, given in agreement_runs.BUDGETED]
+    relayed: list[tuple[str, str, dict[str, Any]]] = [
+        (f"relayed/{name}", source, dict(given))
+        for name, source, given in agreement_runs.RELAYED_RUNS]
+    # the organisation ceiling's rows: sabline-rt alone where the budget
+    # grants only what it does alone, relayed where it grants more
+    for name, source, given in agreement_runs.CEILING_RUNS:
+        (out if _ported(given.get("allow"), given.get("deny")) else
+         relayed).append((f"ceiling/{name}", source, dict(given)))
+    # the examples written for a budget, under the budget run_tests.py gives
+    # each (its paths resolved in the tree, as a run's are where it runs),
+    # with a seed and a frozen clock, since one of them rolls a die and
+    # reads the time
+    tests = __import__("run_tests")
+    for name, allow in sorted(tests.ALLOW.items()):
+        source = (ROOT / "examples" / name).read_text(encoding="utf-8")
+        (out if _ported(allow, None) else relayed).append(
+            (f"examples-budgeted/{name}", source,
+             {"allow": allow, "seed": 7, "freeze_time": 1767225600}))
 
     def budget(allow: Any, deny: Any) -> dict[str, Any]:
         return {k: v for k, v in (("allow", allow), ("deny", deny))
@@ -272,27 +302,52 @@ def _budgeted_corpus(corpus: Path) -> list[tuple[str, str, dict[str, Any]]]:
         for row in getattr(sandbox, kind, ()):
             name, source = _sandbox_row(row)
             allow, deny = row.get("allow"), row.get("deny")
-            if source is not None and allow is not None and _ported(allow, deny):
-                out.append((f"sandbox-budgeted/{kind.lower()}/{name}", source,
-                            budget(allow, deny)))
+            if source is not None and allow is not None:
+                (out if _ported(allow, deny) else relayed).append(
+                    (f"sandbox-budgeted/{kind.lower()}/{name}", source,
+                     budget(allow, deny)))
     for path in sorted((corpus / "L2").rglob("*.json")):
         case = json.loads(path.read_text(encoding="utf-8"))
         given = case.get("input") or {}
-        if case.get("kind") == "run" and isinstance(given.get("source"), str) \
-                and _ported(given.get("allow"), given.get("deny")):
-            out.append((f"L2-budgeted/{case.get('id', path.stem)}",
-                        given["source"],
-                        budget(given.get("allow"), given.get("deny"))))
-    return out
+        if case.get("kind") == "run" and isinstance(given.get("source"), str):
+            (out if _ported(given.get("allow"), given.get("deny"))
+             else relayed).append(
+                (f"L2-budgeted/{case.get('id', path.stem)}", given["source"],
+                 budget(given.get("allow"), given.get("deny"))))
+    return out, relayed
 
 
 def _filled(text: Any, values: dict[str, str]) -> Any:
-    """`text` with each placeholder the tree defines replaced."""
+    """`text` with each placeholder the tree defines replaced - in a text,
+    and in every text of a map or a list (a run's `environ`, its
+    `ceilings`, a tool manifest)."""
+    if isinstance(text, dict):
+        return {k: _filled(v, values) for k, v in text.items()}
+    if isinstance(text, list):
+        return [_filled(v, values) for v in text]
     if not isinstance(text, str):
         return text
     for key, value in values.items():
         text = text.replace(key, value)
     return text
+
+
+def _listing(rows: list[tuple[str, str, dict[str, Any]]], written: Path,
+             values: dict[str, str]) -> list[str]:
+    """A line of the run list for each row, its program written under
+    `written` with the tree's placeholders filled: its path, what the row
+    gives the run, and the tree's variables under the row's own."""
+    import agreement_runs
+    lines = []
+    for i, (_, source, given) in enumerate(rows):
+        program = written / f"{i:05d}.vel"
+        program.write_bytes(_filled(source, values).encode("utf-8"))
+        entry: dict[str, Any] = {"path": str(program)}
+        entry.update({k: _filled(v, values) for k, v in given.items()})
+        entry["environ"] = {**agreement_runs.run_variables(values),
+                            **entry.get("environ", {})}
+        lines.append(json.dumps(entry))
+    return lines
 
 
 def _lie_corpus() -> list[tuple[str, str]]:
@@ -791,8 +846,10 @@ def tables(binary: Path) -> tuple[bytes, bytes]:
 
 def main(argv: list[str]) -> int:
     programs, counts, corpus = collect(argv)
-    budgeted_runs = _budgeted_corpus(corpus)
+    budgeted_runs, relayed_runs = _budgeted_corpus(corpus)
     counts.append(f"programs run under their own budgets: {len(budgeted_runs)}")
+    counts.append(f"programs of the network, Python and tools, relayed: "
+                  f"{len(relayed_runs)}")
     sys.path.insert(0, str(ROOT))
     import agreement_budgets                 # the budgets' corpus (M2)
     budgets, budget_counts = agreement_budgets.cases(corpus)
@@ -874,26 +931,44 @@ def main(argv: list[str]) -> int:
         import agreement_runs
         under = here / "tree"
         values = agreement_runs.tree(under)
+        # the stand-in servers the network's programs reach, on this machine
+        ports, stop_servers = agreement_runs.servers()
+        values.update(ports)
         written = here / "budgeted"
         written.mkdir()
-        lines = []
-        for i, (_, source, given) in enumerate(budgeted_runs):
-            program = written / f"{i:05d}.vel"
-            program.write_bytes(_filled(source, values).encode("utf-8"))
-            entry: dict[str, Any] = {"path": str(program)}
-            entry.update({k: _filled(v, values) for k, v in given.items()})
-            entry["environ"] = agreement_runs.run_variables(values)
-            lines.append(json.dumps(entry))
         budgeted_paths = here / "budgeted.txt"
-        budgeted_paths.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        python_budgeted = dumps([sys.executable, str(ROOT / "sabline.py"),
-                                 "run-dump", "--list"], budgeted_paths,
-                                RUN_BATCH_HEADER, under)
-        shutil.rmtree(under)
-        agreement_runs.tree(under)
-        rust_budgeted = dumps([str(binary), "run", "--install-dir", str(ROOT),
-                               "--list"], budgeted_paths, RUN_BATCH_HEADER,
-                              under)
+        budgeted_paths.write_text(
+            "\n".join(_listing(budgeted_runs, written, values)) + "\n",
+            encoding="utf-8")
+        relayed_written = here / "relayed"
+        relayed_written.mkdir()
+        relayed_paths = here / "relayed.txt"
+        relayed_paths.write_text(
+            "\n".join(_listing(relayed_runs, relayed_written, values)) + "\n",
+            encoding="utf-8")
+        try:
+            python_budgeted = dumps([sys.executable, str(ROOT / "sabline.py"),
+                                     "run-dump", "--list"], budgeted_paths,
+                                    RUN_BATCH_HEADER, under)
+            shutil.rmtree(under)
+            agreement_runs.tree(under)
+            rust_budgeted = dumps([str(binary), "run", "--install-dir",
+                                   str(ROOT), "--list"], budgeted_paths,
+                                  RUN_BATCH_HEADER, under)
+            # the network, Python and tools: the package's run, and
+            # sabline-rt's with the package as the host of those calls
+            shutil.rmtree(under)
+            agreement_runs.tree(under)
+            python_relayed = dumps([sys.executable, str(ROOT / "sabline.py"),
+                                    "run-dump", "--list"], relayed_paths,
+                                   RUN_BATCH_HEADER, under)
+            shutil.rmtree(under)
+            agreement_runs.tree(under)
+            rust_relayed = dumps([sys.executable, str(ROOT / "sabline.py"),
+                                  "run-dump", "--through-rt", "--list"],
+                                 relayed_paths, RUN_BATCH_HEADER, under)
+        finally:
+            stop_servers()
 
     # the names the gate reports are the corpus names, not the temporary
     # paths it wrote them to
@@ -909,17 +984,26 @@ def main(argv: list[str]) -> int:
      python_budgeted_streams) = runs_and_receipts(python_budgeted)
     (rust_budgeted, rust_budgeted_receipts,
      rust_budgeted_streams) = runs_and_receipts(rust_budgeted)
+    (python_relayed, python_relayed_receipts,
+     python_relayed_streams) = runs_and_receipts(python_relayed)
+    (rust_relayed, rust_relayed_receipts,
+     rust_relayed_streams) = runs_and_receipts(rust_relayed)
     ran = compare(python_runs, rust_runs, [name for name, _ in runs])
     ran_budgeted = compare(python_budgeted, rust_budgeted,
                            [name for name, _, _ in budgeted_runs])
+    ran_relayed = compare(python_relayed, rust_relayed,
+                          [name for name, _, _ in relayed_runs])
+    every_run = ([name for name, _ in runs]
+                 + [name for name, _, _ in budgeted_runs]
+                 + [name for name, _, _ in relayed_runs])
     receipted, by_rule = compare_receipts(
-        python_receipts + python_budgeted_receipts,
-        rust_receipts + rust_budgeted_receipts,
-        [name for name, _ in runs] + [name for name, _, _ in budgeted_runs])
+        python_receipts + python_budgeted_receipts + python_relayed_receipts,
+        rust_receipts + rust_budgeted_receipts + rust_relayed_receipts,
+        every_run)
     streamed = compare_streams(
-        python_streams + python_budgeted_streams,
-        rust_streams + rust_budgeted_streams,
-        [name for name, _ in runs] + [name for name, _, _ in budgeted_runs])
+        python_streams + python_budgeted_streams + python_relayed_streams,
+        rust_streams + rust_budgeted_streams + rust_relayed_streams,
+        every_run)
     python_tables, rust_tables = tables(binary)
     tabled = ([] if python_tables == rust_tables else
               [f"the builtin tables: {_told(python_tables, rust_tables)}"])
@@ -942,8 +1026,10 @@ def main(argv: list[str]) -> int:
             ("the interpreters", len(runs), ran),
             ("the interpreters, under their budgets", len(budgeted_runs),
              ran_budgeted),
-            ("the receipts", len(runs) + len(budgeted_runs), receipted),
-            ("the audit streams", len(runs) + len(budgeted_runs), streamed),
+            ("the interpreters, the network, Python and tools relayed",
+             len(relayed_runs), ran_relayed),
+            ("the receipts", len(every_run), receipted),
+            ("the audit streams", len(every_run), streamed),
             ("the builtin tables", 1, tabled))
     print(f"  receipts normalised: {'; '.join(RECEIPT_NORMALISED)}; "
           f"{', '.join(CONFINEMENT_FIELDS)} by rule")

@@ -88,6 +88,42 @@ WIDENS_ITS_BUDGET = (
     '        ok t { print("READ IT") }\n'
     '        fail w { print("could not read") }\n    }\n}\n')
 
+# The same cliff, at a grant every runtime checks in the process that makes
+# the call: a host of `net`. Through sabline-rt (9.0, M3) a run's budget is
+# held in sabline-rt's process and a call to Python is made in the pool's
+# worker, which it relays to; so a granted module there reaches the worker's
+# state - what the worker checks of a network call, its hosts - and not what
+# sabline-rt holds: the effects, the file grants, the counts. This program
+# grants itself a second host, {SHUT_B}, and shows the widening took: the
+# fetch is let through, and fails only because nothing listens there.
+WIDENS_ITS_HOSTS = (
+    'fn main() uses io, ffi, net {\n'
+    '    check py_json("sabline.state", "NET_GRANTS.append", '
+    '"[[\\"127.0.0.1\\", {SHUT_B}]]") {\n'
+    '        ok v { print("widened") }\n'
+    '        fail w { print("failed " + w) }\n'
+    '    }\n'
+    '    check fetch_status("http://127.0.0.1:{SHUT_B}/") {\n'
+    '        ok s { print("reached it") }\n'
+    '        fail w { print("let through: " + w) }\n    }\n}\n')
+
+FETCHES_HOST_B = (
+    'fn main() uses io, net {\n'
+    '    check fetch_status("http://127.0.0.1:{SHUT_B}/") {\n'
+    '        ok s { print("reached it") }\n'
+    '        fail w { print("let through: " + w) }\n    }\n}\n')
+
+
+def closed_port() -> int:
+    """A port on 127.0.0.1 nothing listens on."""
+    import socket
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return int(port)
+
+
 MOVES_DIRECTORY = (
     'fn main() uses io, ffi {\n'
     '    check py("os", "chdir", [".."]) {\n'
@@ -323,19 +359,45 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
            and "READ IT" not in one.output + two.output,
            str(one.as_dict())[:140])
 
+    from sabline import through_rt
     with sabline.Pool(size=1, allow={"io", "ffi"},
                       timeout=TIMEOUT) as cliff:
         widened = cliff.run(WIDENS_ITS_BUDGET)
-        ok("a program CAN widen its own budget through ffi - the cliff "
-           "is real, and this is what the next check is against",
-           widened.ok and "READ IT" in widened.output,
-           str(widened.as_dict())[:160])
-        then = cliff.run(READS_A_FILE)
-        ok("...and it cannot widen it for the next program",
-           not then.ok and then.refused_effect == "fs"
-           and "READ IT" not in then.output
-           and cliff.started == 1,
-           f"{then.as_dict()}, started {cliff.started}")
+        if through_rt.chosen() != "rust":
+            ok("a program CAN widen its own budget through ffi - the cliff "
+               "is real, and this is what the next check is against",
+               widened.ok and "READ IT" in widened.output,
+               str(widened.as_dict())[:160])
+            then = cliff.run(READS_A_FILE)
+            ok("...and it cannot widen it for the next program",
+               not then.ok and then.refused_effect == "fs"
+               and "READ IT" not in then.output
+               and cliff.started == 1,
+               f"{then.as_dict()}, started {cliff.started}")
+        else:
+            # the effects are sabline-rt's, in another process: the module
+            # widens the worker's copy, and the run is refused all the same
+            ok("through sabline-rt a program CANNOT widen the effects of its "
+               "budget through ffi: sabline-rt holds them, in its own process",
+               not widened.ok and widened.refused_effect == "fs"
+               and "widened" in widened.output
+               and "READ IT" not in widened.output,
+               str(widened.as_dict())[:160])
+    shut_a, shut_b = closed_port(), closed_port()
+    with sabline.Pool(size=1, allow={"io", "ffi", f"net:127.0.0.1:{shut_a}"},
+                      timeout=TIMEOUT) as hosts:
+        widened = hosts.run(WIDENS_ITS_HOSTS.replace("{SHUT_B}", str(shut_b)))
+        ok("a program CAN widen a grant its host checks through ffi - a host "
+           "of net, in either runtime - and this is what the next check is "
+           "against",
+           widened.ok and "widened" in widened.output
+           and "let through: cannot reach" in widened.output,
+           str(widened.as_dict())[:240])
+        then = hosts.run(FETCHES_HOST_B.replace("{SHUT_B}", str(shut_b)))
+        ok("...and it cannot widen it for the next program on the same worker",
+           not then.ok and then.problems and then.problems[0].code == "E314"
+           and hosts.started == 1,
+           f"{then.as_dict()}, started {hosts.started}")
 
     with sabline.Pool(size=1, allow={"io", f"fs:read:{box.as_posix()}@2"},
                       timeout=TIMEOUT) as counted:

@@ -132,6 +132,10 @@ def receipt_statement(recorder: Any, *, name: Any, entry_bytes: Any, budget: Any
     lists its tool calls (8.5)."""
     grants_used = getattr(recorder, "grant_uses", None)
     tools = getattr(recorder, "tools", None)
+    # the organisation ceilings the run was held to (9.0): the operator's
+    # files, named by path and digest, never anything the program gave
+    parameters = dict(parameters,
+                      ceilings=list(getattr(recorder, "ceilings", None) or []))
     import hashlib
     subjects = recorder.subjects or [{"name": name, "digest": {
         "sha256": hashlib.sha256(entry_bytes).hexdigest()}}]

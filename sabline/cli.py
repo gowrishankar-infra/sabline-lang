@@ -189,6 +189,8 @@ Usage:
   sabline audit program.vel                what it can touch, before you run it
   sabline audit <files or folders> --sarif what they can touch, as SARIF
   sabline audit program.vel --html [-o F]  the audit as a page to read
+  sabline ceiling [--json]                 this machine's organisation ceiling:
+                                           the most any budget here may grant
   sabline card                             the language, for pasting into a model
   sabline card --agents                    the AGENTS.md primer `new` writes,
                                            for a project that already exists
@@ -372,6 +374,7 @@ from .version import REFERENCE_URL, VERSION, _INSTALL_DIR, _launch_command
 from .errors import SablineError
 from .ast_dump import ast_main
 from .check_dump import check_dump_main
+from . import ceiling as _ceiling
 from . import confine as _confine
 from .tables import CHECK_MEMORY_MB_DEFAULT, CHECK_TIMEOUT_DEFAULT
 from .recorder import _RunRecorder, _note_error, _note_stop, _utc_now_ms
@@ -974,6 +977,9 @@ def main() -> int:
               "main/LLM.md", file=sys.stderr)
         return 1
 
+    if argv[:1] == ["ceiling"]:
+        # the organisation ceilings this machine holds a run to (9.0)
+        return _ceiling.ceiling_main(argv[1:])
     if argv[:1] == ["audit"]:
         if "--sarif" in argv:
             # one or more files or folders, as `proofs` takes them
@@ -1063,6 +1069,7 @@ def main() -> int:
                 print(f"  line {err['line']}: [{err['code']}] {err['message']}")
             return 1
 
+        _audit_ceilings(outside)
         print("WHAT IT CAN TOUCH")
         if not outside:
             print("  nothing. This program cannot reach the console, the")
@@ -1245,10 +1252,18 @@ def main() -> int:
         # a test function performs effects like any other, so it runs
         # under a budget: io unless --allow says more (5.0)
         try:
-            cli_budget(argv).install()
+            tested = cli_budget(argv)
         except BudgetError as e:
             print(str(e), file=sys.stderr)
             return 2
+        tested.install()
+        # and the budget is held to this machine's organisation ceilings
+        # first (9.0, E325), as a run's is
+        try:
+            _ceiling.hold(tested)
+        except SablineError as e:
+            print(e.human(target), file=sys.stderr)
+            return 1
         try:
             funcs, records = load_program(target)
             errs: list[Any] = []
@@ -1717,7 +1732,7 @@ def _cli_run_receipt_or_not(filename: str, as_json: bool,
     if receipt_to is not None or stream_to is not None:
         return _cli_run_with_receipt(filename, as_json, budget, receipt_to,
                                      stream_to)
-    return _cli_run(filename, as_json)
+    return _cli_run(filename, as_json, budget=budget)
 
 
 def _ask_as_input_does(prompt: str) -> str | None:
@@ -1736,12 +1751,12 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
     loaded, checked and proved here, as `_cli_run` does, then run by
     sabline-rt (sabline/through_rt.py). None where the run stays this
     package's: a program the checks or the prover refuse - nothing runs,
-    and the package reports it as it always has, receipt and all; a budget
-    that grants the network, Python or a tool to a program that can reach
-    it, which sabline-rt does not do yet; and `sabline trace`, whose every
-    call is the package's interpreter's to show. Each of the last two says
-    so on stderr (decided on 2026-10-11), and each is counted
-    (through_rt.note)."""
+    and the package reports it as it always has, receipt and all - and
+    `sabline trace`, whose every call is the package's interpreter's to
+    show, which says so on stderr (decided on 2026-10-11); each is counted
+    (through_rt.note). A call to the network, Python or a tool is relayed
+    back and made here, under the budget, the tool session and the recorded
+    responses this command installed (through_rt.answer)."""
     import posixpath
     import time as _t
 
@@ -1752,6 +1767,11 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
             print(said, file=sys.stderr)
     if _state.TRACE["on"]:
         kept("trace")
+        return None
+    # an organisation ceiling that refuses the budget (9.0): nothing runs,
+    # and the package's run says E325, as it says a refusal of the checks
+    if _ceiling.refusal(_ceiling.installed(), budget) is not None:
+        kept("ceiling")
         return None
     try:
         funcs, records = load_program(filename)
@@ -1765,10 +1785,6 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
         return None
     if errors:
         kept("checks")
-        return None
-    missing = through_rt.not_ported(funcs, budget)
-    if missing:
-        kept(",".join(missing))
         return None
     through_rt.note("cli", "sabline-rt")
     # --max-memory-mb: this process holds itself to it (main), and the run
@@ -1792,6 +1808,13 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
                 stream(e)
             except OSError:
                 stream_failed[0] = True
+    # what the command line says as a run starts when a grant turns the
+    # operating system layer off (8.7): just as true of a run through
+    # sabline-rt, which has no such layer before M4, and said the same way
+    if "--no-confine" not in sys.argv:
+        off = _confine.off_by_grant(budget)
+        if off:
+            print(off, file=sys.stderr)
     t0 = _t.perf_counter()
     try:
         ended = through_rt.run(
@@ -1865,20 +1888,15 @@ def _cli_test_through_rt(target: str, funcs: list[Any], many: int,
     """`sabline test` with SABLINE_REFERENCE_RUNTIME=rust (9.0, M3): each
     test function called by sabline-rt, its output written as it happens
     and its verdict printed after it, as the package's own loop prints it.
-    None where the tests stay this package's: the runtime is python, or the
-    budget grants the network, Python or a tool to a program that can reach
-    it (which says so, and is counted, as a run is)."""
+    None where the tests stay this package's: the runtime is python. A call
+    to the network, Python or a tool is relayed back and made here, under
+    the budget this command installed (through_rt.answer)."""
     try:
         if through_rt.chosen() != "rust":
             return None
     except through_rt.RuntimeChoiceError as e:
         print(f"sabline: {e}", file=sys.stderr)
         return 2
-    missing = through_rt.not_ported(funcs, budget)
-    if missing:
-        through_rt.note("test", "package", ",".join(missing))
-        print(through_rt.fallback_notice(missing), file=sys.stderr)
-        return None
     through_rt.note("test", "sabline-rt")
     passed = [0]
 
@@ -1914,6 +1932,30 @@ def _cli_test_through_rt(target: str, funcs: list[Any], many: int,
         return 1
     print(f"\n{passed[0]}/{many} passed")
     return 0 if passed[0] == many else 1
+
+
+def _audit_ceilings(needed: list[str]) -> None:
+    """`sabline audit`'s word on this machine's organisation ceilings (9.0):
+    each one, what it allows, and an effect the program needs that it does
+    not grant - a run given that effect is refused here, E325, whatever its
+    budget says. Nothing where none is installed."""
+    found = _ceiling.installed()
+    if not found:
+        return
+    print("THIS MACHINE'S CEILING")
+    for c in found:
+        print(f"  {c.path}")
+        if c.budget is None:
+            print(f"    broken: {c.broken}")
+            print("    every run here is refused until it is mended")
+            continue
+        print(f"    allows: {c.allows() or 'nothing'}")
+        past = [e for e in needed if e not in c.budget.effects]
+        if past:
+            print(f"    this program needs {', '.join(past)}, which it does "
+                  f"not grant: a run given {'it' if len(past) == 1 else 'them'}"
+                  f" is refused here (E325)")
+    print()
 
 
 def _audit_stream_to(path: str) -> Any:
@@ -1982,7 +2024,7 @@ def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
                                                     entry_bytes, loaded))
     try:
         status = _cli_run(filename, as_json, loaded=loaded,
-                          on_loaded=loaded_now)
+                          on_loaded=loaded_now, budget=budget)
     except SystemExit as e:
         raised = e
         status = e.code if isinstance(e.code, int) else \
@@ -2035,15 +2077,18 @@ def _cli_run_with_receipt(filename: str, as_json: bool, budget: "Budget",
 
 
 def _cli_run(filename: str, as_json: bool, loaded: list[Any] | None = None,
-             on_loaded: Any = None) -> int:
+             on_loaded: Any = None, budget: "Budget | None" = None) -> int:
     """`sabline file.vel`: compile, prove, and run, under the budget main()
-    installed. `loaded` gets the files read, for a receipt; `on_loaded` is
+    installed - held first to this machine's organisation ceilings (9.0,
+    E325). `loaded` gets the files read, for a receipt; `on_loaded` is
     called once they have been, whether or not they loaded (the audit
     stream's subjects)."""
     running = False
     if loaded is None:
         loaded = []
     try:
+        if budget is not None:
+            _ceiling.hold(budget)
         try:
             funcs, records = load_program(filename, loaded=loaded)
         finally:

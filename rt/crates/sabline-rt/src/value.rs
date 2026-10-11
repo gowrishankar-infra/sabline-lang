@@ -50,6 +50,22 @@ pub enum Value {
     Func(Rc<Function>),
     /// `Bound`: a lifted function value and the values it carries.
     Bound(Rc<Bound>),
+    /// `HandleValue`: a ticket for an object living on the Python side of
+    /// the bridge, which `py_new` gives and `py_do`, `py_field` and
+    /// `py_close` take. The object is the host's - a run through sabline-rt
+    /// makes its Python calls in the process that started it (9.0, M3) -
+    /// and this is only its number and its type's name.
+    Handle(Rc<Handle>),
+}
+
+/// What a `HandleValue` carries: the number the host keeps the object
+/// under, and `type(obj).__name__`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Handle {
+    /// The host's number for the object.
+    pub id: i64,
+    /// Its type's name.
+    pub what: Text,
 }
 
 /// An amount: minor units and a currency.
@@ -105,6 +121,8 @@ enum Key {
     Text(Text),
     Money(i64, Rc<str>),
     Nan(usize),
+    /// An object CPython hashes by identity: a `HandleValue`.
+    Same(usize),
 }
 
 fn key_of(v: &Value, nan_id: usize) -> Result<Key, Raised> {
@@ -132,6 +150,7 @@ fn key_of(v: &Value, nan_id: usize) -> Result<Key, Raised> {
         }
         Value::Text(t) => Key::Text(t.clone()),
         Value::Money(m) => Key::Money(m.units, m.currency.clone()),
+        Value::Handle(h) => Key::Same(Rc::as_ptr(h) as usize),
         _ => return Err(Raised("TypeError")),
     })
 }
@@ -263,6 +282,7 @@ impl Value {
             Value::Money(_) => "MoneyValue",
             Value::Func(_) => "Function",
             Value::Bound(_) => "Bound",
+            Value::Handle(_) => "HandleValue",
         }
     }
 }
@@ -344,6 +364,7 @@ pub fn item_eq(a: &Value, b: &Value) -> bool {
         (Value::Record(x), Value::Record(y)) => Rc::ptr_eq(x, y),
         (Value::Func(x), Value::Func(y)) => Rc::ptr_eq(x, y),
         (Value::Bound(x), Value::Bound(y)) => Rc::ptr_eq(x, y),
+        (Value::Handle(x), Value::Handle(y)) => Rc::ptr_eq(x, y),
         _ => false,
     };
     same || py_eq(a, b)
@@ -379,6 +400,8 @@ pub fn py_eq(a: &Value, b: &Value) -> bool {
         (Value::Money(x), Value::Money(y)) => x == y,
         (Value::Func(x), Value::Func(y)) => Rc::ptr_eq(x, y) || **x == **y,
         (Value::Bound(x), Value::Bound(y)) => Rc::ptr_eq(x, y),
+        // no __eq__ of its own: identity, as for any plain Python object
+        (Value::Handle(x), Value::Handle(y)) => Rc::ptr_eq(x, y),
         _ => false,
     }
 }
@@ -631,6 +654,12 @@ fn write_repr<S: Sink>(out: &mut S, v: &Value) {
         Value::Bound(b) => {
             out.push_str("fn ");
             out.push_str(&b.func.name);
+        }
+        // `HandleValue.__repr__`, which `to_text` writes too
+        Value::Handle(h) => {
+            out.push_str("<");
+            out.push_text(&h.what);
+            out.push_str(&format!(" #{}>", h.id));
         }
     }
 }

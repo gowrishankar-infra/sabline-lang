@@ -29,7 +29,8 @@
       "confinement": "<varies by operating system>",
       "confinement_reason": "<varies by operating system>",
       "confinement_layers": "<varies by operating system>",
-      "os_policy_sha256": "<varies by operating system>"
+      "os_policy_sha256": "<varies by operating system>",
+      "ceilings": []
     },
     "effects_used": {
       "fs": 1,

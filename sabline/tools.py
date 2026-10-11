@@ -487,7 +487,9 @@ class ToolSession:
         self.calls_used += 1
         rec = _state.RUN_RECORDER
         if rec is not None:
-            rec.note("tool", tool=name, line=line, held="\\n".join(held),
+            # one grant a line, as the receipt splits them: until 9.0 a
+            # backslash and an n, so two grants were listed as one
+            rec.note("tool", tool=name, line=line, held="\n".join(held),
                      secret=tool["result"] == "secret")
         for grant in held or [f"tool:{name}"]:
             _state.GRANT_USES[grant] = _state.GRANT_USES.get(grant, 0) + 1

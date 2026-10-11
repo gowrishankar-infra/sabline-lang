@@ -3,7 +3,12 @@
 that a second implementation can be held to it (9.0, M3).
 
 `sabline run-dump --list <paths-file>` writes it from here; `sabline-rt
-run --install-dir DIR --list <paths-file>` writes it from the Rust crate.
+run --install-dir DIR --list <paths-file>` writes it from the Rust crate;
+and `sabline run-dump --through-rt --list <paths-file>` has sabline-rt
+write it of a run whose calls to the network, Python and tools this
+process makes for it (`run_hosted`), as it makes them for any run through
+sabline-rt (sabline/through_rt.py) - which is how the gate compares a run
+of those three.
 `check_agreement.py` compares the two over every Sabline source this
 project has, the way it compares the check document
 (sabline/check_dump.py). It is not a stable interface and is not in
@@ -49,6 +54,13 @@ naming one, `{"path": ...}`, with any of what a command line could add:
     steps, size     limits of the line's own, in place of STEPS and SIZE:
                     what the differential fuzzer runs under (fuzz_parsers.py
                     --target agreement_runs), which the gate never gives
+    tools           a tool manifest, sabline.tools/1, as a JSON object: the
+                    run has a tool session of it, as `sabline run --tools`
+                    gives one, whose host is a stand-in in this process
+                    (`StandInHost`) that answers every call the same way
+    ceilings        the organisation ceilings the run is held to (9.0,
+                    sabline/ceiling.py), [{"path": ..., "text": ...}], in
+                    place of the machine's: none unless the line gives them
 
 The document does not repeat them: the gate gives both runtimes the same
 line. A budget that does not parse is the document's `raised`,
@@ -117,6 +129,7 @@ import sys
 import time
 from typing import TYPE_CHECKING, Any
 
+from . import ceiling as _ceiling
 from . import state as _state
 from .ast_dump import RECURSION_LIMIT, _out, canonical
 from .budget import Budget, BudgetError, cli_budget, set_run_params
@@ -146,7 +159,7 @@ __forward__ = {
     "stream_start": "receipts",
 }
 
-USAGE = """usage: sabline run-dump --list <paths-file>
+USAGE = """usage: sabline run-dump [--through-rt] --list <paths-file>
 
 Each line of the file is a program's path, or a JSON object naming one with
 the budget, seed, frozen clock and read ceiling to run it under:
@@ -207,14 +220,75 @@ def run_document(path: str, allow: str | None = None, deny: str | None = None,
                  environ: dict[str, str] | None = None,
                  steps: int | None = None,
                  size: int | None = None,
-                 import_root: str | None = None) -> dict[str, Any]:
+                 import_root: str | None = None,
+                 tools: dict[str, Any] | None = None,
+                 ceilings: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """The document for one program, run as `sabline <path>` runs it, with
     the five things above fixed - the budget, seed, clock and read ceiling
     as given - and the three left out."""
     return run_recorded(path, allow=allow, deny=deny, seed=seed,
                         freeze_time=freeze_time, max_read=max_read,
                         environ=environ, steps=steps, size=size,
-                        import_root=import_root)[0]
+                        import_root=import_root, tools=tools,
+                        ceilings=ceilings)[0]
+
+
+class StandInHost:
+    """The host of a run's tool session in the run document (9.0, M3): what
+    `sabline run --tools`'s host process is, here, so that a run of tools is
+    the same on every machine. It answers each call as it is made - a tool
+    whose name starts `fail` with an error, `secret` with a result it marks
+    secret, any other with its name and its arguments - at the cost the
+    manifest gives. It is the session's door, both ways: `write` takes the
+    lines the session sends and `readline` gives back the answers."""
+
+    def __init__(self) -> None:
+        import queue
+        self._answers: "queue.Queue[bytes]" = queue.Queue()
+
+    def write(self, text: str) -> int:
+        for line in text.splitlines():
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(event, dict) or event.get("event") != "call":
+                continue
+            name = str(event.get("tool"))
+            answer: dict[str, Any] = {"id": event.get("id")}
+            if name.startswith("fail"):
+                answer["error"] = f"{name} did not work"
+            else:
+                answer["result"] = {"tool": name,
+                                    "arguments": event.get("arguments")}
+                if name.startswith("secret"):
+                    answer["secret"] = True
+            self._answers.put(json.dumps(answer, sort_keys=True).encode(
+                "ascii") + b"\n")
+        return len(text)
+
+    def flush(self) -> None:
+        pass
+
+    def readline(self, _most: int = -1) -> bytes:
+        return self._answers.get()
+
+    def close(self) -> None:
+        self._answers.put(b"")             # the session's reader ends
+
+
+def stand_in_session(manifest: dict[str, Any]) -> tuple[Any, StandInHost]:
+    """A tool session of `manifest`, as `sabline run --tools` opens one,
+    whose host is a StandInHost; ManifestError for a manifest that is not
+    one. The session's digest is of the manifest as canonical JSON."""
+    import hashlib
+    from .tools import ToolSession, read_manifest
+    text = json.dumps(manifest, sort_keys=True)
+    host = StandInHost()
+    session = ToolSession(read_manifest(text),
+                          hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                          out=host, inp=host, timeout=30)
+    return session, host
 
 
 def run_recorded(path: str, allow: str | None = None,
@@ -223,7 +297,9 @@ def run_recorded(path: str, allow: str | None = None,
                  max_read: int | None = None,
                  environ: dict[str, str] | None = None,
                  steps: int | None = None, size: int | None = None,
-                 import_root: str | None = None
+                 import_root: str | None = None,
+                 tools: dict[str, Any] | None = None,
+                 ceilings: list[dict[str, Any]] | None = None
                  ) -> tuple[dict[str, Any], dict[str, Any] | None,
                             list[dict[str, Any]] | None]:
     """The run document, the receipt of the same run (the module's
@@ -256,6 +332,10 @@ def run_recorded(path: str, allow: str | None = None,
         entry_bytes = b""
     reset_program_state(budget)
     set_run_params(seed, freeze_time)
+    door = None
+    if tools is not None:
+        session, door = stand_in_session(tools)
+        vars(_state)["TOOL_SESSION"] = session
     loaded: list[Any] = []
     limit = None
     overlaid = {name: os.environ.get(name) for name in environ or {}}
@@ -292,6 +372,9 @@ def run_recorded(path: str, allow: str | None = None,
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             sys.stdin = io.StringIO(STDIN)
             try:
+                # the line's organisation ceilings (9.0), never this
+                # machine's, before the program is read: E325, named
+                _ceiling.hold(budget, _ceiling.given(ceilings))
                 try:
                     funcs, records = load_program(path, loaded=loaded)
                 finally:
@@ -360,6 +443,8 @@ def run_recorded(path: str, allow: str | None = None,
             else:
                 os.environ[variable] = was
         reset_program_state(Budget.parse(DEFAULT_ALLOW))
+        if door is not None:
+            door.close()
     document["stdout"] = out.getvalue()
     document["stderr"] = err.getvalue()
     if document["raised"] is not None or parameters is None:
@@ -382,12 +467,75 @@ def run_recorded(path: str, allow: str | None = None,
     return document, receipt, events
 
 
+def run_hosted(path: str, allow: str | None = None,
+               deny: str | None = None, seed: int | None = None,
+               freeze_time: int | None = None, max_read: int | None = None,
+               environ: dict[str, str] | None = None,
+               steps: int | None = None, size: int | None = None,
+               import_root: str | None = None,
+               tools: dict[str, Any] | None = None,
+               ceilings: list[dict[str, Any]] | None = None) -> list[bytes]:
+    """The three records - run document, receipt, audit stream - of the run
+    `run_recorded` makes of the same line, made by sabline-rt (9.0, M3):
+    sabline-rt runs the program and writes the records, and this process is
+    the host of the calls it relays to the network, Python and tools, made
+    under the line's budget, tool session and environment as
+    `run_recorded` installs them for its own run. The records are
+    sabline-rt's canonical text, kept byte for byte."""
+    from . import through_rt
+    argv = (["--allow", allow] if allow is not None else []) + (
+        ["--deny", deny] if deny is not None else [])
+    try:
+        budget = cli_budget(argv)
+    except BudgetError:
+        budget = Budget.parse(DEFAULT_ALLOW)    # sabline-rt refuses it too
+    reset_program_state(budget)
+    set_run_params(seed, freeze_time)
+    door = None
+    if tools is not None:
+        session, door = stand_in_session(tools)
+        vars(_state)["TOOL_SESSION"] = session
+    # the environment the host's calls see is the run's, and so is the one
+    # sabline-rt is started in: both are this process's, overlaid
+    overlaid = {name: os.environ.get(name) for name in environ or {}}
+    os.environ.update(environ or {})
+    line = {"allow": allow, "deny": deny, "environ": environ or {},
+            "steps": STEPS if steps is None else steps,
+            "size": SIZE if size is None else size, "args": None,
+            # the line's ceilings, never this machine's
+            "ceilings": list(ceilings or [])}
+    try:
+        ended = through_rt.run(
+            path, allow=allow, seed=seed, freeze_time=freeze_time,
+            max_read=max_read, import_root=import_root,
+            out=lambda _t: None, err=lambda _t: None,
+            read_line=lambda: "", ask=lambda _p: None, dump=line)
+    finally:
+        for variable, was in overlaid.items():
+            if was is None:
+                os.environ.pop(variable, None)
+            else:
+                os.environ[variable] = was
+        reset_program_state(Budget.parse(DEFAULT_ALLOW))
+        if door is not None:
+            door.close()
+    records = ended.document
+    if not (isinstance(records, list) and len(records) == 3
+            and all(isinstance(r, str) for r in records)):
+        raise SystemExit(f"sabline run-dump --through-rt: sabline-rt sent "
+                         f"no records for {path}")
+    return [r.encode("ascii") for r in records]
+
+
 def run_dump_main(argv: Any) -> int:
-    """`sabline run-dump --list <paths-file>`."""
+    """`sabline run-dump [--through-rt] --list <paths-file>`."""
     words = list(argv)
     if not words or words[0] in ("--help", "-h"):
         print(USAGE)
         return 0
+    hosted = words[:1] == ["--through-rt"]
+    if hosted:
+        words = words[1:]
     if words[:1] == ["--list"] and len(words) == 2:
         try:
             with open(words[1], encoding="utf-8") as fh:
@@ -406,10 +554,15 @@ def run_dump_main(argv: Any) -> int:
             if path.startswith("{"):
                 given = json.loads(path)
                 path = given.pop("path")
-            document, receipt, events = run_recorded(path, **given)
-            every = every and document["exit"] == 0
-            for record in (document, receipt, events):
-                body = canonical(record).encode("ascii")
+            if hosted:
+                bodies = run_hosted(path, **given)
+                every = every and json.loads(bodies[0]).get("exit") == 0
+            else:
+                document, receipt, events = run_recorded(path, **given)
+                every = every and document["exit"] == 0
+                bodies = [canonical(record).encode("ascii")
+                          for record in (document, receipt, events)]
+            for body in bodies:
                 _out(f"--- {len(body)} {path}\n".encode("utf-8"))
                 _out(body + b"\n")
         return 0 if every else 1

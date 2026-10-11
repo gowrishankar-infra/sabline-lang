@@ -22,15 +22,225 @@ api: `SABLINE_REFERENCE_RUNTIME=rust` sends every run through sabline-rt
 server's runs), `sabline replay` and `sabline test`. Unset, or `python`,
 nothing changes; any other value is refused - exit 2 on the command line,
 a `ValueError` from the library and a pool - where until now nothing read
-it. A run sabline-rt does not make yet (the network, Python or a tool its
-budget grants a program that uses it; an eval run; `sabline trace`) is the
-package's, and says so in one line on stderr. `sabline/through_rt.py` says
-what a run through sabline-rt is and is not.
+it. A call to the network, Python or a tool is relayed back to the package,
+which makes it (decided on 2026-10-11); an eval run and `sabline trace` are
+the package's, and say so in one line on stderr. `sabline/through_rt.py`
+says what a run through sabline-rt is and is not.
+
+api: an organisation ceiling (9.0, decisions/0007 32c): a file whoever
+administers a machine installs - `/etc/sabline/ceiling.json`,
+`/Library/Application Support/Sabline/ceiling.json`, or `Sabline\ceiling.json`
+in Windows' ProgramData - holding `sabline.ceiling/1`, whose `allow` caps
+what any budget on the machine may grant. A budget that goes past it is
+refused before the program is read, with the new code **E325**, naming
+the file, the first grant past it and what it allows; so is every run while
+the file cannot be read as one. `SABLINE_CEILING=FILE` holds a run to one
+more, never instead. A receipt's `run_parameters` gains `ceilings`, each
+`{"path", "sha256", "allow"}` (empty where none is installed);
+`sabline ceiling [--json]` shows what is installed; `sabline audit` names
+it. `Budget.gap` is the rule it holds a budget to, which `Budget.covers`
+(a door's `--max-allow`) now words. Where no ceiling is installed nothing
+else changes. docs/ceiling.md.
 
 api: `SABLINE_THROUGH_RT_LOG=FILE`, with `SABLINE_REFERENCE_RUNTIME=rust`,
 has each run append one JSON line to FILE saying who answered it -
 sabline-rt, the checks, or the package and why (9.0, M3; what
 `suites_through_rt.py` counts). Without it nothing is written.
+
+## 9.0.0-alpha.11 - M3: the network, Python and tools relayed to the package, and the organisation ceiling
+
+M3's sixth checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,
+`Secret` and receipts*). **With `SABLINE_REFERENCE_RUNTIME=rust` every run
+now goes through sabline-rt, a run of the network, Python or a tool
+included**: sabline-rt spends the call's effect and relays the call back to
+the Python package, which makes it with its own code and tells back how it
+ended and what it recorded (the maintainer's decision of 2026-10-11, in
+`plan/9.0.md`). And **the organisation ceiling** (decisions/0007, item
+32c) exists, in both runtimes: a file an operator cannot widen past,
+held before the budget is given, named in the refusal, the receipt and
+`sabline audit`. Every one of M3's exit criteria measures as met; **M3 is not
+declared done**, because the fourth criterion's `check_pool.py` passes
+only with two of its questions asking each runtime what is true of it -
+the relay split the `ffi` cliff - which is the maintainer's to accept
+(`plan/9.0-m3-progress.md`). The Python package is the reference, and
+where the two disagree sabline-rt has a defect.
+
+This is a **pre-release** of the `sabline-rt` crate, and it publishes that
+and nothing else. 8.8.0 is still what `pip install sabline-lang`, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and `sabline --version` still says 8.8.0. What the Python package on
+main gained below ships with 9.0.
+
+### Decided
+
+The maintainer's answer of 2026-10-11 to the fifth checkpoint's question:
+**sabline-rt does the network, Python and tools by relaying each call back
+to the Python host** over the channel it already uses for output, input
+and audit events, so that what a call does is identical by construction.
+**Porting the network into Rust is M4's and M5's**, and their sections say
+so. **An eval run stays the package's until M4**, as chosen last time.
+
+### What exists
+
+**The relay.** sabline-rt spends the effect of each of the fourteen
+builtins of the network, Python and tools as it spends every builtin's,
+and then sends a `call` frame - the builtin, its arguments, its line - on
+the `sabline-rt exec` channel. The host answers with one line: a value (a
+handle as `{"handle", "what"}`, which sabline-rt prints and compares as
+`HandleValue` does), a failure the program can handle, a coded error, a
+granted module's exit, or the exception that escaped; and with what its
+recorder noted while it made the call, in order - each grant's event,
+each refusal a redirect makes, each tool call - what each grant let
+through, and the tool session's ceiling. sabline-rt records those in its
+own receipt and audit stream as they happened, `tool_calls` and
+`tool_ceiling` included. The host's side is `runtime.outside_builtin`, the
+package's own code for those fourteen, moved there from `run_builtin`
+unchanged, so the package's own runs make the same calls the same way.
+
+**Who the host is.** For `sabline run`, `sabline test` and an unbounded
+`sabline.run`, the caller's own process, with the run's budget, seed,
+clock, arguments and handles installed for the run and put back after
+(`library._hosting`) - and the command line's tool session and recorded
+responses, so `sabline run --tools` and `sabline replay --responses` go
+through sabline-rt too. For a bounded run, a Pool and a PoolRegistry -
+and so the HTTP door's and the MCP server's runs - the pool's worker that
+checked the program: confined, capped, the process the package's own run
+would have made the call in. It answers each call the pool forwards until
+the run ends, and is killed with sabline-rt at the deadline; one that goes
+away in a call ends the run as a worker that goes away in a run does.
+
+**The fallback's notice is gone**, and so is the fallback: what stays the
+package's is an eval run and `sabline trace`, each saying so as before.
+A run whose grants turn the operating system's layer off says so through
+sabline-rt too, as the command line always has - there is no such layer
+under sabline-rt before M4, which makes it no less true.
+
+**The gate compares those runs.** `sabline run-dump --through-rt` makes the
+package the host of a run whose three records sabline-rt writes
+(`run_dump::run_hosted`), and the gate compares them with the package's
+own run of the same line, byte for byte: 81 runs - 31 rows written for it, the
+24 sandbox rows and 13 sabline-spec L2 cases the gate used to skip, and
+the ceiling's and the examples' rows that grant more. They run
+against two stand-in servers on the machine - every reply's date and
+server fixed - and a stand-in tool host (`run_dump.StandInHost`). Six new
+injections in `check_gate.py` hold the relay's own classes: a failure
+handed back as a value, an error's line, a handle's text, a grant's event
+dropped, a grant counted twice, a tool call's secret mark lost.
+
+**The organisation ceiling** (docs/ceiling.md). `sabline.ceiling/1`, a JSON
+object whose `allow` is a budget, at one system path (the Windows one
+found through the system's own API, not the environment) and, held as
+well, the file `SABLINE_CEILING` names. A budget a ceiling does not wholly
+cover is E325 before the program is read - naming the file, the first
+grant past it and what it allows - at every entry point: the command line,
+`sabline test`, `sabline.run` with and without limits, a Pool and a
+PoolRegistry, the doors, `sabline eval` and `sabline replay`. A ceiling
+that cannot be read refuses every run, saying why. The receipt's
+`run_parameters.ceilings` names each one a run was held to - path, sha256,
+what it allows - refused or not; `sabline audit` names it and any effect
+the program needs that it does not grant; `sabline ceiling` shows what is
+installed. Several are asked the same question, so no order of asking
+gives another answer. The rule is `Budget.gap`, which a door's
+`--max-allow` already held requests to; `covers` now words it. sabline-rt
+is handed each ceiling's text with its request and reads it, holds the
+budget to it, words the refusal and names it the same way (`ceiling.rs`);
+the gate holds the two to each other over 24 rows, and
+`check_ceiling.py` asks every entry point in both runtimes (38 questions),
+in CI on every leg. Two more injections hold the refusal's words and the
+receipt's field.
+
+**Every program as it is written to run.** The gate now runs the twelve
+examples `run_tests.py` gives a budget under that budget, and
+`check_through_rt.py` runs them through the command line with their own
+arguments and input; `check_benchmark_through_rt.py` runs the benchmark's
+harness in both runtimes - every program under the budget its task needs,
+with its input, its stand-in server and its vendored library - and
+compares what Sabline made of each: 102 programs, 84 of them run, 0 differences.
+
+### The suites, through sabline-rt
+
+On Windows, `suites_through_rt.py` - which now asks `check_sandbox.py`
+too, M3's third criterion's own suite:
+
+| Suite | Questions | Failed | Ran a program | sabline-rt alone | A run the checks refused | A run the package made | Runs: sabline-rt / checks / package |
+|---|---|---|---|---|---|---|---|
+| check_library.py | 309 | 1, by design | 58 | 57 | 1 | 0 | 61 / 1 / 0 |
+| check_money.py | 81 | 0 | 41 | 40 | 1 | 0 | 40 / 1 / 0 |
+| check_hostile.py | 74 | 0 | 39 | 30 | 9 | 0 | 30 / 10 / 0 |
+| check_self_budget.py | 118 | 0 | 52 | 51 | 1 | 0 | 296 / 1 / 0 |
+| check_pool.py | 40 | 0 | 26 | 25 | 1 | 0 | 512 / 1 / 0 |
+| check_receipts.py | 41 | 0 | 15 | 13 | 1 | 1 (eval) | 19 / 1 / 2 |
+| check_sandbox.py | 58 | 0 | 57 | 57 | 0 | 0 | 57 / 0 / 0 |
+| check_fallible.py --runtime rust | 33 | 0 | 25 | 25 | 0 | 0 | 25 / 0 / 0 |
+| check_secret.py --runtime rust | 67 | 0 | 14 | 12 | 1 | 1 (trace) | 12 / 1 / 1 |
+| check_error_messages.py --runtime rust | 96 | 0 | 24 | 24 | 0 | 0 | 24 / 0 / 0 |
+| check_termination.py --runtime rust | 67 | 0 | 0 | - | - | - | - |
+| check_refusals.py --runtime rust | 17 | 0 | 0 | - | - | - | - |
+
+**No run of the network, Python or a tool is the package's any more**: the
+runs the package made are eval's (`check_receipts.py`) and `sabline
+trace`'s (`check_secret.py`), which stay its by decision. check_library's
+one failure is the producer-version question decided to wait for M4.
+check_pool's two `ffi`-cliff questions ask each runtime what is true of it
+(*Found, and not fixed*, 1). The questions not counted as passed or failed
+are POSIX-only cases, audits and commands that stay Python, a symlink this
+machine cannot make, and the prover's.
+
+### The agreement gate
+
+    the parsers: 7053 compared, 7053 agree, 0 differ
+    the checkers: 7053 compared, 7053 agree, 0 differ
+    the budget parser: 2975 compared, 2975 agree, 0 differ
+    the interpreters: 7053 compared, 7053 agree, 0 differ
+    the interpreters, under their budgets: 158 compared, 158 agree, 0 differ
+    the interpreters, the network, Python and tools relayed: 81 compared, 81 agree, 0 differ
+    the receipts: 7292 compared, 7292 agree, 0 differ
+    the audit streams: 7292 compared, 7292 agree, 0 differ
+    the builtin tables: 1 compared, 1 agree, 0 differ
+  agreement gate: 38958 comparisons, 38958 agreements, 0 differences
+
+The same on CPython 3.10, 3.12 and 3.13. The 312 new comparisons: the 81
+relayed runs, 23 more under their own budgets (18 of the ceiling's, 5 of
+the examples'), and their receipts and audit streams. `check_through_rt.py`:
+325 programs, 4 under `sabline test`, 228 runs under their own budgets, 12
+examples under theirs and 88 relayed runs, through every entry point - 0
+differences. `check_gate.py` holds the gate to 33 injections now, each of
+which must turn it red, in CI's agreement job on every push.
+
+### Found on the way, and fixed
+
+1. **A tool call held by two grants listed them as one.** The package
+   joined the grants that held a call's arguments with a backslash and an
+   `n`, and the receipt split them on a line feed, so `held_to` for a call
+   held to `to=` and `cc=` patterns was one entry holding both. The gate's
+   new tool rows found it. They are joined by a line feed now.
+2. **A pool dropped what its worker's receipt said of the run's
+   parameters beyond the pool's own**, replacing them whole with its
+   limits; the ceilings were the first such field. It keeps the worker's
+   ceilings now.
+
+### Found, and not fixed
+
+1. **The `ffi` cliff is split through sabline-rt.** A granted module's
+   code runs in the host, so it reaches what the host checks of a call -
+   the network's hosts, the module grants, the tool grants - and not what
+   sabline-rt holds: the effects, the file grants, the counts. A program
+   that adds `fs` to `sabline.state.EFFECT_BUDGET` through unscoped `ffi`
+   is refused its read through sabline-rt where the package lets it
+   through. `check_pool.py` now asks each runtime what is true of it, and
+   holds both to the reset that matters - a host grant a program widened
+   is not there for the next program on the same worker. A question for
+   the maintainer, in `plan/9.0-m3-progress.md`.
+2. **E317 is reported at line 0**, in both runtimes: the proxy refusal is
+   raised by `guarded_opener`, which is not given the call's line. As
+   before; recorded.
+
+compatibility: a receipt's `run_parameters` gains `ceilings`, a list,
+empty where no organisation ceiling is installed. A consumer that reads
+the fields it knows is unaffected.
+
+compatibility: a tool call held by two or more argument grants lists each
+in the receipt's `held_to`, where it listed them joined as one.
 
 ## 9.0.0-alpha.10 - M3: every run through sabline-rt, the limits held by the caller, and the suites counted per question
 

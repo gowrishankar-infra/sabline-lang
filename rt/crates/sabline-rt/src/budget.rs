@@ -576,6 +576,90 @@ impl Budget {
         out
     }
 
+    /// `gap(asked)`: the first thing `asked` grants that this budget does
+    /// not - the effect it is of, and a clause saying it of this budget as
+    /// "it" - or `None` when all of `asked` sits inside it, each grant at
+    /// each level: the rule an organisation ceiling holds every run's
+    /// budget to (9.0, `crate::ceiling`), and a door's `--max-allow` a
+    /// request's.
+    pub fn gap(&self, asked: &Budget) -> Option<(String, String)> {
+        for e in &asked.effects {
+            if !self.effects.contains(e) {
+                return Some((e.clone(), format!("it does not grant {e}")));
+            }
+        }
+        let fs = "fs".to_string();
+        let net = "net".to_string();
+        if asked.effects.contains("ffi") {
+            if let Some(mine) = &self.modules {
+                let Some(theirs) = &asked.modules else {
+                    return Some((
+                        "ffi".into(),
+                        "it grants ffi for named modules only".into(),
+                    ));
+                };
+                if let Some(extra) = theirs.iter().find(|m| !mine.contains(*m)) {
+                    return Some(("ffi".into(), format!("it does not grant ffi:{extra}")));
+                }
+            }
+        }
+        if asked.effects.contains(&fs) {
+            if let Some(most) = &self.fs_limit {
+                if asked.fs_limit.as_ref().is_none_or(|n| n > most) {
+                    return Some((fs, format!("it allows at most {most} file operations")));
+                }
+            }
+            if let Some(mine) = &self.fs {
+                let Some(theirs) = &asked.fs else {
+                    return Some((fs, "it grants fs under named paths only".into()));
+                };
+                for (kind, prefix) in theirs {
+                    if !mine.iter().any(|(k, p)| {
+                        fs_grant_covers(k, p.as_deref(), kind, prefix.as_deref())
+                    }) {
+                        let at = prefix.as_ref().map_or(String::new(), |p| format!(":{p}"));
+                        return Some((fs, format!("it does not grant fs:{kind}{at}")));
+                    }
+                }
+            }
+        }
+        if asked.effects.contains(&net) {
+            if let Some(most) = &self.net_limit {
+                if asked.net_limit.as_ref().is_none_or(|n| n > most) {
+                    return Some((
+                        net,
+                        format!("it allows at most {most} network operations"),
+                    ));
+                }
+            }
+            if let Some(mine) = &self.net {
+                let Some(theirs) = &asked.net else {
+                    return Some((net, "it grants net for named hosts only".into()));
+                };
+                for (host, port) in theirs {
+                    if !mine.iter().any(|(h, p)| net_grant_covers(h, *p, host, *port)) {
+                        // `f":{port}" if port`: a port of 0 is not written
+                        let at = port
+                            .filter(|p| *p != 0)
+                            .map_or(String::new(), |p| format!(":{p}"));
+                        return Some((net, format!("it does not grant net:{host}{at}")));
+                    }
+                }
+            }
+        }
+        if asked.effects.contains("tool")
+            && (self.tools.is_some() || !self.tool_limits.is_empty())
+        {
+            // grant by grant, as text: what is asked has to be written in
+            // the ceiling, or the ceiling has to grant every tool
+            let mine: BTreeSet<String> = self.tool_items().into_iter().collect();
+            if let Some(g) = asked.tool_items().into_iter().find(|g| !mine.contains(g)) {
+                return Some(("tool".into(), format!("it does not grant {g}")));
+            }
+        }
+        None
+    }
+
     /// `spec()`: the budget as the command line would write it, absolute
     /// paths included.
     pub fn spec(&self) -> String {
@@ -647,6 +731,57 @@ impl Budget {
             }
         }
     }
+}
+
+/// `_fs_grant_covers(kind, prefix, want_kind, want_prefix)`: the same
+/// direction, and the caller's prefix (`None`, any path) under the
+/// grant's (`None`, any path).
+fn fs_grant_covers(
+    kind: &str,
+    prefix: Option<&str>,
+    want_kind: &str,
+    want: Option<&str>,
+) -> bool {
+    if kind != want_kind {
+        return false;
+    }
+    let Some(prefix) = prefix else { return true };
+    let Some(want) = want else { return false };
+    let sep = crate::pypath::SEP;
+    want == prefix || want.starts_with(&format!("{}{sep}", prefix.trim_end_matches(sep)))
+}
+
+/// `_host_matches(pattern, host)`, counting characters as CPython does.
+fn host_matches(pattern: &str, host: &str) -> bool {
+    match pattern.strip_prefix("*.") {
+        Some(tail) => {
+            let (h, t): (Vec<char>, usize) = (host.chars().collect(), tail.chars().count());
+            host.ends_with(&format!(".{tail}"))
+                && h.len() > t + 1
+                && !h[..h.len() - t - 1].contains(&'.')
+        }
+        None => pattern == host,
+    }
+}
+
+/// `_net_grant_covers(host, port, want_host, want_port)`: a wildcard covers
+/// the same wildcard and any single-label host under it.
+fn net_grant_covers(
+    host: &str,
+    port: Option<u32>,
+    want: &str,
+    want_port: Option<u32>,
+) -> bool {
+    if port.is_some() && want_port != port {
+        return false;
+    }
+    if host.starts_with("*.") && want.starts_with("*.") {
+        return host == want;
+    }
+    if want.starts_with("*.") {
+        return false;
+    }
+    host_matches(host, want)
 }
 
 /// `expand_allow(spec)`: `all`, on its own, as every effect.
