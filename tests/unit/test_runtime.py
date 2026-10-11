@@ -539,7 +539,8 @@ class TheVariableChoosesTheRuntime(Run):
         from sabline.run_dump import stand_in_session
         session, door = stand_in_session({
             "schema": "sabline.tools/1",
-            "tools": {"send": {"arguments": {"type": "object"}}}})
+            "tools": {"send": {"arguments": {"type": "object", "properties": {
+                "to": {"type": "string"}, "cc": {"type": "string"}}}}}})
         saved = Budget.snapshot()
         try:
             Budget.parse("io,tool:send:to=*%40corp.com,"
