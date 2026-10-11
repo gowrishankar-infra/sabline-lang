@@ -11,8 +11,12 @@ they belong to three different places:
   M2. Under `--runtime rust` these go to sabline-rt, and its answer is
   held to exactly what the suite holds the Python package's to.
 - **what running it does** - the interpreter's, which sabline-rt has from
-  M3. Under `--runtime rust` these are not asked yet, and the suite counts
-  them by the rung that will ask them.
+  M3. Under `--runtime rust` these go through sabline-rt the way a user's
+  run does, with SABLINE_REFERENCE_RUNTIME=rust set for the run, and are
+  held to what the suite holds the package's to. A run sabline-rt does not
+  make yet - one whose budget grants the network, Python or a tool to a
+  program that uses it - is the package's, and says so; each run says who
+  answered it (sabline/through_rt.py's log), and the suite counts them.
 - **what the prover shows** - the prover's, which stays in the Python
   package for good (decisions/0002: what was proven is an input to a run,
   not something a run works out). Under `--runtime rust` these are not
@@ -20,18 +24,21 @@ they belong to three different places:
 
 A suite under `--runtime rust` therefore says three numbers - asked and
 right, asked and wrong, and not asked, with why - and passes only when the
-second is zero. A question it did not ask is never counted as passed.
+second is zero; and how many of the runs it asked for sabline-rt answered,
+and how many the package did, with why. A question it did not ask is never
+counted as passed.
 
 `--runtime python` is the default, and is what every suite did before it
 had the flag.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 ROOT = Path(__file__).resolve().parent
 
@@ -39,14 +46,15 @@ RUNTIMES = ("python", "rust")
 
 # Why a question is not sent to sabline-rt under --runtime rust, by kind.
 NOT_YET = {
-    "run": "a run, which sabline-rt does from M3",
+    "run": "a run no entry point sends to sabline-rt yet",
     "prover": "the prover's, which stays in the Python package "
               "(decisions/0002)",
     "audit": "an audit, which stays a Python command (decisions/0002)",
     "ceiling": "the check ceiling, a child process the Python package "
                "starts around its own check",
-    "import root": "an import root, which sabline-rt's loader takes from "
-                   "M3 with the doors",
+    "import root": "a check held to an import root, which sabline-rt's "
+                   "check document does not take (a run through it does, "
+                   "from M3)",
     "command": "a command other than check, which stays in Python "
                "(decisions/0002)",
 }
@@ -130,15 +138,104 @@ def own_loops(document: Any, path: str | Path) -> list[Any]:
     return sorted(loops, key=lambda lp: lp["line"])
 
 
+# The variables sabline/through_rt.py reads: which runtime a run goes to,
+# and where it writes who answered it.
+VARIABLE = "SABLINE_REFERENCE_RUNTIME"
+RUN_LOG = "SABLINE_THROUGH_RT_LOG"
+
+
+def _remove(path: str) -> None:
+    if os.path.exists(path):
+        os.unlink(path)
+
+
 class Tally:
-    """What a suite under --runtime rust did not ask, and why."""
+    """What a suite under --runtime rust did not ask, and why; and who
+    answered the runs it did ask for."""
 
     def __init__(self) -> None:
         self.not_asked: dict[str, int] = {}
+        self._log: str | None = None
 
     def skip(self, kind: str, many: int = 1) -> None:
         self.not_asked[kind] = self.not_asked.get(kind, 0) + many
 
+    def _log_path(self) -> str:
+        """Where each run says who answered it: the log a caller named
+        (suites_through_rt.py, which reads it per question), or one of this
+        suite's own."""
+        if self._log is None:
+            given = os.environ.get(RUN_LOG)
+            if given:
+                self._log = given
+            else:
+                import atexit
+                import tempfile
+                fd, self._log = tempfile.mkstemp(prefix="sabline-runs-",
+                                                 suffix=".jsonl")
+                os.close(fd)
+                atexit.register(_remove, self._log)
+        return self._log
+
+    def run_env(self, env: dict[str, str] | None = None) -> dict[str, str]:
+        """The environment of a process that runs a program for a question,
+        under --runtime rust: its run goes through sabline-rt where it can,
+        and says who answered it."""
+        out = dict(os.environ if env is None else env)
+        out[VARIABLE] = "rust"
+        out[RUN_LOG] = self._log_path()
+        return out
+
+    @contextlib.contextmanager
+    def running(self) -> Iterator[None]:
+        """The same, for a run made in this process: `sabline.run`."""
+        changes = {VARIABLE: "rust", RUN_LOG: self._log_path()}
+        saved = {k: os.environ.get(k) for k in changes}
+        os.environ.update(changes)
+        try:
+            yield
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+    def answered(self) -> dict[str, int]:
+        """How many runs each answered: `sabline-rt`, or `package: WHY`."""
+        counts: dict[str, int] = {}
+        if self._log is None or not os.path.exists(self._log):
+            return counts
+        with open(self._log, encoding="utf-8") as fh:
+            for line in fh:
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(entry, dict) or "answered_by" not in entry:
+                    continue
+                key = entry["answered_by"] if entry["answered_by"] == "sabline-rt" \
+                    else f"package: {entry.get('why')}"
+                counts[key] = counts.get(key, 0) + 1
+        return counts
+
     def lines(self) -> list[str]:
-        return [f"  not asked of sabline-rt: {n} - {NOT_YET[kind]}"
-                for kind, n in sorted(self.not_asked.items())]
+        out = [f"  not asked of sabline-rt: {n} - {NOT_YET[kind]}"
+               for kind, n in sorted(self.not_asked.items())]
+        counts = self.answered()
+        if counts:
+            out.append(f"  runs asked of sabline-rt: {sum(counts.values())}; "
+                       + answered_line(counts))
+        return out
+
+
+def answered_line(counts: dict[str, int]) -> str:
+    """Who answered the runs `counts` counts (Tally.answered), in words."""
+    refused = counts.get("package: checks", 0)
+    kept = sorted((k[len("package: "):], n) for k, n in counts.items()
+                  if k.startswith("package: ") and k != "package: checks")
+    return (f"sabline-rt answered {counts.get('sabline-rt', 0)}"
+            + (f"; the checks or the prover refused {refused} before "
+               f"anything ran" if refused else "")
+            + "".join(f"; the Python package ran {n} ({why})"
+                      for why, n in kept))

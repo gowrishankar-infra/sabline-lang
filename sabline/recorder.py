@@ -182,6 +182,30 @@ class _RunRecorder:
                                     .split("\n") if g]
             self.tell(event)
 
+    def heard(self, event: dict[Any, Any]) -> None:
+        """An event of the audit stream of a run made elsewhere - sabline-rt's
+        (9.0, M3) - kept as `take` keeps a worker's entries, so that a run
+        stopped before it made its own receipt still has one. The stream
+        sends every occurrence, so each counts once."""
+        kind = event.get("event")
+        if kind == "subjects":
+            if isinstance(event.get("subject"), list):
+                self.subjects = event["subject"]
+            return
+        if kind not in ("refusal", "declassify", "tool"):
+            return
+        fields = {k: v for k, v in event.items() if k != "event"}
+        if kind == "tool":                # as note() keeps it
+            fields["held"] = "\n".join(str(g) for g in
+                                       fields.pop("held_to", None) or [])
+        try:
+            key = (kind,) + tuple(sorted(fields.items()))
+            entry = self.sites.setdefault(
+                key, dict(fields, kind=kind, times=0))
+        except TypeError:                 # not a shape the stream sends
+            return
+        entry["times"] += 1
+
     def take(self, event: dict[Any, Any]) -> None:
         """An entry a worker streamed, kept by its parent."""
         kind = event.get("kind")

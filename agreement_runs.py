@@ -918,13 +918,25 @@ def tree(root: Any) -> dict[str, str]:
         home / ".docker" / "config.json": b"{}",
         home / ".kube" / "config": b"kind: Config\n",
         home / ".config" / "gcloud" / "credentials.db": b"db",
+        # what a program served from {DATA} imports (9.0, M3): its own
+        # libraries, one of which reaches back out, and one outside
+        data / "lib.vel": b"fn helper() -> Int {\n    return 7\n}\n",
+        data / "sub" / "inner.vel": (b'import "../lib.vel" as lib\n'
+                                     b"fn inner() -> Int {\n"
+                                     b"    return lib.helper() + 1\n}\n"),
+        data / "sub" / "escape.vel": (b'import "../../outside.vel" as far\n'
+                                      b"fn escape() -> Int {\n"
+                                      b"    return far.far()\n}\n"),
+        root / "box" / "outside.vel": b"fn far() -> Int {\n    return 1\n}\n",
     }
     for path, raw in files.items():
         path.write_bytes(raw)
-    try:
-        (data / "link.txt").symlink_to(root / "outside.txt")
-    except (OSError, NotImplementedError):
-        pass
+    for link, target in ((data / "link.txt", root / "outside.txt"),
+                         (data / "link.vel", root / "box" / "outside.vel")):
+        try:
+            link.symlink_to(target)
+        except (OSError, NotImplementedError):
+            pass
     return {"{ROOT}": root.as_posix(), "{DATA}": data.as_posix(),
             "{OUT}": out.as_posix(), "{OUTSIDE}": (root / "outside.txt").as_posix(),
             "{HOME}": home.as_posix(), "{PORT_A}": "9", "{PORT_B}": "9"}
@@ -1071,6 +1083,37 @@ BUDGETED: tuple[tuple[str, str, dict[str, Any]], ...] = (
     ("credential-looked-for-named", _main(
         'print(file_exists("{HOME}/.aws/credentials"))', uses="io, fs"),
      {"allow": "io,fs:read:{HOME}/.aws"}),
+    # ---- the import root (9.0, M3: sabline.run's import_root=, a pool's, a
+    #      replay's) - an import must resolve inside it, or into the shipped
+    #      standard library, and be a .vel file, or the load is E515. Each
+    #      program is written outside {DATA}, so a relative import of one
+    #      resolves outside too
+    ("import-root-inside", 'import "{DATA}/lib.vel" as lib\n'
+     + _main("print(lib.helper())"), {"import_root": "{DATA}"}),
+    ("import-root-inside-through-a-library", 'import "{DATA}/sub/inner.vel" as i\n'
+     + _main("print(i.inner())"), {"import_root": "{DATA}"}),
+    ("import-root-back-inside", 'import "{DATA}/sub/../lib.vel" as lib\n'
+     + _main("print(lib.helper())"), {"import_root": "{DATA}"}),
+    ("import-root-root-itself-with-a-slash", 'import "{DATA}/lib.vel" as lib\n'
+     + _main("print(lib.helper())"), {"import_root": "{DATA}/"}),
+    ("import-root-outside", 'import "{ROOT}/box/outside.vel" as far\n'
+     + _main("print(far.far())"), {"import_root": "{DATA}"}),
+    ("import-root-out-by-dots", 'import "{DATA}/../outside.vel" as far\n'
+     + _main("print(far.far())"), {"import_root": "{DATA}"}),
+    ("import-root-out-from-a-library", 'import "{DATA}/sub/escape.vel" as e\n'
+     + _main("print(e.escape())"), {"import_root": "{DATA}"}),
+    ("import-root-out-by-a-link", 'import "{DATA}/link.vel" as far\n'
+     + _main("print(far.far())"), {"import_root": "{DATA}"}),
+    ("import-root-not-a-vel-file", 'import "{DATA}/a.txt" as t\n'
+     + _main('print("ran")'), {"import_root": "{DATA}"}),
+    ("import-root-missing-inside", 'import "{DATA}/nope.vel" as n\n'
+     + _main('print("ran")'), {"import_root": "{DATA}"}),
+    ("import-root-relative-from-outside", 'import "lib.vel" as lib\n'
+     + _main("print(lib.helper())"), {"import_root": "{DATA}"}),
+    ("import-root-a-sibling-by-prefix", 'import "{ROOT}/box/data-not/x.vel" as x\n'
+     + _main('print("ran")'), {"import_root": "{DATA}"}),
+    ("import-root-none", 'import "{ROOT}/box/outside.vel" as far\n'
+     + _main("print(far.far())"), {}),
     # ---- the clock, randomness, the environment ------------------------------
     ("clock-frozen", _main("print(now())\nprint(now() + 1)", uses="io, clock"),
      {"allow": "io,clock", "freeze_time": 1767225600}),

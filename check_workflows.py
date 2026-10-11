@@ -881,7 +881,7 @@ def agreement_job() -> None:
        str([step.get("name") for step in where]))
 
     # the legs the alpha adds, so that removing one is a failing test
-    for name in ("msrv", "supply_chain", "rt_fuzz"):
+    for name in ("msrv", "supply_chain", "rt_fuzz", "suites_through_rt"):
         ok(f"test.yml has a `{name}` job", name in jobs, f"it has {sorted(jobs)}")
         leg = jobs.get(name) or {}
         ok(f"the {name} job has no `if:` and no `continue-on-error`",

@@ -129,6 +129,13 @@ class _EvalPool(Pool):
     where its stop file is, and confined where the operating system offers
     it. `confinement` is the level the started worker got."""
 
+    _entry = "eval"
+    # the profile holds a run to the operating system's confinement and does
+    # not start one without it; sabline-rt asks for none before M4, so under
+    # SABLINE_REFERENCE_RUNTIME=rust an eval run stays this package's, and
+    # says so (9.0, M3)
+    _kept_by = "eval"
+
     def __init__(self, *, allow: str, timeout: float, max_memory_mb: int,
                  import_root: str, stop_file: str, writable: list[str],
                  on_event: Any = None) -> None:

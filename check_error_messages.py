@@ -509,10 +509,14 @@ def main(argv: Any) -> int:
             continue
         started = time.monotonic()
         try:
-            if runtime == "rust" and how.get("via") != "check":
-                raise NotAsked("run" if how.get("via") == "run" else "command")
+            if runtime == "rust" and how.get("via") not in ("check", "run"):
+                raise NotAsked("command")
             case_dir, program = prepare(case_id, how)
-            if runtime == "rust":
+            if runtime == "rust" and how.get("via") == "run":
+                # sabline.run through sabline-rt, as a user's is (9.0, M3)
+                with tally.running():
+                    code, line, message, fixes = reach(how, case_dir, program)
+            elif runtime == "rust":
                 code, line, message, fixes = reach_rust(how, case_dir,
                                                         program, want_code)
             else:

@@ -86,10 +86,13 @@ def check(source: str) -> tuple[Any, ...]:
 
 
 def run(source: str, allow: str) -> tuple[Any, ...]:
+    """Run it as a user does - under --runtime rust, through sabline-rt
+    where it can be (suite_runtime.Tally.run_env)."""
     SCRATCH.write_text(source, encoding="utf-8")
     done = subprocess.run(
         [sys.executable, str(SABLINE), str(SCRATCH), "--allow", allow],
-        capture_output=True, text=True, timeout=300, cwd=str(HERE))
+        capture_output=True, text=True, timeout=300, cwd=str(HERE),
+        env=None if PYTHON else TALLY.run_env())
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
 
@@ -117,9 +120,6 @@ def compiles(label: str, source: str) -> None:
 
 def prints(label: str, source: str, allow: str, want: str) -> None:
     """This program must run and print exactly this."""
-    if not PYTHON:
-        TALLY.skip("run")
-        return
     got, out = run(source, allow)
     ok(label, got == 0 and said(out) == want,
        f"wanted {want!r}, got {said(out)!r}")
@@ -472,13 +472,12 @@ if PYTHON:
        and "declassify" in doc["effects"]
        and "declassify" in doc["safe_command"],
        str(doc["secrets"]))
-    code, out = run(EXTRACT, "env,io")
-    ok("...and an operator who withholds the grant stops it (E310)",
-       code != 0 and "E310" in out and "recovered" not in said(out),
-       said(out)[:140])
 else:
     TALLY.skip("audit", 1)
-    TALLY.skip("run", 1)
+code, out = run(EXTRACT, "env,io")
+ok("...and an operator who withholds the grant stops it (E310)",
+   code != 0 and "E310" in out and "recovered" not in said(out),
+   said(out)[:140])
 
 # A promise is not a branch: it cannot be caught, it stops the run, and
 # it cannot accumulate - so a Secret of Bool is allowed in one.
@@ -518,13 +517,10 @@ refused("declassify refuses a record that merely holds one",
         "E561", says=["inside it"])
 prints("declassify with the effect and the grant lets the value out",
        DECL, "declassify,env,io", "none")
-if PYTHON:
-    code, out = run(DECL, "env,io")
-    ok("declassify without the grant is refused while running (E310)",
-       code != 0 and "E310" in out and "none" not in said(out),
-       said(out)[:140])
-else:
-    TALLY.skip("run", 1)
+code, out = run(DECL, "env,io")
+ok("declassify without the grant is refused while running (E310)",
+   code != 0 and "E310" in out and "none" not in said(out),
+   said(out)[:140])
 prints("what declassify gives back is an ordinary Text",
        'fn main() uses io, env, declassify {\n'
        '    let key = env("API_KEY", "abcd")\n'
@@ -643,17 +639,12 @@ prints("a program that uses a secret correctly runs",
        "env,io",
        "GET https://example.com/v1\n"
        "a key was attached, and is not in this output")
-if PYTHON:
-    code, out = run((HERE / "examples" / "secret.vel").read_text(
-        encoding="utf-8"), "env,io")
-    ok("examples/secret.vel runs and prints no key",
-       code == 0 and "authorization: Bearer <the key" in out, said(out)[:120])
-    code, out = run((HERE / "examples" / "secret_bad.vel").read_text(
-        encoding="utf-8"), "env,io")
-else:
-    TALLY.skip("run")
-    code, out = check((HERE / "examples" / "secret_bad.vel").read_text(
-        encoding="utf-8"))
+code, out = run((HERE / "examples" / "secret.vel").read_text(
+    encoding="utf-8"), "env,io")
+ok("examples/secret.vel runs and prints no key",
+   code == 0 and "authorization: Bearer <the key" in out, said(out)[:120])
+code, out = run((HERE / "examples" / "secret_bad.vel").read_text(
+    encoding="utf-8"), "env,io")
 ok("examples/secret_bad.vel is refused with E560 naming env()",
    code != 0 and "E560" in out and "env(), line" in out, said(out)[:160])
 
@@ -661,39 +652,40 @@ ok("examples/secret_bad.vel is refused with E560 naming env()",
 print()
 print("and nothing prints one behind the program's back")
 print("-" * 62)
-if PYTHON:
-    SCRATCH.write_text(
-        'fn keep(key: Secret of Text) -> Secret of Text {\n'
-        '    return key\n}\n\n'
-        'fn main() uses io, env {\n'
-        '    let key = env("API_KEY", "sesame")\n'
-        '    let held = keep(key)\n'
-        '    print("held one")\n}\n', encoding="utf-8")
-    done = subprocess.run(
-        [sys.executable, str(SABLINE), "trace", str(SCRATCH),
-         "--allow", "env,io"],
-        capture_output=True, text=True, timeout=300, cwd=str(HERE))
-    trace = (done.stdout or "") + (done.stderr or "")
-    ok("sabline trace prints <secret> in place of the value",
-       "sesame" not in trace and "<secret>" in trace, trace.strip()[:200])
+# under --runtime rust: trace is the package's interpreter's, and says so; the
+# broken promise is a run through sabline-rt
+SCRATCH.write_text(
+    'fn keep(key: Secret of Text) -> Secret of Text {\n'
+    '    return key\n}\n\n'
+    'fn main() uses io, env {\n'
+    '    let key = env("API_KEY", "sesame")\n'
+    '    let held = keep(key)\n'
+    '    print("held one")\n}\n', encoding="utf-8")
+done = subprocess.run(
+    [sys.executable, str(SABLINE), "trace", str(SCRATCH),
+     "--allow", "env,io"],
+    capture_output=True, text=True, timeout=300, cwd=str(HERE),
+    env=None if PYTHON else TALLY.run_env())
+trace = (done.stdout or "") + (done.stderr or "")
+ok("sabline trace prints <secret> in place of the value",
+   "sesame" not in trace and "<secret>" in trace, trace.strip()[:200])
 
-    SCRATCH.write_text(
-        'fn keep(key: Secret of Text) -> Secret of Text\n'
-        '    requires length(key) > 99\n'
-        '{\n    return key\n}\n\n'
-        'fn main() uses io, env {\n'
-        '    let key = env("API_KEY", "sesame")\n'
-        '    let held = keep(key)\n'
-        '    print("held one")\n}\n', encoding="utf-8")
-    done = subprocess.run(
-        [sys.executable, str(SABLINE), str(SCRATCH), "--allow", "env,io"],
-        capture_output=True, text=True, timeout=300, cwd=str(HERE))
-    broke = (done.stdout or "") + (done.stderr or "")
-    ok("a broken promise about a secret prints <secret>, not the value",
-       done.returncode != 0 and "sesame" not in broke and "<secret>" in broke,
-       broke.strip()[:200])
-else:
-    TALLY.skip("run", 2)
+SCRATCH.write_text(
+    'fn keep(key: Secret of Text) -> Secret of Text\n'
+    '    requires length(key) > 99\n'
+    '{\n    return key\n}\n\n'
+    'fn main() uses io, env {\n'
+    '    let key = env("API_KEY", "sesame")\n'
+    '    let held = keep(key)\n'
+    '    print("held one")\n}\n', encoding="utf-8")
+done = subprocess.run(
+    [sys.executable, str(SABLINE), str(SCRATCH), "--allow", "env,io"],
+    capture_output=True, text=True, timeout=300, cwd=str(HERE),
+    env=None if PYTHON else TALLY.run_env())
+broke = (done.stdout or "") + (done.stderr or "")
+ok("a broken promise about a secret prints <secret>, not the value",
+   done.returncode != 0 and "sesame" not in broke and "<secret>" in broke,
+   broke.strip()[:200])
 
 SCRATCH.unlink(missing_ok=True)
 print("-" * 62)

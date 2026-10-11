@@ -426,6 +426,13 @@ impl Runtime {
         Ok(out)
     }
 
+    /// `rt["call"](name, [], line)`: one function of the program, called with
+    /// no arguments, and what it gave back - `sabline test`'s call of each
+    /// test function (9.0, M3).
+    pub fn call_named(&mut self, name: &str, line: u32) -> Result<Value, Stop> {
+        self.call(name, Vec::new(), line)
+    }
+
     /// `interpret(funcs)`: call `main`.
     pub fn interpret(&mut self) -> R<()> {
         let Some(main) = self.table.get("main").cloned() else {

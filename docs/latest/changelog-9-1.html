@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Changelog: 9.x: 9.0.0-alpha.9 to 9.0.0-alpha.7 - Sabline 8.8.0</title>
-<meta name="description" content="What changed in Sabline 9.0.0-alpha.7 to 9.0.0-alpha.9, release by release, newest first, as CHANGELOG.md records it.">
+<title>Changelog: 9.x: 9.0.0-alpha.10 to 9.0.0-alpha.7 - Sabline 8.8.0</title>
+<meta name="description" content="What changed in Sabline 9.0.0-alpha.7 to 9.0.0-alpha.10, release by release, newest first, as CHANGELOG.md records it.">
 <meta name="sabline-version" content="8.8.0">
 <link rel="canonical" href="https://sabline.dev/changelog-9-1.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sabline">
-<meta property="og:title" content="Changelog: 9.x: 9.0.0-alpha.9 to 9.0.0-alpha.7 - Sabline 8.8.0">
-<meta property="og:description" content="What changed in Sabline 9.0.0-alpha.7 to 9.0.0-alpha.9, release by release, newest first, as CHANGELOG.md records it.">
+<meta property="og:title" content="Changelog: 9.x: 9.0.0-alpha.10 to 9.0.0-alpha.7 - Sabline 8.8.0">
+<meta property="og:description" content="What changed in Sabline 9.0.0-alpha.7 to 9.0.0-alpha.10, release by release, newest first, as CHANGELOG.md records it.">
 <meta property="og:url" content="https://sabline.dev/changelog-9-1.html">
 <meta property="og:image" content="https://sabline.dev/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -69,13 +69,150 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-9-1.html" aria-current="page">9.x: 9.0.0-alpha.9 to 9.0.0-alpha.7</a></li><li><a href="changelog-9-2.html">9.x: 9.0.0-alpha.6 to 9.0.0-alpha.1</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-9-1.html" aria-current="page">9.x: 9.0.0-alpha.10 to 9.0.0-alpha.7</a></li><li><a href="changelog-9-2.html">9.x: 9.0.0-alpha.6 to 9.0.0-alpha.1</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
 <main id="content" class="doc" tabindex="-1">
-<h1 id="changelog">Changelog: 9.x: 9.0.0-alpha.9 to 9.0.0-alpha.7</h1>
+<h1 id="changelog">Changelog: 9.x: 9.0.0-alpha.10 to 9.0.0-alpha.7</h1>
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
+<h2 id="900-alpha10---m3-every-run-through-sabline-rt-the-limits-held-by-the-caller-and-the-suites-counted-per-question">9.0.0-alpha.10 - M3: every run through sabline-rt, the limits held by the caller, and the suites counted per question <a class="anchor" href="#900-alpha10---m3-every-run-through-sabline-rt-the-limits-held-by-the-caller-and-the-suites-counted-per-question" aria-label="Link to this section">#</a></h2>
+<p>M3's fifth checkpoint (<code>plan/9.0.md</code>, <em>M3 - the interpreter, the budget,
+<code>Secret</code> and receipts</em>), and still not its end: <strong>with
+<code>SABLINE_REFERENCE_RUNTIME=rust</code>, every run goes through sabline-rt</strong> - a
+run with a timeout or a memory cap, a Pool and a PoolRegistry (and so the
+HTTP door's and the MCP server's runs), <code>sabline replay</code> and <code>sabline test</code>,
+beside <code>sabline run</code> and <code>sabline.run</code> - and <strong>the suites of M3's fourth
+criterion are counted question by question</strong>, with who answered each run.
+The maintainer's decisions of 2026-10-11 are recorded in <code>plan/9.0.md</code>.
+M3's exit criteria are not met and none is claimed: the network, Python
+and tools are not ported, sabline-rt confines nothing (M4), and the
+organisation ceiling file is not started. The Python package is the
+reference, and where the two disagree sabline-rt has a defect.</p>
+<p>This is a <strong>pre-release</strong> of the <code>sabline-rt</code> crate, and it publishes that
+and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
+main gained below ships with 9.0.</p>
+<h3 id="decided">Decided <a class="anchor" href="#decided" aria-label="Link to this section">#</a></h3>
+<p>The maintainer's answers of 2026-10-11: a run whose budget grants the
+network, Python or a tool to a program that uses it <strong>keeps the fallback</strong> -
+it runs in the Python package and says so on stderr, until sabline-rt does
+those itself; <strong><code>SABLINE_REFERENCE_RUNTIME</code> stays the switch</strong>, with no
+<code>runtime=</code> on <code>sabline.run</code>, so M7's API golden is unchanged; and <strong>a run
+through sabline-rt prints no "not confined" notice</strong> - the receipt's
+confinement field is the record. check_library's question about the
+receipt's producer version waits for M4, as decided.</p>
+<h3 id="what-exists">What exists <a class="anchor" href="#what-exists" aria-label="Link to this section">#</a></h3>
+<p><strong>A bounded run and the pool, through sabline-rt, the limits held by the
+caller.</strong> A pool's worker is confined at its start (8.4) and cannot start a
+process, so it does what it always did up to the run - checks and proves
+the program, under the pool's limits - and says whether sabline-rt may run
+it; the pool's own process then starts <code>sabline-rt exec</code> under the memory
+cap and kills it at what is left of the deadline. On Windows the cap is the
+job object a worker gets, made before sabline-rt runs an instruction; on
+Linux it is RLIMIT_DATA, set with prlimit before the request is sent - not
+RLIMIT_AS, because an idle <code>sabline-rt exec</code> maps 72 MB of address space it
+never touches (glibc's arena for its input thread), and the cap is the
+program's plus the 128 MiB its run's stack takes. Measured on Linux from a
+16 MB cap to 300 MB: a small program runs, the doubling text is E611, deep
+recursion is E609 and a loop is E610 at its deadline. A run a limit stopped
+sends no end, so its audit stream is always asked for and the pool makes
+its receipt from what that says the run did - <code>complete: false</code>, named
+sabline-rt's. The worker is kept only after a clean run, as before; the
+<code>sabline-rt</code> process is used once, always.</p>
+<p><strong><code>sabline replay</code> and <code>sabline test</code> through sabline-rt.</strong> A replay runs
+its copy of the program through sabline-rt, held to the replay's own
+directory and read ceiling; a bounded replay goes through its pool.
+<code>check_receipts.py</code>'s three replays of a run recorded through sabline-rt,
+which differed in confinement last time, now pass: replayed through
+sabline-rt too, both say <code>none</code>. <code>sabline test</code> asks sabline-rt to call each
+test function in turn on one runtime (<code>run_dump::test_relayed</code>) and prints
+each verdict after what the test printed, as the package's loop does.</p>
+<p><strong>The import root in sabline-rt's loader</strong> (E515, as <code>loader.py</code> words it,
+by CPython's <code>realpath</code>), so a run held to an import root - the library's
+<code>import_root=</code>, a pool's, a replay's - goes through sabline-rt too. The
+gate holds it: thirteen programs in its tree importing from inside, outside,
+by <code>..</code>, by a link, from a library, a file that is not <code>.vel</code>, a sibling
+directory sharing the root's prefix.</p>
+<p><strong>What stays the package's, and says so in one line on stderr</strong>: a run whose
+budget grants the network, Python or a tool to a program that uses it
+(decided); an eval run, whose profile holds a run to the operating
+system's confinement and does not start one without it; and <code>sabline trace</code>, which shows the package's interpreter at work. A program the
+checks or the prover refuse runs nothing, and says nothing more.</p>
+<p><strong><code>suites_through_rt.py</code></strong>: the six suites of M3's fourth criterion run
+whole with <code>SABLINE_REFERENCE_RUNTIME=rust</code>, and M2's five with <code>--runtime rust</code> too, which now ask their run questions of sabline-rt where they
+counted them as not asked. Every run writes who answered it
+(<code>SABLINE_THROUGH_RT_LOG</code>), and what a suite prints goes to the same log,
+so each run is counted against the question it was made for. A question
+that fails is a failure unless it is listed by design, with its rung. In
+CI on Linux and Windows. On Linux:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Suite</th><th>Questions</th><th>Failed</th><th>Ran a program</th><th>sabline-rt alone</th><th>A run the package made</th></tr></thead>
+<tbody>
+<tr><td>check_library.py</td><td>306</td><td>1, by design</td><td>59</td><td>50</td><td>8 (net)</td></tr>
+<tr><td>check_money.py</td><td>81</td><td>0</td><td>41</td><td>40</td><td>0</td></tr>
+<tr><td>check_hostile.py</td><td>69</td><td>0</td><td>38</td><td>27</td><td>2 (ffi)</td></tr>
+<tr><td>check_self_budget.py</td><td>116</td><td>0</td><td>(below)</td><td></td><td></td></tr>
+<tr><td>check_pool.py</td><td>39</td><td>0</td><td>26</td><td>21</td><td>4 (ffi)</td></tr>
+<tr><td>check_receipts.py</td><td>41</td><td>0</td><td>15</td><td>10</td><td>4 (ffi, eval)</td></tr>
+<tr><td>check_fallible.py --runtime rust</td><td>33</td><td>0</td><td>25</td><td>19</td><td>6 (ffi, net)</td></tr>
+<tr><td>check_secret.py --runtime rust</td><td>67</td><td>0</td><td>14</td><td>12</td><td>1 (trace)</td></tr>
+<tr><td>check_error_messages.py --runtime rust</td><td>96</td><td>0</td><td>24</td><td>20</td><td>4 (ffi, net, tool)</td></tr>
+<tr><td>check_termination.py, check_refusals.py --runtime rust</td><td>84</td><td>0</td><td>0</td><td>-</td><td>-</td></tr>
+</tbody></table></div>
+<p>(The rest of the questions that ran a program had a run the checks
+refused, so nothing ran.)</p>
+<p><strong><code>check_through_rt.py</code></strong> holds every entry point to the package's own runs</p>
+<ul>
+<li>the command line, <code>sabline.run</code> with limits and without, a Pool, every
+budgeted row of the gate through a PoolRegistry and through <code>sabline.run</code>
+both ways, and <code>sabline test</code> on every way a test can end -
+CHECK_THROUGH_RT_NUMBERS.</li>
+</ul>
+<h3 id="the-agreement-gate">The agreement gate <a class="anchor" href="#the-agreement-gate" aria-label="Link to this section">#</a></h3>
+<div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 7053 compared, 7053 agree, 0 differ
+the checkers: 7053 compared, 7053 agree, 0 differ
+the budget parser: 2975 compared, 2975 agree, 0 differ
+the interpreters: 7053 compared, 7053 agree, 0 differ
+the interpreters, under their budgets: 135 compared, 135 agree, 0 differ
+the receipts: 7188 compared, 7188 agree, 0 differ
+the audit streams: 7188 compared, 7188 agree, 0 differ
+the builtin tables: 1 compared, 1 agree, 0 differ</code></pre></div>
+<p>agreement gate: 38646 comparisons, 38646 agreements, 0 differences</p>
+<p>The same on CPython 3.10, 3.12 and 3.13. The thirteen import-root programs
+are the 39 new comparisons; both run documents take <code>import_root</code>.</p>
+<h3 id="found-on-the-way-and-fixed">Found on the way, and fixed <a class="anchor" href="#found-on-the-way-and-fixed" aria-label="Link to this section">#</a></h3>
+<ol>
+<li><strong>check_self_budget.py had never asked sabline-rt anything.</strong> It scrubs
+every <code>SABLINE_</code> variable from its environment before it starts, the
+runtime switch with them, so "112 of 112 through sabline-rt" last time
+was 112 in the package. And its section C, which finds every variable the
+package reads and varies each, finds them by a pattern that the switch
+escaped: <code>through_rt</code> read it through a constant not named <code>*_ENV</code>.
+The two variables of the runtime are <code>*_ENV</code> constants now, the scrub
+keeps them, and C15 and C16 vary them - the other runtime must end every
+run as this one does. 116 of 116 in both.</li>
+<li><strong><code>sabline.run(freeze_time="2026-01-01T00:00:00Z")</code> through sabline-rt
+was refused by it</strong>: the request takes epoch seconds and the library
+handed the instant on. A replay always hands one. Converted as
+<code>set_run_params</code> converts it.</li>
+<li><strong><code>sabline.run</code> with a frozen clock its receipt cannot say</strong> - past the
+year 9999 - ran the program and then raised ValueError making the
+receipt, whatever the program had done by then; through sabline-rt it
+ran and returned. <code>check_through_rt.py</code> found it. It is refused before
+anything runs now, in both, as <code>Pool.run</code> already refused it.</li>
+</ol>
+<p>compatibility: for 9.0's Python package, <code>sabline.run(freeze_time=...)</code> with
+an instant past the year 9999 raises ValueError before the program runs,
+as <code>Pool.run</code> does; it used to run the program first and raise after.</p>
+<h3 id="what-is-not-done">What is not done <a class="anchor" href="#what-is-not-done" aria-label="Link to this section">#</a></h3>
+<p>In the order to do it (<code>plan/9.0-m3-progress.md</code>): the network, Python and
+tools - the question for the maintainer, below; the organisation ceiling
+file (0007, 32c); eval through sabline-rt, which waits for M4's
+confinement; and M8's performance.</p>
+<p><strong>A question for the maintainer</strong>, in the progress file: how sabline-rt
+should do the network, Python and tools.</p>
 <h2 id="900-alpha9---m3-sabline-run-through-sabline-rt-and-what-is-written-out-counted-first">9.0.0-alpha.9 - M3: sabline run through sabline-rt, and what is written out counted first <a class="anchor" href="#900-alpha9---m3-sabline-run-through-sabline-rt-and-what-is-written-out-counted-first" aria-label="Link to this section">#</a></h2>
 <p>M3's fourth checkpoint (<code>plan/9.0.md</code>, <em>M3 - the interpreter, the budget,
 <code>Secret</code> and receipts</em>), and still not its end: <strong><code>sabline run</code> and
@@ -94,7 +231,7 @@ and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm
 Marketplace and the MCP registry give, the Action pins still name 8.8.0's
 commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
 main gained below ships with 9.0.</p>
-<h3 id="what-exists">What exists <a class="anchor" href="#what-exists" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-1">What exists <a class="anchor" href="#what-exists-1" aria-label="Link to this section">#</a></h3>
 <p><strong><code>sabline run</code> and <code>sabline.run</code> through sabline-rt.</strong> The package still
 reads the flags, builds the budget, and loads, checks and proves the
 program - the prover is the package's for good, and what it finds decides
@@ -132,7 +269,7 @@ version is the package's, which a receipt made by sabline-rt is not;
 <code>check_receipts.py</code> 38 of 41 - the three replay a run recorded through
 sabline-rt, confinement <code>none</code>, in the package, which confines it; and
 <code>check_pool.py</code> passes, its runs being the package's.</p>
-<h3 id="the-agreement-gate">The agreement gate <a class="anchor" href="#the-agreement-gate" aria-label="Link to this section">#</a></h3>
+<h3 id="the-agreement-gate-1">The agreement gate <a class="anchor" href="#the-agreement-gate-1" aria-label="Link to this section">#</a></h3>
 <div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 7053 compared, 7053 agree, 0 differ
 the checkers: 7053 compared, 7053 agree, 0 differ
 the budget parser: 2975 compared, 2975 agree, 0 differ
@@ -190,7 +327,7 @@ writers over 4,500 generated values; sabline-rt's writers write to a
 write. The fuzzer's generator prints a <code>List of Text</code> again, it runs under
 the gate's own size limit, and a <code>MemoryError</code> is a finding now - 8,515
 runs, none.</p>
-<h3 id="found-on-the-way-and-fixed">Found on the way, and fixed <a class="anchor" href="#found-on-the-way-and-fixed" aria-label="Link to this section">#</a></h3>
+<h3 id="found-on-the-way-and-fixed-1">Found on the way, and fixed <a class="anchor" href="#found-on-the-way-and-fixed-1" aria-label="Link to this section">#</a></h3>
 <ol>
 <li><strong>A function value written inline printed a name that depended on the
 process</strong> (the reference): <code>Parser.lambda_n</code> was a class attribute that
@@ -203,7 +340,7 @@ program now, as sabline-rt's loader does.</li>
 <p>compatibility: for 9.0's Python package, a function value written inline is
 named <code>fn#N</code> counted from 1 in every program, wherever it runs; in a
 process that had loaded other programs the count went on from theirs.</p>
-<h3 id="what-is-not-done">What is not done <a class="anchor" href="#what-is-not-done" aria-label="Link to this section">#</a></h3>
+<h3 id="what-is-not-done-1">What is not done <a class="anchor" href="#what-is-not-done-1" aria-label="Link to this section">#</a></h3>
 <p>In the order to do it (<code>plan/9.0-m3-progress.md</code>): the question below; a
 bounded run and the pool through sabline-rt, started by the caller under
 the limits; the commands that contain a run (<code>replay</code>, <code>eval</code>, <code>serve</code>,
@@ -234,7 +371,7 @@ and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm
 Marketplace and the MCP registry give, the Action pins still name 8.8.0's
 commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
 main gained below ships with 9.0.</p>
-<h3 id="what-exists-1">What exists <a class="anchor" href="#what-exists-1" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-2">What exists <a class="anchor" href="#what-exists-2" aria-label="Link to this section">#</a></h3>
 <p><strong>Receipts</strong> (<code>src/receipt.rs</code>, from <code>sabline/recorder.py</code> and
 <code>sabline/receipts.py</code>): the run's subjects by sha256, the standard library
 as <code>&lt;stdlib&gt;/NAME</code> and a file on another drive by its path; the budget; the
@@ -272,7 +409,7 @@ mutated input can make in one operation is about 73 MB, and an input that
 reaches it anyway is counted and said, never a finding. The three places
 the reference answers differently by CPython version, which the gate's
 corpora leave out, it leaves out the same way, counted.</p>
-<h3 id="the-agreement-gate-1">The agreement gate <a class="anchor" href="#the-agreement-gate-1" aria-label="Link to this section">#</a></h3>
+<h3 id="the-agreement-gate-2">The agreement gate <a class="anchor" href="#the-agreement-gate-2" aria-label="Link to this section">#</a></h3>
 <div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6813 compared, 6813 agree, 0 differ
 the checkers: 6813 compared, 6813 agree, 0 differ
 the budget parser: 2967 compared, 2967 agree, 0 differ
@@ -303,7 +440,7 @@ builtin that takes one.</p>
 the file a broken promise names, a receipt's field dropped, a field beside
 the normalised ones, how many keys a receipt names at one place, and an
 audit stream's event dropped.</p>
-<h3 id="found-on-the-way-and-fixed-1">Found on the way, and fixed <a class="anchor" href="#found-on-the-way-and-fixed-1" aria-label="Link to this section">#</a></h3>
+<h3 id="found-on-the-way-and-fixed-2">Found on the way, and fixed <a class="anchor" href="#found-on-the-way-and-fixed-2" aria-label="Link to this section">#</a></h3>
 <p><strong>A receipt of a run with a frozen clock was a traceback on Windows.</strong>
 <code>sabline x.vel --freeze-time 1960-01-01T00:00:00Z --receipt r.json</code> ran the
 program, then ended in an <code>OSError</code> while writing the receipt, leaving the
@@ -367,7 +504,7 @@ checked, name that file - in the error a run prints, <code>--json</code>'s <code
 and every report built from them - where they named the file that called
 it; and <code>sabline check</code>'s one-line output names the file an error is in.
 The code, the message and the line are unchanged.</p>
-<h3 id="what-is-not-done-1">What is not done <a class="anchor" href="#what-is-not-done-1" aria-label="Link to this section">#</a></h3>
+<h3 id="what-is-not-done-2">What is not done <a class="anchor" href="#what-is-not-done-2" aria-label="Link to this section">#</a></h3>
 <p><code>plan/9.0-m3-progress.md</code> lists it in order: <code>sabline run</code> and
 <code>sabline.run</code> through sabline-rt (decisions/0002), which is what lets the
 suites of M3's fourth criterion be asked of it; the network's, Python's and
@@ -397,7 +534,7 @@ and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm
 Marketplace and the MCP registry give, the Action pins still name 8.8.0's
 commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
 main gained below ships with 9.0.</p>
-<h3 id="what-exists-2">What exists <a class="anchor" href="#what-exists-2" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-3">What exists <a class="anchor" href="#what-exists-3" aria-label="Link to this section">#</a></h3>
 <p><strong>The builtins' work</strong> (<code>src/interp.rs</code>, and <code>src/host.rs</code> for what a run
 reaches of the machine): <code>read_file</code>, <code>read_file_secret</code>, <code>write_file</code> and
 <code>file_exists</code>, each guarded as <code>budget.allow_path</code> guards it -
@@ -427,7 +564,7 @@ same operation in both; so are the benchmark's five programs that grow
 forever, which made the gate slower than anything else did. It is
 <code>state._SIZE_LIMIT</code> in the Python package, set by <code>run-dump</code> and nothing
 else.</p>
-<h3 id="the-agreement-gate-2">The agreement gate <a class="anchor" href="#the-agreement-gate-2" aria-label="Link to this section">#</a></h3>
+<h3 id="the-agreement-gate-3">The agreement gate <a class="anchor" href="#the-agreement-gate-3" aria-label="Link to this section">#</a></h3>
 <div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6798 compared, 6798 agree, 0 differ
 the checkers: 6798 compared, 6798 agree, 0 differ
 the budget parser: 2967 compared, 2967 agree, 0 differ
@@ -468,7 +605,7 @@ The adversarial pass held thirteen libraries each way - values carrying
 names, nested, handed back and called, calling the library's own functions,
 looping, failing, breaking a promise, recursing through <code>all_of</code> - to the
 same run, flat and named, in both runtimes.</p>
-<h3 id="found-on-the-way-and-fixed-2">Found on the way, and fixed <a class="anchor" href="#found-on-the-way-and-fixed-2" aria-label="Link to this section">#</a></h3>
+<h3 id="found-on-the-way-and-fixed-3">Found on the way, and fixed <a class="anchor" href="#found-on-the-way-and-fixed-3" aria-label="Link to this section">#</a></h3>
 <p><strong><code>all_of</code> and <code>any_of</code> recursed in C.</strong> They were Python's <code>all()</code> over a
 generator, so a function value that reached them again nested C calls, and
 from CPython 3.12 the C recursion limit ended the run first - as E609
@@ -507,7 +644,7 @@ makes a function value under a name compiles, where it was refused with
 E402; and a function value that reaches <code>all_of</code> or <code>any_of</code> again stops at
 the depth limit's E609 on every CPython, where 3.12 and 3.13 gave the
 nested-value E609 at line 0. No program that ran before runs differently.</p>
-<h3 id="what-is-not-done-2">What is not done <a class="anchor" href="#what-is-not-done-2" aria-label="Link to this section">#</a></h3>
+<h3 id="what-is-not-done-3">What is not done <a class="anchor" href="#what-is-not-done-3" aria-label="Link to this section">#</a></h3>
 <p><code>plan/9.0-m3-progress.md</code> lists it in order - receipts and then the audit
 stream, the network's, Python's and the tools' work (each a design
 question), a run target for the fuzzer, <code>sabline run</code> through sabline-rt,
@@ -520,7 +657,7 @@ function's broken <code>requires</code> is reported against the importing file.<
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.8.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha9---m3-sabline-run-through-sabline-rt-and-what-is-written-out-counted-first">9.0.0-alpha.9 - M3: sabline run through sabline-rt, and what is written out counted first</a></li><li><a href="#900-alpha8---m3-receipts-and-the-audit-stream-field-for-field">9.0.0-alpha.8 - M3: receipts and the audit stream, field for field</a></li><li><a href="#900-alpha7---m3-the-builtins-under-every-budget-as-far-as-they-got">9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#900-alpha10---m3-every-run-through-sabline-rt-the-limits-held-by-the-caller-and-the-suites-counted-per-question">9.0.0-alpha.10 - M3: every run through sabline-rt, the limits held by the caller, and the suites counted per question</a></li><li><a href="#900-alpha9---m3-sabline-run-through-sabline-rt-and-what-is-written-out-counted-first">9.0.0-alpha.9 - M3: sabline run through sabline-rt, and what is written out counted first</a></li><li><a href="#900-alpha8---m3-receipts-and-the-audit-stream-field-for-field">9.0.0-alpha.8 - M3: receipts and the audit stream, field for field</a></li><li><a href="#900-alpha7---m3-the-builtins-under-every-budget-as-far-as-they-got">9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

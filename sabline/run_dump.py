@@ -43,6 +43,9 @@ naming one, `{"path": ...}`, with any of what a command line could add:
     environ         variables set for the run, {name: value}, over the
                     environment the process was started with: what env()
                     reads, and where `~` is
+    import_root     the directory the program's imports must stay inside,
+                    as sabline.run's import_root= and the doors give it
+                    (E515)
     steps, size     limits of the line's own, in place of STEPS and SIZE:
                     what the differential fuzzer runs under (fuzz_parsers.py
                     --target agreement_runs), which the gate never gives
@@ -203,13 +206,15 @@ def run_document(path: str, allow: str | None = None, deny: str | None = None,
                  max_read: int | None = None,
                  environ: dict[str, str] | None = None,
                  steps: int | None = None,
-                 size: int | None = None) -> dict[str, Any]:
+                 size: int | None = None,
+                 import_root: str | None = None) -> dict[str, Any]:
     """The document for one program, run as `sabline <path>` runs it, with
     the five things above fixed - the budget, seed, clock and read ceiling
     as given - and the three left out."""
     return run_recorded(path, allow=allow, deny=deny, seed=seed,
                         freeze_time=freeze_time, max_read=max_read,
-                        environ=environ, steps=steps, size=size)[0]
+                        environ=environ, steps=steps, size=size,
+                        import_root=import_root)[0]
 
 
 def run_recorded(path: str, allow: str | None = None,
@@ -217,7 +222,8 @@ def run_recorded(path: str, allow: str | None = None,
                  freeze_time: int | None = None,
                  max_read: int | None = None,
                  environ: dict[str, str] | None = None,
-                 steps: int | None = None, size: int | None = None
+                 steps: int | None = None, size: int | None = None,
+                 import_root: str | None = None
                  ) -> tuple[dict[str, Any], dict[str, Any] | None,
                             list[dict[str, Any]] | None]:
     """The run document, the receipt of the same run (the module's
@@ -257,6 +263,9 @@ def run_recorded(path: str, allow: str | None = None,
     ceiling = _state.MAX_READ_BYTES
     if max_read is not None:
         vars(_state)["MAX_READ_BYTES"] = max_read
+    root_was = _state.IMPORT_ROOT
+    if import_root is not None:
+        vars(_state)["IMPORT_ROOT"] = os.path.realpath(import_root)
     try:
         # nothing is asked of the operating system: the confinement is
         # none, and says why (the module's docstring)
@@ -344,6 +353,7 @@ def run_recorded(path: str, allow: str | None = None,
         vars(_state)["_STEP_LIMIT"] = None
         vars(_state)["_SIZE_LIMIT"] = None
         vars(_state)["MAX_READ_BYTES"] = ceiling
+        vars(_state)["IMPORT_ROOT"] = root_was
         for variable, was in overlaid.items():
             if was is None:
                 os.environ.pop(variable, None)

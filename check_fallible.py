@@ -109,7 +109,8 @@ NO_RUNTIME = {"py_do", "py_field",
 SKIP = {"get"}
 
 
-def run(source: str, effect: str | None = None) -> tuple[Any, ...]:
+def run(source: str, effect: str | None = None,
+        env: dict[str, str] | None = None) -> tuple[Any, ...]:
     """Run the case under the narrowest budget it needs. From 5.0 a run
     with no --allow gets io, so a builtin that reads a file or calls
     Python has to be granted that effect or the refusal, not the
@@ -118,7 +119,7 @@ def run(source: str, effect: str | None = None) -> tuple[Any, ...]:
     allow = "io" + (f",{effect}" if effect else "")
     done = subprocess.run(
         [sys.executable, str(SABLINE), str(SCRATCH), "--allow", allow],
-        capture_output=True, text=True, timeout=300, cwd=HERE)
+        capture_output=True, text=True, timeout=300, cwd=HERE, env=env)
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
 
@@ -136,7 +137,7 @@ def check_only(source: str) -> tuple[Any, ...]:
 # since 3.0: a redirect to a host outside the run's net grants. The
 # program asked for one host and was sent to another, so this is a
 # failure it can catch, unlike a refused host (E314, which it cannot).
-def redirect_case() -> tuple[Any, ...]:
+def redirect_case(env: dict[str, str] | None = None) -> tuple[Any, ...]:
     """(passed, detail): the failure formats and is caught, never a
     traceback, against a local server that redirects."""
     import threading
@@ -169,7 +170,7 @@ def redirect_case() -> tuple[Any, ...]:
     done = subprocess.run(
         [sys.executable, str(SABLINE), str(SCRATCH),
          "--allow", f"io,net:127.0.0.1:{port}"],
-        capture_output=True, text=True, timeout=300, cwd=HERE)
+        capture_output=True, text=True, timeout=300, cwd=HERE, env=env)
     srv.shutdown()
     SCRATCH.unlink(missing_ok=True)
     output = (done.stdout or "") + (done.stderr or "")
@@ -215,13 +216,8 @@ def main(argv: list[str]) -> int:
             failed += 1
             continue
 
-        # 2. a caught failure must format, never traceback
-        if RUNTIME == "rust":
-            print(f"  ok enforced  {name} (refused when ignored; the caught "
-                  f"failure is a run)")
-            tally.skip("run")
-            passed += 1
-            continue
+        # 2. a caught failure must format, never traceback - under
+        # --runtime rust, run through sabline-rt where it can be
         if name in NO_RUNTIME:
             print(f"  ok enforced  {name} (runtime case covered elsewhere)")
             passed += 1
@@ -233,7 +229,8 @@ def main(argv: list[str]) -> int:
                   f"{indent}    fail why {{\n"
                   f"{indent}        print(\"caught\")\n"
                   f"{indent}    }}\n{indent}}}\n{closer}}}\n")
-        code, out = run(caught, effect)
+        code, out = run(caught, effect,
+                        tally.run_env() if RUNTIME == "rust" else None)
         if "Traceback" in out:
             print(f"  RAW CRASH    {name}: a failure escaped as a "
                   f"traceback")
@@ -249,10 +246,9 @@ def main(argv: list[str]) -> int:
             failed += 1
 
     SCRATCH.unlink(missing_ok=True)
-    good, detail = (True, "") if RUNTIME == "rust" else redirect_case()
-    if RUNTIME == "rust":
-        tally.skip("run")
-    elif good:
+    good, detail = redirect_case(tally.run_env() if RUNTIME == "rust"
+                                 else None)
+    if good:
         print("  ok        a redirect to an ungranted host is a failure the "
               "program can catch")
         passed += 1

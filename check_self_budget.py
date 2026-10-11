@@ -60,12 +60,22 @@ SABLINE = str(HERE / "sabline.py")
 sys.path.insert(0, str(HERE))
 
 
+# Kept, where everything else of Sabline's is scrubbed: the runtime the suite
+# is asked of, and where its runs say who answered them (9.0, M3) - which is
+# how suites_through_rt.py asks this suite of sabline-rt. C16 varies the
+# first: the other runtime, which must end every run as this one does.
+RUNTIME_UNDER_TEST = ("SABLINE_REFERENCE_RUNTIME", "SABLINE_THROUGH_RT_LOG")
+
+
 def _scrub(env: Any) -> Any:
     """The environment without what this suite varies: Sabline's own
     variables, the proxy variables, and what points Python at other code."""
     out = {}
     for k, v in env.items():
         u = k.upper()
+        if u in RUNTIME_UNDER_TEST:
+            out[k] = v
+            continue
         if u.startswith("SABLINE_") or u.endswith("_PROXY") or u in (
                 "PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP",
                 "SOURCE_DATE_EPOCH"):
@@ -865,7 +875,8 @@ KNOWN_ENV = {
     "SABLINE_CONFORMANCE_CORPUS", "SABLINE_PYPI_URL", "SABLINE_NPM_REGISTRY",
     "HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "PYTHONPATH",
     "SOURCE_DATE_EPOCH", "GITHUB_TOKEN", "GITHUB_REPOSITORY",
-    "GITHUB_API_URL", "SABLINE_FAULT_INJECT"}
+    "GITHUB_API_URL", "SABLINE_FAULT_INJECT", "SABLINE_REFERENCE_RUNTIME",
+    "SABLINE_THROUGH_RT_LOG"}
 
 
 def env_names_read() -> Any:
@@ -883,6 +894,11 @@ def env_names_read() -> Any:
     # naming.py's own OLD_ENV_PREFIX/NEW_ENV_PREFIX are not variables it
     # reads; the names it reads are the ones its callers pass, found above.
     return names
+
+
+# the runtime C16 varies to: the one this suite is not being asked of
+OTHER_RUNTIME = ("python" if os.environ.get("SABLINE_REFERENCE_RUNTIME", "")
+                 .strip() == "rust" else "rust")
 
 
 def env_cases() -> None:
@@ -915,6 +931,13 @@ def env_cases() -> None:
          {"SABLINE_FAULT_INJECT": "widen-the-budget"}, False),
         ("C7 SABLINE_CACHE_DIR naming a directory of planted proof files",
          {"SABLINE_CACHE_DIR": str(cache)}, False),
+        # the runtime is chosen, never granted (9.0, M3): the other one ends
+        # every run as this one does, and where its runs say who answered
+        # them is a file it writes, not something a program can reach
+        (f"C16 SABLINE_REFERENCE_RUNTIME={OTHER_RUNTIME}, the other runtime",
+         {"SABLINE_REFERENCE_RUNTIME": OTHER_RUNTIME}, False),
+        ("C15 SABLINE_THROUGH_RT_LOG naming a file",
+         {"SABLINE_THROUGH_RT_LOG": str(WORK / "runs.jsonl")}, False),
         ("C11 every other variable sabline/*.py reads, set "
          "(SABLINE_CONFORMANCE_CORPUS, SABLINE_PYPI_URL, SABLINE_NPM_REGISTRY, "
          "SABLINE_DEBUG_INV, SOURCE_DATE_EPOCH, GITHUB_*)",

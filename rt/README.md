@@ -398,8 +398,9 @@ runtime, with `~` the tree's home.
 ## A run for a user: `sabline-rt exec`
 
 The run document is the gate's; `sabline-rt exec --install-dir DIR` is a
-user's (9.0, M3). It is what `sabline run` and `sabline.run` go through
-when `SABLINE_REFERENCE_RUNTIME` is `rust` (`sabline/through_rt.py`;
+user's (9.0, M3). It is what every run goes through when
+`SABLINE_REFERENCE_RUNTIME` is `rust` - `sabline run`, `sabline.run`, a
+pool's, `sabline replay`'s and `sabline test`'s (`sabline/through_rt.py`;
 decisions/0002: the command stays in Python and the run inside it goes
 through sabline-rt). The Python package still reads the flags, builds the
 budget, and loads, checks and proves the program - the prover is the
@@ -412,8 +413,12 @@ request is the first line on standard input: the path, the budget, the
 seed, the frozen clock, the read ceiling, the arguments, the name the
 receipt gives the program, the program's text when the file at its path
 only says where imports resolve from (`sabline.run(source, path=...)`, for
-which the loader takes `load_program_given`'s `entry_source`), and whether
-the audit stream is wanted. Then a frame on standard output for each thing
+which the loader takes `load_program_given`'s `entry_source`), the
+directory its imports must stay inside (E515, as `loader._import_refusal`
+words it, by CPython's `realpath`), whether the audit stream is wanted, and
+whether it is `sabline test`'s run - each test function called in turn
+rather than `main`, a `{"test": ...}` frame after what each printed
+(`run_dump::test_relayed`). Then a frame on standard output for each thing
 the run does, as it does it: what `print` and `log` write, `read_line` and
 `ask` as questions the parent answers with a line, each audit event, and
 last the run document and the receipt. **Why frames**: what the program
@@ -428,10 +433,24 @@ cannot. A parent that goes away takes the run with it: its end of the pipe
 closes, the reading thread sees the end of standard input while the run is
 going, and the process exits with status 3.
 
-`check_through_rt.py` holds the two entry points to the package's own runs
-of the gate's programs - output byte for byte, status, the error printed,
-the receipt and the stream - and `tests/exec.rs` drives the binary as the
-package does.
+**Limits are the caller's.** A pool's worker is confined (8.4) and cannot
+start a process, so a run with a timeout or a memory cap is started by the
+pool's own process: on Windows inside the job object a worker gets, made
+before the process runs; on Linux under RLIMIT_DATA, set with prlimit
+before the request is sent - not RLIMIT_AS, because an idle `sabline-rt
+exec` maps 72 MB of address space it never touches (glibc's arena), which
+RLIMIT_DATA does not count, and the cap is the program's plus the 128 MiB
+the run's stack takes (`through_rt.RUN_STACK_MB`, held to `PARSE_STACK`).
+The deadline kills it. A run a limit stopped sends no end; its audit stream
+is always asked for, and the pool makes its receipt of what that says.
+
+`check_through_rt.py` holds every entry point to the package's own runs of
+the gate's programs - the command line, `sabline.run` with limits and
+without, a Pool, the gate's budgeted rows through a PoolRegistry, and
+`sabline test` - output byte for byte, status, the error printed, the
+receipt and the stream; `suites_through_rt.py` asks the suites of M3's
+fourth criterion through it, question by question; and `tests/exec.rs`
+drives the binary as the package does.
 
 ## What had to be written down to be copied
 

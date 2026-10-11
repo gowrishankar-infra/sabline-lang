@@ -47,6 +47,7 @@ pub struct Loaded {
 struct Loader<'a> {
     install_dir: &'a str,
     entry_source: Option<&'a str>,
+    import_root: Option<&'a str>,
     loaded: Loaded,
     files: &'a mut Vec<String>,
     fn_src: HashMap<String, String>,
@@ -71,22 +72,25 @@ pub fn load_program_recording(
     install_dir: &str,
     files: &mut Vec<String>,
 ) -> Answer<Loaded> {
-    load_program_given(entry, None, install_dir, files)
+    load_program_given(entry, None, None, install_dir, files)
 }
 
 /// `load_program(entry, entry_source, loaded=files)`: the same, with the
 /// entry's text given rather than read from `entry` - `sabline.run(source,
 /// path=...)`, whose path is where imports resolve from and need not hold
-/// that text (9.0, M3).
+/// that text (9.0, M3) - and, as `state.IMPORT_ROOT` is set, the directory
+/// every import must stay inside (E515).
 pub fn load_program_given(
     entry: &str,
     entry_source: Option<&str>,
+    import_root: Option<&str>,
     install_dir: &str,
     files: &mut Vec<String>,
 ) -> Answer<Loaded> {
     let mut loader = Loader {
         install_dir,
         entry_source,
+        import_root,
         loaded: Loaded::default(),
         files,
         fn_src: HashMap::new(),
@@ -105,6 +109,31 @@ pub fn stdlib_dir(install_dir: &str) -> String {
     os_path::join(install_dir, "stdlib")
 }
 
+/// `loader._import_refusal(path, root)`: why `path` may not be imported by
+/// a program served from `root`, or `None` when it may - a file inside
+/// `root`, or one of the shipped standard library, by where it resolves to,
+/// and a `.vel` file. The resolution is CPython's `realpath`, which
+/// [`crate::pypath`] copies, and the message names what it gave.
+pub fn import_refusal(path: &str, root: &str, install_dir: &str) -> Option<String> {
+    let (shown, shown_top) = (pypath::realpath(path), pypath::realpath(root));
+    let (real, top) = (os_path::normcase(&shown), os_path::normcase(&shown_top));
+    let std = os_path::normcase(&pypath::realpath(&stdlib_dir(install_dir)));
+    let sep = pypath::SEP;
+    let inside = real == top
+        || real.starts_with(&format!("{}{sep}", top.trim_end_matches(sep)))
+        || real.starts_with(&format!("{std}{sep}"));
+    if !inside {
+        return Some(format!(
+            "it resolves to {shown}, outside the directory this program is served from \
+             ({shown_top})"
+        ));
+    }
+    if !real.ends_with(&os_path::normcase(".vel")) {
+        return Some("it is not a .vel file".to_string());
+    }
+    None
+}
+
 impl Loader<'_> {
     fn load(
         &mut self,
@@ -118,6 +147,18 @@ impl Loader<'_> {
             return Ok(()); // already loaded (diamond or cycle)
         }
         self.visited.insert(ap.clone());
+        if let (Some(importer), Some(root)) = (importer, self.import_root) {
+            if let Some(why) = import_refusal(path, root, self.install_dir) {
+                return Err(SablineError::with_fixes(
+                    "E515",
+                    format!("cannot import '{path}': {why}"),
+                    iline,
+                    &["import a .vel file inside the served directory, or a file of the \
+                         standard library"],
+                )
+                .in_file(importer));
+            }
+        }
         let given = if importer.is_none() { self.entry_source } else { None };
         let read = match given {
             Some(text) => Ok(text.as_bytes().to_vec()),

@@ -703,7 +703,14 @@ def main() -> int:
         # mcp-verify
         at = argv.index("--max-memory-mb") + 1
         if at < len(argv):
-            _cap_this_process(argv[at])
+            # a run through sabline-rt (9.0, M3) inherits this cap, and is
+            # let past it to be held to its own (sabline/through_rt.py),
+            # which this process's hard limit must leave room for
+            try:
+                rust = through_rt.chosen() == "rust"
+            except through_rt.RuntimeChoiceError:
+                rust = False                # said and refused where it runs
+            _cap_this_process(argv[at], for_a_child=rust)
     if "--max-read" in argv:
         # the read ceiling (MB); read_file/read_file_secret refuse a file
         # larger than this (E316). A resource ceiling, not a grant. (7.1.2)
@@ -1263,6 +1270,12 @@ def main() -> int:
             print(f"no tests in {target} - name a function test_something "
                   f"and return true when it passes")
             return 1
+        # SABLINE_REFERENCE_RUNTIME=rust (9.0, M3): the tests run by
+        # sabline-rt, checked and proved here as above
+        routed = _cli_test_through_rt(target, funcs, len(tests),
+                                      cli_budget(argv))
+        if routed is not None:
+            return routed
         native = {} if "--no-native" in argv else compile_native(funcs)
         rt = build_runtime(funcs, native)
         passed = 0
@@ -1726,10 +1739,19 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
     and the package reports it as it always has, receipt and all; a budget
     that grants the network, Python or a tool to a program that can reach
     it, which sabline-rt does not do yet; and `sabline trace`, whose every
-    call is the package's interpreter's to show."""
+    call is the package's interpreter's to show. Each of the last two says
+    so on stderr (decided on 2026-10-11), and each is counted
+    (through_rt.note)."""
     import posixpath
     import time as _t
+
+    def kept(why: str) -> None:
+        through_rt.note("cli", "package", why)
+        said = through_rt.notice_for(why)
+        if said is not None:
+            print(said, file=sys.stderr)
     if _state.TRACE["on"]:
+        kept("trace")
         return None
     try:
         funcs, records = load_program(filename)
@@ -1739,13 +1761,23 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
         if not errors:
             check_proofs(funcs, records, errors, set())
     except (SablineError, RecursionError):
+        kept("checks")
         return None
     if errors:
+        kept("checks")
         return None
     missing = through_rt.not_ported(funcs, budget)
     if missing:
-        print(through_rt.fallback_notice(missing), file=sys.stderr)
+        kept(",".join(missing))
         return None
+    through_rt.note("cli", "sabline-rt")
+    # --max-memory-mb: this process holds itself to it (main), and the run
+    # is held to it too, with room for its stack (sabline/through_rt.py)
+    try:
+        capped: int | None = int(_flag_value(sys.argv, "--max-memory-mb")
+                                 or "")
+    except (ValueError, BudgetError):
+        capped = None
     stream = None
     if stream_to is not None:
         stream = _audit_stream_to(stream_to)
@@ -1762,17 +1794,26 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
                 stream_failed[0] = True
     t0 = _t.perf_counter()
     try:
-        doc, receipt = through_rt.run(
+        ended = through_rt.run(
             filename, allow=budget.spec(), seed=_state.SEED,
             freeze_time=_state.FROZEN_TIME, max_read=_state.MAX_READ_BYTES,
             args=list(_state.PROGRAM_ARGS),
             name=posixpath.normpath(filename.replace(os.sep, "/")),
             out=sys.stdout.write, err=sys.stderr.write,
             read_line=sys.stdin.readline, ask=_ask_as_input_does,
-            event=event if stream is not None else None)
+            event=event if stream is not None else None,
+            max_memory_mb=capped if capped and capped > 0 else None)
     except through_rt.Unavailable as e:
         print(f"sabline: {e}", file=sys.stderr)
         return 2
+    if ended.out_of_memory:
+        err = SablineError("E611", f"the program used more than {capped} MB "
+                           f"and was stopped", 0,
+                           ["give it more memory, or find what is growing"])
+        print(err.machine(filename) if as_json else err.human(filename),
+              file=sys.stderr)
+        return 1
+    doc, receipt = ended.document, ended.receipt
     status = 1
     if doc.get("refused"):
         # sabline-rt's checkers refused what this package's passed: a
@@ -1817,6 +1858,62 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
             if status == 0:
                 status = 2
     return status
+
+
+def _cli_test_through_rt(target: str, funcs: list[Any], many: int,
+                         budget: "Budget") -> int | None:
+    """`sabline test` with SABLINE_REFERENCE_RUNTIME=rust (9.0, M3): each
+    test function called by sabline-rt, its output written as it happens
+    and its verdict printed after it, as the package's own loop prints it.
+    None where the tests stay this package's: the runtime is python, or the
+    budget grants the network, Python or a tool to a program that can reach
+    it (which says so, and is counted, as a run is)."""
+    try:
+        if through_rt.chosen() != "rust":
+            return None
+    except through_rt.RuntimeChoiceError as e:
+        print(f"sabline: {e}", file=sys.stderr)
+        return 2
+    missing = through_rt.not_ported(funcs, budget)
+    if missing:
+        through_rt.note("test", "package", ",".join(missing))
+        print(through_rt.fallback_notice(missing), file=sys.stderr)
+        return None
+    through_rt.note("test", "sabline-rt")
+    passed = [0]
+
+    def test(said: dict[str, Any]) -> None:
+        label = str(said.get("name", ""))[len("test_"):].replace("_", " ")
+        if said.get("passed"):
+            print(f"  PASS  {label}")
+            passed[0] += 1
+        elif "returned" in said:
+            print(f"  FAIL  {label}   (returned {said['returned']})")
+        elif "code" in said:
+            print(f"  FAIL  {label}   [{said['code']}] {said.get('message')}")
+        else:
+            print(f"  FAIL  {label}   failed: {said.get('failed')}")
+    try:
+        ended = through_rt.run(
+            target, allow=budget.spec(), seed=_state.SEED,
+            freeze_time=_state.FROZEN_TIME, max_read=_state.MAX_READ_BYTES,
+            args=list(_state.PROGRAM_ARGS), out=sys.stdout.write,
+            err=sys.stderr.write, read_line=sys.stdin.readline,
+            ask=_ask_as_input_does, test=test)
+    except through_rt.Unavailable as e:
+        print(f"sabline: {e}", file=sys.stderr)
+        return 2
+    how = ended.document or {}
+    if "exit" in how:                # a test's exit() ends sabline test too
+        return int(how["exit"])
+    if how.get("refused") or how.get("raised"):
+        # sabline-rt refused what this package passed, or stopped with a
+        # defect: a difference the agreement gate exists to find
+        print(f"sabline: sabline-rt did not run the tests: "
+              f"{json.dumps(how)[:2000]}", file=sys.stderr)
+        return 1
+    print(f"\n{passed[0]}/{many} passed")
+    return 0 if passed[0] == many else 1
 
 
 def _audit_stream_to(path: str) -> Any:
