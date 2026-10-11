@@ -170,7 +170,7 @@ def command_line(ceiling: Path, wide: Path, broken: Path) -> None:
             if receipt.exists() else None
         ok(f"[{runtime}] a budget inside it runs, and its receipt names it",
            done.returncode == 0 and done.stdout == "inside\n"
-           and named(said, ceiling)
+           and said is not None and named(said, ceiling)
            and said["predicate"]["producer"]["name"]
            == ("sabline-rt" if runtime == "rust" else "sabline-lang"),
            (done.stdout, done.stderr, said))
@@ -203,8 +203,9 @@ def library(ceiling: Path) -> None:
     inside = f"io,fs:read:{os.path.realpath(WORK / 'data')}"
     for runtime in RUNTIMES:
         with Env(ceiling, runtime):
-            for how, limits in (("sabline.run", {}),
-                                ("sabline.run with limits", {"timeout": 60})):
+            routes: tuple[tuple[str, dict[str, Any]], ...] = (
+                ("sabline.run", {}), ("sabline.run with limits", {"timeout": 60}))
+            for how, limits in routes:
                 r = sabline.run(source, path=str(program), allow="io,fs", **limits)
                 ok(f"[{runtime}] {how}: E325, the receipt naming the ceiling",
                    not r.ok and r.problems and r.problems[0].code == "E325"

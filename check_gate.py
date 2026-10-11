@@ -70,6 +70,7 @@ NEEDED = ("examples", "stdlib", "benchmark/corpus", "tests/error_messages",
           "agreement_runs.py",
           "check_prover_lies.py",
           "check_sandbox.py", "check_refusals.py", "check_termination.py",
+          "run_tests.py",
           "suite_dirs.py",
           "suite_runtime.py", "LICENSE")
 

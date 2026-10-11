@@ -345,6 +345,7 @@ def pool_worker(argv: list[Any]) -> int:
             _msg_write(replies, {"audit_event": event})
 
         op = request.get("op") or "run"
+        hosted = False                     # this worker hosted sabline-rt's run
         try:
             if op == "probe" and "--confine-probe" in argv:
                 answer: dict[str, Any] = {"probe": _confine.probe(
@@ -371,7 +372,7 @@ def pool_worker(argv: list[Any]) -> int:
                 # over
                 _msg_write(replies, {"route": True})
                 _host_relays(requests, replies, request)
-                answer = None
+                answer, hosted = {}, True
             else:
                 if request.get("route"):
                     # it stays here, and the parent says so before it runs
@@ -391,7 +392,7 @@ def pool_worker(argv: list[Any]) -> int:
         except Exception as e:             # a defect in the compiler, not
             answer = {"crashed": f"{type(e).__name__}: {e}"}   # in the run
         reset_program_state(budget, baseline)
-        if answer is None:                 # a run sabline-rt made: said
+        if hosted:                         # a run sabline-rt made: said
             continue
         try:
             _msg_write(replies, answer)
@@ -553,7 +554,8 @@ class _Worker:
                 continue
             if message is not None and isinstance(message.get("answer"),
                                                   dict):
-                return message["answer"]
+                answered: dict[str, Any] = message["answer"]
+                return answered
             raise through_rt.HostGone(message or {})
 
     def relayed(self) -> None:

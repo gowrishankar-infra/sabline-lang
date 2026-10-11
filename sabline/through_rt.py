@@ -526,12 +526,12 @@ def run(path: str, *, allow: str | None, seed: Any = None,
                         test(frame["test"])
                 elif "call" in frame:
                     try:
-                        said = host(frame["call"])
+                        answered = host(frame["call"])
                     except HostGone as e:
-                        said = e.args[0] if e.args else {}
-                        gone = said if isinstance(said, dict) else {}
+                        last = e.args[0] if e.args else {}
+                        gone = last if isinstance(last, dict) else {}
                         break
-                    say({"answer": said})
+                    say({"answer": answered})
                 elif "end" in frame:
                     end = frame["end"]
                     break

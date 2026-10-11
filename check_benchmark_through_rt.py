@@ -58,7 +58,8 @@ def harness(runtime: str, out: Path) -> dict[str, Any]:
         raise SystemExit(f"check_benchmark_through_rt: the harness wrote no "
                          f"results under {runtime} (status {done.returncode}):"
                          f"\n{done.stdout[-1500:]}\n{done.stderr[-1500:]}")
-    return json.loads(out.read_text(encoding="utf-8"))
+    results: dict[str, Any] = json.loads(out.read_text(encoding="utf-8"))
+    return results
 
 
 def main() -> int:

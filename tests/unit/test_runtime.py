@@ -502,8 +502,9 @@ class TheVariableChoosesTheRuntime(Run):
             said = call("py_float", "math", "pow", ["2", "0.5"])
             self.assertEqual(said["value"], 2 ** 0.5)
             self.assertEqual((said["did"], said["counted"]), ([], {}))
-            self.assertEqual(call("py", "math", "sqrt", ["-1"])["fail"],
-                             "math.sqrt failed: math domain error")
+            # CPython's own words after the colon, which 3.14 changed
+            self.assertTrue(call("py", "math", "sqrt", ["-1"])["fail"]
+                            .startswith("math.sqrt failed: "))
             refused = call("py", "json", "dumps", ["x"])["error"]
             self.assertEqual((refused["code"], refused["line"]), ("E311", 7))
             made = call("py_new", "collections", "Counter", '["aab"]')["value"]
@@ -832,12 +833,15 @@ class OrganisationCeiling(Run):
                 self.assertEqual(ceiling.refusal(order, budget) is None, fits,
                                  (spec, [c.allows() for c in order]))
         said = ceiling.refusal([a, b], Budget.parse("io,net:api.corp.com"))
+        assert said is not None
         self.assertEqual(said.code, "E325")
         self.assertIn("the budget's 'net' grant goes past the organisation "
                       "ceiling c.json: it allows at most 5 network operations",
                       said.message)
-        self.assertIn("is not one", ceiling.refusal(
-            [ceiling.read("x.json", "nope")], Budget.parse("io")).message)
+        broken = ceiling.refusal([ceiling.read("x.json", "nope")],
+                                 Budget.parse("io"))
+        assert broken is not None
+        self.assertIn("is not one", broken.message)
 
     def test_gap_and_a_doors_covers_are_one_rule(self) -> None:
         from sabline.budget import Budget
