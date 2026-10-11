@@ -23,6 +23,12 @@
 //! - `source`: the program's text, when the file at `path` - where its
 //!   imports resolve from - does not hold it (`sabline.run(source,
 //!   path=...)`).
+//! - `import_root`: the directory every import must stay inside, as the
+//!   library's `import_root=` gives it (E515).
+//! - `tests`: `true` for `sabline test` - each test function of the entry
+//!   called in turn rather than `main` ([`crate::run_dump::test_relayed`]),
+//!   a `{"test": ...}` frame after each, and the end `{"end": {"tests":
+//!   ...}}`.
 //!
 //! Then the run, and on standard output a frame for each thing it does, in
 //! the order it does them: `{"out": text}` for what `print` writes and
@@ -122,6 +128,7 @@ pub fn request(line: &str) -> Result<(String, Given), String> {
         Some(_) => return Err("sabline-rt exec: 'args' is not a list".to_string()),
     };
     let stream = matches!(field(fields, "stream"), Some(Value::Bool(true)));
+    let tests = matches!(field(fields, "tests"), Some(Value::Bool(true)));
     Ok((
         path,
         Given {
@@ -133,6 +140,8 @@ pub fn request(line: &str) -> Result<(String, Given), String> {
             relayed: true,
             stream,
             source: text_field(fields, "source")?,
+            import_root: text_field(fields, "import_root")?,
+            tests,
             ..Given::default()
         },
     ))
@@ -175,7 +184,7 @@ mod tests {
         let (path, given) = request(
             r#"{"path": "p.vel", "allow": "io,fs:read:.", "deny": null, "seed": 7,
                "freeze_time": -5, "max_read": 10, "args": ["a", "\ud800"], "name": "<source>",
-               "stream": true}"#,
+               "stream": true, "import_root": "box", "tests": true}"#,
         )
         .unwrap();
         assert_eq!(path, "p.vel");
@@ -187,6 +196,8 @@ mod tests {
         );
         assert_eq!(given.args.unwrap()[1], Text::from(vec![0xD800]));
         assert_eq!(given.name.as_deref(), Some("<source>"));
+        assert_eq!(given.import_root.as_deref(), Some("box"));
+        assert!(given.tests);
         assert!(given.relayed && given.stream);
         assert!(request(r#"{"allow": "io"}"#).unwrap_err().contains("no 'path'"));
         assert!(request("[1]").unwrap_err().contains("not an object"));

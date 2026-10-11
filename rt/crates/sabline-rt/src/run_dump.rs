@@ -26,6 +26,7 @@ use crate::json::Json;
 use crate::loader::load_program_given;
 use crate::receipt::{self, Ending};
 use crate::text::Text;
+use crate::value::Value;
 
 /// The format's version, carried in every document: 2 from the size
 /// limit, whose stop the document names in `stopped_by`.
@@ -141,12 +142,18 @@ pub struct Given {
     /// The entry's text, in place of the file at its path: the library's
     /// `sabline.run(source, path=...)`.
     pub source: Option<String>,
+    /// The directory the program's imports must stay inside (E515): the
+    /// library's `import_root=`, a pool's, a replay's own copy.
+    pub import_root: Option<String>,
+    /// `sabline test`: call each test function of the entry rather than
+    /// `main` ([`test_relayed`]).
+    pub tests: bool,
 }
 
 impl Given {
     /// A line of the list: a path, or a JSON object naming one with any of
     /// `allow`, `deny`, `seed`, `freeze_time`, `max_read`, `environ`,
-    /// `steps` and `size`.
+    /// `steps`, `size` and `import_root`.
     pub fn of_line(line: &str) -> Result<(String, Given), String> {
         if !line.starts_with('{') {
             return Ok((line.to_string(), Given::default()));
@@ -189,6 +196,7 @@ impl Given {
                 environ,
                 steps: limit("steps"),
                 size: limit("size"),
+                import_root: text("import_root"),
                 ..Given::default()
             },
         ))
@@ -298,6 +306,96 @@ pub fn run_relayed(
     (doc, receipt)
 }
 
+/// `sabline test`'s run, relayed (9.0, M3): the program loaded and checked
+/// as a run's is - the Python package has checked and proved it already -
+/// and then each test function of the entry file - a name that starts
+/// `test_`, no parameters, defined in the entry itself - called in turn on
+/// one runtime, under one budget, as `sabline test` calls them. What each
+/// prints goes to `relay` as it happens, and after it a frame
+/// `{"test": {"name", ...}}` saying how it ended: `"passed": true` for a
+/// test that gave back `true`; `"returned"`, the text of anything else it
+/// gave back; `"code"` and `"message"` for an error; `"failed"`, the
+/// reason of a failure that escaped it. What comes back is how the tests
+/// ended: `{"tests": n}` when each of the n was called; `{"exit": n}` when
+/// one ended the run with `exit`, which ends `sabline test` there too;
+/// `{"refused": [...]}` for a program the checks refuse, which no caller
+/// sends; and `{"raised": name}` for a defect.
+pub fn test_relayed(path: &str, install_dir: &str, given: &Given, relay: Relay) -> Json {
+    let Ok(budget) = budget_from(given.allow.as_deref(), given.deny.as_deref()) else {
+        return Json::obj([("raised", Json::text("BudgetError"))]);
+    };
+    let refused =
+        |e: &SablineError| Json::obj([("refused", Json::List(vec![checked(e, path)]))]);
+    let mut files = Vec::new();
+    let loaded = match load_program_given(
+        path,
+        given.source.as_deref(),
+        given.import_root.as_deref(),
+        install_dir,
+        &mut files,
+    ) {
+        Ok(loaded) => loaded,
+        Err(e) => return refused(&e),
+    };
+    let mut errors = Vec::new();
+    check_effects(&loaded.funcs, install_dir, &mut errors);
+    if let Err(stopped) = check_types(&loaded.funcs, &loaded.records, &mut errors) {
+        return refused(&stopped);
+    }
+    if let Some(e) = errors.first() {
+        return refused(e);
+    }
+    let tests: Vec<(String, u32)> = loaded
+        .funcs
+        .iter()
+        .filter(|f| f.name.starts_with("test_") && f.params.is_empty() && f.src_file == path)
+        .map(|f| (f.name.clone(), f.line))
+        .collect();
+    let frames = relay.frames.clone();
+    let args = given.args.clone().unwrap_or_default();
+    let mut environ = Environ::of_process();
+    for (name, value) in &given.environ {
+        environ.set(name, value);
+    }
+    let mut rt =
+        Runtime::new(&loaded.funcs, &loaded.records, budget, Io::relayed(relay, args))
+            .with_environ(environ)
+            .with_params(given.params.clone());
+    for (name, line) in &tests {
+        let said = match rt.call_named(name, *line) {
+            Ok(Value::Bool(true)) => {
+                Json::obj([("name", Json::text(name)), ("passed", Json::Bool(true))])
+            }
+            Ok(other) => Json::obj([
+                ("name", Json::text(name)),
+                ("returned", Json::Text(crate::value::to_text(&other))),
+            ]),
+            Err(Stop::Error(e)) => Json::obj([
+                ("name", Json::text(name)),
+                ("code", Json::text(e.code)),
+                ("message", Json::Text(e.message)),
+            ]),
+            Err(Stop::Fail(reason)) => {
+                // `failed: {e.reason}`: the reason as str() writes it
+                let mut shown = crate::text::TextBuf::new();
+                crate::value::write_str(&mut shown, &reason);
+                Json::obj([("name", Json::text(name)), ("failed", Json::Text(shown.done()))])
+            }
+            Err(Stop::Exit(code)) => return Json::obj([("exit", Json::Int(code))]),
+            Err(Stop::Raised(what)) => return Json::obj([("raised", Json::text(what))]),
+            // a relayed run has neither limit
+            Err(Stop::Steps(_) | Stop::Size(_)) => {
+                return Json::obj([("raised", Json::text("a limit"))])
+            }
+        };
+        // after what the test printed, which went down the same channel
+        if frames.send(Json::obj([("test", said)]).canonical()).is_err() {
+            break;
+        }
+    }
+    Json::obj([("tests", Json::Int(tests.len() as i64))])
+}
+
 fn run_inner(
     path: &str,
     install_dir: &str,
@@ -345,8 +443,13 @@ fn run_inner(
     if !receipt::stream_start(&mut recorder, &facts.run(&none, &[], failed, Vec::new())) {
         recorder.stream = None; // no instant: neither a stream nor a receipt
     }
-    let loaded =
-        load_program_given(path, given.source.as_deref(), install_dir, &mut facts.files);
+    let loaded = load_program_given(
+        path,
+        given.source.as_deref(),
+        given.import_root.as_deref(),
+        install_dir,
+        &mut facts.files,
+    );
     // the audit stream's subjects, once loading is over
     if !facts.files.is_empty() && recorder.stream.is_some() {
         recorder.tell_subjects(&facts.subjects());

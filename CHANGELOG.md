@@ -15,12 +15,185 @@ audit stream, `sabline.audit-stream/1`, one JSON object an event as it
 happens - written to FILE a line each, or handed to the function. Without
 either nothing changes.
 
-api: `SABLINE_REFERENCE_RUNTIME=rust` sends `sabline run` and `sabline.run`
-through sabline-rt (9.0, M3; the variable MAINTENANCE.md reserved). Unset,
-or `python`, nothing changes; any other value is refused - exit 2 on the
-command line, a `ValueError` from the library - where until now nothing
-read it. `sabline/through_rt.py` says what a run through sabline-rt is and
-is not.
+api: `SABLINE_REFERENCE_RUNTIME=rust` sends every run through sabline-rt
+(9.0, M3; the variable MAINTENANCE.md reserved) - `sabline run`,
+`sabline.run` with and without `timeout=` and `max_memory_mb=`,
+`Pool.run`, `PoolRegistry.run` (and so the HTTP door's and the MCP
+server's runs), `sabline replay` and `sabline test`. Unset, or `python`,
+nothing changes; any other value is refused - exit 2 on the command line,
+a `ValueError` from the library and a pool - where until now nothing read
+it. A run sabline-rt does not make yet (the network, Python or a tool its
+budget grants a program that uses it; an eval run; `sabline trace`) is the
+package's, and says so in one line on stderr. `sabline/through_rt.py` says
+what a run through sabline-rt is and is not.
+
+api: `SABLINE_THROUGH_RT_LOG=FILE`, with `SABLINE_REFERENCE_RUNTIME=rust`,
+has each run append one JSON line to FILE saying who answered it -
+sabline-rt, the checks, or the package and why (9.0, M3; what
+`suites_through_rt.py` counts). Without it nothing is written.
+
+## 9.0.0-alpha.10 - M3: every run through sabline-rt, the limits held by the caller, and the suites counted per question
+
+M3's fifth checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,
+`Secret` and receipts*), and still not its end: **with
+`SABLINE_REFERENCE_RUNTIME=rust`, every run goes through sabline-rt** - a
+run with a timeout or a memory cap, a Pool and a PoolRegistry (and so the
+HTTP door's and the MCP server's runs), `sabline replay` and `sabline test`,
+beside `sabline run` and `sabline.run` - and **the suites of M3's fourth
+criterion are counted question by question**, with who answered each run.
+The maintainer's decisions of 2026-10-11 are recorded in `plan/9.0.md`.
+M3's exit criteria are not met and none is claimed: the network, Python
+and tools are not ported, sabline-rt confines nothing (M4), and the
+organisation ceiling file is not started. The Python package is the
+reference, and where the two disagree sabline-rt has a defect.
+
+This is a **pre-release** of the `sabline-rt` crate, and it publishes that
+and nothing else. 8.8.0 is still what `pip install sabline-lang`, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and `sabline --version` still says 8.8.0. What the Python package on
+main gained below ships with 9.0.
+
+### Decided
+
+The maintainer's answers of 2026-10-11: a run whose budget grants the
+network, Python or a tool to a program that uses it **keeps the fallback** -
+it runs in the Python package and says so on stderr, until sabline-rt does
+those itself; **`SABLINE_REFERENCE_RUNTIME` stays the switch**, with no
+`runtime=` on `sabline.run`, so M7's API golden is unchanged; and **a run
+through sabline-rt prints no "not confined" notice** - the receipt's
+confinement field is the record. check_library's question about the
+receipt's producer version waits for M4, as decided.
+
+### What exists
+
+**A bounded run and the pool, through sabline-rt, the limits held by the
+caller.** A pool's worker is confined at its start (8.4) and cannot start a
+process, so it does what it always did up to the run - checks and proves
+the program, under the pool's limits - and says whether sabline-rt may run
+it; the pool's own process then starts `sabline-rt exec` under the memory
+cap and kills it at what is left of the deadline. On Windows the cap is the
+job object a worker gets, made before sabline-rt runs an instruction; on
+Linux it is RLIMIT_DATA, set with prlimit before the request is sent - not
+RLIMIT_AS, because an idle `sabline-rt exec` maps 72 MB of address space it
+never touches (glibc's arena for its input thread), and the cap is the
+program's plus the 128 MiB its run's stack takes. Measured on Linux from a
+16 MB cap to 300 MB: a small program runs, the doubling text is E611, deep
+recursion is E609 and a loop is E610 at its deadline. A run a limit stopped
+sends no end, so its audit stream is always asked for and the pool makes
+its receipt from what that says the run did - `complete: false`, named
+sabline-rt's. The worker is kept only after a clean run, as before; the
+`sabline-rt` process is used once, always.
+
+**`sabline replay` and `sabline test` through sabline-rt.** A replay runs
+its copy of the program through sabline-rt, held to the replay's own
+directory and read ceiling; a bounded replay goes through its pool.
+`check_receipts.py`'s three replays of a run recorded through sabline-rt,
+which differed in confinement last time, now pass: replayed through
+sabline-rt too, both say `none`. `sabline test` asks sabline-rt to call each
+test function in turn on one runtime (`run_dump::test_relayed`) and prints
+each verdict after what the test printed, as the package's loop does.
+
+**The import root in sabline-rt's loader** (E515, as `loader.py` words it,
+by CPython's `realpath`), so a run held to an import root - the library's
+`import_root=`, a pool's, a replay's - goes through sabline-rt too. The
+gate holds it: thirteen programs in its tree importing from inside, outside,
+by `..`, by a link, from a library, a file that is not `.vel`, a sibling
+directory sharing the root's prefix.
+
+**What stays the package's, and says so in one line on stderr**: a run whose
+budget grants the network, Python or a tool to a program that uses it
+(decided); an eval run, whose profile holds a run to the operating
+system's confinement and does not start one without it; and `sabline
+trace`, which shows the package's interpreter at work. A program the
+checks or the prover refuse runs nothing, and says nothing more.
+
+**`suites_through_rt.py`**: the six suites of M3's fourth criterion run
+whole with `SABLINE_REFERENCE_RUNTIME=rust`, and M2's five with `--runtime
+rust` too, which now ask their run questions of sabline-rt where they
+counted them as not asked. Every run writes who answered it
+(`SABLINE_THROUGH_RT_LOG`), and what a suite prints goes to the same log,
+so each run is counted against the question it was made for. A question
+that fails is a failure unless it is listed by design, with its rung. In
+CI on Linux and Windows. On Windows:
+
+| Suite | Questions | Failed | Ran a program | sabline-rt alone | A run the package made | Runs: sabline-rt / package |
+|---|---|---|---|---|---|---|
+| check_library.py | 309 | 1, by design | 58 | 49 | 8 (net) | 53 / 8 |
+| check_money.py | 81 | 0 | 41 | 40 | 0 | 40 / 0 |
+| check_hostile.py | 74 | 0 | 39 | 29 | 1 (ffi) | 29 / 1 |
+| check_self_budget.py | 116 | 0 | 51 | 20 | 30 (ffi, net) | 186 / 101 |
+| check_pool.py | 39 | 0 | 26 | 21 | 4 (ffi) | 507 / 7 |
+| check_receipts.py | 41 | 0 | 15 | 10 | 4 (ffi, eval) | 15 / 6 |
+| check_fallible.py --runtime rust | 33 | 0 | 25 | 19 | 6 (ffi, net) | 19 / 6 |
+| check_secret.py --runtime rust | 67 | 0 | 14 | 12 | 1 (trace) | 12 / 1 |
+| check_error_messages.py --runtime rust | 96 | 0 | 24 | 20 | 4 (ffi, net, tool) | 20 / 4 |
+| check_termination.py --runtime rust | 67 | 0 | 0 | - | - | - |
+| check_refusals.py --runtime rust | 17 | 0 | 0 | - | - | - |
+
+The rest of the questions that ran a program had a run the checks or the
+prover refused, so nothing ran; the questions not counted as passed or
+failed are POSIX-only cases, audits and commands that stay Python
+(decisions/0002), checks under a ceiling or an import root, and the
+prover's. Linux (WSL; CI's ubuntu leg runs the same) gave the same verdicts
+with its own platform's question counts.
+
+**`check_through_rt.py`** holds every entry point to the package's own runs:
+325 programs through the command line and `sabline.run`, every fourth of
+them bounded and on a Pool too (82), every budgeted row of the gate that
+ends (76) through `sabline.run` with limits and without and through a
+PoolRegistry, in a tree made afresh for each runtime with a frozen clock
+given as an instant, and `sabline test` on every way a test can end - **0
+differences**, in about ten minutes here; in CI beside the gate.
+
+### The agreement gate
+
+    the parsers: 7053 compared, 7053 agree, 0 differ
+    the checkers: 7053 compared, 7053 agree, 0 differ
+    the budget parser: 2975 compared, 2975 agree, 0 differ
+    the interpreters: 7053 compared, 7053 agree, 0 differ
+    the interpreters, under their budgets: 135 compared, 135 agree, 0 differ
+    the receipts: 7188 compared, 7188 agree, 0 differ
+    the audit streams: 7188 compared, 7188 agree, 0 differ
+    the builtin tables: 1 compared, 1 agree, 0 differ
+  agreement gate: 38646 comparisons, 38646 agreements, 0 differences
+
+The same on CPython 3.10, 3.12 and 3.13. The thirteen import-root programs
+are the 39 new comparisons; both run documents take `import_root`.
+
+### Found on the way, and fixed
+
+1. **check_self_budget.py had never asked sabline-rt anything.** It scrubs
+   every `SABLINE_` variable from its environment before it starts, the
+   runtime switch with them, so "112 of 112 through sabline-rt" last time
+   was 112 in the package. And its section C, which finds every variable the
+   package reads and varies each, finds them by a pattern that the switch
+   escaped: `through_rt` read it through a constant not named `*_ENV`.
+   The two variables of the runtime are `*_ENV` constants now, the scrub
+   keeps them, and C15 and C16 vary them - the other runtime must end every
+   run as this one does. 116 of 116 in both.
+2. **`sabline.run(freeze_time="2026-01-01T00:00:00Z")` through sabline-rt
+   was refused by it**: the request takes epoch seconds and the library
+   handed the instant on. A replay always hands one. Converted as
+   `set_run_params` converts it.
+3. **`sabline.run` with a frozen clock its receipt cannot say** - past the
+   year 9999 - ran the program and then raised ValueError making the
+   receipt, whatever the program had done by then; through sabline-rt it
+   ran and returned. `check_through_rt.py` found it. It is refused before
+   anything runs now, in both, as `Pool.run` already refused it.
+
+compatibility: for 9.0's Python package, `sabline.run(freeze_time=...)` with
+an instant past the year 9999 raises ValueError before the program runs,
+as `Pool.run` does; it used to run the program first and raise after.
+
+### What is not done
+
+In the order to do it (`plan/9.0-m3-progress.md`): the network, Python and
+tools - the question for the maintainer, below; the organisation ceiling
+file (0007, 32c); eval through sabline-rt, which waits for M4's
+confinement; and M8's performance.
+
+**A question for the maintainer**, in the progress file: how sabline-rt
+should do the network, Python and tools.
 
 ## 9.0.0-alpha.9 - M3: sabline run through sabline-rt, and what is written out counted first
 

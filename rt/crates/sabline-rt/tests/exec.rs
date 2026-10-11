@@ -153,6 +153,96 @@ fn a_parent_that_goes_away_takes_the_run_with_it() {
     }
 }
 
+/// Every frame of one request, with no input to answer: (frames, end).
+fn frames_of(fields: &[(&str, Json)]) -> (Vec<String>, String) {
+    let mut child = exec();
+    let mut stdin = child.stdin.take().unwrap();
+    stdin.write_all(line_of(fields).as_bytes()).unwrap();
+    let mut seen = Vec::new();
+    let mut end = String::new();
+    for frame in BufReader::new(child.stdout.take().unwrap()).lines() {
+        let frame = frame.unwrap();
+        if frame.starts_with("{\"end\"") {
+            end = frame;
+            break;
+        }
+        seen.push(frame);
+    }
+    drop(stdin);
+    child.wait().unwrap();
+    (seen, end)
+}
+
+#[test]
+fn an_import_root_holds_every_import_to_it() {
+    let path = program(
+        "root",
+        "import \"../outside.vel\" as far\nfn main() uses io {\n    print(far.one())\n}\n",
+    );
+    let served = path.parent().unwrap();
+    std::fs::write(
+        served.parent().unwrap().join("outside.vel"),
+        "fn one() -> Int {\n    return 1\n}\n",
+    )
+    .unwrap();
+    let (_, end) = frames_of(&[
+        ("path", Json::text(path.to_string_lossy())),
+        ("import_root", Json::text(served.to_string_lossy())),
+    ]);
+    assert!(end.contains(r#""code":"E515""#), "{end}");
+    assert!(end.contains("outside the directory this program is served from"), "{end}");
+    // and without one, the same program runs
+    let (seen, end) = frames_of(&[("path", Json::text(path.to_string_lossy()))]);
+    assert_eq!(seen, [r#"{"out":"1\n"}"#], "{end}");
+}
+
+#[test]
+fn tests_are_called_in_turn_each_said_after_what_it_printed() {
+    let path = program(
+        "tests",
+        "fn test_one() -> Bool uses io {\n    print(\"from one\")\n    return true\n}\n\n\
+         fn test_two() -> Int {\n    return 2\n}\n\n\
+         fn test_three() -> Int {\n    let z = 0\n    return 1 / z\n}\n\n\
+         fn test_four() -> Int or fail {\n    let n = try to_int(\"x\")\n    return n\n}\n\n\
+         fn test_with(n: Int) -> Bool {\n    return true\n}\n\n\
+         fn main() uses io {\n    print(\"not run\")\n}\n",
+    );
+    let (seen, end) = frames_of(&[
+        ("path", Json::text(path.to_string_lossy())),
+        ("tests", Json::Bool(true)),
+    ]);
+    assert_eq!(seen.len(), 5, "{seen:?}");
+    assert_eq!(seen[0], r#"{"out":"from one\n"}"#);
+    assert_eq!(seen[1], r#"{"test":{"name":"test_one","passed":true}}"#);
+    assert_eq!(seen[2], r#"{"test":{"name":"test_two","returned":"2"}}"#);
+    assert!(
+        seen[3].contains(r#""name":"test_three""#) && seen[3].contains(r#""code":"E"#),
+        "{}",
+        seen[3]
+    );
+    assert_eq!(
+        seen[4],
+        r#"{"test":{"failed":"'x' is not a whole number","name":"test_four"}}"#
+    );
+    assert_eq!(end, r#"{"end":{"tests":{"tests":4}}}"#, "test_with takes an argument");
+}
+
+#[test]
+fn an_exit_in_a_test_ends_them_there() {
+    let path = program(
+        "test-exit",
+        "fn test_a() -> Bool {\n    return true\n}\n\n\
+         fn test_b() -> Bool uses io {\n    exit_with(3)\n    return true\n}\n\n\
+         fn test_c() -> Bool {\n    return true\n}\n",
+    );
+    let (seen, end) = frames_of(&[
+        ("path", Json::text(path.to_string_lossy())),
+        ("tests", Json::Bool(true)),
+    ]);
+    assert_eq!(seen, [r#"{"test":{"name":"test_a","passed":true}}"#]);
+    assert_eq!(end, r#"{"end":{"tests":{"exit":3}}}"#);
+}
+
 #[test]
 fn a_request_that_does_not_read_is_refused_with_status_2() {
     let mut child = exec();

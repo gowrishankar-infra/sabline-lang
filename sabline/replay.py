@@ -14,7 +14,8 @@ from . import naming
 from .errors import SablineError
 from .values import FailSignal, log_line
 from .budget import Budget, BudgetError, expand_allow
-from .library import _run_in_process
+from . import through_rt
+from .library import _run_in_process, _run_through_rt
 from .pool import Pool
 from .statements import subject_file
 from .receipt_diff import Unread, load_receipt
@@ -299,6 +300,7 @@ def _replay(report: dict[str, Any], receipt: dict[str, Any],
         with Pool(size=1, allow=asked.spec(), timeout=params.get("timeout"),
                   max_memory_mb=params.get("max_memory_mb"),
                   import_root=home) as pool:
+            pool._entry = "replay"      # where runs are counted (9.0, M3)
             result = pool.run(source, stdin=stdin, args=args, path=entry,
                               seed=seed, freeze_time=frozen, _name=name)
     else:
@@ -309,9 +311,18 @@ def _replay(report: dict[str, Any], receipt: dict[str, Any],
             g["MAX_READ_BYTES"] = read_most
         g["RESPONSES"] = replayer
         try:
-            result = _run_in_process(source, path=entry, budget=asked,
-                                     args=args, stdin=stdin, native=True,
-                                     seed=seed, freeze_time=frozen, name=name)
+            # SABLINE_REFERENCE_RUNTIME=rust (9.0, M3): the run through
+            # sabline-rt, held to the replay's own copy and read ceiling; a
+            # program whose recorded responses it would need is one granted
+            # Python, which stays here
+            routed = _run_through_rt(
+                source, path=entry, budget=asked, args=args, stdin=stdin,
+                seed=seed, freeze_time=frozen, name=name, stream=None,
+                stream_ends=True, entry="replay") \
+                if through_rt.chosen() == "rust" else None
+            result = routed if routed is not None else _run_in_process(
+                source, path=entry, budget=asked, args=args, stdin=stdin,
+                native=True, seed=seed, freeze_time=frozen, name=name)
         finally:
             g["IMPORT_ROOT"], g["MAX_READ_BYTES"], g["RESPONSES"] = saved
     report["differences"] = compare(receipt,

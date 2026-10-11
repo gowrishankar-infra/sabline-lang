@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from . import state as _state
 from .version import VERSION, _launch_command
 from . import confine as _confine
+from . import through_rt
 from .recorder import _RunRecorder, _entry_name, _utc_now_ms
 from .budget import Budget, BudgetError, set_run_params
 from .results import AuditResult, CheckResult, Problem, RunResult, _problem_of
@@ -21,19 +22,24 @@ from .library import (
     _budget_from,
     _cap_this_process,
     _check_here,
+    _kept_in_package,
     _out_of_memory,
+    _result_of_rt,
     _run_in_process,
     _spawn_capped,
+    _through_rt_here,
     _unfinished_audit,
+    _why_not_through_rt,
 )
 
 if TYPE_CHECKING:
-    from .receipts import (_run_parameters, receipt_statement, stream_end,
-                           stream_start)
+    from .receipts import (CONFINEMENT_KEYS, _run_parameters,
+                           receipt_statement, stream_end, stream_start)
 
 # Used inside functions only, from modules after this one: sabline/__init__.py
 # binds each here once every module is loaded.
 __forward__ = {
+    "CONFINEMENT_KEYS": "receipts",
     "_run_parameters": "receipts",
     "receipt_statement": "receipts",
     "stream_end": "receipts",
@@ -349,7 +355,18 @@ def pool_worker(argv: list[Any]) -> int:
                 answer = {"audit": _audit_here(
                     request.get("source") or "",
                     path=request.get("path")).as_dict()}
+            elif request.get("route") and (why := _why_not_through_rt(
+                    request.get("source") or "", request.get("path"),
+                    budget)) is None:
+                # SABLINE_REFERENCE_RUNTIME=rust (9.0, M3): checked and
+                # proved here, under the pool's limits, and sabline-rt may
+                # run it - which the parent does, since this process cannot
+                # start one. Nothing of the program ran here
+                answer = {"route": True}
             else:
+                if request.get("route"):
+                    # it stays here, and the parent says so before it runs
+                    _msg_write(replies, {"routing": why})
                 answer = _run_in_process(
                     request.get("source") or "", path=request.get("path"),
                     budget=budget, args=request.get("args") or [],
@@ -386,6 +403,9 @@ class _Worker:
         self.on_event: Any = None
         # handed each audit stream event of the run it is asked for (9.0)
         self.on_audit: Any = None
+        # handed why a run that was to go through sabline-rt stays the
+        # worker's, before the worker runs it (9.0, M3)
+        self.on_routing: Any = None
         self._kill_lock = threading.Lock()
         self._noise: list[Any] = []
         self.proc, self.job, self.cap = _spawn_capped(
@@ -455,6 +475,11 @@ class _Worker:
                             self.on_audit(message["audit_event"])
                         except Exception:
                             self.on_audit = None   # not called again
+                    continue
+                if message is not None and len(message) == 1 and \
+                        isinstance(message.get("routing"), str):
+                    if self.on_routing is not None:
+                        self.on_routing(message["routing"])
                     continue
                 if message is not None and len(message) == 1 and isinstance(
                         message.get("confinement"), dict):
@@ -610,6 +635,12 @@ class Pool:
     """
 
     _CLOSED = object()
+    # what a run on this pool is called where runs are counted (through_rt.note)
+    _entry = "pool"
+    # why a run on this pool stays this package's under
+    # SABLINE_REFERENCE_RUNTIME=rust whatever the program is: None for a pool,
+    # whose every run may go through sabline-rt (9.0, M3)
+    _kept_by: str | None = None
 
     def __init__(self, size: int = 4, *, allow: set[str] | str | None = None,
                  deny: set[str] | None = None, timeout: float | None = None,
@@ -655,20 +686,63 @@ class Pool:
         not grants. `audit_stream` as `sabline.run` takes it (9.0): the
         worker sends each event as it happens, and the last carries the
         receipt this pool made, of a run it stopped too.
+
+        With SABLINE_REFERENCE_RUNTIME=rust (9.0, M3) a worker checks and
+        proves the program, under the pool's limits, and the run itself is
+        sabline-rt's, which this process starts under the same limits with
+        what is left of the deadline - the worker is confined (8.4) and
+        cannot start a process. A program sabline-rt may not run yet stays
+        the worker's, and says so (`_why_not_through_rt`).
         """
         started_at = _utc_now_ms()
         parameters = _run_parameters(seed, freeze_time, self.timeout,
                                      self.max_memory_mb)   # a bad instant
         teller = _RunRecorder(stream=audit_stream)          # fails here
-        stream_start(teller, budget=self.allow, parameters=parameters,
-                     started_at=started_at)
+        rust = through_rt.chosen() == "rust"
+        if rust and self._kept_by is not None:
+            _kept_in_package(self._entry, self._kept_by)
+            rust = False
+        opened = [False]
+
+        def open_stream(start: dict[str, Any] | None = None) -> None:
+            # the stream's first event: this pool's, or for a run sabline-rt
+            # makes, sabline-rt's - which names it - with this pool's limits
+            if opened[0]:
+                return
+            opened[0] = True
+            if start is None:
+                stream_start(teller, budget=self.allow, parameters=parameters,
+                             started_at=started_at)
+            else:
+                teller.tell(dict(start, startedAt=started_at, run_parameters={
+                    k: v for k, v in parameters.items()
+                    if k not in CONFINEMENT_KEYS}))
+        if not rust:
+            open_stream()
+
+        def heard(event: dict[str, Any]) -> None:
+            open_stream()
+            teller.tell(event)
+
+        def kept(why: str) -> None:
+            open_stream()
+            _kept_in_package(self._entry, why)
+
+        def through(answer: dict[str, Any], began: float) -> dict[str, Any]:
+            return self._run_through_rt(
+                source, path=path, name=_name, stdin=stdin or "",
+                args=list(args or []), seed=seed, freeze_time=freeze_time,
+                teller=teller, open_stream=open_stream, began=began)
         answer, events, worker, seconds = self._use(
             {"op": "run", "source": source, "stdin": stdin or "",
              "args": list(args or []), "path": path, "seed": seed,
              "freeze_time": freeze_time, "name": _name,
-             "audit": teller.stream is not None},
+             "audit": teller.stream is not None, "route": rust},
             lambda a: bool(a) and bool(a.get("ok")),
-            on_audit=teller.tell if teller.stream is not None else None)
+            on_audit=heard if teller.stream is not None else None,
+            on_routing=kept if rust else None,
+            then=through if rust else None)
+        open_stream()          # a worker that answered nothing streamed none
         if answer is not None and "ok" in answer:
             result = RunResult(
                 bool(answer.get("ok")), answer.get("output") or "",
@@ -720,10 +794,14 @@ class Pool:
                                                "audit"))
 
     def _use(self, request: dict[Any, Any], keep_if: Any,
-             on_audit: Any = None) -> tuple[Any, ...]:
+             on_audit: Any = None, on_routing: Any = None,
+             then: Any = None) -> tuple[Any, ...]:
         """One request to an idle worker: (answer, events, the worker,
         seconds it took). The worker goes back to the pool only when
-        keep_if(answer) says so; otherwise it is killed and replaced."""
+        keep_if(answer) says so; otherwise it is killed and replaced.
+        `then(answer, began)`, when the worker answers that sabline-rt may
+        run the program (9.0, M3), is the run - made while the worker is
+        still held, so that keep_if is asked of how the run ended."""
         import time as _time
         if self._closed:
             raise RuntimeError("this pool is closed")
@@ -741,11 +819,14 @@ class Pool:
             if worker is None:
                 worker = self._start()
             began = _time.monotonic()
-            worker.on_audit = on_audit
+            worker.on_audit, worker.on_routing = on_audit, on_routing
             try:
                 answer, events = worker.ask(request, self.timeout)
             finally:
-                worker.on_audit = None
+                worker.on_audit = worker.on_routing = None
+            if then is not None and answer is not None and \
+                    answer.get("route"):
+                answer = then(answer, began)
             seconds = _time.monotonic() - began
             keep = bool(keep_if(answer))
             return answer, events, worker, seconds
@@ -865,28 +946,70 @@ class Pool:
                 or (not worker.killed_by_timeout
                     and worker.proc.returncode in (-9, 137)))
 
-    def _no_answer(self, worker: Any, answer: Any, path: Any) -> RunResult:
-        """The worker handed back no run. Say which limit or which
-        fault it was, in the shape run() would have used."""
+    def _limit_reached(self, timed_out: bool, path: Any) -> RunResult:
+        """A run the clock (E610) or the memory cap (E611) stopped, in the
+        shape run() would have used - whichever runtime it was."""
         where = path or "<source>"
-        if worker.killed_by_timeout:
+        if timed_out:
             return RunResult(False, "", "", [Problem(
                 "E610", f"the program ran longer than {self.timeout} "
                         f"second(s) and was stopped", 0, where,
                 ["give it more time, or fix the loop that never ends"])],
                 None, 124, True, False)
+        return RunResult(False, "", "", [Problem(
+            "E611", f"the program used more than {self.max_memory_mb} "
+                    f"MB and was stopped", 0, where,
+            ["give it more memory, or find what is growing"])],
+            None, 1, False, True)
+
+    def _no_answer(self, worker: Any, answer: Any, path: Any) -> RunResult:
+        """The worker handed back no run. Say which limit or which
+        fault it was, in the shape run() would have used."""
+        if worker.killed_by_timeout:
+            return self._limit_reached(True, path)
         if self._starved(worker, answer):
-            return RunResult(False, "", "", [Problem(
-                "E611", f"the program used more than {self.max_memory_mb} "
-                        f"MB and was stopped", 0, where,
-                ["give it more memory, or find what is growing"])],
-                None, 1, False, True)
+            return self._limit_reached(False, path)
         noise = worker.stderr()
         detail = (answer or {}).get("crashed") or (
             noise.splitlines()[-1][:200] if noise
             else "the worker stopped without answering")
-        return RunResult(False, "", "", [Problem("E000", detail, 0, where,
-                                                 [])], None, 1)
+        return RunResult(False, "", "", [Problem("E000", detail, 0,
+                                                 path or "<source>", [])],
+                         None, 1)
+
+    def _run_through_rt(self, source: str, *, path: Any, name: Any,
+                        stdin: str, args: list[Any], seed: Any,
+                        freeze_time: Any, teller: Any, open_stream: Any,
+                        began: float) -> dict[str, Any]:
+        """The run of a program a worker checked, by sabline-rt, started
+        here under this pool's memory cap and killed at what is left of its
+        deadline (sabline/through_rt.py): the answer a worker would have
+        given, marked as sabline-rt's, with the audit stream it sent - from
+        which a run it did not finish gets its receipt."""
+        import time as _time
+        through_rt.note(self._entry, "sabline-rt")
+        left = None if self.timeout is None else \
+            float(self.timeout) - (_time.monotonic() - began)
+
+        def event(e: dict[str, Any]) -> None:
+            kind = e.get("event")
+            if kind == "start":
+                open_stream(e)
+            elif kind != "end":          # the pool's, with its receipt
+                teller.tell(e)
+        ended, output, logs, where = _through_rt_here(
+            source, path=path, budget=self._budget, args=args, stdin=stdin,
+            seed=seed, freeze_time=freeze_time, name=name,
+            import_root=self.import_root, event=event, timeout=left,
+            max_memory_mb=self.max_memory_mb)
+        if ended.finished:
+            answer = _result_of_rt(ended.document, ended.receipt, output,
+                                   logs, where).as_dict()
+        else:
+            answer = self._limit_reached(ended.timed_out, path).as_dict()
+        answer["runtime"] = "sabline-rt"
+        answer["events"] = ended.events
+        return answer
 
     def _stopped(self, worker: Any, answer: Any, path: Any, what: str) -> "Problem":
         """Why a check or an audit came back with no answer: the clock
@@ -919,7 +1042,12 @@ class Pool:
         """The receipt of a run on this pool. The worker's own, when it
         answered, with the limits, the start and the wall time this process
         measured; otherwise one made here from what it streamed before it
-        was stopped, marked incomplete."""
+        was stopped, marked incomplete. A run sabline-rt made has sabline-rt's,
+        with this pool's limits and timings in it; one it did not finish, one
+        made from the audit stream it sent before it was stopped (9.0, M3)."""
+        if (answer or {}).get("runtime") == "sabline-rt":
+            return self._rt_receipt(source, path, name, seed, freeze_time,
+                                    answer, result, started_at, seconds)
         parameters = _run_parameters(seed, freeze_time, self.timeout,
                                      self.max_memory_mb,
                                      confinement=worker.confinement)
@@ -938,6 +1066,41 @@ class Pool:
             budget=self.allow, parameters=parameters, result=result,
             started_at=started_at, wall_time_ms=seconds * 1000,
             complete=False)
+
+    def _rt_receipt(self, source: Any, path: Any, name: Any, seed: Any,
+                    freeze_time: Any, answer: dict[str, Any], result: Any,
+                    started_at: Any, seconds: Any) -> dict[str, Any]:
+        doc = answer.get("receipt")
+        if isinstance(doc, dict) and isinstance(doc.get("predicate"), dict):
+            # sabline-rt's, which knew nothing of the limits it was held to;
+            # its confinement is its own - nothing was asked of the system
+            doc["predicate"]["run_parameters"].update(
+                timeout=self.timeout,
+                max_memory_mb=(None if self.max_memory_mb is None
+                               else int(self.max_memory_mb)))
+            doc["predicate"]["startedAt"] = started_at
+            doc["predicate"]["wall_time_ms"] = round(seconds * 1000, 1)
+            return doc
+        recorder, producer = _RunRecorder(), None
+        for event in answer.get("events") or []:
+            if not isinstance(event, dict):
+                continue
+            if event.get("event") == "start":
+                producer = event.get("producer")
+            recorder.heard(event)
+        made = receipt_statement(
+            recorder, name=_entry_name(path, name),
+            entry_bytes=source.encode("utf-8", "surrogatepass"),
+            budget=self.allow,
+            parameters=_run_parameters(seed, freeze_time, self.timeout,
+                                       self.max_memory_mb, confinement={}),
+            result=result, started_at=started_at,
+            wall_time_ms=seconds * 1000, complete=False)
+        if isinstance(producer, dict):
+            # the run was sabline-rt's, and its receipt names it, as the one
+            # sabline-rt would have made does
+            made["predicate"]["producer"] = dict(producer)
+        return made
 
 
 class PoolRegistry:

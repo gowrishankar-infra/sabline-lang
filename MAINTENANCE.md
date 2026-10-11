@@ -94,11 +94,16 @@ publishes nothing.
 differential and benchmark jobs treat as the reference when there is more
 than one, and the runtime a run uses.
 
-From 9.0's M3 a run reads it: `rust` sends `sabline run` and `sabline.run`
-through sabline-rt (`sabline/through_rt.py` says what that is and is not -
-no confinement before M4, and a budget granting the network, Python or a
-tool to a program that uses it stays the package's, saying so); unset or
-`python` is the package in `sabline/`, as before; anything else is refused.
+From 9.0's M3 a run reads it: `rust` sends every run through sabline-rt -
+`sabline run`, `sabline.run` with limits and without, a Pool and a
+PoolRegistry (so the HTTP door and the MCP server too), `sabline replay`
+and `sabline test` (`sabline/through_rt.py` says what that is and is not -
+no confinement before M4; a budget granting the network, Python or a tool
+to a program that uses it, an eval run and `sabline trace` stay the
+package's, saying so). Unset or `python` is the package in `sabline/`, as
+before; anything else is refused. `SABLINE_THROUGH_RT_LOG`, which names a
+file, has each such run write who answered it there (suites_through_rt.py
+reads it); nothing else does.
 It is opt-in until M7, which flips its default (plan/9.0.md). The agreement
 gate reads none of it and compares both runtimes whatever it says, and
 `check_gate.py` sets it both ways to show that. Do not use the name for

@@ -265,7 +265,7 @@ fn exec(dir: String) -> Result<ExitCode, String> {
     // texts, which stay on the thread that made them
     let run = std::thread::Builder::new()
         .stack_size(sabline_rt::PARSE_STACK)
-        .spawn(move || -> Result<(String, String), String> {
+        .spawn(move || -> Result<String, String> {
             let (path, given) = exec::request(&first)?;
             // from here an end of the input is a parent gone - and one that
             // came already, between the request and now, was too
@@ -275,9 +275,17 @@ fn exec(dir: String) -> Result<ExitCode, String> {
             }
             // the rest of standard input is the answers, a line each
             let relay = Relay { frames, answers: lines_in };
+            if given.tests {
+                let ended = sabline_rt::run_dump::test_relayed(&path, &dir, &given, relay);
+                return Ok(format!("{{\"tests\":{}}}", ended.canonical()));
+            }
             let (document, receipt) =
                 sabline_rt::run_dump::run_relayed(&path, &dir, &given, relay);
-            Ok((document.canonical(), receipt.canonical()))
+            Ok(format!(
+                "{{\"document\":{},\"receipt\":{}}}",
+                document.canonical(),
+                receipt.canonical()
+            ))
         })
         .map_err(|e| format!("sabline-rt exec: no thread for the run: {e}"))?;
     let stdout = std::io::stdout();
@@ -295,10 +303,9 @@ fn exec(dir: String) -> Result<ExitCode, String> {
             orphaned();
         }
     }
-    let (document, receipt) =
-        run.join().map_err(|_| "sabline-rt exec: the run panicked")??;
+    let ended = run.join().map_err(|_| "sabline-rt exec: the run panicked")??;
     ENDED.store(true, Ordering::SeqCst);
-    write(format!("{{\"end\":{{\"document\":{document},\"receipt\":{receipt}}}}}"))?;
+    write(format!("{{\"end\":{ended}}}"))?;
     Ok(ExitCode::SUCCESS)
 }
 

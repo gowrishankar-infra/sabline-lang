@@ -69,7 +69,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-9-1.html">9.x: 9.0.0-alpha.9 to 9.0.0-alpha.7</a></li><li><a href="changelog-9-2.html" aria-current="page">9.x: 9.0.0-alpha.6 to 9.0.0-alpha.1</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-9-1.html">9.x: 9.0.0-alpha.10 to 9.0.0-alpha.7</a></li><li><a href="changelog-9-2.html" aria-current="page">9.x: 9.0.0-alpha.6 to 9.0.0-alpha.1</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -94,7 +94,7 @@ and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm
 Marketplace and the MCP registry give, the Action pins still name 8.8.0's
 commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
 main gained below ships with 9.0.</p>
-<h3 id="what-exists-3">What exists <a class="anchor" href="#what-exists-3" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-4">What exists <a class="anchor" href="#what-exists-4" aria-label="Link to this section">#</a></h3>
 <p><strong>The interpreter</strong> (<code>src/interp.rs</code>): <code>sabline/runtime.py</code>'s run,
 transliterated - calls, function values and what they carry, <code>check</code> and
 <code>try</code>, promises checked while running with their messages, loop
@@ -132,7 +132,7 @@ check document from both (two minutes in the agreement job, twenty
 monthly), and the gate carries programs of more than one file, which reach
 the type checker's "unknown function value" for a library imported under a
 name.</p>
-<h3 id="the-agreement-gate-3">The agreement gate <a class="anchor" href="#the-agreement-gate-3" aria-label="Link to this section">#</a></h3>
+<h3 id="the-agreement-gate-4">The agreement gate <a class="anchor" href="#the-agreement-gate-4" aria-label="Link to this section">#</a></h3>
 <div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6774 compared, 6774 agree, 0 differ
 the checkers: 6774 compared, 6774 agree, 0 differ
 the budget parser: 2967 compared, 2967 agree, 0 differ
@@ -165,7 +165,7 @@ the first gave. Twelve programs in the gate's corpora did it. A record is
 now written as a dataclass is, <code>Pt(x=1, y='z')</code>, beside an amount's
 <code>MoneyValue(units=150, currency='INR')</code>. Messages are not covered by
 STABILITY.md; no code changed.</p>
-<h3 id="what-is-not-done-3">What is not done <a class="anchor" href="#what-is-not-done-3" aria-label="Link to this section">#</a></h3>
+<h3 id="what-is-not-done-4">What is not done <a class="anchor" href="#what-is-not-done-4" aria-label="Link to this section">#</a></h3>
 <p><code>plan/9.0-m3-progress.md</code> lists it in order - the builtins' work for the
 other budgets, then receipts and the audit stream, a run target for the
 fuzzer, <code>sabline run</code> through sabline-rt, the organisation ceiling file -
@@ -187,7 +187,7 @@ and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm
 Marketplace and the MCP registry give, the Action pins still name 8.8.0's
 commit, and <code>sabline --version</code> still says 8.8.0. What the Python package on
 main gained below ships with 9.0.</p>
-<h3 id="what-exists-4">What exists <a class="anchor" href="#what-exists-4" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-5">What exists <a class="anchor" href="#what-exists-5" aria-label="Link to this section">#</a></h3>
 <p><strong>The checkers, ported</strong> (pull request #144): the loader with its imports
 and the shipped standard library, the effect checker, the type checker -
 <code>Secret of T</code>, <code>Money of C</code>, generics, records, maps, function values - the
@@ -236,7 +236,7 @@ cases are <code>sabline capabilities check</code>, which decisions/0002 keeps in
 Python, so they stay Python-answered (<code>plan/9.0.md</code>, amended 2026-10-08).
 <code>check_conformance_rust.py</code> holds the runner to that labelling, and to a
 wrong answer from sabline-rt failing its case.</p>
-<h3 id="the-agreement-gate-4">The agreement gate <a class="anchor" href="#the-agreement-gate-4" aria-label="Link to this section">#</a></h3>
+<h3 id="the-agreement-gate-5">The agreement gate <a class="anchor" href="#the-agreement-gate-5" aria-label="Link to this section">#</a></h3>
 <div class="code"><div class="code-bar"><span class="code-lang">Text</span></div><pre tabindex="0"><code>the parsers: 6570 compared, 6570 agree, 0 differ
 the checkers: 6570 compared, 6570 agree, 0 differ
 the budget parser: 2967 compared, 2967 agree, 0 differ
@@ -260,7 +260,7 @@ loop (18b), and 25! and a product modulo 2^61 - 1, which do not fit 64
 bits (18c, 18d). On the competitor page, Deno, WASI and the Python sandbox
 are each ahead on one row fewer. docs/known-open.md's row for correct
 programs the rules refuse says 18a is closed on main and ships with 9.0.</p>
-<h3 id="what-is-not-done-4">What is not done <a class="anchor" href="#what-is-not-done-4" aria-label="Link to this section">#</a></h3>
+<h3 id="what-is-not-done-5">What is not done <a class="anchor" href="#what-is-not-done-5" aria-label="Link to this section">#</a></h3>
 <p>M2's exit criteria are met, as amended, for every question a checker
 answers. The five suites' questions that run a program wait for M3's
 interpreter; the prover's and the audit's stay Python's for good
@@ -450,7 +450,7 @@ the Marketplace lists and what the MCP registry serves; the Action pins
 still name 8.6.0's commit; <code>sabline --version</code> still says 8.6.0. The
 Python package's version files were not touched, and the release gate
 refuses a pre-release whose commit moved one.</p>
-<h3 id="what-exists-5">What exists <a class="anchor" href="#what-exists-5" aria-label="Link to this section">#</a></h3>
+<h3 id="what-exists-6">What exists <a class="anchor" href="#what-exists-6" aria-label="Link to this section">#</a></h3>
 <p><strong><code>rt/</code>, a Cargo workspace holding one crate, <code>sabline-rt</code>.</strong> Edition
 2021, minimum Rust 1.82, <strong>no dependencies at all</strong>. A lexer, a parser and
 a canonical dump of the tree, in fourteen files. <code>#![forbid(unsafe_code)]</code>

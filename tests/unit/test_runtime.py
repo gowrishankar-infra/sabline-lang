@@ -503,6 +503,209 @@ class TheVariableChoosesTheRuntime(Run):
             "io,env,fs,net,clock,rand,ffi,declassify,tool")), [])
 
 
+class WhatARunThroughSablineRtSays(Run):
+    """What the package says of a run that was to go through sabline-rt
+    (9.0, M3, the fifth checkpoint), without starting it: the notice of one
+    it keeps, the count of who answered, the receipt of one a limit stopped
+    made from its audit stream, and the import root in the run document."""
+
+    def test_a_kept_run_says_why_and_a_refused_one_says_nothing(self) -> None:
+        from sabline import through_rt
+        self.assertIsNone(through_rt.notice_for("checks"))
+        said = through_rt.notice_for("net,ffi")
+        self.assertIsNotNone(said)
+        self.assertIn("grants the network, Python, which sabline-rt does not do yet",
+                      str(said))
+        self.assertIn("eval profile", str(through_rt.notice_for("eval")))
+        self.assertIn("not UTF-8", str(through_rt.notice_for("source")))
+        self.assertIn("sabline trace", str(through_rt.notice_for("trace")))
+
+    def test_who_answered_is_written_only_where_it_is_asked_for(self) -> None:
+        import json
+        from sabline import through_rt
+        saved = os.environ.pop(through_rt.LOG_VARIABLE, None)
+        log = os.path.join(self.dir, "runs.jsonl")
+        try:
+            through_rt.note("library", "sabline-rt")
+            self.assertFalse(os.path.exists(log))
+            os.environ[through_rt.LOG_VARIABLE] = log
+            through_rt.note("pool", "package", "ffi")
+            through_rt.note("cli", "sabline-rt")
+            with open(log, encoding="utf-8") as fh:
+                self.assertEqual([json.loads(x) for x in fh], [
+                    {"run": "pool", "answered_by": "package", "why": "ffi"},
+                    {"run": "cli", "answered_by": "sabline-rt", "why": None}])
+        finally:
+            os.environ.pop(through_rt.LOG_VARIABLE, None)
+            if saved is not None:
+                os.environ[through_rt.LOG_VARIABLE] = saved
+
+    def test_a_stopped_runs_receipt_is_made_from_its_stream(self) -> None:
+        from sabline.receipts import receipt_statement
+        from sabline.recorder import _RunRecorder
+        from sabline.results import RunResult
+        subject = [{"name": "<source>", "digest": {"sha256": "ab"}}]
+        events: list[dict[str, Any]] = [
+            {"event": "start", "producer": {"name": "sabline-rt", "version": "9"}},
+            {"event": "subjects", "subject": subject},
+            {"event": "effect", "effect": "io", "builtin": "print", "line": 2},
+            {"event": "declassify", "reason": "a length", "line": 3},
+            {"event": "declassify", "reason": "a length", "line": 3},
+            {"event": "refusal", "code": None, "effect": "net", "line": 4,
+             "stopped": False},
+            {"event": "grant", "grant": "io"},
+        ]
+        recorder = _RunRecorder()
+        for e in events:
+            recorder.heard(e)
+        result = RunResult(False, "", "", [], None, 124, True, False)
+        doc = receipt_statement(
+            recorder, name="<source>", entry_bytes=b"", budget="io",
+            parameters={}, result=result, started_at="t", wall_time_ms=1,
+            complete=False)
+        p = doc["predicate"]
+        self.assertEqual(doc["subject"], subject)
+        self.assertEqual(p["declassifications"],
+                         [{"reason": "a length", "line": 3, "times": 2}])
+        self.assertEqual(p["refusals"], [{"code": None, "effect": "net", "line": 4,
+                                          "stopped": False, "times": 1}])
+        self.assertEqual((p["exit"]["outcome"], p["complete"]), ("timeout", False))
+
+    def test_a_clock_its_receipt_cannot_say_is_refused_before_the_run(self) -> None:
+        import sabline
+        made = os.path.join(self.dir, "made.txt").replace(os.sep, "/")
+        source = main_of(f'write_file("{made}", "ran")', uses="io, fs")
+        with self.assertRaises(ValueError):
+            sabline.run(source, allow="io,fs", freeze_time=253402300800)
+        self.assertFalse(os.path.exists(made), "the program did not run")
+
+    def test_the_import_root_in_the_run_document(self) -> None:
+        served = os.path.join(self.dir, "served")
+        os.makedirs(served)
+        with open(os.path.join(self.dir, "out.vel"), "w", encoding="utf-8") as fh:
+            fh.write("fn one() -> Int {\n    return 1\n}\n")
+        path = os.path.join(served, "p.vel")
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write('import "../out.vel" as o\n' + main_of("print(o.one())"))
+        self.assertEqual(run_dump.run_document(path)["stdout"], "1\n")
+        doc = run_dump.run_document(path, import_root=served)
+        self.assertEqual(doc["error"]["code"], "E515")
+        self.assertIsNone(_state.IMPORT_ROOT, "and put back")
+
+
+# a run in the caller's process, and a bounded one
+LIMITS_OR_NOT: tuple[dict[str, Any], ...] = ({}, {"timeout": 30})
+
+
+def receipt_of(result: Any) -> dict[str, Any]:
+    """A run's receipt, which every run has."""
+    assert isinstance(result.receipt, dict)
+    return result.receipt
+
+
+class ThroughSablineRtUnderLimits(Run):
+    """A bounded run and a pool through sabline-rt (9.0, M3, the fifth
+    checkpoint): the worker checks, this process starts sabline-rt under
+    the limits, and a run a limit stops still has a receipt - sabline-rt's
+    by name, made from what it did. check_through_rt.py holds every run
+    that finishes to the package's own."""
+
+    SOURCE = main_of('let k = env("PATH", "")\nlet i = 0\nwhile i < 3 {\n'
+                     '    print(length(declassify(k, "a length")))\n'
+                     '    i = i + 1\n}\nwhile true {\n    i = i + 1\n}',
+                     uses="io, env, declassify")
+
+    def setUp(self) -> None:
+        super().setUp()
+        from sabline import through_rt
+        if through_rt.binary() is None:
+            self.skipTest("sabline-rt is not built in this checkout")
+        self.saved = os.environ.pop(through_rt.VARIABLE, None)
+        os.environ[through_rt.VARIABLE] = "rust"
+
+    def tearDown(self) -> None:
+        os.environ.pop("SABLINE_REFERENCE_RUNTIME", None)
+        if self.saved is not None:
+            os.environ["SABLINE_REFERENCE_RUNTIME"] = self.saved
+
+    def test_the_clock_stops_it_and_its_receipt_says_what_it_did(self) -> None:
+        import sabline
+        events: list[Any] = []
+        r = sabline.run(self.SOURCE, allow="io,env,declassify", timeout=3,
+                        audit_stream=events.append)
+        self.assertTrue(r.timed_out)
+        self.assertEqual(([p.code for p in r.problems], r.exit_code), (["E610"], 124))
+        p = receipt_of(r)["predicate"]
+        self.assertEqual(p["producer"]["name"], "sabline-rt")
+        self.assertEqual((p["exit"]["outcome"], p["complete"]), ("timeout", False))
+        line = self.SOURCE.splitlines().index(
+            '        print(length(declassify(k, "a length")))') + 1
+        self.assertEqual(p["declassifications"],
+                         [{"reason": "a length", "line": line, "times": 3}])
+        self.assertEqual(p["run_parameters"]["timeout"], 3)
+        self.assertEqual(p["run_parameters"]["confinement"], "none")
+        self.assertEqual((events[0]["event"], events[0]["producer"]["name"]),
+                         ("start", "sabline-rt"))
+        self.assertEqual(events[0]["run_parameters"]["timeout"], 3)
+        self.assertEqual(events[-1], {"event": "end", "receipt": r.receipt})
+
+    def test_a_memory_cap_stops_it_with_e611(self) -> None:
+        import sabline
+        if not sabline.memory_cap_is_enforced():
+            self.skipTest("the memory cap is not enforced on this system")
+        doubling = main_of('let s = "xxxxxxxxxxxxxxxx"\nlet i = 0\nwhile i < 40 {\n'
+                           '    s = s + s\n    i = i + 1\n}\nprint(length(s))')
+        # the worker that checks the program is under the cap too, as it is
+        # for a run in the package: a cap a Python process can start under
+        for mb in (150, 300):
+            r = sabline.run(doubling, max_memory_mb=mb, timeout=60)
+            self.assertTrue(r.out_of_memory, mb)
+            self.assertEqual([p.code for p in r.problems], ["E611"])
+            self.assertEqual(receipt_of(r)["predicate"]["producer"]["name"],
+                             "sabline-rt")
+            # and a program that fits runs under the smallest cap
+            self.assertEqual(sabline.run(main_of('print("fits")'), max_memory_mb=mb,
+                                         timeout=60).output, "fits\n")
+
+    def test_a_pool_keeps_a_worker_only_after_a_clean_run(self) -> None:
+        import sabline
+        with sabline.Pool(size=1, timeout=30) as pool:
+            first = pool.run(main_of('print("a")'))
+            kept = pool.worker_pids()
+            second = pool.run(main_of('print("b")'))
+            self.assertEqual((first.output, second.output), ("a\n", "b\n"))
+            self.assertEqual(pool.worker_pids(), kept)
+            third = pool.run(main_of("exit_with(4)"))
+            self.assertEqual(third.exit_code, 4)
+            self.assertNotEqual(pool.worker_pids(), kept)
+            self.assertEqual(receipt_of(third)["predicate"]["producer"]["name"],
+                             "sabline-rt")
+
+    def test_what_stays_the_packages_says_so_and_runs(self) -> None:
+        import contextlib
+        import io
+        import sabline
+        source = main_of('check py_int("math", "floor", ["2.5"]) {\n'
+                         '    ok n {\n        print(n)\n    }\n'
+                         '    fail w {\n        print(w)\n    }\n}', uses="io, ffi")
+        for limits in LIMITS_OR_NOT:
+            said = io.StringIO()
+            with contextlib.redirect_stderr(said):
+                r = sabline.run(source, allow={"io", "ffi:math"}, **limits)
+            self.assertEqual(r.output, "2\n")
+            self.assertEqual(receipt_of(r)["predicate"]["producer"]["name"],
+                             "sabline-lang")
+            self.assertIn("this run is the Python package's", said.getvalue())
+
+    def test_a_frozen_clock_given_as_an_instant(self) -> None:
+        import sabline
+        source = main_of("print(now())", uses="io, clock")
+        for limits in LIMITS_OR_NOT:
+            r = sabline.run(source, allow="io,clock",
+                            freeze_time="2026-01-01T00:00:00Z", **limits)
+            self.assertEqual(r.output, "1767225600\n", limits)
+
+
 class ReceiptOfARun(Run):
     """The run document's receipt (M3, third checkpoint): what `sabline
     <file> --receipt` writes of the same run, with nothing asked of the
