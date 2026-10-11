@@ -13,10 +13,10 @@ they belong to three different places:
 - **what running it does** - the interpreter's, which sabline-rt has from
   M3. Under `--runtime rust` these go through sabline-rt the way a user's
   run does, with SABLINE_REFERENCE_RUNTIME=rust set for the run, and are
-  held to what the suite holds the package's to. A run sabline-rt does not
-  make yet - one whose budget grants the network, Python or a tool to a
-  program that uses it - is the package's, and says so; each run says who
-  answered it (sabline/through_rt.py's log), and the suite counts them.
+  held to what the suite holds the package's to - a run of the network,
+  Python or a tool too, whose calls sabline-rt relays back to the package;
+  each run says who answered it (sabline/through_rt.py's log), and the
+  suite counts them.
 - **what the prover shows** - the prover's, which stays in the Python
   package for good (decisions/0002: what was proven is an input to a run,
   not something a run works out). Under `--runtime rust` these are not

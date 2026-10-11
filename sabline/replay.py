@@ -312,9 +312,9 @@ def _replay(report: dict[str, Any], receipt: dict[str, Any],
         g["RESPONSES"] = replayer
         try:
             # SABLINE_REFERENCE_RUNTIME=rust (9.0, M3): the run through
-            # sabline-rt, held to the replay's own copy and read ceiling; a
-            # program whose recorded responses it would need is one granted
-            # Python, which stays here
+            # sabline-rt, held to the replay's own copy and read ceiling; the
+            # recorded responses answer the calls to Python it relays back
+            # here, as they answer the package's own run's
             routed = _run_through_rt(
                 source, path=entry, budget=asked, args=args, stdin=stdin,
                 seed=seed, freeze_time=frozen, name=name, stream=None,

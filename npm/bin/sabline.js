@@ -65,6 +65,7 @@ const INTRODUCED = {
   demo: "8.5.0",
   receipt: "8.5.0",
   skill: "8.5.0",
+  ceiling: "9.0.0",
 };
 
 // The two flags the compiler takes before any command, each with a

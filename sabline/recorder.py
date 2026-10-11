@@ -57,7 +57,7 @@ RECEIPT_SPEC = "sabline-spec 0.13.0"
 # the refusals a receipt lists and the doors log: the budget's, and the
 # read ceiling's
 REFUSAL_CODES = ("E310", "E311", "E313", "E314", "E315", "E316", "E317",
-                 "E318", "E320", "E321", "E322", "E323")
+                 "E318", "E320", "E321", "E322", "E323", "E325")
 
 
 def _utc_now_ms() -> str:
@@ -95,6 +95,9 @@ def _refusal_effect(code: str, message: str) -> str | None:
         return "net"
     if code in ("E320", "E321", "E322", "E323"):
         return "tool"
+    if code == "E325":                    # the organisation ceiling (9.0)
+        m = re.search(r"budget's '(\w+)' grant", message or "")
+        return m.group(1) if m and m.group(1) in ALL_EFFECTS else None
     return None
 
 
@@ -126,6 +129,9 @@ class _RunRecorder:
         # put here when the run ends (8.5)
         self.grant_uses: dict[str, int] | None = None
         self.tools: dict[str, Any] | None = None
+        # the organisation ceilings the run was held to (9.0), as the
+        # receipt's run_parameters name them: set when they are asked
+        self.ceilings: list[dict[str, Any]] = []
 
     def close(self) -> None:
         """The run has ended: keep what the budget counted, before the

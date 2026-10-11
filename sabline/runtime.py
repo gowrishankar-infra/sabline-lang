@@ -242,6 +242,335 @@ def run_money(name: str, args: list[Any], line: int) -> Any:
     return MoneyValue(units, m.currency)
 
 
+# The builtins whose work is the network, Python or a tool. run_builtin
+# spends their effect and then calls outside_builtin for the rest; a run
+# through sabline-rt (9.0, M3) spends the effect there and relays the call
+# here, where sabline/through_rt.py's host calls outside_builtin itself - so
+# that what each does, its grants, counts and refusals included, is this
+# code's whichever runtime runs the program. sabline-rt's interp::RELAYED
+# names the same fourteen, and check_through_rt.py holds the two lists equal.
+OUTSIDE_BUILTINS = frozenset({
+    "fetch", "post", "fetch_status", "request",
+    "py", "py_int", "py_float", "py_json", "py_new", "py_do", "py_field",
+    "py_close", "tool", "tool_secret"})
+
+
+def outside_builtin(name: str, args: list[Any], line: int) -> Any:
+    """The work of a builtin of OUTSIDE_BUILTINS, once its effect is spent."""
+    if name in ("py_new", "py_do", "py_field", "py_close"):
+        import json as _json
+
+        def resolve(module: str, func: str) -> Any:
+            return _ffi_resolve(module, func, name, line)
+
+        def split_args(raw: Any) -> tuple[Any, ...]:
+            """A JSON list of arguments; a trailing object is keywords."""
+            try:
+                vals = read_json(str(raw))
+            except Exception as e:
+                raise FailSignal(f"the arguments are not valid JSON: {e}")
+            if not isinstance(vals, list):
+                raise FailSignal("the arguments must be a JSON list")
+            kwargs = {}
+            if (vals and isinstance(vals[-1], dict)
+                    and set(vals[-1]) != {"handle"}):
+                kwargs = {str(k): v for k, v in vals[-1].items()}
+                vals = vals[:-1]
+            return [unwrap(v) for v in vals], {k: unwrap(v)
+                                               for k, v in kwargs.items()}
+
+        def unwrap(v: Any) -> Any:
+            """A handle written as {"handle": 3} becomes the object."""
+            if isinstance(v, dict) and set(v) == {"handle"}:
+                try:
+                    obj = _state.PY_OBJECTS.get(int(v["handle"]))
+                except (TypeError, ValueError, OverflowError):
+                    obj = None                 # not a handle's number
+                if obj is None:
+                    raise FailSignal("that handle is closed or unknown")
+                return obj
+            return v
+
+        def keep(obj: Any) -> "HandleValue":
+            _state.PY_NEXT[0] += 1
+            _state.PY_OBJECTS[_state.PY_NEXT[0]] = obj
+            return HandleValue(_state.PY_NEXT[0], type(obj).__name__)
+
+        def answer_of(out: Any) -> Any:
+            if isinstance(out, (bytes, bytearray)):
+                out = out.decode("utf-8", errors="replace")
+            try:
+                return _json.dumps(out, ensure_ascii=False)
+            except TypeError:                  # not JSON: keep it alive
+                return _json.dumps({"handle": keep(out).id})
+            except (ValueError, RecursionError):
+                # a cycle, a nesting too deep, a number too long (8.2)
+                raise FailSignal("the value Python gave back cannot be "
+                                 "made JSON")
+
+        if name == "py_close":
+            h = args[0]
+            if isinstance(h, HandleValue):
+                obj = _state.PY_OBJECTS.pop(h.id, None)
+                for closer in ("close", "shutdown", "__exit__"):
+                    fn_ = getattr(obj, closer, None)
+                    if fn_ is not None:
+                        try:
+                            fn_() if closer != "__exit__" else fn_(
+                                None, None, None)
+                        except Exception:
+                            pass
+                        break
+            return None
+
+        if name == "py_new":
+            target = resolve(args[0], args[1])
+            pos, kw = split_args(args[2])
+            try:
+                built = target(*pos, **kw)
+            except Exception as e:
+                raise FailSignal(f"{args[0]}.{args[1]} failed: {e}")
+            ffi_reach(built, name, line, "the object it built")
+            return keep(built)
+
+        h = args[0]
+        if not isinstance(h, HandleValue):
+            raise FailSignal("this is not a handle")
+        obj = _state.PY_OBJECTS.get(h.id)
+        if obj is None:
+            raise FailSignal("that handle is closed")
+        # a method or field reached through a handle is checked the same
+        # way as one reached through a module: a handle to a granted
+        # module's object must not be a door into an ungranted one
+        if name == "py_field":
+            got = getattr(obj, str(args[1]), None)
+            if got is None:
+                raise FailSignal(f"no '{args[1]}' on {h.what}")
+            ffi_reach(got, name, line, f"field '{args[1]}' of {h.what}")
+            return answer_of(got)
+        method = getattr(obj, str(args[1]), None)
+        if method is None:
+            raise FailSignal(f"{h.what} has no '{args[1]}'")
+        ffi_reach(method, name, line, f"method '{args[1]}' of {h.what}")
+        pos, kw = split_args(args[2])
+        try:
+            produced = method(*pos, **kw)
+        except Exception as e:
+            raise FailSignal(f"{h.what}.{args[1]} failed: {e}")
+        ffi_reach(produced, name, line,
+                  f"the object '{args[1]}' returned")
+        return answer_of(produced)
+    if name == "py_json":
+        import json as _json
+        # py_json: arguments and answer both travel as JSON, so numbers,
+        # lists and nested data survive the trip intact
+        module, func, args_json = args[0], args[1], args[2]
+        try:
+            call_args = read_json(str(args_json))
+        except Exception as e:
+            raise FailSignal(f"the arguments are not valid JSON: {e}")
+        if not isinstance(call_args, list):
+            raise FailSignal("the arguments must be a JSON list, "
+                             'like [1, "two", [3]]')
+        def unwrap_handle(v: Any) -> Any:
+            if isinstance(v, dict) and set(v) == {"handle"}:
+                try:
+                    obj = _state.PY_OBJECTS.get(int(v["handle"]))
+                except (TypeError, ValueError, OverflowError):
+                    obj = None                 # not a handle's number
+                if obj is None:
+                    raise FailSignal("that handle is closed or unknown")
+                return obj
+            return v
+
+        kwargs = {}
+        if (call_args and isinstance(call_args[-1], dict)
+                and set(call_args[-1]) != {"handle"}):
+            kwargs = {str(k): unwrap_handle(v)
+                      for k, v in call_args[-1].items()}
+            call_args = call_args[:-1]
+        call_args = [unwrap_handle(v) for v in call_args]
+        target = _ffi_resolve(module, func, name, line)
+
+        def call_py_json() -> Any:
+            try:
+                out = target(*call_args, **kwargs)
+            except Exception as e:
+                raise FailSignal(f"{module}.{func} failed: {e}")
+            if isinstance(out, (bytes, bytearray)):
+                out = out.decode("utf-8", errors="replace")
+            try:
+                return _json.dumps(out, ensure_ascii=False)
+            except (ValueError, RecursionError):
+                # a cycle, a nesting too deep, a number too long (8.2)
+                raise FailSignal(f"{module}.{func} gave back a value that "
+                                 f"cannot be made JSON")
+            except TypeError:                     # not JSON: keep it alive
+                ffi_reach(out, name, line, "the object it returned")
+                _state.PY_NEXT[0] += 1
+                _state.PY_OBJECTS[_state.PY_NEXT[0]] = out
+                return _json.dumps({"handle": _state.PY_NEXT[0]})
+        # recorded tool responses (8.3): after the grants are checked
+        if _state.RESPONSES is not None:
+            return _state.RESPONSES.answer(
+                name, [str(module), str(func), str(args_json)],
+                call_py_json, line)
+        return call_py_json()
+    if name in ("py", "py_int", "py_float"):
+        module, func, call_args = args[0], args[1], args[2]
+        target = _ffi_resolve(module, func, name, line)
+
+        def call_py() -> Any:
+            def as_number_if_it_is(text: Any) -> Any:
+                """'16' -> 16 and '2.5' -> 2.5, so numeric functions work.
+
+                The arguments arrive as Text (that is the declared type),
+                but math.sqrt("16") is a TypeError in Python. A string that
+                reads as a number is passed as one; anything else stays
+                text. Functions genuinely wanting the text "16" still get
+                it via the all-strings retry below.
+                """
+                s = str(text)
+                try:
+                    return int(s)
+                except ValueError:
+                    pass
+                try:
+                    return float(s)
+                except ValueError:
+                    return s
+
+            attempts = ([as_number_if_it_is(a) for a in call_args],
+                        [str(a) for a in call_args],
+                        [str(a).encode("utf-8") for a in call_args])
+            out: Any = None
+            last_err: Exception | None = None
+            for formed in attempts:
+                try:
+                    out = target(*formed)
+                    last_err = None
+                    break
+                except TypeError as e:
+                    last_err = e
+                    continue                 # the next shape may fit
+                except Exception as e:
+                    raise FailSignal(f"{module}.{func} failed: {e}")
+            if last_err is not None:
+                raise FailSignal(f"{module}.{func} failed: {last_err}")
+            if isinstance(out, (bytes, bytearray)):
+                out = out.decode("utf-8", errors="replace")
+            try:
+                if name == "py_int":
+                    value = int(out)
+                    if not INT_MIN <= value <= INT_MAX:
+                        raise FailSignal(f"{module}.{func} gave back a whole "
+                                         f"number too big to hold")
+                    return value
+                if name == "py_float":
+                    return float(out)
+                return str(out)
+            except (TypeError, ValueError, OverflowError, RecursionError):
+                raise FailSignal(
+                    f"{module}.{func} gave back something that is not a "
+                    f"{'whole number' if name == 'py_int' else 'decimal' if name == 'py_float' else 'text'}")
+        # recorded tool responses (8.3): after the grants are checked
+        if _state.RESPONSES is not None:
+            return _state.RESPONSES.answer(
+                name, [str(module), str(func), [str(x) for x in call_args]],
+                call_py, line)
+        return call_py()
+    if name == "request":
+        import json as _json
+        import urllib.request
+        import urllib.error
+        method, url, body, headers_json = (str(a) for a in args)
+        method = method.upper() or "GET"
+        if not (url.startswith("http://") or url.startswith("https://")):
+            url = "https://" + url
+        try:
+            headers = read_json(headers_json) if headers_json.strip() \
+                else {}
+        except Exception as e:
+            raise FailSignal(f"the headers are not valid JSON: {e}")
+        if not isinstance(headers, dict):
+            raise FailSignal('the headers must be a JSON object, like '
+                             '{"Accept": "application/json"}')
+        headers = {str(k): str(v) for k, v in headers.items()}
+        headers.setdefault("User-Agent", f"sabline/{VERSION}")
+        data = body.encode("utf-8") if body else None
+        allow_host(url, name, line)
+        opener = guarded_opener(url)         # may refuse a proxy (E317)
+        count_op("net", name, line)
+        req = urllib.request.Request(url, data=data, headers=headers,
+                                     method=method)
+        try:
+            with opener.open(req, timeout=20) as resp:
+                reply = {
+                    "status": int(resp.status),
+                    "body": resp.read(1 << 20).decode("utf-8",
+                                                      errors="replace"),
+                    "headers": {k: v for k, v in resp.headers.items()}}
+        except urllib.error.HTTPError as e:      # a real answer
+            reply = {
+                "status": int(e.code),
+                "body": e.read(1 << 20).decode("utf-8", errors="replace"),
+                "headers": {k: v for k, v in (e.headers or {}).items()}}
+        except _RedirectRefused as e:     # sent somewhere it may not go
+            _note_redirect(line)
+            raise FailSignal(f"'{url}' redirected to '{e.target}', which "
+                             f"this run does not allow: {e.why}")
+        except Exception as e:            # say what happened, not how
+            reason = "the address did not resolve"
+            text = str(e).lower()
+            if "timed out" in text or "timeout" in text:
+                reason = "it did not answer in time"
+            elif "refused" in text:
+                reason = "the connection was refused"
+            elif "certificate" in text or "ssl" in text:
+                reason = "the certificate was not accepted"
+            elif "unreachable" in text or "network" in text:
+                reason = "the network is unreachable"
+            raise FailSignal(f"cannot reach '{url}': {reason}")
+        return _json.dumps(reply, ensure_ascii=False)
+    if name in ("fetch", "post", "fetch_status"):
+        import urllib.request
+        import urllib.error
+        url = str(args[0])
+        if not (url.startswith("http://") or url.startswith("https://")):
+            url = "https://" + url
+        headers = {"User-Agent": f"sabline/{VERSION}"}
+        data = None
+        if name == "post":
+            body = str(args[1])
+            data = body.encode("utf-8")
+            headers["Content-Type"] = (
+                "application/json" if body.lstrip()[:1] in "{["
+                else "text/plain; charset=utf-8")
+        allow_host(url, name, line)
+        opener = guarded_opener(url)         # may refuse a proxy (E317)
+        count_op("net", name, line)
+        try:
+            req = urllib.request.Request(url, data=data, headers=headers)
+            with opener.open(req, timeout=10) as resp:
+                if name == "fetch_status":
+                    return int(resp.status)
+                return resp.read(1 << 20).decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as e:      # a real answer, not silence
+            if name == "fetch_status":
+                return int(e.code)
+            raise FailSignal(f"'{url}' answered with status {e.code}")
+        except _RedirectRefused as e:     # sent somewhere it may not go
+            _note_redirect(line)
+            raise FailSignal(f"'{url}' redirected to '{e.target}', which "
+                             f"this run does not allow: {e.why}")
+        except Exception:
+            raise FailSignal(f"cannot reach '{url}'")
+    if name in TOOL_BUILTINS:
+        return run_tool(name, args, line)
+    raise ValueError(f"{name} is not a builtin of the network, Python or "
+                     f"a tool")
+
+
 def run_builtin(name: str, args: list[Any], line: int) -> Any:
     # The hot three, before anything else: these are most of the builtin
     # calls in any program and used to sit behind thirty string
@@ -390,110 +719,12 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
         return args[1] in args[0]
     if name == "keys":
         return list(args[0].keys())
-    if name in ("py_new", "py_do", "py_field", "py_close"):
-        import json as _json
-
-        def resolve(module: str, func: str) -> Any:
-            return _ffi_resolve(module, func, name, line)
-
-        def split_args(raw: Any) -> tuple[Any, ...]:
-            """A JSON list of arguments; a trailing object is keywords."""
-            try:
-                vals = read_json(str(raw))
-            except Exception as e:
-                raise FailSignal(f"the arguments are not valid JSON: {e}")
-            if not isinstance(vals, list):
-                raise FailSignal("the arguments must be a JSON list")
-            kwargs = {}
-            if (vals and isinstance(vals[-1], dict)
-                    and set(vals[-1]) != {"handle"}):
-                kwargs = {str(k): v for k, v in vals[-1].items()}
-                vals = vals[:-1]
-            return [unwrap(v) for v in vals], {k: unwrap(v)
-                                               for k, v in kwargs.items()}
-
-        def unwrap(v: Any) -> Any:
-            """A handle written as {"handle": 3} becomes the object."""
-            if isinstance(v, dict) and set(v) == {"handle"}:
-                try:
-                    obj = _state.PY_OBJECTS.get(int(v["handle"]))
-                except (TypeError, ValueError, OverflowError):
-                    obj = None                 # not a handle's number
-                if obj is None:
-                    raise FailSignal("that handle is closed or unknown")
-                return obj
-            return v
-
-        def keep(obj: Any) -> "HandleValue":
-            _state.PY_NEXT[0] += 1
-            _state.PY_OBJECTS[_state.PY_NEXT[0]] = obj
-            return HandleValue(_state.PY_NEXT[0], type(obj).__name__)
-
-        def answer_of(out: Any) -> Any:
-            if isinstance(out, (bytes, bytearray)):
-                out = out.decode("utf-8", errors="replace")
-            try:
-                return _json.dumps(out, ensure_ascii=False)
-            except TypeError:                  # not JSON: keep it alive
-                return _json.dumps({"handle": keep(out).id})
-            except (ValueError, RecursionError):
-                # a cycle, a nesting too deep, a number too long (8.2)
-                raise FailSignal("the value Python gave back cannot be "
-                                 "made JSON")
-
-        if name == "py_close":
-            h = args[0]
-            if isinstance(h, HandleValue):
-                obj = _state.PY_OBJECTS.pop(h.id, None)
-                for closer in ("close", "shutdown", "__exit__"):
-                    fn_ = getattr(obj, closer, None)
-                    if fn_ is not None:
-                        try:
-                            fn_() if closer != "__exit__" else fn_(
-                                None, None, None)
-                        except Exception:
-                            pass
-                        break
-            return None
-
-        if name == "py_new":
-            target = resolve(args[0], args[1])
-            pos, kw = split_args(args[2])
-            try:
-                built = target(*pos, **kw)
-            except Exception as e:
-                raise FailSignal(f"{args[0]}.{args[1]} failed: {e}")
-            ffi_reach(built, name, line, "the object it built")
-            return keep(built)
-
-        h = args[0]
-        if not isinstance(h, HandleValue):
-            raise FailSignal("this is not a handle")
-        obj = _state.PY_OBJECTS.get(h.id)
-        if obj is None:
-            raise FailSignal("that handle is closed")
-        # a method or field reached through a handle is checked the same
-        # way as one reached through a module: a handle to a granted
-        # module's object must not be a door into an ungranted one
-        if name == "py_field":
-            got = getattr(obj, str(args[1]), None)
-            if got is None:
-                raise FailSignal(f"no '{args[1]}' on {h.what}")
-            ffi_reach(got, name, line, f"field '{args[1]}' of {h.what}")
-            return answer_of(got)
-        method = getattr(obj, str(args[1]), None)
-        if method is None:
-            raise FailSignal(f"{h.what} has no '{args[1]}'")
-        ffi_reach(method, name, line, f"method '{args[1]}' of {h.what}")
-        pos, kw = split_args(args[2])
-        try:
-            produced = method(*pos, **kw)
-        except Exception as e:
-            raise FailSignal(f"{h.what}.{args[1]} failed: {e}")
-        ffi_reach(produced, name, line,
-                  f"the object '{args[1]}' returned")
-        return answer_of(produced)
-    if name.startswith("json_") or name == "py_json":
+    if name in OUTSIDE_BUILTINS:
+        # the network, Python and tools (9.0, M3): the spend above,
+        # their work below - which a run through sabline-rt asks of
+        # this package (sabline/through_rt.py) without the spend
+        return outside_builtin(name, args, line)
+    if name.startswith("json_"):
         import json as _json
 
         def walk(doc_text: Any, path_text: Any, what: Any) -> Any:
@@ -581,123 +812,6 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
                                  f"hold (from {INT_MIN} to {INT_MAX})")
             return value
 
-        # py_json: arguments and answer both travel as JSON, so numbers,
-        # lists and nested data survive the trip intact
-        module, func, args_json = args[0], args[1], args[2]
-        try:
-            call_args = read_json(str(args_json))
-        except Exception as e:
-            raise FailSignal(f"the arguments are not valid JSON: {e}")
-        if not isinstance(call_args, list):
-            raise FailSignal("the arguments must be a JSON list, "
-                             'like [1, "two", [3]]')
-        def unwrap_handle(v: Any) -> Any:
-            if isinstance(v, dict) and set(v) == {"handle"}:
-                try:
-                    obj = _state.PY_OBJECTS.get(int(v["handle"]))
-                except (TypeError, ValueError, OverflowError):
-                    obj = None                 # not a handle's number
-                if obj is None:
-                    raise FailSignal("that handle is closed or unknown")
-                return obj
-            return v
-
-        kwargs = {}
-        if (call_args and isinstance(call_args[-1], dict)
-                and set(call_args[-1]) != {"handle"}):
-            kwargs = {str(k): unwrap_handle(v)
-                      for k, v in call_args[-1].items()}
-            call_args = call_args[:-1]
-        call_args = [unwrap_handle(v) for v in call_args]
-        target = _ffi_resolve(module, func, name, line)
-
-        def call_py_json() -> Any:
-            try:
-                out = target(*call_args, **kwargs)
-            except Exception as e:
-                raise FailSignal(f"{module}.{func} failed: {e}")
-            if isinstance(out, (bytes, bytearray)):
-                out = out.decode("utf-8", errors="replace")
-            try:
-                return _json.dumps(out, ensure_ascii=False)
-            except (ValueError, RecursionError):
-                # a cycle, a nesting too deep, a number too long (8.2)
-                raise FailSignal(f"{module}.{func} gave back a value that "
-                                 f"cannot be made JSON")
-            except TypeError:                     # not JSON: keep it alive
-                ffi_reach(out, name, line, "the object it returned")
-                _state.PY_NEXT[0] += 1
-                _state.PY_OBJECTS[_state.PY_NEXT[0]] = out
-                return _json.dumps({"handle": _state.PY_NEXT[0]})
-        # recorded tool responses (8.3): after the grants are checked
-        if _state.RESPONSES is not None:
-            return _state.RESPONSES.answer(
-                name, [str(module), str(func), str(args_json)],
-                call_py_json, line)
-        return call_py_json()
-    if name in ("py", "py_int", "py_float"):
-        module, func, call_args = args[0], args[1], args[2]
-        target = _ffi_resolve(module, func, name, line)
-
-        def call_py() -> Any:
-            def as_number_if_it_is(text: Any) -> Any:
-                """'16' -> 16 and '2.5' -> 2.5, so numeric functions work.
-
-                The arguments arrive as Text (that is the declared type),
-                but math.sqrt("16") is a TypeError in Python. A string that
-                reads as a number is passed as one; anything else stays
-                text. Functions genuinely wanting the text "16" still get
-                it via the all-strings retry below.
-                """
-                s = str(text)
-                try:
-                    return int(s)
-                except ValueError:
-                    pass
-                try:
-                    return float(s)
-                except ValueError:
-                    return s
-
-            attempts = ([as_number_if_it_is(a) for a in call_args],
-                        [str(a) for a in call_args],
-                        [str(a).encode("utf-8") for a in call_args])
-            out: Any = None
-            last_err: Exception | None = None
-            for formed in attempts:
-                try:
-                    out = target(*formed)
-                    last_err = None
-                    break
-                except TypeError as e:
-                    last_err = e
-                    continue                 # the next shape may fit
-                except Exception as e:
-                    raise FailSignal(f"{module}.{func} failed: {e}")
-            if last_err is not None:
-                raise FailSignal(f"{module}.{func} failed: {last_err}")
-            if isinstance(out, (bytes, bytearray)):
-                out = out.decode("utf-8", errors="replace")
-            try:
-                if name == "py_int":
-                    value = int(out)
-                    if not INT_MIN <= value <= INT_MAX:
-                        raise FailSignal(f"{module}.{func} gave back a whole "
-                                         f"number too big to hold")
-                    return value
-                if name == "py_float":
-                    return float(out)
-                return str(out)
-            except (TypeError, ValueError, OverflowError, RecursionError):
-                raise FailSignal(
-                    f"{module}.{func} gave back something that is not a "
-                    f"{'whole number' if name == 'py_int' else 'decimal' if name == 'py_float' else 'text'}")
-        # recorded tool responses (8.3): after the grants are checked
-        if _state.RESPONSES is not None:
-            return _state.RESPONSES.answer(
-                name, [str(module), str(func), [str(x) for x in call_args]],
-                call_py, line)
-        return call_py()
     if name == "code_at":
         t, i = args
         if i < 0 or i >= len(t):
@@ -756,8 +870,6 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
                              f"UTF-8 text")
     if name in DIGEST_BUILTINS or name in HMAC_BUILTINS:
         return run_digest(name, args, line)
-    if name in TOOL_BUILTINS:
-        return run_tool(name, args, line)
     if name == "declassify":
         # the effect was spent before this ran; a Secret is a compile-time
         # distinction, so at this point the value is simply itself. A
@@ -798,92 +910,6 @@ def run_builtin(name: str, args: list[Any], line: int) -> Any:
                 fixes=["check the folder exists and is writable",
                        "or write somewhere else"])
 
-    if name == "request":
-        import json as _json
-        import urllib.request
-        import urllib.error
-        method, url, body, headers_json = (str(a) for a in args)
-        method = method.upper() or "GET"
-        if not (url.startswith("http://") or url.startswith("https://")):
-            url = "https://" + url
-        try:
-            headers = read_json(headers_json) if headers_json.strip() \
-                else {}
-        except Exception as e:
-            raise FailSignal(f"the headers are not valid JSON: {e}")
-        if not isinstance(headers, dict):
-            raise FailSignal('the headers must be a JSON object, like '
-                             '{"Accept": "application/json"}')
-        headers = {str(k): str(v) for k, v in headers.items()}
-        headers.setdefault("User-Agent", f"sabline/{VERSION}")
-        data = body.encode("utf-8") if body else None
-        allow_host(url, name, line)
-        opener = guarded_opener(url)         # may refuse a proxy (E317)
-        count_op("net", name, line)
-        req = urllib.request.Request(url, data=data, headers=headers,
-                                     method=method)
-        try:
-            with opener.open(req, timeout=20) as resp:
-                reply = {
-                    "status": int(resp.status),
-                    "body": resp.read(1 << 20).decode("utf-8",
-                                                      errors="replace"),
-                    "headers": {k: v for k, v in resp.headers.items()}}
-        except urllib.error.HTTPError as e:      # a real answer
-            reply = {
-                "status": int(e.code),
-                "body": e.read(1 << 20).decode("utf-8", errors="replace"),
-                "headers": {k: v for k, v in (e.headers or {}).items()}}
-        except _RedirectRefused as e:     # sent somewhere it may not go
-            _note_redirect(line)
-            raise FailSignal(f"'{url}' redirected to '{e.target}', which "
-                             f"this run does not allow: {e.why}")
-        except Exception as e:            # say what happened, not how
-            reason = "the address did not resolve"
-            text = str(e).lower()
-            if "timed out" in text or "timeout" in text:
-                reason = "it did not answer in time"
-            elif "refused" in text:
-                reason = "the connection was refused"
-            elif "certificate" in text or "ssl" in text:
-                reason = "the certificate was not accepted"
-            elif "unreachable" in text or "network" in text:
-                reason = "the network is unreachable"
-            raise FailSignal(f"cannot reach '{url}': {reason}")
-        return _json.dumps(reply, ensure_ascii=False)
-    if name in ("fetch", "post", "fetch_status"):
-        import urllib.request
-        import urllib.error
-        url = str(args[0])
-        if not (url.startswith("http://") or url.startswith("https://")):
-            url = "https://" + url
-        headers = {"User-Agent": f"sabline/{VERSION}"}
-        data = None
-        if name == "post":
-            body = str(args[1])
-            data = body.encode("utf-8")
-            headers["Content-Type"] = (
-                "application/json" if body.lstrip()[:1] in "{["
-                else "text/plain; charset=utf-8")
-        allow_host(url, name, line)
-        opener = guarded_opener(url)         # may refuse a proxy (E317)
-        count_op("net", name, line)
-        try:
-            req = urllib.request.Request(url, data=data, headers=headers)
-            with opener.open(req, timeout=10) as resp:
-                if name == "fetch_status":
-                    return int(resp.status)
-                return resp.read(1 << 20).decode("utf-8", errors="replace")
-        except urllib.error.HTTPError as e:      # a real answer, not silence
-            if name == "fetch_status":
-                return int(e.code)
-            raise FailSignal(f"'{url}' answered with status {e.code}")
-        except _RedirectRefused as e:     # sent somewhere it may not go
-            _note_redirect(line)
-            raise FailSignal(f"'{url}' redirected to '{e.target}', which "
-                             f"this run does not allow: {e.why}")
-        except Exception:
-            raise FailSignal(f"cannot reach '{url}'")
     if name == "args":
         return list(_state.PROGRAM_ARGS)
     if name == "log":

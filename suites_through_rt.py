@@ -6,17 +6,18 @@ counted per question (9.0, M3).
 
 plan/9.0.md's M3 asks that check_library.py, check_fallible.py,
 check_money.py, check_hostile.py, check_self_budget.py, check_pool.py and
-check_receipts.py pass against sabline-rt, and M2's five suites
+check_receipts.py pass against sabline-rt, and that check_sandbox.py's
+escapes are refused and its honest programs run, and M2's five suites
 (suite_runtime.py) ask their run questions of it too. Each suite here is
 run whole with SABLINE_REFERENCE_RUNTIME=rust - M2's five with
 `--runtime rust` as well, so that their check questions go to sabline-rt
 too - and every run it makes, in its own process or in any it starts, goes
 through sabline-rt the way a user's would and writes one line saying who
-answered it (sabline/through_rt.py's log): sabline-rt; the checks or the
-prover, which refused it before anything ran; or the Python package, and
-why - the network, Python or a tool the budget grants (decided on
-2026-10-11: such a run is the package's, and says so), the eval profile,
-`sabline trace`.
+answered it (sabline/through_rt.py's log): sabline-rt - a run of the
+network, Python or a tool included, whose calls it relays back to the
+package (decided on 2026-10-11); the checks or the prover, which refused
+it before anything ran; or the Python package, and why - the eval
+profile, `sabline trace`.
 
 What a suite prints is written to the same log as it prints it, so each
 run is counted against the question whose line comes after it: the
@@ -57,6 +58,9 @@ SUITES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("check_self_budget.py", ()),
     ("check_pool.py", ()),
     ("check_receipts.py", ()),
+    # M3's third criterion's own suite: its escapes and honest programs run
+    # from the command line, under their budgets, against its servers
+    ("check_sandbox.py", ()),
     ("check_fallible.py", ("--runtime", "rust")),
     ("check_termination.py", ("--runtime", "rust")),
     ("check_refusals.py", ("--runtime", "rust")),
@@ -76,9 +80,9 @@ BY_DESIGN: tuple[tuple[str, str, str], ...] = (
 
 # A line that gives a question's verdict, in the words these suites use.
 VERDICT = re.compile(r"^\s*(ok|PASS|FAIL|FINDING|WRONG|BROKEN|NOT ENFORCED|"
-                     r"UNEXPECTED|RAW CRASH|skip|not asked)\b")
+                     r"UNEXPECTED|RAW CRASH|ESCAPED|skip|not asked)\b")
 FAILED = ("FAIL", "FINDING", "WRONG", "BROKEN", "NOT ENFORCED", "UNEXPECTED",
-          "RAW CRASH")
+          "RAW CRASH", "ESCAPED")
 PASSED = ("ok", "PASS")
 
 # Run in the suite's process: its standard output, also written to the log

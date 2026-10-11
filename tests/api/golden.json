@@ -73,6 +73,9 @@
    "card": [
     "--agents"
    ],
+   "ceiling": [
+    "--json"
+   ],
    "check": [
     "--check-memory-mb",
     "--check-timeout",
@@ -582,6 +585,7 @@
        },
        "refusals": [],
        "run_parameters": {
+        "ceilings": [],
         "confinement": "str",
         "confinement_layers": [
          "str"
@@ -687,6 +691,7 @@
         }
        ],
        "run_parameters": {
+        "ceilings": [],
         "confinement": "str",
         "confinement_layers": [
          "str"
@@ -1039,6 +1044,7 @@
    "E322",
    "E323",
    "E324",
+   "E325",
    "E400",
    "E401",
    "E402",
@@ -1237,6 +1243,7 @@
      "covers": "(self, asked)",
      "current": "(cls)",
      "deny": "(self, names)",
+     "gap": "(self, asked)",
      "install": "(self)",
      "parse": "(cls, spec)",
      "restore": "(saved)",
@@ -3272,6 +3279,7 @@
        },
        "refusals": [],
        "run_parameters": {
+        "ceilings": [],
         "confinement": "str",
         "confinement_layers": [
          "str"

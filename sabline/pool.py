@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from . import state as _state
 from .version import VERSION, _launch_command
 from . import confine as _confine
+from . import ceiling as _ceiling
 from . import through_rt
 from .recorder import _RunRecorder, _entry_name, _utc_now_ms
 from .budget import Budget, BudgetError, set_run_params
@@ -326,6 +327,8 @@ def pool_worker(argv: list[Any]) -> int:
                          "confinement": confinement})
     while True:
         request = _msg_read(requests)
+        if request is not None and request.get("relayed"):
+            continue                       # a run's end, after it ended here
         if request is None or request.get("stop"):
             # the parent closed the pipe. It removes this worker's temporary
             # directory when it disposes of the worker; a parent that was
@@ -361,8 +364,14 @@ def pool_worker(argv: list[Any]) -> int:
                 # SABLINE_REFERENCE_RUNTIME=rust (9.0, M3): checked and
                 # proved here, under the pool's limits, and sabline-rt may
                 # run it - which the parent does, since this process cannot
-                # start one. Nothing of the program ran here
-                answer = {"route": True}
+                # start one. Nothing of the program runs here but the calls
+                # to the network, Python and tools sabline-rt relays back,
+                # which this worker makes, as it would have made them in
+                # the package's own run, until the parent says the run is
+                # over
+                _msg_write(replies, {"route": True})
+                _host_relays(requests, replies, request)
+                answer = None
             else:
                 if request.get("route"):
                     # it stays here, and the parent says so before it runs
@@ -382,10 +391,36 @@ def pool_worker(argv: list[Any]) -> int:
         except Exception as e:             # a defect in the compiler, not
             answer = {"crashed": f"{type(e).__name__}: {e}"}   # in the run
         reset_program_state(budget, baseline)
+        if answer is None:                 # a run sabline-rt made: said
+            continue
         try:
             _msg_write(replies, answer)
         except OSError:
             return 0                       # the parent stopped listening
+
+
+def _host_relays(requests: Any, replies: Any, request: dict[str, Any]) -> None:
+    """A worker as the host of a run sabline-rt makes in its parent (9.0,
+    M3): each `{"call": ...}` the parent forwards answered here
+    (through_rt.answer) under this worker's budget - installed, as for any
+    program it serves - with the run's seed, clock and arguments, until the
+    parent says the run is over. The first call is the program's first act
+    in this process, so the confinement a pool of one run applies at the
+    first statement is applied before it, as it would have been."""
+    set_run_params(request.get("seed"), request.get("freeze_time"))
+    _state.PROGRAM_ARGS[:] = [str(a) for a in request.get("args") or []]
+    started = False
+    while True:
+        message = _msg_read(requests)
+        if message is None:
+            raise SystemExit(0)            # the parent went away
+        if "call" not in message:
+            return                         # {"relayed": true}: it is over
+        if not started:
+            started = True
+            if _state.BEFORE_FIRST_STATEMENT is not None:
+                _state.BEFORE_FIRST_STATEMENT()
+        _msg_write(replies, {"answer": through_rt.answer(message["call"])})
 
 
 class _Worker:
@@ -499,6 +534,34 @@ class _Worker:
         finally:
             if alarm is not None:
                 alarm.cancel()
+
+    def relay(self, call: dict[str, Any]) -> dict[str, Any]:
+        """One call a run through sabline-rt relayed, made by this worker,
+        which checked the program and holds its budget (9.0, M3): its
+        answer, or HostGone - with what the worker said instead, if it said
+        anything - when it went away first."""
+        try:
+            _msg_write(self.proc.stdin, {"call": call})
+        except (OSError, ValueError):
+            raise through_rt.HostGone({})
+        while True:
+            message = _msg_read(self.proc.stdout)
+            if message is not None and len(message) == 1 and isinstance(
+                    message.get("confinement"), dict):
+                # a pool of one run is confined before its first call
+                self.confinement = dict(message["confinement"])
+                continue
+            if message is not None and isinstance(message.get("answer"),
+                                                  dict):
+                return message["answer"]
+            raise through_rt.HostGone(message or {})
+
+    def relayed(self) -> None:
+        """The run this worker was the host of is over."""
+        try:
+            _msg_write(self.proc.stdin, {"relayed": True})
+        except (OSError, ValueError):
+            pass
 
     def _deadline(self) -> None:
         # the PARENT owns the deadline: a worker that has not answered
@@ -728,11 +791,13 @@ class Pool:
             open_stream()
             _kept_in_package(self._entry, why)
 
-        def through(answer: dict[str, Any], began: float) -> dict[str, Any]:
+        def through(answer: dict[str, Any], began: float,
+                    worker: Any) -> dict[str, Any]:
             return self._run_through_rt(
                 source, path=path, name=_name, stdin=stdin or "",
                 args=list(args or []), seed=seed, freeze_time=freeze_time,
-                teller=teller, open_stream=open_stream, began=began)
+                teller=teller, open_stream=open_stream, began=began,
+                worker=worker)
         answer, events, worker, seconds = self._use(
             {"op": "run", "source": source, "stdin": stdin or "",
              "args": list(args or []), "path": path, "seed": seed,
@@ -799,9 +864,10 @@ class Pool:
         """One request to an idle worker: (answer, events, the worker,
         seconds it took). The worker goes back to the pool only when
         keep_if(answer) says so; otherwise it is killed and replaced.
-        `then(answer, began)`, when the worker answers that sabline-rt may
-        run the program (9.0, M3), is the run - made while the worker is
-        still held, so that keep_if is asked of how the run ended."""
+        `then(answer, began, worker)`, when the worker answers that
+        sabline-rt may run the program (9.0, M3), is the run - made while
+        the worker is still held, and is the host of what the run relays, so
+        that keep_if is asked of how the run ended."""
         import time as _time
         if self._closed:
             raise RuntimeError("this pool is closed")
@@ -826,7 +892,7 @@ class Pool:
                 worker.on_audit = worker.on_routing = None
             if then is not None and answer is not None and \
                     answer.get("route"):
-                answer = then(answer, began)
+                answer = then(answer, began, worker)
             seconds = _time.monotonic() - began
             keep = bool(keep_if(answer))
             return answer, events, worker, seconds
@@ -980,12 +1046,15 @@ class Pool:
     def _run_through_rt(self, source: str, *, path: Any, name: Any,
                         stdin: str, args: list[Any], seed: Any,
                         freeze_time: Any, teller: Any, open_stream: Any,
-                        began: float) -> dict[str, Any]:
+                        began: float, worker: Any) -> dict[str, Any]:
         """The run of a program a worker checked, by sabline-rt, started
         here under this pool's memory cap and killed at what is left of its
         deadline (sabline/through_rt.py): the answer a worker would have
         given, marked as sabline-rt's, with the audit stream it sent - from
-        which a run it did not finish gets its receipt."""
+        which a run it did not finish gets its receipt. The worker is the
+        host of what the run relays - the network, Python, a tool - and is
+        killed with sabline-rt at the deadline; one that goes away in a call
+        ends the run as a worker that went away in a run ends it."""
         import time as _time
         through_rt.note(self._entry, "sabline-rt")
         left = None if self.timeout is None else \
@@ -997,14 +1066,21 @@ class Pool:
                 open_stream(e)
             elif kind != "end":          # the pool's, with its receipt
                 teller.tell(e)
-        ended, output, logs, where = _through_rt_here(
-            source, path=path, budget=self._budget, args=args, stdin=stdin,
-            seed=seed, freeze_time=freeze_time, name=name,
-            import_root=self.import_root, event=event, timeout=left,
-            max_memory_mb=self.max_memory_mb)
+        try:
+            ended, output, logs, where = _through_rt_here(
+                source, path=path, budget=self._budget, args=args,
+                stdin=stdin, seed=seed, freeze_time=freeze_time, name=name,
+                import_root=self.import_root, event=event, timeout=left,
+                max_memory_mb=self.max_memory_mb, call=worker.relay,
+                on_kill=worker.kill)
+        finally:
+            worker.relayed()
         if ended.finished:
             answer = _result_of_rt(ended.document, ended.receipt, output,
                                    logs, where).as_dict()
+        elif ended.host_gone is not None:
+            worker.kill()                  # reaped, so its end can be read
+            answer = self._no_answer(worker, ended.host_gone, path).as_dict()
         else:
             answer = self._limit_reached(ended.timed_out, path).as_dict()
         answer["runtime"] = "sabline-rt"
@@ -1053,13 +1129,17 @@ class Pool:
                                      confinement=worker.confinement)
         doc = (answer or {}).get("receipt")
         if isinstance(doc, dict) and isinstance(doc.get("predicate"), dict):
-            doc["predicate"]["run_parameters"] = parameters
+            # the ceilings the worker held the run to are the worker's to say
+            held = (doc["predicate"].get("run_parameters") or {}).get(
+                "ceilings", [])
+            doc["predicate"]["run_parameters"] = dict(parameters, ceilings=held)
             doc["predicate"]["startedAt"] = started_at
             doc["predicate"]["wall_time_ms"] = round(seconds * 1000, 1)
             return doc
         recorder = _RunRecorder()
         for event in events:
             recorder.take(event)
+        recorder.ceilings = _ceiling.for_receipt(_ceiling.installed())
         return receipt_statement(
             recorder, name=_entry_name(path, name),
             entry_bytes=source.encode("utf-8", "surrogatepass"),
@@ -1082,6 +1162,7 @@ class Pool:
             doc["predicate"]["wall_time_ms"] = round(seconds * 1000, 1)
             return doc
         recorder, producer = _RunRecorder(), None
+        recorder.ceilings = _ceiling.for_receipt(_ceiling.installed())
         for event in answer.get("events") or []:
             if not isinstance(event, dict):
                 continue

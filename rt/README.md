@@ -13,10 +13,13 @@ Python and a tool - the pure ones, the console's, a file read, written
 and looked for under the budget's grants, counts, read ceiling and
 credential rule, the clock and randomness (frozen and seeded as
 `--freeze-time` and `--seed` give them), the environment, `declassify`
-and the two HMACs. The work of a builtin that reaches the network, calls
-Python or a tool is not ported yet: under a budget that does not grant
-its effect it is refused before its work would start, exactly as the
-reference refuses it. From M3's third checkpoint it records each run's
+and the two HMACs. A builtin that reaches the network, calls Python or a
+tool is spent here, and refused by a budget that does not grant its effect
+exactly as the reference refuses it; under one that does, its work is
+relayed to the Python package that started the run, which makes the call
+with its own code for it and tells back how it ended and what it recorded
+(`interp::RELAYED`; decided on 2026-10-11 - porting the network itself is
+M4's and M5's). From M3's third checkpoint it records each run's
 receipt as the reference does, into the run document the gate compares.
 It does not prove, does not hold a budget at the operating system, and
 has no command that runs a program for you, so it cannot tell you
@@ -418,10 +421,33 @@ directory its imports must stay inside (E515, as `loader._import_refusal`
 words it, by CPython's `realpath`), whether the audit stream is wanted, and
 whether it is `sabline test`'s run - each test function called in turn
 rather than `main`, a `{"test": ...}` frame after what each printed
-(`run_dump::test_relayed`). Then a frame on standard output for each thing
-the run does, as it does it: what `print` and `log` write, `read_line` and
-`ask` as questions the parent answers with a line, each audit event, and
-last the run document and the receipt. **Why frames**: what the program
+(`run_dump::test_relayed`), and the host's tool session's ceiling record
+when it has one. Then a frame on standard output for each thing the run
+does, as it does it: what `print` and `log` write, `read_line` and `ask` as
+questions the parent answers with a line, each audit event, each builtin of
+the network, Python or a tool as a `call` the parent answers, and last the
+run document and the receipt.
+
+**The network, Python and tools are the host's.** Once a `call`'s effect
+is spent here, the parent makes it with the package's own code
+(`runtime.outside_builtin`: urllib with its redirects and proxy refusal,
+the granted module with every attribute checked, the tool session) under
+the run's budget, and answers with how it ended - a value, a failure the
+program can handle, a coded error, a granted module's exit, or the name of
+an exception that escaped - and with what its recorder noted, in order:
+each grant's event, each refusal a redirect makes, each tool call, what
+each grant let through, and the session's ceiling. This crate records
+those in its own receipt and stream as they happened, so both are
+sabline-rt's and say what the package's would. A value crosses as itself,
+a handle as `{"handle": id, "what": name}` (`Value::Handle`, which prints
+as `HandleValue` does and compares by identity). The host is the caller's
+process for an unbounded run and the command line; for a pool's run it is
+the worker that checked the program - confined, capped, and killed with
+this process at the deadline. The gate holds it: `sabline run-dump
+--through-rt` makes the package the host of a run whose records this crate
+writes (`run_dump::run_hosted`), and the gate compares those with the
+package's own run of the same line - against two stand-in servers and a
+stand-in tool host - byte for byte. **Why frames**: what the program
 prints reaches its user through the package's own `sys.stdout`, and what it
 reads comes from `sys.stdin`, with their encoding, buffering, newline
 translation and `input()`'s way with a terminal - so a run through
@@ -446,7 +472,8 @@ is always asked for, and the pool makes its receipt of what that says.
 
 `check_through_rt.py` holds every entry point to the package's own runs of
 the gate's programs - the command line, `sabline.run` with limits and
-without, a Pool, the gate's budgeted rows through a PoolRegistry, and
+without, a Pool, the gate's budgeted rows and its rows of the network,
+Python and tools through a PoolRegistry and the command line too, and
 `sabline test` - output byte for byte, status, the error printed, the
 receipt and the stream; `suites_through_rt.py` asks the suites of M3's
 fourth criterion through it, question by question; and `tests/exec.rs`

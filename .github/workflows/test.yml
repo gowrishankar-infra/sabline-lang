@@ -137,6 +137,8 @@ jobs:
         run: python check_eval.py
       - name: receipts diff names each difference; replay runs the same bytes or refuses
         run: python check_receipts.py
+      - name: An organisation ceiling refuses a wider budget at every entry point, in both runtimes, and is named (9.0)
+        run: python check_ceiling.py
       - name: sabline demo, end to end, and that it reads nobody's .env (8.5)
         run: python check_demo.py
       - name: azure.vel, github.vel, k8s.vel and aws.vel, each against a stand-in for its service (8.5)
@@ -279,10 +281,11 @@ jobs:
         run: cargo build --release --manifest-path rt/Cargo.toml
       - name: Both runtimes agree, program for program
         run: python check_agreement.py sabline-spec/tests
-      # Differences injected into sabline-rt - fourteen from M3, at least
-      # one for each kind of thing the gate compares, a run's output, code,
-      # message and step limit among them - each of which the gate must go
-      # red for; and the scan that says the gate reads nothing that could
+      # Differences injected into sabline-rt - at least one for each kind of
+      # thing the gate compares, from M3 a run's output, code, message and
+      # step limit, the relay of the network, Python and tools, and the
+      # organisation ceiling among them - each of which the gate must go red
+      # for; and the scan that says the gate reads nothing that could
       # disable it.
       - name: The gate cannot be turned off, and it detects
         run: python check_gate.py sabline-spec/tests
@@ -350,6 +353,12 @@ jobs:
         run: cargo build --release --manifest-path rt/Cargo.toml
       - name: The suites, question by question, through sabline-rt
         run: python suites_through_rt.py
+      # The benchmark's programs as its harness runs them - each under the
+      # budget its task needs, with its input, its stand-in server and its
+      # vendored library - in both runtimes, Sabline's record of each
+      # compared field for field (9.0, M3).
+      - name: The benchmark's programs, under their own budgets, in both runtimes
+        run: python check_benchmark_through_rt.py
 
   msrv:
     name: sabline-rt builds on the Rust version it says it needs

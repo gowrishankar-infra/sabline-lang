@@ -279,6 +279,11 @@ fn exec(dir: String) -> Result<ExitCode, String> {
                 let ended = sabline_rt::run_dump::test_relayed(&path, &dir, &given, relay);
                 return Ok(format!("{{\"tests\":{}}}", ended.canonical()));
             }
+            if given.dump {
+                let (document, receipt, stream) =
+                    sabline_rt::run_dump::run_hosted(&path, &dir, &given, relay);
+                return Ok(exec::records(&document, &receipt, &stream).canonical());
+            }
             let (document, receipt) =
                 sabline_rt::run_dump::run_relayed(&path, &dir, &given, relay);
             Ok(format!(

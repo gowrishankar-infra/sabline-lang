@@ -876,7 +876,7 @@ KNOWN_ENV = {
     "HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "PYTHONPATH",
     "SOURCE_DATE_EPOCH", "GITHUB_TOKEN", "GITHUB_REPOSITORY",
     "GITHUB_API_URL", "SABLINE_FAULT_INJECT", "SABLINE_REFERENCE_RUNTIME",
-    "SABLINE_THROUGH_RT_LOG"}
+    "SABLINE_THROUGH_RT_LOG", "SABLINE_CEILING"}
 
 
 def env_names_read() -> Any:
@@ -938,6 +938,12 @@ def env_cases() -> None:
          {"SABLINE_REFERENCE_RUNTIME": OTHER_RUNTIME}, False),
         ("C15 SABLINE_THROUGH_RT_LOG naming a file",
          {"SABLINE_THROUGH_RT_LOG": str(WORK / "runs.jsonl")}, False),
+        # an organisation ceiling (9.0) can only narrow: one that caps
+        # nothing leaves every run as it was. What one that narrows refuses,
+        # and how, is check_ceiling.py's
+        ("C17 SABLINE_CEILING naming a ceiling that caps nothing",
+         {"SABLINE_CEILING": str(write(WORK / "ceiling-all.json", json.dumps(
+             {"schema": "sabline.ceiling/1", "allow": "all"})))}, False),
         ("C11 every other variable sabline/*.py reads, set "
          "(SABLINE_CONFORMANCE_CORPUS, SABLINE_PYPI_URL, SABLINE_NPM_REGISTRY, "
          "SABLINE_DEBUG_INV, SOURCE_DATE_EPOCH, GITHUB_*)",

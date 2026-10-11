@@ -484,23 +484,77 @@ class TheVariableChoosesTheRuntime(Run):
         self.assertEqual((done.returncode, done.stdout), (2, ""))
         self.assertIn("SABLINE_REFERENCE_RUNTIME is 'rsut'", done.stderr)
 
-    def test_the_network_python_or_a_tool_it_can_reach_stays_the_packages(self) -> None:
+    def test_a_relayed_call_is_the_packages_own_code(self) -> None:
+        # what sabline-rt relays of the network, Python and tools (9.0, M3) is
+        # answered by runtime.outside_builtin under the installed budget, and
+        # says how it ended and what it recorded, without the effect spent
+        from sabline import state as _state
         from sabline import through_rt
         from sabline.budget import Budget
-        from sabline.loader import load_program
-        path = os.path.join(self.dir, "p.vel")
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write("fn get(u: Text) -> Text uses net {\n    return \"\"\n}\n"
-                     + main_of('print("hi")'))
-        funcs, _ = load_program(path)
-        self.assertEqual(through_rt.not_ported(funcs, Budget.parse("io,net")), ["net"])
-        self.assertEqual(through_rt.not_ported(funcs, Budget.parse("io")), [])
-        # a budget granting what the program never uses goes through
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write(main_of('print("hi")'))
-        funcs, _ = load_program(path)
-        self.assertEqual(through_rt.not_ported(funcs, Budget.parse(
-            "io,env,fs,net,clock,rand,ffi,declassify,tool")), [])
+        saved = Budget.snapshot()
+        handles = dict(_state.PY_OBJECTS)
+        try:
+            Budget.parse("io,ffi:math,ffi:collections").install()
+
+            def call(name: str, *args: Any) -> dict[str, Any]:
+                return through_rt.answer({"name": name, "args": list(args),
+                                          "line": 7})
+            said = call("py_float", "math", "pow", ["2", "0.5"])
+            self.assertEqual(said["value"], 2 ** 0.5)
+            self.assertEqual((said["did"], said["counted"]), ([], {}))
+            self.assertEqual(call("py", "math", "sqrt", ["-1"])["fail"],
+                             "math.sqrt failed: math domain error")
+            refused = call("py", "json", "dumps", ["x"])["error"]
+            self.assertEqual((refused["code"], refused["line"]), ("E311", 7))
+            made = call("py_new", "collections", "Counter", '["aab"]')["value"]
+            self.assertEqual(made["what"], "Counter")
+            self.assertEqual(call("py_do", made, "most_common", "[1]")["value"],
+                             '[["a", 2]]')
+            self.assertEqual(call("py_close", made)["value"], None)
+            self.assertEqual(call("py_do", made, "most_common", "[1]")["fail"],
+                             "that handle is closed")
+            self.assertEqual(call("py_int", "math", "floor", ["2.5"])["value"], 2)
+            self.assertEqual(_state.EFFECT_USES, {})     # sabline-rt spends it
+            # what a grant let through is told and counted; a tool call's
+            # grant only counted, as the package's recorder has it
+            Budget.parse("io,net:127.0.0.1:9@3").install()
+            said = call("fetch", "http://127.0.0.1:9/")
+            self.assertIn("cannot reach", said["fail"])
+            self.assertEqual(said["did"], [{"grant": "net:127.0.0.1:9"}])
+            self.assertEqual(said["counted"], {"net:127.0.0.1:9": 1})
+            self.assertEqual(call("fetch", "http://127.0.0.1:10/")["error"]["code"],
+                             "E314")
+            self.assertEqual(call("tool", "search", "{}")["error"]["code"], "E320")
+        finally:
+            Budget.restore(saved)
+            _state.PY_OBJECTS.clear()
+            _state.PY_OBJECTS.update(handles)
+
+    def test_a_tool_call_held_by_two_grants_names_both(self) -> None:
+        # until 9.0 the two were joined by a backslash and an n, and the
+        # receipt, which splits on a line feed, listed them as one
+        from sabline import state as _state
+        from sabline import through_rt
+        from sabline.budget import Budget
+        from sabline.run_dump import stand_in_session
+        session, door = stand_in_session({
+            "schema": "sabline.tools/1",
+            "tools": {"send": {"arguments": {"type": "object"}}}})
+        saved = Budget.snapshot()
+        try:
+            Budget.parse("io,tool:send:to=*%40corp.com,"
+                         "tool:send:cc=*%40corp.com").install()
+            vars(_state)["TOOL_SESSION"] = session
+            said = through_rt.answer({"name": "tool", "line": 3, "args": [
+                "send", '{"to": "a@corp.com", "cc": "b@corp.com"}']})
+            note = said["did"][0]["note"]
+            self.assertEqual(note["held"].split("\n"),
+                             ["tool:send:cc=*@corp.com", "tool:send:to=*@corp.com"])
+            self.assertEqual(said["tool_ceiling"]["calls_used"], 1)
+        finally:
+            vars(_state)["TOOL_SESSION"] = None
+            Budget.restore(saved)
+            door.close()
 
 
 class WhatARunThroughSablineRtSays(Run):
@@ -512,10 +566,6 @@ class WhatARunThroughSablineRtSays(Run):
     def test_a_kept_run_says_why_and_a_refused_one_says_nothing(self) -> None:
         from sabline import through_rt
         self.assertIsNone(through_rt.notice_for("checks"))
-        said = through_rt.notice_for("net,ffi")
-        self.assertIsNotNone(said)
-        self.assertIn("grants the network, Python, which sabline-rt does not do yet",
-                      str(said))
         self.assertIn("eval profile", str(through_rt.notice_for("eval")))
         self.assertIn("not UTF-8", str(through_rt.notice_for("source")))
         self.assertIn("sabline trace", str(through_rt.notice_for("trace")))
@@ -681,7 +731,10 @@ class ThroughSablineRtUnderLimits(Run):
             self.assertEqual(receipt_of(third)["predicate"]["producer"]["name"],
                              "sabline-rt")
 
-    def test_what_stays_the_packages_says_so_and_runs(self) -> None:
+    def test_python_goes_through_and_its_calls_come_back(self) -> None:
+        # decided on 2026-10-11: sabline-rt relays a call to Python to the
+        # host - this process, or the worker that checked the program - and
+        # nothing is said of it on stderr any more
         import contextlib
         import io
         import sabline
@@ -693,9 +746,33 @@ class ThroughSablineRtUnderLimits(Run):
             with contextlib.redirect_stderr(said):
                 r = sabline.run(source, allow={"io", "ffi:math"}, **limits)
             self.assertEqual(r.output, "2\n")
-            self.assertEqual(receipt_of(r)["predicate"]["producer"]["name"],
-                             "sabline-lang")
-            self.assertIn("this run is the Python package's", said.getvalue())
+            predicate = receipt_of(r)["predicate"]
+            self.assertEqual(predicate["producer"]["name"], "sabline-rt")
+            self.assertEqual(predicate["effects_used"], {"ffi": 1, "io": 1})
+            self.assertEqual(said.getvalue(), "")
+
+    def test_the_clock_stops_a_call_the_worker_is_making(self) -> None:
+        import sabline
+        source = main_of('print("before")\n'
+                         'check py("time", "sleep", ["60"]) {\n'
+                         '    ok n {\n        print(n)\n    }\n'
+                         '    fail w {\n        print(w)\n    }\n}', uses="io, ffi")
+        r = sabline.run(source, allow={"io", "ffi:time"}, timeout=3)
+        self.assertTrue(r.timed_out)
+        self.assertEqual(r.problems[0].code, "E610")
+        self.assertEqual(receipt_of(r)["predicate"]["exit"]["outcome"], "timeout")
+
+    def test_a_worker_gone_in_a_call_ends_the_run_as_a_worker_gone_does(self) -> None:
+        import sabline
+        source = main_of('print("before")\n'
+                         'check py("os", "_exit", ["3"]) {\n'
+                         '    ok n {\n        print(n)\n    }\n'
+                         '    fail w {\n        print(w)\n    }\n}', uses="io, ffi")
+        r = sabline.run(source, allow={"io", "ffi:os", "ffi:nt", "ffi:posix"},
+                        timeout=60)
+        self.assertFalse(r.ok)
+        self.assertEqual(r.problems[0].code, "E000")
+        self.assertIn("the worker stopped without answering", r.problems[0].message)
 
     def test_a_frozen_clock_given_as_an_instant(self) -> None:
         import sabline
@@ -704,6 +781,74 @@ class ThroughSablineRtUnderLimits(Run):
             r = sabline.run(source, allow="io,clock",
                             freeze_time="2026-01-01T00:00:00Z", **limits)
             self.assertEqual(r.output, "1767225600\n", limits)
+
+
+class OrganisationCeiling(Run):
+    """The organisation ceiling (9.0, decisions/0007 32c) without a run: a
+    ceiling read from its text, a budget held to one or several, and the
+    rule it shares with a door's --max-allow. check_ceiling.py asks every
+    entry point, in both runtimes; the gate holds the two to each other."""
+
+    def ceiling(self, allow: Any, **more: Any) -> Any:
+        import json
+        from sabline import ceiling
+        return ceiling.read("c.json", json.dumps(
+            {"schema": ceiling.CEILING_SCHEMA, "allow": allow, **more}))
+
+    def test_a_ceiling_reads_from_its_text_or_says_why_it_cannot(self) -> None:
+        from sabline import ceiling
+        held = self.ceiling("io,net@3", description="ours")
+        self.assertEqual((held.allows(), held.broken), ("io,net@3", None))
+        self.assertEqual(len(held.sha256), 64)
+        for text, why in (("{", "it is not JSON: Expecting property name"),
+                          ("[]", "it is not a JSON object"),
+                          ('{"allow": "io"}', 'it does not say "schema"'),
+                          ('{"schema": "sabline.ceiling/1", "allow": "io", '
+                           '"zz": 1, "b": 2}', "'b' is not a field"),
+                          ('{"schema": "sabline.ceiling/1", "allow": 3}',
+                           "written as text"),
+                          ('{"schema": "sabline.ceiling/1", "allow": "wifi"}',
+                           'its "allow" is not a budget: ')):
+            broken = ceiling.read("c.json", text)
+            self.assertIsNone(broken.budget, text)
+            self.assertTrue(str(broken.broken).startswith(why)
+                            or why in str(broken.broken), broken.broken)
+        missing = ceiling.read_file(os.path.join(self.dir, "none.json"))
+        self.assertEqual(missing.broken, "there is no file there")
+
+    def test_a_budget_must_sit_inside_every_ceiling_in_any_order(self) -> None:
+        from sabline import ceiling
+        from sabline.budget import Budget
+        a = self.ceiling("io,fs,net:*.corp.com")
+        b = self.ceiling("io,net@5,fs:read")
+        everything = self.ceiling("all")
+        for spec, fits in (("io", True), ("io,fs:read", True),
+                           ("io,net:api.corp.com@3", True),
+                           ("io,fs", False), ("io,net:api.corp.com", False),
+                           ("io,ffi", False), ("io,net:x.other.com@1", False)):
+            budget = Budget.parse(spec)
+            for order in ([a, b], [b, a], [a, b, everything], [everything, b, a]):
+                self.assertEqual(ceiling.refusal(order, budget) is None, fits,
+                                 (spec, [c.allows() for c in order]))
+        said = ceiling.refusal([a, b], Budget.parse("io,net:api.corp.com"))
+        self.assertEqual(said.code, "E325")
+        self.assertIn("the budget's 'net' grant goes past the organisation "
+                      "ceiling c.json: it allows at most 5 network operations",
+                      said.message)
+        self.assertIn("is not one", ceiling.refusal(
+            [ceiling.read("x.json", "nope")], Budget.parse("io")).message)
+
+    def test_gap_and_a_doors_covers_are_one_rule(self) -> None:
+        from sabline.budget import Budget
+        door = Budget.parse("io,fs:read,net:*.corp.com:443@10,ffi:math,tool:search")
+        for spec in ("io", "io,fs", "io,fs:write", "io,net:a.corp.com:443@2",
+                     "io,net:a.corp.com:443", "io,ffi", "io,ffi:json",
+                     "io,tool", "io,clock"):
+            asked = Budget.parse(spec)
+            gap, covers = door.gap(asked), door.covers(asked)
+            self.assertEqual(gap is None, covers is None, spec)
+            if gap is not None:
+                self.assertEqual("this server" + gap[1][len("it"):], covers)
 
 
 class ReceiptOfARun(Run):

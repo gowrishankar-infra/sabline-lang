@@ -43,6 +43,21 @@ takes epoch seconds), the environment and the import root. Left out: the
 two rows that set the read ceiling, which the library has no argument for,
 and a row whose run ends only at the run document's step limit, as above.
 
+**And the examples written for a budget** (run_tests.py's ALLOW), through
+the command line as run_tests.py runs each - its budget, its arguments and
+its input - in a scratch folder made afresh for each runtime.
+
+**And the network, Python and tools** (agreement_runs.RELAYED_RUNS), whose
+calls sabline-rt relays to the package: through the command line too, and
+against the gate's stand-in servers - this process the host of an
+unbounded run and of the command line's, a pool's worker the host of a
+bounded one and of a pool's. Left out: the rows that need a tool session,
+which only `sabline run --tools` opens, over a door this check does not
+hold (the gate's run document has a stand-in host for them, and
+check_runner.py asks the door). And the two lists of what is relayed - the
+package's runtime.OUTSIDE_BUILTINS and the crate's interp::RELAYED - are
+held to each other and to every builtin of the network, Python and tools.
+
 **What it runs**: every program of the run corpus (agreement_runs.py) and
 of examples/ that ends within the run document's limits and escapes
 nothing - the programs the gate runs, as a user runs them, with the run
@@ -197,21 +212,33 @@ def programs(work: Path) -> list[tuple[str, Path]]:
     return out
 
 
-def command_line(path: Path, runtime: str, out: Path) -> dict[str, Any]:
+def command_line(path: Path, runtime: str, out: Path,
+                 given: dict[str, Any] | None = None,
+                 values: dict[str, str] | None = None,
+                 args: list[str] | None = None,
+                 stdin: str | None = None) -> dict[str, Any]:
     """`sabline FILE --no-confine --receipt R --audit-stream S -- ARGS`,
     given STDIN, under `runtime`: what it wrote, how it ended, and the
-    receipt and stream it left."""
+    receipt and stream it left. With `given`, a budgeted row's: its
+    `--allow`, `--deny`, `--seed` and `--freeze-time`, filled from
+    `values`."""
     env = dict(os.environ)
     env.pop(through_rt.VARIABLE, None)
     if runtime == "rust":
         env[through_rt.VARIABLE] = "rust"
     env["PYTHONIOENCODING"] = "utf-8"
     receipt, stream = out.with_suffix(f".{runtime}.receipt"), out.with_suffix(f".{runtime}.stream")
+    flags: list[str] = []
+    for key, flag in (("allow", "--allow"), ("deny", "--deny"),
+                      ("seed", "--seed"), ("freeze_time", "--freeze-time")):
+        if given is not None and given.get(key) is not None:
+            flags += [flag, str(gate._filled(given[key], values or {}))]
     done = subprocess.run(
         [sys.executable, str(HERE / "sabline.py"), str(path), "--no-confine",
-         "--receipt", str(receipt), "--audit-stream", str(stream), "--",
-         *run_dump.ARGS],
-        input=run_dump.STDIN.encode("utf-8"), capture_output=True, env=env,
+         *flags, "--receipt", str(receipt), "--audit-stream", str(stream),
+         "--", *(run_dump.ARGS if args is None else args)],
+        input=(run_dump.STDIN if stdin is None else stdin).encode("utf-8"),
+        capture_output=True, env=env,
         cwd=str(path.parent), timeout=600)
     return {"stdout": done.stdout, "stderr": NATIVE_NOTE.sub(b"", done.stderr),
             "status": done.returncode, "receipt": _read(receipt),
@@ -336,18 +363,29 @@ def ending_rows(work: Path) -> set[str]:
 
 
 def budgeted(work: Path, runtime: str, how: str,
-             ending: set[str]) -> list[tuple[str, dict[str, Any]]]:
+             ending: set[str] | None,
+             ports: dict[str, str] | None = None) -> list[tuple[str, dict[str, Any]]]:
     """Every budgeted row of the gate but the read ceiling's, in order, in
     a tree made afresh under `work`, through the entry point `how` names -
-    `run`, `bounded` or `pools` - under `runtime`: (name, what it did)."""
+    `run`, `bounded` or `pools`, or `cli` - under `runtime`: (name, what it
+    did). With `ports`, the relayed rows instead, against the stand-in
+    servers there, but for those that need a tool session."""
     import shutil
     # one path for both runtimes, the tree made afresh for each, as the gate
     # makes it: a path is in a message, a budget and the program's own text
     root = work / f"tree-{how}"
     shutil.rmtree(root, ignore_errors=True)
     values = agreement_runs.tree(root)
-    rows = [(name, source, given) for name, source, given in agreement_runs.BUDGETED
-            if "max_read" not in given and name in ending]
+    if ports is not None:
+        values.update(ports)
+        rows = [(name, source, given)
+                for name, source, given in agreement_runs.RELAYED_RUNS
+                if "tools" not in given]
+    else:
+        rows = [(name, source, given)
+                for name, source, given in agreement_runs.BUDGETED
+                if "max_read" not in given and ending is not None
+                and name in ending]
     variables = agreement_runs.run_variables(values)
     saved = {k: os.environ.get(k) for k in variables}
     os.environ.update(variables)
@@ -358,43 +396,110 @@ def budgeted(work: Path, runtime: str, how: str,
             for k, (name, source, given) in enumerate(rows):
                 path = root / f"program{k:04d}.vel"
                 path.write_text(gate._filled(source, values), encoding="utf-8")
-                asked: dict[str, Any] = {
-                    "allow": gate._filled(given.get("allow", "io"), values),
-                    "seed": given.get("seed"),
-                    "freeze_time": (None if given.get("freeze_time") is None
-                                    else _instant(given["freeze_time"]))}
-                if given.get("deny"):
-                    asked["deny"] = set(given["deny"].split(","))
-                if "import_root" in given:
-                    asked["import_root"] = gate._filled(given["import_root"], values)
-                if how != "run":
-                    asked.update(LIMITS)
-                events: list[Any] = []
-                common: dict[str, Any] = {
-                    "path": str(path), "stdin": run_dump.STDIN,
-                    "args": list(run_dump.ARGS), "audit_stream": events.append}
-                if how == "bounded":
-                    common["confine"] = False
-                source_text = path.read_text(encoding="utf-8")
+                # a row's own variables, over the tree's, for its run alone
+                own = gate._filled(given.get("environ") or {}, values)
+                before = {v: os.environ.get(v) for v in own}
+                os.environ.update(own)
                 try:
-                    if how == "pools":
-                        result = pools.run(source_text, **common, **asked)
+                    if how == "cli":
+                        out.append((name, command_line(
+                            path, runtime, path, given=given, values=values)))
                     else:
-                        result = sabline.run(source_text, **common, **asked)
-                except ValueError as e:
-                    # a clock past the year 9999 is refused before anything
-                    # runs, by either runtime: that it is, is compared
-                    out.append((name, {"result": {"raised": str(e)},
-                                       "receipt": None, "stream": []}))
-                    continue
-                out.append((name, _taken(result, events)))
+                        out.append((name, _budgeted_run(
+                            path, given, values, how, pools)))
+                finally:
+                    _put_back(before)
     finally:
-        for variable, was in saved.items():
-            if was is None:
-                os.environ.pop(variable, None)
-            else:
-                os.environ[variable] = was
+        _put_back(saved)
     return out
+
+
+def _put_back(saved: dict[str, str | None]) -> None:
+    """The environment's variables put back as they were."""
+    for variable, was in saved.items():
+        if was is None:
+            os.environ.pop(variable, None)
+        else:
+            os.environ[variable] = was
+
+
+def _budgeted_run(path: Path, given: dict[str, Any], values: dict[str, str],
+                  how: str, pools: Any) -> dict[str, Any]:
+    """One budgeted row through the library - `run`, `bounded` or `pools` -
+    and what it did."""
+    asked: dict[str, Any] = {
+        "allow": gate._filled(given.get("allow", "io"), values),
+        "seed": given.get("seed"),
+        "freeze_time": (None if given.get("freeze_time") is None
+                        else _instant(given["freeze_time"]))}
+    if given.get("deny"):
+        asked["deny"] = set(given["deny"].split(","))
+    if "import_root" in given:
+        asked["import_root"] = gate._filled(given["import_root"], values)
+    if how != "run":
+        asked.update(LIMITS)
+    events: list[Any] = []
+    common: dict[str, Any] = {
+        "path": str(path), "stdin": run_dump.STDIN,
+        "args": list(run_dump.ARGS), "audit_stream": events.append}
+    if how == "bounded":
+        common["confine"] = False
+    source_text = path.read_text(encoding="utf-8")
+    try:
+        if how == "pools":
+            result = pools.run(source_text, **common, **asked)
+        else:
+            result = sabline.run(source_text, **common, **asked)
+    except ValueError as e:
+        # a clock past the year 9999 is refused before anything runs, by
+        # either runtime: that it is, is compared
+        return {"result": {"raised": str(e)}, "receipt": None, "stream": []}
+    return _taken(result, events)
+
+
+def examples_budgeted(work: Path, runtime: str) -> list[tuple[str, dict[str, Any]]]:
+    """Each example run_tests.py gives a budget, through the command line as
+    run_tests.py runs it - its budget, its arguments, its input - with a
+    seed and a frozen clock, which one of them reads, in one folder made
+    afresh for each runtime: two of them write files where they run, and a
+    path is in a receipt. (name, what it did)."""
+    import shutil
+    tests = __import__("run_tests")
+    where = work / "examples-budgeted"
+    shutil.rmtree(where, ignore_errors=True)
+    where.mkdir()
+    out = []
+    for name, allow in sorted(tests.ALLOW.items()):
+        path = where / name
+        path.write_bytes((HERE / "examples" / name).read_bytes())
+        out.append((name, command_line(
+            path, runtime, path,
+            given={"allow": allow, "seed": 7,
+                   "freeze_time": "2026-01-01T00:00:00Z"},
+            args=list(tests.ARGS.get(name, [])),
+            stdin=tests.STDIN.get(name) or "")))
+    return out
+
+
+def relayed_lists_agree() -> str | None:
+    """Why what the package relays (runtime.OUTSIDE_BUILTINS) and what
+    sabline-rt relays (interp::RELAYED) are not the same list, or not every
+    builtin of the network, Python and tools - or None."""
+    from sabline.runtime import OUTSIDE_BUILTINS
+    from sabline.tables import BUILTINS
+    text = (HERE / "rt" / "crates" / "sabline-rt" / "src" / "interp.rs").read_text(
+        encoding="utf-8")
+    found = re.search(r"pub const RELAYED: \[&str; \d+\] = \[(.*?)\];", text, re.S)
+    if found is None:
+        return "rt/crates/sabline-rt/src/interp.rs no longer says RELAYED"
+    crate = set(re.findall(r'"([a-z_]+)"', found.group(1)))
+    outside = {n for n, b in BUILTINS.items()
+               if set(b["effects"]) & {"net", "ffi", "tool"}}
+    if crate != set(OUTSIDE_BUILTINS) or crate != outside:
+        return (f"what is relayed differs: the crate {sorted(crate)}, the "
+                f"package {sorted(OUTSIDE_BUILTINS)}, the builtins of the "
+                f"network, Python and tools {sorted(outside)}")
+    return None
 
 
 def stack_is_the_crates() -> str | None:
@@ -469,13 +574,41 @@ def library_differs(name: str, how: str, mine: dict[str, Any],
     return f"{name}: {how}'s {why}" if why else None
 
 
+def cli_differs(name: str, mine: dict[str, Any],
+                theirs: dict[str, Any]) -> str | None:
+    """Why one program's two runs through the command line differ, or
+    None: what it wrote to each channel and how it ended, and the receipt
+    and the stream, each made by the runtime that ran it - or, for a
+    program the checks or the prover refuse, which nothing runs, the output
+    and the status, both receipts the package's."""
+    if refused_by_checks(mine["receipt"]):
+        made = (producer(mine["receipt"]), producer(theirs["receipt"]))
+        if made != ("sabline-lang", "sabline-lang"):
+            return (f"{name}: refused by the checks, and its receipts were "
+                    f"made by {made[0]} and {made[1]}")
+        if (mine["stdout"], mine["status"]) != (theirs["stdout"], theirs["status"]):
+            return f"{name}: refused by the checks, and the output or status differ"
+        return None
+    for key in ("stdout", "stderr", "status"):
+        if mine[key] != theirs[key]:
+            return (f"{name}: the command line's {key}: python "
+                    f"{mine[key]!r:.300}, sabline-rt {theirs[key]!r:.300}")
+    if (producer(mine["receipt"]), producer(theirs["receipt"])) != (
+            "sabline-lang", "sabline-rt"):
+        return (f"{name}: the command line's receipts were made by "
+                f"{producer(mine['receipt'])} and {producer(theirs['receipt'])}")
+    why = (receipts_differ(mine["receipt"], theirs["receipt"], "receipt")
+           or streams_differ(mine["stream"], theirs["stream"], "stream"))
+    return f"{name}: the command line's {why}" if why else None
+
+
 def main() -> int:
     if through_rt.binary() is None:
         gate.rt_binary()                 # builds it, as the gate does
     found: list[str] = []
-    stack = stack_is_the_crates()
-    if stack:
-        found.append(stack)
+    for why in (stack_is_the_crates(), relayed_lists_agree()):
+        if why:
+            found.append(why)
     with tempfile.TemporaryDirectory(prefix="sabline-through-rt-") as tmp:
         work = Path(tmp)
         chosen = programs(work)
@@ -555,11 +688,38 @@ def main() -> int:
                 why = library_differs(f"budgeted/{name}", shown, a, b)
                 if why:
                     found.append(why)
+        # the examples written for a budget, as run_tests.py runs them
+        examples = list(zip(examples_budgeted(work, "python"),
+                            examples_budgeted(work, "rust")))
+        for (name, a), (_, b) in examples:
+            why = cli_differs(f"examples/{name} under its budget", a, b)
+            if why:
+                found.append(why)
+        # the network, Python and tools, against the stand-in servers
+        relayed = 0
+        ports, stop_servers = agreement_runs.servers()
+        try:
+            for how, shown in (("cli", "the command line under its budget"),
+                               ("run", "sabline.run under its budget"),
+                               ("bounded", "sabline.run under its budget, with limits"),
+                               ("pools", "a PoolRegistry under its budget")):
+                ours, rts = (budgeted(work, "python", how, None, ports),
+                             budgeted(work, "rust", how, None, ports))
+                relayed += len(ours)
+                for (name, a), (_, b) in zip(ours, rts):
+                    why = (cli_differs(f"relayed/{name}", a, b) if how == "cli"
+                           else library_differs(f"relayed/{name}", shown, a, b))
+                    if why:
+                        found.append(why)
+        finally:
+            stop_servers()
     for line in found[:60]:
         print("  " + line)
     print(f"check_through_rt: {len(chosen)} programs ({len(chosen[::STRIDE])} of "
-          f"them bounded and pooled), {len(tests)} under sabline test, and {held} "
-          f"runs under their own budgets, {len(found)} difference(s)")
+          f"them bounded and pooled), {len(tests)} under sabline test, {held} "
+          f"runs under their own budgets, {len(examples)} examples under "
+          f"theirs, and {relayed} of the network, Python and tools, relayed, "
+          f"{len(found)} difference(s)")
     return 1 if found else 0
 
 

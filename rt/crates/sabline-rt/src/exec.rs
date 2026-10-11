@@ -29,6 +29,20 @@
 //!   called in turn rather than `main` ([`crate::run_dump::test_relayed`]),
 //!   a `{"test": ...}` frame after each, and the end `{"end": {"tests":
 //!   ...}}`.
+//! - `tool_ceiling`: the ceiling record of the host's tool session, when it
+//!   has one (`sabline run --tools`): the receipt then lists the run's tool
+//!   calls and the ceiling.
+//! - `ceilings`: the organisation ceilings the run is held to (9.0,
+//!   [`crate::ceiling`]), each `{"path", "text"}` as the package read it: a
+//!   budget wider than one is E325 before the program is read, and each is
+//!   named in the receipt.
+//! - `dump`: `true` for the gate's run document of a run the host makes the
+//!   relayed builtins of ([`crate::run_dump::run_hosted`]): the run takes a
+//!   line of the gate's list - `environ`, `steps` and `size` too - keeps
+//!   what it prints and reads in the document, as the gate's batch does,
+//!   and sends only `call` frames; the end is `{"end": {"records": [...]}}`,
+//!   the run document, the receipt and the audit stream as the canonical
+//!   text the batch would write.
 //!
 //! Then the run, and on standard output a frame for each thing it does, in
 //! the order it does them: `{"out": text}` for what `print` writes and
@@ -36,7 +50,18 @@
 //! `{"read": "line"}` for `read_line` and `{"ask": prompt}` for `ask`, each
 //! answered by one line on standard input, `{"line": text}` or
 //! `{"line": null}` for the end of the input; `{"event": ...}` for each
-//! event of the audit stream, when it was asked for; and last
+//! event of the audit stream, when it was asked for; `{"call": {"name",
+//! "args", "line"}}` for each builtin whose work is the host's - the
+//! network, Python, a tool ([`crate::interp::RELAYED`]) - asked once its
+//! effect is spent, and answered by one line, `{"answer": ...}`: how the
+//! call ended - `{"value": v}`, `{"fail": reason}`, `{"error": {"code",
+//! "message", "line", "fixes", "file"}}`, `{"exit": n}` or `{"raised":
+//! name}` - with `did`, what the host's recorder noted while it made the
+//! call, in order (`{"grant": text}` and `{"note": {"kind", ...}}`),
+//! `counted`, what each grant let through, and for a tool call the
+//! session's `tool_ceiling` record. A value travels as itself - a text, a
+//! number, a yes/no, `null`, a list - or a handle as `{"handle": id,
+//! "what": name}`; and last
 //! `{"end": {"document": ..., "receipt": ...}}` - the run document, its
 //! `stdout` and `stderr` empty since both were sent as they happened, and
 //! the receipt.
@@ -129,6 +154,55 @@ pub fn request(line: &str) -> Result<(String, Given), String> {
     };
     let stream = matches!(field(fields, "stream"), Some(Value::Bool(true)));
     let tests = matches!(field(fields, "tests"), Some(Value::Bool(true)));
+    let dump = matches!(field(fields, "dump"), Some(Value::Bool(true)));
+    let tool_ceiling = match field(fields, "tool_ceiling") {
+        None => None,
+        Some(ceiling @ Value::Map(_)) => Some(crate::interp::json_of(&ceiling)),
+        Some(_) => return Err("sabline-rt exec: 'tool_ceiling' is not an object".to_string()),
+    };
+    let mut environ = Vec::new();
+    match field(fields, "environ") {
+        None => {}
+        Some(Value::Map(vars)) => {
+            for (name, value) in vars.entries() {
+                match (name, value) {
+                    (Value::Text(n), Value::Text(v)) => match (n.to_str(), v.to_str()) {
+                        (Some(n), Some(v)) => environ.push((n, v)),
+                        _ => {
+                            return Err("sabline-rt exec: a variable holds a lone surrogate"
+                                .to_string())
+                        }
+                    },
+                    _ => return Err("sabline-rt exec: a variable is not a text".to_string()),
+                }
+            }
+        }
+        Some(_) => return Err("sabline-rt exec: 'environ' is not an object".to_string()),
+    }
+    let limit = |k: &str| -> Result<Option<u64>, String> {
+        Ok(int_field(fields, k)?.map(|n| u64::try_from(n.max(0)).unwrap_or(u64::MAX)))
+    };
+    let (steps, size) = (limit("steps")?, limit("size")?);
+    let mut ceilings = Vec::new();
+    match field(fields, "ceilings") {
+        None => {}
+        Some(Value::List(listed)) => {
+            for c in listed.iter() {
+                let Value::Map(c) = c else {
+                    return Err("sabline-rt exec: a ceiling is not an object".to_string());
+                };
+                let (Some(path), Some(text)) =
+                    (text_field(c.entries(), "path")?, text_field(c.entries(), "text")?)
+                else {
+                    return Err(
+                        "sabline-rt exec: a ceiling names no path or no text".to_string()
+                    );
+                };
+                ceilings.push((path, text));
+            }
+        }
+        Some(_) => return Err("sabline-rt exec: 'ceilings' is not a list".to_string()),
+    }
     Ok((
         path,
         Given {
@@ -142,7 +216,12 @@ pub fn request(line: &str) -> Result<(String, Given), String> {
             source: text_field(fields, "source")?,
             import_root: text_field(fields, "import_root")?,
             tests,
-            ..Given::default()
+            tool_ceiling,
+            dump,
+            environ,
+            steps,
+            size,
+            ceilings,
         },
     ))
 }
@@ -167,12 +246,26 @@ pub fn frame(f: Frame) -> Json {
         Frame::ReadLine => Json::obj([("read", Json::text("line"))]),
         Frame::Ask(p) => Json::obj([("ask", Json::Text(p))]),
         Frame::Event(e) => Json::obj([("event", e)]),
+        Frame::Call(c) => Json::obj([("call", c)]),
     }
 }
 
 /// The last frame: the run document and the receipt.
 pub fn end(document: Json, receipt: Json) -> Json {
     Json::obj([("end", Json::obj([("document", document), ("receipt", receipt)]))])
+}
+
+/// The last frame of a hosted run (`dump`): what the end carries - its
+/// three records, each the canonical text the gate's batch writes.
+pub fn records(document: &Json, receipt: &Json, stream: &Json) -> Json {
+    Json::obj([(
+        "records",
+        Json::List(vec![
+            Json::Str(document.canonical()),
+            Json::Str(receipt.canonical()),
+            Json::Str(stream.canonical()),
+        ]),
+    )])
 }
 
 #[cfg(test)]
@@ -184,9 +277,18 @@ mod tests {
         let (path, given) = request(
             r#"{"path": "p.vel", "allow": "io,fs:read:.", "deny": null, "seed": 7,
                "freeze_time": -5, "max_read": 10, "args": ["a", "\ud800"], "name": "<source>",
-               "stream": true, "import_root": "box", "tests": true}"#,
+               "stream": true, "import_root": "box", "tests": true,
+               "tool_ceiling": {"calls": 2, "cost": 1.5}, "dump": true,
+               "environ": {"HOME": "/h"}, "steps": 9, "size": -1}"#,
         )
         .unwrap();
+        assert_eq!(
+            given.tool_ceiling.as_ref().map(Json::canonical).as_deref(),
+            Some(r#"{"calls":2,"cost":1.5}"#)
+        );
+        assert!(given.dump);
+        assert_eq!(given.environ, [("HOME".to_string(), "/h".to_string())]);
+        assert_eq!((given.steps, given.size), (Some(9), Some(0)));
         assert_eq!(path, "p.vel");
         assert_eq!(given.allow.as_deref(), Some("io,fs:read:."));
         assert_eq!(given.deny, None);
@@ -202,6 +304,8 @@ mod tests {
         assert!(request(r#"{"allow": "io"}"#).unwrap_err().contains("no 'path'"));
         assert!(request("[1]").unwrap_err().contains("not an object"));
         assert!(request(r#"{"path": "p", "seed": true}"#).is_err());
+        assert!(request(r#"{"path": "p", "tool_ceiling": 3}"#).is_err());
+        assert!(request(r#"{"path": "p", "environ": {"A": 1}}"#).is_err());
     }
 
     #[test]
@@ -217,6 +321,14 @@ mod tests {
         let out = frame(Frame::Out(Text::from(vec![0x61, 0xD800, 0x0A]))).canonical();
         assert_eq!(out, r#"{"out":"a\ud800\n"}"#);
         assert_eq!(frame(Frame::ReadLine).canonical(), r#"{"read":"line"}"#);
+        assert_eq!(
+            frame(Frame::Call(Json::obj([("name", Json::text("py"))]))).canonical(),
+            r#"{"call":{"name":"py"}}"#
+        );
+        assert_eq!(
+            records(&Json::Int(1), &Json::Null, &Json::text("a\"b")).canonical(),
+            r#"{"records":["1","null","\"a\\\"b\""]}"#
+        );
         assert_eq!(
             end(Json::Null, Json::Null).canonical(),
             r#"{"end":{"document":null,"receipt":null}}"#

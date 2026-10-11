@@ -98,9 +98,9 @@ From 9.0's M3 a run reads it: `rust` sends every run through sabline-rt -
 `sabline run`, `sabline.run` with limits and without, a Pool and a
 PoolRegistry (so the HTTP door and the MCP server too), `sabline replay`
 and `sabline test` (`sabline/through_rt.py` says what that is and is not -
-no confinement before M4; a budget granting the network, Python or a tool
-to a program that uses it, an eval run and `sabline trace` stay the
-package's, saying so). Unset or `python` is the package in `sabline/`, as
+no confinement before M4; a call to the network, Python or a tool relayed
+back to the package, which makes it; an eval run and `sabline trace` stay
+the package's, saying so). Unset or `python` is the package in `sabline/`, as
 before; anything else is refused. `SABLINE_THROUGH_RT_LOG`, which names a
 file, has each such run write who answered it there (suites_through_rt.py
 reads it); nothing else does.
