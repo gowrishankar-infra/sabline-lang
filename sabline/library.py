@@ -750,8 +750,9 @@ def run(source: str, *, path: str | None = None,
         native: bool = True, timeout: float | None = None,
         max_memory_mb: int | None = None,
         seed: int | None = None, freeze_time: Any = None,
-        import_root: Any = None, confine: bool = True,
-        audit_stream: Any = None) -> RunResult:
+        import_root: Any = None, confine: Any = True,
+        audit_stream: Any = None,
+        require_confinement: str | None = None) -> RunResult:
     """Run a program under an effect budget and capture what it did.
 
     allow={"io"} means it cannot read files, reach the network, call
@@ -795,6 +796,13 @@ def run(source: str, *, path: str | None = None,
     confine - it could not be taken off again - and its receipt says
     `none`, and why.
 
+    `confine="strict"` (9.0, M4; decisions/0006 e) is --confine strict: a
+    granted ffi module widens nothing the operating system holds, so a
+    module needs its paths and hosts in the budget. `require_confinement`
+    ("full" or "partial", 9.0; decisions/0007 32a) refuses the run, E326,
+    when its confinement once applied is below that level - which a run
+    with neither limit always is, since nothing confines it.
+
     `audit_stream` (9.0), a function, is handed each event of the run's
     audit stream as it happens - one dict, which json.dumps writes as one
     line of sabline.audit-stream/1: `start`, `subjects`, every `effect`,
@@ -802,21 +810,30 @@ def run(source: str, *, path: str | None = None,
     receipt. None of them holds a value the program handled. A function
     that raises is not called again, and the run goes on.
     """
+    from . import confine as _confine
+    _on, strict, required = _confine.library_mode(confine,
+                                                  require_confinement)
     if timeout is not None or max_memory_mb is not None:
         return _run_bounded(source, path=path, allow=allow, deny=deny,
                             args=args, stdin=stdin, native=native,
                             timeout=timeout, max_memory_mb=max_memory_mb,
                             seed=seed, freeze_time=freeze_time,
                             import_root=import_root, confine=confine,
-                            audit_stream=audit_stream)
+                            audit_stream=audit_stream,
+                            require_confinement=required)
     budget = _budget_from(allow, deny)
     # a frozen clock its receipt cannot say is refused before anything runs,
     # as a pool refuses it (9.0, M3): until then the run went ahead and the
     # ValueError came after it, with whatever the program had done
     _run_parameters(seed, freeze_time, None, None, confinement={})
     saved = _state.IMPORT_ROOT
+    saved_mode = (_state.CONFINE_STRICT, _state.REQUIRE_CONFINEMENT)
     if import_root is not None:
         vars(_state)["IMPORT_ROOT"] = os.path.realpath(str(import_root))
+    # in the caller's own process nothing is confined, so a level asked for
+    # refuses the run at its first statement (runtime.interpret)
+    vars(_state)["CONFINE_STRICT"] = strict
+    vars(_state)["REQUIRE_CONFINEMENT"] = required
     try:
         # SABLINE_REFERENCE_RUNTIME=rust (9.0, M3): this run through
         # sabline-rt. A bounded one, above, goes there through its pool,
@@ -834,6 +851,8 @@ def run(source: str, *, path: str | None = None,
                                stream=audit_stream)
     finally:
         vars(_state)["IMPORT_ROOT"] = saved
+        vars(_state)["CONFINE_STRICT"], vars(_state)["REQUIRE_CONFINEMENT"] \
+            = saved_mode
 
 
 @_on_big_stack
@@ -898,7 +917,10 @@ def _why_not_through_rt(source: Any, path: Any, budget: Any) -> str | None:
     the package reports it as it always has; `source`: a text that is not
     UTF-8, which sabline-rt does not take; `ceiling`: an organisation
     ceiling refuses its budget (E325), and the package reports that as it
-    reports a refusal of the checks. Checked and proved here, as
+    reports a refusal of the checks; `confinement`: the run asks for the
+    operating system's confinement - --confine strict, or a level it must
+    have (9.0, M4) - which sabline-rt does not give until M4's port, so it
+    stays where the level asked for is held. Checked and proved here, as
     `_run_program` checks it, under whatever import root is set - which is
     also what a pool's worker asks, under the pool's limits. A program of
     the network, Python or a tool goes through sabline-rt too, which relays
@@ -907,6 +929,8 @@ def _why_not_through_rt(source: Any, path: Any, budget: Any) -> str | None:
         source.encode("utf-8")
     except UnicodeEncodeError:
         return "source"
+    if _state.CONFINE_STRICT or _state.REQUIRE_CONFINEMENT is not None:
+        return "confinement"
     if _ceiling.refusal(_ceiling.installed(), budget) is not None:
         return "ceiling"
     if not _check_here(source, path=path).ok:
@@ -1481,8 +1505,9 @@ def memory_cap_is_enforced() -> bool:
 
 def _run_bounded(source: Any, *, path: Any, allow: Any, deny: Any, args: Any, stdin: Any, native: Any,
                  timeout: Any, max_memory_mb: Any, seed: Any = None, freeze_time: Any = None,
-                 import_root: Any = None, confine: bool = True,
-                 audit_stream: Any = None) -> RunResult:
+                 import_root: Any = None, confine: Any = True,
+                 audit_stream: Any = None,
+                 require_confinement: str | None = None) -> RunResult:
     """run() in a child process that can be killed: a pool of one worker,
     made for this run and closed after it.
 
@@ -1495,7 +1520,8 @@ def _run_bounded(source: Any, *, path: Any, allow: Any, deny: Any, args: Any, st
     has one."""
     with Pool(size=1, allow=allow, deny=deny, timeout=timeout,
               max_memory_mb=max_memory_mb, native=native,
-              import_root=import_root, confine=confine) as pool:
+              import_root=import_root, confine=confine,
+              require_confinement=require_confinement) as pool:
         # one run: the worker reads and compiles it from wherever its
         # imports are, and is confined at its first statement (8.4)
         pool._confine_at = "run"

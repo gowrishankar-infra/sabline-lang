@@ -158,6 +158,13 @@ Usage:
                                            refusal and declassification as
                                            it happens, a JSON object a line
                                            (sabline.audit-stream/1)
+  sabline <file> --confine strict          a granted Python module widens
+                                           nothing the operating system holds:
+                                           it needs its paths and hosts in the
+                                           budget (9.0)
+  sabline <file> --require-confinement full|partial
+                                           refuse to run (E326) when the
+                                           operating system holds less (9.0)
   sabline <file> --no-confine              do not ask the operating system to
                                            hold the budget too (8.4; it is
                                            asked by default, and stderr says
@@ -385,6 +392,7 @@ from .budget import (
     BudgetError,
     _ascii_digits,
     _flag_value,
+    confine_flags,
     cli_budget,
     set_run_params,
 )
@@ -1570,6 +1578,15 @@ def main() -> int:
     # program's first statement (sabline/confine.py). --no-confine does not
     # ask, and says so; it is a flag of this command line, before any `--`,
     # and nothing a program can reach.
+    # --confine strict (9.0, decisions/0006 e) and --require-confinement
+    # (9.0, decisions/0007 32a): both the operator's, on this command line
+    try:
+        mode, required = confine_flags(sys.argv)
+    except BudgetError as e:
+        print(f"sabline: {e}", file=sys.stderr)
+        return 2
+    vars(_state)["CONFINE_STRICT"] = mode == "strict"
+    vars(_state)["REQUIRE_CONFINEMENT"] = required
     if "--no-confine" in sys.argv:
         vars(_state)["CONFINE"] = False
         print("sabline: --no-confine: the operating system is not asked to "
@@ -1581,7 +1598,7 @@ def main() -> int:
     # imports anything; the receipt says so, and from 8.7 so does stderr,
     # once, when the program is about to run.
     warning = None if "--no-confine" in sys.argv else \
-        _confine.off_by_grant(budget)
+        _confine.off_by_grant(budget, strict=_state.CONFINE_STRICT)
 
     def before_first_statement() -> Any:
         if warning:
@@ -1595,7 +1612,7 @@ def main() -> int:
     VALUED = {"--allow", "--deny", "--timeout", "--max-memory-mb",
               "--max-read", "--seed", "--freeze-time", "--receipt",
               "--audit-stream", "--record-responses", "--tools",
-              "--tool-timeout"}
+              "--tool-timeout", "--confine", "--require-confinement"}
     rest, skip = [], False
     for a in sys.argv[2:]:
         if skip:
@@ -1768,6 +1785,12 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
     if _state.TRACE["on"]:
         kept("trace")
         return None
+    # --confine strict and --require-confinement (9.0, M4) ask for the
+    # operating system's confinement, which sabline-rt does not give until
+    # M4's port: the run stays where what was asked for is held
+    if _state.CONFINE_STRICT or _state.REQUIRE_CONFINEMENT is not None:
+        kept("confinement")
+        return None
     # an organisation ceiling that refuses the budget (9.0): nothing runs,
     # and the package's run says E325, as it says a refusal of the checks
     if _ceiling.refusal(_ceiling.installed(), budget) is not None:
@@ -1812,7 +1835,7 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
     # operating system layer off (8.7): just as true of a run through
     # sabline-rt, which has no such layer before M4, and said the same way
     if "--no-confine" not in sys.argv:
-        off = _confine.off_by_grant(budget)
+        off = _confine.off_by_grant(budget, strict=_state.CONFINE_STRICT)
         if off:
             print(off, file=sys.stderr)
     t0 = _t.perf_counter()

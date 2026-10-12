@@ -83,6 +83,8 @@ defect in Sabline itself - in the interpreter, in a builtin, in the budget's
 own checks - attempts an effect the budget does not grant, the kernel refuses
 it, and the fault is a crash inside a box and not an escape.</p>
 <div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline program.vel                     # confined, where the system can
+sabline program.vel --confine strict    # and no granted module widens it (9.0)
+sabline program.vel --require-confinement full   # or refuse to run (9.0)
 sabline program.vel --no-confine        # not confined, and stderr says so
 sabline doctor                          # what this machine offers
 sabline eval --confinement-probe        # what a confined worker could do</code></pre></div>
@@ -167,6 +169,60 @@ says its own line instead. Nothing else changes: the run, its exit status
 and its receipt are what they were, and <code>sabline.run()</code>, <code>sabline replay</code>,
 a <code>Pool</code> and <code>sabline serve</code> write nothing new - the receipt is where they
 say it.</p>
+<h2 id="--confine-strict-a-granted-module-widens-nothing-90"><code>--confine strict</code>: a granted module widens nothing (9.0) <a class="anchor" href="#--confine-strict-a-granted-module-widens-nothing-90" aria-label="Link to this section">#</a></h2>
+<p><code>--confine strict</code> on the command line - <code>confine="strict"</code> for
+<code>sabline.run</code>, a <code>Pool</code> or a <code>PoolRegistry</code> - takes the policy from the
+budget alone. A granted <code>ffi</code> module widens nothing: the operating system is
+asked to hold exactly the budget's <code>fs:</code> and <code>net:</code> grants and what the
+interpreter itself reads, whatever modules are granted, so a module that
+needs a path or a host needs it in the budget. The kernel checks the system
+call, not the code that made it, so a module's own native code, its own
+<code>ctypes</code> calls and its own <code>os.system</code> are held as the runtime's are:</p>
+<div class="code"><div class="code-bar"><span class="code-lang">Shell</span></div><pre tabindex="0"><code>sabline 19d.vel --allow io,ffi:nativefmt --confine strict
+# the vendored library's native fopen outside every grant fails; the run
+# goes on, and its receipt says the platform's level, not none</code></pre></div>
+<p>It is opt-in, and the default does not move: without it a module the table
+does not name still widens the policy to nothing enforced, and the receipt
+still says so. A module that does I/O the budget does not grant - <code>sqlite3</code>'s
+journal beside its database, a library reading its own data files - fails
+under it with an operating-system error, as it should. Under strict the OS
+policy document carries <code>"strict": true</code>, so its digest in the receipt is
+not that of the same budget without it, and the receipt's reason says no
+module widened it. It closes the competitor benchmark's 19d where the
+platform holds the write: on Linux and macOS, and on Windows when the budget
+grants no write (decisions/0006, section e).</p>
+<h2 id="--require-confinement-refuse-rather-than-warn-90"><code>--require-confinement</code>: refuse, rather than warn (9.0) <a class="anchor" href="#--require-confinement-refuse-rather-than-warn-90" aria-label="Link to this section">#</a></h2>
+<p><code>--require-confinement full</code> (or <code>partial</code>) - <code>require_confinement=</code> in the
+library and for a pool - refuses a run whose confinement, once applied, is
+below that level: <a href="errors.html#E326">E326</a>, before its
+first statement, with the level and the reason it got. The receipt records
+the level and the refusal, so a refused run is accounted for like any
+other. It is the level that was applied, never a prediction, and it is not
+<code>--confine strict</code>: strict is about a granted module not widening the
+policy, this is about whether the platform can hold the budget at all. They
+compose - under strict a budget with <code>ffi</code> is confined more often, so this
+refuses less.</p>
+<p>What it refuses depends on the platform, and today plainly so:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th></th><th>Linux</th><th>macOS</th><th>Windows</th></tr></thead>
+<tbody>
+<tr><td><code>full</code></td><td>runs where Landlock and seccomp hold every limit of the budget</td><td>refuses every run: the level is partial at best, since Apple has deprecated sandbox profiles</td><td>refuses every budget that restricts reads or the network - <code>io</code> itself does - because this runtime cannot hold either</td></tr>
+<tr><td><code>partial</code></td><td>refuses only a run nothing holds: <code>ffi:os</code>, <code>ffi:subprocess</code>, plain <code>ffi</code> or an unnamed module without <code>--confine strict</code></td><td>the same</td><td>the same</td></tr>
+</tbody></table></div>
+<p>On Windows that is the Python runtime's limit, not the platform's: an
+AppContainer holds reads and the network, and the spike <code>plan/9.0.md</code>
+asked for showed a Rust binary can start in one and be given exactly its
+granted directories (rt/spikes/appcontainer/). When sabline-rt confines
+its own runs (9.0, M4), <code>full</code> is a level a Windows budget can have; until
+then this row says what is true.</p>
+<p><code>sabline.run</code> with no limit runs in the caller's process, which Sabline
+does not confine, so a level asked of it is always refused. Pass a limit, or
+use a <code>Pool</code>. Beside <code>--no-confine</code> - or <code>confine=False</code> - either option asks
+for two opposite things, and is refused as a usage error.</p>
+<p>With <code>SABLINE_REFERENCE_RUNTIME=rust</code>, a run asked for either stays the
+Python package's and says so on stderr: sabline-rt does not ask the
+operating system for anything until M4's port, so a level asked of it would
+be a level it ignored.</p>
 <h2 id="what-is-not-confined">What is not confined <a class="anchor" href="#what-is-not-confined" aria-label="Link to this section">#</a></h2>
 <ul>
 <li><strong>An in-process <code>sabline.run()</code></strong> - one with no <code>timeout</code> and no
@@ -200,6 +256,14 @@ table says is held is refused by the kernel and the run ends with
 <a href="errors.html#E319">E319</a> naming the layers; what the row says is not held goes
 through; and with <code>--no-confine</code> every one goes through. All three outcomes are
 asserted, so the table is held to be true in both directions.</p>
+<p>Under <code>--confine strict</code> it holds the five cases decisions/0006 set: 19d's
+native <code>fopen</code>, a module that opens and writes a file through the C library,
+and <code>os.system</code>'s process, each refused by the kernel with nothing made;
+the hook's write, E319 with an <code>ffi</code> grant as without; and, without strict,
+19d writing its file as it always has, its receipt saying none. Under
+<code>--require-confinement</code> it holds E326 on each platform where the level is
+below the one asked for, the run when it is not, the hook never tried by a
+refused run, and the library's and a pool's refusals.</p>
 <p>It also runs every escape target of <code>check_sandbox.py</code>, and the file and <code>ffi</code>
 targets of <code>check_adversarial.py</code>, on a Sabline whose budget checks have been
 knocked out, and records which the kernel stops and which only the language
@@ -209,7 +273,7 @@ does (<code>tests/confine/kernel-linux.json</code>, <code>kernel-windows.json</c
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/confinement.md">docs/confinement.md</a> by build_docs.py, for Sabline 8.8.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#one-derivation">One derivation</a></li><li><a href="#the-level-and-its-reason">The level, and its reason</a></li><li><a href="#python-modules-widen-it">Python modules widen it</a></li><li><a href="#what-is-not-confined">What is not confined</a></li><li><a href="#what-it-does-not-make-true">What it does not make true</a></li><li><a href="#how-it-is-tested">How it is tested</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#one-derivation">One derivation</a></li><li><a href="#the-level-and-its-reason">The level, and its reason</a></li><li><a href="#python-modules-widen-it">Python modules widen it</a></li><li><a href="#--confine-strict-a-granted-module-widens-nothing-90">--confine strict: a granted module widens nothing (9.0)</a></li><li><a href="#--require-confinement-refuse-rather-than-warn-90">--require-confinement: refuse, rather than warn (9.0)</a></li><li><a href="#what-is-not-confined">What is not confined</a></li><li><a href="#what-it-does-not-make-true">What it does not make true</a></li><li><a href="#how-it-is-tested">How it is tested</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

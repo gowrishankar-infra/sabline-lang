@@ -225,6 +225,7 @@
    "--check-memory-mb",
    "--check-timeout",
    "--comment",
+   "--confine",
    "--confinement-probe",
    "--corpus",
    "--count",
@@ -258,6 +259,7 @@
    "--receipt",
    "--receipt-url",
    "--record-responses",
+   "--require-confinement",
    "--responses",
    "--root",
    "--runtime",
@@ -1045,6 +1047,7 @@
    "E323",
    "E324",
    "E325",
+   "E326",
    "E400",
    "E401",
    "E402",
@@ -1302,6 +1305,10 @@
    "CONFINEMENT": {
     "kind": "value",
     "type": "NoneType"
+   },
+   "CONFINE_STRICT": {
+    "kind": "value",
+    "type": "bool"
    },
    "CONFORMANCE_LEVELS": {
     "kind": "value",
@@ -1930,7 +1937,7 @@
     "methods": {
      "__enter__": "(self)",
      "__exit__": "(self, *_exc)",
-     "__init__": "(self, size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None, confine=True)",
+     "__init__": "(self, size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None, confine=True, require_confinement=None)",
      "audit": "(self, source, *, path=None)",
      "check": "(self, source, *, path=None, prove=True)",
      "close": "(self)",
@@ -1938,7 +1945,7 @@
      "run": "(self, source, *, stdin='', args=None, path=None, seed=None, freeze_time=None, _name=None, audit_stream=None)",
      "worker_pids": "(self)"
     },
-    "signature": "(size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None, confine=True)"
+    "signature": "(size=4, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None, confine=True, require_confinement=None)"
    },
    "PoolRegistry": {
     "bases": [
@@ -1948,12 +1955,12 @@
     "methods": {
      "__enter__": "(self)",
      "__exit__": "(self, *_exc)",
-     "__init__": "(self, size=4, keep=8, confine=True)",
+     "__init__": "(self, size=4, keep=8, confine=True, require_confinement=None)",
      "close": "(self)",
      "pool": "(self, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, import_root=None)",
      "run": "(self, source, *, allow=None, deny=None, timeout=None, max_memory_mb=None, native=True, stdin='', args=None, path=None, seed=None, freeze_time=None, import_root=None, _name=None, audit_stream=None)"
     },
-    "signature": "(size=4, keep=8, confine=True)"
+    "signature": "(size=4, keep=8, confine=True, require_confinement=None)"
    },
    "Problem": {
     "bases": [
@@ -2023,6 +2030,10 @@
    "REPOSITORY": {
     "kind": "value",
     "type": "str"
+   },
+   "REQUIRE_CONFINEMENT": {
+    "kind": "value",
+    "type": "NoneType"
    },
    "RESPONSES": {
     "kind": "value",
@@ -2776,7 +2787,7 @@
    "run": {
     "covered": true,
     "kind": "function",
-    "signature": "(source, *, path=None, allow=None, deny=None, args=None, stdin='', native=True, timeout=None, max_memory_mb=None, seed=None, freeze_time=None, import_root=None, confine=True, audit_stream=None)"
+    "signature": "(source, *, path=None, allow=None, deny=None, args=None, stdin='', native=True, timeout=None, max_memory_mb=None, seed=None, freeze_time=None, import_root=None, confine=True, audit_stream=None, require_confinement=None)"
    },
    "run_builtin": {
     "kind": "function",

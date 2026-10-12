@@ -47,6 +47,43 @@ has each run append one JSON line to FILE saying who answered it -
 sabline-rt, the checks, or the package and why (9.0, M3; what
 `suites_through_rt.py` counts). Without it nothing is written.
 
+api: `sabline run --confine strict`, and `confine="strict"` for
+`sabline.run`, `Pool` and `PoolRegistry` (9.0, M4; decisions/0006 section
+e): a granted `ffi` module widens nothing the operating system holds, so
+the policy is the budget's `fs:` and `net:` grants whatever modules are
+granted, and a module's own native code, `ctypes` calls and processes are
+held as the runtime's are. The OS policy document gains `"strict": true`
+under it. Without it nothing changes. docs/confinement.md.
+
+api: `sabline run --require-confinement full|partial`, and
+`require_confinement=` for `sabline.run`, `Pool` and `PoolRegistry` (9.0,
+M4; decisions/0007 item 32a): a run whose confinement, once applied, is
+below that level is refused before its first statement with the new code
+**E326**, and its receipt records the level it got. Beside `--no-confine`
+or `confine=False` either is a usage error. `sabline.CONFINE_STRICT` and
+`sabline.REQUIRE_CONFINEMENT` join the package's names, as `CONFINE` is.
+With `SABLINE_REFERENCE_RUNTIME=rust` a run asked for either stays the
+package's and says so, until sabline-rt confines its own runs. Without
+either nothing changes.
+
+compatibility: E326 is new, and given only to a run whose operator asked
+for a level of confinement; no run that does not ask is refused by it. On
+Windows the Python runtime holds neither reads nor the network, so `full`
+refuses every budget that restricts either - `io` does - and on macOS every
+run, whose level is partial at best; docs/confinement.md has the table.
+
+compatibility: for 9.0's Python package, the native engine is never
+different from the interpreter, as it was always meant to be. A number past
+64 bits, or a read outside a list or a text, stops the machine code where it
+happens and the interpreter runs the call again: E407 and E602 now carry the
+interpreter's words and line - the operator, the first read outside, the
+list's or the text's own fixes - where they named neither, at the
+function's line, and said "get" for a text. And `and` and `or` short-circuit
+in native code as they do interpreted, so a program whose right side the
+left one guarded no longer stops natively where it runs interpreted, and a
+loop that only E407 ends no longer runs forever natively. `fuzz_native.py`
+compares the two engines' stderr now, so it stays so.
+
 ## 9.0.0-alpha.11 - M3: the network, Python and tools relayed to the package, and the organisation ceiling
 
 M3's sixth checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,

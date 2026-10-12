@@ -54,6 +54,7 @@ from .tables import (
 from .recorder import _note_redirect
 from .tools import run_tool
 from .loader import blame, unknown_function
+from .native import NativeFault
 from .values import (
     log_line,
     Bound,
@@ -1157,16 +1158,27 @@ def build_runtime(funcs: list[Function], native: dict[Any, Any] | None = None) -
                 return builtin_made(name[1:], args, line)
             return run_builtin(name[1:], args, line)
         if name in native:                 # machine code, C-like speed
-            if _state.TRACE["on"]:                # still visible when tracing
-                fnn = table.get(name)
-                trace_enter(name + " (native)",
-                            fnn.params if fnn else [], args,
-                            getattr(fnn, "secret_params", frozenset()))
-                out = native[name](*args)
-                trace_leave(name + " (native)", out,
-                            secret=getattr(fnn, "secret_result", False))
-                return out
-            return native[name](*args)
+            try:
+                if _state.TRACE["on"]:            # still visible when tracing
+                    fnn = table.get(name)
+                    trace_enter(name + " (native)",
+                                fnn.params if fnn else [], args,
+                                getattr(fnn, "secret_params", frozenset()))
+                    try:
+                        out = native[name](*args)
+                    except NativeFault:
+                        trace_leave(name + " (native)", None,
+                                    failed="stopped; run again interpreted")
+                        raise
+                    trace_leave(name + " (native)", out,
+                                secret=getattr(fnn, "secret_result", False))
+                    return out
+                return native[name](*args)
+            except NativeFault:
+                # a number past 64 bits or a read outside a list or a text
+                # stopped the machine code: the interpreter runs the call
+                # again, and stops where it would have, saying what it says
+                pass
         fn = table.get(name)
         if fn is None:
             raise unknown_function(name, line, table)
@@ -1620,5 +1632,10 @@ def interpret(funcs: list[Function], native: dict[Any, Any] | None = None) -> No
     # system is asked to hold the budget too, where a run set that up (8.4)
     if _state.BEFORE_FIRST_STATEMENT is not None:
         _state.BEFORE_FIRST_STATEMENT()
+    elif _state.REQUIRE_CONFINEMENT is not None:
+        # a run nothing confines - sabline.run with no limit, in the
+        # caller's own process - against --require-confinement (9.0, M4)
+        from .confine import current, require
+        require(current() or _state.WORKER_CONFINEMENT)
     _run_on_big_stack(
         lambda: rt["call"]("main", [], rt["table"]["main"].line))

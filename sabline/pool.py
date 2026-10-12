@@ -250,6 +250,12 @@ def pool_worker(argv: list[Any]) -> int:
         if "--confine-at" in argv else "start")
     confine_temp = (argv[argv.index("--confine-temp") + 1]
                     if "--confine-temp" in argv else None)
+    # --confine strict and --require-confinement (9.0, M4), the pool's
+    strict = "--confine-strict" in argv
+    required = (argv[argv.index("--require-confinement") + 1]
+                if "--require-confinement" in argv else None)
+    vars(_state)["CONFINE_STRICT"] = strict
+    vars(_state)["REQUIRE_CONFINEMENT"] = required
     try:
         budget = Budget.parse(spec)
     except BudgetError as e:
@@ -272,7 +278,8 @@ def pool_worker(argv: list[Any]) -> int:
     # anything of anyone's is read - or, for a pool of one run, once that
     # run's program has been read and compiled. The policy is derived here,
     # from this worker's own budget: a request carries none.
-    policy = _confine.os_policy(budget, confine=confine_at is not None)
+    policy = _confine.os_policy(budget, confine=confine_at is not None,
+                                strict=strict)
     import_root = _state.IMPORT_ROOT
     # what this process looked like before anything was held or run: asked
     # now, because a confined process may not be let to ask where it is
@@ -291,11 +298,11 @@ def pool_worker(argv: list[Any]) -> int:
         confinement = _confine.unconfined(
             policy, "confine=False: the budget is the only boundary")
         vars(_state)["BEFORE_FIRST_STATEMENT"] = \
-            lambda: _confine.inject_fault(None)
+            lambda: _confine.at_first_statement(None)
     elif confine_at == "start":
         confinement = confine_now()
         vars(_state)["BEFORE_FIRST_STATEMENT"] = \
-            lambda: _confine.inject_fault(confinement)
+            lambda: _confine.at_first_statement(confinement)
     else:
         confinement = _confine.report("pending", "applied at the run's first "
                                       "statement", [], policy)
@@ -303,7 +310,7 @@ def pool_worker(argv: list[Any]) -> int:
         def at_first_statement() -> None:
             applied = confine_now()
             _msg_write(replies, {"confinement": applied})
-            _confine.inject_fault(applied)
+            _confine.at_first_statement(applied)
 
         vars(_state)["BEFORE_FIRST_STATEMENT"] = at_first_statement
     vars(_state)["WORKER_CONFINEMENT"] = confinement
@@ -316,6 +323,8 @@ def pool_worker(argv: list[Any]) -> int:
         g = vars(_state)
         g["BEFORE_FIRST_STATEMENT"] = hook
         g["CONFINE"] = confine_at is not None
+        g["CONFINE_STRICT"] = strict
+        g["REQUIRE_CONFINEMENT"] = required
         if confine_at != "run":
             g["WORKER_CONFINEMENT"] = dict(confinement)
             g["CONFINEMENT"] = dict(confinement) \
@@ -710,13 +719,17 @@ class Pool:
     def __init__(self, size: int = 4, *, allow: set[str] | str | None = None,
                  deny: set[str] | None = None, timeout: float | None = None,
                  max_memory_mb: int | None = None, native: bool = True,
-                 import_root: Any = None, confine: bool = True) -> None:
+                 import_root: Any = None, confine: Any = True,
+                 require_confinement: str | None = None) -> None:
         if int(size) < 1:
             raise ValueError("a pool needs at least one worker")
         self.size = int(size)
         # whether each worker asks the operating system to hold the budget
-        # too (8.4); fixed like the budget, and nothing a program can reach
-        self.confine = bool(confine)
+        # too (8.4), whether under --confine strict, and the least level a
+        # run on it may have (9.0); fixed like the budget, and nothing a
+        # program can reach
+        self.confine, self.confine_strict, self.require_confinement = \
+            _confine.library_mode(confine, require_confinement)
         self._confine_at = "start"
         self.timeout = timeout
         self.max_memory_mb = max_memory_mb
@@ -946,6 +959,10 @@ class Pool:
             cmd.append("--no-confine")
         else:
             cmd += ["--confine-at", self._confine_at]
+            if self.confine_strict:
+                cmd.append("--confine-strict")
+            if self.require_confinement is not None:
+                cmd += ["--require-confinement", self.require_confinement]
         return cmd
 
     def _worker_temp(self) -> str | None:
@@ -1207,12 +1224,16 @@ class PoolRegistry:
     """
 
     def __init__(self, size: int = 4, keep: int = 8,
-                 confine: bool = True) -> None:
+                 confine: Any = True,
+                 require_confinement: str | None = None) -> None:
         self.size, self.keep = int(size), max(1, int(keep))
         # every pool it makes asks the operating system to hold its budget
-        # (8.4) unless the registry was made with confine=False; a request
-        # names a budget, never this
-        self.confine = bool(confine)
+        # (8.4) unless the registry was made with confine=False - under
+        # --confine strict and at the least level it was made with (9.0); a
+        # request names a budget, never these
+        on, strict, self.require_confinement = _confine.library_mode(
+            confine, require_confinement)
+        self.confine: Any = "strict" if strict else on
         self._pools: dict[Any, Pool] = {}            # key -> Pool, least used first
         self._lock = threading.Lock()
 
@@ -1231,7 +1252,8 @@ class PoolRegistry:
                 found = Pool(self.size, allow=allow, deny=deny,
                              timeout=timeout, max_memory_mb=max_memory_mb,
                              native=native, import_root=import_root,
-                             confine=self.confine)
+                             confine=self.confine,
+                             require_confinement=self.require_confinement)
             self._pools[key] = found       # most recently used, last
             while len(self._pools) > self.keep:
                 stale.append(self._pools.pop(next(iter(self._pools))))

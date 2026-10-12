@@ -26,6 +26,15 @@ much of it.
              naming a level that changed; eval refusing to run at none
   unreachable --no-confine after `--`, in a door's request, and in a
              program's own words changes nothing
+  strict     --confine strict (9.0, decisions/0006 e): a granted module's
+             native fopen, its own open and write through the C library and
+             os.system's process are refused by the kernel, the hook is
+             E319 with an ffi grant as without, and without strict 19d runs
+             as it always has, its receipt naming the module
+  required   --require-confinement (9.0, decisions/0007 32a): a level below
+             the one asked for is E326 before the first statement, with the
+             level in the receipt and the hook never run - on the command
+             line, the library and a pool
   against it a symbolic link and a bind mount inside a granted path, the
              network and a process through a granted ffi module, a process
              asked to leave the Windows job, a mount, another thread
@@ -1020,6 +1029,287 @@ def against_cases() -> None:
            in probe.stdout, probe.stdout + probe.stderr[-300:])
 
 
+# ---- --confine strict (9.0, M4; decisions/0006 e) ---------------------------------
+
+def strict_modules(outside: Path) -> tuple[Path, dict[str, str]]:
+    """A directory of Python modules a budget grants, each of which does
+    something below the language: 19d's vendored nativefmt, whose native
+    code fopens a file of its own, and a module that opens and writes a
+    file through the C library itself. (the directory, the env that puts it
+    on the module path)."""
+    where = WORK / "strict_modules"
+    where.mkdir(exist_ok=True)
+    corpus = HERE / "benchmark" / "corpus" / "19_below_the_language"
+    native = (corpus / "d_native_writes" / "nativefmt.py").read_text(
+        encoding="utf-8").replace("{path}", (outside / "native.txt")
+                                  .as_posix())
+    (where / "nativefmt.py").write_text(native, encoding="utf-8")
+    (where / "scribble.py").write_text(
+        "import ctypes, ctypes.util, os, sys\n"
+        "def write(path):\n"
+        "    libc = (ctypes.cdll.msvcrt if sys.platform == 'win32' else\n"
+        "            ctypes.CDLL(ctypes.util.find_library('c')))\n"
+        "    opener = libc._open if sys.platform == 'win32' else libc.open\n"
+        "    fd = opener(path.encode(), os.O_WRONLY | os.O_CREAT, 0o600)\n"
+        "    if fd >= 0:\n"
+        "        libc.write(fd, b'written below the language', 26)\n"
+        "        libc.close(fd)\n"
+        "    return fd\n", encoding="utf-8")
+    return where, {"PYTHONPATH": str(where)}
+
+
+def strict_cases(runtime: str = "python") -> None:
+    print()
+    print(f"[{runtime}] --confine strict: a granted module widens nothing")
+    print("-" * 62)
+    outside = outside_dir()
+    _where, env = strict_modules(outside)
+    env = dict(env, **runtime_env(runtime))
+    level = LEVEL.get(PLATFORM)
+    rec = WORK / "strict.json"
+    native = outside / "native.txt"
+    measure = (HERE / "benchmark" / "corpus" / "19_below_the_language"
+               / "d_native_writes.vel")
+
+    def receipt() -> dict[str, Any]:
+        found: dict[str, Any] = json.loads(rec.read_text(encoding="utf-8"))[
+            "predicate"]
+        return found
+
+    def strict_digest(spec: str) -> str:
+        return confine.policy_sha256(confine.os_policy(Budget.parse(spec),
+                                                       strict=True))
+
+    # 1. 19d: the native fopen outside every grant
+    native.unlink(missing_ok=True)
+    rec.unlink(missing_ok=True)
+    code, out, err = cli(str(measure), "--allow", "io,ffi:nativefmt",
+                         "--confine", "strict", "--receipt", str(rec),
+                         env=env)
+    p = receipt()["run_parameters"] if rec.exists() else {}
+    ok(f"19d under --confine strict: the module's own work is done, its "
+       f"native fopen outside every grant fails, and the receipt says "
+       f"{level} with the strict policy (no module widened it)",
+       code == 0 and "length 6" in out and not native.exists()
+       and p.get("confinement") == level
+       and p.get("os_policy_sha256") == strict_digest("ffi:nativefmt,io")
+       and "under --confine strict" in p.get("confinement_reason", ""),
+       [code, out, err[-500:], p])
+    # 2. a module that opens and writes a file through the C library
+    target = outside / "scribbled.txt"
+    target.unlink(missing_ok=True)
+    scribble = program("scribble.vel", f'''
+fn main() uses io, ffi {{
+    check py_int("scribble", "write", ["{target.as_posix()}"]) {{
+        ok fd {{ print(format("descriptor {{}}", fd)) }}
+        fail why {{ print("no descriptor: " + why) }}
+    }}
+}}
+''')
+    code, out, err = cli(scribble, "--allow", "io,ffi:scribble", "--confine",
+                         "strict", env=env)
+    ok("a module that opens a file outside the grants through the C library "
+       "and writes it: the open is refused by the kernel and nothing is "
+       "written", code == 0 and "descriptor -1" in out
+       and not target.exists(), [code, out, err[-500:]])
+    # 3. ffi:os, and a process that would make a file
+    made = outside / "made-by-a-shell.txt"
+    made.unlink(missing_ok=True)
+    command = (f'cmd /c type nul > "{made}"' if PLATFORM == "windows"
+               else f'touch "{made.as_posix()}"')
+    shell = program("shell_strict.vel", f'''
+fn main() uses io, ffi {{
+    check py_int("os", "system", [{json.dumps(command)}]) {{
+        ok status {{ print(format("status {{}}", status)) }}
+        fail why {{ print("no status: " + why) }}
+    }}
+}}
+''')
+    # os.system is posix.system, or nt.system, which the attribute check
+    # follows (E311): all three granted, and under strict none widens
+    code, out, err = cli(shell, "--allow", "io,ffi:os,ffi:nt,ffi:posix",
+                         "--confine", "strict", env=env)
+    ok("--confine strict --allow io,ffi:os: os.system's process is refused "
+       "by the kernel and the file it would make does not exist",
+       code == 0 and "status 0" not in out and "status" in out
+       and not made.exists(), [code, out, err[-500:]])
+    # 4. the honesty test, under strict with an ffi grant
+    written = outside / "written.txt"
+    written.unlink(missing_ok=True)
+    code, out, err = cli(program("hello.vel", HELLO), "--allow", "io,ffi:os",
+                         "--confine", "strict",
+                         env=dict(env, **{confine.FAULT_ENV:
+                                          f"write:{written}"}))
+    ok("SABLINE_FAULT_INJECT=write under --confine strict with ffi:os "
+       "granted: E319, exactly as without the grant",
+       "error[E319]" in err and not written.exists(), err[-500:])
+    # 5. without strict, the default has not moved
+    native.unlink(missing_ok=True)
+    rec.unlink(missing_ok=True)
+    code, out, err = cli(str(measure), "--allow", "io,ffi:nativefmt",
+                         "--receipt", str(rec), env=env)
+    p = receipt()["run_parameters"] if rec.exists() else {}
+    # through sabline-rt, which confines nothing until M4's port, the
+    # receipt says that instead of naming the module
+    why = ("ffi:nativefmt" if runtime == "python"
+           else "nothing was asked of the operating system")
+    ok("without --confine strict 19d runs as it always has - the native "
+       "write happens - and the receipt says none, and why",
+       code == 0 and "length 6" in out and native.exists()
+       and p.get("confinement") == "none"
+       and why in p.get("confinement_reason", ""),
+       [code, out, err[-300:], p])
+    native.unlink(missing_ok=True)
+    code, out, err = cli(scribble, "--allow", "io,ffi:scribble", env=env)
+    ok("...and so does the module that writes through the C library",
+       code == 0 and "descriptor -1" not in out and target.exists(),
+       [code, out, err[-300:]])
+    target.unlink(missing_ok=True)
+    made.unlink(missing_ok=True)
+    code, out, err = cli(shell, "--allow", "io,ffi:os,ffi:nt,ffi:posix",
+                         env=env)
+    ok("...and os.system's process, which makes its file",
+       code == 0 and "status 0" in out and made.exists(),
+       [code, out, err[-300:]])
+    made.unlink(missing_ok=True)
+    code, _out, err = cli(program("hello.vel", HELLO), "--confine", "strict",
+                          "--no-confine", env=env)
+    ok("--confine strict beside --no-confine asks for two opposite things: "
+       "exit 2, saying so", code == 2 and "say one" in err, err[-300:])
+
+
+# ---- --require-confinement (9.0, M4; decisions/0007 32a) --------------------------
+
+def required_cases(runtime: str = "python") -> None:
+    print()
+    print(f"[{runtime}] --require-confinement: refused, not warned, below the "
+          f"level asked for")
+    print("-" * 62)
+    env = runtime_env(runtime)
+    level = LEVEL.get(PLATFORM)
+    hello = program("hello.vel", HELLO)
+    rec = WORK / "required.json"
+    outside = outside_dir()
+    written = outside / "written.txt"
+    for asked in ("full", "partial"):
+        refused = confine.LEVELS.index(level or "none") < \
+            confine.LEVELS.index(asked)
+        rec.unlink(missing_ok=True)
+        written.unlink(missing_ok=True)
+        code, out, err = cli(hello, "--require-confinement", asked,
+                             "--receipt", str(rec),
+                             env=dict(env, **{confine.FAULT_ENV:
+                                              f"write:{written}"}))
+        p = json.loads(rec.read_text(encoding="utf-8"))["predicate"] \
+            if rec.exists() else {}
+        rp = p.get("run_parameters") or {}
+        if refused:
+            ok(f"--require-confinement {asked} on {PLATFORM}, which gives "
+               f"io {level}: refused before the first statement, E326, the "
+               f"receipt recording the level and the refusal - and the "
+               f"fault-injection hook, which only a run allowed to start "
+               f"tries, never ran",
+               code == 1 and "error[E326]" in err and "ran to the end"
+               not in out and rp.get("confinement") == level
+               and (p.get("exit") or {}).get("code") == "E326"
+               and [r["code"] for r in p.get("refusals", [])] == ["E326"]
+               and "fault injection" not in err and not written.exists(),
+               [code, out, err[-600:], rp, p.get("exit")])
+        else:
+            ok(f"--require-confinement {asked} on {PLATFORM}, which gives "
+               f"io {level}: it runs, confined as ever",
+               "ran to the end" not in out and "error[E319]" in err
+               and rp.get("confinement") == level, [code, out, err[-600:]])
+    code, out, err = cli(hello, "--allow", "io,ffi:os",
+                         "--require-confinement", "partial", env=env)
+    ok("--require-confinement partial with ffi:os granted, which widens the "
+       "policy to nothing enforced: E326, naming none and why",
+       code == 1 and "error[E326]" in err and "gave it none" in err
+       and "ffi:os" in err and "ran to the end" not in out, err[-600:])
+    code, out, err = cli(hello, "--allow", "io,ffi:os",
+                         "--require-confinement", "partial", "--confine",
+                         "strict", env=env)
+    ok("...and under --confine strict as well it runs: the two compose",
+       code == 0 and "ran to the end" in out, err[-600:])
+    code, _out, err = cli(hello, "--require-confinement", "partial",
+                          "--no-confine", env=env)
+    ok("--require-confinement beside --no-confine: exit 2, saying so",
+       code == 2 and "say one" in err, err[-300:])
+    code, _out, err = cli(hello, "--require-confinement", "most", env=env)
+    ok("--require-confinement takes full or partial and nothing else",
+       code == 2 and "full or partial" in err, err[-300:])
+    if runtime == "rust":
+        # sabline-rt confines nothing until M4's port, so a level asked of
+        # it would be a level ignored: the run stays the package's, says so,
+        # and its receipt is the package's
+        rec.unlink(missing_ok=True)
+        code, out, err = cli(hello, "--require-confinement", "partial",
+                             "--receipt", str(rec), env=env)
+        p = json.loads(rec.read_text(encoding="utf-8"))["predicate"]             if rec.exists() else {}
+        ok("SABLINE_REFERENCE_RUNTIME=rust: a run that asks for a level stays "
+           "the package's, which holds it, and says so on stderr",
+           code == 0 and "ran to the end" in out
+           and "this run is the Python package's, not sabline-rt's" in err
+           and (p.get("producer") or {}).get("name") == "sabline-lang"
+           and (p.get("run_parameters") or {}).get("confinement") == level,
+           [code, err[-400:], p.get("producer")])
+
+    # the library and a pool
+    saved = {k: os.environ.get(k) for k in env}
+    os.environ.update(env)
+    try:
+        r = sabline.run(HELLO, require_confinement="partial")
+        ok("sabline.run with no limit runs in the caller's process, which "
+           "nothing confines: require_confinement='partial' refuses it, "
+           "E326, and the receipt says none",
+           not r.ok and [p.code for p in r.problems] == ["E326"]
+           and parameters_of(r)["confinement"] == "none",
+           [p.as_dict() for p in r.problems])
+        r = sabline.run(HELLO, timeout=60, require_confinement=level)
+        ok(f"run(timeout=, require_confinement={level!r}): it runs",
+           r.ok and parameters_of(r)["confinement"] == level,
+           [p.as_dict() for p in r.problems])
+        with sabline.Pool(size=1, timeout=60,
+                          require_confinement="full") as pool:
+            r = pool.run(HELLO)
+        if level == "full":
+            ok("a Pool made with require_confinement='full': it runs",
+               r.ok, [p.as_dict() for p in r.problems])
+        else:
+            ok(f"a Pool made with require_confinement='full' on {PLATFORM}: "
+               f"each run refused, E326, its receipt saying {level}",
+               not r.ok and [p.code for p in r.problems] == ["E326"]
+               and parameters_of(r)["confinement"] == level,
+               [p.as_dict() for p in r.problems])
+        r = sabline.run(HELLO, timeout=60, allow="io,ffi:os",
+                        confine="strict", require_confinement="partial")
+        ok("run(confine='strict', require_confinement='partial') with ffi:os: "
+           "it runs, at this platform's level", r.ok
+           and parameters_of(r)["confinement"] == level,
+           [p.as_dict() for p in r.problems])
+        bad = []
+        for kw in ({"confine": "lax"}, {"require_confinement": "most"},
+                   {"confine": False, "require_confinement": "full"}):
+            try:
+                sabline.run(HELLO, **kw)
+                bad.append(kw)
+            except ValueError:
+                pass
+        ok("a mode or a level that is not one, and confine=False beside a "
+           "level asked for, are ValueError", not bad, bad)
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def runtime_env(runtime: str) -> dict[str, str]:
+    """What a child is started with to choose its runtime (9.0)."""
+    return {"SABLINE_REFERENCE_RUNTIME": runtime}
+
+
 # ---- every escape target, with the language's refusals knocked out ---------------
 
 def targets() -> list[dict[str, Any]]:
@@ -1166,6 +1456,12 @@ def main() -> int:
     reported_cases()
     unreachable_cases()
     against_cases()
+    strict_cases()
+    required_cases()
+    # with SABLINE_REFERENCE_RUNTIME=rust (9.0): the same, held by the
+    # package until sabline-rt confines its own runs
+    strict_cases("rust")
+    required_cases("rust")
     target_cases(record)
     print("-" * 62)
     print(f"{PASSED} passed, {FAILED} broken")

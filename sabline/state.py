@@ -140,6 +140,18 @@ PY_NEXT = [1]
 # run(confine=False) said otherwise - never anything a program can reach.
 CONFINE = True
 
+# --confine strict (9.0, M4; decisions/0006 e): a granted ffi module widens
+# nothing, so the operating system is asked to hold exactly the budget's
+# fs: and net: grants whatever modules are granted. False unless the
+# command line, run(confine="strict") or a pool made so said otherwise.
+CONFINE_STRICT = False
+
+# --require-confinement (9.0, M4; decisions/0007 32a): the least level -
+# "full" or "partial" - a run may have once its confinement is applied, or
+# None. A run below it is refused before its first statement, E326, and its
+# receipt records the level it got.
+REQUIRE_CONFINEMENT: "str | None" = None
+
 # What was applied to THIS process - {level, reason, layers, policy_sha256,
 # platform} - or None while nothing has been. It cannot be taken off again,
 # so it is not among the names a pool worker puts back between programs.

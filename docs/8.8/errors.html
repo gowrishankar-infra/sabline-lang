@@ -103,6 +103,7 @@
 <tr id="E323"><td class="ecode">E323</td><td>a tool call whose arguments are not what the manifest&#x27;s schema says, or a tool marked secret called through tool rather than tool_secret</td><td>the manifest marks the result of tool &#x27;{name}&#x27; secret, and &#x27;tool&#x27; would hand it back as an ordinary Text</td></tr>
 <tr id="E324"><td class="ecode">E324</td><td>the host did not keep the tools protocol: no answer in time, a closed door, a line that is not JSON, another call&#x27;s id, or a cost that is not a number</td><td></td></tr>
 <tr id="E325"><td class="ecode">E325</td><td>a budget wider than this machine&#x27;s organisation ceiling, or a ceiling that cannot be read (9.0; sabline ceiling shows it)</td><td>the budget&#x27;s &#x27;{effect}&#x27; grant goes past the organisation ceiling {c.path}: {why} (it allows: {allows or &#x27;nothing&#x27;})</td></tr>
+<tr id="E326"><td class="ecode">E326</td><td>a run that asked for confinement at least full, or partial, and the operating system gave it less (9.0, --require-confinement; sabline audit says what this machine gives)</td><td>this run asks for confinement at least {wanted}, and the operating system gave it {got}: {reason}</td></tr>
 <tr id="E400"><td class="ecode">E400</td><td>there is no &#x27;main&#x27; function</td><td>there is no &#x27;main&#x27; - a program needs somewhere to start</td></tr>
 <tr id="E401"><td class="ecode">E401</td><td>the wrong number of arguments, or parameters on &#x27;main&#x27;</td><td>&#x27;{node.name}&#x27; expects {len(ptypes)} argument(s) but got {len(node.args)}</td></tr>
 <tr id="E402"><td class="ecode">E402</td><td>an unknown variable, or break or continue, which the language does not have</td><td>unknown variable &#x27;{node.name}&#x27;: it is not defined where this function value is written, nor in it</td></tr>
@@ -149,7 +150,7 @@
 <tr id="E600"><td class="ecode">E600</td><td>a &#x27;requires&#x27; broke while running</td><td>{head}{vals(expr)})</td></tr>
 <tr id="E601"><td class="ecode">E601</td><td>an &#x27;ensures&#x27; broke while running</td><td>{head}{vals(expr, (retval,))})</td></tr>
 <tr id="E602"><td class="ecode">E602</td><td>a position outside a list or text while running</td><td>position {i} is outside the text (it has {len(t)} character(s))</td></tr>
-<tr id="E607"><td class="ecode">E607</td><td>a text grew too large to build, or there was no input to read</td><td>this text grew too large to build</td></tr>
+<tr id="E607"><td class="ecode">E607</td><td>a text grew too large to build, or there was no input to read</td><td>no input available to read</td></tr>
 <tr id="E608"><td class="ecode">E608</td><td>a file could not be written</td><td>could not write &#x27;{str(args[0]).replace(chr(0), chr(92) + &#x27;0&#x27;)}&#x27;: a path cannot hold a NUL character</td></tr>
 <tr id="E609"><td class="ecode">E609</td><td>recursion too deep, a value nested too deeply, or split by empty text</td><td>&#x27;{name}&#x27; called itself {DEPTH_LIMIT} deep - this looks like recursion that never stops</td></tr>
 <tr id="E610"><td class="ecode">E610</td><td>the run&#x27;s time limit was reached and the program stopped</td><td>the program ran longer than {self.timeout} second(s) and was stopped</td></tr>

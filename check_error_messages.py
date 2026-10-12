@@ -122,6 +122,12 @@ UNREACHABLE: dict[str, str] = {
     "E325": "given only where an organisation ceiling is installed; "
             "check_ceiling.py installs one through SABLINE_CEILING and holds "
             "each refusal at every entry point, in both runtimes",
+    # 9.0: a code no program reaches: it is about the machine the run is on
+    # and what its operator asked of it, never about the program
+    "E326": "given only under --require-confinement, require_confinement= "
+            "or a pool made with it, when the level the operating system "
+            "gave is below the one asked for, and its message is this "
+            "machine's; check_confine.py holds it on every leg",
     # 8.4: a code no program can reach at all
     "E319": "given only under the fault-injection hook (SABLINE_FAULT_INJECT), "
             "when the operating system's confinement refuses what the "

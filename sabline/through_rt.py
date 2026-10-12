@@ -55,8 +55,10 @@ Porting the network into Rust is M4's and M5's, not M3's (plan/9.0.md).
 
 **What stays this package's**, and says so on the error channel (KEPT):
 a run under the eval profile, which holds a run to the operating system's
-confinement, and `sabline trace`, which shows this package's interpreter at
-work. Each run says who answered it in the file SABLINE_THROUGH_RT_LOG
+confinement; a run asked to be held to it by `--confine strict` or
+`--require-confinement` (9.0, M4) - until sabline-rt confines its own runs,
+a level asked of it would be a level it ignored; and `sabline trace`, which
+shows this package's interpreter at work. Each run says who answered it in the file SABLINE_THROUGH_RT_LOG
 names, when it names one (`note`), which is how suites_through_rt.py counts
 them.
 
@@ -129,6 +131,9 @@ KEPT = (
     ("source", "its source is not UTF-8 text, which sabline-rt does not take"),
     ("eval", "the eval profile holds a run to the operating system's "
              "confinement, which sabline-rt does not ask for before M4"),
+    ("confinement", "--confine strict and --require-confinement ask for "
+                    "the operating system's confinement, which sabline-rt "
+                    "does not ask for until M4's port"),
     ("trace", "sabline trace shows the Python package's interpreter at work"),
 )
 

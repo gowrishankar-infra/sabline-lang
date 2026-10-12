@@ -118,6 +118,39 @@ else changes. docs/ceiling.md.</p>
 has each run append one JSON line to FILE saying who answered it -
 sabline-rt, the checks, or the package and why (9.0, M3; what
 <code>suites_through_rt.py</code> counts). Without it nothing is written.</p>
+<p>api: <code>sabline run --confine strict</code>, and <code>confine="strict"</code> for
+<code>sabline.run</code>, <code>Pool</code> and <code>PoolRegistry</code> (9.0, M4; decisions/0006 section
+e): a granted <code>ffi</code> module widens nothing the operating system holds, so
+the policy is the budget's <code>fs:</code> and <code>net:</code> grants whatever modules are
+granted, and a module's own native code, <code>ctypes</code> calls and processes are
+held as the runtime's are. The OS policy document gains <code>"strict": true</code>
+under it. Without it nothing changes. docs/confinement.md.</p>
+<p>api: <code>sabline run --require-confinement full|partial</code>, and
+<code>require_confinement=</code> for <code>sabline.run</code>, <code>Pool</code> and <code>PoolRegistry</code> (9.0,
+M4; decisions/0007 item 32a): a run whose confinement, once applied, is
+below that level is refused before its first statement with the new code
+<strong>E326</strong>, and its receipt records the level it got. Beside <code>--no-confine</code>
+or <code>confine=False</code> either is a usage error. <code>sabline.CONFINE_STRICT</code> and
+<code>sabline.REQUIRE_CONFINEMENT</code> join the package's names, as <code>CONFINE</code> is.
+With <code>SABLINE_REFERENCE_RUNTIME=rust</code> a run asked for either stays the
+package's and says so, until sabline-rt confines its own runs. Without
+either nothing changes.</p>
+<p>compatibility: E326 is new, and given only to a run whose operator asked
+for a level of confinement; no run that does not ask is refused by it. On
+Windows the Python runtime holds neither reads nor the network, so <code>full</code>
+refuses every budget that restricts either - <code>io</code> does - and on macOS every
+run, whose level is partial at best; docs/confinement.md has the table.</p>
+<p>compatibility: for 9.0's Python package, the native engine is never
+different from the interpreter, as it was always meant to be. A number past
+64 bits, or a read outside a list or a text, stops the machine code where it
+happens and the interpreter runs the call again: E407 and E602 now carry the
+interpreter's words and line - the operator, the first read outside, the
+list's or the text's own fixes - where they named neither, at the
+function's line, and said "get" for a text. And <code>and</code> and <code>or</code> short-circuit
+in native code as they do interpreted, so a program whose right side the
+left one guarded no longer stops natively where it runs interpreted, and a
+loop that only E407 ends no longer runs forever natively. <code>fuzz_native.py</code>
+compares the two engines' stderr now, so it stays so.</p>
 <h2 id="9x-900-alpha11-to-900-alpha8">9.x: 9.0.0-alpha.11 to 9.0.0-alpha.8 <a class="anchor" href="#9x-900-alpha11-to-900-alpha8" aria-label="Link to this section">#</a></h2>
 <ul><li><a href="changelog-9-1.html#900-alpha11---m3-the-network-python-and-tools-relayed-to-the-package-and-the-organisation-ceiling">9.0.0-alpha.11 - M3: the network, Python and tools relayed to the package, and the organisation ceiling</a></li>
 <li><a href="changelog-9-1.html#900-alpha10---m3-every-run-through-sabline-rt-the-limits-held-by-the-caller-and-the-suites-counted-per-question">9.0.0-alpha.10 - M3: every run through sabline-rt, the limits held by the caller, and the suites counted per question</a></li>
