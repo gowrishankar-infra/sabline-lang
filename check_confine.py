@@ -1072,8 +1072,9 @@ def strict_cases(runtime: str = "python") -> None:
                / "d_native_writes.vel")
 
     def receipt() -> dict[str, Any]:
-        found: dict[str, Any] = json.loads(rec.read_text(encoding="utf-8"))[
-            "predicate"]
+        # a run that never got as far as its receipt leaves the file empty
+        text = rec.read_text(encoding="utf-8") if rec.exists() else ""
+        found: dict[str, Any] = json.loads(text)["predicate"]             if text.strip() else {}
         return found
 
     def strict_digest(spec: str) -> str:
@@ -1086,7 +1087,7 @@ def strict_cases(runtime: str = "python") -> None:
     code, out, err = cli(str(measure), "--allow", "io,ffi:nativefmt",
                          "--confine", "strict", "--receipt", str(rec),
                          env=env)
-    p = receipt()["run_parameters"] if rec.exists() else {}
+    p = receipt().get("run_parameters") or {}
     ok(f"19d under --confine strict: the module's own work is done, its "
        f"native fopen outside every grant fails, and the receipt says "
        f"{level} with the strict policy (no module widened it)",
@@ -1148,7 +1149,7 @@ fn main() uses io, ffi {{
     rec.unlink(missing_ok=True)
     code, out, err = cli(str(measure), "--allow", "io,ffi:nativefmt",
                          "--receipt", str(rec), env=env)
-    p = receipt()["run_parameters"] if rec.exists() else {}
+    p = receipt().get("run_parameters") or {}
     # through sabline-rt, which confines nothing until M4's port, the
     # receipt says that instead of naming the module
     why = ("ffi:nativefmt" if runtime == "python"
@@ -1269,7 +1270,8 @@ def required_cases(runtime: str = "python") -> None:
         ok(f"run(timeout=, require_confinement={level!r}): it runs",
            r.ok and parameters_of(r)["confinement"] == level,
            [p.as_dict() for p in r.problems])
-        with sabline.Pool(size=1, timeout=60,
+        # with an import root, so that a Linux worker holds reads too
+        with sabline.Pool(size=1, timeout=60, import_root=str(WORK),
                           require_confinement="full") as pool:
             r = pool.run(HELLO)
         if level == "full":
