@@ -151,6 +151,18 @@ in native code as they do interpreted, so a program whose right side the
 left one guarded no longer stops natively where it runs interpreted, and a
 loop that only E407 ends no longer runs forever natively. <code>fuzz_native.py</code>
 compares the two engines' stderr now, so it stays so.</p>
+<p>compatibility: a function value is type checked once, in both runtimes,
+where until now one that captured nothing was checked a second time. A
+program's refusals are unchanged - <code>sabline check</code> reported each problem
+once already - but the check document <code>check_agreement.py</code> compares
+(<code>sabline check --dump</code>, each stage's problems before they are made one
+to a message) no longer repeats a problem of such a value. Nesting is why
+it matters: checking a value written inside a value checks the one inside
+that, so a chain of N nested values was checked N times over, and the
+parser fuzzer found a 23 KB program whose check document was 120 MB of
+the same few problems - a minute of work for both checkers, where it is
+now a fifth of a second. <code>agreement_checks.py</code>'s
+<code>fn-values-nested-deeply</code> holds the two runtimes to it.</p>
 <h2 id="9x-900-alpha11-to-900-alpha8">9.x: 9.0.0-alpha.11 to 9.0.0-alpha.8 <a class="anchor" href="#9x-900-alpha11-to-900-alpha8" aria-label="Link to this section">#</a></h2>
 <ul><li><a href="changelog-9-1.html#900-alpha11---m3-the-network-python-and-tools-relayed-to-the-package-and-the-organisation-ceiling">9.0.0-alpha.11 - M3: the network, Python and tools relayed to the package, and the organisation ceiling</a></li>
 <li><a href="changelog-9-1.html#900-alpha10---m3-every-run-through-sabline-rt-the-limits-held-by-the-caller-and-the-suites-counted-per-question">9.0.0-alpha.10 - M3: every run through sabline-rt, the limits held by the caller, and the suites counted per question</a></li>

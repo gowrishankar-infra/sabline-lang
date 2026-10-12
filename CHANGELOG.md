@@ -84,6 +84,19 @@ left one guarded no longer stops natively where it runs interpreted, and a
 loop that only E407 ends no longer runs forever natively. `fuzz_native.py`
 compares the two engines' stderr now, so it stays so.
 
+compatibility: a function value is type checked once, in both runtimes,
+where until now one that captured nothing was checked a second time. A
+program's refusals are unchanged - `sabline check` reported each problem
+once already - but the check document `check_agreement.py` compares
+(`sabline check --dump`, each stage's problems before they are made one
+to a message) no longer repeats a problem of such a value. Nesting is why
+it matters: checking a value written inside a value checks the one inside
+that, so a chain of N nested values was checked N times over, and the
+parser fuzzer found a 23 KB program whose check document was 120 MB of
+the same few problems - a minute of work for both checkers, where it is
+now a fifth of a second. `agreement_checks.py`'s
+`fn-values-nested-deeply` holds the two runtimes to it.
+
 ## 9.0.0-alpha.11 - M3: the network, Python and tools relayed to the package, and the organisation ceiling
 
 M3's sixth checkpoint (`plan/9.0.md`, *M3 - the interpreter, the budget,

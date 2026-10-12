@@ -343,6 +343,15 @@ def check_types(funcs: list[Function], records: list[Any], errors: list[Any]) ->
                        f"or give the import another name: as {name}_lib"])
 
     lambda_of = {f.name: f for f in funcs if getattr(f, "is_lambda", False)}
+    # One check per function value (9.0): a function value is checked
+    # where it is written, and the loop at the end checks one the writing
+    # place never reached - but neither checks one the other already did.
+    # Nesting is why: checking a value written inside a value checks the
+    # one inside that, so without this a chain of N nested values is
+    # checked N times over and reports the same problem N times. The
+    # parser fuzzer found a 23 KB program whose check document was 120 MB
+    # of the same few problems, and the gate stopped making progress.
+    checked: set[str] = set()
 
     def check_fn(fn: Function) -> None:
         for _pname, _ in fn.params:
@@ -466,7 +475,9 @@ def check_types(funcs: list[Function], records: list[Any], errors: list[Any]) ->
                     if n in env:
                         caught.append((n, env[n]))
                 lam.captures = caught
-                check_fn(lam)              # check it where its names mean
+                if lam.name not in checked:
+                    checked.add(lam.name)
+                    check_fn(lam)          # check it where its names mean
                                            # something
                 return fmt_fn_type([t for _, t in lam.params],
                                    lam.return_type)
@@ -1580,9 +1591,12 @@ def check_types(funcs: list[Function], records: list[Any], errors: list[Any]) ->
         fn.secret_result = carries_secret(fn.return_type or "", rec_carries)  # type: ignore[attr-defined]  # set here, not a dataclass field, so a node's fields, repr and equality stay as they were
 
     for fn in funcs:
-        if getattr(fn, "is_lambda", False) and getattr(fn, "free_names", []):
-            continue      # checked at its creation site, where the names
-                          # it carries actually mean something
+        if getattr(fn, "is_lambda", False):
+            if getattr(fn, "free_names", []) or fn.name in checked:
+                continue  # checked at its creation site, where the names
+                          # it carries actually mean something, or checked
+                          # there already while another value was
+            checked.add(fn.name)
         try:
             check_fn(fn)
         except SablineError as e:
