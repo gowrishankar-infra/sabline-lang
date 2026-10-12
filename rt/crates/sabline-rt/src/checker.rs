@@ -134,6 +134,13 @@ struct Types<'a> {
     lambda_of: HashMap<&'a str, &'a Function>,
     namespaces: HashSet<String>,
     captures: HashMap<String, Vec<(String, String)>>,
+    /// One check per function value: the names already checked, whether
+    /// where they are written or by the loop that catches one the writing
+    /// place never reached. Nesting is why: checking a value written
+    /// inside a value checks the one inside that, so without this a chain
+    /// of N nested values is checked N times over and reports the same
+    /// problem N times - the reference says the same.
+    checked: HashSet<String>,
     errors: Vec<SablineError>,
 }
 
@@ -153,6 +160,7 @@ pub fn check_types(
         lambda_of: HashMap::new(),
         namespaces: HashSet::new(),
         captures: HashMap::new(),
+        checked: HashSet::new(),
         errors: std::mem::take(errors),
     };
     let answer = t.check_all(funcs, records);
@@ -316,8 +324,12 @@ impl<'a> Types<'a> {
         }
 
         for f in funcs {
-            if f.is_lambda && !f.free_names.is_empty() {
-                continue; // checked where it is written, where its names mean something
+            if f.is_lambda {
+                // checked where it is written, where its names mean
+                // something, or checked there already while another was
+                if !f.free_names.is_empty() || !self.checked.insert(f.name.clone()) {
+                    continue;
+                }
             }
             if let Err(e) = self.check_fn(f) {
                 self.errors.push(blame(&f.src_file, e));
@@ -866,7 +878,9 @@ impl<'a> Types<'a> {
                     .filter_map(|n| cx.env.get(n).map(|t| (n.clone(), t.clone())))
                     .collect();
                 self.captures.insert(lam.name.clone(), caught);
-                self.check_fn(lam)?;
+                if self.checked.insert(lam.name.clone()) {
+                    self.check_fn(lam)?;
+                }
                 let params: Vec<String> = lam.params.iter().map(|(_, t)| t.clone()).collect();
                 return Ok(fmt_fn_type(&params, lam.return_type.as_deref()));
             }

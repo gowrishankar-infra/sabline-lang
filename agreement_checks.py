@@ -386,6 +386,15 @@ EDGES: tuple[tuple[str, str], ...] = (
     ("fn-value-that-can-fail", 'fn g() -> Int or fail { fail "x" }\n' + _main("let h = g\nprint(1)")),
     ("fn-value-unknown-name", _main("let f = fn(x: Int) -> Int { return x + nowhere }\nprint(f(1))")),
     ("fn-value-captures", _main("let n = 2\nlet f = fn(x: Int) -> Int { return x + n }\nprint(f(1))")),
+    # One check per function value: a value written inside a value is
+    # checked where it is written and nowhere else, so a chain of N
+    # nested values reports a problem for each and not one for every
+    # pair. The parser fuzzer found this as a 23 KB program whose check
+    # document was 120 MB of the same few problems, after which the gate
+    # made no progress for a minute and was stopped.
+    ("fn-values-nested-deeply",
+     _main("let f = " + "fn() -> Int { return " * 40 + "0" + " }" * 40
+           + "\nprint(1)")),
     # ---- calls and operators ----
     ("format-nothing", _main("print(format())")),
     ("format-not-text", _main("print(format(1))")),

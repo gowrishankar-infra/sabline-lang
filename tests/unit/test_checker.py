@@ -182,6 +182,36 @@ class WhatTheCheckerRecords(unittest.TestCase):
         (lifted,) = [f for f in funcs if f.is_lambda]
         self.assertEqual(lifted.captures, [("limit", "Int")])
 
+    def test_a_function_value_is_checked_once(self) -> None:
+        # a value written inside a value is checked where it is written,
+        # so a chain of N nested values costs N checks and reports N
+        # problems - not one for every pair of levels, which made a 23 KB
+        # program the parser fuzzer wrote cost 120 MB of the same few
+        depth = 40
+        funcs, records = parse(
+            "fn main() uses io {\n    let f = "
+            + "fn() -> Int { return " * depth + "0" + " }" * depth
+            + "\n    print(1)\n}\n")
+        errors = type_errors(funcs, records)
+        # the innermost returns an Int as it promises; each one around it
+        # returns a function value where it promises an Int (E503)
+        self.assertEqual([e.code for e in errors], ["E503"] * (depth - 1))
+        self.assertEqual(len({(e.code, e.line, e.message) for e in errors}),
+                         depth - 1)
+
+    def test_a_function_value_that_captures_nothing_is_not_checked_twice(
+            self) -> None:
+        # it is checked where it is written, as one that captures is, and
+        # the loop over every function does not check it again
+        for body in ('    let f = fn() -> Int { return "x" }\n    print(1)\n',
+                     '    let n = "x"\n'
+                     '    let f = fn() -> Int { return n }\n'
+                     '    print(1)\n'):
+            with self.subTest(body=body):
+                errors = type_errors(*parse(
+                    "fn main() uses io {\n" + body + "}\n"))
+                self.assertEqual([e.code for e in errors], ["E503"])
+
     def test_an_import_s_name_cannot_be_a_variable_E514(self) -> None:
         main = _support.fixture(STAGE, "imports", "main.vel")
         errors = type_errors(*load_program(main))

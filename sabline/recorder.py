@@ -57,7 +57,7 @@ RECEIPT_SPEC = "sabline-spec 0.13.0"
 # the refusals a receipt lists and the doors log: the budget's, and the
 # read ceiling's
 REFUSAL_CODES = ("E310", "E311", "E313", "E314", "E315", "E316", "E317",
-                 "E318", "E320", "E321", "E322", "E323", "E325")
+                 "E318", "E320", "E321", "E322", "E323", "E325", "E326")
 
 
 def _utc_now_ms() -> str:

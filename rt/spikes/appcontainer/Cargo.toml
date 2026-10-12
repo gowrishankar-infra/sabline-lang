@@ -1,0 +1,10 @@
+[package]
+name = "appcontainer-spike"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Not a member of the sabline-rt workspace: a measurement, not product code.
+[workspace]
+
+[dependencies]

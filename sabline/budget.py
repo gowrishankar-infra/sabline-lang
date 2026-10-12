@@ -762,6 +762,27 @@ def _flag_value(argv: list[str], flag: str) -> str | None:
     return argv[i + 1]
 
 
+def confine_flags(argv: list[str]) -> tuple[str | None, str | None]:
+    """(--confine's word, --require-confinement's) on a command line, each
+    None when absent (9.0, M4). --confine takes `strict` alone (decisions/
+    0006 e) and --require-confinement `full` or `partial` (0007 32a);
+    either beside --no-confine asks for two opposite things, and is a
+    BudgetError rather than a guess at which was meant."""
+    mode = _flag_value(argv, "--confine")
+    if mode is not None and mode != "strict":
+        raise BudgetError(f"--confine takes strict, not {mode!r}")
+    required = _flag_value(argv, "--require-confinement")
+    if required is not None and required not in ("full", "partial"):
+        raise BudgetError(f"--require-confinement takes full or partial, "
+                          f"not {required!r}")
+    if "--no-confine" in argv and (mode or required):
+        said = "--confine strict" if mode else \
+            f"--require-confinement {required}"
+        raise BudgetError(f"--no-confine asks for no confinement and "
+                          f"{said} for confinement: say one")
+    return mode, required
+
+
 def cli_budget(argv: list[Any]) -> "Budget":
     """The budget a command line asks for: --allow, then --deny.
 

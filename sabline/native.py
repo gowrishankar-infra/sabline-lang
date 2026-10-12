@@ -3,7 +3,6 @@
 import sys
 
 from . import state as _state
-from .errors import SablineError
 from .nodes import (
     Assign,
     BinOp,
@@ -32,7 +31,21 @@ from typing import Any, cast
 #     eligible functions. No effects; contracts are allowed once PROVEN
 #     (an unproven promise still needs its runtime check); no '/';
 #     lists and text may be READ (bounds-guarded), not built.
+#
+#     Only allowed to be faster, never different. A number past 64 bits, a
+#     read outside a list or a text, or a text too large for the buffer
+#     stops the machine code where it happens - a wrapped number must never
+#     choose the next branch - and the call is run again by the interpreter,
+#     which then stops where it would have stopped anyway, with its own
+#     code, words and line (9.0: until then native code named neither the
+#     operator nor the read, at the function's line, and could loop forever
+#     where the interpreter stopped).
 # ---------------------------------------------------------------------------
+
+
+class NativeFault(Exception):
+    """Machine code stopped short of an answer; the interpreter runs the
+    call again and says what went wrong, as it always would have."""
 
 
 def native_eligible(funcs: list[Function],
@@ -227,10 +240,6 @@ def _compile_native(funcs: list[Function],
     module = ir.Module(name="sabline")
     oob = ir.GlobalVariable(module, i64, name="sabline_oob")
     oob.initializer = i64(0)
-    oob_idx = ir.GlobalVariable(module, i64, name="sabline_oob_idx")
-    oob_idx.initializer = i64(0)
-    oob_len = ir.GlobalVariable(module, i64, name="sabline_oob_len")
-    oob_len.initializer = i64(0)
     arena = ir.GlobalVariable(module, i32p, name="sabline_arena")
     arena.initializer = ir.Constant(i32p, None)
     arena_cap = ir.GlobalVariable(module, i64, name="sabline_arena_cap")
@@ -352,32 +361,44 @@ def _compile_native(funcs: list[Function],
             t = b.insert_value(ir.Constant(TEXT, ir.Undefined), ptr, 0)
             return b.insert_value(t, ln, 1)
 
+        no_answer = (ir.Constant(f64, 0.0) if fn.return_type == "Float"
+                     else i64(0))
+
+        def stop_if(fault: Any, flag: Any, tag: str) -> None:
+            """When `fault` (an i1) holds, set `flag` and return at once:
+            nothing computed after it may steer the run. The caller sees the
+            flag and hands the call to the interpreter (NativeFault)."""
+            stop_bb = lf.append_basic_block(tag + "_stop")
+            go_bb = lf.append_basic_block(tag + "_go")
+            b.cbranch(fault, stop_bb, go_bb)
+            b.position_at_end(stop_bb)
+            b.store(i64(1), flag)
+            b.ret(no_answer)
+            b.position_at_end(go_bb)
+
+        def stop_if_callee_stopped() -> None:
+            """After a call into another native function: it stopped, so
+            this one stops too, all the way out to the caller."""
+            said = b.or_(b.or_(b.load(overflowed), b.load(oob)),
+                         b.load(arena_full))
+            stop_bb = lf.append_basic_block("callee_stop")
+            go_bb = lf.append_basic_block("callee_go")
+            b.cbranch(b.icmp_signed("!=", said, i64(0)), stop_bb, go_bb)
+            b.position_at_end(stop_bb)
+            b.ret(no_answer)
+            b.position_at_end(go_bb)
+
         def arena_alloc(n: Any) -> tuple[Any, ...]:
-            """Bump-allocate n code points; flag (don't crash) if full."""
+            """Bump-allocate n code points. With no room, stop: the caller
+            grows the buffer and runs the whole call again."""
             used = b.load(arena_used)
             cap = b.load(arena_cap)
             room = b.icmp_signed("<=", b.add(used, n), cap)
-            ok_bb = lf.append_basic_block("arena_ok")
-            full_bb = lf.append_basic_block("arena_full")
-            cont_bb = lf.append_basic_block("arena_done")
-            b.cbranch(room, ok_bb, full_bb)
-            b.position_at_end(ok_bb)
+            stop_if(b.not_(room), arena_full, "arena")
             base = b.load(arena)
             slot = b.gep(base, [used])
             b.store(b.add(used, n), arena_used)
-            b.branch(cont_bb)
-            b.position_at_end(full_bb)
-            b.store(i64(1), arena_full)      # caller grows and retries
-            fallback = b.load(arena)
-            b.branch(cont_bb)
-            b.position_at_end(cont_bb)
-            phi = b.phi(i32p)
-            phi.add_incoming(slot, ok_bb)
-            phi.add_incoming(fallback, full_bb)
-            room_phi = b.phi(ir.IntType(1))
-            room_phi.add_incoming(ir.Constant(ir.IntType(1), 1), ok_bb)
-            room_phi.add_incoming(ir.Constant(ir.IntType(1), 0), full_bb)
-            return phi, room_phi
+            return slot, ir.Constant(ir.IntType(1), 1)
 
         def copy_into(dst: Any, src_ptr: Any, n: Any, tag: Any) -> None:
             """Copy n code points, one at a time (small texts, no libc)."""
@@ -428,9 +449,7 @@ def _compile_native(funcs: list[Function],
                 # interpreter says. Until 8.2 it wrapped to itself, and a
                 # promise proven about -n broke (advisory-int-negation.md)
                 pair = b.call(ovf_fns["ssub"], [i64(0), v])
-                was = b.load(overflowed)
-                b.store(b.select(b.extract_value(pair, 1), i64(1), was),
-                        overflowed)
+                stop_if(b.extract_value(pair, 1), overflowed, "neg")
                 return b.extract_value(pair, 0)
             if (isinstance(e, Call) and e.name in ("length", "code_at")
                     and e.args and not (isinstance(e.args[0], Var)
@@ -444,23 +463,8 @@ def _compile_native(funcs: list[Function],
                 idx = ee(e.args[1])
                 inside = b.and_(b.icmp_signed(">=", idx, i64(0)),
                                 b.icmp_signed("<", idx, ln))
-                ok_bb = lf.append_basic_block("char_ok")
-                bad_bb = lf.append_basic_block("char_out")
-                cont_bb = lf.append_basic_block("char_done")
-                b.cbranch(inside, ok_bb, bad_bb)
-                b.position_at_end(ok_bb)
-                ch = b.zext(b.load(b.gep(data, [idx])), i64)
-                b.branch(cont_bb)
-                b.position_at_end(bad_bb)
-                b.store(i64(1), oob)
-                b.store(idx, oob_idx)
-                b.store(ln, oob_len)
-                b.branch(cont_bb)
-                b.position_at_end(cont_bb)
-                phi = b.phi(i64)
-                phi.add_incoming(ch, ok_bb)
-                phi.add_incoming(i64(0), bad_bb)
-                return phi
+                stop_if(b.not_(inside), oob, "char")   # no read is made
+                return b.zext(b.load(b.gep(data, [idx])), i64)
             if (isinstance(e, Call) and e.name in ("length", "get")
                     and e.args and isinstance(e.args[0], Var)
                     and e.args[0].name in lists):
@@ -470,23 +474,8 @@ def _compile_native(funcs: list[Function],
                 idx = ee(e.args[1])
                 inside = b.and_(b.icmp_signed(">=", idx, i64(0)),
                                 b.icmp_signed("<", idx, ln))
-                ok_bb = lf.append_basic_block("read_ok")
-                bad_bb = lf.append_basic_block("read_out")
-                cont_bb = lf.append_basic_block("read_done")
-                b.cbranch(inside, ok_bb, bad_bb)
-                b.position_at_end(ok_bb)          # in range: real read
-                val = b.load(b.gep(data, [idx]))
-                b.branch(cont_bb)
-                b.position_at_end(bad_bb)         # out of range: no read,
-                b.store(i64(1), oob)              # just record it
-                b.store(idx, oob_idx)
-                b.store(ln, oob_len)
-                b.branch(cont_bb)
-                b.position_at_end(cont_bb)
-                phi = b.phi(i64)
-                phi.add_incoming(val, ok_bb)
-                phi.add_incoming(i64(0), bad_bb)
-                return phi
+                stop_if(b.not_(inside), oob, "read")   # no read is made
+                return b.load(b.gep(data, [idx]))
             if isinstance(e, Call):
                 args_ll = []
                 callee = table.get(e.name)
@@ -500,7 +489,9 @@ def _compile_native(funcs: list[Function],
                         args_ll += list(lists[a.name])
                     else:
                         args_ll.append(ee(a))
-                return b.call(llvm_fns[e.name], args_ll)
+                answer = b.call(llvm_fns[e.name], args_ll)
+                stop_if_callee_stopped()
+                return answer
             left = None                   # a '+' emits its left side once
             if isinstance(e, BinOp) and e.op == "+":
                 lv = left = ee(e.left)
@@ -510,31 +501,35 @@ def _compile_native(funcs: list[Function],
                         raise NotImplementedError
                     ln_l, ln_r = txt_len(lv), txt_len(rv)
                     total = b.add(ln_l, ln_r)
-                    dst, had_room = arena_alloc(total)
-                    # no room means NO copying: the caller grows the
-                    # buffer and runs the whole call again
-                    do_bb = lf.append_basic_block("cat_do")
-                    skip_bb = lf.append_basic_block("cat_skip")
-                    end_bb = lf.append_basic_block("cat_end")
-                    b.cbranch(had_room, do_bb, skip_bb)
-                    b.position_at_end(do_bb)
+                    # no room stops the call before anything is copied: the
+                    # caller grows the buffer and runs the whole call again
+                    dst, _room = arena_alloc(total)
                     copy_into(dst, txt_ptr(lv), ln_l, "cpl")
                     copy_into(b.gep(dst, [ln_l]), txt_ptr(rv), ln_r, "cpr")
-                    did_bb = b.block          # loops moved us elsewhere
-                    b.branch(end_bb)
-                    b.position_at_end(skip_bb)
-                    skipped_bb = b.block
-                    b.branch(end_bb)
-                    b.position_at_end(end_bb)
-                    ln_phi = b.phi(i64)
-                    ln_phi.add_incoming(total, did_bb)
-                    ln_phi.add_incoming(i64(0), skipped_bb)
-                    return make_text(dst, ln_phi)
-            if isinstance(e, BinOp):
+                    return make_text(dst, total)
+            if isinstance(e, BinOp) and e.op in ("and", "or"):
+                # the right side only when the left does not decide it, as
+                # the interpreter reads it: a read or a loop there may be
+                # one the left side exists to guard
+                lv = ee(e.left)
+                left_bb = b.block
+                rhs_bb = lf.append_basic_block(e.op + "_right")
+                end_bb = lf.append_basic_block(e.op + "_end")
+                truth = b.icmp_signed("!=", lv, i64(0))
                 if e.op == "and":
-                    return b.and_(ee(e.left), ee(e.right))
-                if e.op == "or":
-                    return b.or_(ee(e.left), ee(e.right))
+                    b.cbranch(truth, rhs_bb, end_bb)
+                else:
+                    b.cbranch(truth, end_bb, rhs_bb)
+                b.position_at_end(rhs_bb)
+                rv = ee(e.right)
+                rhs_end = b.block
+                b.branch(end_bb)
+                b.position_at_end(end_bb)
+                phi = b.phi(i64)
+                phi.add_incoming(lv, left_bb)
+                phi.add_incoming(rv, rhs_end)
+                return phi
+            if isinstance(e, BinOp):
                 # the left side of a '+' was emitted above. Until 8.2 it was
                 # emitted again here, so a chain of n additions emitted 2**n
                 # trees and a 20-term sum never finished compiling
@@ -545,9 +540,7 @@ def _compile_native(funcs: list[Function],
                 def checked(kind: Any, value: Any) -> Any:
                     """Same answer as interpreted: too big is an error."""
                     pair = b.call(ovf_fns[kind], [l, r])
-                    bit = b.extract_value(pair, 1)
-                    was = b.load(overflowed)
-                    b.store(b.select(bit, i64(1), was), overflowed)
+                    stop_if(b.extract_value(pair, 1), overflowed, kind)
                     return b.extract_value(pair, 0)
 
                 if e.op == "+":
@@ -640,13 +633,9 @@ def _compile_native(funcs: list[Function],
     I64P = ctypes.POINTER(ctypes.c_int64)
     I32P = ctypes.POINTER(ctypes.c_uint32)
     oob_addr = engine.get_global_value_address("sabline_oob")
-    idx_addr = engine.get_global_value_address("sabline_oob_idx")
-    len_addr = engine.get_global_value_address("sabline_oob_len")
     flag = ctypes.cast(oob_addr, I64P)
     ovf_cell = ctypes.cast(
         engine.get_global_value_address("sabline_overflow"), I64P)
-    flag_i = ctypes.cast(idx_addr, I64P)
-    flag_n = ctypes.cast(len_addr, I64P)
 
     class CText(ctypes.Structure):
         _fields_ = [("data", ctypes.POINTER(ctypes.c_uint32)),
@@ -677,14 +666,6 @@ def _compile_native(funcs: list[Function],
 
     def wrap(fn: Any, raw: Any) -> Any:
         types = [pt for _, pt in fn.params]
-
-        def out_of_range() -> Any:
-            # A whole number past 64 bits would wrap in machine code. Nothing
-            # in Sabline makes one from 8.2; if something did, it stops here
-            # rather than become another number.
-            return SablineError("E407", "a number too big to hold reached "
-                                f"'{fn.name}' (whole numbers go from "
-                                f"{INT_MIN} to {INT_MAX})", fn.line)
         wants_bool = fn.return_type == "Bool"
         wants_text = fn.return_type == "Text"
 
@@ -698,14 +679,17 @@ def _compile_native(funcs: list[Function],
                     keep.append(buf)
                     cargs += [ctypes.cast(buf, I32P), len(v)]
                 elif t == "List of Int":
+                    # a whole number past 64 bits would wrap in machine
+                    # code; nothing in Sabline makes one from 8.2, and if
+                    # something did, the interpreter is the one to say so
                     if any(not INT_MIN <= x <= INT_MAX for x in v):
-                        raise out_of_range()
+                        raise NativeFault(fn.name)
                     buf = (ctypes.c_int64 * len(v))(*v)
                     keep.append(buf)
                     cargs += [ctypes.cast(buf, I64P), len(v)]
                 else:
                     if t == "Int" and not INT_MIN <= v <= INT_MAX:
-                        raise out_of_range()
+                        raise NativeFault(fn.name)
                     cargs.append(v)
             for _attempt in range(6):
                 flag[0] = 0
@@ -713,33 +697,17 @@ def _compile_native(funcs: list[Function],
                 arena_used_cell[0] = 0
                 arena_full_cell[0] = 0
                 r = raw(*cargs)
-                if ovf_cell[0]:
-                    ovf_cell[0] = 0
-                    raise SablineError("E407",
-                        "this arithmetic made a number too big to hold "
-                        f"(whole numbers go from {INT_MIN} to "
-                        f"{INT_MAX})", fn.line,
-                        fixes=["keep the numbers smaller",
-                               "or work in smaller units, like cents "
-                               "instead of rupees"])
-                if not arena_full_cell[0]:
-                    break
-                grow_arena()          # too small: bigger buffer, run again
+                if arena_full_cell[0]:
+                    grow_arena()      # too small: bigger buffer, run again
+                    continue
+                if ovf_cell[0] or flag[0]:
+                    # a number past 64 bits, or a read outside a list or a
+                    # text: the machine code stopped there, and the
+                    # interpreter runs the call again to say which, where
+                    raise NativeFault(fn.name)
+                break
             else:
-                raise SablineError("E607",
-                    "this text grew too large to build", fn.line,
-                    fixes=["build shorter pieces of text"])
-            if flag[0]:                  # the read was refused, not made
-                i, n = flag_i[0], flag_n[0]
-                flag[0] = 0
-                what = ("text" if any(t == "Text" for t in types)
-                        else "list")
-                unit = "character" if what == "text" else "item"
-                raise SablineError("E602",
-                    f"position {i} is outside the {what} "
-                    f"(it has {n} {unit}(s))", fn.line,
-                    fixes=["positions go from 0 to length - 1",
-                           "check with length(...) before using get"])
+                raise NativeFault(fn.name)     # a text past the buffer
             if wants_text:
                 return "".join(chr(r.data[i]) for i in range(r.length))
             return bool(r) if wants_bool else r

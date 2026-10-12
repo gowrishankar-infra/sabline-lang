@@ -444,6 +444,72 @@ class OneAnswerOnEveryCPython(Run):
         self.assertEqual(doc["stdout"], "that text is not base64\n" * 4 + "[ab]\n[]\n")
 
 
+class NativeCodeStopsWhereTheInterpreterWould(Run):
+    """The native engine is only allowed to be faster, never different
+    (9.0): a number past 64 bits or a read outside a list or a text stops
+    the machine code where it happens, and the interpreter runs the call
+    again and says what went wrong in its own words, at its own line. And
+    the right side of `and` runs only when the left does not decide it.
+    fuzz_native.py compares the two engines' stderr so that it stays so."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        try:
+            import llvmlite  # noqa: F401
+        except ImportError:
+            self.skipTest("llvmlite is not installed: there is no native "
+                          "engine to compare")
+
+    def both(self, source: str) -> tuple[Any, Any]:
+        import sabline
+
+        def said(result: Any) -> Any:
+            return ([(p.code, p.message, p.line, p.fixes)
+                     for p in result.problems], result.output)
+        return (said(sabline.run(source)),
+                said(sabline.run(source, native=False)))
+
+    def test_a_loop_only_a_stop_ends_is_stopped_at_the_operator(self) -> None:
+        # wrapped, i would reach 0 and stay there: native code that went on
+        # past the overflow never stopped
+        native, interpreted = self.both(
+            "fn f(a: Int) -> Int {\n    let i = a\n    while i != 7 {\n"
+            "        i = i * 2\n    }\n    return i\n}\n\n"
+            + main_of("print(f(1))"))
+        self.assertEqual(native, interpreted)
+        self.assertEqual(native[0][0][:3], ("E407", "this '*' made a number "
+                         "too big to hold (whole numbers go from "
+                         "-9223372036854775808 to 9223372036854775807)", 4))
+
+    def test_the_first_read_outside_a_text_is_the_one_named(self) -> None:
+        native, interpreted = self.both(
+            "fn g(t: Text, k: Int) -> Int {\n    let n = 0\n    let i = 0\n"
+            "    while i < k {\n        n = n + code_at(t, i)\n"
+            "        i = i + 1\n    }\n    return n\n}\n\n"
+            + main_of('print(g("abc", 5))'))
+        self.assertEqual(native, interpreted)
+        self.assertEqual(native[0][0][:3], ("E602", "position 3 is outside "
+                         "the text (it has 3 character(s))", 5))
+
+    def test_and_does_not_run_what_its_left_side_guards(self) -> None:
+        native, interpreted = self.both(
+            "fn g(a: Int) -> Int {\n    return a * 4611686018427387904\n}\n\n"
+            "fn f(a: Int) -> Int {\n    if a < 0 and g(a) > 0 {\n"
+            "        return 1\n    }\n    return 2\n}\n\n"
+            + main_of("print(f(3))"))
+        self.assertEqual(native, interpreted)
+        self.assertEqual(native, ([], "2\n"))
+
+    def test_one_native_function_stopping_inside_another(self) -> None:
+        native, interpreted = self.both(
+            "fn g(a: Int, b: Int) -> Int {\n    return a * b\n}\n\n"
+            "fn f(a: Int) -> Int {\n    return g(a, 4611686018427387904) + 1"
+            "\n}\n\n" + main_of("print(f(1))\nprint(f(2))"))
+        self.assertEqual(native, interpreted)
+        self.assertEqual((native[0][0][0], native[0][0][2], native[1]),
+                         ("E407", 2, "4611686018427387905\n"))
+
+
 class TheVariableChoosesTheRuntime(Run):
     """SABLINE_REFERENCE_RUNTIME (9.0, M3): `rust` sends `sabline run` and
     `sabline.run` through sabline-rt, unset or `python` leaves them to the

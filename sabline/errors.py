@@ -84,6 +84,10 @@ ERROR_TABLE = {
             "cost that is not a number",
     "E325": "a budget wider than this machine's organisation ceiling, or a "
             "ceiling that cannot be read (9.0; sabline ceiling shows it)",
+    "E326": "a run that asked for confinement at least full, or partial, "
+            "and the operating system gave it less (9.0, "
+            "--require-confinement; sabline audit says what this machine "
+            "gives)",
     "E400": "there is no 'main' function",
     "E401": "the wrong number of arguments, or parameters on 'main'",
     "E402": "an unknown variable, or break or continue, which the language "

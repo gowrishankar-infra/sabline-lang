@@ -1,0 +1,152 @@
+the parent: <checkout>\rt\spikes\appcontainer\target\release\appcontainer-spike.exe (pid 33148)
+the container: sabline.spike.33148, SID S-1-15-2-759954116-2164106772-1860107212-2332270184-1208626672-2052890674-2843286323
+
+== 1. the executable where it was built; no ACE anywhere; no capability
+  read its own executable: refused (Access is denied. (os error 5))
+  read a file in the granted directory: refused (Access is denied. (os error 5))
+  list the granted directory: refused (Access is denied. (os error 5))
+  write a file in the granted directory: refused (Access is denied. (os error 5))
+  overwrite a file that was there: refused (Access is denied. (os error 5))
+  remove a file that was there: refused (Access is denied. (os error 5))
+  read a file outside it: refused (Access is denied. (os error 5))
+  list the directory outside it: refused (Access is denied. (os error 5))
+  write a file outside it: refused (Access is denied. (os error 5))
+  read a file of the user's (%USERPROFILE%\.gitconfig): refused (Access is denied. (os error 5))
+  read C:\Windows\win.ini: allowed (92 bytes)
+  write the user's temporary directory: allowed (%LOCALAPPDATA%\Packages\sabline.spike.33148\AC\Temp\sabline-spike-37560.txt)
+  TCP to the loopback address: refused (connection timed out)
+  TCP to 1.1.1.1:443: refused (An attempt was made to access a socket in a way forbidden by its access permissions. (os error 10013))
+  start a process (cmd /c exit 0): allowed (exit exit code: 0)
+  read standard input: allowed (a line from the parent)
+  write standard output: allowed
+  (exit Some(0))
+
+== 2. a copy beside an ACE for the container (read, execute); the granted directory: an ACE (read); no capability
+  read its own executable: allowed (328704 bytes)
+  read a file in the granted directory: allowed (inside the grant)
+  list the granted directory: allowed (1 entries)
+  write a file in the granted directory: refused (Access is denied. (os error 5))
+  overwrite a file that was there: refused (Access is denied. (os error 5))
+  remove a file that was there: refused (Access is denied. (os error 5))
+  read a file outside it: refused (Access is denied. (os error 5))
+  list the directory outside it: refused (Access is denied. (os error 5))
+  write a file outside it: refused (Access is denied. (os error 5))
+  read a file of the user's (%USERPROFILE%\.gitconfig): refused (Access is denied. (os error 5))
+  read C:\Windows\win.ini: allowed (92 bytes)
+  write the user's temporary directory: allowed (%LOCALAPPDATA%\Packages\sabline.spike.33148\AC\Temp\sabline-spike-6504.txt)
+  TCP to the loopback address: refused (connection timed out)
+  TCP to 1.1.1.1:443: refused (An attempt was made to access a socket in a way forbidden by its access permissions. (os error 10013))
+  start a process (cmd /c exit 0): allowed (exit exit code: 0)
+  read standard input: allowed (a line from the parent)
+  write standard output: allowed
+  (exit Some(0))
+
+== 3. as 2, with the internetClient capability
+  read its own executable: allowed (328704 bytes)
+  read a file in the granted directory: allowed (inside the grant)
+  list the granted directory: allowed (1 entries)
+  write a file in the granted directory: refused (Access is denied. (os error 5))
+  overwrite a file that was there: refused (Access is denied. (os error 5))
+  remove a file that was there: refused (Access is denied. (os error 5))
+  read a file outside it: refused (Access is denied. (os error 5))
+  list the directory outside it: refused (Access is denied. (os error 5))
+  write a file outside it: refused (Access is denied. (os error 5))
+  read a file of the user's (%USERPROFILE%\.gitconfig): refused (Access is denied. (os error 5))
+  read C:\Windows\win.ini: allowed (92 bytes)
+  write the user's temporary directory: allowed (%LOCALAPPDATA%\Packages\sabline.spike.33148\AC\Temp\sabline-spike-20944.txt)
+  TCP to the loopback address: refused (connection timed out)
+  TCP to 1.1.1.1:443: allowed
+  start a process (cmd /c exit 0): allowed (exit exit code: 0)
+  read standard input: allowed (a line from the parent)
+  write standard output: allowed
+  (exit Some(0))
+  the DACL of %TEMP%\sabline-appcontainer-spike-33148\granted put back: yes
+
+== 4. the granted directory: an ACE (read, write); no label
+  read its own executable: allowed (328704 bytes)
+  read a file in the granted directory: allowed (inside the grant)
+  list the granted directory: allowed (1 entries)
+  write a file in the granted directory: allowed
+  overwrite a file that was there: allowed
+  remove a file that was there: allowed
+  read a file outside it: refused (Access is denied. (os error 5))
+  list the directory outside it: refused (Access is denied. (os error 5))
+  write a file outside it: refused (Access is denied. (os error 5))
+  read a file of the user's (%USERPROFILE%\.gitconfig): refused (Access is denied. (os error 5))
+  read C:\Windows\win.ini: allowed (92 bytes)
+  write the user's temporary directory: allowed (%LOCALAPPDATA%\Packages\sabline.spike.33148\AC\Temp\sabline-spike-24308.txt)
+  TCP to the loopback address: refused (connection timed out)
+  TCP to 1.1.1.1:443: refused (An attempt was made to access a socket in a way forbidden by its access permissions. (os error 10013))
+  start a process (cmd /c exit 0): allowed (exit exit code: 0)
+  read standard input: allowed (a line from the parent)
+  write standard output: allowed
+  (exit Some(0))
+  the DACL of %TEMP%\sabline-appcontainer-spike-33148\granted put back: yes
+
+  a low label on %TEMP%\sabline-appcontainer-spike-33148\granted-low: yes
+
+== 5. a directory with an ACE (read, write) and a low label
+  read its own executable: allowed (328704 bytes)
+  read a file in the granted directory: allowed (inside the low grant)
+  list the granted directory: allowed (1 entries)
+  write a file in the granted directory: allowed
+  overwrite a file that was there: allowed
+  remove a file that was there: allowed
+  read a file outside it: refused (Access is denied. (os error 5))
+  list the directory outside it: refused (Access is denied. (os error 5))
+  write a file outside it: refused (Access is denied. (os error 5))
+  read a file of the user's (%USERPROFILE%\.gitconfig): refused (Access is denied. (os error 5))
+  read C:\Windows\win.ini: allowed (92 bytes)
+  write the user's temporary directory: allowed (%LOCALAPPDATA%\Packages\sabline.spike.33148\AC\Temp\sabline-spike-37152.txt)
+  TCP to the loopback address: refused (connection timed out)
+  TCP to 1.1.1.1:443: refused (An attempt was made to access a socket in a way forbidden by its access permissions. (os error 10013))
+  start a process (cmd /c exit 0): allowed (exit exit code: 0)
+  read standard input: allowed (a line from the parent)
+  write standard output: allowed
+  (exit Some(0))
+  the DACL of %TEMP%\sabline-appcontainer-spike-33148\granted-low put back: yes
+
+== 5b. a directory on another volume (D:), an ACE (read, write), no label
+  read its own executable: allowed (328704 bytes)
+  read a file in the granted directory: allowed (inside the grant on D:)
+  list the granted directory: allowed (1 entries)
+  write a file in the granted directory: allowed
+  overwrite a file that was there: allowed
+  remove a file that was there: allowed
+  read a file outside it: refused (Access is denied. (os error 5))
+  list the directory outside it: refused (Access is denied. (os error 5))
+  write a file outside it: refused (Access is denied. (os error 5))
+  read a file of the user's (%USERPROFILE%\.gitconfig): refused (Access is denied. (os error 5))
+  read C:\Windows\win.ini: allowed (92 bytes)
+  write the user's temporary directory: allowed (%LOCALAPPDATA%\Packages\sabline.spike.33148\AC\Temp\sabline-spike-10652.txt)
+  TCP to the loopback address: refused (connection timed out)
+  TCP to 1.1.1.1:443: refused (An attempt was made to access a socket in a way forbidden by its access permissions. (os error 10013))
+  start a process (cmd /c exit 0): allowed (exit exit code: 0)
+  read standard input: allowed (a line from the parent)
+  write standard output: allowed
+  (exit Some(0))
+  the DACL of D:\sabline-appcontainer-spike-33148 put back: yes
+
+== 6. the executable where it was built, with an ACE on the file itself (read, execute)
+  read its own executable: allowed (328704 bytes)
+  read a file in the granted directory: refused (Access is denied. (os error 5))
+  list the granted directory: refused (Access is denied. (os error 5))
+  write a file in the granted directory: refused (Access is denied. (os error 5))
+  overwrite a file that was there: refused (Access is denied. (os error 5))
+  remove a file that was there: refused (Access is denied. (os error 5))
+  read a file outside it: refused (Access is denied. (os error 5))
+  list the directory outside it: refused (Access is denied. (os error 5))
+  write a file outside it: refused (Access is denied. (os error 5))
+  read a file of the user's (%USERPROFILE%\.gitconfig): refused (Access is denied. (os error 5))
+  read C:\Windows\win.ini: allowed (92 bytes)
+  write the user's temporary directory: allowed (%LOCALAPPDATA%\Packages\sabline.spike.33148\AC\Temp\sabline-spike-39492.txt)
+  TCP to the loopback address: refused (connection timed out)
+  TCP to 1.1.1.1:443: refused (An attempt was made to access a socket in a way forbidden by its access permissions. (os error 10013))
+  start a process (cmd /c exit 0): allowed (exit exit code: 0)
+  read standard input: allowed (a line from the parent)
+  write standard output: allowed
+  (exit Some(0))
+  the DACL of <checkout>\rt\spikes\appcontainer\target\release\appcontainer-spike.exe put back: yes
+  the DACL of %TEMP%\sabline-appcontainer-spike-33148\bin put back: yes
+
+  profile sabline.spike.33148 deleted: yes

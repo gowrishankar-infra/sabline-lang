@@ -33,9 +33,12 @@ from typing import Any
 #     os_policy() is the one derivation: budget -> OS policy. ENFORCES is
 #     the table of what each system holds for each budget item, which
 #     THREAT_MODEL.md prints and check_confine.py holds to this module.
-#     FFI_WIDENS says what a granted Python module widens the policy to.
+#     FFI_WIDENS says what a granted Python module widens the policy to,
+#     and under --confine strict (9.0) a granted module widens nothing.
 #     The level a run reports - full, partial, none - is what was applied
-#     and held, never what was asked for, and comes with its reason.
+#     and held, never what was asked for, and comes with its reason; under
+#     --require-confinement (9.0) a run whose level is below the one asked
+#     for is refused before its first statement, E326.
 # ---------------------------------------------------------------------------
 
 POLICY_SCHEMA = "sabline.os-policy/1"
@@ -176,6 +179,24 @@ ENFORCES: tuple[tuple[str, str, str, str], ...] = (
      "host, or nothing enforced; a module not in the table, `ffi:os`, "
      "`ffi:subprocess` and plain `ffi` widen to nothing enforced, and the "
      "level is none", "as Linux", "as Linux"),
+    ("`ffi:MODULE` under `--confine strict`",
+     "widened to nothing: the policy is the budget's `fs:` and `net:` grants "
+     "and what the interpreter itself reads, whatever modules are granted, "
+     "and the rows above hold a module's own calls - native code, `ctypes`, "
+     "`os.system` - as they hold the runtime's; a module that needs a path "
+     "or a host needs it in the budget",
+     "as Linux, with the profile's limits: writes, the network and "
+     "processes held, reads only under the home directory and /Volumes",
+     "as Linux, with this table's limits: no second process, and no write "
+     "to anything of the user's when the budget grants no write"),
+    ("`--require-confinement full` or `partial` (never a budget item)",
+     "a run whose level, once applied, is below the one asked for is "
+     "refused before its first statement (E326), and its receipt records "
+     "the level it got",
+     "as Linux; every run is partial here at best - the level says that "
+     "Apple has deprecated sandbox profiles - so `full` refuses every run",
+     "as Linux; a budget that restricts reads or the network - `io` itself "
+     "does - gives partial here, so `full` refuses it"),
     ("time and memory limits",
      "RLIMIT_AS, and the parent's clock (as before 8.4)",
      "the parent's clock; RLIMIT_AS is best-effort",
@@ -209,11 +230,18 @@ class ConfinementRefused(OSError):
 
 # ---- budget -> OS policy: the one derivation ---------------------------------
 
-def os_policy(budget: Any, *, confine: bool = True) -> dict[str, Any]:
+def os_policy(budget: Any, *, confine: bool = True,
+              strict: bool = False) -> dict[str, Any]:
     """The OS policy of a budget: what the operating system is asked to hold
     for a run under it. Pure - it reads nothing of the machine - so the same
     budget gives the same policy, and policy_sha256() of it is what a
-    receipt records.
+    receipt records. sabline-rt derives the same document (rt/.../confine.rs)
+    and the agreement gate compares the two for every budget it has.
+
+    `strict` is --confine strict (9.0, decisions/0006 e): a granted ffi
+    module widens nothing - `widened_by` is empty, and no module changes
+    fs_read, fs_write, net or spawn - and the document says `"strict":
+    true`, so its digest is not that of a policy derived without it.
 
       fs_read, fs_write   the resolved paths that direction may touch, or
                           None for any path; [] for none of the user's
@@ -244,7 +272,7 @@ def os_policy(budget: Any, *, confine: bool = True) -> dict[str, Any]:
     spawn = False
     enforced = bool(confine)
     widened = []
-    if "ffi" in budget.effects:
+    if "ffi" in budget.effects and not strict:
         modules = ["*"] if budget.modules is None else sorted(budget.modules)
         for module in modules:
             widens = FFI_WIDENS.get(module, ("all",))
@@ -261,13 +289,16 @@ def os_policy(budget: Any, *, confine: bool = True) -> dict[str, Any]:
             if "all" in widens:
                 fs_read = fs_write = None
                 net, spawn, enforced = "any", True, False
-    return {"schema": POLICY_SCHEMA, "enforced": enforced,
-            "fs_read": None if fs_read is None else sorted(set(fs_read)),
-            "fs_write": None if fs_write is None else sorted(set(fs_write)),
-            "net": net, "spawn": spawn, "widened_by": widened,
-            "system": ["interpreter", "standard-library", "program",
-                       "private-temp"] + (
-                           ["dns", "tls-roots"] if net != "none" else [])}
+    policy = {"schema": POLICY_SCHEMA, "enforced": enforced,
+              "fs_read": None if fs_read is None else sorted(set(fs_read)),
+              "fs_write": None if fs_write is None else sorted(set(fs_write)),
+              "net": net, "spawn": spawn, "widened_by": widened,
+              "system": ["interpreter", "standard-library", "program",
+                         "private-temp"] + (
+                             ["dns", "tls-roots"] if net != "none" else [])}
+    if strict:
+        policy["strict"] = True
+    return policy
 
 
 def policy_sha256(policy: dict[str, Any]) -> str:
@@ -293,15 +324,16 @@ def _restricted(policy: dict[str, Any]) -> list[str]:
     return asks
 
 
-def off_by_grant(budget: Any) -> str | None:
+def off_by_grant(budget: Any, *, strict: bool = False) -> str | None:
     """The one line the command line writes to stderr, as a run starts, when
     what its budget grants turns the operating system layer off - None when
     it does not (8.7). One condition, the receipt's own: the budget's OS
     policy is not enforced. Plain `ffi`, a module the table widens to "all"
     (`ffi:os`, `ffi:subprocess`) and a module the table does not name - even
     one that does not exist, since nothing here imports it to find out - all
-    meet it; a module the table names as widening to less does not."""
-    policy = os_policy(budget)
+    meet it; a module the table names as widening to less does not; and
+    under --confine strict none does."""
+    policy = os_policy(budget, strict=strict)
     off = [w for w in policy["widened_by"] if "all" in w["widens"]]
     if policy["enforced"] or not off:
         return None
@@ -360,10 +392,12 @@ def _judge(policy: dict[str, Any], held: dict[str, str],
                for answer in said.values()):
         return report(NONE, "; ".join(gaps) or "nothing was applied", layers,
                       policy)
+    strict = ("; under --confine strict no granted module widened the "
+              "policy" if policy.get("strict") else "")
     if gaps:
-        return report(PARTIAL, "; ".join(gaps), layers, policy)
+        return report(PARTIAL, "; ".join(gaps) + strict, layers, policy)
     return report(FULL, "the operating system holds every file, network "
-                  "and process limit of this budget", layers, policy)
+                  "and process limit of this budget" + strict, layers, policy)
 
 
 # ---- where the interpreter itself reads ---------------------------------------
@@ -1406,13 +1440,82 @@ def confine_this_run(budget: Any, *, files: Any = (),
         done = unconfined(policy, _why_not_enforced(policy))
         vars(_state)["CONFINEMENT"] = dict(done)
     else:
-        policy = os_policy(budget)
+        policy = os_policy(budget, strict=_state.CONFINE_STRICT)
         rule = temp_rule
         if rule is None and policy["enforced"] and "ffi" in budget.effects:
             _made, rule = private_temp()
         done = apply(policy, reads=list(files), temp=rule)
-    inject_fault(done)
+    at_first_statement(done)
     return done
+
+
+# ---- --require-confinement (9.0, M4; decisions/0007 32a) ----------------------
+
+LEVELS = (NONE, PARTIAL, FULL)
+REQUIRE_WORDS = (FULL, PARTIAL)
+
+
+def library_mode(confine: Any, require_confinement: Any
+                 ) -> tuple[bool, bool, str | None]:
+    """What `confine=` and `require_confinement=` ask of a library run, a
+    Pool or a PoolRegistry (9.0, M4): (whether to confine, whether under
+    --confine strict, the least level or None). `confine` is True, False or
+    "strict"; `require_confinement` None, "full" or "partial". ValueError
+    for anything else, and for confine=False beside a level asked for,
+    which ask for two opposite things."""
+    if confine is True or confine is False:
+        on, strict = bool(confine), False
+    elif confine == "strict":
+        on, strict = True, True
+    else:
+        raise ValueError(f"confine takes True, False or 'strict', not "
+                         f"{confine!r}")
+    if require_confinement is not None and \
+            require_confinement not in REQUIRE_WORDS:
+        raise ValueError(f"require_confinement takes 'full', 'partial' or "
+                         f"None, not {require_confinement!r}")
+    if not on and require_confinement is not None:
+        raise ValueError("confine=False asks for no confinement and "
+                         f"require_confinement={require_confinement!r} for "
+                         f"confinement: say one")
+    return on, strict, require_confinement
+
+
+def require(confinement: dict[str, Any] | None) -> None:
+    """Refuse the run, E326, when --require-confinement asked for a level
+    that `confinement` - what was applied to this process, or None for
+    nothing - is below. The level is the one already applied, never a
+    prediction: the run stops before its first statement, and its receipt
+    records the level it got."""
+    from . import state as _state
+    wanted = _state.REQUIRE_CONFINEMENT
+    if wanted is None:
+        return
+    got = (confinement or {}).get("level") or NONE
+    if got in LEVELS and LEVELS.index(got) >= LEVELS.index(wanted):
+        return
+    from .errors import SablineError
+    reason = (confinement or {}).get("reason") or \
+        "nothing was asked of the operating system"
+    raise SablineError(
+        "E326", f"this run asks for confinement at least {wanted}, and the "
+        f"operating system gave it {got}: {reason}", 0,
+        fixes=["run it where the operating system can hold its budget, or "
+               "narrow the budget to what this one can hold",
+               "--confine strict keeps a granted Python module from "
+               "widening the policy, which raises the level a budget "
+               "with ffi gets",
+               "--require-confinement partial accepts a partial level; "
+               "sabline audit FILE says what this machine gives the "
+               "program's budget, and why"])
+
+
+def at_first_statement(confinement: dict[str, Any] | None) -> None:
+    """What a run does once its confinement is settled and before its
+    first statement: the level held to --require-confinement (E326), then
+    the fault-injection hook, which only a run allowed to start may try."""
+    require(confinement)
+    inject_fault(confinement)
 
 
 def unconfined(policy: dict[str, Any], reason: str) -> dict[str, Any]:

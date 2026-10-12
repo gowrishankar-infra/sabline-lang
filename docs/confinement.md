@@ -10,6 +10,8 @@ it, and the fault is a crash inside a box and not an escape.
 
 ```sh
 sabline program.vel                     # confined, where the system can
+sabline program.vel --confine strict    # and no granted module widens it (9.0)
+sabline program.vel --require-confinement full   # or refuse to run (9.0)
 sabline program.vel --no-confine        # not confined, and stderr says so
 sabline doctor                          # what this machine offers
 sabline eval --confinement-probe        # what a confined worker could do
@@ -107,6 +109,71 @@ and its receipt are what they were, and `sabline.run()`, `sabline replay`,
 a `Pool` and `sabline serve` write nothing new - the receipt is where they
 say it.
 
+## `--confine strict`: a granted module widens nothing (9.0)
+
+`--confine strict` on the command line - `confine="strict"` for
+`sabline.run`, a `Pool` or a `PoolRegistry` - takes the policy from the
+budget alone. A granted `ffi` module widens nothing: the operating system is
+asked to hold exactly the budget's `fs:` and `net:` grants and what the
+interpreter itself reads, whatever modules are granted, so a module that
+needs a path or a host needs it in the budget. The kernel checks the system
+call, not the code that made it, so a module's own native code, its own
+`ctypes` calls and its own `os.system` are held as the runtime's are:
+
+```sh
+sabline 19d.vel --allow io,ffi:nativefmt --confine strict
+# the vendored library's native fopen outside every grant fails; the run
+# goes on, and its receipt says the platform's level, not none
+```
+
+It is opt-in, and the default does not move: without it a module the table
+does not name still widens the policy to nothing enforced, and the receipt
+still says so. A module that does I/O the budget does not grant - `sqlite3`'s
+journal beside its database, a library reading its own data files - fails
+under it with an operating-system error, as it should. Under strict the OS
+policy document carries `"strict": true`, so its digest in the receipt is
+not that of the same budget without it, and the receipt's reason says no
+module widened it. It closes the competitor benchmark's 19d where the
+platform holds the write: on Linux and macOS, and on Windows when the budget
+grants no write (decisions/0006, section e).
+
+## `--require-confinement`: refuse, rather than warn (9.0)
+
+`--require-confinement full` (or `partial`) - `require_confinement=` in the
+library and for a pool - refuses a run whose confinement, once applied, is
+below that level: [E326](https://sabline.dev/errors.html#E326), before its
+first statement, with the level and the reason it got. The receipt records
+the level and the refusal, so a refused run is accounted for like any
+other. It is the level that was applied, never a prediction, and it is not
+`--confine strict`: strict is about a granted module not widening the
+policy, this is about whether the platform can hold the budget at all. They
+compose - under strict a budget with `ffi` is confined more often, so this
+refuses less.
+
+What it refuses depends on the platform, and today plainly so:
+
+| | Linux | macOS | Windows |
+|---|---|---|---|
+| `full` | runs where Landlock and seccomp hold every limit of the budget | refuses every run: the level is partial at best, since Apple has deprecated sandbox profiles | refuses every budget that restricts reads or the network - `io` itself does - because this runtime cannot hold either |
+| `partial` | refuses only a run nothing holds: `ffi:os`, `ffi:subprocess`, plain `ffi` or an unnamed module without `--confine strict` | the same | the same |
+
+On Windows that is the Python runtime's limit, not the platform's: an
+AppContainer holds reads and the network, and the spike `plan/9.0.md`
+asked for showed a Rust binary can start in one and be given exactly its
+granted directories (rt/spikes/appcontainer/). When sabline-rt confines
+its own runs (9.0, M4), `full` is a level a Windows budget can have; until
+then this row says what is true.
+
+`sabline.run` with no limit runs in the caller's process, which Sabline
+does not confine, so a level asked of it is always refused. Pass a limit, or
+use a `Pool`. Beside `--no-confine` - or `confine=False` - either option asks
+for two opposite things, and is refused as a usage error.
+
+With `SABLINE_REFERENCE_RUNTIME=rust`, a run asked for either stays the
+Python package's and says so on stderr: sabline-rt does not ask the
+operating system for anything until M4's port, so a level asked of it would
+be a level it ignored.
+
 ## What is not confined
 
 - **An in-process `sabline.run()`** - one with no `timeout` and no
@@ -143,6 +210,15 @@ table says is held is refused by the kernel and the run ends with
 [E319](https://sabline.dev/errors.html#E319) naming the layers; what the row says is not held goes
 through; and with `--no-confine` every one goes through. All three outcomes are
 asserted, so the table is held to be true in both directions.
+
+Under `--confine strict` it holds the five cases decisions/0006 set: 19d's
+native `fopen`, a module that opens and writes a file through the C library,
+and `os.system`'s process, each refused by the kernel with nothing made;
+the hook's write, E319 with an `ffi` grant as without; and, without strict,
+19d writing its file as it always has, its receipt saying none. Under
+`--require-confinement` it holds E326 on each platform where the level is
+below the one asked for, the run when it is not, the hook never tried by a
+refused run, and the library's and a pool's refusals.
 
 It also runs every escape target of `check_sandbox.py`, and the file and `ffi`
 targets of `check_adversarial.py`, on a Sabline whose budget checks have been

@@ -40,3 +40,5 @@ rt/crates/sabline-rt/fuzz/target/
 rt/crates/sabline-rt/fuzz/Cargo.lock
 rt/crates/sabline-rt/fuzz/artifacts/
 rt/crates/sabline-rt/fuzz/corpus/
+rt/spikes/*/target/
+rt/spikes/*/Cargo.lock
