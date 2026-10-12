@@ -569,13 +569,13 @@ pub fn judge(
 }
 
 /// `linux`, `macos`, `windows`, or this build's own name for its system.
+///
+/// Rust's own name for each of the three is already the word a receipt
+/// writes, so there is nothing here to map. `sabline/confine.py`'s
+/// `_platform` has to map, because CPython calls two of them `darwin` and
+/// `win32`.
 pub fn platform() -> &'static str {
-    match std::env::consts::OS {
-        "linux" => "linux",
-        "macos" => "macos",
-        "windows" => "windows",
-        other => other,
-    }
+    std::env::consts::OS
 }
 
 // ---- the paths a policy is applied to ----------------------------------------
