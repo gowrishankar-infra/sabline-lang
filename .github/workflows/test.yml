@@ -360,6 +360,46 @@ jobs:
       - name: The benchmark's programs, under their own budgets, in both runtimes
         run: python check_benchmark_through_rt.py
 
+  confine_rt:
+    name: the operating system holds sabline-rt's own runs (${{ matrix.os }})
+    # 9.0's M4: sabline-rt asks the kernel for the budget's policy in its
+    # own process, and `check_confine.py --runtime rust` asks every question
+    # that page asks of the package - the fault-injection hook, what still
+    # works, what is reported, what a program cannot reach, what is tried
+    # against the confinement itself, and both of 9.0's options - of
+    # sabline-rt instead. Every claim gets an escape test on every platform
+    # it claims, which is why this is a matrix and not one leg.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87  # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2
+        with:
+          workspaces: rt
+          key: confine-rt
+      - name: Install
+        run: pip install -c requirements/ci.txt ".[full,test]"
+      - name: Build sabline-rt
+        run: cargo build --release --manifest-path rt/Cargo.toml
+      - name: What Landlock and seccomp this kernel offers
+        if: runner.os == 'Linux'
+        run: |
+          uname -r
+          python -c "import sabline.confine as c; print('Landlock ABI', c.landlock_abi(), '/ seccomp', c.seccomp_arch())"
+      - name: The operating system holds sabline-rt's own runs, and says truthfully how much
+        run: python check_confine.py --runtime rust
+      - name: ...and the package's, on the same machine
+        run: python check_confine.py
+
   msrv:
     name: sabline-rt builds on the Rust version it says it needs
     runs-on: ubuntu-latest

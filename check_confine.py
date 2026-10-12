@@ -45,6 +45,22 @@ much of it.
              writes tests/confine/kernel-<platform>.json
 
     python check_confine.py [--record]
+    python check_confine.py --runtime rust
+
+**`--runtime rust`** (9.0, M4) asks every one of those questions of
+sabline-rt instead: each child is started with
+`SABLINE_REFERENCE_RUNTIME=rust`, so the run inside each command is
+sabline-rt's and the confinement is the one sabline-rt applied to its own
+process (rt/.../confine.rs and the three platform modules beside it). Three
+parts stay the Python package's and say so rather than being asked twice:
+the policy, the filter and the table, which are this module's own
+derivations and are compared with sabline-rt's by the agreement gate; the
+escape targets, which are measured on a Sabline whose *Python* budget checks
+are knocked out; and `sabline eval`, whose run sabline-rt does not take yet
+(plan/9.0.md, M4). Everything else - the honesty test, what still works,
+what is reported, what a program cannot reach, what is tried against the
+confinement itself, `--confine strict` and `--require-confinement` - is
+asked of both.
 """
 from __future__ import annotations
 
@@ -72,6 +88,11 @@ from suite_dirs import isolate  # noqa: E402
 WORK = isolate("check_confine")
 PLATFORM = confine._platform()
 PASSED = FAILED = 0
+# Which runtime every child runs its program in (9.0, M4): "python", or
+# "rust" for sabline-rt, which confines its own process. It is read once,
+# here, and `cli` puts it in every child's environment - so a case written
+# for one runtime is asked of the other without being written twice.
+RUNTIME = "rust" if "--runtime" in sys.argv and "rust" in sys.argv else "python"
 
 # What each system's row of THREAT_MODEL.md's table says of the hook's
 # attempts under the default budget, io: True is "the kernel refuses it".
@@ -100,6 +121,7 @@ def cli(*words: str, env: dict[str, str] | None = None, cwd: Any = None,
         faulty: bool = False, timeout: int = 300) -> tuple[int, str, str]:
     full = dict(os.environ)
     full.pop(confine.FAULT_ENV, None)
+    full["SABLINE_REFERENCE_RUNTIME"] = RUNTIME
     full.update(env or {})
     done = subprocess.run(
         [sys.executable, FAULTY if faulty else SABLINE, *words],
@@ -1074,7 +1096,8 @@ def strict_cases(runtime: str = "python") -> None:
     def receipt() -> dict[str, Any]:
         # a run that never got as far as its receipt leaves the file empty
         text = rec.read_text(encoding="utf-8") if rec.exists() else ""
-        found: dict[str, Any] = json.loads(text)["predicate"]             if text.strip() else {}
+        found: dict[str, Any] = (json.loads(text)["predicate"]
+                                 if text.strip() else {})
         return found
 
     def strict_digest(spec: str) -> str:
@@ -1150,15 +1173,11 @@ fn main() uses io, ffi {{
     code, out, err = cli(str(measure), "--allow", "io,ffi:nativefmt",
                          "--receipt", str(rec), env=env)
     p = receipt().get("run_parameters") or {}
-    # through sabline-rt, which confines nothing until M4's port, the
-    # receipt says that instead of naming the module
-    why = ("ffi:nativefmt" if runtime == "python"
-           else "nothing was asked of the operating system")
     ok("without --confine strict 19d runs as it always has - the native "
        "write happens - and the receipt says none, and why",
        code == 0 and "length 6" in out and native.exists()
        and p.get("confinement") == "none"
-       and why in p.get("confinement_reason", ""),
+       and "ffi:nativefmt" in p.get("confinement_reason", ""),
        [code, out, err[-300:], p])
     native.unlink(missing_ok=True)
     code, out, err = cli(scribble, "--allow", "io,ffi:scribble", env=env)
@@ -1240,32 +1259,55 @@ def required_cases(runtime: str = "python") -> None:
     ok("--require-confinement takes full or partial and nothing else",
        code == 2 and "full or partial" in err, err[-300:])
     if runtime == "rust":
-        # sabline-rt confines nothing until M4's port, so a level asked of
-        # it would be a level ignored: the run stays the package's, says so,
-        # and its receipt is the package's
+        # from 9.0's M4 sabline-rt confines its own runs: a level asked of
+        # it is a level it gives, the run is its own, and nothing is kept in
+        # the package for confinement's sake
         rec.unlink(missing_ok=True)
         code, out, err = cli(hello, "--require-confinement", "partial",
                              "--receipt", str(rec), env=env)
-        p = json.loads(rec.read_text(encoding="utf-8"))["predicate"]             if rec.exists() else {}
-        ok("SABLINE_REFERENCE_RUNTIME=rust: a run that asks for a level stays "
-           "the package's, which holds it, and says so on stderr",
+        p = (json.loads(rec.read_text(encoding="utf-8"))["predicate"]
+             if rec.exists() else {})
+        rp = p.get("run_parameters") or {}
+        ok("SABLINE_REFERENCE_RUNTIME=rust: a run that asks for a level is "
+           "sabline-rt's own, confined by it, and nothing is kept in the "
+           "package for it",
            code == 0 and "ran to the end" in out
-           and "this run is the Python package's, not sabline-rt's" in err
-           and (p.get("producer") or {}).get("name") == "sabline-lang"
-           and (p.get("run_parameters") or {}).get("confinement") == level,
-           [code, err[-400:], p.get("producer")])
+           and "this run is the Python package's" not in err
+           and (p.get("producer") or {}).get("name") == "sabline-rt"
+           and rp.get("confinement") == level
+           and rp.get("confinement_layers"),
+           [code, err[-400:], p.get("producer"), rp])
+        # and the host of what it relays is confined too (M4, item 7): the
+        # command's own process, which ends with the run. The hook runs in
+        # sabline-rt, and a second one in the host would be a second answer;
+        # what is held here is that the command's own process is held, which
+        # the strict cases above measure through a granted module.
+        code, out, err = cli(hello, "--confine", "strict", env=env)
+        ok("a command's own process is the host of what the run relays, and "
+           "is held to the same policy once sabline-rt has been started",
+           code == 0 and "ran to the end" in out, [code, out, err[-400:]])
 
     # the library and a pool
     saved = {k: os.environ.get(k) for k in env}
     os.environ.update(env)
     try:
         r = sabline.run(HELLO, require_confinement="partial")
-        ok("sabline.run with no limit runs in the caller's process, which "
-           "nothing confines: require_confinement='partial' refuses it, "
-           "E326, and the receipt says none",
-           not r.ok and [p.code for p in r.problems] == ["E326"]
-           and parameters_of(r)["confinement"] == "none",
-           [p.as_dict() for p in r.problems])
+        if runtime == "rust":
+            # the run is in sabline-rt's process and not this one, so a
+            # level asked of an unbounded run is a level it can be given
+            # (9.0, M4), where the package's own answer is E326
+            ok("sabline.run with no limit through sabline-rt runs in another "
+               "process, which can be confined: require_confinement="
+               "'partial' is given, and the receipt says the level",
+               r.ok and parameters_of(r)["confinement"] == level,
+               [parameters_of(r), [q.as_dict() for q in r.problems]])
+        else:
+            ok("sabline.run with no limit runs in the caller's process, "
+               "which nothing confines: require_confinement='partial' "
+               "refuses it, E326, and the receipt says none",
+               not r.ok and [q.code for q in r.problems] == ["E326"]
+               and parameters_of(r)["confinement"] == "none",
+               [q.as_dict() for q in r.problems])
         r = sabline.run(HELLO, timeout=60, require_confinement=level)
         ok(f"run(timeout=, require_confinement={level!r}): it runs",
            r.ok and parameters_of(r)["confinement"] == level,
@@ -1450,23 +1492,32 @@ def main() -> int:
     record = "--record" in sys.argv[1:]
     if PLATFORM == "macos":
         describe_macos()
-    policy_cases()
-    filter_cases()
-    table_cases()
+    print(f"the runtime every run goes through: {RUNTIME}")
+    if RUNTIME == "python":
+        # this module's own derivations, which sabline-rt derives too and
+        # the agreement gate compares field for field: asking them again
+        # with the variable set would ask the same Python the same question
+        policy_cases()
+        filter_cases()
+        table_cases()
     honesty_cases()
     legitimate_cases()
     reported_cases()
     unreachable_cases()
     against_cases()
-    strict_cases()
-    required_cases()
-    # with SABLINE_REFERENCE_RUNTIME=rust (9.0): the same, held by the
-    # package until sabline-rt confines its own runs
-    strict_cases("rust")
-    required_cases("rust")
-    target_cases(record)
+    strict_cases(RUNTIME)
+    required_cases(RUNTIME)
+    if RUNTIME == "python":
+        # with SABLINE_REFERENCE_RUNTIME=rust as well, so that one run of
+        # this suite asks both runtimes the two options' questions
+        strict_cases("rust")
+        required_cases("rust")
+        # the escape targets are measured on a Sabline whose Python budget
+        # checks are knocked out (tests/confine/faulty_runtime.py), which is
+        # this package's interpreter and nothing sabline-rt has
+        target_cases(record)
     print("-" * 62)
-    print(f"{PASSED} passed, {FAILED} broken")
+    print(f"{PASSED} passed, {FAILED} broken ({RUNTIME})")
     return 1 if FAILED else 0
 
 

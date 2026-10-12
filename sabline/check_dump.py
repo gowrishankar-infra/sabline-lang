@@ -75,6 +75,8 @@ from .termination import loop_termination
 USAGE = """usage: sabline check-dump <file.vel>
        sabline check-dump --list <paths-file>
        sabline check-dump --tables
+       sabline check-dump --os-policy <budgets-file>
+       sabline check-dump --confinement-tables
 
 The canonical check document: what `sabline check` finds in one program,
 without the prover, which check_agreement.py compares with sabline-rt's.
@@ -87,6 +89,11 @@ else reads it.
   --budgets FILE    one budget document per line of FILE, each line a JSON
                     [allow, deny] - text or null each - as a conformance
                     budget case gives them
+  --os-policy FILE  one OS policy document per line of FILE, the lines
+                    --budgets takes: what the operating system is asked to
+                    hold for that budget (9.0, M4)
+  --confinement-tables
+                    the confinement tables, as one document
 
 Exit 0 when every program checked clean, 1 when one did not, 2 when the
 command line itself was wrong."""
@@ -235,7 +242,102 @@ def budget_document(allow: str | None, deny: str | None) -> dict[str, Any]:
             "tool_limits": dict(b.tool_limits)}
 
 
-def _budgets_main(path: str) -> int:
+POLICY_BATCH_HEADER = "sabline.os-policy-batch/1"
+
+
+def policy_document(allow: str | None, deny: str | None) -> dict[str, Any]:
+    """The OS policy document for one budget case (9.0, M4): what the
+    operating system is asked to hold for a run under that budget, under
+    `--confine strict` and without it and under `--no-confine`, each with
+    its digest, what it asks the system to hold, and - when it asks for
+    nothing - why.
+
+    A budget the parser refuses has no policy, and the document says only
+    that: the budget document is what holds a refusal's words, and saying
+    them twice would be one more place to keep them."""
+    from .confine import _restricted, _why_not_enforced, os_policy, policy_sha256
+    from .library import _budget_from
+    try:
+        b = _budget_from({allow} if allow is not None else None,
+                         {n.strip() for n in deny.split(",")}
+                         if deny is not None else None)
+    except ValueError:
+        return {"valid": False}
+    except Exception:                       # never a refusal: a defect
+        return {"valid": False}
+
+    def one(confine: bool, strict: bool) -> dict[str, Any]:
+        policy = os_policy(b, confine=confine, strict=strict)
+        return {"policy": policy, "sha256": policy_sha256(policy),
+                "restricted": _restricted(policy),
+                "not_enforced": None if policy["enforced"]
+                else _why_not_enforced(policy)}
+    return {"valid": True, "default": one(True, False),
+            "strict": one(True, True), "no_confine": one(False, False)}
+
+
+# The budgets the confinement tables are written for (9.0, M4). None of
+# them names a path, so nothing in the three layers' documents is this
+# machine's: a budget with an `fs:` path would resolve it against the
+# working directory and the documents would differ from one checkout to
+# the next. What paths do to a policy is compared by the OS policies' own
+# row, over every budget the gate has.
+TABLE_BUDGETS: tuple[str, ...] = (
+    "", "io", "fs", "fs:read", "fs:write", "fs:read,fs:write", "net",
+    "net:a.example", "net:a.example:443",
+    "net:a.example:443,net:b.example:80", "io,net:a.example:443",
+    "io,ffi:math", "io,ffi:io", "io,ffi:socket", "io,ffi:requests",
+    "io,ffi:os", "io,ffi", "io,ffi:nosuchmodule",
+)
+
+# The machine's answers the macOS profile is written against, so that the
+# profile is the same text in both runtimes wherever it is made. They are
+# names no machine has, so that `isfile` answers the same everywhere.
+TABLE_HOME = "/h"
+TABLE_CWD = "/h/w"
+TABLE_INTERPRETER = ("/i/lib", "/i/dev/null")
+
+
+def confinement_tables_document() -> dict[str, Any]:
+    """The confinement tables (9.0, M4), as one document: FFI_WIDENS module
+    for module, and for each of TABLE_BUDGETS the three layers' own
+    derivations - the seccomp filter for each machine, the Landlock masks
+    for each ABI, and the macOS profile.
+
+    sabline-rt writes the same document (`os-policy --table`) and the
+    agreement gate compares the two on every platform, so a system call
+    number, an access bit or a line of the profile typed wrong in one
+    runtime is a difference on the commit that types it. None of it is
+    behaviour - what the kernel then does is `check_confine.py`'s - and all
+    of it is what the kernel is asked for."""
+    from .confine import (FFI_WIDENS, landlock_masks, mac_profile,
+                          os_policy, seccomp_arch, seccomp_program)
+    from .library import _budget_from
+    del seccomp_arch                       # this machine's, not the table's
+    cases: dict[str, Any] = {}
+    for text in TABLE_BUDGETS:
+        budget = _budget_from({text}, None)
+        for mode, strict in (("default", False), ("strict", True)):
+            policy = os_policy(budget, strict=strict)
+            cases[f"{text}|{mode}"] = {
+                "seccomp": {arch: [list(i) for i in
+                                   seccomp_program(policy, arch, 1)]
+                            for arch in ("x86_64", "aarch64")},
+                "landlock": {str(abi): landlock_masks(policy, abi)
+                             for abi in (1, 2, 3, 4)},
+                "macos_profile": mac_profile(
+                    policy, [], [], None, home=TABLE_HOME, cwd=TABLE_CWD,
+                    interpreter=list(TABLE_INTERPRETER)),
+            }
+    return {"schema": "sabline.confinement-tables/1",
+            "ffi_widens": {m: list(w) for m, w in sorted(FFI_WIDENS.items())},
+            "cases": cases}
+
+
+def _framed_budgets(path: str, header: str,
+                    document_of: Any) -> int:
+    """A framed document per line of `path`, each line a JSON [allow, deny]
+    as a conformance budget case gives them."""
     try:
         with open(path, encoding="utf-8") as fh:
             listed = fh.read()
@@ -244,18 +346,22 @@ def _budgets_main(path: str) -> int:
               file=sys.stderr)
         return 2
     every = True
-    _out(BUDGET_BATCH_HEADER.encode("ascii") + b"\n")
+    _out(header.encode("ascii") + b"\n")
     for n, line in enumerate(listed.split("\n"), 1):
         line = line.rstrip("\r")
         if not line:
             continue
         allow, deny = json.loads(line)
-        document = budget_document(allow, deny)
+        document = document_of(allow, deny)
         every = every and document["valid"]
         body = canonical(document).encode("ascii")
         _out(f"--- {len(body)} {n}\n".encode("ascii"))
         _out(body + b"\n")
     return 0 if every else 1
+
+
+def _budgets_main(path: str) -> int:
+    return _framed_budgets(path, BUDGET_BATCH_HEADER, budget_document)
 
 
 def check_dump_main(argv: Any) -> int:
@@ -269,6 +375,12 @@ def check_dump_main(argv: Any) -> int:
         return 0
     if words[:1] == ["--budgets"] and len(words) == 2:
         return _budgets_main(words[1])
+    if words[:1] == ["--os-policy"] and len(words) == 2:
+        return _framed_budgets(words[1], POLICY_BATCH_HEADER,
+                               policy_document)
+    if words == ["--confinement-tables"]:
+        _write(canonical(confinement_tables_document()))
+        return 0
     if words[:1] == ["--list"] and len(words) == 2:
         try:
             with open(words[1], encoding="utf-8") as fh:

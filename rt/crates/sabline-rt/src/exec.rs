@@ -203,9 +203,49 @@ pub fn request(line: &str) -> Result<(String, Given), String> {
         }
         Some(_) => return Err("sabline-rt exec: 'ceilings' is not a list".to_string()),
     }
+    // what the host asked of the operating system (9.0, M4): absent is
+    // "nothing was asked", which is what a run through sabline-rt was
+    // before this rung and what the gate's own batches still are
+    let confine = match field(fields, "confine") {
+        None | Some(Value::None) => None,
+        Some(Value::Bool(on)) => {
+            Some(crate::confine::Asked { on, strict: false, ..Default::default() })
+        }
+        Some(Value::Text(t)) if t.to_str().as_deref() == Some("strict") => {
+            Some(crate::confine::Asked { on: true, strict: true, ..Default::default() })
+        }
+        Some(_) => {
+            return Err("sabline-rt exec: 'confine' is true, false or \"strict\"".to_string())
+        }
+    };
+    let confine = match confine {
+        None => None,
+        Some(mut asked) => {
+            asked.require = match text_field(fields, "require_confinement")? {
+                None => None,
+                Some(word) if crate::confine::REQUIRE_WORDS.contains(&word.as_str()) => {
+                    Some(word)
+                }
+                Some(word) => {
+                    return Err(format!(
+                        "sabline-rt exec: 'require_confinement' is {word:?}, not full or \
+                         partial"
+                    ))
+                }
+            };
+            asked.reads = texts(fields, "confine_reads")?;
+            asked.writes = texts(fields, "confine_writes")?;
+            asked.temp = text_field(fields, "confine_temp")?;
+            asked.read_any =
+                matches!(field(fields, "confine_read_any"), Some(Value::Bool(true)));
+            asked.host = text_field(fields, "host_confinement")?;
+            Some(asked)
+        }
+    };
     Ok((
         path,
         Given {
+            confine,
             allow: text_field(fields, "allow")?,
             deny: text_field(fields, "deny")?,
             params,
@@ -224,6 +264,23 @@ pub fn request(line: &str) -> Result<(String, Given), String> {
             ceilings,
         },
     ))
+}
+
+/// A list of texts under one name, `[]` when it is absent.
+fn texts(fields: &[(Value, Value)], name: &str) -> Result<Vec<String>, String> {
+    match field(fields, name) {
+        None | Some(Value::None) => Ok(Vec::new()),
+        Some(Value::List(xs)) => xs
+            .iter()
+            .map(|x| match x {
+                Value::Text(t) => t
+                    .to_str()
+                    .ok_or_else(|| format!("sabline-rt exec: a '{name}' holds a surrogate")),
+                _ => Err(format!("sabline-rt exec: a '{name}' is not a text")),
+            })
+            .collect(),
+        Some(_) => Err(format!("sabline-rt exec: '{name}' is not a list")),
+    }
 }
 
 /// An answer to `read_line` or `ask`: the text, or `None` for the end of

@@ -161,6 +161,10 @@ pub struct Given {
     /// budget (9.0, [`crate::ceiling`]): each as the path it was read from
     /// and its text.
     pub ceilings: Vec<(String, String)>,
+    /// What the host asked of the operating system (9.0, M4), or `None`
+    /// when it asked nothing: the gate's own batches run many programs in
+    /// one process, and a policy applied for the first would hold the rest.
+    pub confine: Option<crate::confine::Asked>,
 }
 
 impl Given {
@@ -563,6 +567,79 @@ fn run_inner(
         let (receipt, stream) =
             facts.ended(&mut recorder, &none, &[], failed, given.tool_ceiling.as_ref());
         return (doc.json(), receipt, stream);
+    }
+    // Confinement (9.0, M4). Everything has been read and checked, so from
+    // here the operating system is asked to hold the budget too - before
+    // the first statement, as `sabline/runtime.py`'s `interpret` asks it,
+    // and only when the host asked for it: nothing is asked of the system
+    // for a batch of the gate's, where one process runs some thousands of
+    // programs and a policy applied for the first would hold the rest.
+    if let Some(asked) = &given.confine {
+        let policy = crate::confine::os_policy(&budget, asked.on, asked.strict);
+        let report = if asked.on {
+            // the run's own files are read again when the receipt digests
+            // them, so a policy that did not allow them would drop subjects
+            // from the receipt rather than refuse anything
+            let mut reads = vec![path.to_string()];
+            reads.extend(facts.files.iter().cloned());
+            reads.extend(asked.reads.iter().cloned());
+            reads.extend(given.import_root.iter().cloned());
+            let extras = crate::confine::Extras {
+                reads,
+                writes: asked.writes.clone(),
+                temp: asked.temp.clone(),
+                read_any: asked.read_any,
+            };
+            let mut done = crate::confine::apply(&policy, &extras);
+            // the one thing this run cannot hold itself: the network, a
+            // granted Python module and a tool are the host's to call. A
+            // policy that is enforced nowhere needs no saying - its reason
+            // already says that nothing at all is held.
+            if !crate::confine::restricted(&policy).is_empty() {
+                if let Some(said) =
+                    crate::confine::relayed_elsewhere(&budget, asked.host.as_deref())
+                {
+                    done = crate::confine::also_said(&done, &said);
+                }
+            }
+            done
+        } else {
+            crate::confine::unconfined(&policy, &crate::confine::why_not_enforced(&policy))
+        };
+        recorder.confinement = Some(report.clone());
+        // settled, whichever way it went: whoever is waiting on it may go
+        crate::confine::now_settled();
+        // --require-confinement (E326), and then the fault-injection hook,
+        // which only a run allowed to start may try
+        let mut stopped = crate::confine::require(asked.require.as_deref(), Some(&report));
+        if stopped.is_none() {
+            match crate::confine_fault::inject(Some(&report)) {
+                crate::confine_fault::Tried::NotAsked => {}
+                crate::confine_fault::Tried::Refused(e) => stopped = Some(e),
+                crate::confine_fault::Tried::NoSuchFault(said)
+                | crate::confine_fault::Tried::WentThrough(said)
+                | crate::confine_fault::Tried::FailedUnconfined(said) => {
+                    let line = Text::from(said + "\n");
+                    match &relay {
+                        Some(relay) if !given.dump => {
+                            let _ = relay.frames.send(
+                                crate::exec::frame(crate::interp::Frame::Err(line))
+                                    .canonical(),
+                            );
+                        }
+                        _ => doc.stderr = doc.stderr.concat(&line),
+                    }
+                }
+            }
+        }
+        if let Some(e) = stopped {
+            recorder.note_error(e.code, e.line, &e.message);
+            doc.error = checked(&e, path);
+            doc.exit = Json::Int(1);
+            let (receipt, stream) =
+                facts.ended(&mut recorder, &none, &[], failed, given.tool_ceiling.as_ref());
+            return (doc.json(), receipt, stream);
+        }
     }
     let args =
         given.args.clone().unwrap_or_else(|| ARGS.iter().map(|a| Text::from(*a)).collect());

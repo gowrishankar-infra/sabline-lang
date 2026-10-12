@@ -107,13 +107,29 @@ byte, and one more document for the whole gate:
   receipt, and nothing else;
 - the builtin tables both runtimes' checkers read, so that a builtin added
   to one and not the other is a difference before any program calls it;
-- and for every budget agreement_budgets.py holds - sabline-spec's L1
+- for every budget agreement_budgets.py holds - sabline-spec's L1
   budget cases, what is made from them, and its edges - the budget
   document (sabline/check_dump.py's `budget_document`, the crate's
   `budget` module): what the budget parses to, or its refusal word for
   word. Both runtimes resolve its paths in one scratch directory holding a
   small tree of directories and links, since a path is resolved when a
-  budget is parsed.
+  budget is parsed;
+- for every one of those budgets, the **OS policy document** (9.0, M4):
+  what the operating system is asked to hold for a run under it, under
+  `--confine strict`, without it, and under `--no-confine` - the policy
+  field for field, its digest, what it asks the system to hold, and why it
+  asks for nothing when it does. The derivation is compared before either
+  runtime asks a kernel for anything, because the two must agree on *what*
+  is asked before what is held can mean anything;
+- and the confinement tables (M4): FFI_WIDENS module for module, so that a
+  module added to one and not the other is a difference on the commit that
+  adds it, whether or not any budget names it yet; and, for a fixed set of
+  budgets, each layer's own derivation - the seccomp filter for both
+  machines, the Landlock access masks for each ABI, and the macOS profile.
+  None of that is behaviour and all of it is what the kernel is asked for,
+  so it is compared on **every** platform and not only on the one that
+  applies it: a system call number or an access bit typed wrong in one
+  runtime is a difference on the commit that types it.
 
 **What it does not read.** Nothing but the paths on its command line. No
 environment variable, no configuration file, no flag that skips a corpus or
@@ -521,6 +537,7 @@ def rt_binary() -> Path:
 BATCH_HEADER = b"sabline.ast-batch/1\n"
 CHECK_BATCH_HEADER = b"sabline.check-batch/1\n"
 BUDGET_BATCH_HEADER = b"sabline.budget-batch/1\n"
+POLICY_BATCH_HEADER = b"sabline.os-policy-batch/1\n"
 RUN_BATCH_HEADER = b"sabline.run-batch/3\n"
 
 # What the gate does not compare in a receipt, and nothing else: plan/9.0.md,
@@ -844,6 +861,21 @@ def tables(binary: Path) -> tuple[bytes, bytes]:
     return python.rstrip(b"\n"), rust.rstrip(b"\n")
 
 
+def confinement_tables(binary: Path) -> tuple[bytes, bytes]:
+    """The confinement tables (9.0, M4), as one document each: FFI_WIDENS
+    module for module, and each layer's own derivation for a fixed set of
+    budgets - the seccomp filter, the Landlock access masks for each ABI,
+    the macOS profile. A module whose row says `fs` in one runtime and
+    `all` in the other would make every policy derived from a budget that
+    grants it differ, so the table itself is compared and not only the
+    policies the gate's budgets reach; and a filter nothing here ever
+    installs is still a filter the two runtimes must write the same way."""
+    python = _run([sys.executable, str(ROOT / "sabline.py"), "check-dump",
+                   "--confinement-tables"])
+    rust = _run([str(binary), "os-policy", "--table"])
+    return python.rstrip(b"\n"), rust.rstrip(b"\n")
+
+
 def main(argv: list[str]) -> int:
     programs, counts, corpus = collect(argv)
     budgeted_runs, relayed_runs = _budgeted_corpus(corpus)
@@ -911,6 +943,15 @@ def main(argv: list[str]) -> int:
                                BUDGET_BATCH_HEADER, scratch)
         rust_budgets = dumps([str(binary), "budget", "--list"], budget_list,
                              BUDGET_BATCH_HEADER, scratch)
+        # the OS policy each of those budgets derives (M4): the derivation
+        # alone, compared before any layer is applied, in the same scratch
+        # directory - a budget's paths are resolved when it is parsed, and
+        # the policy carries them
+        python_policies = dumps([sys.executable, str(ROOT / "sabline.py"),
+                                 "check-dump", "--os-policy"], budget_list,
+                                POLICY_BATCH_HEADER, scratch)
+        rust_policies = dumps([str(binary), "os-policy", "--list"],
+                              budget_list, POLICY_BATCH_HEADER, scratch)
         # the interpreters (M3): each program run as `sabline <file>` runs
         # it, under io, with a fixed input and arguments and a step limit -
         # sabline/run_dump.py says what is fixed and why
@@ -977,6 +1018,8 @@ def main(argv: list[str]) -> int:
     checked = compare(python_checks, rust_checks, names)
     budgeted = compare(python_budgets, rust_budgets,
                        [name for name, _, _ in budgets])
+    policied = compare(python_policies, rust_policies,
+                       [name for name, _, _ in budgets])
     python_runs, python_receipts, python_streams = runs_and_receipts(
         python_runs)
     rust_runs, rust_receipts, rust_streams = runs_and_receipts(rust_runs)
@@ -1007,6 +1050,10 @@ def main(argv: list[str]) -> int:
     python_tables, rust_tables = tables(binary)
     tabled = ([] if python_tables == rust_tables else
               [f"the builtin tables: {_told(python_tables, rust_tables)}"])
+    python_confine, rust_confine = confinement_tables(binary)
+    confine_tabled = (
+        [] if python_confine == rust_confine else
+        [f"the confinement tables: {_told(python_confine, rust_confine)}"])
 
     for line in counts + budget_counts:
         print(f"  {line}")
@@ -1023,6 +1070,7 @@ def main(argv: list[str]) -> int:
     rows = (("the parsers", len(programs), parsed),
             ("the checkers", len(programs), checked),
             ("the budget parser", len(budgets), budgeted),
+            ("the OS policies", len(budgets), policied),
             ("the interpreters", len(runs), ran),
             ("the interpreters, under their budgets", len(budgeted_runs),
              ran_budgeted),
@@ -1030,7 +1078,8 @@ def main(argv: list[str]) -> int:
              len(relayed_runs), ran_relayed),
             ("the receipts", len(every_run), receipted),
             ("the audit streams", len(every_run), streamed),
-            ("the builtin tables", 1, tabled))
+            ("the builtin tables", 1, tabled),
+            ("the confinement tables", 1, confine_tabled))
     print(f"  receipts normalised: {'; '.join(RECEIPT_NORMALISED)}; "
           f"{', '.join(CONFINEMENT_FIELDS)} by rule")
     for line in by_rule:
@@ -1039,8 +1088,8 @@ def main(argv: list[str]) -> int:
         print(f"  {what}: {many} compared, {many - len(found)} agree, "
               f"{len(found)} differ")
     total = sum(many for _, many, _ in rows)
-    differences = [f"{what}: {line}" for what, _, found in rows[:-1]
-                   for line in found] + tabled
+    differences = [f"{what}: {line}" for what, _, found in rows[:-2]
+                   for line in found] + tabled + confine_tabled
     print(f"agreement gate: {total} comparisons, "
           f"{total - len(differences)} agreements, "
           f"{len(differences)} differences")

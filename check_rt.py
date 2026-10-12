@@ -5,14 +5,18 @@
 `rt/README.md` states them; this is what enforces them, so that a rule in
 a document is a rule and not a wish.
 
-1. **No `unsafe`, and a rule for the day there is some.** The workspace
-   forbids it, so today the scan finds none. The scan is here anyway,
-   because the day a later alpha needs Landlock, seccomp, `sandbox_init`,
-   the AppContainer or a C ABI entry point is the day the rule has to
-   already exist: every `unsafe` block carries a `// SAFETY:` comment
-   saying which invariant makes it sound and naming a test, and that test
-   exists. The scan is run against fixtures of its own, so it is known to
-   catch each of those rather than only to run.
+1. **`unsafe` in the three confinement modules and nowhere else.** The
+   workspace denied it and the crate had none at all until 9.0's M4, where
+   Landlock, seccomp-bpf, `sandbox_init` and the Windows job object and
+   token have to be asked for and every one of them is a C entry point.
+   They are asked for in `confine_linux.rs`, `confine_macos.rs`,
+   `confine_windows.rs` and `confine_fault.rs` - the hook that attempts
+   one effect itself - which carry `#![allow(unsafe_code)]`; MAY_BE_UNSAFE
+   is that list, and a fifth file is a failing check and not a quiet
+   addition. Every `unsafe` block carries a `// SAFETY:` comment saying
+   which invariant makes it sound and naming a test, and that test exists.
+   The scan is run against fixtures of its own, so it is known to catch
+   each of those rather than only to run.
 
 2. **The minimum Rust version is stated**, in `rt/Cargo.toml`, and
    `rt/README.md` and the MSRV leg of test.yml say the same number.
@@ -43,6 +47,16 @@ CRATE = RT / "crates" / "sabline-rt"
 # plan/9.0.md's risk 4: 25 direct and transitive crates for the default
 # build, and a pull request that crosses it argues the crate in writing.
 DEPENDENCY_CAP = 25
+
+# The modules that may use `unsafe`, each because every call it makes is a C
+# entry point the operating system offers and no safe wrapper exists in a
+# crate with no dependencies (9.0, M4). A file not on this list that lifts
+# the workspace's `deny` is what this suite exists to catch.
+MAY_BE_UNSAFE = ("confine_linux.rs", "confine_macos.rs", "confine_windows.rs",
+                 "confine_fault.rs")
+
+# How a module lifts it, and what the rest of the crate says instead.
+ALLOWS = "#![allow(unsafe_code)]"
 
 # An `unsafe` block or function, and the `// SAFETY:` comment that must
 # come before it.
@@ -76,6 +90,16 @@ def unsafe_problems(files: list[Path]) -> list[str]:
             tests.add(m.group(1))
     for path in files:
         lines = path.read_text(encoding="utf-8").splitlines()
+        lifts = any(line.strip().startswith(ALLOWS) for line in lines
+                    if not line.lstrip().startswith("//"))
+        if lifts and path.name not in MAY_BE_UNSAFE \
+                and "fixture" not in path.name:
+            problems.append(
+                f"{_named(path)}: it lifts the workspace's deny of "
+                f"unsafe_code and is not one of {', '.join(MAY_BE_UNSAFE)} "
+                f"(rt/README.md). Add it to MAY_BE_UNSAFE in this file, in "
+                f"the same pull request, with the reason in its own module "
+                f"comment")
         for i, line in enumerate(lines):
             if line.lstrip().startswith("//") or not UNSAFE.match(line):
                 continue
@@ -144,6 +168,13 @@ fn a_real_test() {}
 ''', "no '// SAFETY:' comment"),
 )
 
+FIXTURES_ALLOW = ("a module nobody listed that lifts the deny", '''
+#![allow(unsafe_code)]
+fn holder() {}
+#[test]
+fn a_real_test() {}
+''', "is not one of")
+
 GOOD = '''
 fn holder() {
     // SAFETY: the pointer came from Box::into_raw and is used once;
@@ -170,6 +201,23 @@ def scan_is_known_to_catch() -> list[str]:
             if not any(expect in line for line in told):
                 problems.append(f"the unsafe scan did not catch {what}: "
                                 f"{told or 'it found nothing'}")
+        # the list of modules that may lift the deny, held to itself: the
+        # fixture is named like a module and not like a fixture, because
+        # the scan lets a fixture through on purpose
+        what, source, expect = FIXTURES_ALLOW
+        path = here / "not_on_the_list.rs"
+        path.write_text(source, encoding="utf-8", newline="\n")
+        told = unsafe_problems([path])
+        if not any(expect in line for line in told):
+            problems.append(f"the unsafe scan did not catch {what}: "
+                            f"{told or 'it found nothing'}")
+        for name in MAY_BE_UNSAFE:
+            path = here / name
+            path.write_text(source, encoding="utf-8", newline="\n")
+            told = unsafe_problems([path])
+            if any(expect in line for line in told):
+                problems.append(f"the unsafe scan refused {name}, which is "
+                                f"on the list that may lift the deny")
         path = here / "fixture.rs"
         path.write_text(GOOD, encoding="utf-8", newline="\n")
         told = unsafe_problems([path])
@@ -185,9 +233,21 @@ def manifest_problems() -> list[str]:
     crate = (CRATE / "Cargo.toml").read_text(encoding="utf-8")
     readme = (RT / "README.md").read_text(encoding="utf-8")
 
-    if 'unsafe_code = "forbid"' not in workspace:
+    if 'unsafe_code = "deny"' not in workspace:
         problems.append('rt/Cargo.toml: the workspace must set '
-                        'unsafe_code = "forbid" (rt/README.md)')
+                        'unsafe_code = "deny" (rt/README.md): `forbid` '
+                        'cannot be lifted anywhere, so it would have to '
+                        'come off the whole crate for the confinement '
+                        'modules to call a kernel at all')
+    for name in MAY_BE_UNSAFE:
+        where = CRATE / "src" / name
+        if not where.exists():
+            problems.append(f"check_rt.py: MAY_BE_UNSAFE names {name}, "
+                            f"which is not a module of this crate")
+        elif ALLOWS not in where.read_text(encoding="utf-8"):
+            problems.append(f"rt/crates/sabline-rt/src/{name}: it is on "
+                            f"MAY_BE_UNSAFE and does not lift the deny, so "
+                            f"the list has outlived its reason")
     if 'unsafe_op_in_unsafe_fn = "deny"' not in workspace:
         problems.append('rt/Cargo.toml: the workspace must deny '
                         'unsafe_op_in_unsafe_fn (rt/README.md)')
@@ -264,15 +324,17 @@ def main(argv: Any) -> int:
     told = scan_is_known_to_catch()
     problems += told
     if not told:
-        print(f"  the scan catches each of {len(FIXTURES)} fixtures, and "
-              f"passes a block that says what makes it sound")
+        print(f"  the scan catches each of {len(FIXTURES) + 1} fixtures, "
+              f"and passes a block that says what makes it sound and a "
+              f"module the list names")
 
     print("the manifests")
     told = manifest_problems()
     problems += told
     if not told:
-        print("  unsafe forbidden, the minimum Rust version stated and "
-              "pinned, the fuzzing crate outside the workspace")
+        print(f"  unsafe denied and lifted in exactly "
+              f"{len(MAY_BE_UNSAFE)} modules, the minimum Rust version "
+              f"stated and pinned, the fuzzing crate outside the workspace")
 
     print("the supply chain")
     told = supply_chain_problems()

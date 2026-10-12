@@ -12,7 +12,7 @@ members = ["crates/sabline-rt"]
 exclude = ["crates/sabline-rt/fuzz"]
 
 [workspace.package]
-version = "9.0.0-alpha.11"
+version = "9.0.0-alpha.12"
 edition = "2021"
 rust-version = "1.82"
 license = "Apache-2.0"
@@ -21,7 +21,12 @@ homepage = "https://sabline.dev"
 authors = ["Palakurthi Gowri Shankar"]
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# `deny` and not `forbid` since 9.0's M4: the three confinement modules
+# carry `#![allow(unsafe_code)]`, because Landlock, seccomp, sandbox_init
+# and the Windows AppContainer are C entry points and cannot be called
+# otherwise. `forbid` cannot be lifted anywhere, so it would have had to
+# come off the whole crate. check_rt.py holds the list of three.
+unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
 missing_docs = "warn"
 

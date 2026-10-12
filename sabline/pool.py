@@ -1091,7 +1091,15 @@ class Pool:
                 stdin=stdin, seed=seed, freeze_time=freeze_time, name=name,
                 import_root=self.import_root, event=event, timeout=left,
                 max_memory_mb=self.max_memory_mb, call=worker.relay,
-                on_kill=worker.kill)
+                on_kill=worker.kill,
+                # what this pool asks of the operating system (9.0, M4):
+                # the pool's own flags, not this process's, and the host of
+                # what the run relays is the worker - which is confined, so
+                # sabline-rt's level is not held down by an unheld host
+                confine=_confine.asked_of_runtime(
+                    on=self.confine, strict=self.confine_strict,
+                    require=self.require_confinement,
+                    host=(worker.confinement or {}).get("level")))
         finally:
             worker.relayed()
         if ended.finished:

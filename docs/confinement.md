@@ -174,6 +174,61 @@ Python package's and says so on stderr: sabline-rt does not ask the
 operating system for anything until M4's port, so a level asked of it would
 be a level it ignored.
 
+## sabline-rt confines its own runs (9.0)
+
+`SABLINE_REFERENCE_RUNTIME=rust` sends the run inside each command to
+sabline-rt (`decisions/0002`), which from 9.0's M4 asks the operating system
+for the same policy, in its own process, before the program's first
+statement. The derivation is the same one twice over: `os_policy` is
+ported into the crate, and the agreement gate compares the two documents -
+the policy, its digest, what it asks the system to hold - for every budget
+it has, under `--confine strict`, without it and under `--no-confine`,
+before either runtime asks a kernel for anything. The seccomp filter, the
+Landlock access masks for each ABI and the macOS profile are compared the
+same way, on every platform and not only on the one that applies them: a
+system call number typed wrong in one runtime is a difference on the commit
+that types it.
+
+What it applies is this page's table, layer for layer: Landlock and
+seccomp-bpf on Linux, `sandbox_init` on macOS, the job object and the
+token's privileges on Windows, with the low integrity level for a budget
+that grants no write. One sentence differs from the package's, and only one:
+Windows says that reads and the network need an AppContainer, and the reason
+the package gives - that a `python.exe` started in one cannot read its own
+installation - is not sabline-rt's reason. `rt/spikes/appcontainer/`
+measured a Rust binary starting inside a container with no ACE on itself,
+reading only the directories it was given and refused the network without a
+capability, so what is true of sabline-rt is that it **does not enter one
+yet**. Its receipt says that, in those words.
+
+Two things a run through sabline-rt holds that the package's cannot, and one
+it does not:
+
+- **A `sabline.run()` with no limit can be confined** through sabline-rt,
+  because the program runs in another process. In the package it runs in the
+  caller's own, which Sabline never confines, so a level asked of it is
+  refused (E326); through sabline-rt it is given.
+- **A command confines itself too.** The network, a granted Python module
+  and a tool are called in the process that started sabline-rt, so that
+  process is held to the same policy - after sabline-rt has been started,
+  since the policy lets no process be started. For a pool that process is
+  its worker, which was already confined; for `sabline run` it is the
+  command's own, which ends with the run.
+- **An unbounded `sabline.run()`'s host is not confined**, for the same
+  reason its own run never was: it is the caller's process. A run there whose
+  budget grants `net`, `ffi` or `tool` says so in its receipt's reason, and
+  its level is `partial` rather than `full`, because a connection opened in
+  another process is not something this policy bounds.
+
+`check_confine.py --runtime rust` asks every question on this page of
+sabline-rt: the honesty test with its fault-injection hook, what still
+works, what is reported, what a program cannot reach, what is tried against
+the confinement itself, and both of 9.0's options. Three parts stay the
+package's and say so: the policy, the filter and the table, which the
+agreement gate already compares; the escape targets, which are measured on a
+Sabline whose *Python* budget checks are knocked out; and `sabline eval`,
+whose run sabline-rt does not take yet.
+
 ## What is not confined
 
 - **An in-process `sabline.run()`** - one with no `timeout` and no

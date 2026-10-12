@@ -76,6 +76,13 @@ BY_DESIGN: tuple[tuple[str, str, str], ...] = (
      "it asks that the receipt's producer version is this package's, and a "
      "run through sabline-rt is sabline-rt's (decided on 2026-10-11: waits "
      "for M4)"),
+    ("check_library.py",
+     "...with the budget, the parameters, the declassification and its",
+     "it asks that an unbounded sabline.run()'s confinement is none, which "
+     "it is in this package - the run is in the caller's own process, which "
+     "Sabline never confines. From 9.0's M4 a run through sabline-rt is in "
+     "sabline-rt's process, which it does confine, so the same question "
+     "answers the platform's level there. check_confine.py asks both"),
 )
 
 # A line that gives a question's verdict, in the words these suites use.

@@ -24,8 +24,10 @@ nothing changes; any other value is refused - exit 2 on the command line,
 a `ValueError` from the library and a pool - where until now nothing read
 it. A call to the network, Python or a tool is relayed back to the package,
 which makes it (decided on 2026-10-11); an eval run and `sabline trace` are
-the package's, and say so in one line on stderr. `sabline/through_rt.py`
-says what a run through sabline-rt is and is not.
+the package's, and say so in one line on stderr. From 9.0's M4 sabline-rt
+asks the operating system to hold the budget in its own process, and a run
+asked for a level of confinement is its own. `sabline/through_rt.py` says
+what a run through sabline-rt is and is not.
 
 api: an organisation ceiling (9.0, decisions/0007 32c): a file whoever
 administers a machine installs - `/etc/sabline/ceiling.json`,
@@ -62,9 +64,26 @@ below that level is refused before its first statement with the new code
 **E326**, and its receipt records the level it got. Beside `--no-confine`
 or `confine=False` either is a usage error. `sabline.CONFINE_STRICT` and
 `sabline.REQUIRE_CONFINEMENT` join the package's names, as `CONFINE` is.
-With `SABLINE_REFERENCE_RUNTIME=rust` a run asked for either stays the
-package's and says so, until sabline-rt confines its own runs. Without
-either nothing changes.
+Without either nothing changes.
+
+api: with `SABLINE_REFERENCE_RUNTIME=rust`, **sabline-rt asks the operating
+system to hold the budget in its own process** (9.0, M4), where until now a
+run through it asked for nothing and its receipt said so. It applies the
+same policy with the same layers - Landlock and seccomp-bpf on Linux, a
+sandbox profile on macOS, the job object and the token's privileges on
+Windows, with the low integrity level for a budget that grants no write -
+and records the level, the reason, the layers and the policy's digest in its
+own receipt. `--confine strict` and `--require-confinement` are carried in
+its request and answered there (E326), so neither keeps a run in the
+package any more. The command's own process is held to the same policy once
+sabline-rt has been started, because a call to the network, a granted
+Python module or a tool is made there. Three things follow for a run through
+sabline-rt: a `sabline.run()` with no limit **can** be confined, since the
+program runs in another process where the package's runs in the caller's; a
+run whose host is not confined - an unbounded `sabline.run()`'s - says so in
+its receipt's reason and is `partial` rather than `full`; and `sabline eval`
+is still the package's, whose run sabline-rt does not take yet.
+docs/confinement.md.
 
 compatibility: E326 is new, and given only to a run whose operator asked
 for a level of confinement; no run that does not ask is refused by it. On
@@ -96,6 +115,46 @@ parser fuzzer found a 23 KB program whose check document was 120 MB of
 the same few problems - a minute of work for both checkers, where it is
 now a fifth of a second. `agreement_checks.py`'s
 `fn-values-nested-deeply` holds the two runtimes to it.
+
+## 9.0.0-alpha.12 - M4: sabline-rt confines its own runs, and the command that starts it confines itself
+
+M4's second checkpoint (`plan/9.0.md`, *M4 - confinement, and a real Windows
+AppContainer*). **sabline-rt asks the operating system for the budget's
+policy in its own process**, before the program's first statement:
+`os_policy` is ported, `confine_linux.rs` asks Landlock and seccomp-bpf,
+`confine_macos.rs` `sandbox_init`, `confine_windows.rs` the job object and
+the token, and `confine_fault.rs` is the fault-injection hook that attempts
+one effect itself. The agreement gate compares the derivation before either
+runtime asks a kernel for anything - the policy, its digest, what it asks
+the system to hold and why it asks for nothing, for every budget it has,
+under `--confine strict`, without it and under `--no-confine` - and
+compares the seccomp filter, the Landlock masks for each ABI and the macOS
+profile for a fixed set of policies **on every platform**, not only on the
+one that applies them. 41,939 comparisons, no differences.
+`check_confine.py --runtime rust` asks every question that suite asks of the
+package of sabline-rt instead: 74 of them, on Windows, with none broken.
+
+**The crate has `unsafe` in it for the first time**, in those four modules
+and nowhere else: every one of those calls is a C entry point the operating
+system offers, and a crate with no dependencies has no safe wrapper for
+them. The workspace denies `unsafe_code` rather than forbidding it - forbid
+cannot be lifted anywhere - each of the four lifts it with the reason in its
+own module comment, and `check_rt.py` holds that list of four, so a fifth is
+a failing check. Every block carries a `// SAFETY:` comment naming the
+invariant and a test that exists, as rt/README.md has required since
+alpha.1.
+
+**What is not done.** sabline-rt does not enter a Windows AppContainer yet,
+so Windows holds neither reads nor the network, exactly as the Python
+runtime does not - its receipt says so in its own words, which are not the
+package's, because the reason is not the package's. `sabline eval`'s run is
+still the package's. M4 is not finished and is not claimed to be.
+
+This is a **pre-release** of the `sabline-rt` crate, and it publishes that
+and nothing else. 8.8.0 is still what `pip install sabline-lang`, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and `sabline --version` still says 8.8.0. What the Python package on
+main gained above ships with 9.0.
 
 ## 9.0.0-alpha.11 - M3: the network, Python and tools relayed to the package, and the organisation ceiling
 

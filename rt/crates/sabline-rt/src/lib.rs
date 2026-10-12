@@ -43,17 +43,26 @@
 //! assert!(problems.is_empty());
 //! ```
 //!
-//! # No `unsafe`
+//! # `unsafe` in three modules and nowhere else
 //!
-//! The crate is `unsafe_code = "forbid"` at the workspace root, so there
-//! is none and none can be added without changing that line. When a later
-//! alpha has to - Landlock, seccomp, `sandbox_init`, the AppContainer, the
-//! C ABI - rt/README.md's rule applies: every block carries a `// SAFETY:`
-//! comment naming the invariant that makes it sound and the test that
-//! would fail if the invariant were broken, and a lint job refuses a block
-//! without one.
+//! The crate denied `unsafe_code` and had none at all until 9.0's M4,
+//! where the operating system's own limits - Landlock, seccomp-bpf,
+//! `sandbox_init`, the Windows job object, token and AppContainer - have
+//! to be asked for, and every one of them is a C entry point that cannot
+//! be called safely. They are asked for in [`confine_linux`],
+//! [`confine_macos`] and [`confine_windows`], which carry
+//! `#![allow(unsafe_code)]` and are the only three modules that do;
+//! `check_rt.py` holds that list, so a fourth is a failing check and not
+//! a quiet addition. Everything else - the lexer, the parser, the
+//! checkers, the interpreter, the budget parser, the receipts - is still
+//! `deny`, which is what the workspace sets.
+//!
+//! rt/README.md's rule applies from the first block: every `unsafe` block
+//! carries a `// SAFETY:` comment naming the invariant that makes it sound
+//! and a test that would fail if the invariant were broken, that test
+//! exists, and `check_rt.py` is proven to catch each of those going wrong.
 
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 #![deny(missing_docs)]
 
 pub mod bigint;
@@ -61,6 +70,11 @@ pub mod budget;
 pub mod ceiling;
 pub mod check_dump;
 pub mod checker;
+pub mod confine;
+pub mod confine_fault;
+pub mod confine_linux;
+pub mod confine_macos;
+pub mod confine_windows;
 pub mod digest;
 pub mod dump;
 pub mod effects;

@@ -48,11 +48,12 @@ pub const REPOSITORY: &str = "https://github.com/gowrishankar-infra/sabline-lang
 /// say differently from the Python package's `sabline-lang`.
 pub const PRODUCER: &str = "sabline-rt";
 
-/// `REFUSAL_CODES`: the refusals a receipt lists - the budget's, and the
-/// read ceiling's.
-pub const REFUSAL_CODES: [&str; 13] = [
+/// `REFUSAL_CODES`: the refusals a receipt lists - the budget's, the read
+/// ceiling's, and a level of confinement the platform could not give
+/// (E326, 9.0, M4).
+pub const REFUSAL_CODES: [&str; 14] = [
     "E310", "E311", "E313", "E314", "E315", "E316", "E317", "E318", "E320", "E321", "E322",
-    "E323", "E325",
+    "E323", "E325", "E326",
 ];
 
 /// `tables.HMAC_REASON`: the reason an HMAC's declassification is recorded
@@ -110,6 +111,10 @@ pub struct Recorder {
     /// The organisation ceilings the run was held to (9.0), as the
     /// receipt's `run_parameters.ceilings` names them.
     pub ceilings: Vec<Json>,
+    /// What the operating system was asked to hold and what it held (9.0,
+    /// M4), or `None` when nothing was asked - which is what every run
+    /// through sabline-rt was before that rung.
+    pub confinement: Option<crate::confine::Report>,
 }
 
 impl Recorder {
@@ -619,19 +624,23 @@ pub fn statement(recorder: &Recorder, run: &Run<'_>) -> Option<Json> {
                 ("wall_time_ms", Json::Num(format!("{:.1}", run.wall_time_ms))),
                 ("budget", Json::text(run.budget.clone())),
                 ("run_parameters", {
-                    // nothing was asked of the operating system:
-                    // `_confinement_fields({})`
-                    given.extend([
-                        ("confinement", Json::text("none")),
-                        (
-                            "confinement_reason",
-                            Json::text("nothing was asked of the operating system"),
-                        ),
-                        ("confinement_layers", Json::List(Vec::new())),
-                        ("os_policy_sha256", Json::Null),
-                        // the organisation ceilings the run was held to (9.0)
-                        ("ceilings", Json::List(recorder.ceilings.clone())),
-                    ]);
+                    // what the operating system was asked to hold and what
+                    // it held (9.0, M4), or `_confinement_fields({})` when
+                    // nothing was asked of it
+                    given.extend(match &recorder.confinement {
+                        Some(done) => done.fields(),
+                        None => vec![
+                            ("confinement", Json::text("none")),
+                            (
+                                "confinement_reason",
+                                Json::text("nothing was asked of the operating system"),
+                            ),
+                            ("confinement_layers", Json::List(Vec::new())),
+                            ("os_policy_sha256", Json::Null),
+                        ],
+                    });
+                    // the organisation ceilings the run was held to (9.0)
+                    given.push(("ceilings", Json::List(recorder.ceilings.clone())));
                     Json::Obj(given.into_iter().map(|(k, v)| (k.to_string(), v)).collect())
                 }),
                 (
