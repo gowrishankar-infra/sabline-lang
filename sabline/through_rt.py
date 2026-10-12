@@ -55,21 +55,22 @@ Porting the network into Rust is M4's and M5's, not M3's (plan/9.0.md).
 
 **What stays this package's**, and says so on the error channel (KEPT):
 a run under the eval profile, which holds a run to the operating system's
-confinement; a run asked to be held to it by `--confine strict` or
-`--require-confinement` (9.0, M4) - until sabline-rt confines its own runs,
-a level asked of it would be a level it ignored; and `sabline trace`, which
-shows this package's interpreter at work. Each run says who answered it in the file SABLINE_THROUGH_RT_LOG
+confinement; and `sabline trace`, which shows this package's interpreter at
+work. `--confine strict` and `--require-confinement` were here until 9.0's
+M4, when sabline-rt began to confine its own runs: they are now carried in
+the request, applied by sabline-rt to its own process before the first
+statement, and answered there (E326). Each run says who answered it in the file SABLINE_THROUGH_RT_LOG
 names, when it names one (`note`), which is how suites_through_rt.py counts
 them.
 
 **What a run through sabline-rt is not:**
 
-- *Confinement* (M4). Nothing is asked of the operating system, and the
-  receipt's confinement says `none`, with the reason "nothing was asked of
-  the operating system". Nothing else says so (decided on 2026-10-11):
-  whoever set the variable chose a runtime that does not confine yet, and
-  the receipt is the record. A run on a pool made with confine=True is not
-  confined either: its worker is, and the worker runs nothing.
+- *The network, Python and a tool under confinement* (M4, item 7). Those
+  three calls are made in the process that started sabline-rt, so what
+  bounds them is what confines **that** process - a pool's worker, which is
+  confined, or a command line's own process, which is not. The request says
+  which (`host_confinement`), and sabline-rt's level says so rather than
+  claiming a boundary around work outside it.
 - *Native code.* A run through sabline-rt is interpreted; what it does is
   the same, which is what `fuzz_native.py` holds.
 """
@@ -129,11 +130,9 @@ KEPT = (
     ("checks", None),
     ("ceiling", None),
     ("source", "its source is not UTF-8 text, which sabline-rt does not take"),
-    ("eval", "the eval profile holds a run to the operating system's "
-             "confinement, which sabline-rt does not ask for before M4"),
-    ("confinement", "--confine strict and --require-confinement ask for "
-                    "the operating system's confinement, which sabline-rt "
-                    "does not ask for until M4's port"),
+    ("eval", "an eval run is the package's: its profile, its refusal of "
+             "every relaxation of it, and the probe of what a confined "
+             "worker could do are not sabline-rt's yet (9.0, M4)"),
     ("trace", "sabline trace shows the Python package's interpreter at work"),
 )
 
@@ -397,6 +396,7 @@ def _start(cmd: list[str], max_memory_mb: int | None,
 
 
 def run(path: str, *, allow: str | None, seed: Any = None,
+        confine: Any = None,
         freeze_time: Any = None, max_read: int | None = None,
         args: list[str] | None = None, name: str | None = None,
         source: str | None = None, import_root: str | None = None,
@@ -426,6 +426,16 @@ def run(path: str, *, allow: str | None, seed: Any = None,
     audit stream whether or not `event` wants it, so that one can be made
     from what it did before it was stopped. Unavailable when sabline-rt
     cannot be started, or ends without finishing for any other reason.
+
+    `confine`, when given, is what this run asked of the operating system
+    (`confine.asked_of_runtime`, 9.0, M4): sabline-rt applies it to its own
+    process before the program's first statement and records what it got.
+    Left out, nothing is asked of the system and the receipt says so. A
+    callable is called once sabline-rt has been started and before the
+    request is written, and answers the same thing: that is where a command
+    confines **itself** (`confine.confine_the_host`), since it is this
+    process that makes a relayed call and the policy lets no process be
+    started once it is applied.
 
     `test`, when given, makes it `sabline test`'s run (9.0, M3): each test
     function of the program called in turn rather than `main`, `test`
@@ -507,6 +517,14 @@ def run(path: str, *, allow: str | None, seed: Any = None,
     gone: dict[str, Any] | None = None
     try:
         try:
+            # what this run asked of the operating system (9.0, M4):
+            # sabline-rt applies it to its own process before the first
+            # statement. Absent - which the gate's own runs leave it - means
+            # nothing is asked of the system at all. A callable is called
+            # here, with sabline-rt already started and inside the block
+            # that kills it if anything goes wrong, so that a command can
+            # confine itself and say what level it got.
+            request.update((confine() if callable(confine) else confine) or {})
             say(request)
             for raw in proc.stdout:
                 try:

@@ -1785,12 +1785,6 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
     if _state.TRACE["on"]:
         kept("trace")
         return None
-    # --confine strict and --require-confinement (9.0, M4) ask for the
-    # operating system's confinement, which sabline-rt does not give until
-    # M4's port: the run stays where what was asked for is held
-    if _state.CONFINE_STRICT or _state.REQUIRE_CONFINEMENT is not None:
-        kept("confinement")
-        return None
     # an organisation ceiling that refuses the budget (9.0): nothing runs,
     # and the package's run says E325, as it says a refusal of the checks
     if _ceiling.refusal(_ceiling.installed(), budget) is not None:
@@ -1848,6 +1842,15 @@ def _cli_run_through_rt(filename: str, as_json: bool, budget: "Budget",
             out=sys.stdout.write, err=sys.stderr.write,
             read_line=sys.stdin.readline, ask=_ask_as_input_does,
             event=event if stream is not None else None,
+            # what this run asks of the operating system (9.0, M4):
+            # sabline-rt holds its own process to it, as the package's run
+            # holds this one, and this process holds itself to the same
+            # policy once sabline-rt has been started - because a call to
+            # the network, a granted Python module or a tool is made here.
+            # The program's files are what the run itself reads, which its
+            # receipt digests when it has ended.
+            confine=lambda: _confine.confine_the_host(
+                budget, files=list(_state.PROGRAM_FILES)),
             max_memory_mb=capped if capped and capped > 0 else None)
     except through_rt.Unavailable as e:
         print(f"sabline: {e}", file=sys.stderr)

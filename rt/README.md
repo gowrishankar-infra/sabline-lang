@@ -648,26 +648,38 @@ recursion limit before the depth limit - the same program gave E609's
 "nested too deeply to print" at line 0 there and the depth limit's E609 on
 3.10. They loop now, and the depth limit fires on every CPython.
 
-## No `unsafe`
+## `unsafe` in four modules and nowhere else
 
-The workspace sets `unsafe_code = "forbid"`, so there is none in this
-crate and none can be added without changing that line.
+The workspace sets `unsafe_code = "deny"`, and the crate had none at all
+until 9.0's M4. That rung has to: Landlock, seccomp-bpf, `sandbox_init`,
+the Windows job object, token and AppContainer, and every C ABI entry point
+are `unsafe` and cannot be otherwise. `plan/9.0.md`'s rule applies from the
+first block, and it is not "as few as possible" - a count is not a
+property:
 
-A later alpha has to: Landlock, seccomp-bpf, `sandbox_init`, the Windows
-AppContainer and every C ABI entry point are `unsafe` and cannot be
-otherwise. `plan/9.0.md`'s rule applies from the first block, and it is
-not "as few as possible" - a count is not a property:
-
-* `#![forbid(unsafe_code)]` stays on every module that does not need it,
-  which is the whole of the lexer, parser, checkers and interpreter.
+* **Four modules may lift the deny**, each with `#![allow(unsafe_code)]`
+  and the reason in its own module comment: `confine_linux.rs`,
+  `confine_macos.rs`, `confine_windows.rs` and `confine_fault.rs`, the
+  fault-injection hook that attempts one effect itself. `check_rt.py`
+  holds that list (`MAY_BE_UNSAFE`), so a fifth is a failing check and not
+  a quiet addition, and a module on the list that no longer needs it is a
+  failing check too.
+* `deny` rather than `forbid` because `forbid` cannot be lifted anywhere:
+  it would have had to come off the whole crate for one module to call a
+  kernel. Everything else - the lexer, the parser, the checkers, the
+  interpreter, the budget parser, the receipts - is still denied.
 * `unsafe_op_in_unsafe_fn` is denied, so an `unsafe fn` does not silently
   make its body unsafe.
 * **Every `unsafe` block carries a `// SAFETY:` comment saying which
   invariant makes it sound, and names a test that would fail if that
-  invariant were broken.** A lint job greps every block for the comment
+  invariant were broken.** `check_rt.py` greps every block for the comment
   and fails without one; a second scan requires each comment to name a
-  test by name, and requires that test to exist.
+  test by name, and requires that test to exist. It is run against
+  fixtures of its own, so it is known to catch each of those.
 * `cargo miri test` runs on the parts Miri can run, on the Linux leg.
+  Miri cannot run a system call, so the confinement modules are not among
+  them: what holds those is `check_confine.py`, which runs a program and
+  tries to get past the kernel.
 
 ## A panic is never an answer
 

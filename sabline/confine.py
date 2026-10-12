@@ -39,6 +39,12 @@ from typing import Any
 #     and held, never what was asked for, and comes with its reason; under
 #     --require-confinement (9.0) a run whose level is below the one asked
 #     for is refused before its first statement, E326.
+#
+#     From 9.0's M4 sabline-rt asks for the same policy in its own process
+#     (rt/.../confine.rs and the three platform modules beside it), so a run
+#     through it is confined too: asked_of_runtime() is what its request
+#     carries, and confine_the_host() is how the command that started it
+#     holds itself to the same policy - a relayed call is made there.
 # ---------------------------------------------------------------------------
 
 POLICY_SCHEMA = "sabline.os-policy/1"
@@ -600,6 +606,18 @@ def _landlock_plan(policy: dict[str, Any], abi: int, reads: list[str],
             "scoped": 0}
 
 
+def landlock_masks(policy: dict[str, Any], abi: int) -> dict[str, Any]:
+    """What a Landlock ruleset for this policy and ABI handles, with no path
+    in it: the four fields of `_landlock_plan` that are not this machine's.
+    sabline-rt answers the same (`confine_linux::plan_masks`) and the
+    agreement gate compares the two on every platform, because a mask typed
+    wrong is a hole and not a difference anybody would see."""
+    plan = _landlock_plan(policy, abi, [], [], None, False)
+    return {"handled": plan["handled"], "net_handled": plan["net_handled"],
+            "net_rules": list(plan["net_rules"]),
+            "hold_reads": plan["hold_reads"]}
+
+
 def _landlock_restrict(plan: dict[str, Any], abi: int) -> str | None:
     """Build the ruleset and hold THIS THREAD (and the threads it starts
     after) with it. None, or why it failed - and then nothing was applied."""
@@ -918,10 +936,19 @@ def _sbpl_text(text: str) -> str:
 
 
 def mac_profile(policy: dict[str, Any], reads: list[str], writes: list[str],
-                temp: str | None, read_any: bool = False) -> str:
+                temp: str | None, read_any: bool = False, *,
+                home: str | None = None, cwd: str | None = None,
+                interpreter: list[str] | None = None) -> str:
     """The sandbox profile of a policy, in the language sandbox-exec reads.
     The later of two rules that match wins, so each denial follows `allow
-    default` and what is allowed again follows its denial."""
+    default` and what is allowed again follows its denial.
+
+    `home`, `cwd` and `interpreter` are this machine's answers, and are
+    taken from it when they are not given. They can be given because
+    sabline-rt derives the same profile (rt/.../confine_macos.rs) and the
+    agreement gate compares the two for fixed policies and fixed answers,
+    on every platform and not only on a Mac: a profile is a text, and a
+    text is comparable wherever it was made."""
     lines = ["(version 1)", "(allow default)"]
     if policy["net"] == "none":
         lines.append("(deny network*)")
@@ -937,10 +964,12 @@ def mac_profile(policy: dict[str, Any], reads: list[str], writes: list[str],
         lines += ["(deny file-write*)",
                   "(allow file-write* " + " ".join(places) + ")"]
     if policy["fs_read"] is not None and not read_any:
-        home = os.path.realpath(os.path.expanduser("~"))
+        if home is None:
+            home = os.path.realpath(os.path.expanduser("~"))
         # a read grant is named whether or not it is there yet: a program
         # may read back what it has just written
-        allowed = interpreter_reads(policy["net"] != "none") + _existing(
+        allowed = (interpreter_reads(policy["net"] != "none")
+                   if interpreter is None else list(interpreter)) + _existing(
             reads + ([temp] if temp else [])) + [
                 os.path.realpath(g) for g in policy["fs_read"]]
         # a directory is allowed with what is beneath it, a file as itself
@@ -948,7 +977,7 @@ def mac_profile(policy: dict[str, Any], reads: list[str], writes: list[str],
         # directory above it, so those directories themselves - the names in
         # them, not the files - stay readable: a relative path cannot be
         # resolved otherwise
-        above, step = [], os.path.realpath(os.getcwd())
+        above, step = [], os.path.realpath(os.getcwd() if cwd is None else cwd)
         while step not in above:
             above.append(step)
             step = os.path.dirname(step)
@@ -1453,6 +1482,81 @@ def confine_this_run(budget: Any, *, files: Any = (),
 
 LEVELS = (NONE, PARTIAL, FULL)
 REQUIRE_WORDS = (FULL, PARTIAL)
+
+
+def asked_of_runtime(*, on: Any = None, strict: Any = None,
+                     require: Any = None, host: Any = None,
+                     files: Any = (), writes: Any = (),
+                     temp: str | None = None,
+                     read_any: bool = False) -> dict[str, Any]:
+    """What `sabline-rt exec`'s request carries about confinement (9.0, M4):
+    what this run asked of the operating system, for the runtime that will
+    ask for it. sabline-rt applies it to its own process before the
+    program's first statement (rt/.../confine.rs) and records what it got in
+    its receipt, as this package records what it got in its own.
+
+    `host` is the level **this** process is held to, since this is the
+    process a relayed call - the network, a granted Python module, a tool -
+    is made in: a worker of a pool is confined and a command line's own
+    process is not, and sabline-rt's report says so rather than claiming a
+    boundary around work that happens outside it.
+
+    `on`, `strict` and `require` are what the run asked for, and are this
+    process's own when they are not given: a pool holds them as its own
+    attributes rather than in this process's state, because a registry's
+    pools each have their own.
+
+    `read_any` is here for the shape's sake and no host sets it: a pool
+    needs it because its workers are confined before they compile the
+    programs they are sent, and sabline-rt reads and checks the program
+    before it asks for anything, so its reads are always held to the
+    program's own files."""
+    from . import state as _state
+    if on is None:
+        on = _state.CONFINE
+    if strict is None:
+        strict = _state.CONFINE_STRICT
+    if require is None:
+        require = _state.REQUIRE_CONFINEMENT
+    if host is None:
+        host = (current() or _state.WORKER_CONFINEMENT or {}).get("level")
+    if not on:
+        return {"confine": False, "host_confinement": host}
+    return {"confine": "strict" if strict else True,
+            "require_confinement": require,
+            "confine_reads": [str(p) for p in files if p],
+            "confine_writes": [str(p) for p in writes if p],
+            "confine_temp": temp, "confine_read_any": bool(read_any),
+            "host_confinement": host}
+
+
+def confine_the_host(budget: Any, *, files: Any = ()) -> dict[str, Any]:
+    """Hold **this** process to the budget's policy, and say what the run
+    asks of sabline-rt (9.0, M4): what `asked_of_runtime` says, with the
+    level this process got as the `host_confinement`.
+
+    It is for a command, whose process ends with the run. A call to the
+    network, a granted Python module or a tool is made in the process that
+    started sabline-rt (sabline/through_rt.py), so what bounds that work is
+    what confines this one: without this, `--confine strict` through
+    sabline-rt would hold the runtime and not the module, and the receipt
+    would have to say so.
+
+    It is called **after** sabline-rt has been started, because the policy
+    lets no process be started: the one process the run needs is already
+    running by then. It is not for `sabline.run()`, which runs in its
+    caller's process - EXEMPT says why that one is never confined - and not
+    for a pool, whose worker is the host and is confined already."""
+    from . import state as _state
+    if not _state.CONFINE:
+        return asked_of_runtime(files=files)
+    policy = os_policy(budget, strict=_state.CONFINE_STRICT)
+    rule = None
+    if policy["enforced"] and "ffi" in budget.effects:
+        _made, rule = private_temp()
+    done = apply(policy, reads=list(files), temp=rule)
+    return asked_of_runtime(files=files, temp=rule,
+                            host=done.get("level") or NONE)
 
 
 def library_mode(confine: Any, require_confinement: Any

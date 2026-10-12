@@ -31,6 +31,8 @@ third is the one that matters:
    the network, Python and tools to the package - a failure, an error's
    line, a handle's text, and what the host recorded, told and counted -
    and the organisation ceiling's refusal and its name in the receipt,
+   and from M4 the OS policy a budget derives and a row of the
+   confinement tables,
    and asserts the gate goes red for each,
    one injection per comparison class. A gate that has never been shown
    to fail is a gate nobody has tested. `check_mutant_kills.py`'s idea,
@@ -298,6 +300,22 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
         'out.push_str(&format!(" #{}>", h.id));',
         'out.push_str(&format!(" {}>", h.id));',
     ),
+    # Confinement (9.0, M4): the policy a budget derives, which only the OS
+    # policies' row compares, and a row of the table that says what a
+    # granted Python module widens the policy to, which the confinement
+    # tables' row compares whether or not a budget names that module.
+    (
+        "the OS policy a budget derives",
+        "rt/crates/sabline-rt/src/confine.rs",
+        'Json::text("private-temp"),',
+        'Json::text("private-temporary"),',
+    ),
+    (
+        "a row of the confinement tables",
+        "rt/crates/sabline-rt/src/confine.rs",
+        '("math", &[]),',
+        '("math", &["fs"]),',
+    ),
     (
         "a grant a relayed call told, dropped from the stream",
         "rt/crates/sabline-rt/src/interp.rs",
@@ -327,8 +345,8 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "the ceilings a receipt names, dropped",
         "rt/crates/sabline-rt/src/receipt.rs",
-        '("ceilings", Json::List(recorder.ceilings.clone())),',
-        '("ceilings", Json::List(Vec::new())),',
+        'given.push(("ceilings", Json::List(recorder.ceilings.clone())));',
+        'given.push(("ceilings", Json::List(Vec::new())));',
     ),
 )
 

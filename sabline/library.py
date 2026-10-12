@@ -917,10 +917,10 @@ def _why_not_through_rt(source: Any, path: Any, budget: Any) -> str | None:
     the package reports it as it always has; `source`: a text that is not
     UTF-8, which sabline-rt does not take; `ceiling`: an organisation
     ceiling refuses its budget (E325), and the package reports that as it
-    reports a refusal of the checks; `confinement`: the run asks for the
-    operating system's confinement - --confine strict, or a level it must
-    have (9.0, M4) - which sabline-rt does not give until M4's port, so it
-    stays where the level asked for is held. Checked and proved here, as
+    reports a refusal of the checks. `--confine strict` and
+    `--require-confinement` were a reason here until 9.0's M4, when
+    sabline-rt began to confine its own runs: they go in the request now.
+    Checked and proved here, as
     `_run_program` checks it, under whatever import root is set - which is
     also what a pool's worker asks, under the pool's limits. A program of
     the network, Python or a tool goes through sabline-rt too, which relays
@@ -929,8 +929,6 @@ def _why_not_through_rt(source: Any, path: Any, budget: Any) -> str | None:
         source.encode("utf-8")
     except UnicodeEncodeError:
         return "source"
-    if _state.CONFINE_STRICT or _state.REQUIRE_CONFINEMENT is not None:
-        return "confinement"
     if _ceiling.refusal(_ceiling.installed(), budget) is not None:
         return "ceiling"
     if not _check_here(source, path=path).ok:
@@ -988,7 +986,7 @@ def _through_rt_here(source: Any, *, path: Any, budget: Any, args: Any,
                      stdin: Any, seed: Any, freeze_time: Any, name: Any,
                      import_root: Any, event: Any, timeout: Any = None,
                      max_memory_mb: Any = None, call: Any = None,
-                     on_kill: Any = None,
+                     on_kill: Any = None, confine: Any = None,
                      ) -> tuple["through_rt.Ended", str, str, str]:
     """sabline-rt's run of a program this package has checked: (how it
     ended, what it printed, what it logged, the file it was run from). Its
@@ -996,8 +994,12 @@ def _through_rt_here(source: Any, *, path: Any, budget: Any, args: Any,
     does with a StringIO stdin. `timeout` and `max_memory_mb` as a pool
     holds them (sabline/through_rt.py). `call` is the host of what it
     relays - a pool's worker, with `on_kill` to stop it at the deadline -
-    or, not given, this process, made the run's for the run (`_hosting`)."""
+    or, not given, this process, made the run's for the run (`_hosting`).
+    `confine` is what the run asks of the operating system (9.0, M4), this
+    process's own when it is not given - a pool's is its own pool's, and
+    the host of what the run relays is then its worker, not this one."""
     import io as _io
+    from . import confine as _confine
     from .budget import _frozen_epoch
     # as set_run_params reads them: the request takes epoch seconds, where
     # the library and a receipt give an ISO 8601 instant too
@@ -1025,6 +1027,13 @@ def _through_rt_here(source: Any, *, path: Any, budget: Any, args: Any,
                 import_root=import_root, out=out.write, err=err.write,
                 read_line=given.readline, ask=ask, event=event,
                 timeout=timeout, max_memory_mb=max_memory_mb, call=call,
+                # what this run asks of the operating system (9.0, M4).
+                # A run in this process cannot be confined - Landlock, a
+                # sandbox profile and a lowered token cannot be taken off
+                # again - but a run in sabline-rt's can, so a level asked of
+                # an unbounded run is now a level it can be given.
+                confine=confine if confine is not None
+                else _confine.asked_of_runtime(),
                 on_kill=on_kill)
     finally:
         _drop_source_file(temp)
