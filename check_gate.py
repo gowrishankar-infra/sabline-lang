@@ -190,8 +190,8 @@ INJECTIONS: tuple[tuple[str, str, str, str], ...] = (
     (
         "where the step limit stops a run",
         "rt/crates/sabline-rt/src/interp.rs",
-        "Some(limit) if self.ticks > limit => Err(Stop::Steps(line)),",
-        "Some(limit) if self.ticks >= limit => Err(Stop::Steps(line)),",
+        "if self.ticks > limit {",
+        "if self.ticks >= limit {",
     ),
     # The size limit (9.0, M3): where it stops a run - at the operation that
     # takes what was made past it, not the one that reaches it - and what it
