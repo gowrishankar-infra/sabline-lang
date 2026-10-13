@@ -61,6 +61,9 @@ SUITES: tuple[tuple[str, tuple[str, ...]], ...] = (
     # M3's third criterion's own suite: its escapes and honest programs run
     # from the command line, under their budgets, against its servers
     ("check_sandbox.py", ()),
+    # 9.0's M4: an eval run is sabline-rt's too, with the stop file its
+    # profile needs honoured there
+    ("check_eval.py", ()),
     ("check_fallible.py", ("--runtime", "rust")),
     ("check_termination.py", ("--runtime", "rust")),
     ("check_refusals.py", ("--runtime", "rust")),
@@ -71,11 +74,6 @@ SUITES: tuple[tuple[str, tuple[str, ...]], ...] = (
 # A question that fails against sabline-rt by design, until the rung named:
 # (suite, the start of its label, why).
 BY_DESIGN: tuple[tuple[str, str, str], ...] = (
-    ("check_library.py",
-     "a run returns its receipt: an in-toto Statement of receipt/v1",
-     "it asks that the receipt's producer version is this package's, and a "
-     "run through sabline-rt is sabline-rt's (decided on 2026-10-11: waits "
-     "for M4)"),
     ("check_library.py",
      "...with the budget, the parameters, the declassification and its",
      "it asks that an unbounded sabline.run()'s confinement is none, which "
