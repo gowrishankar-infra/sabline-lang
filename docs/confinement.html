@@ -274,6 +274,15 @@ is <strong>killed</strong> before its parent can take the ACEs back leaves them 
 the SID of a profile that is gone, which nothing can hold again; the next
 run sweeps them, from a record each run holds open while it holds the
 grants.</p>
+<p><strong>Two runs at once</strong> are two containers with an ACE each on the same file,
+and adding one is <em>read the rights, add to them, write them back</em>: without
+a lock the second write is of rights read before the first, and one of the
+two runs is then refused a file its budget grants - a wrong answer, and not
+a safe one. So every grant and every revoke takes a machine-wide lock
+first, for the length of that one write and not for the run, and a run
+whose turn never comes says so and is not contained. A revoke that could
+not be made leaves the run's record in place, so the next run's sweep takes
+that ACE back.</p>
 <p>Two things a run through sabline-rt holds that the package's cannot, and one
 it does not:</p>
 <ul>

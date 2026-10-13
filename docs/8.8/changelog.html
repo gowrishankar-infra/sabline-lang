@@ -150,14 +150,31 @@ Python module or a tool is made there. Three things follow for a run through
 sabline-rt: a <code>sabline.run()</code> with no limit <strong>can</strong> be confined, since the
 program runs in another process where the package's runs in the caller's; a
 run whose host is not confined - an unbounded <code>sabline.run()</code>'s - says so in
-its receipt's reason and is <code>partial</code> rather than <code>full</code>; and <code>sabline eval</code>
-is still the package's, whose run sabline-rt does not take yet.
-docs/confinement.md.</p>
+its receipt's reason and is <code>partial</code> rather than <code>full</code>; and from M4's third
+checkpoint a <strong>Windows</strong> run is held by an AppContainer of its own, so a
+budget that restricts both directions and names no loopback host is <code>full</code>
+there. docs/confinement.md and docs/os-enforces.md.</p>
+<p>api: <code>sabline serve</code> and <code>sabline mcp</code> take <code>--confine strict</code> and
+<code>--require-confinement full|partial</code> (9.0, M4), beside the <code>--no-confine</code>
+they already took: the operator's own, on the command line, carried to every
+pool the door makes. A request names a budget and never these. Either beside
+<code>--no-confine</code> asks for two opposite things and the door does not start.
+<code>sabline eval</code> refuses both by name, as it refuses <code>--no-confine</code>:
+confinement is part of its profile and has no switch; its run goes through
+sabline-rt from M4, and the stop file it needs is honoured there.</p>
+<p>fix: <code>sabline.run(source)</code> through sabline-rt on Windows wrote the source to
+a temporary file in text mode, so the receipt's subject digest was of bytes
+with a carriage return before every line feed - not of the text that was
+passed in. The file is written with the text's own bytes now. Receipts made
+by the Python runtime, and by either runtime from a file on disk, were never
+affected.</p>
 <p>compatibility: E326 is new, and given only to a run whose operator asked
 for a level of confinement; no run that does not ask is refused by it. On
 Windows the Python runtime holds neither reads nor the network, so <code>full</code>
-refuses every budget that restricts either - <code>io</code> does - and on macOS every
-run, whose level is partial at best; docs/confinement.md has the table.</p>
+refuses every budget that restricts either - <code>io</code> does - where a run through
+sabline-rt is held by an AppContainer and is <code>full</code>; and on macOS every run
+is partial at best, so <code>full</code> refuses them all. docs/os-enforces.md has the
+table, for both runtimes.</p>
 <p>compatibility: for 9.0's Python package, the native engine is never
 different from the interpreter, as it was always meant to be. A number past
 64 bits, or a read outside a list or a text, stops the machine code where it

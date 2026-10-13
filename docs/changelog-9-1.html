@@ -134,19 +134,6 @@ nor <code>SABLINE_FAULT_NO_LANDLOCK</code>. The suites that measure the confinem
 build with it. The modules that may lift the deny plainly are four again -
 <code>confine_appcontainer.rs</code> has joined them - and <code>check_rt.py</code> holds both
 lists.</p>
-<p>api: <code>sabline serve</code> and <code>sabline mcp</code> take <code>--confine strict</code> and
-<code>--require-confinement full|partial</code> (9.0, M4), beside the <code>--no-confine</code>
-they already took: the operator's own, on the command line, carried to every
-pool the door makes. A request names a budget and never these. Either beside
-<code>--no-confine</code> asks for two opposite things and the door does not start.
-<code>sabline eval</code> refuses both by name, as it refuses <code>--no-confine</code>:
-confinement is part of its profile and has no switch.</p>
-<p>fix: <code>sabline.run(source)</code> through sabline-rt on Windows wrote the source to
-a temporary file in text mode, so the receipt's subject digest was of bytes
-with a carriage return before every line feed - not of the text that was
-passed in. The file is written with the text's own bytes now. Receipts made
-by the Python runtime, and by either runtime from a file on disk, were never
-affected.</p>
 <p>This is a <strong>pre-release</strong> of the <code>sabline-rt</code> crate, and it publishes that
 and nothing else. 8.8.0 is still what <code>pip install sabline-lang</code>, npm, the
 Marketplace and the MCP registry give, the Action pins still name 8.8.0's
