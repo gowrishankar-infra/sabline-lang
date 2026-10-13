@@ -1690,9 +1690,23 @@ def appcontainer_cases() -> None:
     """sabline-rt starts the run's own process inside an AppContainer, and
     every claim that rests on it (9.0, M4). The honesty test above already
     measures what the container refuses; these are the container's own
-    promises: that the ACEs it is given are taken back, that a run killed
-    before it can is swept by the next one, that `--contained` is a claim
-    the kernel answers, and that the budgets it is left off for say so."""
+    promises:
+
+      the ACE   the kernel honours the ACE the container was given, and the
+                run resolves the path it reads inside the container as its
+                host resolved the grant - the two halves of "a run is never
+                refused a file its budget grants"
+      taken back  every ACE is gone when the run ends, a run killed while
+                holding them leaves them and the next run sweeps them, and
+                six runs at once over one granted directory do not lose
+                each other's
+      the claim `--contained` outside a container claims nothing: the
+                kernel is asked, not the parent
+      left off  each budget a container is left off for says which reason
+                in its receipt
+
+    It runs only where a container is used, which main() asks the machine
+    before anything is held to one."""
     print()
     print("the Windows AppContainer: its ACEs, its sweep and its claim")
     print("-" * 62)
