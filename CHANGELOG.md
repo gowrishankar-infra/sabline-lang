@@ -163,6 +163,26 @@ the budget allows. A run killed before its parent can take the ACEs back
 leaves them naming a SID nothing can hold again, and the next run sweeps
 them.
 
+**A container is asked before a run is handed to it.** A process inside an
+AppContainer cannot always resolve a path as the process that started it
+does - on some systems `GetFinalPathNameByHandle` answers nothing there,
+and `realpath` then leaves the path as it was written. Every `fs:` grant is
+checked against what a path resolves to, and the host resolves the grant
+while the run resolves what the program asks for, so such a run would be
+refused a file its budget allows: a wrong answer, and not a safe one. So
+the container is asked, once, to resolve the paths the run was granted,
+and any answer that differs leaves the container off with the reason in the
+receipt. `check_confine.py` asks the machine the same question and holds
+every case to the answer rather than assuming one.
+
+fix: the one privilege a confined run keeps on Windows -
+`SeChangeNotifyPrivilege`, which is what bypasses traverse checking - was
+found by `LookupPrivilegeValueW` alone, and a lookup that failed left the
+number at zero, which matches no privilege: **every** privilege was then
+removed, bypass-traverse among them, and a process that cannot traverse
+cannot walk to a file it has been given. It is the well-known number (23)
+unless the lookup answers now. Both runtimes.
+
 **`ENFORCES`, row for row, for both runtimes.** `sabline-rt os-policy
 --enforces` writes how much of each row of the threat model's table that
 runtime's kernel holds, one word per system; `check_confine.py` holds it to
