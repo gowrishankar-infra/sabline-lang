@@ -89,11 +89,16 @@ standard output and error, pumps the request and the rest of its input
 through, waits, <strong>takes every ACE back</strong> and deletes the profile. The child
 does not take the parent's word for it: <code>--contained</code> is a claim, and the
 kernel - <code>TokenIsAppContainer</code>, <code>TokenAppContainerSid</code> - is what answers it.</p>
-<p>So <strong>a Windows run under <code>io</code> is now <code>full</code></strong>, where it was <code>partial</code> on
-every release before this one: a read, a write, a connection or a process
-outside the budget's grants is refused by the kernel, which
-<code>check_confine.py --runtime rust</code> measures with the fault-injection hook.
-90 of its questions pass on Windows and 93 on Linux, none broken. The
+<p>So <strong>a Windows run under <code>io</code> is <code>full</code> where a container can hold it</strong>,
+against <code>partial</code> on every release before this one: a read, a write, a
+connection or a process outside the budget's grants is refused by the
+kernel, which <code>check_confine.py --runtime rust</code> measures with the
+fault-injection hook. 90 of its questions pass on Windows 11 and 93 on
+Linux, none broken. <strong>Where a container cannot hold it, it is left off and
+the receipt says why</strong> - a Windows Server, for one, where a process inside
+a container can open the file it was granted and still not be told what
+path that file has, so a run would be refused a file its budget allows.
+That is asked before a run is handed to a container, never assumed. The
 container is <strong>left off</strong>, with the reason in the receipt, for a budget
 granting a loopback host - Windows isolates a container from 127.0.0.1
 unless an administrator exempts it - and for one that restricts neither

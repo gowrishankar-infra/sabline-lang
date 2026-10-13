@@ -139,7 +139,13 @@ container from the loopback address unless an administrator exempts it; a
 budget that restricts <strong>neither reads nor writes</strong>, since a container
 reaches only what it is given an ACE for; and a system where a process
 inside a container cannot resolve a path as the process that started it
-does, which is asked before a run is handed to one. Such a run gets the
+does, which is asked before a run is handed to one. A Windows <strong>Server</strong> is
+the last of those: a process inside a container there can open the file it
+was granted and still not be told what path that file has, so every <code>fs:</code>
+grant - which is checked against what a path resolves to - would refuse a
+file the budget allows. The three cells that say <code>yes</code> for Windows below
+are therefore <code>yes</code> on a Windows <strong>11</strong>, and on a Server the rows are the
+package's own. Such a run gets the
 table above, as it did before 9.0. A budget that grants <em>any</em> host keeps
 its container: it does not say it needs the loopback address, which is
 then the one address the run itself cannot reach - its own network calls

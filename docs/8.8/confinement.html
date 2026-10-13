@@ -259,9 +259,13 @@ when the kernel agrees and the SID is the one named. A sabline-rt started
 with <code>--contained</code> outside a container reports that it is not held, and
 holds nothing back.</p>
 <p>So a Windows run whose budget restricts both directions and names no
-loopback host is <strong>full</strong>: a read, a write or a connection outside the
-grants is refused by the kernel, which <code>check_confine.py --runtime rust</code>
-measures with the fault-injection hook on every push.
+loopback host is <strong>full</strong> where a container can hold it: a read, a write
+or a connection outside the grants is refused by the kernel, which
+<code>check_confine.py --runtime rust</code> measures with the fault-injection hook.
+A Windows Server is not such a machine - a process inside a container
+there can open the file it was granted and still not be told what path
+that file has - and the container is left off, with the reason in the
+receipt, rather than a run being refused a file its budget allows.
 <a href="os-enforces.html">docs/os-enforces.md</a> is the table, cell by cell, with the
 reason on each one the two runtimes differ on.</p>
 <p><strong>A container is left off</strong> for a budget it would refuse something the

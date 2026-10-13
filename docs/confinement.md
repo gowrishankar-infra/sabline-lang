@@ -217,9 +217,13 @@ with `--contained` outside a container reports that it is not held, and
 holds nothing back.
 
 So a Windows run whose budget restricts both directions and names no
-loopback host is **full**: a read, a write or a connection outside the
-grants is refused by the kernel, which `check_confine.py --runtime rust`
-measures with the fault-injection hook on every push.
+loopback host is **full** where a container can hold it: a read, a write
+or a connection outside the grants is refused by the kernel, which
+`check_confine.py --runtime rust` measures with the fault-injection hook.
+A Windows Server is not such a machine - a process inside a container
+there can open the file it was granted and still not be told what path
+that file has - and the container is left off, with the reason in the
+receipt, rather than a run being refused a file its budget allows.
 [docs/os-enforces.md](os-enforces.md) is the table, cell by cell, with the
 reason on each one the two runtimes differ on.
 

@@ -556,13 +556,18 @@ sandbox. The first half is still true. What is now true beside it:
   the user's, but reads, the network, and writes under a budget that
   grants any, are not held - that needs an AppContainer, which a running
   `python.exe` cannot enter and a fresh one cannot start in. **Through
-  sabline-rt** (`SABLINE_REFERENCE_RUNTIME=rust`, 9.0) it is full for a
-  budget that restricts both directions and names no loopback host: the
-  run's own process is started inside an AppContainer granted one ACE per
-  file and per granted directory, so a read, a write or a connection
-  outside them is refused by the kernel, and
-  [docs/os-enforces.md](docs/os-enforces.md) says which budgets the
-  container is left off for and why.
+  sabline-rt** (`SABLINE_REFERENCE_RUNTIME=rust`, 9.0) it is full, on a
+  system where a container can hold a run, for a budget that restricts
+  both directions and names no loopback host: the run's own process is
+  started inside an AppContainer granted one ACE per file and per granted
+  directory, so a read, a write or a connection outside them is refused by
+  the kernel. Where a container cannot hold a run - a Windows Server,
+  where a process inside one cannot be told what path a file it opened
+  has - it is left off and the receipt says so, because a run that
+  resolved a path differently from the host that resolved its grants would
+  be refused a file its budget allows.
+  [docs/os-enforces.md](docs/os-enforces.md) is the table and says which
+  budgets the container is left off for.
 - **Everywhere:** the process still runs as the user; a granted `ffi`
   module still widens what is held, to nothing at all for `ffi:os`,
   `ffi:subprocess`, plain `ffi` and any module the table does not name;

@@ -150,11 +150,16 @@ through, waits, **takes every ACE back** and deletes the profile. The child
 does not take the parent's word for it: `--contained` is a claim, and the
 kernel - `TokenIsAppContainer`, `TokenAppContainerSid` - is what answers it.
 
-So **a Windows run under `io` is now `full`**, where it was `partial` on
-every release before this one: a read, a write, a connection or a process
-outside the budget's grants is refused by the kernel, which
-`check_confine.py --runtime rust` measures with the fault-injection hook.
-90 of its questions pass on Windows and 93 on Linux, none broken. The
+So **a Windows run under `io` is `full` where a container can hold it**,
+against `partial` on every release before this one: a read, a write, a
+connection or a process outside the budget's grants is refused by the
+kernel, which `check_confine.py --runtime rust` measures with the
+fault-injection hook. 90 of its questions pass on Windows 11 and 93 on
+Linux, none broken. **Where a container cannot hold it, it is left off and
+the receipt says why** - a Windows Server, for one, where a process inside
+a container can open the file it was granted and still not be told what
+path that file has, so a run would be refused a file its budget allows.
+That is asked before a run is handed to a container, never assumed. The
 container is **left off**, with the reason in the receipt, for a budget
 granting a loopback host - Windows isolates a container from 127.0.0.1
 unless an administrator exempts it - and for one that restricts neither
