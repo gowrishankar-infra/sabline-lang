@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>What the operating system enforces - Sabline 8.8.0</title>
+<meta name="description" content="This is the what the operating system enforces section of the threat model, on a page of its own so that neither page outgrows the size a page of the site ...">
+<meta name="sabline-version" content="8.8.0">
+<link rel="canonical" href="https://sabline.dev/os-enforces.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Sabline">
+<meta property="og:title" content="What the operating system enforces - Sabline 8.8.0">
+<meta property="og:description" content="This is the what the operating system enforces section of the threat model, on a page of its own so that neither page outgrows the size a page of the site ...">
+<meta property="og:url" content="https://sabline.dev/os-enforces.html">
+<meta property="og:image" content="https://sabline.dev/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b6b4e'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+<div class="bar">
+<button type="button" class="menu" aria-expanded="false" aria-controls="sidebar"><span class="menu-icon" aria-hidden="true"></span><span class="vh">Menu</span></button>
+<a class="brand" href="index.html">Sabline</a>
+<a class="badge" href="versions.html" aria-label="Version 8.8.0, all versions"><span>8.8.0</span></a>
+<div class="search" role="search">
+<label class="vh" for="search">Search the documentation</label>
+<input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-controls="search-results">
+<div id="search-results" class="results" hidden></div>
+</div>
+<button type="button" class="theme" aria-pressed="false" aria-label="Dark theme" title="Dark theme"><span class="theme-icon" aria-hidden="true"></span></button>
+</div>
+</header>
+<div class="layout">
+<nav id="sidebar" class="sidebar" aria-label="Sections"><ul>
+<li><a href="index.html">Start here</a>
+</li>
+<li><a href="tutorial.html">Tutorial</a>
+<ul><li><a href="playground.html">Playground</a></li></ul>
+</li>
+<li><a href="spec.html">Language reference</a>
+<ul><li><a href="llms.txt">llms.txt, for a model</a></li></ul>
+</li>
+<li><a href="library.html">Standard library</a>
+</li>
+<li><a href="errors.html">Errors</a>
+</li>
+<li><a href="floats.html">Floats</a>
+</li>
+<li><a href="threat-model.html">Threat model</a>
+<ul><li><a href="confinement.html">Confinement</a></li><li><a href="os-enforces.html" aria-current="page">What the operating system enforces</a></li><li><a href="ceiling.html">The organisation ceiling</a></li><li><a href="runner.html">Hosting a run that calls tools</a></li><li><a href="eval.html">sabline eval</a></li><li><a href="structurally-impossible.html">What cannot occur in a Sabline program</a></li><li><a href="known-open.html">Known open</a></li><li><a href="incidents.html">Incidents</a></li><li><a href="agentdojo.html">AgentDojo</a></li><li><a href="agentdojo-slack.html">AgentDojo: the slack suite</a></li><li><a href="agentdojo-workspace.html">AgentDojo: the workspace suite</a></li><li><a href="agentdojo-banking.html">AgentDojo: the banking suite</a></li><li><a href="agentdojo-travel.html">AgentDojo: the travel suite</a></li><li><a href="roundtrip.html">Model round trip</a></li><li><a href="competitors.html">Competitors</a></li><li><a href="competitors-scenarios.html">Competitors: every scenario</a></li><li><a href="competitors-evidence-1.html">Competitors: the evidence, part 1</a></li><li><a href="competitors-evidence-2.html">Competitors: the evidence, part 2</a></li><li><a href="competitors-evidence-3.html">Competitors: the evidence, part 3</a></li><li><a href="crosswalk.html">Crosswalk</a></li><li><a href="ctf.html">The Sabline capture-the-flag</a></li><li><a href="incident-amazon-q-extension-wiper.html">The Amazon Q wiper prompt, replayed in Sabline</a></li><li><a href="incident-camoleak-copilot-chat.html">CamoLeak, replayed in Sabline</a></li><li><a href="incident-circleci-oauth-token-theft.html">The CircleCI breach, replayed in Sabline</a></li><li><a href="incident-echoleak-m365-copilot.html">EchoLeak, replayed in Sabline</a></li><li><a href="incident-github-mcp-toxic-agent-flow.html">The GitHub MCP exploit, replayed in Sabline</a></li><li><a href="incident-mcp-remote-command-injection.html">CVE-2025-6514 (mcp-remote), replayed in Sabline</a></li><li><a href="incident-mcp-tool-poisoning.html">MCP tool poisoning, replayed in Sabline</a></li><li><a href="incident-nx-s1ngularity.html">The Nx (s1ngularity) attack, replayed in Sabline</a></li><li><a href="incident-package-hallucination.html">Slopsquatting, replayed in Sabline</a></li><li><a href="incident-postmark-mcp-bcc-exfiltration.html">postmark-mcp, replayed in Sabline</a></li><li><a href="incident-shai-hulud-npm-worm.html">Shai-Hulud, replayed in Sabline</a></li><li><a href="incident-solana-web3js-backdoor.html">The Solana web3.js backdoor, replayed in Sabline</a></li><li><a href="incident-tj-actions-changed-files.html">tj-actions/changed-files, replayed in Sabline</a></li><li><a href="incident-ultralytics-pypi-cache-poisoning.html">The Ultralytics attack, replayed in Sabline</a></li><li><a href="incident-xz-utils-backdoor.html">The xz backdoor, replayed in Sabline</a></li><li><a href="replayed.html">We examined 15 real incidents and replayed 8 in Sabline</a></li><li><a href="security.html">Security policy</a></li></ul>
+</li>
+<li><a href="embedding.html">Embedding</a>
+<ul><li><a href="embedding-limit.html">The embedding limit</a></li><li><a href="receipts.html">Receipts</a></li></ul>
+</li>
+<li><span class="sec-label">Guides</span>
+<ul><li><a href="guide-network-access.html">Why should it have Internet access? Scripts that reach only the hosts you name</a></li><li><a href="guide-before-it-runs.html">Before I ever have a chance to inspect it: what a script will touch, before it runs</a></li><li><a href="guide-everything-or-nothing.html">Access to everything, or nothing? Giving an agent&#x27;s code only what the task needs</a></li><li><a href="guide-lethal-trifecta.html">The lethal trifecta, one run at a time: a script that reads private data but cannot send it</a></li><li><a href="guide-write-before-read.html">Write the program before you read the data</a></li><li><a href="guide-secrets-env.html">Secrets that should never leave my machine: running an agent&#x27;s scripts without your .env</a></li></ul>
+</li>
+<li><span class="sec-label">Compare</span>
+<ul><li><a href="compare-deno.html">Sabline compared with Deno&#x27;s permissions</a></li><li><a href="compare-wasi.html">Sabline compared with WASI (wasmtime)</a></li><li><a href="compare-camel.html">Sabline compared with CaMeL</a></li><li><a href="compare-python-sandbox.html">Sabline compared with a Python sandbox (smolagents)</a></li><li><a href="compare-ailang.html">Sabline compared with AILANG</a></li></ul>
+</li>
+<li><a href="papers/sabline.html">Paper</a>
+<ul><li><a href="papers/index.html">Papers</a></li></ul>
+</li>
+<li><span class="sec-label">Spec</span>
+<ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
+</li>
+<li><a href="changelog.html">Changelog</a>
+<ul><li><a href="changelog-9-1.html">9.x: 9.0.0-alpha.13 to 9.0.0-alpha.8</a></li><li><a href="changelog-9-2.html">9.x: 9.0.0-alpha.7 to 9.0.0-alpha.1</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+</li>
+</ul></nav>
+<div class="col">
+<main id="content" class="doc" tabindex="-1">
+<h1 id="what-the-operating-system-enforces">What the operating system enforces</h1>
+<p>This is the <em>what the operating system enforces</em> section of the
+<a href="threat-model.html">threat model</a>, on a page of its own so that neither
+page outgrows the size a page of the site may be, as
+<a href="known-open.html">known-open.md</a> is. The threat model says what Sabline
+defends against; this page says, item by item, how much of that the
+kernel holds too, on each of the three systems and in each of the two
+runtimes.</p>
+<p>From 8.4 the process that runs a program asks the operating system to
+hold the budget it was given, before the program's first statement runs,
+so that a fault in Sabline itself is a crash inside a box and not an
+escape. The derivation is one function, <code>os_policy</code> in
+<code>sabline/confine.py</code>: budget in, OS policy out, reading nothing of the
+machine. This table is that module's <code>ENFORCES</code>, and <code>check_confine.py</code>
+fails when the two differ.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Budget item</th><th>Linux (Landlock, seccomp-bpf)</th><th>macOS (a sandbox profile)</th><th>Windows (job object, token, integrity level)</th></tr></thead>
+<tbody>
+<tr><td>no <code>fs</code> granted</td><td>Landlock: no file read, written, made or removed but what the interpreter itself needs (below)</td><td>writes refused everywhere but the private temporary directory; reads refused under the home directory and /Volumes, but for the names in the working directory and in each directory above it, which getcwd reads</td><td>low integrity level: no write to anything of the user's; reads not held</td></tr>
+<tr><td><code>fs:read:DIR</code></td><td>Landlock: reads beneath DIR (resolved), and nothing else of the user's; when DIR does not exist yet - a file the program writes and reads back - beneath the nearest directory that does, and the level is partial</td><td>reads beneath DIR allowed; outside it, refused only under the home directory and /Volumes</td><td>not held: the low integrity level does not stop a read</td></tr>
+<tr><td><code>fs:write:DIR</code></td><td>Landlock: files written, made and truncated beneath DIR; when DIR does not exist yet, beneath the nearest directory that does, and the level is partial</td><td>writes beneath DIR, as Linux</td><td>not held: a write grant keeps the process at medium integrity, because lowering it would need the granted directory relabelled</td></tr>
+<tr><td><code>fs</code>, <code>fs:read</code>, <code>fs:write</code> with no path</td><td>that direction is not restricted, as the budget says</td><td>as Linux</td><td>as Linux</td></tr>
+<tr><td>a credential location under a broad grant (E318)</td><td>not held: Landlock cannot take a path out of a hierarchy it allows</td><td>not held</td><td>not held</td></tr>
+<tr><td>no <code>net</code> granted</td><td>seccomp: socket, socketpair, connect, bind, listen and accept refused (EPERM); Landlock ABI 4 and later also refuses TCP</td><td><code>(deny network*)</code></td><td>not held: it needs an AppContainer, which this Python cannot start in (below)</td></tr>
+<tr><td><code>net:HOST</code>, <code>net:HOST:PORT</code></td><td>IPv4, IPv6 and netlink sockets allowed, and no Unix socket; with Landlock ABI 4 and later, and a port on every grant, TCP connections to those ports and 53 only. The host is held by the language alone, so the level is partial</td><td>the network allowed; the host is held by the language alone (partial)</td><td>not held</td></tr>
+<tr><td><code>net</code> with no host</td><td>any host, as the budget says; still no Unix socket, unless a granted Python module widened the policy to any host</td><td>not restricted, as the budget says</td><td>as macOS</td></tr>
+<tr><td><code>@N</code> counts</td><td>the language</td><td>the language</td><td>the language</td></tr>
+<tr><td><code>io</code></td><td>the descriptors the process was started with; not restricted</td><td>as Linux</td><td>as Linux</td></tr>
+<tr><td><code>env</code></td><td>not held: the environment is in the process's own memory</td><td>not held</td><td>not held</td></tr>
+<tr><td><code>clock</code>, <code>rand</code>, <code>declassify</code></td><td>not held: reading the clock or the kernel's randomness reaches nothing outside the process, and declassify is a rule of the type system</td><td>not held</td><td>not held</td></tr>
+<tr><td><code>tool</code></td><td>not held: a tool call is a line written to the standard output the process was started with and an answer read from its standard input; what the tool then does happens in the host's process, which this policy does not reach</td><td>not held</td><td>not held</td></tr>
+<tr><td>starting a process (never a budget item)</td><td>seccomp: execve, execveat, fork, vfork, clone without CLONE_THREAD refused, clone3 answered ENOSYS; Landlock refuses execute</td><td><code>(deny process-fork)</code> <code>(deny process-exec)</code></td><td>job object: one active process; and the clipboard, the desktop, global atoms and other processes' USER handles</td></tr>
+<tr><td>the rest of the deny-list (never a budget item)</td><td>seccomp: ptrace, mount and its new calls, pivot_root, chroot, unshare, setns, kernel modules, kexec, bpf, perf_event_open, process_vm_readv and writev, keyrings, io_uring, userfaultfd, open_by_handle_at, setting the clock, reboot, swapon, acct, quotactl, personality; a signal, by kill, tgkill or sigqueue, to any process but this one; input pushed at the terminal (TIOCSTI, TIOCLINUX)</td><td>what <code>(deny process-fork)</code> and the denial of writes imply; no list of system calls</td><td>every privilege but SeChangeNotifyPrivilege removed from the token</td></tr>
+<tr><td><code>ffi:MODULE</code></td><td>widened to what FFI_WIDENS names for MODULE: nothing, any path, any host, or nothing enforced; a module not in the table, <code>ffi:os</code>, <code>ffi:subprocess</code> and plain <code>ffi</code> widen to nothing enforced, and the level is none</td><td>as Linux</td><td>as Linux</td></tr>
+<tr><td><code>ffi:MODULE</code> under <code>--confine strict</code></td><td>widened to nothing: the policy is the budget's <code>fs:</code> and <code>net:</code> grants and what the interpreter itself reads, whatever modules are granted, and the rows above hold a module's own calls - native code, <code>ctypes</code>, <code>os.system</code> - as they hold the runtime's; a module that needs a path or a host needs it in the budget</td><td>as Linux, with the profile's limits: writes, the network and processes held, reads only under the home directory and /Volumes</td><td>as Linux, with this table's limits: no second process, and no write to anything of the user's when the budget grants no write</td></tr>
+<tr><td><code>--require-confinement full</code> or <code>partial</code> (never a budget item)</td><td>a run whose level, once applied, is below the one asked for is refused before its first statement (E326), and its receipt records the level it got</td><td>as Linux; every run is partial here at best - the level says that Apple has deprecated sandbox profiles - so <code>full</code> refuses every run</td><td>as Linux; a budget that restricts reads or the network - <code>io</code> itself does - gives partial here, so <code>full</code> refuses it</td></tr>
+<tr><td>time and memory limits</td><td>RLIMIT_AS, and the parent's clock (as before 8.4)</td><td>the parent's clock; RLIMIT_AS is best-effort</td><td>the job object's memory limit, and the parent's clock</td></tr>
+</tbody></table></div>
+<h2 id="through-sabline-rt-which-enters-a-container-windows-python-cannot">Through sabline-rt, which enters a container Windows' Python cannot <a class="anchor" href="#through-sabline-rt-which-enters-a-container-windows-python-cannot" aria-label="Link to this section">#</a></h2>
+<p>The table above is the Python package's own runtime. From 9.0 a run may
+go through <strong>sabline-rt</strong> (<code>SABLINE_REFERENCE_RUNTIME=rust</code>), whose own
+process is the run's - so it can be started inside a Windows
+<strong>AppContainer</strong>, where a running <code>python.exe</code> cannot enter one and a
+fresh one started in one cannot read its own installation. Everything
+else is the same table: <code>sabline-rt os-policy --enforces</code> writes how much
+of each row above that runtime's kernel holds, and <code>check_confine.py</code>
+holds it to be at least the package's everywhere, with a reason on every
+cell that differs. These are all of them.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Budget item</th><th>System</th><th>The package</th><th>Through sabline-rt</th><th>Why it differs</th></tr></thead>
+<tbody>
+<tr><td>no <code>fs</code> granted</td><td>windows</td><td>partly</td><td>yes</td><td>windows: the run's own process is started inside an AppContainer with an ACE for nothing but the files it reads, so a read or a write of anything of the user's is refused by the kernel and not only a write</td></tr>
+<tr><td><code>fs:read:DIR</code></td><td>windows</td><td>no</td><td>yes</td><td>windows: the container is given one ACE for DIR, resolved, and one for each file the run itself reads; a read of anything else of the user's is refused</td></tr>
+<tr><td><code>fs:write:DIR</code></td><td>windows</td><td>no</td><td>yes</td><td>windows: the container is given an ACE for DIR that carries write and delete, and the integrity level is not lowered, because the ACE is what holds the write</td></tr>
+<tr><td>no <code>net</code> granted</td><td>windows</td><td>no</td><td>yes</td><td>windows: the container is made with no capability, so a socket to anything outside the machine is refused with WSAEACCES</td></tr>
+<tr><td><code>net:HOST</code>, <code>net:HOST:PORT</code></td><td>windows</td><td>no</td><td>partly</td><td>windows: the container is made with internetClient, which admits every host, so the host is held by the language alone, as on Linux and macOS</td></tr>
+<tr><td><code>ffi:MODULE</code> under <code>--confine strict</code></td><td>windows</td><td>partly</td><td>yes</td><td>windows: under strict the policy is the budget's own grants, and the container holds a module's own calls - native code, ctypes - as it holds the runtime's</td></tr>
+</tbody></table></div>
+<p>A container is <strong>left off</strong> for a run whose budget it would refuse
+something the budget allows, and the receipt's <code>confinement_reason</code> says
+which: a budget granting a <strong>loopback host</strong>, since Windows isolates a
+container from the loopback address unless an administrator exempts it;
+and a budget that restricts <strong>neither reads nor writes</strong>, since a
+container reaches only what it is given an ACE for. Such a run gets the
+table above, as it did before 9.0. A budget that grants <em>any</em> host keeps
+its container: it does not say it needs the loopback address, which is
+then the one address the run itself cannot reach - its own network calls
+are made by the process that started it, which can.</p>
+<p>What the interpreter itself must read is allowed beside the grants, on
+Linux by name: Python's own installation and every directory it imports
+from, the <code>sabline</code> package and the standard library beside it, the
+system's shared libraries, <code>/dev/null</code>, <code>/dev/urandom</code> and the <code>/proc</code> and
+<code>/sys</code> entries Python asks for, the time zone data, the files the program
+was read from, a private temporary directory - and, under a <code>net</code> grant
+only, the resolver's configuration and the TLS roots. <code>@N</code> counts stay in
+the language.</p>
+<p>A granted <code>ffi</code> module widens the OS policy to what that module needs,
+named per module (<code>FFI_WIDENS</code>). A module that is not in this table widens
+to nothing enforced - what it needs is not known, and a run that worked
+before 8.4 is not refused - and the audit's <code>confinement.widened_by</code> names
+every module that widened the policy and to what.</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>A granted module</th><th>widens the OS policy to</th></tr></thead>
+<tbody>
+<tr><td><code>abc</code>, <code>array</code>, <code>ast</code>, <code>base64</code>, <code>binascii</code>, <code>bisect</code>, <code>calendar</code>, <code>cmath</code>, <code>collections</code>, <code>colorsys</code>, <code>copy</code>, <code>csv</code>, <code>dataclasses</code>, <code>datetime</code>, <code>decimal</code>, <code>difflib</code>, <code>email</code>, <code>enum</code>, <code>fnmatch</code>, <code>fractions</code>, <code>functools</code>, <code>gc</code>, <code>hashlib</code>, <code>heapq</code>, <code>hmac</code>, <code>html</code>, <code>ipaddress</code>, <code>itertools</code>, <code>json</code>, <code>keyword</code>, <code>math</code>, <code>numbers</code>, <code>operator</code>, <code>pprint</code>, <code>random</code>, <code>re</code>, <code>reprlib</code>, <code>secrets</code>, <code>shlex</code>, <code>statistics</code>, <code>string</code>, <code>struct</code>, <code>textwrap</code>, <code>threading</code>, <code>time</code>, <code>tomllib</code>, <code>typing</code>, <code>unicodedata</code>, <code>uuid</code>, <code>zlib</code>, <code>zoneinfo</code></td><td>nothing</td></tr>
+<tr><td><code>bz2</code>, <code>codecs</code>, <code>configparser</code>, <code>dbm</code>, <code>fileinput</code>, <code>glob</code>, <code>gzip</code>, <code>io</code>, <code>lzma</code>, <code>pathlib</code>, <code>shutil</code>, <code>sqlite3</code>, <code>tarfile</code>, <code>tempfile</code>, <code>xml</code>, <code>zipfile</code></td><td>any path</td></tr>
+<tr><td><code>ftplib</code>, <code>http</code>, <code>imaplib</code>, <code>poplib</code>, <code>select</code>, <code>selectors</code>, <code>smtplib</code>, <code>socket</code>, <code>ssl</code>, <code>urllib</code>, <code>xmlrpc</code></td><td>any host</td></tr>
+<tr><td><code>aiohttp</code>, <code>httpx</code>, <code>logging</code>, <code>requests</code>, <code>urllib3</code></td><td>any path and any host</td></tr>
+<tr><td><code>asyncio</code>, <code>builtins</code>, <code>code</code>, <code>concurrent</code>, <code>ctypes</code>, <code>importlib</code>, <code>multiprocessing</code>, <code>nt</code>, <code>os</code>, <code>pdb</code>, <code>pickle</code>, <code>pkgutil</code>, <code>platform</code>, <code>posix</code>, <code>pty</code>, <code>runpy</code>, <code>shelve</code>, <code>signal</code>, <code>site</code>, <code>subprocess</code>, <code>sys</code>, <code>venv</code>, <code>webbrowser</code>, <code>winreg</code>, <code>zipimport</code></td><td>nothing enforced</td></tr>
+</tbody></table></div>
+<p>The level is what was applied and held, not what was asked for. <strong>full</strong>:
+every file, network and process limit of this run's budget is held by the
+kernel. <strong>partial</strong>: some are, and <code>confinement_reason</code> names each that is
+not. <strong>none</strong>: nothing is - <code>--no-confine</code>, a module that widens to nothing
+enforced, a system that offers nothing, or a run that is exempt:</p>
+<div class="table-wrap" tabindex="0"><table>
+<thead><tr><th>Not confined</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td><code>sabline.run()</code> with no <code>timeout</code> and no <code>max_memory_mb</code></td><td>it runs in the caller's process, which Sabline must not confine: Landlock, seccomp, a sandbox profile and a lowered token cannot be taken off again. Pass a limit, or use a Pool.</td></tr>
+<tr><td>the REPL, <code>sabline test</code>, <code>sabline bench</code></td><td>they run many programs in one process, each read after the last; a policy applied for the first would hold the rest</td></tr>
+<tr><td>a <code>Pool</code> made without <code>import_root</code>, on reads</td><td>its workers compile each program they are sent, and an import may name any .vel file the process can read, so reads are not held and the level is partial; writes, the network and processes are held</td></tr>
+<tr><td>compiling, proving and native code generation</td><td>done before the policy is applied in a single run, since imports are read from wherever they are and Z3 and LLVM load their libraries; the program's first statement runs after it</td></tr>
+</tbody></table></div>
+</main>
+<footer class="foot">
+<p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/os-enforces.md">docs/os-enforces.md</a> by build_docs.py, for Sabline 8.8.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
+</footer>
+</div>
+
+</div>
+<p id="live" class="vh" aria-live="polite"></p>
+</body>
+</html>

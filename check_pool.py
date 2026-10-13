@@ -606,8 +606,11 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
                  # deps-diff's table of lockfile names (7.1), read only
                  "_LOCKFILES",
                  # confinement's tables (8.4): what a granted module widens
-                 # the OS policy to, and seccomp's numbers for each machine
+                 # the OS policy to, and seccomp's numbers for each machine,
+                 # and from 9.0's M4 how much of each row of the threat
+                 # model's table each system holds
                  "FFI_WIDENS", "_AUDIT_ARCH", "_SYSCALLS", "_SYS_SECCOMP",
+                 "ENFORCES_HELD",
                  # which release last wrote a predicate type at each
                  # address this project has used (8.6), read only
                  "_NAMED_UNTIL",

@@ -659,11 +659,24 @@ property:
 
 * **Four modules may lift the deny**, each with `#![allow(unsafe_code)]`
   and the reason in its own module comment: `confine_linux.rs`,
-  `confine_macos.rs`, `confine_windows.rs` and `confine_fault.rs`, the
-  fault-injection hook that attempts one effect itself. `check_rt.py`
-  holds that list (`MAY_BE_UNSAFE`), so a fifth is a failing check and not
-  a quiet addition, and a module on the list that no longer needs it is a
-  failing check too.
+  `confine_macos.rs`, `confine_windows.rs` and `confine_appcontainer.rs`,
+  which starts a run's own process inside a Windows AppContainer.
+  `check_rt.py` holds that list (`MAY_BE_UNSAFE`), so a fifth is a failing
+  check and not a quiet addition, and a module on the list that no longer
+  needs it is a failing check too.
+* **One more lifts it behind a feature**: `confine_fault.rs`, the honesty
+  test's hook. Three of its attempts are C calls - a Unix socket made,
+  `kill(pid, 0)`, a bind mount - and one thing more in it stands a layer
+  down (`SABLINE_FAULT_NO_LANDLOCK`, which makes the run take the path a
+  kernel with no Landlock would). A variable that turns a layer off in a
+  released binary is a variable that turns confinement off, so the module
+  lifts the deny with
+  `#![cfg_attr(feature = "fault-inject", allow(unsafe_code))]` and that
+  feature is **not a default**: a released crate builds neither. The
+  suites that measure the confinement build with it
+  (`cargo build --release --features fault-inject`), and `check_rt.py`
+  holds the shape - the module lifts it that way and not plainly, the
+  feature is declared, and the default feature set is empty.
 * `deny` rather than `forbid` because `forbid` cannot be lifted anywhere:
   it would have had to come off the whole crate for one module to call a
   kernel. Everything else - the lexer, the parser, the checkers, the

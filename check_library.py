@@ -21,6 +21,22 @@ sys.path.insert(0, str(HERE))
 import sabline  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
+def _producer_version() -> str:
+    """The version a receipt made here names as its producer's: this
+    package's, or sabline-rt's when the run goes through it (9.0, M4). The
+    two are deliberately apart while 9.0 is unreleased, so the question is
+    which runtime answered, not which number."""
+    from sabline import through_rt
+    if through_rt.chosen() != "rust":
+        return str(sabline.VERSION)
+    exe = through_rt.binary()
+    if exe is None:
+        return str(sabline.VERSION)
+    said = subprocess.run([exe, "--version"], capture_output=True, text=True,
+                          timeout=120).stdout.split()
+    return said[-1] if said else ""
+
+
 def _spec_schema(schemas: Any, which: str) -> Any:
     """One of sabline-spec's schemas, under whichever name the checkout has
     it: they are named for the documents they describe, and the corpus
@@ -3573,10 +3589,12 @@ def main() -> int:
        doc.get("_type") == "https://in-toto.io/Statement/v1"
        and doc.get("predicateType") == sabline.RECEIPT_PREDICATE_TYPE
        and pred.get("schema") == "sabline.receipt/1"
-       and pred.get("producer", {}).get("version") == sabline.VERSION
+       and pred.get("producer", {}).get("version") == _producer_version()
        and doc["subject"] == [{"name": "<source>", "digest": {
            "sha256": _h81.sha256(DECLASSIFIED.encode()).hexdigest()}}],
-       str(doc)[:300])
+       [doc.get("_type"), doc.get("predicateType"), pred.get("schema"),
+        pred.get("producer"), _producer_version(), doc.get("subject"),
+        _h81.sha256(DECLASSIFIED.encode()).hexdigest()])
     ok("...with the budget, the parameters, the declassification and its "
        "reason, how it ended, and how long it took",
        pred.get("budget") == "declassify,env,io"

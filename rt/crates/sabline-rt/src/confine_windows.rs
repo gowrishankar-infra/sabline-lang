@@ -4,13 +4,18 @@
 //! removed** from the token; and a **low integrity level** when the budget
 //! grants no write.
 //!
-//! This is `sabline/confine.py`'s `_apply_windows`, ported, and so far it
-//! holds exactly what that one holds and leaves out what that one leaves
-//! out: reads are not held, and the network is not held. The AppContainer
-//! that would hold both is what `rt/spikes/appcontainer/` measured, and it
-//! is entered by [`crate::confine_windows`]'s bootstrap - a process cannot
-//! enter a container after it has started, so the run's own process is
-//! started inside one by the process that was asked for the run.
+//! Those three are `sabline/confine.py`'s `_apply_windows`, ported. Beside
+//! them, from 9.0's M4, is the **AppContainer**
+//! ([`crate::confine_appcontainer`]), which holds what they cannot: reads
+//! to the ACEs the run's parent granted, and the network to the capability
+//! it was or was not given. A process cannot enter a container after it
+//! has started, so the run's own process is started inside one by the
+//! process that was asked for the run, and this module asks the kernel
+//! whether that is where it is rather than taking the parent's word.
+//!
+//! Where a container is left off - a budget granting a loopback host, or
+//! one that restricts neither reads nor writes - the report is what it was
+//! before that rung, with the reason saying which.
 //!
 //! What is pure here - [`lower_the_label`], the words of every report - is
 //! compiled and tested on every platform, as `pypath`'s two flavours are;
@@ -30,22 +35,22 @@ pub const WINDOWS_TOKEN: &str = "token-privileges-removed";
 /// The layer name for a process at the low integrity level.
 pub const WINDOWS_LOW: &str = "low-integrity";
 
-/// What Windows does not hold, and why - the note every report carries
-/// while a budget asks for reads or for the network to be held.
+/// What Windows does not hold without a container, and why - the note a
+/// report carries while a budget asks for reads or for the network to be
+/// held and no container was entered **and nobody said why**.
 ///
 /// It is **not** the package's words. `sabline/confine.py`'s say that an
 /// AppContainer is not used because a `python.exe` started in one cannot
 /// read its own installation, which is true of that runtime and not of
-/// this one: `rt/spikes/appcontainer/` measured a Rust binary starting
-/// inside a container with no ACE on itself, reading only what it was
-/// given, and refused the network without a capability. So this says what
-/// is true here - that sabline-rt does not enter one **yet** - and the day
-/// it does, this constant and the row of THREAT_MODEL.md that prints it
-/// change together.
+/// this one. A run of `sabline-rt exec` that was asked for confinement
+/// always says where it stands ([`crate::confine_appcontainer::here`]), so
+/// this is the note of a process that never considered one - a batch of
+/// the agreement gate's, where one process runs some thousands of
+/// programs.
 pub const WINDOWS_NOT_HELD: &str =
-    "reads and the network need an AppContainer, which sabline-rt does not enter yet: a \
-     process cannot enter one after it has started, so the run's own process has to be \
-     started inside one (plan/9.0.md, M4)";
+    "reads and the network need an AppContainer, and this process was not started inside \
+     one: a process cannot enter one after it has started, so the run's own process has to \
+     be started inside one (plan/9.0.md, M4)";
 
 /// Whether this policy's process may be given the low integrity level: it
 /// may when the budget grants no write at all, since a write to anything of
@@ -61,8 +66,9 @@ pub fn lower_the_label(policy: &Json, extras: &Extras) -> bool {
 pub fn supported() -> (bool, String) {
     (
         true,
-        "a job object, the token's privileges removed, a low integrity level for a budget \
-         with no write grant; no AppContainer"
+        "an AppContainer the run's own process is started inside, a job object, the token's \
+         privileges removed, and a low integrity level for a budget with no write grant \
+         where no container was entered"
             .to_string(),
     )
 }
@@ -513,14 +519,25 @@ mod calls {
     }
 }
 
-/// Ask the job object and the token to hold this process to `policy`, and
-/// say what they did.
+/// Ask the container, the job object and the token to hold this process to
+/// `policy`, and say what they did.
 #[cfg(windows)]
 pub fn apply(policy: &Json, extras: &Extras) -> Report {
+    use crate::confine_appcontainer::{plan, Where, APPCONTAINER};
+
     let mut held: Vec<(&'static str, Held)> = Vec::new();
     let mut layers: Vec<String> = Vec::new();
     let mut notes: Vec<String> = Vec::new();
-    let lower = lower_the_label(policy, extras);
+    // the container, which this process is in or is not: the kernel
+    // answered that before the first statement, and the answer is here
+    let inside = matches!(crate::confine_appcontainer::here(), Some(Where::Inside));
+    if inside {
+        layers.push(APPCONTAINER.to_string());
+    }
+    // a container holds writes by the ACEs it was given, so the low
+    // integrity level - which holds them only by being lower than
+    // everything of the user's - is not asked for inside one
+    let lower = !inside && lower_the_label(policy, extras);
     let (no_privileges, not_lowered) = calls::token(lower, extras.temp.as_deref());
     match &no_privileges {
         None => layers.push(WINDOWS_TOKEN.to_string()),
@@ -542,10 +559,20 @@ pub fn apply(policy: &Json, extras: &Extras) -> Report {
             layers.push(WINDOWS_JOB.to_string());
         }
     }
+    // what the container was given is what this run itself derived from
+    // the same policy and the same request, so the widening it reports is
+    // the widening the ACEs carry
+    let made = if inside { plan(policy, extras) } else { Default::default() };
     if granted(policy, "fs_write").is_some() {
         held.push((
             "fs_write",
-            if not_lowered.is_none() {
+            if inside {
+                if made.wider.is_empty() {
+                    Held::Yes
+                } else {
+                    Held::Partly(made.wider.join("; "))
+                }
+            } else if not_lowered.is_none() {
                 Held::Yes
             } else if !lower {
                 Held::No(
@@ -559,15 +586,50 @@ pub fn apply(policy: &Json, extras: &Extras) -> Report {
         ));
     }
     if granted(policy, "fs_read").is_some() {
-        held.push(("fs_read", Held::No("reads are not held on Windows".to_string())));
+        held.push((
+            "fs_read",
+            if !inside {
+                Held::No("reads are not held on Windows without an AppContainer".to_string())
+            } else if made.wider_reads.is_empty() {
+                Held::Yes
+            } else {
+                Held::Partly(made.wider_reads.join("; "))
+            },
+        ));
     }
-    if !crate::confine::any_net(policy) {
-        held.push(("net", Held::No("the network is not held on Windows".to_string())));
+    if no_net(policy) {
+        held.push((
+            "net",
+            if inside {
+                Held::Yes
+            } else {
+                Held::No(
+                    "the network is not held on Windows without an AppContainer".to_string(),
+                )
+            },
+        ));
+    } else if !crate::confine::any_net(policy) {
+        held.push((
+            "net",
+            if inside {
+                Held::Partly(
+                    "the internetClient capability admits every host; the host is held by \
+                     the language alone"
+                        .to_string(),
+                )
+            } else {
+                Held::No(
+                    "the network is not held on Windows without an AppContainer".to_string(),
+                )
+            },
+        ));
     }
-    if granted(policy, "fs_read").is_some() || !crate::confine::any_net(policy) {
-        notes.push(WINDOWS_NOT_HELD.to_string());
+    if !inside && (granted(policy, "fs_read").is_some() || !crate::confine::any_net(policy)) {
+        notes.push(match crate::confine_appcontainer::here() {
+            Some(Where::Without(why)) => format!("no AppContainer for this run: {why}"),
+            _ => WINDOWS_NOT_HELD.to_string(),
+        });
     }
-    let _ = no_net(policy);
     judge(policy, &held, &layers, &notes)
 }
 

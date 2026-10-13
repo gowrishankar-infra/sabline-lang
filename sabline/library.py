@@ -102,8 +102,13 @@ def _source_to_file(source: str, path: str | None) -> tuple[Any, ...]:
     if path is not None:
         return path, None
     home = tempfile.mkdtemp(prefix="sabline-source-")     # 0700 on POSIX
+    # newline="" so the file holds the text's own bytes: a run through
+    # sabline-rt reads this file and digests what it read, and on Windows
+    # the default translation would make every line feed a carriage return
+    # and a line feed - a receipt whose subject digest is of bytes nobody
+    # passed in (9.0, M4)
     tmp = tempfile.NamedTemporaryFile("w", suffix=".vel", delete=False,
-                                      encoding="utf-8", dir=home)
+                                      encoding="utf-8", newline="", dir=home)
     tmp.write(source)
     tmp.close()
     return tmp.name, tmp.name
@@ -987,6 +992,7 @@ def _through_rt_here(source: Any, *, path: Any, budget: Any, args: Any,
                      import_root: Any, event: Any, timeout: Any = None,
                      max_memory_mb: Any = None, call: Any = None,
                      on_kill: Any = None, confine: Any = None,
+                     stop_file: Any = None,
                      ) -> tuple["through_rt.Ended", str, str, str]:
     """sabline-rt's run of a program this package has checked: (how it
     ended, what it printed, what it logged, the file it was run from). Its
@@ -997,7 +1003,9 @@ def _through_rt_here(source: Any, *, path: Any, budget: Any, args: Any,
     or, not given, this process, made the run's for the run (`_hosting`).
     `confine` is what the run asks of the operating system (9.0, M4), this
     process's own when it is not given - a pool's is its own pool's, and
-    the host of what the run relays is then its worker, not this one."""
+    the host of what the run relays is then its worker, not this one.
+    `stop_file` is `sabline eval`'s, which the pool holds rather than this
+    process, since this process is the one that starts sabline-rt."""
     import io as _io
     from . import confine as _confine
     from .budget import _frozen_epoch
@@ -1034,7 +1042,7 @@ def _through_rt_here(source: Any, *, path: Any, budget: Any, args: Any,
                 # an unbounded run is now a level it can be given.
                 confine=confine if confine is not None
                 else _confine.asked_of_runtime(),
-                on_kill=on_kill)
+                stop_file=stop_file, on_kill=on_kill)
     finally:
         _drop_source_file(temp)
     return ended, out.getvalue(), err.getvalue(), where

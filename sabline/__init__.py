@@ -217,6 +217,7 @@ from .budget import (  # noqa: E402
     allow_path as allow_path,
     checked_int as checked_int,
     cli_budget as cli_budget,
+    confine_flags as confine_flags,
     count_op as count_op,
     expand_allow as expand_allow,
     ffi_reach as ffi_reach,

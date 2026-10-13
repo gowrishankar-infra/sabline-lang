@@ -12,7 +12,7 @@ members = ["crates/sabline-rt"]
 exclude = ["crates/sabline-rt/fuzz"]
 
 [workspace.package]
-version = "9.0.0-alpha.12"
+version = "9.0.0-alpha.13"
 edition = "2021"
 rust-version = "1.82"
 license = "Apache-2.0"
@@ -21,11 +21,13 @@ homepage = "https://sabline.dev"
 authors = ["Palakurthi Gowri Shankar"]
 
 [workspace.lints.rust]
-# `deny` and not `forbid` since 9.0's M4: the three confinement modules
-# carry `#![allow(unsafe_code)]`, because Landlock, seccomp, sandbox_init
-# and the Windows AppContainer are C entry points and cannot be called
-# otherwise. `forbid` cannot be lifted anywhere, so it would have had to
-# come off the whole crate. check_rt.py holds the list of three.
+# `deny` and not `forbid` since 9.0's M4: four confinement modules carry
+# `#![allow(unsafe_code)]`, because Landlock, seccomp, sandbox_init, the
+# Windows job object and the Windows AppContainer are C entry points and
+# cannot be called otherwise, and confine_fault.rs carries it behind the
+# `fault-inject` feature, which is off by default. `forbid` cannot be
+# lifted anywhere, so it would have had to come off the whole crate.
+# check_rt.py holds both lists.
 unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
 missing_docs = "warn"

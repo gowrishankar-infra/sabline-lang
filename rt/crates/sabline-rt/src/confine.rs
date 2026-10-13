@@ -641,6 +641,29 @@ pub fn tcp_ports(policy: &Json) -> Option<Vec<u32>> {
     Some(ports.into_iter().collect())
 }
 
+/// The hosts a net policy allows, with each one's port, in the order the
+/// document holds them; `None` when it names no host list - `none` or
+/// `any`.
+pub fn net_hosts(policy: &Json) -> Option<Vec<(String, Option<u32>)>> {
+    let Some(Json::Obj(fields)) = field(policy, "net") else { return None };
+    let Some(Json::List(hosts)) = fields.get("hosts") else { return None };
+    Some(
+        hosts
+            .iter()
+            .filter_map(|pair| match pair {
+                Json::List(hp) if hp.len() == 2 => match (&hp[0], &hp[1]) {
+                    (Json::Str(host), Json::Int(port)) => {
+                        Some((host.clone(), u32::try_from(*port).ok()))
+                    }
+                    (Json::Str(host), _) => Some((host.clone(), None)),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect(),
+    )
+}
+
 /// The paths a policy's `fs_read` or `fs_write` names, in the order the
 /// document holds them; `None` for any path.
 pub fn granted(policy: &Json, which: &str) -> Option<Vec<String>> {
@@ -704,6 +727,12 @@ pub struct Extras {
     /// Leave reads unheld: a pool with no import root, where an import may
     /// name any file the process can read.
     pub read_any: bool,
+    /// The file whose appearance stops the run (`sabline eval`), which the
+    /// run must be able to *look for* even though it is outside every
+    /// grant. Landlock governs opening and not `stat`, and a lowered token
+    /// stops neither, so only the Windows AppContainer has to be told
+    /// (9.0, M4): a container that could not look for it would never stop.
+    pub stop_file: Option<String>,
 }
 
 /// What the host asked of the operating system for one run (M4).
@@ -982,6 +1011,111 @@ pub fn policy_document(allow: Option<&str>, deny: Option<&str>) -> Json {
         ("default", one(true, false)),
         ("strict", one(true, true)),
         ("no_confine", one(false, false)),
+    ])
+}
+
+/// The schema of the document [`enforces_document`] writes.
+pub const ENFORCES_SCHEMA: &str = "sabline.os-enforces/1";
+
+/// The systems [`ENFORCES_HELD`]'s three words are in the order of.
+pub const ENFORCES_SYSTEMS: [&str; 3] = ["linux", "macos", "windows"];
+
+/// **sabline-rt's own answer** to `sabline/confine.py`'s `ENFORCES_HELD`:
+/// for each row of that module's `ENFORCES`, how much of it the kernel
+/// holds for a run **this runtime** makes, one word per system, and the
+/// reason where that is not the word the package's own runtime gives.
+///
+/// The rows are the package's, in the package's order, and the prose
+/// stays there: a second copy of it would be two places to keep one fact.
+/// What is here is the one thing that differs, which is **how much**, and
+/// it differs on Windows alone - the run's own process is started inside
+/// an AppContainer ([`crate::confine_appcontainer`]), which a running
+/// `python.exe` cannot enter.
+///
+/// `check_confine.py`'s `table_cases` holds this table to the package's:
+/// the rows and their order are the same, no cell is weaker, every cell
+/// that differs carries a reason, and `docs/os-enforces.md` prints them.
+pub const ENFORCES_HELD: &[(&str, [&str; 3], &str)] = &[
+    (
+        "no `fs` granted",
+        ["yes", "partly", "yes"],
+        "windows: the run's own process is started inside an AppContainer with an ACE for \
+         nothing but the files it reads, so a read or a write of anything of the user's is \
+         refused by the kernel and not only a write",
+    ),
+    (
+        "`fs:read:DIR`",
+        ["yes", "partly", "yes"],
+        "windows: the container is given one ACE for DIR, resolved, and one for each file \
+         the run itself reads; a read of anything else of the user's is refused",
+    ),
+    (
+        "`fs:write:DIR`",
+        ["yes", "yes", "yes"],
+        "windows: the container is given an ACE for DIR that carries write and delete, and \
+         the integrity level is not lowered, because the ACE is what holds the write",
+    ),
+    ("`fs`, `fs:read`, `fs:write` with no path", ["no", "no", "no"], ""),
+    ("a credential location under a broad grant (E318)", ["no", "no", "no"], ""),
+    (
+        "no `net` granted",
+        ["yes", "yes", "yes"],
+        "windows: the container is made with no capability, so a socket to anything outside \
+         the machine is refused with WSAEACCES",
+    ),
+    (
+        "`net:HOST`, `net:HOST:PORT`",
+        ["partly", "partly", "partly"],
+        "windows: the container is made with internetClient, which admits every host, so \
+         the host is held by the language alone, as on Linux and macOS",
+    ),
+    ("`net` with no host", ["no", "no", "no"], ""),
+    ("`@N` counts", ["no", "no", "no"], ""),
+    ("`io`", ["no", "no", "no"], ""),
+    ("`env`", ["no", "no", "no"], ""),
+    ("`clock`, `rand`, `declassify`", ["no", "no", "no"], ""),
+    ("`tool`", ["no", "no", "no"], ""),
+    ("starting a process (never a budget item)", ["yes", "yes", "yes"], ""),
+    ("the rest of the deny-list (never a budget item)", ["yes", "partly", "partly"], ""),
+    ("`ffi:MODULE`", ["no", "no", "no"], ""),
+    (
+        "`ffi:MODULE` under `--confine strict`",
+        ["yes", "partly", "yes"],
+        "windows: under strict the policy is the budget's own grants, and the container \
+         holds a module's own calls - native code, ctypes - as it holds the runtime's",
+    ),
+    (
+        "`--require-confinement full` or `partial` (never a budget item)",
+        ["yes", "yes", "yes"],
+        "",
+    ),
+    ("time and memory limits", ["yes", "partly", "yes"], ""),
+];
+
+/// [`ENFORCES_HELD`] as one document, for `sabline-rt os-policy
+/// --enforces`, which `check_confine.py` reads.
+pub fn enforces_document() -> Json {
+    Json::obj([
+        ("schema", Json::text(ENFORCES_SCHEMA)),
+        ("systems", Json::List(ENFORCES_SYSTEMS.iter().map(|s| Json::text(*s)).collect())),
+        (
+            "rows",
+            Json::List(
+                ENFORCES_HELD
+                    .iter()
+                    .map(|(row, held, why)| {
+                        Json::obj([
+                            ("row", Json::text(*row)),
+                            (
+                                "held",
+                                Json::List(held.iter().map(|h| Json::text(*h)).collect()),
+                            ),
+                            ("why", Json::text(*why)),
+                        ])
+                    })
+                    .collect(),
+            ),
+        ),
     ])
 }
 

@@ -208,6 +208,10 @@ Usage:
         [--root DIR]                       imports only from DIR (E515)
         [--check-timeout S]                and checks and audits under
         [--check-memory-mb M]              60 s and 2048 MB
+        [--no-confine]                     workers not confined by the OS
+        [--confine strict]                 a granted module widens no policy
+        [--require-confinement full|partial]
+                                           refuse a run the OS holds less of
   sabline mcp-install                      set up the tools in your assistant
   sabline mcp-manifest -o tools.json       the MCP server's tools, hashed
   sabline mcp-verify tools.json            a running server against a signed
@@ -221,6 +225,9 @@ Usage:
         [--root DIR]                       imports only from DIR (E515)
         [--rate-limit N]                   N requests a minute a token (600)
         [--no-confine]                     workers not confined by the OS
+        [--confine strict]                 a granted module widens no policy
+        [--require-confinement full|partial]
+                                           refuse a run the OS holds less of
         [--check-timeout S]                checks and audits under 60 s
         [--check-memory-mb M]              and 2048 MB unless raised
   sabline capabilities init [path]         record the capability surface in

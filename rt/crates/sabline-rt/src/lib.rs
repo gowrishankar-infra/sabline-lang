@@ -43,19 +43,25 @@
 //! assert!(problems.is_empty());
 //! ```
 //!
-//! # `unsafe` in three modules and nowhere else
+//! # `unsafe` in four modules and nowhere else
 //!
 //! The crate denied `unsafe_code` and had none at all until 9.0's M4,
 //! where the operating system's own limits - Landlock, seccomp-bpf,
 //! `sandbox_init`, the Windows job object, token and AppContainer - have
 //! to be asked for, and every one of them is a C entry point that cannot
 //! be called safely. They are asked for in [`confine_linux`],
-//! [`confine_macos`] and [`confine_windows`], which carry
-//! `#![allow(unsafe_code)]` and are the only three modules that do;
-//! `check_rt.py` holds that list, so a fourth is a failing check and not
-//! a quiet addition. Everything else - the lexer, the parser, the
-//! checkers, the interpreter, the budget parser, the receipts - is still
-//! `deny`, which is what the workspace sets.
+//! [`confine_macos`], [`confine_windows`] and [`confine_appcontainer`],
+//! which carry `#![allow(unsafe_code)]` and are the only four modules a
+//! released crate builds that do; `check_rt.py` holds that list, so a
+//! fifth is a failing check and not a quiet addition. Everything else -
+//! the lexer, the parser, the checkers, the interpreter, the budget
+//! parser, the receipts - is still `deny`, which is what the workspace
+//! sets.
+//!
+//! [`confine_fault`], the honesty test's hook, is the fifth and is behind
+//! the `fault-inject` feature, which is off by default: a released crate
+//! never carries its calls, and the suites that measure the confinement
+//! build with it (`cargo build --features fault-inject`).
 //!
 //! rt/README.md's rule applies from the first block: every `unsafe` block
 //! carries a `// SAFETY:` comment naming the invariant that makes it sound
@@ -71,6 +77,7 @@ pub mod ceiling;
 pub mod check_dump;
 pub mod checker;
 pub mod confine;
+pub mod confine_appcontainer;
 pub mod confine_fault;
 pub mod confine_linux;
 pub mod confine_macos;

@@ -716,6 +716,11 @@ class Pool:
     # whose every run may go through sabline-rt (9.0, M3)
     _kept_by: str | None = None
 
+    def _stop_file(self) -> str | None:
+        """The file whose appearance stops a run on this pool with E615, or
+        None: `sabline eval`'s, which its own pool holds (9.0, M4)."""
+        return None
+
     def __init__(self, size: int = 4, *, allow: set[str] | str | None = None,
                  deny: set[str] | None = None, timeout: float | None = None,
                  max_memory_mb: int | None = None, native: bool = True,
@@ -1099,7 +1104,11 @@ class Pool:
                 confine=_confine.asked_of_runtime(
                     on=self.confine, strict=self.confine_strict,
                     require=self.require_confinement,
-                    host=(worker.confinement or {}).get("level")))
+                    host=(worker.confinement or {}).get("level")),
+                # and the stop file this pool holds, which is eval's and
+                # no other pool's: this process starts sabline-rt, so the
+                # worker's own --stop-file does not reach the run
+                stop_file=self._stop_file())
         finally:
             worker.relayed()
         if ended.finished:

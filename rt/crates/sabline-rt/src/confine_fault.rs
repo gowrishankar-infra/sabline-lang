@@ -19,14 +19,59 @@
 //! `spawn-breakaway` (Windows: a process asked to leave the job),
 //! `signal:PID`, `mount:SOURCE:TARGET` (Linux: a bind mount) and
 //! `unix-socket` (a Unix-domain socket made).
+//!
+//! # The `fault-inject` feature
+//!
+//! Three of those attempts are C calls - a Unix socket made, `kill(pid,
+//! 0)`, a bind mount - and one more thing here stands a layer down:
+//! [`NO_LANDLOCK_ENV`], which makes this runtime behave as a kernel with
+//! no Landlock would, so that the path a machine nobody has would take is
+//! measured on an ordinary one. A variable that turns a layer off in a
+//! released binary is a variable that turns confinement off, which
+//! `check_self_budget.py` exists to refuse, so **both are behind the
+//! `fault-inject` feature, which is off by default**: a released crate
+//! carries neither, and the suites that measure the confinement build with
+//! it (`cargo build --release --features fault-inject`). The attempts that
+//! need no C call - a file read, a file written, a connection, a process
+//! started - are what the person who set the variable could do themselves,
+//! and they are here in every build. `check_rt.py` holds the feature's
+//! shape (9.0, M4; the maintainer's answer of 2026-10-13).
 
-#![allow(unsafe_code)] // a Unix socket, a signal and a mount are C calls
+#![cfg_attr(feature = "fault-inject", allow(unsafe_code))]
 
 use crate::confine::{Report, NONE};
 use crate::SablineError;
 
 /// The variable the hook is read from.
 pub const FAULT_ENV: &str = "SABLINE_FAULT_INJECT";
+
+/// The variable that makes this runtime behave as a kernel with no
+/// Landlock would: the ruleset is not built, the layer reports *no: this
+/// kernel has no Landlock*, seccomp-bpf is applied as ever, and the level
+/// is what such a machine gives. Behind the `fault-inject` feature, so a
+/// released binary has no way to stand a layer down.
+pub const NO_LANDLOCK_ENV: &str = "SABLINE_FAULT_NO_LANDLOCK";
+
+/// Whether Landlock is to be treated as absent on this run (the leg that
+/// has no machine: plan/9.0.md, M4). Always false without the
+/// `fault-inject` feature.
+#[cfg(feature = "fault-inject")]
+pub fn landlock_absent() -> bool {
+    std::env::var(NO_LANDLOCK_ENV).is_ok_and(|said| !said.is_empty() && said != "0")
+}
+
+/// Whether Landlock is to be treated as absent on this run: never, in a
+/// build without the `fault-inject` feature.
+#[cfg(not(feature = "fault-inject"))]
+pub fn landlock_absent() -> bool {
+    false
+}
+
+/// What a fault whose calls this build does not carry says, in place of
+/// attempting one.
+#[cfg(not(feature = "fault-inject"))]
+const NOT_BUILT: &str = "this sabline-rt was built without its fault-injection calls (the \
+                         fault-inject feature), so the attempt was not made";
 
 /// What one attempt ended as.
 pub enum Tried {
@@ -216,7 +261,7 @@ fn spawn(breakaway: bool) -> Result<(), Stop> {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "fault-inject"))]
 mod calls {
     use std::os::raw::{c_char, c_int, c_ulong, c_void};
 
@@ -234,7 +279,7 @@ mod calls {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "fault-inject"))]
 fn unix_socket() -> Result<(), Stop> {
     const AF_UNIX: std::os::raw::c_int = 1;
     const SOCK_STREAM: std::os::raw::c_int = 1;
@@ -251,15 +296,15 @@ fn unix_socket() -> Result<(), Stop> {
     Ok(())
 }
 
-#[cfg(not(unix))]
+#[cfg(any(not(unix), not(feature = "fault-inject")))]
 fn unix_socket() -> Result<(), Stop> {
-    Err(S(Skipped(
-        "sabline: fault injection: a Unix-domain socket is not attempted on Windows"
-            .to_string(),
-    )))
+    Err(S(Skipped(format!(
+        "sabline: fault injection: a Unix-domain socket is not attempted {}",
+        not_here("on Windows")
+    ))))
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "fault-inject"))]
 fn signal(rest: &str) -> Result<(), Stop> {
     let pid: i32 = rest
         .parse()
@@ -273,18 +318,17 @@ fn signal(rest: &str) -> Result<(), Stop> {
     Ok(())
 }
 
-#[cfg(not(unix))]
+#[cfg(any(not(unix), not(feature = "fault-inject")))]
 fn signal(_rest: &str) -> Result<(), Stop> {
     // Windows has no signal to send: os.kill's 0 there is CTRL_C_EVENT,
     // which interrupts the console's every process
-    Err(S(Skipped(
-        "sabline: fault injection: a signal to another process is not attempted on Windows, \
-         which has no such signal"
-            .to_string(),
-    )))
+    Err(S(Skipped(format!(
+        "sabline: fault injection: a signal to another process is not attempted {}",
+        not_here("on Windows, which has no such signal")
+    ))))
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, feature = "fault-inject"))]
 fn mount(rest: &str) -> Result<(), Stop> {
     const MS_BIND: std::os::raw::c_ulong = 4096;
     let (source, target) = match rest.split_once(':') {
@@ -314,11 +358,27 @@ fn mount(rest: &str) -> Result<(), Stop> {
     Ok(())
 }
 
-#[cfg(not(unix))]
+#[cfg(any(not(unix), not(feature = "fault-inject")))]
 fn mount(_rest: &str) -> Result<(), Stop> {
-    Err(S(Skipped(
-        "sabline: fault injection: a bind mount is not attempted on Windows".to_string(),
-    )))
+    Err(S(Skipped(format!(
+        "sabline: fault injection: a bind mount is not attempted {}",
+        not_here("on Windows")
+    ))))
+}
+
+/// Why one of the three C calls was not attempted: the platform, or a
+/// build that does not carry them.
+#[cfg(any(not(unix), not(feature = "fault-inject")))]
+fn not_here(platform: &str) -> String {
+    #[cfg(feature = "fault-inject")]
+    {
+        platform.to_string()
+    }
+    #[cfg(not(feature = "fault-inject"))]
+    {
+        let _ = platform;
+        NOT_BUILT.to_string()
+    }
 }
 
 #[cfg(test)]
@@ -415,7 +475,7 @@ mod tests {
         }
     }
 
-    #[cfg(unix)]
+    #[cfg(all(unix, feature = "fault-inject"))]
     #[test]
     fn a_unix_socket_is_made_and_closed_or_refused() {
         match inject_named("unix-socket", "", None) {
@@ -425,7 +485,7 @@ mod tests {
         }
     }
 
-    #[cfg(unix)]
+    #[cfg(all(unix, feature = "fault-inject"))]
     #[test]
     fn a_signal_names_a_process_and_sends_nothing() {
         let me = std::process::id() as i32;
@@ -441,7 +501,7 @@ mod tests {
         }
     }
 
-    #[cfg(unix)]
+    #[cfg(all(unix, feature = "fault-inject"))]
     #[test]
     fn a_bind_mount_is_refused_and_says_so() {
         // an ordinary user may not mount anything, confined or not
@@ -451,9 +511,9 @@ mod tests {
         }
     }
 
-    #[cfg(not(unix))]
+    #[cfg(any(not(unix), not(feature = "fault-inject")))]
     #[test]
-    fn what_windows_cannot_attempt_is_said_and_not_pretended() {
+    fn what_this_build_cannot_attempt_is_said_and_not_pretended() {
         for kind in ["signal", "unix-socket", "mount"] {
             match inject_named(kind, "1", None) {
                 Tried::NoSuchFault(said) => assert!(said.contains("not attempted")),

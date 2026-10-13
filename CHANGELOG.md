@@ -81,15 +81,34 @@ Python module or a tool is made there. Three things follow for a run through
 sabline-rt: a `sabline.run()` with no limit **can** be confined, since the
 program runs in another process where the package's runs in the caller's; a
 run whose host is not confined - an unbounded `sabline.run()`'s - says so in
-its receipt's reason and is `partial` rather than `full`; and `sabline eval`
-is still the package's, whose run sabline-rt does not take yet.
-docs/confinement.md.
+its receipt's reason and is `partial` rather than `full`; and from M4's third
+checkpoint a **Windows** run is held by an AppContainer of its own, so a
+budget that restricts both directions and names no loopback host is `full`
+there. docs/confinement.md and docs/os-enforces.md.
+
+api: `sabline serve` and `sabline mcp` take `--confine strict` and
+`--require-confinement full|partial` (9.0, M4), beside the `--no-confine`
+they already took: the operator's own, on the command line, carried to every
+pool the door makes. A request names a budget and never these. Either beside
+`--no-confine` asks for two opposite things and the door does not start.
+`sabline eval` refuses both by name, as it refuses `--no-confine`:
+confinement is part of its profile and has no switch; its run goes through
+sabline-rt from M4, and the stop file it needs is honoured there.
+
+fix: `sabline.run(source)` through sabline-rt on Windows wrote the source to
+a temporary file in text mode, so the receipt's subject digest was of bytes
+with a carriage return before every line feed - not of the text that was
+passed in. The file is written with the text's own bytes now. Receipts made
+by the Python runtime, and by either runtime from a file on disk, were never
+affected.
 
 compatibility: E326 is new, and given only to a run whose operator asked
 for a level of confinement; no run that does not ask is refused by it. On
 Windows the Python runtime holds neither reads nor the network, so `full`
-refuses every budget that restricts either - `io` does - and on macOS every
-run, whose level is partial at best; docs/confinement.md has the table.
+refuses every budget that restricts either - `io` does - where a run through
+sabline-rt is held by an AppContainer and is `full`; and on macOS every run
+is partial at best, so `full` refuses them all. docs/os-enforces.md has the
+table, for both runtimes.
 
 compatibility: for 9.0's Python package, the native engine is never
 different from the interpreter, as it was always meant to be. A number past
@@ -115,6 +134,78 @@ parser fuzzer found a 23 KB program whose check document was 120 MB of
 the same few problems - a minute of work for both checkers, where it is
 now a fifth of a second. `agreement_checks.py`'s
 `fn-values-nested-deeply` holds the two runtimes to it.
+
+## 9.0.0-alpha.13 - M4: the Windows AppContainer, and sabline eval through sabline-rt
+
+M4's third checkpoint (`plan/9.0.md`, *M4 - confinement, and a real Windows
+AppContainer*). **A run through sabline-rt on Windows happens inside an
+AppContainer of its own**, which is the layer the job object and the lowered
+token could not be: a process cannot enter one after it has started, so
+`sabline-rt exec` reads the request, **loads the program to learn which files
+it reads** - a lookahead, never an answer - creates a profile named for the
+run, grants its SID **one ACE per file and per granted directory**, starts a
+child `sabline-rt exec --contained SID` inside the container with its own
+standard output and error, pumps the request and the rest of its input
+through, waits, **takes every ACE back** and deletes the profile. The child
+does not take the parent's word for it: `--contained` is a claim, and the
+kernel - `TokenIsAppContainer`, `TokenAppContainerSid` - is what answers it.
+
+So **a Windows run under `io` is now `full`**, where it was `partial` on
+every release before this one: a read, a write, a connection or a process
+outside the budget's grants is refused by the kernel, which
+`check_confine.py --runtime rust` measures with the fault-injection hook.
+86 of its questions pass on Windows and 93 on Linux, none broken. The
+container is **left off**, with the reason in the receipt, for a budget
+granting a loopback host - Windows isolates a container from 127.0.0.1
+unless an administrator exempts it - and for one that restricts neither
+reads nor writes, which a container cannot express without refusing what
+the budget allows. A run killed before its parent can take the ACEs back
+leaves them naming a SID nothing can hold again, and the next run sweeps
+them.
+
+**`ENFORCES`, row for row, for both runtimes.** `sabline-rt os-policy
+--enforces` writes how much of each row of the threat model's table that
+runtime's kernel holds, one word per system; `check_confine.py` holds it to
+be at least the package's everywhere, with a reason on every cell that
+differs, and all six are Windows'. The table and its exemptions moved out
+of THREAT_MODEL.md, which was near the size a page of the site may be, into
+**[docs/os-enforces.md](docs/os-enforces.md)**, as the known-open table did
+before it.
+
+**`sabline eval`'s run is sabline-rt's too.** It was the last thing besides
+`sabline trace` that stayed in the package under
+`SABLINE_REFERENCE_RUNTIME=rust`; the profile's own refusals are still made
+here, before anything is sent anywhere, and the run goes through sabline-rt
+like any pool's. sabline-rt honours a **stop file** - looked for every 256
+calls and loop turns, E615 at the next of either, as this package's
+interpreter has since 8.3 - and a run that has one is started in a process
+group of its own, so a console break meant for whoever started it does not
+kill a run that was asked to stop.
+
+**A kernel with no Landlock, measured on a runner that has one.** There is
+no honest way to take Landlock off a kernel, and a self-hosted runner is not
+worth one machine, so the fault-injection hook is asked to take that path:
+`SABLINE_FAULT_NO_LANDLOCK` makes the ruleset not be built, the layer report
+*this kernel has no Landlock*, and seccomp-bpf be applied as ever. Reads and
+writes then go through, the network and a process are still refused, and
+`--require-confinement full` refuses the run. It is a simulation and the
+suite and the documentation say so.
+
+**The honesty test's hook is behind a feature now.** A variable that stands
+a layer down in a released binary is a variable that turns confinement off,
+so `confine_fault.rs` lifts the crate's deny of `unsafe` with
+`#![cfg_attr(feature = "fault-inject", allow(unsafe_code))]` and that
+feature is not a default: a released crate carries neither its three C calls
+nor `SABLINE_FAULT_NO_LANDLOCK`. The suites that measure the confinement
+build with it. The modules that may lift the deny plainly are four again -
+`confine_appcontainer.rs` has joined them - and `check_rt.py` holds both
+lists.
+
+This is a **pre-release** of the `sabline-rt` crate, and it publishes that
+and nothing else. 8.8.0 is still what `pip install sabline-lang`, npm, the
+Marketplace and the MCP registry give, the Action pins still name 8.8.0's
+commit, and `sabline --version` still says 8.8.0. What the Python package on
+main gained above ships with 9.0.
 
 ## 9.0.0-alpha.12 - M4: sabline-rt confines its own runs, and the command that starts it confines itself
 

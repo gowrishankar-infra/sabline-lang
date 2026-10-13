@@ -63,11 +63,16 @@ jobs:
           workspaces: rt
           key: ${{ matrix.python }}-${{ matrix.deps }}
       - name: Build sabline-rt
-        run: cargo build --release --manifest-path rt/Cargo.toml
+        # with the honesty test's hook, which is off by default so that a
+        # released crate never carries its C calls or its way of standing
+        # a layer down (9.0, M4; rt/.../confine_fault.rs)
+        run: cargo build --release --manifest-path rt/Cargo.toml --features fault-inject
       - name: sabline-rt's own tests
-        run: cargo test --manifest-path rt/Cargo.toml --release
+        run: cargo test --manifest-path rt/Cargo.toml --release --features fault-inject
       - name: clippy, with every warning an error
-        run: cargo clippy --manifest-path rt/Cargo.toml --all-targets --release -- -D warnings
+        run: |
+          cargo clippy --manifest-path rt/Cargo.toml --all-targets --release -- -D warnings
+          cargo clippy --manifest-path rt/Cargo.toml --all-targets --release --features fault-inject -- -D warnings
       - name: rustfmt
         run: cargo fmt --manifest-path rt/Cargo.toml --check
       - name: The crate holds its own rules (no unsafe, the MSRV, the cap)
@@ -278,7 +283,10 @@ jobs:
           repository: gowrishankar-infra/sabline-spec
           path: sabline-spec
       - name: Build sabline-rt
-        run: cargo build --release --manifest-path rt/Cargo.toml
+        # with the honesty test's hook, which is off by default so that a
+        # released crate never carries its C calls or its way of standing
+        # a layer down (9.0, M4; rt/.../confine_fault.rs)
+        run: cargo build --release --manifest-path rt/Cargo.toml --features fault-inject
       - name: Both runtimes agree, program for program
         run: python check_agreement.py sabline-spec/tests
       # Differences injected into sabline-rt - at least one for each kind of
@@ -350,7 +358,10 @@ jobs:
       - name: Install
         run: pip install -c requirements/ci.txt ".[full,test]"
       - name: Build sabline-rt
-        run: cargo build --release --manifest-path rt/Cargo.toml
+        # with the honesty test's hook, which is off by default so that a
+        # released crate never carries its C calls or its way of standing
+        # a layer down (9.0, M4; rt/.../confine_fault.rs)
+        run: cargo build --release --manifest-path rt/Cargo.toml --features fault-inject
       - name: The suites, question by question, through sabline-rt
         run: python suites_through_rt.py
       # The benchmark's programs as its harness runs them - each under the
@@ -369,6 +380,15 @@ jobs:
     # against the confinement itself, and both of 9.0's options - of
     # sabline-rt instead. Every claim gets an escape test on every platform
     # it claims, which is why this is a matrix and not one leg.
+    #
+    # Two of its sections are one platform's. On Windows it asks the
+    # AppContainer's own promises - the ACEs taken back, a killed run's
+    # swept, `--contained` outside a container claiming nothing. On Linux
+    # it takes the path a kernel with no Landlock would, asked for through
+    # the fault-injection hook: that is the no-Landlock leg plan/9.0.md
+    # asks for, run here rather than on a machine nobody has, and it says
+    # in the suite and in docs/confinement.md that it is a simulation
+    # (decided on 2026-10-13: no self-hosted runner).
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -389,7 +409,10 @@ jobs:
       - name: Install
         run: pip install -c requirements/ci.txt ".[full,test]"
       - name: Build sabline-rt
-        run: cargo build --release --manifest-path rt/Cargo.toml
+        # with the honesty test's hook, which is off by default so that a
+        # released crate never carries its C calls or its way of standing
+        # a layer down (9.0, M4; rt/.../confine_fault.rs)
+        run: cargo build --release --manifest-path rt/Cargo.toml --features fault-inject
       - name: What Landlock and seccomp this kernel offers
         if: runner.os == 'Linux'
         run: |

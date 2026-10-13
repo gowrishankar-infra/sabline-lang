@@ -15,9 +15,9 @@ too - and every run it makes, in its own process or in any it starts, goes
 through sabline-rt the way a user's would and writes one line saying who
 answered it (sabline/through_rt.py's log): sabline-rt - a run of the
 network, Python or a tool included, whose calls it relays back to the
-package (decided on 2026-10-11); the checks or the prover, which refused
-it before anything ran; or the Python package, and why - the eval
-profile, `sabline trace`.
+package (decided on 2026-10-11), and from 9.0's M4 an eval run too; the
+checks or the prover, which refused it before anything ran; or the Python
+package, and why - `sabline trace`.
 
 What a suite prints is written to the same log as it prints it, so each
 run is counted against the question whose line comes after it: the

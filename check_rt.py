@@ -5,18 +5,27 @@
 `rt/README.md` states them; this is what enforces them, so that a rule in
 a document is a rule and not a wish.
 
-1. **`unsafe` in the three confinement modules and nowhere else.** The
+1. **`unsafe` in the four confinement modules and nowhere else.** The
    workspace denied it and the crate had none at all until 9.0's M4, where
-   Landlock, seccomp-bpf, `sandbox_init` and the Windows job object and
-   token have to be asked for and every one of them is a C entry point.
-   They are asked for in `confine_linux.rs`, `confine_macos.rs`,
-   `confine_windows.rs` and `confine_fault.rs` - the hook that attempts
-   one effect itself - which carry `#![allow(unsafe_code)]`; MAY_BE_UNSAFE
-   is that list, and a fifth file is a failing check and not a quiet
-   addition. Every `unsafe` block carries a `// SAFETY:` comment saying
-   which invariant makes it sound and naming a test, and that test exists.
-   The scan is run against fixtures of its own, so it is known to catch
-   each of those rather than only to run.
+   Landlock, seccomp-bpf, `sandbox_init`, the Windows job object and token
+   and the Windows AppContainer have to be asked for and every one of them
+   is a C entry point. They are asked for in `confine_linux.rs`,
+   `confine_macos.rs`, `confine_windows.rs` and
+   `confine_appcontainer.rs`, which carry `#![allow(unsafe_code)]`;
+   MAY_BE_UNSAFE is that list, and a fifth file is a failing check and not
+   a quiet addition. Every `unsafe` block carries a `// SAFETY:` comment
+   saying which invariant makes it sound and naming a test, and that test
+   exists. The scan is run against fixtures of its own, so it is known to
+   catch each of those rather than only to run.
+
+   `confine_fault.rs`, the honesty test's hook, is the one module whose
+   `unsafe` is **behind a feature**: three of its attempts are C calls and
+   one thing more in it stands a layer down, so it lifts the deny with
+   `#![cfg_attr(feature = "fault-inject", allow(unsafe_code))]` and the
+   feature is off by default - a released crate carries neither (the
+   maintainer's answer of 2026-10-13). BEHIND_A_FEATURE holds that shape:
+   the module lifts it that way and not plainly, the feature exists, and
+   nothing makes it a default.
 
 2. **The minimum Rust version is stated**, in `rt/Cargo.toml`, and
    `rt/README.md` and the MSRV leg of test.yml say the same number.
@@ -53,7 +62,13 @@ DEPENDENCY_CAP = 25
 # crate with no dependencies (9.0, M4). A file not on this list that lifts
 # the workspace's `deny` is what this suite exists to catch.
 MAY_BE_UNSAFE = ("confine_linux.rs", "confine_macos.rs", "confine_windows.rs",
-                 "confine_fault.rs")
+                 "confine_appcontainer.rs")
+
+# The module that lifts the deny only under a feature, and the feature:
+# a released crate never builds it (9.0, M4).
+BEHIND_A_FEATURE = ("confine_fault.rs", "fault-inject")
+ALLOWS_UNDER_A_FEATURE = ('#![cfg_attr(feature = "{feature}", '
+                          'allow(unsafe_code))]')
 
 # How a module lifts it, and what the rest of the crate says instead.
 ALLOWS = "#![allow(unsafe_code)]"
@@ -248,6 +263,34 @@ def manifest_problems() -> list[str]:
             problems.append(f"rt/crates/sabline-rt/src/{name}: it is on "
                             f"MAY_BE_UNSAFE and does not lift the deny, so "
                             f"the list has outlived its reason")
+    # the one module whose unsafe is behind a feature, and the feature
+    # that is not a default (9.0, M4)
+    gated, feature = BEHIND_A_FEATURE
+    where = CRATE / "src" / gated
+    lift = ALLOWS_UNDER_A_FEATURE.format(feature=feature)
+    if not where.exists():
+        problems.append(f"check_rt.py: BEHIND_A_FEATURE names {gated}, "
+                        f"which is not a module of this crate")
+    else:
+        source = where.read_text(encoding="utf-8")
+        if lift not in source:
+            problems.append(
+                f"rt/crates/sabline-rt/src/{gated}: its unsafe is behind "
+                f"the {feature} feature, so it must lift the deny with "
+                f"`{lift}` and not plainly (rt/README.md)")
+        if ALLOWS in source:
+            problems.append(
+                f"rt/crates/sabline-rt/src/{gated}: it lifts the deny "
+                f"plainly as well, so a released crate would carry its "
+                f"calls after all")
+    if f"\n{feature} = []" not in crate:
+        problems.append(f"rt/crates/sabline-rt/Cargo.toml: the {feature} "
+                        f"feature must be declared there, since "
+                        f"{gated}'s unsafe is behind it")
+    if "default = []" not in crate:
+        problems.append(f"rt/crates/sabline-rt/Cargo.toml: the default "
+                        f"features must be empty, so that a released "
+                        f"crate never builds {gated}'s calls")
     if 'unsafe_op_in_unsafe_fn = "deny"' not in workspace:
         problems.append('rt/Cargo.toml: the workspace must deny '
                         'unsafe_op_in_unsafe_fn (rt/README.md)')

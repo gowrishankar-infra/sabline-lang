@@ -209,6 +209,46 @@ ENFORCES: tuple[tuple[str, str, str, str], ...] = (
      "the job object's memory limit, and the parent's clock"),
 )
 
+# How much of each row above the kernel holds, as one word per system, in
+# ENFORCES' own order (9.0, M4): "yes" the kernel holds it, "partly" it
+# holds part of it and the level says which, "no" the row is not the
+# kernel's to hold at all - what the budget does not restrict, and what
+# lives inside the process.
+#
+# The prose above is what each system does; this is how much of it counts,
+# and it is here so that the two runtimes can be compared cell for cell.
+# sabline-rt derives its own (`sabline-rt os-policy --enforces`), which
+# check_confine.py holds to be at least this one everywhere and strictly
+# more on Windows, where the run's own process is started inside an
+# AppContainer. docs/os-enforces.md prints both.
+HELD_WORDS = ("no", "partly", "yes")
+ENFORCES_HELD: dict[str, tuple[str, str, str]] = {
+    "no `fs` granted": ("yes", "partly", "partly"),
+    "`fs:read:DIR`": ("yes", "partly", "no"),
+    "`fs:write:DIR`": ("yes", "yes", "no"),
+    "`fs`, `fs:read`, `fs:write` with no path": ("no", "no", "no"),
+    "a credential location under a broad grant (E318)": ("no", "no", "no"),
+    "no `net` granted": ("yes", "yes", "no"),
+    "`net:HOST`, `net:HOST:PORT`": ("partly", "partly", "no"),
+    "`net` with no host": ("no", "no", "no"),
+    "`@N` counts": ("no", "no", "no"),
+    "`io`": ("no", "no", "no"),
+    "`env`": ("no", "no", "no"),
+    "`clock`, `rand`, `declassify`": ("no", "no", "no"),
+    "`tool`": ("no", "no", "no"),
+    "starting a process (never a budget item)": ("yes", "yes", "yes"),
+    "the rest of the deny-list (never a budget item)":
+        ("yes", "partly", "partly"),
+    "`ffi:MODULE`": ("no", "no", "no"),
+    "`ffi:MODULE` under `--confine strict`": ("yes", "partly", "partly"),
+    "`--require-confinement full` or `partial` (never a budget item)":
+        ("yes", "yes", "yes"),
+    "time and memory limits": ("yes", "partly", "yes"),
+}
+
+# The systems, in the order each row's words are in.
+SYSTEMS = ("linux", "macos", "windows")
+
 # What is exempt from confinement, and why.
 EXEMPT: tuple[tuple[str, str], ...] = (
     ("`sabline.run()` with no `timeout` and no `max_memory_mb`",

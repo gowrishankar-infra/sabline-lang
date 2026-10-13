@@ -777,7 +777,12 @@ pub fn apply(policy: &Json, extras: &Extras) -> Report {
     let mut held: Vec<(&'static str, Held)> = Vec::new();
     let mut layers: Vec<String> = Vec::new();
     let mut notes: Vec<String> = Vec::new();
-    let abi = landlock_abi();
+    // SABLINE_FAULT_NO_LANDLOCK, behind the `fault-inject` feature, makes
+    // this run take the path a kernel with no Landlock would (9.0, M4):
+    // the ruleset is not built, this layer says so, and seccomp-bpf is
+    // applied as ever. It is how the leg that has no machine is measured
+    // on an ordinary runner, and a released binary cannot do it.
+    let abi = if crate::confine_fault::landlock_absent() { 0 } else { landlock_abi() };
     // the plan is built before anything is held: every path it must read to
     // decide, it reads first
     let made = if abi > 0 { Some(plan(policy, abi, extras)) } else { None };

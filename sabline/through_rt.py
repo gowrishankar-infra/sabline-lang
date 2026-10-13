@@ -54,9 +54,11 @@ the program - confined, capped, the process that would have run it
 Porting the network into Rust is M4's and M5's, not M3's (plan/9.0.md).
 
 **What stays this package's**, and says so on the error channel (KEPT):
-a run under the eval profile, which holds a run to the operating system's
-confinement; and `sabline trace`, which shows this package's interpreter at
-work. `--confine strict` and `--require-confinement` were here until 9.0's
+`sabline trace`, which shows this package's interpreter at work. A run
+under the **eval profile** was here until 9.0's M4, when sabline-rt began
+to confine its own runs and to honour a stop file: the profile's own
+refusals are still this package's and are made before anything is sent
+anywhere, and the run itself goes through sabline-rt like any pool's. `--confine strict` and `--require-confinement` were here until 9.0's
 M4, when sabline-rt began to confine its own runs: they are now carried in
 the request, applied by sabline-rt to its own process before the first
 statement, and answered there (E326). Each run says who answered it in the file SABLINE_THROUGH_RT_LOG
@@ -130,9 +132,6 @@ KEPT = (
     ("checks", None),
     ("ceiling", None),
     ("source", "its source is not UTF-8 text, which sabline-rt does not take"),
-    ("eval", "an eval run is the package's: its profile, its refusal of "
-             "every relaxation of it, and the probe of what a confined "
-             "worker could do are not sabline-rt's yet (9.0, M4)"),
     ("trace", "sabline trace shows the Python package's interpreter at work"),
 )
 
@@ -354,7 +353,7 @@ class Ended:
 
 
 def _start(cmd: list[str], max_memory_mb: int | None,
-           cwd: str | None) -> tuple[Any, Any]:
+           cwd: str | None, own_group: bool = False) -> tuple[Any, Any]:
     """sabline-rt, started under the memory cap: (the process, the Windows
     job to close once it has finished, or None). `sabline-rt exec` reads
     nothing of a program before its request arrives, so a cap put on it
@@ -364,9 +363,20 @@ def _start(cmd: list[str], max_memory_mb: int | None,
     RESERVED_MB says why not RLIMIT_AS). Where neither can be had - prlimit
     is Linux's, and macOS does not reliably honour either limit - the cap is
     not enforced, which is what `sabline.memory_cap_is_enforced()` says of
-    that machine."""
+    that machine.
+
+    `own_group` puts the run in a process group of its own, so a console
+    break meant for whoever started it does not kill it: a run with a stop
+    file is asked to stop by that file and by nothing else (9.0, M4,
+    `sabline eval`), and its receipt is complete because it stopped rather
+    than died."""
     pipes: dict[str, Any] = {"stdin": subprocess.PIPE, "stdout": subprocess.PIPE,
              "stderr": subprocess.PIPE, "cwd": cwd}
+    if own_group:
+        if os.name == "nt":
+            pipes["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]  # Windows only
+        else:
+            pipes["start_new_session"] = True
     if max_memory_mb is None:
         return subprocess.Popen(cmd, **pipes), None
     if os.name == "nt":
@@ -408,6 +418,7 @@ def run(path: str, *, allow: str | None, seed: Any = None,
         test: Callable[[dict[str, Any]], Any] | None = None,
         call: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
         on_kill: Callable[[], Any] | None = None,
+        stop_file: str | None = None,
         dump: dict[str, Any] | None = None) -> Ended:
     """Run the program at `path` through `sabline-rt exec`. As it runs,
     `out` and `err` are handed what it writes, `read_line` and `ask` answer
@@ -416,7 +427,11 @@ def run(path: str, *, allow: str | None, seed: Any = None,
     the command line writes it (`Budget.spec()`), so sabline-rt parses the
     budget this package did; `source`, when given, is the program's text,
     where the file at `path` is only where its imports resolve from;
-    `import_root` the directory its imports must stay inside (E515).
+    `import_root` the directory its imports must stay inside (E515);
+    `stop_file` the file whose appearance stops the run with E615 at the
+    next call or loop turn, which `sabline eval` gives - from the pool
+    rather than this process's state, since the pool is what holds it -
+    and nothing else does (9.0, M4).
 
     `timeout` (seconds) and `max_memory_mb` are the limits a pool's worker
     has (8.1, 3.1), held from here because a confined worker cannot start a
@@ -468,14 +483,20 @@ def run(path: str, *, allow: str | None, seed: Any = None,
                # the organisation ceilings (9.0), whose text sabline-rt reads
                # as the package does, holds the budget to, and names in its
                # receipt - the package has held the run to them already
-               "ceilings": _ceiling.for_request(_ceiling.installed())}
+               "ceilings": _ceiling.for_request(_ceiling.installed()),
+               # sabline eval's stop file (9.0, M4), which nothing else
+               # sets: the run looks for it every 256 calls and loop turns
+               # and stops there with E615, as this package's run does
+               "stop_file": stop_file if stop_file is not None
+               else _state.STOP_FILE}
     if dump is not None:
         request.update(dump, dump=True)
     host = call if call is not None else answer
     began = time.monotonic()
     try:
         proc, job = _start([exe, "exec", "--install-dir", _INSTALL_DIR],
-                           max_memory_mb, cwd)
+                           max_memory_mb, cwd,
+                           own_group=request["stop_file"] is not None)
     except OSError as e:
         raise Unavailable(f"sabline-rt ({exe}) cannot be started: "
                           f"{e.strerror or e}") from None

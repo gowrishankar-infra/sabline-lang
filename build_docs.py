@@ -345,7 +345,8 @@ DOCUMENTS = [("TUTORIAL.md", "tutorial.html"), ("SPEC.md", "spec.html"),
 # those in DOCS_ORDER first and in that order, the rest by name
 DOCS_SECTION = {"floats.md": "Floats", "renamed.md": "Spec",
                 "embedding-limit.md": "Embedding", "receipts.md": "Embedding"}
-DOCS_ORDER = ["confinement.md", "ceiling.md", "runner.md", "eval.md",
+DOCS_ORDER = ["confinement.md", "os-enforces.md", "ceiling.md", "runner.md",
+              "eval.md",
               "structurally-impossible.md", "known-open.md", "incidents.md",
               "agentdojo.md", "agentdojo-slack.md",
               "agentdojo-workspace.md", "agentdojo-banking.md",
