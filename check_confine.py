@@ -1981,7 +1981,8 @@ def windows_container() -> tuple[str, str]:
     rec = WORK / "container-probe.json"
     rec.unlink(missing_ok=True)
     cli(program("probe.vel", HELLO), "--allow",
-        f"io,fs:read:{data.as_posix()}", "--receipt", str(rec))
+        f"io,fs:read:{data.as_posix()}", "--receipt", str(rec),
+        env=runtime_env("rust"))
     text = rec.read_text(encoding="utf-8") if rec.exists() else ""
     p = ((json.loads(text)["predicate"]["run_parameters"])
          if text.strip() else {})
@@ -1995,18 +1996,25 @@ def main() -> int:
     if PLATFORM == "macos":
         describe_macos()
     print(f"the runtime every run goes through: {RUNTIME}")
-    if PLATFORM == "windows" and RUNTIME == "rust":
+    if PLATFORM == "windows" and through_rt.binary() is not None:
+        # Asked of sabline-rt whichever runtime this suite is being run
+        # for, because the python run asks strict_cases and required_cases
+        # of the rust runtime too (below).
         level, why = windows_container()
         if level:
-            print(f"  listed  a run here is held by an AppContainer of its "
-                  f"own, and is {level}")
+            print(f"  listed  a run through sabline-rt here is held by an "
+                  f"AppContainer of its own, and is {level}")
         else:
             # the package's own row, which is what this machine gives
-            HELD.update(HELD_BY_RUNTIME["python"])
+            held_here = {system: dict(row)
+                         for system, row in HELD_BY_RUNTIME["python"].items()}
+            HELD_BY_RUNTIME["rust"].update(held_here)
+            HELD.update(held_here)
+            LEVEL_BY_RUNTIME["rust"].update(LEVEL_BY_RUNTIME["python"])
             LEVEL.update(LEVEL_BY_RUNTIME["python"])
-            print(f"  listed  a run here is NOT held by an AppContainer, so "
-                  f"every case below is held to what this package's own "
-                  f"runtime gives: {why}")
+            print(f"  listed  a run through sabline-rt here is NOT held by "
+                  f"an AppContainer, so every case below is held to what "
+                  f"this package's own runtime gives: {why}")
     if RUNTIME == "python":
         # this module's own derivations, which sabline-rt derives too and
         # the agreement gate compares field for field: asking them again
