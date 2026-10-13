@@ -359,6 +359,7 @@ mod calls {
         fn WaitForSingleObject(h: HANDLE, ms: DWORD) -> DWORD;
         fn GetExitCodeProcess(h: HANDLE, code: *mut DWORD) -> BOOL;
         fn CloseHandle(h: HANDLE) -> BOOL;
+        fn TerminateProcess(h: HANDLE, code: DWORD) -> BOOL;
         fn LocalFree(p: *mut c_void) -> *mut c_void;
         fn GetLastError() -> DWORD;
         fn GetCurrentProcess() -> HANDLE;
@@ -1008,16 +1009,31 @@ mod calls {
 
         /// Wait for it, and answer how it ended.
         pub fn wait(&self) -> u32 {
+            self.wait_for(0xFFFF_FFFF).unwrap_or(1)
+        }
+
+        /// Wait for it for at most this many milliseconds: `None` when it
+        /// had not ended by then, and it is left running. For a probe,
+        /// which answers in a moment or is a probe nobody can wait for.
+        pub fn wait_for(&self, ms: DWORD) -> Option<u32> {
             let mut code: DWORD = 0;
             // SAFETY: `process` is the handle CreateProcess gave, open
             // until Drop. test: the_profile_is_made_granted_and_taken_back.
             unsafe {
-                if WaitForSingleObject(self.process, 0xFFFF_FFFF) != WAIT_OBJECT_0 {
-                    return 1;
+                if WaitForSingleObject(self.process, ms) != WAIT_OBJECT_0 {
+                    return None;
                 }
                 GetExitCodeProcess(self.process, &mut code);
             }
-            code
+            Some(code)
+        }
+
+        /// End it, whatever it was doing.
+        pub fn kill(&self) {
+            // SAFETY: `process` is the handle CreateProcess gave, open
+            // until Drop; a process that has already ended is unchanged.
+            // test: the_profile_is_made_granted_and_taken_back.
+            unsafe { TerminateProcess(self.process, 1) };
         }
     }
 
@@ -1214,6 +1230,11 @@ pub fn sweep() {
 #[cfg(windows)]
 const PROBED: usize = 8;
 
+/// How long the probe is waited for: it resolves a few paths and exits, so
+/// a probe that has not answered by now is one nobody should wait for.
+#[cfg(windows)]
+const PROBE_PATIENCE: u32 = 30_000;
+
 /// Why a run inside this container would not resolve a path as this
 /// process does, or `None` when it would.
 ///
@@ -1254,7 +1275,13 @@ fn cannot_resolve(
         }
         Ok(mut probe) => {
             let said = probe.captured();
-            let code = probe.wait();
+            let Some(code) = probe.wait_for(PROBE_PATIENCE) else {
+                probe.kill();
+                return Some(
+                    "a process inside an AppContainer did not answer whether it can                      resolve a path"
+                        .to_string(),
+                );
+            };
             if code != 0 {
                 return Some(format!(
                     "a process inside an AppContainer could not be asked to resolve a path                      (it ended {code})"
