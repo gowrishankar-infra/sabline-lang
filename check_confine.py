@@ -2012,9 +2012,18 @@ def main() -> int:
             HELD.update(held_here)
             LEVEL_BY_RUNTIME["rust"].update(LEVEL_BY_RUNTIME["python"])
             LEVEL.update(LEVEL_BY_RUNTIME["python"])
-            print(f"  listed  a run through sabline-rt here is NOT held by "
-                  f"an AppContainer, so every case below is held to what "
-                  f"this package's own runtime gives: {why}")
+            print("  listed  a run through sabline-rt here is NOT held by "
+                  "an AppContainer, so every case below is held to what "
+                  "this package's own runtime gives")
+            # the fallback is a claim too, and this is where it is held:
+            # a run that gets no container says which of the reasons it
+            # was left off for, and gets the level the layers that are
+            # left give - never full, and never a wrong refusal
+            ok("a run that gets no AppContainer says why in its receipt, "
+               "and is the level the job object and the token give",
+               any(word in why for word in
+                   ("resolve", "loopback", "does not restrict",
+                    "already inside", "could be made")), why)
     if RUNTIME == "python":
         # this module's own derivations, which sabline-rt derives too and
         # the agreement gate compares field for field: asking them again
