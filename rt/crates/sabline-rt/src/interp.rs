@@ -57,6 +57,9 @@ pub const INT_MIN: i64 = i64::MIN;
 pub const INT_MAX: i64 = i64::MAX;
 /// How deep a Sabline call may nest before it is E609.
 pub const DEPTH_LIMIT: u32 = 2000;
+/// How many calls and loop turns pass between two looks for a stop file:
+/// `sabline/runtime.py`'s `STOP_EVERY` (8.3, `sabline eval`).
+pub const STOP_EVERY: u64 = 256;
 /// What a broken promise prints in place of a value whose type holds a
 /// secret: `tables.REDACTED`.
 pub const REDACTED: &str = "<secret>";
@@ -343,6 +346,7 @@ pub struct Runtime {
     depth: u32,
     ticks: u64,
     step_limit: Option<u64>,
+    stop_file: Option<String>,
     size_limit: Option<u64>,
     size_made: u64,
     budget: Budget,
@@ -399,6 +403,7 @@ impl Runtime {
             depth: 0,
             ticks: 0,
             step_limit: None,
+            stop_file: None,
             size_limit: None,
             size_made: 0,
             budget,
@@ -433,6 +438,21 @@ impl Runtime {
     pub fn with_step_limit(mut self, limit: u64) -> Runtime {
         self.step_limit = Some(limit);
         self
+    }
+
+    /// Stop the run, with E615, at the first call or loop turn after this
+    /// file appears: `_state.STOP_FILE`, which `sabline eval` sets and
+    /// nothing else does. It is looked for every [`STOP_EVERY`] calls and
+    /// loop turns, so a program that is running - not blocked in a host's
+    /// call - stops at the next of either.
+    pub fn with_stop_file(mut self, path: String) -> Runtime {
+        self.stop_file = Some(path);
+        self
+    }
+
+    /// Whether anything is counting calls and loop turns.
+    fn watched(&self) -> bool {
+        self.step_limit.is_some() || self.stop_file.is_some()
     }
 
     /// Stop the run at the operation that takes what it has made past this
@@ -511,10 +531,22 @@ impl Runtime {
 
     fn stop_point(&mut self, line: u32) -> R<()> {
         self.ticks += 1;
-        match self.step_limit {
-            Some(limit) if self.ticks > limit => Err(Stop::Steps(line)),
-            _ => Ok(()),
+        if let Some(limit) = self.step_limit {
+            if self.ticks > limit {
+                return Err(Stop::Steps(line));
+            }
         }
+        if let Some(stop) = &self.stop_file {
+            if self.ticks % STOP_EVERY == 0 && std::path::Path::new(stop).exists() {
+                return Err(error(
+                    "E615",
+                    "this run was asked to stop from outside, and stopped here".to_string(),
+                    line,
+                    &["whoever runs it asked it to stop; its receipt records the stop"],
+                ));
+            }
+        }
+        Ok(())
     }
 
     fn call(&mut self, name: &str, args: Vec<Value>, line: u32) -> R<Value> {
@@ -561,7 +593,7 @@ impl Runtime {
             _ => return Err(Stop::Raised("AttributeError")),
         };
         let name = func.name.as_str();
-        if self.step_limit.is_some() {
+        if self.watched() {
             self.stop_point(line)?;
         }
         if self.depth >= DEPTH_LIMIT {
@@ -802,7 +834,7 @@ impl Runtime {
             Stmt::While { cond, body, line, invariants } => {
                 self.check_invariants(invariants, env)?;
                 while self.eval(cond, env)?.truthy() {
-                    if self.step_limit.is_some() {
+                    if self.watched() {
                         self.stop_point(*line)?;
                     }
                     if let Flow::Return(v) = self.block(body, env)? {

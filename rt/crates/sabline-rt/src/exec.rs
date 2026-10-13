@@ -32,6 +32,9 @@
 //! - `tool_ceiling`: the ceiling record of the host's tool session, when it
 //!   has one (`sabline run --tools`): the receipt then lists the run's tool
 //!   calls and the ceiling.
+//! - `stop_file`: the file whose appearance stops the run with E615 at the
+//!   next call or loop turn, which `sabline eval` gives and nothing else
+//!   does (9.0, M4).
 //! - `ceilings`: the organisation ceilings the run is held to (9.0,
 //!   [`crate::ceiling`]), each `{"path", "text"}` as the package read it: a
 //!   budget wider than one is E325 before the program is read, and each is
@@ -262,6 +265,7 @@ pub fn request(line: &str) -> Result<(String, Given), String> {
             steps,
             size,
             ceilings,
+            stop_file: text_field(fields, "stop_file")?,
         },
     ))
 }

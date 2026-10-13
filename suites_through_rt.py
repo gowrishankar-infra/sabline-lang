@@ -15,9 +15,9 @@ too - and every run it makes, in its own process or in any it starts, goes
 through sabline-rt the way a user's would and writes one line saying who
 answered it (sabline/through_rt.py's log): sabline-rt - a run of the
 network, Python or a tool included, whose calls it relays back to the
-package (decided on 2026-10-11); the checks or the prover, which refused
-it before anything ran; or the Python package, and why - the eval
-profile, `sabline trace`.
+package (decided on 2026-10-11), and from 9.0's M4 an eval run too; the
+checks or the prover, which refused it before anything ran; or the Python
+package, and why - `sabline trace`.
 
 What a suite prints is written to the same log as it prints it, so each
 run is counted against the question whose line comes after it: the
@@ -61,6 +61,9 @@ SUITES: tuple[tuple[str, tuple[str, ...]], ...] = (
     # M3's third criterion's own suite: its escapes and honest programs run
     # from the command line, under their budgets, against its servers
     ("check_sandbox.py", ()),
+    # 9.0's M4: an eval run is sabline-rt's too, with the stop file its
+    # profile needs honoured there
+    ("check_eval.py", ()),
     ("check_fallible.py", ("--runtime", "rust")),
     ("check_termination.py", ("--runtime", "rust")),
     ("check_refusals.py", ("--runtime", "rust")),
@@ -71,11 +74,6 @@ SUITES: tuple[tuple[str, tuple[str, ...]], ...] = (
 # A question that fails against sabline-rt by design, until the rung named:
 # (suite, the start of its label, why).
 BY_DESIGN: tuple[tuple[str, str, str], ...] = (
-    ("check_library.py",
-     "a run returns its receipt: an in-toto Statement of receipt/v1",
-     "it asks that the receipt's producer version is this package's, and a "
-     "run through sabline-rt is sabline-rt's (decided on 2026-10-11: waits "
-     "for M4)"),
     ("check_library.py",
      "...with the budget, the parameters, the declassification and its",
      "it asks that an unbounded sabline.run()'s confinement is none, which "

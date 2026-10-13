@@ -20,6 +20,15 @@ authors.workspace = true
 # library would not.
 [dependencies]
 
+# The honesty test's hook, off by default, so a released crate never
+# carries its C calls or its way of standing a layer down (9.0, M4;
+# src/confine_fault.rs). The suites that measure the confinement build with
+# it: `cargo build --release --features fault-inject`. check_rt.py holds
+# that it is here and that it is not a default.
+[features]
+default = []
+fault-inject = []
+
 [lints]
 workspace = true
 

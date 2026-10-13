@@ -99,7 +99,8 @@ REQUEST_FILE = ".sabline-request.vel"
 USAGE = ("usage: python -m sabline_mcp [--max-allow GRANTS] "
          "[--max-timeout SECONDS] [--max-memory-mb MB] "
          "[--log-file PATH] [--log full|minimal] [--root DIR] "
-         "[--check-timeout SECONDS] [--check-memory-mb MB] [--no-confine]")
+         "[--check-timeout SECONDS] [--check-memory-mb MB] [--no-confine] "
+         "[--confine strict] [--require-confinement full|partial]")
 
 # One pool per distinct budget a caller asks for, made the first time
 # that budget is seen and closed when the server stops. An assistant
@@ -111,13 +112,19 @@ POOLS = None
 # Whether each worker asks the operating system to hold its budget too
 # (8.4). The operator's --no-confine turns it off, and says so on stderr; a
 # tool call cannot.
-CONFINE = True
+CONFINE: Any = True
+# The level every run here must reach or be refused (E326), and whether a
+# granted Python module may widen the policy (9.0, M4; decisions/0006 e
+# and 0007 32a). Both are the operator's, on this command line, and a tool
+# call carries neither: a request names a budget and never these.
+REQUIRE_CONFINEMENT: Any = None
 
 
 def pools() -> Any:
     global POOLS
     if POOLS is None:
-        POOLS = sabline.PoolRegistry(confine=CONFINE)
+        POOLS = sabline.PoolRegistry(
+            confine=CONFINE, require_confinement=REQUIRE_CONFINEMENT)
     return POOLS
 
 
@@ -177,7 +184,7 @@ def configure(argv: list[Any]) -> str | None:
     """Read the operator's flags. None when they are fine, else what is
     wrong with them."""
     global CEILING, LOG, MAX_TIMEOUT, MAX_MEMORY_MB, ROOT
-    global CHECK_TIMEOUT, CHECK_MEMORY_MB, CONFINE
+    global CHECK_TIMEOUT, CHECK_MEMORY_MB, CONFINE, REQUIRE_CONFINEMENT
     opts = {}
     i = 0
     while i < len(argv):
@@ -191,13 +198,29 @@ def configure(argv: list[Any]) -> str | None:
             continue
         if a in ("--max-allow", "--max-timeout", "--max-memory-mb",
                  "--log-file", "--log", "--root", "--check-timeout",
-                 "--check-memory-mb"):
+                 "--check-memory-mb", "--confine",
+                 "--require-confinement"):
             if i + 1 >= len(argv):
                 return f"{a} needs a value; {USAGE}"
             opts[a] = argv[i + 1]
             i += 2
             continue
         return f"unknown argument '{a}'; {USAGE}"
+    # the operator's two confinement flags (9.0, M4): --confine strict and
+    # --require-confinement, read the way every command line reads them,
+    # and refused beside --no-confine, which asks for the opposite
+    try:
+        words = []
+        for name in ("--confine", "--require-confinement"):
+            if name in opts:
+                words += [name, opts[name]]
+        if not CONFINE:
+            words.append("--no-confine")
+        mode, REQUIRE_CONFINEMENT = sabline.confine_flags(words)
+        if mode == "strict":
+            CONFINE = "strict"
+    except sabline.BudgetError as e:
+        return str(e)
     try:
         asked = opts.get("--max-allow", DEFAULT_CEILING)
         if asked.strip() == sabline.ALLOW_ALL:

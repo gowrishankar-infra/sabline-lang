@@ -41,6 +41,33 @@ VARIABLE = "SABLINE_REFERENCE_RUNTIME"
 # what is compared of each program's Sabline record
 FIELDS = ("before", "during", "observed", "task", "verdict", "evidence")
 
+# The two limits a program that never ends can end at, and which one fires
+# is a race the two runtimes cannot be held to agree on: the corpus holds
+# one program (08_memory/a) that grows a list for ever under both a time
+# limit and a memory cap, and whichever the machine reaches first is what
+# stops it. The two runtimes do not allocate at the same rate, so on one
+# machine both time out and on another sabline-rt fills the cap first.
+#
+# Nothing else is tolerated: a difference is by design only where **both**
+# runtimes ended at a limit and the limits differ. One that ended at a
+# limit where the other ran to the end is a difference, as it was.
+LIMITS = ("E610", "E611")
+
+
+def limit_race(a: Any, b: Any) -> str | None:
+    """How the two runtimes raced to a limit, or None when they did not."""
+    codes = []
+    for side in (a, b):
+        during = (side or {}).get("during") or {}
+        problems = during.get("problems") or []
+        code = (problems[0] or {}).get("code") if problems else None
+        if not during.get("ran") or code not in LIMITS:
+            return None
+        codes.append(code)
+    if codes[0] == codes[1]:
+        return None
+    return f"python {codes[0]}, sabline-rt {codes[1]}"
+
 
 def harness(runtime: str, out: Path) -> dict[str, Any]:
     """benchmark/run.py's results, with the runtime chosen."""
@@ -74,18 +101,31 @@ def main() -> int:
         found.append(f"the two runs hold different programs: "
                      f"{sorted(set(mine) ^ set(theirs))}")
     ran = 0
+    raced = []
     for pid in sorted(set(mine) & set(theirs)):
         a, b = mine[pid], theirs[pid]
         ran += bool((a.get("during") or {}).get("ran"))
+        said = limit_race(a, b)
         for field in FIELDS:
-            if a.get(field) != b.get(field):
-                found.append(f"{pid}: {field}: python {json.dumps(a.get(field))[:400]}"
-                             f"\n      sabline-rt {json.dumps(b.get(field))[:400]}")
+            if a.get(field) == b.get(field):
+                continue
+            if said is not None:
+                # a program that ends only at a limit, and the two runtimes
+                # reached different ones: every field that differs here
+                # follows from that
+                raced.append(f"{pid}: {said}")
                 break
+            found.append(f"{pid}: {field}: python {json.dumps(a.get(field))[:400]}"
+                         f"\n      sabline-rt {json.dumps(b.get(field))[:400]}")
+            break
     for line in found[:40]:
         print("  " + line)
+    for line in raced:
+        print(f"  by design  {line} - a program that ends only at a limit, "
+              f"and the two runtimes do not allocate at the same rate")
     print(f"check_benchmark_through_rt: {len(mine)} programs under their own "
-          f"budgets, {ran} of them run, {len(found)} difference(s)")
+          f"budgets, {ran} of them run, {len(found)} difference(s)"
+          + (f", {len(raced)} raced to a limit" if raced else ""))
     return 1 if found else 0
 
 

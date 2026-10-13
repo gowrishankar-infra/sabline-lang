@@ -16,6 +16,13 @@
 //!                                  hold for that budget (M4)
 //! sabline-rt os-policy --table     the confinement tables, as one
 //!                                  document (M4)
+//! sabline-rt os-policy --enforces  how much of each row of THREAT_MODEL's
+//!                                  table this runtime's kernel holds, one
+//!                                  word per system (M4)
+//! sabline-rt resolve <path>...     what this process resolves each path
+//!                                  to, a line each: the probe `exec` runs
+//!                                  inside a Windows AppContainer before it
+//!                                  hands a run to one (M4)
 //! sabline-rt run --install-dir DIR --list <file>
 //!                                  the run document, receipt and audit
 //!                                  stream of each line's program (M3)
@@ -26,6 +33,13 @@
 //!                                  `sabline run` and `sabline.run` go
 //!                                  through under SABLINE_REFERENCE_RUNTIME
 //!                                  =rust (M3; `src/exec.rs` says how)
+//! sabline-rt exec --install-dir DIR --contained SID
+//!                                  the same, for a process started inside
+//!                                  the Windows AppContainer whose SID that
+//!                                  is - which the run asks the kernel
+//!                                  about rather than believing (M4,
+//!                                  `src/confine_appcontainer.rs`). Nobody
+//!                                  types it: `sabline-rt exec` starts it
 //! sabline-rt --version
 //! ```
 //!
@@ -65,8 +79,11 @@ fn main() -> ExitCode {
             eprintln!("       sabline-rt budget --list <budgets-file>");
             eprintln!("       sabline-rt os-policy --list <budgets-file>");
             eprintln!("       sabline-rt os-policy --table");
+            eprintln!("       sabline-rt os-policy --enforces");
+            eprintln!("       sabline-rt resolve <path>...");
             eprintln!("       sabline-rt run --install-dir <dir> --list <paths-file>");
             eprintln!("       sabline-rt exec --install-dir <dir>");
+            eprintln!("       sabline-rt exec --install-dir <dir> --contained <sid>");
             eprintln!("       sabline-rt --version");
             ExitCode::from(2)
         }
@@ -98,10 +115,29 @@ fn run(words: &[&str]) -> Result<ExitCode, String> {
             write_out(&sabline_rt::confine::table_document().canonical())?;
             Ok(ExitCode::SUCCESS)
         }
+        ["resolve", rest @ ..] if !rest.is_empty() => {
+            // what this process resolves each path to, a line each: the
+            // probe `sabline-rt exec` runs inside a Windows AppContainer
+            // before it hands a run to one, because a process inside a
+            // container cannot always resolve a path as its host does and
+            // a run that resolves differently is refused a file its
+            // budget grants (M4, src/confine_appcontainer.rs)
+            for path in rest {
+                write_out(&sabline_rt::pypath::realpath(path))?;
+            }
+            Ok(ExitCode::SUCCESS)
+        }
+        ["os-policy", "--enforces"] => {
+            write_out(&sabline_rt::confine::enforces_document().canonical())?;
+            Ok(ExitCode::SUCCESS)
+        }
         ["run", "--install-dir", dir, "--list", list] => {
             on_a_big_stack(run_list_of((*dir).to_string(), (*list).to_string()))
         }
-        ["exec", "--install-dir", dir] => exec((*dir).to_string()),
+        ["exec", "--install-dir", dir] => exec((*dir).to_string(), None),
+        ["exec", "--install-dir", dir, "--contained", sid] => {
+            exec((*dir).to_string(), Some((*sid).to_string()))
+        }
         _ => Err(format!("sabline-rt: cannot read '{}'", words.join(" "))),
     }
 }
@@ -267,7 +303,7 @@ fn run_list_of(
 /// says so at once (step 2 is skipped), so the frames and the answers flow
 /// from the first moment - which is what every run before this rung did and
 /// what the agreement gate's own batches still do.
-fn exec(dir: String) -> Result<ExitCode, String> {
+fn exec(dir: String, contained: Option<String>) -> Result<ExitCode, String> {
     use std::io::BufRead;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::mpsc::{channel, Sender};
@@ -299,6 +335,36 @@ fn exec(dir: String) -> Result<ExitCode, String> {
     match stdin.lock().read_line(&mut first) {
         Ok(n) if n > 0 => {}
         _ => return Err("sabline-rt exec: no request on standard input".to_string()),
+    }
+
+    // Windows, and the run's own process (9.0, M4): a process cannot enter
+    // an AppContainer after it has started, so this one starts the run's
+    // inside one and pumps the request and the answers through - or says
+    // why it did not, and runs the program here.
+    // (`sabline_rt::confine_appcontainer` says what the two halves do.)
+    #[cfg(windows)]
+    match &contained {
+        None => {
+            if let sabline_rt::confine_appcontainer::Taken::Ran(code) =
+                sabline_rt::confine_appcontainer::consider(&first, &dir)
+            {
+                return Ok(ExitCode::from(code));
+            }
+        }
+        Some(claimed) => {
+            // the parent's claim, asked of the kernel rather than believed
+            use sabline_rt::confine_appcontainer::{stands, Where};
+            match sabline_rt::confine_appcontainer::in_a_container(claimed) {
+                Ok(()) => stands(Where::Inside),
+                Err(why) => stands(Where::Without(why)),
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    if contained.is_some() {
+        return Err("sabline-rt exec: --contained is Windows' own, where a run's process is \
+             started inside an AppContainer"
+            .to_string());
     }
 
     let (lines, lines_in) = channel::<String>();

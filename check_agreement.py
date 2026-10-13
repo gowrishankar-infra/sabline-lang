@@ -526,8 +526,13 @@ def rt_binary() -> Path:
             "(https://rustup.rs) or run: cargo build --release --manifest-path "
             "rt/Cargo.toml")
     print("check_agreement.py: building sabline-rt", flush=True)
+    # with the honesty test's hook, which the gate does not need and
+    # check_confine.py does: a binary built here without it would make that
+    # suite say its three C-call faults were not attempted, with nothing
+    # saying why (9.0, M4; rt/.../confine_fault.rs)
     subprocess.run(["cargo", "build", "--release", "--manifest-path",
-                    str(RT / "Cargo.toml")], check=True)
+                    str(RT / "Cargo.toml"), "--features", "fault-inject"],
+                   check=True)
     built = RT / "target" / "release" / exe
     if not built.exists():
         raise SystemExit(f"check_agreement.py: cargo built nothing at {built}")

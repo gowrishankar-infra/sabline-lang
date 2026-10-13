@@ -165,6 +165,9 @@ pub struct Given {
     /// when it asked nothing: the gate's own batches run many programs in
     /// one process, and a policy applied for the first would hold the rest.
     pub confine: Option<crate::confine::Asked>,
+    /// The file whose appearance stops this run with E615, or `None`:
+    /// `sabline eval`'s `--stop-file`, which nothing else sets (9.0, M4).
+    pub stop_file: Option<String>,
 }
 
 impl Given {
@@ -589,6 +592,7 @@ fn run_inner(
                 writes: asked.writes.clone(),
                 temp: asked.temp.clone(),
                 read_any: asked.read_any,
+                stop_file: given.stop_file.clone(),
             };
             let mut done = crate::confine::apply(&policy, &extras);
             // the one thing this run cannot hold itself: the network, a
@@ -659,6 +663,9 @@ fn run_inner(
         rt = rt
             .with_step_limit(given.steps.unwrap_or(STEPS))
             .with_size_limit(given.size.unwrap_or(SIZE));
+    }
+    if let Some(stop) = &given.stop_file {
+        rt = rt.with_stop_file(stop.clone());
     }
     rt.recorder = recorder;
     rt.recorder.compiled = true;

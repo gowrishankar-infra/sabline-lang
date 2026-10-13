@@ -191,15 +191,86 @@ that types it.
 
 What it applies is this page's table, layer for layer: Landlock and
 seccomp-bpf on Linux, `sandbox_init` on macOS, the job object and the
-token's privileges on Windows, with the low integrity level for a budget
-that grants no write. One sentence differs from the package's, and only one:
-Windows says that reads and the network need an AppContainer, and the reason
-the package gives - that a `python.exe` started in one cannot read its own
-installation - is not sabline-rt's reason. `rt/spikes/appcontainer/`
-measured a Rust binary starting inside a container with no ACE on itself,
-reading only the directories it was given and refused the network without a
-capability, so what is true of sabline-rt is that it **does not enter one
-yet**. Its receipt says that, in those words.
+token's privileges on Windows - and, on Windows, **an AppContainer the
+package cannot enter**.
+
+### The Windows AppContainer (9.0)
+
+A process cannot enter a container after it has started, so the run's own
+process is started inside one by the process that was asked for the run.
+`sabline-rt exec`, asked for confinement on Windows, is therefore two
+processes. The outer one reads the request, **loads the program to learn
+which files it reads** - a lookahead, never an answer: the child's own load
+is what refuses anything - creates an AppContainer profile named for this
+run, grants its SID **one ACE per file and per granted directory**, and
+starts a child `sabline-rt exec --contained SID` inside the container with
+its own standard output and error and a pipe for its standard input. It
+pumps the request line and the rest of its own input through, waits, takes
+**every ACE back** and deletes the profile. It is a byte pump and nothing
+else: the frames the run writes go straight to whoever asked for the run.
+
+The inner process **does not take the parent's word for it**. `--contained
+SID` is a claim; the run asks the kernel - this token's
+`TokenIsAppContainer` and `TokenAppContainerSid` - and makes the claim only
+when the kernel agrees and the SID is the one named. A sabline-rt started
+with `--contained` outside a container reports that it is not held, and
+holds nothing back.
+
+So a Windows run whose budget restricts both directions and names no
+loopback host is **full** where a container can hold it: a read, a write
+or a connection outside the grants is refused by the kernel, which
+`check_confine.py --runtime rust` measures with the fault-injection hook.
+A Windows Server is not such a machine - a process inside a container
+there can open the file it was granted and still not be told what path
+that file has - and the container is left off, with the reason in the
+receipt, rather than a run being refused a file its budget allows.
+[docs/os-enforces.md](os-enforces.md) is the table, cell by cell, with the
+reason on each one the two runtimes differ on.
+
+**A container is left off** for a budget it would refuse something the
+budget allows, and the receipt's reason says which: a budget granting a
+**loopback host**, since Windows isolates a container from the loopback
+address unless an administrator exempts it; a budget that restricts
+**neither reads nor writes**, since a container reaches only what it is
+given an ACE for; and a **system where a process inside a container cannot
+resolve a path** as the process that started it does. That last one is
+asked rather than assumed: before a run is handed to a container, the
+container is asked to resolve a spelling of its granted paths that is
+**not** their canonical form - the 8.3 form, where the volume keeps one -
+and if any answer differs the container is left off. A run with no such
+spelling to ask about leaves it off too: what cannot be asked is not
+claimed. A **no** is remembered for that build of the crate, so a system
+whose containers cannot resolve stops paying for one it will not use; a
+**yes** is not, because a remembered yes would be a claim that outlived
+its measurement. It matters because every `fs:`
+grant is checked against what a path *resolves* to - the host resolves the
+grant, the run resolves what the program asks for - so a run that resolved
+a short name like `RUNNER~1` differently from its host would be refused a
+file its budget allows. A wrong answer is not a safe one. Such a run gets what Windows gave before 9.0. A run that
+is **killed** before its parent can take the ACEs back leaves them naming
+the SID of a profile that is gone, which nothing can hold again; the next
+run sweeps them, from a record each run holds open while it holds the
+grants.
+
+**A grant wider than a thousand files leaves the container off.** An
+AppContainer reaches a file only through that file's own rights, and
+Windows' inheritance is a copy and not a lookup: giving a directory an
+inheritable ACE writes it into every file under it, and taking it back
+writes them all again. That is about half a millisecond a file, charged to
+the run's own deadline, and it changes the rights of the user's files while
+the run lasts. So a grant over a tree larger than that is a container left
+off, with the reason in the receipt, rather than a run that pays for a tree
+nobody counted.
+
+**Two runs at once** are two containers with an ACE each on the same file,
+and adding one is *read the rights, add to them, write them back*: without
+a lock the second write is of rights read before the first, and one of the
+two runs is then refused a file its budget grants - a wrong answer, and not
+a safe one. So every grant and every revoke takes a machine-wide lock
+first, for the length of that one write and not for the run, and a run
+whose turn never comes says so and is not contained. A revoke that could
+not be made leaves the run's record in place, so the next run's sweep takes
+that ACE back.
 
 Two things a run through sabline-rt holds that the package's cannot, and one
 it does not:
@@ -223,11 +294,14 @@ it does not:
 `check_confine.py --runtime rust` asks every question on this page of
 sabline-rt: the honesty test with its fault-injection hook, what still
 works, what is reported, what a program cannot reach, what is tried against
-the confinement itself, and both of 9.0's options. Three parts stay the
-package's and say so: the policy, the filter and the table, which the
-agreement gate already compares; the escape targets, which are measured on a
-Sabline whose *Python* budget checks are knocked out; and `sabline eval`,
-whose run sabline-rt does not take yet.
+the confinement itself, and both of 9.0's options. On Windows it also asks
+the container's own promises: that every ACE is taken back when a run ends,
+that a run killed while holding them is swept by the next, that
+`--contained` outside a container claims nothing, and that each budget the
+container is left off for says so in its receipt. Two parts stay the
+package's and say so: the policy and the filter, which the agreement gate
+already compares; and the escape targets, which are measured on a Sabline
+whose *Python* budget checks are knocked out.
 
 ## What is not confined
 

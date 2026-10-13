@@ -127,11 +127,14 @@
    "mcp": [
     "--check-memory-mb",
     "--check-timeout",
+    "--confine",
     "--log",
     "--log-file",
     "--max-allow",
     "--max-memory-mb",
     "--max-timeout",
+    "--no-confine",
+    "--require-confinement",
     "--root"
    ],
    "mcp-install": [],
@@ -181,6 +184,7 @@
     "--bind",
     "--check-memory-mb",
     "--check-timeout",
+    "--confine",
     "--log",
     "--log-file",
     "--max-allow",
@@ -189,6 +193,7 @@
     "--no-confine",
     "--port",
     "--rate-limit",
+    "--require-confinement",
     "--root",
     "--token-file"
    ],
@@ -2463,6 +2468,10 @@
    "compile_native": {
     "kind": "function",
     "signature": "(funcs, proven=frozenset())"
+   },
+   "confine_flags": {
+    "kind": "function",
+    "signature": "(argv)"
    },
    "conformance": {
     "kind": "function",

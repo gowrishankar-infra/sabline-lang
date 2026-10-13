@@ -229,7 +229,8 @@ def serve_main(argv: list[Any]) -> int:
     import secrets
     import urllib.parse
 
-    valued = {"--port", "--host", "--bind", "--max-allow", "--token-file",
+    valued = {"--confine", "--require-confinement",
+              "--port", "--host", "--bind", "--max-allow", "--token-file",
               "--log-file", "--log", "--max-timeout", "--max-memory-mb",
               "--root", "--rate-limit", "--check-timeout",
               "--check-memory-mb"}
@@ -260,8 +261,9 @@ def serve_main(argv: list[Any]) -> int:
         print(f"sabline serve: unknown argument{shown}. It takes --port, "
               f"--bind (or --host), --max-allow, --max-timeout, "
               f"--max-memory-mb, --check-timeout, --check-memory-mb, "
-              f"--root, --rate-limit, --token-file, --no-auth, --log-file "
-              f"and --log.", file=sys.stderr)
+              f"--root, --rate-limit, --token-file, --no-auth, --log-file, "
+              f"--log, --no-confine, --confine and "
+              f"--require-confinement.", file=sys.stderr)
         return 2
 
     # Read SABLINE_TOKEN and take it out of the environment whichever
@@ -379,18 +381,37 @@ def serve_main(argv: list[Any]) -> int:
     # From 8.4 each worker also asks the operating system to hold its
     # pool's budget. --no-confine is the operator's, on this command line:
     # no request can carry it.
-    confined = "--no-confine" not in opts
+    confined: Any = "--no-confine" not in opts
     if not confined:
         print("sabline serve: --no-confine: the operating system is not "
               "asked to hold any run; the budget is the only boundary",
               file=sys.stderr)
-    pools = _self.PoolRegistry(confine=confined)
+    # and the operator's two confinement flags (9.0, M4), read the way
+    # every command line reads them: --confine strict, so that a granted
+    # Python module widens no run's policy, and --require-confinement, so
+    # that a run the platform cannot hold is refused rather than warned
+    # about. A request carries neither; they are this command line's.
+    words = []
+    for name in ("--confine", "--require-confinement"):
+        if name in opts:
+            words += [name, opts[name]]
+    if not confined:
+        words.append("--no-confine")
+    try:
+        mode, required = _self.confine_flags(words)
+    except _self.BudgetError as e:
+        return refuse(str(e))
+    if mode == "strict":
+        confined = "strict"
+    pools = _self.PoolRegistry(confine=confined,
+                               require_confinement=required)
     # checks and audits run on their own workers, under the check ceiling,
     # so a crafted program answers E613 or E614 instead of holding a
     # request thread (8.1); a worker that answers is kept
     checker = _self.Pool(size=2, timeout=check_time,
                          max_memory_mb=check_memory, import_root=served,
-                         confine=confined)
+                         confine=confined,
+                         require_confinement=required)
     endpoints = {("GET", "/health"), ("GET", "/"), ("GET", "/card"),
                  ("POST", "/check"), ("POST", "/audit"), ("POST", "/run")}
 

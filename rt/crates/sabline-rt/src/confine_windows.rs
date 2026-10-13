@@ -4,13 +4,18 @@
 //! removed** from the token; and a **low integrity level** when the budget
 //! grants no write.
 //!
-//! This is `sabline/confine.py`'s `_apply_windows`, ported, and so far it
-//! holds exactly what that one holds and leaves out what that one leaves
-//! out: reads are not held, and the network is not held. The AppContainer
-//! that would hold both is what `rt/spikes/appcontainer/` measured, and it
-//! is entered by [`crate::confine_windows`]'s bootstrap - a process cannot
-//! enter a container after it has started, so the run's own process is
-//! started inside one by the process that was asked for the run.
+//! Those three are `sabline/confine.py`'s `_apply_windows`, ported. Beside
+//! them, from 9.0's M4, is the **AppContainer**
+//! ([`crate::confine_appcontainer`]), which holds what they cannot: reads
+//! to the ACEs the run's parent granted, and the network to the capability
+//! it was or was not given. A process cannot enter a container after it
+//! has started, so the run's own process is started inside one by the
+//! process that was asked for the run, and this module asks the kernel
+//! whether that is where it is rather than taking the parent's word.
+//!
+//! Where a container is left off - a budget granting a loopback host, or
+//! one that restricts neither reads nor writes - the report is what it was
+//! before that rung, with the reason saying which.
 //!
 //! What is pure here - [`lower_the_label`], the words of every report - is
 //! compiled and tested on every platform, as `pypath`'s two flavours are;
@@ -30,22 +35,22 @@ pub const WINDOWS_TOKEN: &str = "token-privileges-removed";
 /// The layer name for a process at the low integrity level.
 pub const WINDOWS_LOW: &str = "low-integrity";
 
-/// What Windows does not hold, and why - the note every report carries
-/// while a budget asks for reads or for the network to be held.
+/// What Windows does not hold without a container, and why - the note a
+/// report carries while a budget asks for reads or for the network to be
+/// held and no container was entered **and nobody said why**.
 ///
 /// It is **not** the package's words. `sabline/confine.py`'s say that an
 /// AppContainer is not used because a `python.exe` started in one cannot
 /// read its own installation, which is true of that runtime and not of
-/// this one: `rt/spikes/appcontainer/` measured a Rust binary starting
-/// inside a container with no ACE on itself, reading only what it was
-/// given, and refused the network without a capability. So this says what
-/// is true here - that sabline-rt does not enter one **yet** - and the day
-/// it does, this constant and the row of THREAT_MODEL.md that prints it
-/// change together.
+/// this one. A run of `sabline-rt exec` that was asked for confinement
+/// always says where it stands ([`crate::confine_appcontainer::here`]), so
+/// this is the note of a process that never considered one - a batch of
+/// the agreement gate's, where one process runs some thousands of
+/// programs.
 pub const WINDOWS_NOT_HELD: &str =
-    "reads and the network need an AppContainer, which sabline-rt does not enter yet: a \
-     process cannot enter one after it has started, so the run's own process has to be \
-     started inside one (plan/9.0.md, M4)";
+    "reads and the network need an AppContainer, and this process was not started inside \
+     one: a process cannot enter one after it has started, so the run's own process has to \
+     be started inside one (plan/9.0.md, M4)";
 
 /// Whether this policy's process may be given the low integrity level: it
 /// may when the budget grants no write at all, since a write to anything of
@@ -61,8 +66,9 @@ pub fn lower_the_label(policy: &Json, extras: &Extras) -> bool {
 pub fn supported() -> (bool, String) {
     (
         true,
-        "a job object, the token's privileges removed, a low integrity level for a budget \
-         with no write grant; no AppContainer"
+        "an AppContainer the run's own process is started inside, a job object, the token's \
+         privileges removed, and a low integrity level for a budget with no write grant \
+         where no container was entered"
             .to_string(),
     )
 }
@@ -213,6 +219,10 @@ mod calls {
     const TOKEN_PRIVILEGES_CLASS: i32 = 3;
     const TOKEN_INTEGRITY_LEVEL_CLASS: i32 = 25;
     const SE_PRIVILEGE_REMOVED: DWORD = 0x0000_0004;
+    /// `SE_CHANGE_NOTIFY_PRIVILEGE` (winnt.h): the one privilege a run
+    /// keeps, because it is what bypasses traverse checking - without it a
+    /// process cannot walk to a file it has been given.
+    const CHANGE_NOTIFY_PRIVILEGE: DWORD = 23;
     const SE_GROUP_INTEGRITY: DWORD = 0x0000_0020;
     const LOW_INTEGRITY_SID: &str = "S-1-16-4096";
     const SE_FILE_OBJECT: u32 = 1;
@@ -362,12 +372,25 @@ mod calls {
         let count = u32::from_le_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]);
         let entry = std::mem::size_of::<LuidAndAttributes>();
         let header = std::mem::size_of::<DWORD>();
-        let mut keep = Luid { low: 0, high: 0 };
+        // The one privilege kept, by its well-known number and not only by
+        // the name lookup: `LookupPrivilegeValueW` asks the local security
+        // authority, which a process inside an AppContainer need not be
+        // able to reach, and a lookup that failed left `keep` at zero -
+        // which matches no privilege, so **every** one was removed,
+        // bypass-traverse among them. A container that cannot traverse
+        // cannot resolve a path to the file it was granted, and the run is
+        // then refused a file its budget allows: a wrong answer, and not a
+        // safe one. SE_CHANGE_NOTIFY_PRIVILEGE is 23 and has been since
+        // Windows NT (winnt.h's well-known privileges are fixed).
+        let mut keep = Luid { low: CHANGE_NOTIFY_PRIVILEGE, high: 0 };
         let name = wide("SeChangeNotifyPrivilege");
-        // SAFETY: `name` is NUL-terminated and `keep` is a live out-
+        let mut found = Luid { low: 0, high: 0 };
+        // SAFETY: `name` is NUL-terminated and `found` is a live out-
         // parameter; the call reads neither afterwards.
         // test: the_token_keeps_one_privilege_and_removes_the_rest.
-        unsafe { LookupPrivilegeValueW(std::ptr::null(), name.as_ptr(), &mut keep) };
+        if unsafe { LookupPrivilegeValueW(std::ptr::null(), name.as_ptr(), &mut found) } != 0 {
+            keep = found;
+        }
         for i in 0..usize::try_from(count).unwrap_or(0) {
             let at = header + i * entry;
             if at + entry > buffer.len() {
@@ -513,14 +536,25 @@ mod calls {
     }
 }
 
-/// Ask the job object and the token to hold this process to `policy`, and
-/// say what they did.
+/// Ask the container, the job object and the token to hold this process to
+/// `policy`, and say what they did.
 #[cfg(windows)]
 pub fn apply(policy: &Json, extras: &Extras) -> Report {
+    use crate::confine_appcontainer::{plan, Where, APPCONTAINER};
+
     let mut held: Vec<(&'static str, Held)> = Vec::new();
     let mut layers: Vec<String> = Vec::new();
     let mut notes: Vec<String> = Vec::new();
-    let lower = lower_the_label(policy, extras);
+    // the container, which this process is in or is not: the kernel
+    // answered that before the first statement, and the answer is here
+    let inside = matches!(crate::confine_appcontainer::here(), Some(Where::Inside));
+    if inside {
+        layers.push(APPCONTAINER.to_string());
+    }
+    // a container holds writes by the ACEs it was given, so the low
+    // integrity level - which holds them only by being lower than
+    // everything of the user's - is not asked for inside one
+    let lower = !inside && lower_the_label(policy, extras);
     let (no_privileges, not_lowered) = calls::token(lower, extras.temp.as_deref());
     match &no_privileges {
         None => layers.push(WINDOWS_TOKEN.to_string()),
@@ -542,10 +576,20 @@ pub fn apply(policy: &Json, extras: &Extras) -> Report {
             layers.push(WINDOWS_JOB.to_string());
         }
     }
+    // what the container was given is what this run itself derived from
+    // the same policy and the same request, so the widening it reports is
+    // the widening the ACEs carry
+    let made = if inside { plan(policy, extras) } else { Default::default() };
     if granted(policy, "fs_write").is_some() {
         held.push((
             "fs_write",
-            if not_lowered.is_none() {
+            if inside {
+                if made.wider.is_empty() {
+                    Held::Yes
+                } else {
+                    Held::Partly(made.wider.join("; "))
+                }
+            } else if not_lowered.is_none() {
                 Held::Yes
             } else if !lower {
                 Held::No(
@@ -559,15 +603,50 @@ pub fn apply(policy: &Json, extras: &Extras) -> Report {
         ));
     }
     if granted(policy, "fs_read").is_some() {
-        held.push(("fs_read", Held::No("reads are not held on Windows".to_string())));
+        held.push((
+            "fs_read",
+            if !inside {
+                Held::No("reads are not held on Windows without an AppContainer".to_string())
+            } else if made.wider_reads.is_empty() {
+                Held::Yes
+            } else {
+                Held::Partly(made.wider_reads.join("; "))
+            },
+        ));
     }
-    if !crate::confine::any_net(policy) {
-        held.push(("net", Held::No("the network is not held on Windows".to_string())));
+    if no_net(policy) {
+        held.push((
+            "net",
+            if inside {
+                Held::Yes
+            } else {
+                Held::No(
+                    "the network is not held on Windows without an AppContainer".to_string(),
+                )
+            },
+        ));
+    } else if !crate::confine::any_net(policy) {
+        held.push((
+            "net",
+            if inside {
+                Held::Partly(
+                    "the internetClient capability admits every host; the host is held by \
+                     the language alone"
+                        .to_string(),
+                )
+            } else {
+                Held::No(
+                    "the network is not held on Windows without an AppContainer".to_string(),
+                )
+            },
+        ));
     }
-    if granted(policy, "fs_read").is_some() || !crate::confine::any_net(policy) {
-        notes.push(WINDOWS_NOT_HELD.to_string());
+    if !inside && (granted(policy, "fs_read").is_some() || !crate::confine::any_net(policy)) {
+        notes.push(match crate::confine_appcontainer::here() {
+            Some(Where::Without(why)) => format!("no AppContainer for this run: {why}"),
+            _ => WINDOWS_NOT_HELD.to_string(),
+        });
     }
-    let _ = no_net(policy);
     judge(policy, &held, &layers, &notes)
 }
 
@@ -603,6 +682,19 @@ mod tests {
         assert!(no_privileges.is_none(), "{no_privileges:?}");
         assert_eq!(not_lowered.as_deref(), Some("not asked for"));
         assert!(std::fs::metadata(env!("CARGO_MANIFEST_DIR")).is_ok());
+        // and the one kept is the one Windows numbers 23, whether or not
+        // the name could be looked up: a process that could not look it
+        // up and removed it too would lose bypass-traverse and then
+        // could not reach a file it had been given
+        let source = include_str!("confine_windows.rs");
+        assert!(source.contains("const CHANGE_NOTIFY_PRIVILEGE: DWORD = 23;"));
+        assert!(
+            source.contains("let mut keep = Luid { low: CHANGE_NOTIFY_PRIVILEGE, high: 0 };")
+        );
+        // a path this process could not walk to would be a path realpath
+        // cannot resolve, which is the shape the fault was found as
+        let here = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        assert!(std::fs::canonicalize(here.join("confine_windows.rs")).is_ok());
     }
 
     #[cfg(windows)]

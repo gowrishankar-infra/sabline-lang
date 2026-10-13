@@ -634,13 +634,15 @@ class WhatARunThroughSablineRtSays(Run):
     def test_a_kept_run_says_why_and_a_refused_one_says_nothing(self) -> None:
         from sabline import through_rt
         self.assertIsNone(through_rt.notice_for("checks"))
-        self.assertIn("an eval run", str(through_rt.notice_for("eval")))
         self.assertIn("not UTF-8", str(through_rt.notice_for("source")))
         self.assertIn("sabline trace", str(through_rt.notice_for("trace")))
         # confinement was a reason until 9.0's M4, where sabline-rt began
         # to confine its own runs: a level asked for is carried in the
-        # request and answered there, so nothing is kept for it
+        # request and answered there, so nothing is kept for it; and an
+        # eval run was one until the same rung gave sabline-rt the stop
+        # file the profile needs
         self.assertNotIn("confinement", dict(through_rt.KEPT))
+        self.assertNotIn("eval", dict(through_rt.KEPT))
 
     def test_who_answered_is_written_only_where_it_is_asked_for(self) -> None:
         import json

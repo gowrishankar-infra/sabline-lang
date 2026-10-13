@@ -86,7 +86,7 @@ jobs:
       # document, receipt and audit stream.
       - name: The differential fuzzer, 20 minutes a target
         run: |
-          cargo build --release --manifest-path rt/Cargo.toml
+          cargo build --release --manifest-path rt/Cargo.toml --features fault-inject
           python fuzz_parsers.py --target agreement --minutes 20 --crashes rt-fuzz-crashes
           python fuzz_parsers.py --target agreement_checks --minutes 20 --crashes rt-fuzz-crashes
           python fuzz_parsers.py --target agreement_runs --minutes 20 --crashes rt-fuzz-crashes

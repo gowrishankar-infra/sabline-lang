@@ -56,6 +56,13 @@ EVAL_REFUSED_FLAGS = (
     ("--no-confine", "confinement is part of the profile and has no switch: "
                      "a run under it is held by the operating system, fully "
                      "or partly, or it does not start"),
+    ("--confine", "confinement is part of the profile and has no switch: "
+                  "the profile grants no ffi, so there is no module for "
+                  "--confine strict to keep from widening the policy"),
+    ("--require-confinement", "the profile already requires it: a run it "
+                              "gets none for does not start, and no level "
+                              "above that is a profile a receipt can be "
+                              "compared across machines under"),
     ("--no-receipt", "a run under the profile always has a receipt"),
 )
 _VALUED = ("--allow", "--deny", "--timeout", "--max-memory-mb", "--receipt",
@@ -130,11 +137,13 @@ class _EvalPool(Pool):
     it. `confinement` is the level the started worker got."""
 
     _entry = "eval"
-    # the profile holds a run to the operating system's confinement and does
-    # not start one without it; sabline-rt asks for none before M4, so under
-    # SABLINE_REFERENCE_RUNTIME=rust an eval run stays this package's, and
-    # says so (9.0, M3)
-    _kept_by = "eval"
+    # From 9.0's M4 an eval run goes through sabline-rt like any pool's
+    # (`_kept_by` is None): the profile holds a run to the operating
+    # system's confinement, and sabline-rt asks for it in its own process
+    # before the first statement. What the profile itself holds - the
+    # refused effects, the fs grants that name a path, the worker's probe,
+    # the stop file - is this package's and is checked before anything is
+    # sent anywhere.
 
     def __init__(self, *, allow: str, timeout: float, max_memory_mb: int,
                  import_root: str, stop_file: str, writable: list[str],
@@ -158,6 +167,11 @@ class _EvalPool(Pool):
 
     def _worker_temp(self) -> str | None:
         return str(self.writable[-1])
+
+    def _stop_file(self) -> str | None:
+        # the run itself, wherever it is made, looks for this file every
+        # 256 calls and loop turns and stops there with E615 (9.0, M4)
+        return self.stop_file
 
     def _worker_options(self) -> dict[str, Any]:
         import subprocess
