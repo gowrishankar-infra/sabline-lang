@@ -1596,6 +1596,9 @@ pub fn outer(
     for (paths, access) in [(&made.reads, calls::FILE_READ), (&made.writes, calls::FILE_WRITE)]
     {
         for path in paths {
+            if failed.is_some() {
+                break;
+            }
             // the ACE is read back from the object itself, so that what
             // the receipt says the container reaches is what it was given
             // and not what this process meant to give it
