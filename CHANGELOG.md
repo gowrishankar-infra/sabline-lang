@@ -154,7 +154,7 @@ So **a Windows run under `io` is now `full`**, where it was `partial` on
 every release before this one: a read, a write, a connection or a process
 outside the budget's grants is refused by the kernel, which
 `check_confine.py --runtime rust` measures with the fault-injection hook.
-86 of its questions pass on Windows and 93 on Linux, none broken. The
+90 of its questions pass on Windows and 93 on Linux, none broken. The
 container is **left off**, with the reason in the receipt, for a budget
 granting a loopback host - Windows isolates a container from 127.0.0.1
 unless an administrator exempts it - and for one that restricts neither
