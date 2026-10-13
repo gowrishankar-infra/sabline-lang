@@ -267,9 +267,17 @@ reason on each one the two runtimes differ on.</p>
 <p><strong>A container is left off</strong> for a budget it would refuse something the
 budget allows, and the receipt's reason says which: a budget granting a
 <strong>loopback host</strong>, since Windows isolates a container from the loopback
-address unless an administrator exempts it; and a budget that restricts
+address unless an administrator exempts it; a budget that restricts
 <strong>neither reads nor writes</strong>, since a container reaches only what it is
-given an ACE for. Such a run gets what Windows gave before 9.0. A run that
+given an ACE for; and a <strong>system where a process inside a container cannot
+resolve a path</strong> as the process that started it does. That last one is
+asked rather than assumed: before a run is handed to a container, the
+container is asked to resolve the paths the run was granted, and if any
+answer differs the container is left off. It matters because every <code>fs:</code>
+grant is checked against what a path <em>resolves</em> to - the host resolves the
+grant, the run resolves what the program asks for - so a run that resolved
+a short name like <code>RUNNER~1</code> differently from its host would be refused a
+file its budget allows. A wrong answer is not a safe one. Such a run gets what Windows gave before 9.0. A run that
 is <strong>killed</strong> before its parent can take the ACEs back leaves them naming
 the SID of a profile that is gone, which nothing can hold again; the next
 run sweeps them, from a record each run holds open while it holds the

@@ -219,6 +219,10 @@ mod calls {
     const TOKEN_PRIVILEGES_CLASS: i32 = 3;
     const TOKEN_INTEGRITY_LEVEL_CLASS: i32 = 25;
     const SE_PRIVILEGE_REMOVED: DWORD = 0x0000_0004;
+    /// `SE_CHANGE_NOTIFY_PRIVILEGE` (winnt.h): the one privilege a run
+    /// keeps, because it is what bypasses traverse checking - without it a
+    /// process cannot walk to a file it has been given.
+    const CHANGE_NOTIFY_PRIVILEGE: DWORD = 23;
     const SE_GROUP_INTEGRITY: DWORD = 0x0000_0020;
     const LOW_INTEGRITY_SID: &str = "S-1-16-4096";
     const SE_FILE_OBJECT: u32 = 1;
@@ -368,12 +372,25 @@ mod calls {
         let count = u32::from_le_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]);
         let entry = std::mem::size_of::<LuidAndAttributes>();
         let header = std::mem::size_of::<DWORD>();
-        let mut keep = Luid { low: 0, high: 0 };
+        // The one privilege kept, by its well-known number and not only by
+        // the name lookup: `LookupPrivilegeValueW` asks the local security
+        // authority, which a process inside an AppContainer need not be
+        // able to reach, and a lookup that failed left `keep` at zero -
+        // which matches no privilege, so **every** one was removed,
+        // bypass-traverse among them. A container that cannot traverse
+        // cannot resolve a path to the file it was granted, and the run is
+        // then refused a file its budget allows: a wrong answer, and not a
+        // safe one. SE_CHANGE_NOTIFY_PRIVILEGE is 23 and has been since
+        // Windows NT (winnt.h's well-known privileges are fixed).
+        let mut keep = Luid { low: CHANGE_NOTIFY_PRIVILEGE, high: 0 };
         let name = wide("SeChangeNotifyPrivilege");
-        // SAFETY: `name` is NUL-terminated and `keep` is a live out-
+        let mut found = Luid { low: 0, high: 0 };
+        // SAFETY: `name` is NUL-terminated and `found` is a live out-
         // parameter; the call reads neither afterwards.
         // test: the_token_keeps_one_privilege_and_removes_the_rest.
-        unsafe { LookupPrivilegeValueW(std::ptr::null(), name.as_ptr(), &mut keep) };
+        if unsafe { LookupPrivilegeValueW(std::ptr::null(), name.as_ptr(), &mut found) } != 0 {
+            keep = found;
+        }
         for i in 0..usize::try_from(count).unwrap_or(0) {
             let at = header + i * entry;
             if at + entry > buffer.len() {
@@ -665,6 +682,19 @@ mod tests {
         assert!(no_privileges.is_none(), "{no_privileges:?}");
         assert_eq!(not_lowered.as_deref(), Some("not asked for"));
         assert!(std::fs::metadata(env!("CARGO_MANIFEST_DIR")).is_ok());
+        // and the one kept is the one Windows numbers 23, whether or not
+        // the name could be looked up: a process that could not look it
+        // up and removed it too would lose bypass-traverse and then
+        // could not reach a file it had been given
+        let source = include_str!("confine_windows.rs");
+        assert!(source.contains("const CHANGE_NOTIFY_PRIVILEGE: DWORD = 23;"));
+        assert!(
+            source.contains("let mut keep = Luid { low: CHANGE_NOTIFY_PRIVILEGE, high: 0 };")
+        );
+        // a path this process could not walk to would be a path realpath
+        // cannot resolve, which is the shape the fault was found as
+        let here = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        assert!(std::fs::canonicalize(here.join("confine_windows.rs")).is_ok());
     }
 
     #[cfg(windows)]

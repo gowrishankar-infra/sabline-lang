@@ -19,6 +19,10 @@
 //! sabline-rt os-policy --enforces  how much of each row of THREAT_MODEL's
 //!                                  table this runtime's kernel holds, one
 //!                                  word per system (M4)
+//! sabline-rt resolve <path>...     what this process resolves each path
+//!                                  to, a line each: the probe `exec` runs
+//!                                  inside a Windows AppContainer before it
+//!                                  hands a run to one (M4)
 //! sabline-rt run --install-dir DIR --list <file>
 //!                                  the run document, receipt and audit
 //!                                  stream of each line's program (M3)
@@ -76,6 +80,7 @@ fn main() -> ExitCode {
             eprintln!("       sabline-rt os-policy --list <budgets-file>");
             eprintln!("       sabline-rt os-policy --table");
             eprintln!("       sabline-rt os-policy --enforces");
+            eprintln!("       sabline-rt resolve <path>...");
             eprintln!("       sabline-rt run --install-dir <dir> --list <paths-file>");
             eprintln!("       sabline-rt exec --install-dir <dir>");
             eprintln!("       sabline-rt exec --install-dir <dir> --contained <sid>");
@@ -108,6 +113,18 @@ fn run(words: &[&str]) -> Result<ExitCode, String> {
         ["os-policy", "--list", list] => policy_list_of(list),
         ["os-policy", "--table"] => {
             write_out(&sabline_rt::confine::table_document().canonical())?;
+            Ok(ExitCode::SUCCESS)
+        }
+        ["resolve", rest @ ..] if !rest.is_empty() => {
+            // what this process resolves each path to, a line each: the
+            // probe `sabline-rt exec` runs inside a Windows AppContainer
+            // before it hands a run to one, because a process inside a
+            // container cannot always resolve a path as its host does and
+            // a run that resolves differently is refused a file its
+            // budget grants (M4, src/confine_appcontainer.rs)
+            for path in rest {
+                write_out(&sabline_rt::pypath::realpath(path))?;
+            }
             Ok(ExitCode::SUCCESS)
         }
         ["os-policy", "--enforces"] => {

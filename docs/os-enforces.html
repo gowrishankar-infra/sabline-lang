@@ -135,9 +135,11 @@ cell that differs. These are all of them.</p>
 <p>A container is <strong>left off</strong> for a run whose budget it would refuse
 something the budget allows, and the receipt's <code>confinement_reason</code> says
 which: a budget granting a <strong>loopback host</strong>, since Windows isolates a
-container from the loopback address unless an administrator exempts it;
-and a budget that restricts <strong>neither reads nor writes</strong>, since a
-container reaches only what it is given an ACE for. Such a run gets the
+container from the loopback address unless an administrator exempts it; a
+budget that restricts <strong>neither reads nor writes</strong>, since a container
+reaches only what it is given an ACE for; and a system where a process
+inside a container cannot resolve a path as the process that started it
+does, which is asked before a run is handed to one. Such a run gets the
 table above, as it did before 9.0. A budget that grants <em>any</em> host keeps
 its container: it does not say it needs the loopback address, which is
 then the one address the run itself cannot reach - its own network calls

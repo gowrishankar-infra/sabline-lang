@@ -786,9 +786,11 @@ mod calls {
     }
 
     /// A child started inside the container: the pipe its standard input
-    /// is read from, and its process.
+    /// is read from, the pipe its output is written to when the caller
+    /// asked to read it rather than share its own, and its process.
     pub struct Child {
         write_in: HANDLE,
+        read_out: HANDLE,
         process: HANDLE,
         thread: HANDLE,
     }
@@ -801,6 +803,7 @@ mod calls {
         command: &str,
         sid: &Sid,
         capabilities: &[Sid],
+        captured: bool,
     ) -> Result<Child, String> {
         let mut attributes = SecurityAttributes {
             length: u32::try_from(std::mem::size_of::<SecurityAttributes>()).unwrap_or(0),
@@ -816,15 +819,43 @@ mod calls {
         // SAFETY: `write_in` is this end of the pipe, which the child must
         // not inherit. test: the_profile_is_made_granted_and_taken_back.
         unsafe { SetHandleInformation(write_in, HANDLE_FLAG_INHERIT, 0) };
+        // Where the child writes: a pipe this process reads, for a probe
+        // whose answer is this process's to look at and nobody else's; or
+        // this process's own two standard handles, for the run, whose
+        // frames go straight to whoever asked for the run. Marking those
+        // inheritable is what lets the child write where this one does.
+        let (mut read_out, mut write_out) = (std::ptr::null_mut(), std::ptr::null_mut());
+        if captured {
+            // SAFETY: both out-pointers are live; the ends are closed by
+            // Child and below.
+            // test: the_profile_is_made_granted_and_taken_back.
+            if unsafe { CreatePipe(&mut read_out, &mut write_out, &mut attributes, 0) } == 0 {
+                let why = format!("the probe's standard output: error {}", last_error());
+                // SAFETY: the two ends this function made.
+                // test: the_profile_is_made_granted_and_taken_back.
+                unsafe {
+                    CloseHandle(read_in);
+                    CloseHandle(write_in);
+                }
+                return Err(why);
+            }
+            // SAFETY: `read_out` is this end, which the child must not
+            // inherit. test: the_profile_is_made_granted_and_taken_back.
+            unsafe { SetHandleInformation(read_out, HANDLE_FLAG_INHERIT, 0) };
+        }
         // SAFETY: the two standard handles belong to this process; marking
         // them inheritable is what lets the child write where this one
         // does. test: the_profile_is_made_granted_and_taken_back.
         let (out, err) = unsafe {
-            let out = GetStdHandle(STD_OUTPUT_HANDLE);
-            let err = GetStdHandle(STD_ERROR_HANDLE);
-            SetHandleInformation(out, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
-            SetHandleInformation(err, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
-            (out, err)
+            if captured {
+                (write_out, write_out)
+            } else {
+                let out = GetStdHandle(STD_OUTPUT_HANDLE);
+                let err = GetStdHandle(STD_ERROR_HANDLE);
+                SetHandleInformation(out, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+                SetHandleInformation(err, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+                (out, err)
+            }
         };
         let mut given: Vec<SidAndAttributes> = capabilities
             .iter()
@@ -846,9 +877,10 @@ mod calls {
         unsafe { InitializeProcThreadAttributeList(std::ptr::null_mut(), 2, 0, &mut size) };
         let mut list = vec![0u8; size.max(1)];
         let mut handles = [read_in, out, err];
-        // SAFETY: `list` is `size` bytes; `security` and `handles` both
-        // outlive the attribute list and the call that reads it.
-        // test: the_profile_is_made_granted_and_taken_back.
+        let listed = if captured { 2 } else { 3 }; // out and err are one pipe
+                                                   // SAFETY: `list` is `size` bytes; `security` and `handles` both
+                                                   // outlive the attribute list and the call that reads it.
+                                                   // test: the_profile_is_made_granted_and_taken_back.
         let ready = unsafe {
             InitializeProcThreadAttributeList(list.as_mut_ptr().cast(), 2, 0, &mut size) != 0
                 && UpdateProcThreadAttribute(
@@ -865,19 +897,23 @@ mod calls {
                     0,
                     PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
                     handles.as_mut_ptr().cast(),
-                    std::mem::size_of_val(&handles),
+                    listed * std::mem::size_of::<HANDLE>(),
                     std::ptr::null_mut(),
                     std::ptr::null_mut(),
                 ) != 0
         };
         if !ready {
             let why = format!("the container's attributes: error {}", last_error());
-            // SAFETY: the three handles this function made or marked; the
-            // standard ones are not closed.
+            // SAFETY: the handles this function made; the standard ones
+            // are not closed, and a null is not closed.
             // test: the_profile_is_made_granted_and_taken_back.
             unsafe {
                 CloseHandle(read_in);
                 CloseHandle(write_in);
+                if captured {
+                    CloseHandle(read_out);
+                    CloseHandle(write_out);
+                }
             }
             return Err(why);
         }
@@ -921,14 +957,22 @@ mod calls {
         unsafe {
             DeleteProcThreadAttributeList(list.as_mut_ptr().cast());
             CloseHandle(read_in);
+            if captured {
+                CloseHandle(write_out);
+            }
         }
         if started == 0 {
-            // SAFETY: this end of the pipe, closed once on this path.
-            // test: the_profile_is_made_granted_and_taken_back.
-            unsafe { CloseHandle(write_in) };
+            // SAFETY: the ends this process still holds, closed once on
+            // this path. test: the_profile_is_made_granted_and_taken_back.
+            unsafe {
+                CloseHandle(write_in);
+                if captured {
+                    CloseHandle(read_out);
+                }
+            }
             return Err(format!("the run's process could not be started: error {why}"));
         }
-        Ok(Child { write_in, process: about.process, thread: about.thread })
+        Ok(Child { write_in, read_out, process: about.process, thread: about.thread })
     }
 
     impl Child {
@@ -941,6 +985,25 @@ mod calls {
             // once - the field is cleared - so the File closes it.
             // test: the_profile_is_made_granted_and_taken_back.
             unsafe { std::fs::File::from_raw_handle(raw.cast()) }
+        }
+
+        /// Read everything it writes, until it stops writing: for a
+        /// probe, whose answer is one line. Taken once.
+        pub fn captured(&mut self) -> String {
+            use std::io::Read;
+            use std::os::windows::io::FromRawHandle;
+            if self.read_out.is_null() {
+                return String::new();
+            }
+            let raw = self.read_out;
+            self.read_out = std::ptr::null_mut();
+            // SAFETY: `raw` is the pipe end this process owns, handed over
+            // once - the field is cleared - so the File closes it.
+            // test: the_profile_is_made_granted_and_taken_back.
+            let mut from = unsafe { std::fs::File::from_raw_handle(raw.cast()) };
+            let mut said = String::new();
+            let _ = from.read_to_string(&mut said);
+            said
         }
 
         /// Wait for it, and answer how it ended.
@@ -965,6 +1028,9 @@ mod calls {
             unsafe {
                 if !self.write_in.is_null() {
                     CloseHandle(self.write_in);
+                }
+                if !self.read_out.is_null() {
+                    CloseHandle(self.read_out);
                 }
                 CloseHandle(self.process);
                 CloseHandle(self.thread);
@@ -1142,6 +1208,81 @@ pub fn sweep() {
     }
 }
 
+/// How many of a run's paths the probe asks about: enough to catch a
+/// system where resolution does not work, short of a command line nobody
+/// can read.
+#[cfg(windows)]
+const PROBED: usize = 8;
+
+/// Why a run inside this container would not resolve a path as this
+/// process does, or `None` when it would.
+///
+/// `realpath` answers what file a path names, which is what every `fs:`
+/// grant is checked against. The host resolves the budget's grants; the
+/// run resolves what the program asks for. Those two agree only while the
+/// run can ask the system the same question - and a process inside an
+/// AppContainer cannot always: on some systems
+/// `GetFinalPathNameByHandle` answers nothing there, and `realpath` then
+/// leaves the path as it was written. A short name (`RUNNER~1`) or a
+/// junction in the path is then a run refused a file its budget grants.
+///
+/// So the container is asked, once, before a run is handed to it: it
+/// resolves the paths this process has already resolved, and if any
+/// answer differs the container is left off and the reason says which.
+/// It costs one process inside a container that is already made, and it
+/// is the one thing about a container this process cannot know without
+/// being inside one.
+#[cfg(windows)]
+fn cannot_resolve(
+    exe: &str,
+    sid: &calls::Sid,
+    capabilities: &[calls::Sid],
+    made: &Plan,
+) -> Option<String> {
+    let asked: Vec<&String> =
+        made.reads.iter().chain(made.writes.iter()).take(PROBED).collect();
+    if asked.is_empty() {
+        return None;
+    }
+    let mut command = format!("\"{exe}\" resolve");
+    for path in &asked {
+        command.push_str(&format!(" \"{path}\""));
+    }
+    let said = match calls::start(exe, &command, sid, capabilities, true) {
+        Err(why) => {
+            return Some(format!("the container could not be asked to resolve: {why}"))
+        }
+        Ok(mut probe) => {
+            let said = probe.captured();
+            let code = probe.wait();
+            if code != 0 {
+                return Some(format!(
+                    "a process inside an AppContainer could not be asked to resolve a path                      (it ended {code})"
+                ));
+            }
+            said
+        }
+    };
+    let answers: Vec<&str> = said.lines().map(str::trim_end).collect();
+    if answers.len() != asked.len() {
+        return Some(format!(
+            "a process inside an AppContainer answered for {} of the {} paths it was asked              about",
+            answers.len(),
+            asked.len()
+        ));
+    }
+    for (path, inside) in asked.iter().zip(answers) {
+        let here = crate::pypath::realpath(path);
+        if crate::pypath::os_path::normcase(inside) != crate::pypath::os_path::normcase(&here)
+        {
+            return Some(format!(
+                "a process inside an AppContainer on this system resolves {path} to {inside}                  where this one resolves it to {here}, so a run inside one would be refused a                  file its budget grants"
+            ));
+        }
+    }
+    None
+}
+
 /// What one request's turn at a container came to.
 #[cfg(windows)]
 pub enum Taken {
@@ -1279,11 +1420,24 @@ pub fn outer(
             }
         }
     }
+    let capabilities: Vec<calls::Sid> =
+        made.capabilities.iter().filter_map(|c| calls::sid_of(c)).collect();
+    // Can a process inside this container resolve a path as this one does?
+    // It is not a given: `realpath` asks the system for the file a path
+    // names, and a container that cannot answer leaves the path as it was
+    // written - so a run would compare a path it resolved itself against a
+    // grant its host resolved, and refuse a file the budget allows. That is
+    // a wrong answer, not a safe one, so the container is left off instead
+    // (plan/9.0-m4-progress.md's question of 2026-10-13). The probe costs
+    // one process, inside the container that is already made.
+    if failed.is_none() {
+        if let Some(why) = cannot_resolve(&exe, &sid, &capabilities, &made) {
+            failed = Some(why);
+        }
+    }
     let ended = match failed {
         Some(why) => Err(why),
         None => {
-            let capabilities: Vec<calls::Sid> =
-                made.capabilities.iter().filter_map(|c| calls::sid_of(c)).collect();
             // a trailing backslash before the closing quote would escape
             // it, and the request is one line, so it ends with one
             let dir = install_dir.trim_end_matches(['\\', '/']);
@@ -1293,7 +1447,7 @@ pub fn outer(
             line.push('\n');
             // once the child is started this process never runs the
             // program itself: there would be two runs and two answers
-            calls::start(&exe, &command, &sid, &capabilities).map(|mut child| {
+            calls::start(&exe, &command, &sid, &capabilities, false).map(|mut child| {
                 let mut to_child = child.stdin();
                 let handed = to_child
                     .write_all(line.as_bytes())

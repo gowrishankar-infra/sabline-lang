@@ -1196,9 +1196,20 @@ def _windows_token(lower: bool, temp: str | None) -> tuple[str | None,
             count = w.DWORD.from_buffer(buffer).value
             entries = (LUID_AND_ATTRIBUTES * count).from_buffer(
                 buffer, ctypes.sizeof(w.DWORD))
-            keep = LUID()
-            a.LookupPrivilegeValueW(None, "SeChangeNotifyPrivilege",
-                                    ctypes.byref(keep))
+            # The one privilege kept, by its well-known number and not
+            # only by the name lookup (9.0, M4): LookupPrivilegeValueW
+            # asks the local security authority, and a lookup that failed
+            # left `keep` at zero - which matches no privilege, so every
+            # one was removed, bypass-traverse among them. A process
+            # without it cannot walk to a file it has been given, and
+            # inside an AppContainer that makes a run refuse a file its
+            # budget allows. SE_CHANGE_NOTIFY_PRIVILEGE is 23 and has
+            # been since Windows NT.
+            keep = LUID(23, 0)
+            found = LUID()
+            if a.LookupPrivilegeValueW(None, "SeChangeNotifyPrivilege",
+                                       ctypes.byref(found)):
+                keep = found
             for entry in entries:
                 if (entry.Luid.LowPart, entry.Luid.HighPart) != (
                         keep.LowPart, keep.HighPart):

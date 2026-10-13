@@ -138,9 +138,12 @@ LEVEL_BY_RUNTIME = {
     "python": {"linux": "full", "macos": "partial", "windows": "partial"},
     "rust": {"linux": "full", "macos": "partial", "windows": "full"},
 }
-HELD = HELD_BY_RUNTIME[RUNTIME]
+# Copies, because on Windows this suite asks the machine whether a run is
+# held by an AppContainer before it holds anything to one (see main()).
+HELD = {system: dict(row)
+        for system, row in HELD_BY_RUNTIME[RUNTIME].items()}
 # What a run measured here gets: the runtime that will run it.
-LEVEL = LEVEL_BY_RUNTIME[RUNTIME]
+LEVEL = dict(LEVEL_BY_RUNTIME[RUNTIME])
 # What `sabline audit`, `sabline doctor` and `confine.predict()` answer,
 # which is the Python package's own runtime whatever will run the program.
 # It is the weaker of the two on Windows, so a prediction never promises
@@ -1959,11 +1962,51 @@ def describe_macos() -> None:
     print()
 
 
+def windows_container() -> tuple[str, str]:
+    """Whether a run through sabline-rt on **this** Windows is held by an
+    AppContainer of its own, and what its receipt said (9.0, M4).
+
+    It is not a given. `sabline-rt exec` asks the container, before it
+    hands a run to one, whether a process inside it resolves a path as
+    this one does; where it does not - some systems answer nothing to
+    `GetFinalPathNameByHandle` inside a container - the container is left
+    off, because a run that resolved a path differently from the host that
+    resolved its grants would be refused a file its budget allows. So this
+    suite asks the machine rather than assuming, and holds every case to
+    the answer: the level, the layers and the reason are all read from the
+    receipt, and the reason is printed either way."""
+    data = WORK / "container-probe"
+    data.mkdir(exist_ok=True)
+    (data / "a.txt").write_text("inside the grant", encoding="utf-8")
+    rec = WORK / "container-probe.json"
+    rec.unlink(missing_ok=True)
+    cli(program("probe.vel", HELLO), "--allow",
+        f"io,fs:read:{data.as_posix()}", "--receipt", str(rec))
+    text = rec.read_text(encoding="utf-8") if rec.exists() else ""
+    p = ((json.loads(text)["predicate"]["run_parameters"])
+         if text.strip() else {})
+    layers = p.get("confinement_layers") or []
+    return (str(p.get("confinement")) if "appcontainer" in layers else "",
+            str(p.get("confinement_reason") or "no receipt"))
+
+
 def main() -> int:
     record = "--record" in sys.argv[1:]
     if PLATFORM == "macos":
         describe_macos()
     print(f"the runtime every run goes through: {RUNTIME}")
+    if PLATFORM == "windows" and RUNTIME == "rust":
+        level, why = windows_container()
+        if level:
+            print(f"  listed  a run here is held by an AppContainer of its "
+                  f"own, and is {level}")
+        else:
+            # the package's own row, which is what this machine gives
+            HELD.update(HELD_BY_RUNTIME["python"])
+            LEVEL.update(LEVEL_BY_RUNTIME["python"])
+            print(f"  listed  a run here is NOT held by an AppContainer, so "
+                  f"every case below is held to what this package's own "
+                  f"runtime gives: {why}")
     if RUNTIME == "python":
         # this module's own derivations, which sabline-rt derives too and
         # the agreement gate compares field for field: asking them again
@@ -1977,7 +2020,12 @@ def main() -> int:
     unreachable_cases()
     against_cases()
     if PLATFORM == "windows" and RUNTIME == "rust":
-        appcontainer_cases()
+        if LEVEL["windows"] == "full":
+            appcontainer_cases()
+        else:
+            print()
+            print("  skip     the Windows AppContainer's own promises (no "
+                  "container is used on this machine)")
     if PLATFORM == "linux" and RUNTIME == "rust":
         no_landlock_cases()
     strict_cases(RUNTIME)
