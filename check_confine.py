@@ -1034,8 +1034,8 @@ fn main() uses io {
         .get("run_parameters") or {}).get("os_policy_sha256")
        == confine.policy_sha256(confine.os_policy(
            Budget.parse("io,ffi:nativefmt"))), answer)
-    wrong = []
-    for door, words, says in (
+    badly: list[str] = []
+    for which, flags, says in (
             ("mcp", ["--confine", "lax"], "takes strict"),
             ("mcp", ["--no-confine", "--require-confinement", "full"],
              "say one"),
@@ -1044,29 +1044,29 @@ fn main() uses io {
             ("serve", ["--no-confine", "--confine", "strict"], "say one"),
             ("serve", ["--require-confinement", "most"],
              "full or partial")):
-        done = subprocess.run([sys.executable, SABLINE, door, *words],
-                              capture_output=True, text=True,
-                              errors="replace", stdin=subprocess.DEVNULL,
-                              timeout=300)
-        said = done.stdout + done.stderr
-        if done.returncode == 0 or says not in said:
-            wrong.append(f"sabline {door} {' '.join(words)}: "
-                         f"{done.returncode} {said[-200:]}")
+        tried = subprocess.run([sys.executable, SABLINE, which, *flags],
+                               capture_output=True, text=True,
+                               errors="replace", stdin=subprocess.DEVNULL,
+                               timeout=300)
+        said = tried.stdout + tried.stderr
+        if tried.returncode == 0 or says not in said:
+            badly.append(f"sabline {which} {' '.join(flags)}: "
+                         f"{tried.returncode} {said[-200:]}")
     ok("a door's confinement flags are read the way every command line "
        "reads them: a mode that is not one, a level that is not one, and "
        "either beside --no-confine, are refused before the door starts",
-       not wrong, wrong)
-    refused = []
-    for words, says in ((["--confine", "strict"], "--confine"),
+       not badly, badly)
+    refused: list[str] = []
+    for flags, says in ((["--confine", "strict"], "--confine"),
                         (["--require-confinement", "partial"],
                          "--require-confinement")):
-        done = subprocess.run(
+        tried = subprocess.run(
             [sys.executable, SABLINE, "eval", str(WORK / "hello.vel"),
-             *words], capture_output=True, text=True, errors="replace",
+             *flags], capture_output=True, text=True, errors="replace",
             stdin=subprocess.DEVNULL, timeout=300)
-        if done.returncode == 0 or f"refused: {says}" not in done.stderr:
-            refused.append(f"{words}: {done.returncode} "
-                           f"{done.stderr[-200:]}")
+        if tried.returncode == 0 or f"refused: {says}" not in tried.stderr:
+            refused.append(f"{flags}: {tried.returncode} "
+                           f"{tried.stderr[-200:]}")
     ok("sabline eval refuses both by name, as it refuses --no-confine: "
        "confinement is part of its profile and has no switch",
        not refused, refused)
@@ -1700,6 +1700,35 @@ def appcontainer_cases() -> None:
                                  ["run_parameters"] if text.strip() else {})
         return found
 
+    # What the container was given, said two ways, because a run refused a
+    # file its budget grants is a wrong answer and not a safe one: the
+    # kernel lets the run read what it was given an ACE for, and the
+    # language's own resolution of that path inside the container is the
+    # one the host resolved the grant to. The second is the one that bit:
+    # the host resolves the budget (`Budget.spec()`), the run resolves what
+    # the program names, and a container that cannot resolve answers a path
+    # the grant does not cover.
+    inside = Budget.parse(grant).spec()
+    code, out, err = cli(hello, "--allow", grant,
+                         env={confine.FAULT_ENV: f"read:{data / 'a.txt'}"})
+    ok("the hook's read of a file inside the grant goes through: the ACE "
+       "the container was given is one the kernel honours",
+       code == 0 and "succeeded" in err and "ran to the end" in out,
+       [code, err[-400:], inside])
+    reader = program("granted.vel", f'''
+fn main() uses io, fs {{
+    check read_file("{(data / "a.txt").as_posix()}") {{
+        ok body {{ print("read: " + body) }}
+        fail why {{ print("could not read: " + why) }}
+    }}
+}}
+''')
+    code, out, err = cli(reader, "--allow", grant)
+    ok("...and a program reads it under the same grant: the run resolves "
+       "the path inside the container as its host resolved the grant",
+       code == 0 and "read: inside the grant" in out,
+       [code, err[-500:], f"the host's grant: {inside}"])
+
     before = container_aces(data)
     rec.unlink(missing_ok=True)
     code, out, err = cli(hello, "--allow", grant, "--receipt", str(rec))
@@ -1868,8 +1897,8 @@ def no_landlock_cases() -> None:
        code == 0 and "ran to the end" in out
        and p.get("confinement") == "partial"
        and "no Landlock" in p.get("confinement_reason", "")
-       and any(l.startswith("seccomp") for l in layers)
-       and not any(l.startswith("landlock") for l in layers),
+       and any(name.startswith("seccomp") for name in layers)
+       and not any(name.startswith("landlock") for name in layers),
        [code, err[-300:], p])
     code, out, err = cli(hello, env=dict(off, **{
         confine.FAULT_ENV: f"read:{held}"}))
