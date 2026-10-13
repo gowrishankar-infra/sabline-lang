@@ -197,6 +197,57 @@ pub fn plan(policy: &Json, extras: &Extras) -> Plan {
     Plan { reads, writes, capabilities, wider, wider_reads }
 }
 
+/// How many files may be under one granted directory before a run is left
+/// uncontained.
+///
+/// An AppContainer reaches a file only through that file's **own** rights,
+/// and Windows' inheritance is a copy and not a lookup: giving a directory
+/// an inheritable ACE writes it into every file under it, and taking it
+/// back writes them all again. That is about half a millisecond a file on
+/// the machine this was measured on - a quarter of a second for a thousand
+/// files, each way - and it is work charged to the run's own deadline, as
+/// well as a change to the rights of the user's files. So a grant wider
+/// than this leaves the container off, with the reason in the receipt,
+/// rather than making every run pay for a tree nobody counted.
+pub const MOST_UNDER_A_GRANT: usize = 1024;
+
+/// Why a container's ACEs would be too much work for this run's grants, or
+/// `None`. The count stops at the limit, so a grant over a tree of a
+/// million files costs a walk of a thousand and one.
+pub fn too_wide(made: &Plan) -> Option<String> {
+    for path in made.reads.iter().chain(made.writes.iter()) {
+        if !std::path::Path::new(path).is_dir() {
+            continue;
+        }
+        let under = count_up_to(path, MOST_UNDER_A_GRANT + 1);
+        if under > MOST_UNDER_A_GRANT {
+            return Some(format!(
+                "{path} holds more than {MOST_UNDER_A_GRANT} files, and an                  AppContainer reaches a file only through that file's own rights:                  giving the container this grant would write its ACE into every one                  of them, and take it out again when the run ended"
+            ));
+        }
+    }
+    None
+}
+
+/// How many files are under `path`, counting no further than `limit`.
+fn count_up_to(path: &str, limit: usize) -> usize {
+    let mut seen = 0usize;
+    let mut todo = vec![std::path::PathBuf::from(path)];
+    while let Some(dir) = todo.pop() {
+        let Ok(listed) = std::fs::read_dir(&dir) else { continue };
+        for entry in listed.flatten() {
+            seen += 1;
+            if seen >= limit {
+                return seen;
+            }
+            if entry.file_type().is_ok_and(|kind| kind.is_dir()) {
+                todo.push(entry.path());
+            }
+        }
+    }
+    seen
+}
+
 /// The profile's name, which is this run's and no other's: a profile that
 /// is deleted takes its SID with it, so an ACE left behind by a run that
 /// was killed names a SID nothing can hold again.
@@ -1269,8 +1320,42 @@ const PROBED: usize = 8;
 #[cfg(windows)]
 const PROBE_PATIENCE: u32 = 30_000;
 
+/// The file that remembers a **no** from the probe, for this build of the
+/// crate: where a container cannot resolve a path, every run would
+/// otherwise make a profile, write its ACEs, start a probe and take it all
+/// back again, for a container it will not use. The answer is the
+/// operating system's and not the run's, so it is asked once.
+///
+/// Only a **no** is remembered. A remembered yes would be a claim that
+/// outlived its measurement - the system could change under it, and then a
+/// run would be refused a file its budget grants - and the cost of asking
+/// again on a machine that says yes is one process inside a container that
+/// is already made.
+#[cfg(windows)]
+fn remembered() -> Option<std::path::PathBuf> {
+    Some(records()?.join(format!(".no-container-{}.txt", crate::VERSION)))
+}
+
+/// The remembered reason, or `None` when nothing is remembered.
+#[cfg(windows)]
+pub fn remembered_no() -> Option<String> {
+    let said = std::fs::read_to_string(remembered()?).ok()?;
+    let said = said.trim();
+    (!said.is_empty()).then(|| said.to_string())
+}
+
+/// Remember that this system's containers cannot resolve a path.
+#[cfg(windows)]
+fn remember_no(why: &str) {
+    if let Some(path) = remembered() {
+        let _ = std::fs::write(path, why);
+    }
+}
+
 /// Why a run inside this container would not resolve a path as this
-/// process does, or `None` when it would.
+/// process does, or `None` when it would - and whether that is the
+/// **system's** answer, which is the same every time and worth
+/// remembering, or this run's, which is not.
 ///
 /// `realpath` answers what file a path names, which is what every `fs:`
 /// grant is checked against. The host resolves the budget's grants; the
@@ -1293,7 +1378,7 @@ fn cannot_resolve(
     sid: &calls::Sid,
     capabilities: &[calls::Sid],
     made: &Plan,
-) -> Option<String> {
+) -> Option<(String, bool)> {
     // A path is probed in a spelling that is **not** its canonical form,
     // because resolving one that already is tells nothing: `realpath`
     // answers the path it was given when it cannot ask the system, so a
@@ -1308,7 +1393,14 @@ fn cannot_resolve(
         }
     }
     if asked.is_empty() {
-        return None;
+        // Nothing to ask with, so nothing is known - and what is not known
+        // is not claimed. A volume that keeps no 8.3 names gives no such
+        // spelling, and then a container is left off rather than trusted.
+        return Some((
+            "no path of this run has a spelling that is not its canonical form, so whether              a process inside an AppContainer resolves one as this process does could not              be asked"
+                .to_string(),
+            false, // a property of this run's paths, not of the system
+        ));
     }
     let asked: Vec<&String> = asked.iter().collect();
     let mut command = format!("\"{exe}\" resolve");
@@ -1317,20 +1409,27 @@ fn cannot_resolve(
     }
     let said = match calls::start(exe, &command, sid, capabilities, true) {
         Err(why) => {
-            return Some(format!("the container could not be asked to resolve: {why}"))
+            return Some((
+                format!("the container could not be asked to resolve: {why}"),
+                false,
+            ))
         }
         Ok(mut probe) => {
             let said = probe.captured();
             let Some(code) = probe.wait_for(PROBE_PATIENCE) else {
                 probe.kill();
-                return Some(
+                return Some((
                     "a process inside an AppContainer did not answer whether it can                      resolve a path"
                         .to_string(),
-                );
+                    false,
+                ));
             };
             if code != 0 {
-                return Some(format!(
-                    "a process inside an AppContainer could not be asked to resolve a path                      (it ended {code})"
+                return Some((
+                    format!(
+                        "a process inside an AppContainer could not be asked to resolve a                          path (it ended {code})"
+                    ),
+                    false,
                 ));
             }
             said
@@ -1338,18 +1437,24 @@ fn cannot_resolve(
     };
     let answers: Vec<&str> = said.lines().map(str::trim_end).collect();
     if answers.len() != asked.len() {
-        return Some(format!(
-            "a process inside an AppContainer answered for {} of the {} paths it was asked              about",
-            answers.len(),
-            asked.len()
+        return Some((
+            format!(
+                "a process inside an AppContainer answered for {} of the {} paths it was                  asked about",
+                answers.len(),
+                asked.len()
+            ),
+            false,
         ));
     }
     for (path, inside) in asked.iter().zip(answers) {
         let here = crate::pypath::realpath(path);
         if crate::pypath::os_path::normcase(inside) != crate::pypath::os_path::normcase(&here)
         {
-            return Some(format!(
-                "a process inside an AppContainer on this system resolves {path} to {inside}                  where this one resolves it to {here}, so a run inside one would be refused a                  file its budget grants"
+            return Some((
+                format!(
+                    "a process inside an AppContainer on this system resolves {path} to                      {inside} where this one resolves it to {here}, so a run inside one                      would be refused a file its budget grants"
+                ),
+                true, // the system's answer, and the same every time
             ));
         }
     }
@@ -1436,6 +1541,16 @@ pub fn consider(request: &str, install_dir: &str) -> Taken {
         stands(Where::Without(why));
         return Taken::Here;
     }
+    if let Some(why) = too_wide(&plan(&policy, &extras)) {
+        stands(Where::Without(why));
+        return Taken::Here;
+    }
+    // what a run on this system already found out, so that a machine whose
+    // containers cannot resolve a path stops paying for one it will not use
+    if let Some(why) = remembered_no() {
+        stands(Where::Without(why));
+        return Taken::Here;
+    }
     match outer(request, install_dir, &policy, &extras) {
         Ok(code) => Taken::Ran(code),
         Err(why) => {
@@ -1504,7 +1619,10 @@ pub fn outer(
     // (plan/9.0-m4-progress.md's question of 2026-10-13). The probe costs
     // one process, inside the container that is already made.
     if failed.is_none() {
-        if let Some(why) = cannot_resolve(&exe, &sid, &capabilities, &made) {
+        if let Some((why, forever)) = cannot_resolve(&exe, &sid, &capabilities, &made) {
+            if forever {
+                remember_no(&why);
+            }
             failed = Some(why);
         }
     }
@@ -1649,6 +1767,29 @@ mod tests {
         let made = plan(&policy_of(&allow), &Extras::default());
         assert_eq!(made.wider.len(), 1, "{made:?}");
         assert!(made.wider[0].contains("does not exist yet"), "{made:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_grant_wider_than_the_limit_leaves_the_container_off() {
+        let dir = std::env::temp_dir().join(format!("sabline-wide-{}", std::process::id()));
+        let deep = dir.join("under");
+        std::fs::create_dir_all(&deep).expect("a directory");
+        for i in 0..8 {
+            std::fs::write(deep.join(format!("f{i}.txt")), "x").expect("a file");
+        }
+        // the count stops at the limit, so a tree of eight is eight and a
+        // tree of a million would be the limit and one
+        assert_eq!(count_up_to(&dir.to_string_lossy(), 1000), 9);
+        assert_eq!(count_up_to(&dir.to_string_lossy(), 4), 4);
+        let made = Plan { reads: vec![dir.to_string_lossy().to_string()], ..Plan::default() };
+        assert_eq!(too_wide(&made), None);
+        // a file is not a directory, and is never too wide
+        let one = Plan {
+            reads: vec![deep.join("f0.txt").to_string_lossy().to_string()],
+            ..Plan::default()
+        };
+        assert_eq!(too_wide(&one), None);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

@@ -180,6 +180,18 @@ and any answer that differs leaves the container off with the reason in the
 receipt. `check_confine.py` asks the machine the same question and holds
 every case to the answer rather than assuming one.
 
+**What the container costs, and the two bounds that hold it.** An
+AppContainer reaches a file only through that file's own rights, and
+Windows' inheritance is a copy and not a lookup, so giving a directory an
+inheritable ACE writes it into every file under it and taking it back
+writes them all again - about half a millisecond a file, charged to the
+run's own deadline. A grant over a tree larger than a thousand files
+therefore leaves the container off, with the reason in the receipt. And a
+system whose containers cannot resolve a path remembers that answer for
+that build of the crate, so it stops making a profile, writing ACEs and
+starting a probe for a container it will not use; a **yes** is not
+remembered, because it would be a claim that outlived its measurement.
+
 fix: the one privilege a confined run keeps on Windows -
 `SeChangeNotifyPrivilege`, which is what bypasses traverse checking - was
 found by `LookupPrivilegeValueW` alone, and a lookup that failed left the

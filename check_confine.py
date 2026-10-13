@@ -150,6 +150,12 @@ LEVEL = dict(LEVEL_BY_RUNTIME[RUNTIME])
 # more than the run gets (plan/9.0-m4-progress.md's question of
 # 2026-10-13).
 PREDICTED = LEVEL_BY_RUNTIME["python"]
+# Whether a run through sabline-rt on this machine is held by a Windows
+# AppContainer: asked once, in main(), because it is not a given (see
+# windows_container()). False everywhere else, where there is no container
+# to be held by.
+CONTAINED = False
+
 # The level a door's own worker gets. A pool worker is a Python process,
 # confined at its start, and the honesty hook fires there - before a
 # program is sent anywhere - so what a door reports for it is this
@@ -1122,7 +1128,7 @@ def against_cases() -> None:
             ok(f"the network through ffi:json: not held on {PLATFORM}",
                code == 0 and "succeeded" in err, err[-400:])
         code, out, err = cli(hello, "--allow", "io,ffi:socket", env=connect)
-        if PLATFORM == "windows" and RUNTIME == "rust":
+        if PLATFORM == "windows" and RUNTIME == "rust" and CONTAINED:
             # the hook's connection is made inside the AppContainer, which
             # Windows isolates from the loopback address whatever
             # capability it holds (rt/spikes/appcontainer/README.md). A
@@ -1996,12 +2002,14 @@ def main() -> int:
     if PLATFORM == "macos":
         describe_macos()
     print(f"the runtime every run goes through: {RUNTIME}")
+    global CONTAINED
     if PLATFORM == "windows" and through_rt.binary() is not None:
         # Asked of sabline-rt whichever runtime this suite is being run
         # for, because the python run asks strict_cases and required_cases
         # of the rust runtime too (below).
         level, why = windows_container()
         if level:
+            CONTAINED = True
             print(f"  listed  a run through sabline-rt here is held by an "
                   f"AppContainer of its own, and is {level}")
         else:

@@ -235,8 +235,14 @@ address unless an administrator exempts it; a budget that restricts
 given an ACE for; and a **system where a process inside a container cannot
 resolve a path** as the process that started it does. That last one is
 asked rather than assumed: before a run is handed to a container, the
-container is asked to resolve the paths the run was granted, and if any
-answer differs the container is left off. It matters because every `fs:`
+container is asked to resolve a spelling of its granted paths that is
+**not** their canonical form - the 8.3 form, where the volume keeps one -
+and if any answer differs the container is left off. A run with no such
+spelling to ask about leaves it off too: what cannot be asked is not
+claimed. A **no** is remembered for that build of the crate, so a system
+whose containers cannot resolve stops paying for one it will not use; a
+**yes** is not, because a remembered yes would be a claim that outlived
+its measurement. It matters because every `fs:`
 grant is checked against what a path *resolves* to - the host resolves the
 grant, the run resolves what the program asks for - so a run that resolved
 a short name like `RUNNER~1` differently from its host would be refused a
@@ -245,6 +251,16 @@ is **killed** before its parent can take the ACEs back leaves them naming
 the SID of a profile that is gone, which nothing can hold again; the next
 run sweeps them, from a record each run holds open while it holds the
 grants.
+
+**A grant wider than a thousand files leaves the container off.** An
+AppContainer reaches a file only through that file's own rights, and
+Windows' inheritance is a copy and not a lookup: giving a directory an
+inheritable ACE writes it into every file under it, and taking it back
+writes them all again. That is about half a millisecond a file, charged to
+the run's own deadline, and it changes the rights of the user's files while
+the run lasts. So a grant over a tree larger than that is a container left
+off, with the reason in the receipt, rather than a run that pays for a tree
+nobody counted.
 
 **Two runs at once** are two containers with an ACE each on the same file,
 and adding one is *read the rights, add to them, write them back*: without
