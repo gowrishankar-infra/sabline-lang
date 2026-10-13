@@ -356,6 +356,7 @@ mod calls {
         ) -> BOOL;
         fn SetHandleInformation(h: HANDLE, mask: DWORD, flags: DWORD) -> BOOL;
         fn GetStdHandle(which: DWORD) -> HANDLE;
+        fn GetShortPathNameW(long: LPCWSTR, short: LPWSTR, length: DWORD) -> DWORD;
         fn WaitForSingleObject(h: HANDLE, ms: DWORD) -> DWORD;
         fn GetExitCodeProcess(h: HANDLE, code: *mut DWORD) -> BOOL;
         fn CloseHandle(h: HANDLE) -> BOOL;
@@ -482,6 +483,39 @@ mod calls {
             }
             self.raw = std::ptr::null_mut();
         }
+    }
+
+    /// The 8.3 form of `path`, when this volume has one and it differs:
+    /// a path whose spelling is **not** its canonical form, which is what
+    /// the resolution probe needs to ask about. `None` where the volume
+    /// keeps no short names, and then no short name can reach a run.
+    pub fn short_form(path: &str) -> Option<String> {
+        let w = wide(path);
+        // SAFETY: the first call asks for the length only - a null buffer
+        // of length 0 - and answers how many characters are needed.
+        // test: a_short_form_is_this_volumes_or_nothing.
+        let needed = unsafe { GetShortPathNameW(w.as_ptr(), std::ptr::null_mut(), 0) };
+        if needed == 0 {
+            return None;
+        }
+        let mut buffer = vec![0u16; usize::try_from(needed).unwrap_or(0)];
+        // SAFETY: `buffer` holds `needed` characters, which is what the
+        // call above said it needs, and the call writes at most that many.
+        // test: a_short_form_is_this_volumes_or_nothing.
+        let wrote = unsafe {
+            GetShortPathNameW(
+                w.as_ptr(),
+                buffer.as_mut_ptr(),
+                u32::try_from(buffer.len()).unwrap_or(0),
+            )
+        };
+        if wrote == 0 {
+            return None;
+        }
+        let end = usize::try_from(wrote).unwrap_or(0).min(buffer.len());
+        let short = String::from_utf16_lossy(&buffer[..end]);
+        (crate::pypath::os_path::normcase(&short) != crate::pypath::os_path::normcase(path))
+            .then_some(short)
     }
 
     /// The SID a SID text names.
@@ -1260,11 +1294,23 @@ fn cannot_resolve(
     capabilities: &[calls::Sid],
     made: &Plan,
 ) -> Option<String> {
-    let asked: Vec<&String> =
-        made.reads.iter().chain(made.writes.iter()).take(PROBED).collect();
+    // A path is probed in a spelling that is **not** its canonical form,
+    // because resolving one that already is tells nothing: `realpath`
+    // answers the path it was given when it cannot ask the system, so a
+    // probe over canonical paths passes on a system where resolution does
+    // not work at all. The 8.3 form is such a spelling where the volume
+    // keeps one, and a volume that keeps none is a volume where no short
+    // name can reach a run.
+    let mut asked: Vec<String> = Vec::new();
+    for path in made.reads.iter().chain(made.writes.iter()).take(PROBED) {
+        if let Some(short) = calls::short_form(path) {
+            asked.push(short);
+        }
+    }
     if asked.is_empty() {
         return None;
     }
+    let asked: Vec<&String> = asked.iter().collect();
     let mut command = format!("\"{exe}\" resolve");
     for path in &asked {
         command.push_str(&format!(" \"{path}\""));
@@ -1616,6 +1662,39 @@ mod tests {
         );
         assert_ne!(name, profile_name(4243, 0x1234_5678_9ABC_DEF0));
         assert_ne!(name, profile_name(4242, 0x1234_5678_9ABC_DEF1));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_short_form_is_this_volumes_or_nothing() {
+        // a directory named long enough to have an 8.3 form, which is a
+        // spelling that is not its canonical one - what the resolution
+        // probe asks a container about
+        let dir = std::env::temp_dir()
+            .join(format!("sabline-short-form-probe-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("a directory");
+        let long = dir.to_string_lossy().to_string();
+        match calls::short_form(&long) {
+            None => {
+                // a volume that keeps no short names: then no short name
+                // can reach a run, and the probe has nothing to ask
+            }
+            Some(short) => {
+                assert_ne!(
+                    crate::pypath::os_path::normcase(&short),
+                    crate::pypath::os_path::normcase(&long)
+                );
+                // and it names the same directory, which is the whole
+                // point: resolving it must answer the long form
+                assert_eq!(
+                    crate::pypath::os_path::normcase(&crate::pypath::realpath(&short)),
+                    crate::pypath::os_path::normcase(&crate::pypath::realpath(&long))
+                );
+            }
+        }
+        // a path that is not there has no short form
+        assert_eq!(calls::short_form(&dir.join("not-there").to_string_lossy()), None);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[cfg(windows)]
