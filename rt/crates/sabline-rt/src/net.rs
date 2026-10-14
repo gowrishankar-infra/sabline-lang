@@ -291,8 +291,13 @@ fn bypassed(host: &str) -> bool {
 /// followed.
 pub const MOST_REDIRECTS: usize = 10;
 
-/// How long a request waits, as `sabline/runtime.py` passes it to urllib.
+/// How long `fetch`, `post` and `fetch_status` wait, as
+/// `sabline/runtime.py` passes it to urllib.
 pub const PATIENCE: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// How long `request` waits, which is the one of the four the package
+/// gives twice as long.
+pub const LONGER_PATIENCE: std::time::Duration = std::time::Duration::from_secs(20);
 
 /// How much of a body is read, as `resp.read(1 << 20)` reads it.
 pub const MOST_BODY: usize = 1 << 20;
@@ -316,6 +321,10 @@ pub struct Request {
     /// the proxy, which is why a proxy outside the grants is refused
     /// before any request is made (E317).
     pub through: Option<(String, u32)>,
+    /// How long it waits: [`PATIENCE`] for three of the four builtins and
+    /// [`LONGER_PATIENCE`] for `request`, because that is what the package
+    /// passes urllib for each.
+    pub patience: std::time::Duration,
 }
 
 /// One answer: what a response says, whichever process read it.
@@ -453,7 +462,7 @@ pub fn exchange(request: &Request) -> Result<Response, String> {
     let mut last = String::new();
     let mut socket: Option<TcpStream> = None;
     for address in &addresses {
-        match TcpStream::connect_timeout(address, PATIENCE) {
+        match TcpStream::connect_timeout(address, request.patience) {
             Ok(open) => {
                 socket = Some(open);
                 break;
@@ -462,8 +471,8 @@ pub fn exchange(request: &Request) -> Result<Response, String> {
         }
     }
     let Some(mut socket) = socket else { return Err(last) };
-    let _ = socket.set_read_timeout(Some(PATIENCE));
-    let _ = socket.set_write_timeout(Some(PATIENCE));
+    let _ = socket.set_read_timeout(Some(request.patience));
+    let _ = socket.set_write_timeout(Some(request.patience));
     // a proxy is asked for the whole URL (the absolute form of the request
     // line), which is how urllib asks one for an `http` request
     let asked_for = match &request.through {
@@ -722,7 +731,7 @@ pub fn asked_of_the_host(request: &Request) -> crate::json::Json {
                 ]),
             },
         ),
-        ("timeout", Json::Int(i64::try_from(PATIENCE.as_secs()).unwrap_or(10))),
+        ("timeout", Json::Int(i64::try_from(request.patience.as_secs()).unwrap_or(10))),
         ("most_body", Json::Int(i64::try_from(MOST_BODY).unwrap_or(0))),
     ])
 }

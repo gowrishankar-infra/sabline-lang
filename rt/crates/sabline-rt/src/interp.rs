@@ -1431,6 +1431,13 @@ impl Runtime {
                 headers: self.headers_of(&here, sends, &sending, &headers),
                 body: sending,
                 through: through.clone(),
+                // `request` waits twice as long as the other three, which
+                // is what the package passes urllib for each
+                patience: if name == "request" {
+                    crate::net::LONGER_PATIENCE
+                } else {
+                    crate::net::PATIENCE
+                },
             };
             let said = if here.scheme == "http" {
                 crate::net::exchange(&request)
