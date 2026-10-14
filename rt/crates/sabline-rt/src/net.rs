@@ -8,12 +8,15 @@
 //! opened the connection, which is the thing a `net:` grant is about.
 //! plan/9.0.md gives the port to M4 and M5 together; this is M4's half:
 //!
-//! - **the decision is this runtime's, whatever the scheme.** The URL is
-//!   split here, the host and port are matched against the budget's `net:`
-//!   grants here, the grant is counted here, the operation is counted here,
-//!   an ambient proxy is refused here (E317), and **each redirect's target
-//!   is checked here** before it is followed. Nothing about which host a
-//!   request may reach is asked of another process.
+//! - **every decision the budget bounds is this runtime's, whatever the
+//!   scheme.** The URL is split here, the host and port are matched against
+//!   the budget's `net:` grants here, the grant is counted here, the
+//!   operation is counted here, an ambient proxy is refused here (E317),
+//!   and **each redirect's target is checked here** before it is followed.
+//!   Nothing about which host a request may reach is asked of another
+//!   process. What the budget does not bound stays where it was: a TLS
+//!   certificate is checked by whoever makes the TLS connection, which for
+//!   an `https` exchange is still the host.
 //! - **the connection is this runtime's for `http://`.** The socket is
 //!   opened in this process - inside the Windows AppContainer, whose
 //!   `internetClient` capability is what admits it, and under the Linux

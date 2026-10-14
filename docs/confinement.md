@@ -310,11 +310,14 @@ it does not:
 Through M3 every call to the network was handled in the process that
 started sabline-rt. So the process the operating system held to the
 budget's hosts was not the process that opened the connection, which is
-the thing a `net:` grant is about. From M4 **every decision about a
-request is sabline-rt's**: the URL split, the host and port matched
-against the `net:` grants, the grant and the operation counted, an ambient
-proxy refused unless the budget covers its own host and port (E317), and
-**each redirect's target checked before it is followed**. A request to an
+the thing a `net:` grant is about. From M4 **every decision the budget
+bounds is sabline-rt's**: the URL split, the host and port matched against
+the `net:` grants, the grant and the operation counted, an ambient proxy
+refused unless the budget covers its own host and port (E317), and **each
+redirect's target checked before it is followed**. What is not the
+budget's stays where it was - a TLS certificate is checked by whoever
+makes the TLS connection, which for an `https` exchange is still the
+host. A request to an
 `http` host - and one carried by a proxy the budget covers - is made
 there too: the socket is opened inside the Windows AppContainer, under the
 Linux seccomp filter and inside the macOS profile, so what the kernel

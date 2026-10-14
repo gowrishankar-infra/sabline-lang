@@ -78,11 +78,12 @@
 <p class="lead">Every release of this major version, newest first, as <a href="changelog.html">CHANGELOG.md</a> records it.</p>
 <h2 id="900-alpha14---m4-the-network-in-sabline-rt-and-the-audits-prediction">9.0.0-alpha.14 - M4: the network in sabline-rt, and the audit's prediction <a class="anchor" href="#900-alpha14---m4-the-network-in-sabline-rt-and-the-audits-prediction" aria-label="Link to this section">#</a></h2>
 <p>M4's fourth checkpoint (<code>plan/9.0.md</code>, <em>M4 - confinement, and a real
-Windows AppContainer</em>). <strong>The network's decisions are sabline-rt's</strong>, which
-is the half of the port <code>plan/9.0.md</code> gives to M4 (M5 finishes it): through
-M3 every call to the network was handed back to the Python package, so the
-process the operating system held to the budget's hosts was not the process
-that opened the connection - which is the thing a <code>net:</code> grant is about.
+Windows AppContainer</em>). <strong>Every decision about the network that the budget
+bounds is sabline-rt's</strong>, which is the half of the port <code>plan/9.0.md</code> gives
+to M4 (M5 finishes it): through M3 every call to the network was handed back
+to the Python package, so the process the operating system held to the
+budget's hosts was not the process that opened the connection - which is the
+thing a <code>net:</code> grant is about.
 Now the URL is split there, the host and port are matched against the
 budget's <code>net:</code> grants there, the grant and the operation are counted there,
 an ambient proxy is refused there unless the budget covers its own host and
@@ -96,7 +97,9 @@ refuses.</p>
 of an <code>https</code> exchange</strong>, because sabline-rt has no TLS stack and the crate
 takes no dependency for one yet - it is still a crate with no dependencies.
 The host is a transport there and nothing else: one request, one response,
-no redirect followed, no grant read, nothing counted. Every message and
+no redirect followed, no grant read, nothing counted - though a transport
+is what checks a TLS certificate, so that much of an <code>https</code> request is
+still the host's and the docs say so. Every message and
 every refusal is the Python runtime's, word for word, and
 <code>check_through_rt.py</code> compares the two over 325 programs with no difference
 left - including the ten adversarial network rows of

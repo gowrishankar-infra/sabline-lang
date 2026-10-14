@@ -144,11 +144,12 @@ now a fifth of a second. `agreement_checks.py`'s
 ## 9.0.0-alpha.14 - M4: the network in sabline-rt, and the audit's prediction
 
 M4's fourth checkpoint (`plan/9.0.md`, *M4 - confinement, and a real
-Windows AppContainer*). **The network's decisions are sabline-rt's**, which
-is the half of the port `plan/9.0.md` gives to M4 (M5 finishes it): through
-M3 every call to the network was handed back to the Python package, so the
-process the operating system held to the budget's hosts was not the process
-that opened the connection - which is the thing a `net:` grant is about.
+Windows AppContainer*). **Every decision about the network that the budget
+bounds is sabline-rt's**, which is the half of the port `plan/9.0.md` gives
+to M4 (M5 finishes it): through M3 every call to the network was handed back
+to the Python package, so the process the operating system held to the
+budget's hosts was not the process that opened the connection - which is the
+thing a `net:` grant is about.
 Now the URL is split there, the host and port are matched against the
 budget's `net:` grants there, the grant and the operation are counted there,
 an ambient proxy is refused there unless the budget covers its own host and
@@ -163,7 +164,9 @@ One thing is still two processes, and the receipt says which: **the bytes
 of an `https` exchange**, because sabline-rt has no TLS stack and the crate
 takes no dependency for one yet - it is still a crate with no dependencies.
 The host is a transport there and nothing else: one request, one response,
-no redirect followed, no grant read, nothing counted. Every message and
+no redirect followed, no grant read, nothing counted - though a transport
+is what checks a TLS certificate, so that much of an `https` request is
+still the host's and the docs say so. Every message and
 every refusal is the Python runtime's, word for word, and
 `check_through_rt.py` compares the two over 325 programs with no difference
 left - including the ten adversarial network rows of
