@@ -491,10 +491,19 @@ pub fn exchange(request: &Request) -> Result<Response, String> {
     }
     // the head, and then as much of the body as a read of MOST_BODY takes:
     // a chunked body costs its chunk headers as well, so a little more is
-    // read and the body is cut to MOST_BODY after it is decoded
+    // read and the body is cut to MOST_BODY after it is decoded.
+    //
+    // **The response is read until it is complete, not until the socket
+    // closes.** `Connection: close` asks the server to close and most do,
+    // but one that keeps the connection open would otherwise cost every
+    // request the whole ten-second patience: a body whose length the head
+    // gives is complete at that length, a chunked one at its last chunk,
+    // and only a response that says neither is read to the end of the
+    // socket.
     let mut raw: Vec<u8> = Vec::new();
     let mut buffer = [0u8; 16 * 1024];
     let mut head_end: Option<usize> = None;
+    let mut want: Option<Complete> = None;
     loop {
         match socket.read(&mut buffer) {
             Ok(0) => break,
@@ -502,10 +511,19 @@ pub fn exchange(request: &Request) -> Result<Response, String> {
                 raw.extend_from_slice(&buffer[..n]);
                 if head_end.is_none() {
                     head_end = find(&raw, b"\r\n\r\n").map(|at| at + 4);
+                    if let Some(at) = head_end {
+                        want = Some(how_it_ends(&raw[..at]));
+                    }
                 }
                 if let Some(at) = head_end {
                     if raw.len() - at >= MOST_BODY + 64 * 1024 {
                         break; // enough for MOST_BODY of body, chunked or not
+                    }
+                    let body = &raw[at..];
+                    match want {
+                        Some(Complete::Length(n)) if body.len() >= n => break,
+                        Some(Complete::Chunked) if chunks_end(body) => break,
+                        _ => {}
                     }
                 }
             }
@@ -530,6 +548,61 @@ fn said(e: &std::io::Error) -> String {
 /// Where `needle` begins in `hay`, or `None`.
 fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     hay.windows(needle.len()).position(|w| w == needle)
+}
+
+/// What says a response's body is all there: its own length, its last
+/// chunk, or nothing but the socket closing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Complete {
+    /// `Content-Length` bytes of body.
+    Length(usize),
+    /// `Transfer-Encoding: chunked`, until the zero-length chunk.
+    Chunked,
+    /// Neither: everything until the other end closes.
+    AtTheEnd,
+}
+
+/// Which of the three this head says, read from the head alone - a
+/// response with both is chunked, as `http.client` reads one.
+fn how_it_ends(head: &[u8]) -> Complete {
+    let text = String::from_utf8_lossy(head);
+    let mut length: Option<usize> = None;
+    for line in text.split("\r\n").skip(1) {
+        let Some((name, value)) = line.split_once(':') else { continue };
+        let value = value.trim();
+        match name.trim().to_ascii_lowercase().as_str() {
+            "transfer-encoding"
+                if value.to_ascii_lowercase().split(',').any(|w| w.trim() == "chunked") =>
+            {
+                return Complete::Chunked
+            }
+            "content-length" if length.is_none() => length = value.parse().ok(),
+            _ => {}
+        }
+    }
+    match length {
+        Some(n) => Complete::Length(n),
+        None => Complete::AtTheEnd,
+    }
+}
+
+/// Whether a chunked body has reached its last chunk: the zero-length one.
+fn chunks_end(body: &[u8]) -> bool {
+    let mut rest = body;
+    while let Some(at) = find(rest, b"\r\n") {
+        let size = String::from_utf8_lossy(&rest[..at]);
+        let size = size.split(';').next().unwrap_or("").trim();
+        let Ok(size) = usize::from_str_radix(size, 16) else { return false };
+        rest = &rest[at + 2..];
+        if size == 0 {
+            return true; // the trailer may follow; the body is all there
+        }
+        if rest.len() < size + 2 {
+            return false;
+        }
+        rest = &rest[size + 2..];
+    }
+    false
 }
 
 /// One response, read from the bytes a server sent.
@@ -939,6 +1012,33 @@ mod tests {
         assert!(read_response(b"nothing like it\r\n\r\n").is_err());
         assert!(read_response(b"HTTP/1.1 nope OK\r\n\r\n").is_err());
         assert!(read_response(b"HTTP/1.1 200 OK").is_err());
+    }
+
+    #[test]
+    fn a_head_says_how_its_body_ends_and_a_chunked_one_says_when_it_has() {
+        assert_eq!(
+            how_it_ends(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n"),
+            Complete::Length(5)
+        );
+        assert_eq!(
+            how_it_ends(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"),
+            Complete::Chunked
+        );
+        // both: chunked wins, as `http.client` reads one
+        assert_eq!(
+            how_it_ends(
+                b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n"
+            ),
+            Complete::Chunked
+        );
+        assert_eq!(how_it_ends(b"HTTP/1.0 200 OK\r\n"), Complete::AtTheEnd);
+        // and a chunked body is all there at its zero-length chunk and not
+        // before it, which is what keeps a request from waiting out its
+        // whole patience on a connection the server keeps open
+        assert!(!chunks_end(b"5\r\nhello\r\n"));
+        assert!(chunks_end(b"5\r\nhello\r\n0\r\n\r\n"));
+        assert!(!chunks_end(b"5\r\nhel"));
+        assert!(chunks_end(b"0\r\n\r\n"));
     }
 
     #[test]
