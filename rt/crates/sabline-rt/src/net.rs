@@ -301,8 +301,10 @@ pub const MOST_BODY: usize = 1 << 20;
 /// a `post` carries.
 #[derive(Debug, Clone)]
 pub struct Request {
-    /// `GET` or `POST`.
-    pub method: &'static str,
+    /// The method, upper-cased: `GET` and `POST` for the three plain
+    /// builtins, and whatever `request` was given - urllib sends a method
+    /// it knows nothing about, and so does this.
+    pub method: String,
     /// Where it goes, already checked against the grants.
     pub url: Url,
     /// `(name, value)`, in the order they are written.
@@ -693,7 +695,7 @@ pub fn asked_of_the_host(request: &Request) -> crate::json::Json {
     use crate::json::Json;
     Json::obj([
         ("schema", Json::text(EXCHANGE_SCHEMA)),
-        ("method", Json::text(request.method)),
+        ("method", Json::text(request.method.clone())),
         ("host", Json::text(request.url.host.clone())),
         ("port", Json::Int(i64::from(request.url.port))),
         ("target", Json::text(request.url.target.clone())),
@@ -845,12 +847,26 @@ pub fn join(base: &Url, location: &str) -> String {
 }
 
 /// Whether a response is one a redirect follows, and the method the next
-/// request uses: `urllib`'s rule, where a `POST` becomes a `GET` for 301,
-/// 302 and 303 and stays a `POST` for 307 and 308.
-pub fn redirect_method(status: u32, method: &'static str) -> Option<&'static str> {
-    match status {
-        301..=303 => Some(if method == "POST" { "GET" } else { method }),
-        307 | 308 => Some(method),
+/// request uses, as `urllib.request.HTTPRedirectHandler.redirect_request`
+/// decides it - which is stricter than the specification and is what the
+/// Python runtime does, so it is what this does:
+///
+/// - a `GET` or a `HEAD` follows 301, 302, 303, 307 and 308, and stays
+///   `GET` or `HEAD`;
+/// - a `POST` follows 301, 302 and 303 **as a `GET`**, and nothing else;
+/// - anything else - a `POST` of a 307 or a 308, a `PUT` of any of them -
+///   is **not** a redirect urllib follows: it raises `HTTPError`, which is
+///   the 3xx status becoming the answer, and `None` here says so.
+///
+/// A followed redirect carries none of the content headers and no body,
+/// which is the other half of that function.
+pub fn redirect_method(status: u32, method: &str) -> Option<String> {
+    if !matches!(status, 301..=303 | 307 | 308) {
+        return None;
+    }
+    match method {
+        "GET" | "HEAD" => Some(method.to_string()),
+        "POST" if matches!(status, 301..=303) => Some("GET".to_string()),
         _ => None,
     }
 }

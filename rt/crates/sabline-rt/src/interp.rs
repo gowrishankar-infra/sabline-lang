@@ -1344,19 +1344,11 @@ impl Runtime {
         let text = |v: Option<&Value>| to_text(v.unwrap_or(&Value::None));
         // the arguments, as `sabline/runtime.py` reads them
         let (mut method, given, body, mut headers) = if name == "request" {
+            // `method.upper() or "GET"`, and whatever that is: urllib
+            // sends a method it knows nothing about, so this keeps no
+            // table of them
             let said = text(args.first()).to_string_lossy().to_uppercase();
-            let method: &'static str = match said.as_str() {
-                "" | "GET" => "GET",
-                "POST" => "POST",
-                "PUT" => "PUT",
-                "PATCH" => "PATCH",
-                "DELETE" => "DELETE",
-                "HEAD" => "HEAD",
-                "OPTIONS" => "OPTIONS",
-                // a method nobody named is sent as it was given, which
-                // urllib does too; the crate keeps no table of them
-                _ => return Err(Stop::Raised("NotPorted")),
-            };
+            let method = if said.is_empty() { "GET".to_string() } else { said };
             let given = crate::net::with_scheme(&text(args.get(1)));
             let body = text(args.get(2)).to_string_lossy();
             let said = text(args.get(3));
@@ -1368,10 +1360,15 @@ impl Runtime {
             } else {
                 String::new()
             };
-            (if name == "post" { "POST" } else { "GET" }, given, body, Vec::new())
+            (
+                if name == "post" { "POST".to_string() } else { "GET".to_string() },
+                given,
+                body,
+                Vec::new(),
+            )
         };
         let first = given.to_string_lossy();
-        let sends = match name {
+        let mut sends = match name {
             "post" => crate::net::Sends::Post,
             "request" => crate::net::Sends::Request,
             _ => crate::net::Sends::Fetch,
@@ -1421,15 +1418,18 @@ impl Runtime {
         // target checked against the grants before it is followed
         let mut hops = 0;
         let answer: Response = loop {
+            // whatever the method, as `data = body.encode() if body else
+            // None` gives it - and nothing at all once a redirect has been
+            // followed, which carries no body. The headers are made from
+            // **this** body and not the one the call was given, or a
+            // followed redirect would say `Content-Length` for a body it
+            // is not sending and the other end would wait for it.
+            let sending = if hops == 0 { body.clone() } else { String::new() };
             let request = Request {
-                method,
+                method: method.clone(),
                 url: here.clone(),
-                headers: self.headers_of(&here, sends, &body, &headers),
-                body: if method == "POST" || method == "PUT" || method == "PATCH" {
-                    body.clone()
-                } else {
-                    String::new()
-                },
+                headers: self.headers_of(&here, sends, &sending, &headers),
+                body: sending,
                 through: through.clone(),
             };
             let said = if here.scheme == "http" {
@@ -1452,10 +1452,10 @@ impl Runtime {
                     }))));
                 }
             };
-            let next = crate::net::redirect_method(answer.status, method)
-                .zip(answer.location.as_deref());
+            let next = crate::net::redirect_method(answer.status, &method)
+                .zip(answer.location.clone());
             let Some((next_method, location)) = next else { break answer };
-            let target = crate::net::join(&here, location);
+            let target = crate::net::join(&here, &location);
             if let Some(why) = self.redirect_refusal(&target) {
                 // the one refusal a program is told about as a failure and
                 // may carry on from, recorded as the Python runtime
@@ -1473,9 +1473,14 @@ impl Runtime {
             }
             here = crate::net::split(&target).map_err(|_| Stop::Raised("NotPorted"))?;
             method = next_method;
-            if method == "GET" {
-                headers.retain(|(n, _)| !n.eq_ignore_ascii_case("content-type"));
-            }
+            // the content headers go with the body, as
+            // `redirect_request`'s `CONTENT_HEADERS` go - the program's
+            // own and the ones this runtime would add for a body
+            headers.retain(|(n, _)| {
+                !n.eq_ignore_ascii_case("content-type")
+                    && !n.eq_ignore_ascii_case("content-length")
+            });
+            sends = crate::net::Sends::Fetch;
         };
         self.net_answer(name, &first, &answer)
     }
