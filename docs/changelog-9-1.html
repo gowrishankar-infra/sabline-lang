@@ -139,7 +139,11 @@ container.</li>
 <li><strong>The resolution memo is keyed by the Windows build</strong> as well as the
 crate's version, read with <code>RtlGetVersion</code>, so an operating-system
 upgrade asks again rather than inheriting a <code>no</code> measured on the build
-before it.</li>
+before it. <strong>And a prediction of <em>this</em> machine reads it</strong>: on a system
+whose containers cannot resolve a path - a Windows Server - <code>sabline doctor</code> predicted <code>full</code> where no run of that machine can be, because a
+prediction cannot see a probe's answer. It can see what the probe
+remembered, and now does; a nominal prediction still reads nothing of
+the machine.</li>
 <li><strong>A budget granting <code>net</code> with no host leaves the Windows container
 off</strong>, as one naming a loopback host already did. <code>net</code> with no host
 allows every host, the loopback address among them, and no AppContainer
