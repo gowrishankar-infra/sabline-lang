@@ -46,6 +46,15 @@ WHAT IS MEASURED, in the tree this file is in, under the Python running it:
            must import neither z3 nor llvmlite. What importing each costs:
            the cumulative -X importtime figure, and the cold start of
            `python -c "import z3"` and of llvmlite against `python -c pass`.
+  contained A run through sabline-rt, confined, which is what a run under
+           SABLINE_REFERENCE_RUNTIME=rust is: a one-line program under
+           `--no-confine`, under `io`, and under a read grant over a
+           directory of CONTAINED_FILES (16) and one of CONTAINED_WIDE
+           (512) files - so the cost of a confinement layer, and on
+           Windows of an AppContainer's one ACE per file, is a measured
+           number and not a guess. Skipped, and said, when sabline-rt is
+           not built here. Nothing is measured per file on a system with
+           no per-file cost; the report says what it found.
   numeric  Pure-numeric performance: examples/bench.vel and a generated loop of
            integer arithmetic, each native and --no-native, as the `[--time]
            ran in` figure; median of --runs after a warm-up. Which functions
@@ -93,12 +102,18 @@ if str(HERE) not in sys.path:
 from suite_dirs import isolate  # noqa: E402
 
 MEASURES = ("cold", "check", "proof", "jit", "lite", "pool", "imports",
-            "numeric")
+            "numeric", "contained")
 SLOWER_LIMIT = 0.25            # --against fails past +25% on either engine
 GATE_RUNS = 3                  # --against: the median of at least 3 runs a side
 PROCESS_TIMEOUT = 1800
 POOL_RUNS = 1000
 CHECK_SIZES = (1000, 10000)
+# The two granted directories the `contained` measurement uses: a small
+# grant, and one large enough to show a per-file cost but under
+# MOST_UNDER_A_GRANT (1,024), past which a Windows run is left
+# uncontained on purpose (rt/.../confine_appcontainer.rs).
+CONTAINED_FILES = 16
+CONTAINED_WIDE = 512
 ENGINES = ("native", "interpreted")
 TIME_LINE = re.compile(r"\[--time\] ran in ([\d.]+) ms")
 INT_LOOP_N = 300000
@@ -506,6 +521,58 @@ def numeric_programs(work: Path) -> dict[str, Any]:
     loop = work / "int_loop.vel"
     loop.write_text(INT_LOOP.replace("@N", str(INT_LOOP_N)), encoding="utf-8")
     return {"examples/bench.vel": bench, "integer loop": loop}
+
+
+def measure_contained(tree: Sabline, work: Path, runs: int) -> dict[Any, Any]:
+    """What a confined run through sabline-rt costs, measured rather than
+    guessed at (9.0, M4; the maintainer's answer 4 of 2026-10-14).
+
+    `perf_gates.py` measured no run through sabline-rt at all until now,
+    and that is the gap that let a Windows AppContainer's per-file ACE cost
+    into a release: a grant over a large tree made every run pay for ACEs
+    it did not need, and a suite's door went over its own deadline before
+    anyone had a number. These are the numbers."""
+    import sys as _sys
+    _sys.path.insert(0, str(HERE))
+    from sabline import through_rt
+    exe = through_rt.binary()
+    if not exe:
+        say("a confined run through sabline-rt: sabline-rt is not built "
+            "here, so nothing was measured")
+        return {"skipped": "sabline-rt is not built in this tree"}
+    one = work / "contained.vel"
+    one.write_text(ONE_LINE, encoding="utf-8")
+    made: dict[str, Path] = {}
+    for name, count in (("small", CONTAINED_FILES), ("wide", CONTAINED_WIDE)):
+        where = work / f"grant-{name}"
+        where.mkdir(exist_ok=True)
+        for n in range(count):
+            (where / f"f{n}.txt").write_text("x", encoding="utf-8")
+        made[name] = where
+    env = child_env(SABLINE_REFERENCE_RUNTIME="rust")
+    out: dict[str, Any] = {"files": {"small": CONTAINED_FILES,
+                                     "wide": CONTAINED_WIDE}}
+    cases = [("no_confine", ["--allow", "io", "--no-confine"]),
+             ("io", ["--allow", "io"]),
+             ("grant_small", ["--allow",
+                              f"io,fs:read:{made['small'].as_posix()}"]),
+             ("grant_wide", ["--allow",
+                             f"io,fs:read:{made['wide'].as_posix()}"])]
+    for label, flags in cases:
+        cmd = tree.cmd(one, *flags)
+        out[label] = timed_processes(cmd, work, runs, env=env)
+    per_file = None
+    if out["grant_wide"]["median"] and out["grant_small"]["median"]:
+        spread = out["grant_wide"]["median"] - out["grant_small"]["median"]
+        per_file = spread / (CONTAINED_WIDE - CONTAINED_FILES)
+    out["per_file_s"] = per_file
+    say(f"a confined run through sabline-rt: --no-confine "
+        f"{fmt_s(out['no_confine']['median'])}, io "
+        f"{fmt_s(out['io']['median'])}, a grant over "
+        f"{CONTAINED_FILES} files {fmt_s(out['grant_small']['median'])}, "
+        f"over {CONTAINED_WIDE} files {fmt_s(out['grant_wide']['median'])}"
+        + (f" ({per_file * 1000:.3f} ms a file)" if per_file else ""))
+    return out
 
 
 def measure_numeric(trees: list[Any], work: Path, runs: int) -> dict[str, Any]:
@@ -943,6 +1010,19 @@ def result_rows(report: dict[Any, Any]) -> list[Any]:
             rows.append((f"Importing {name}: cold start added (importtime)",
                          f"+{fmt_s(c['adds_s'])} ({fmt_s(c['importtime_s'])})"
                          if c.get("installed") else "not installed"))
+    r = report.get("contained")
+    if r:
+        if r.get("skipped"):
+            rows.append(("A confined run through sabline-rt", r["skipped"]))
+        else:
+            rows.append((
+                "A confined run through sabline-rt: `--no-confine` / `io` / "
+                f"a grant over {r['files']['small']} files / over "
+                f"{r['files']['wide']}",
+                " / ".join(fmt_s(r[k]["median"]) for k in (
+                    "no_confine", "io", "grant_small", "grant_wide"))
+                + (f", {r['per_file_s'] * 1000:.3f} ms a file"
+                   if r.get("per_file_s") else "")))
     r = report.get("numeric")
     if r:
         label = meta["tree"]
@@ -1055,6 +1135,8 @@ def main(argv: Any = None) -> int:
             report["lite"] = measure_lite()
         if "pool" in chosen:
             report["pool"] = measure_pool(args.pool_runs)
+        if "contained" in chosen:
+            report["contained"] = measure_contained(tree, work, args.runs)
         if "numeric" in chosen:
             report["numeric"] = measure_numeric(trees, work, args.runs)
         if "jit" in chosen:

@@ -292,6 +292,7 @@
    "audit": {
     "shape": {
      "confinement": {
+      "runtime": "str",
       "systems": {
        "linux": {
         "level": "str",
@@ -367,6 +368,7 @@
    "audit, does not compile": {
     "shape": {
      "confinement": {
+      "runtime": "str",
       "systems": {
        "linux": {
         "level": "str",
@@ -3127,6 +3129,7 @@
     "is_error": false,
     "shape": {
      "confinement": {
+      "runtime": "str",
       "systems": {
        "linux": {
         "level": "str",

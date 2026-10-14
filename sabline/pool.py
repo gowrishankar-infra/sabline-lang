@@ -365,9 +365,33 @@ def pool_worker(argv: list[Any]) -> int:
                     request.get("source") or "", path=request.get("path"),
                     prove=bool(request.get("prove", True))).as_dict()}
             elif op == "audit":
-                answer = {"audit": _audit_here(
-                    request.get("source") or "",
-                    path=request.get("path")).as_dict()}
+                # the audit's own prediction is for the runtime that will
+                # run the program (9.0, M4), and asking sabline-rt for it
+                # means starting a process - which this worker, confined at
+                # its start, may not. So it asks the parent, which starts
+                # sabline-rt for the runs it routes, over the same channel.
+                # Without this an audit made here and one made in the
+                # caller's own process would predict differently for the
+                # same program.
+                def ask_the_parent(allow: Any, deny: Any, strict: Any,
+                                   system: Any) -> Any:
+                    _msg_write(replies, {"predict": {
+                        "allow": allow, "deny": deny, "strict": bool(strict),
+                        "system": system}})
+                    said = _msg_read(requests)
+                    if not isinstance(said, dict) or "predicted" not in said:
+                        raise OSError("the parent did not answer the "
+                                      "prediction")
+                    found = said["predicted"]
+                    return found if isinstance(found, dict) else None
+
+                _confine.ASKED_ELSEWHERE = ask_the_parent
+                try:
+                    answer = {"audit": _audit_here(
+                        request.get("source") or "",
+                        path=request.get("path")).as_dict()}
+                finally:
+                    _confine.ASKED_ELSEWHERE = None
             elif request.get("route") and (why := _why_not_through_rt(
                     request.get("source") or "", request.get("path"),
                     budget)) is None:
@@ -525,6 +549,22 @@ class _Worker:
                         isinstance(message.get("routing"), str):
                     if self.on_routing is not None:
                         self.on_routing(message["routing"])
+                    continue
+                if message is not None and len(message) == 1 and isinstance(
+                        message.get("predict"), dict):
+                    # a worker's audit asking what sabline-rt would hold:
+                    # it may start no process, and this one may (9.0, M4)
+                    asked = message["predict"]
+                    try:
+                        said = _confine._predict_through_rt(
+                            asked.get("allow"), asked.get("deny"),
+                            bool(asked.get("strict")), asked.get("system"))
+                    except Exception:
+                        said = None
+                    try:
+                        _msg_write(self.proc.stdin, {"predicted": said})
+                    except (OSError, ValueError):
+                        return None, events
                     continue
                 if message is not None and len(message) == 1 and isinstance(
                         message.get("confinement"), dict):

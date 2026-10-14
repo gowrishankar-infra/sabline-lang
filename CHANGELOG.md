@@ -86,6 +86,12 @@ checkpoint a **Windows** run is held by an AppContainer of its own, so a
 budget that restricts both directions and names no loopback host is `full`
 there. docs/confinement.md and docs/os-enforces.md.
 
+api: the audit document's `confinement` gains `runtime` (9.0, M4), naming
+which runtime the prediction in it is for - `python` or `rust` - because
+from this checkpoint `sabline audit`, `sabline doctor` and
+`sabline.audit()` predict for the runtime that will run the program, and on
+Windows the two differ. Nothing else about the document changes.
+
 api: `sabline serve` and `sabline mcp` take `--confine strict` and
 `--require-confinement full|partial` (9.0, M4), beside the `--no-confine`
 they already took: the operator's own, on the command line, carried to every
@@ -134,6 +140,90 @@ parser fuzzer found a 23 KB program whose check document was 120 MB of
 the same few problems - a minute of work for both checkers, where it is
 now a fifth of a second. `agreement_checks.py`'s
 `fn-values-nested-deeply` holds the two runtimes to it.
+
+## 9.0.0-alpha.14 - M4: the network in sabline-rt, and the audit's prediction
+
+M4's fourth checkpoint (`plan/9.0.md`, *M4 - confinement, and a real
+Windows AppContainer*). **The network's decisions are sabline-rt's**, which
+is the half of the port `plan/9.0.md` gives to M4 (M5 finishes it): through
+M3 every call to the network was handed back to the Python package, so the
+process the operating system held to the budget's hosts was not the process
+that opened the connection - which is the thing a `net:` grant is about.
+Now the URL is split there, the host and port are matched against the
+budget's `net:` grants there, the grant and the operation are counted there,
+an ambient proxy is refused there unless the budget covers its own host and
+port (E317), and **every redirect's target is checked there before it is
+followed**. A request to an `http` host - and one carried by a proxy the
+budget covers - is made there too: the socket is opened inside the Windows
+AppContainer, under the Linux seccomp filter and inside the macOS profile,
+so what the kernel refuses a `fetch` is what docs/os-enforces.md says it
+refuses.
+
+One thing is still two processes, and the receipt says which: **the bytes
+of an `https` exchange**, because sabline-rt has no TLS stack and the crate
+takes no dependency for one yet - it is still a crate with no dependencies.
+The host is a transport there and nothing else: one request, one response,
+no redirect followed, no grant read, nothing counted. Every message and
+every refusal is the Python runtime's, word for word, and
+`check_through_rt.py` compares the two over 325 programs with no difference
+left - including the ten adversarial network rows of
+`agreement_runs.py`, which found four this checkpoint fixed: E317's line,
+`request`'s body and its content type, the reason `cannot reach` does and
+does not carry, and the host E314 names when an address has no port a
+number can read.
+
+**The maintainer's six answers of 2026-10-14** (`plan/9.0-m4-progress.md`
+has the questions and what was done with each):
+
+- **The audit predicts for the runtime that will run** - `sabline audit`,
+  `sabline doctor` and the library's audit answer with `confine.predicted`,
+  which asks **sabline-rt** rather than modelling it here, so there is one
+  copy of its Windows behaviour and not two. sabline-rt gains a prediction
+  of its own (`os-policy --predict [--here]`), and `check_confine.py` holds
+  it to the package's for 23 budgets, three systems and both modes: never
+  weaker, every one of the 19 differences Windows', and Linux and macOS
+  identical. The audit document's `confinement` gains `runtime`, naming
+  which runtime it is a prediction for. And **where a prediction and a
+  receipt differ the receipt wins and says so**: a run whose operating
+  system answered differently from the prediction carries that sentence in
+  its reason.
+- **The 1,024-file bound on a grant stays, and exceeding it is never
+  silent**: the receipt's reason named it already, and now the run says it
+  on the error channel too - every other reason a Windows container is left
+  off is one the budget asked for, and this one is not.
+  `perf_gates.py --only contained` measures what a contained run costs
+  rather than estimating it, which is the gap that let the cost in:
+  **0.3 ms a file** for the ACE written and taken back, so a thousand files
+  is about a third of a second charged to the run's own deadline.
+- **A fault for "the container could not be made"**:
+  `SABLINE_FAULT_NO_APPCONTAINER`, behind the `fault-inject` feature with
+  the no-Landlock fault, makes `CreateAppContainerProfile` fail - so the one
+  Windows path no runner could reach, a machine whose policy refuses a
+  profile, is measured on one that can. `check_confine.py` holds that the
+  fallback is honest: the level is `partial`, the reason names it, the
+  hook's read outside every grant goes through where the container refuses
+  it, and `--require-confinement full` is E326 there and runs with a
+  container.
+- **The resolution memo is keyed by the Windows build** as well as the
+  crate's version, read with `RtlGetVersion`, so an operating-system
+  upgrade asks again rather than inheriting a `no` measured on the build
+  before it.
+- **A budget granting `net` with no host leaves the Windows container
+  off**, as one naming a loopback host already did. `net` with no host
+  allows every host, the loopback address among them, and no AppContainer
+  may reach the loopback address - so a container would refuse what the
+  budget allows, which is the rule every other reason follows and a wrong
+  answer rather than a safe one. This is **not** the answer recorded for
+  that question; the port is what made the consequence real, and
+  `plan/9.0-m4-progress.md` says so and what to change for the other one.
+  A budget naming one host outside this machine keeps its container.
+- **Measuring the Windows AppContainer in CI** is the first item of M5, as
+  the answer asked.
+
+**M4's exit criteria are measured one by one** in
+`plan/9.0-m4-progress.md`, and M4 is **not** declared done: the network's
+port is M4's and M5's together, and until M5 finishes it an `https`
+exchange's bytes are made in another process.
 
 ## 9.0.0-alpha.13 - M4: the Windows AppContainer, and sabline eval through sabline-rt
 

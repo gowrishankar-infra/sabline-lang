@@ -92,6 +92,7 @@ pub mod interp;
 pub mod json;
 pub mod lexer;
 pub mod loader;
+pub mod net;
 pub mod nodes;
 pub mod parser;
 pub mod pyjson;

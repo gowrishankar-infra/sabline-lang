@@ -34,24 +34,39 @@ moves from the binary to the C ABI; until then it is opt-in, and the
 agreement gate reads nothing of it - the gate runs both runtimes whatever
 it says (check_gate.py sets it both ways).
 
-**The network, Python and tools** are relayed (decided on 2026-10-11):
-sabline-rt spends a call's effect, as it spends every builtin's, and then
-asks the process that started it to make the call, over the channel its
-output, input and audit events already use - a `call` frame, answered by
-one line. That process is the host (`answer`): it makes the call with this
-package's own code for it - runtime.outside_builtin, which is urllib with
-its redirects and its proxy refusal (E317), the granted module with every
-attribute it reaches checked (E311), the tool session - under the run's
-budget, and says how it ended and what it recorded while it did: each
-grant's event, each refusal and tool call the receipt keeps, what each
-grant let through, and the tool session's ceiling. So what a call does is
-the same in both runtimes by construction, and the receipt and the audit
-stream are sabline-rt's, with what the host recorded in them in the order
-it happened. The host is the caller's own process for an unbounded run and
-for the command line; for a run on a pool it is the worker that checked
-the program - confined, capped, the process that would have run it
-(sabline/pool.py) - so a granted module's code runs where it always did.
-Porting the network into Rust is M4's and M5's, not M3's (plan/9.0.md).
+**Python and tools** are relayed (decided on 2026-10-11): sabline-rt
+spends a call's effect, as it spends every builtin's, and then asks the
+process that started it to make the call, over the channel its output,
+input and audit events already use - a `call` frame, answered by one line.
+That process is the host (`answer`): it makes the call with this package's
+own code for it - runtime.outside_builtin, which is the granted module
+with every attribute it reaches checked (E311), the tool session - under
+the run's budget, and says how it ended and what it recorded while it did:
+each grant's event, each refusal and tool call the receipt keeps, what
+each grant let through, and the tool session's ceiling. So what a call
+does is the same in both runtimes by construction, and the receipt and
+the audit stream are sabline-rt's, with what the host recorded in them in
+the order it happened. The host is the caller's own process for an
+unbounded run and for the command line; for a run on a pool it is the
+worker that checked the program - confined, capped, the process that would
+have run it (sabline/pool.py) - so a granted module's code runs where it
+always did.
+
+**The network is sabline-rt's from 9.0's M4** (plan/9.0.md gives the port
+to M4 and M5 together; rt/.../net.rs says what moved). Every decision
+about a request is made there now: the URL split, the host and port
+matched against the budget's `net:` grants, the grant and the operation
+counted, an ambient proxy refused unless the budget covers it (E317), and
+**every redirect's target checked before it is followed**. An `http://`
+request is made there too - the socket is opened in the process the
+operating system holds to the budget's hosts, which is the point of a
+`net:` grant - and so is one carried by a proxy the budget covers.
+
+What is left here is one thing: **the bytes of an `https://` exchange**
+(`NET_EXCHANGE`), because sabline-rt has no TLS stack and the crate takes
+no dependency for one yet. That is a transport and nothing else - one
+request, one response, no redirect followed, no grant read, nothing
+counted - and M5 finishes it.
 
 **What stays this package's**, and says so on the error channel (KEPT):
 `sabline trace`, which shows this package's interpreter at work. A run
@@ -67,12 +82,14 @@ them.
 
 **What a run through sabline-rt is not:**
 
-- *The network, Python and a tool under confinement* (M4, item 7). Those
-  three calls are made in the process that started sabline-rt, so what
-  bounds them is what confines **that** process - a pool's worker, which is
-  confined, or a command line's own process, which is not. The request says
-  which (`host_confinement`), and sabline-rt's level says so rather than
-  claiming a boundary around work outside it.
+- *A granted Python module, a tool, and the bytes of an `https` exchange,
+  under confinement* (M4, item 7). Those are made in the process that
+  started sabline-rt, so what bounds them is what confines **that**
+  process - a pool's worker, which is confined, or a command line's own
+  process, which is not. The request says which (`host_confinement`), and
+  sabline-rt's level says so rather than claiming a boundary around work
+  outside it. An `http` request is not among them from 9.0's M4: that
+  socket is sabline-rt's own.
 - *Native code.* A run through sabline-rt is interpreted; what it does is
   the same, which is what `fuzz_native.py` holds.
 """
@@ -248,6 +265,71 @@ class _HostRecorder:
 
 TOOL_CALLS = ("tool", "tool_secret")
 
+# The one thing a run through sabline-rt still asks this process about the
+# network (9.0, M4): the bytes of one TLS exchange, because sabline-rt has
+# no TLS stack and this crate takes no dependency for one yet (M5 finishes
+# the port - rt/.../net.rs says what moved and what did not).
+#
+# It is **a transport and nothing else**. sabline-rt has already decided
+# which host the request may reach, counted the grant and the operation,
+# refused an ambient proxy outside the grants, and it checks every
+# redirect's target itself - so nothing here reads the budget, follows a
+# redirect or counts anything. `http://` is not here at all: sabline-rt
+# opens that socket in its own process, which is the one the operating
+# system holds to the budget's hosts.
+NET_EXCHANGE = "net.exchange"
+EXCHANGE_SCHEMA = "sabline.net-exchange/1"
+
+
+def _exchange(asked: dict[str, Any]) -> dict[str, Any]:
+    """One HTTPS request and its response, for sabline-rt: the bytes, and
+    no decision of any kind.
+
+    `http.client` and not `urllib.request`, deliberately - it follows no
+    redirect, reads no proxy and adds no header of its own beyond what it
+    is given, so what goes out is what sabline-rt asked for and what comes
+    back is one response. The body is decoded exactly as the Python
+    runtime's own `fetch` decodes it, so the two runtimes answer the same
+    text for the same page."""
+    import http.client
+    host = str(asked.get("host") or "")
+    port = int(asked.get("port") or 443)
+    method = str(asked.get("method") or "GET")
+    target = str(asked.get("target") or "/")
+    body = str(asked.get("body") or "")
+    most = int(asked.get("most_body") or (1 << 20))
+    headers = {str(k): str(v) for k, v in (asked.get("headers") or [])
+               # the connection is this one's to manage, and a length is
+               # http.client's to write from the body it is given
+               if str(k).lower() not in ("host", "connection",
+                                         "content-length")}
+    proxy = asked.get("proxy") or None
+    try:
+        if proxy:
+            # the proxy sabline-rt decided may carry this request: the
+            # socket's peer is the proxy and the origin is tunnelled to
+            # (CONNECT), which is what urllib does with a granted proxy
+            conn = http.client.HTTPSConnection(
+                str(proxy.get("host")), int(proxy.get("port") or 443),
+                timeout=float(asked.get("timeout") or 10))
+            conn.set_tunnel(host, port)
+        else:
+            conn = http.client.HTTPSConnection(
+                host, port, timeout=float(asked.get("timeout") or 10))
+        try:
+            conn.request(method, target,
+                         body=body.encode("utf-8") if body else None,
+                         headers=headers)
+            resp = conn.getresponse()
+            return {"status": int(resp.status),
+                    "headers": [[k, v] for k, v in resp.getheaders()],
+                    "body": resp.read(most).decode("utf-8",
+                                                   errors="replace")}
+        finally:
+            conn.close()
+    except Exception as e:                  # what went wrong, for the run
+        return {"error": f"{type(e).__name__}: {e}"}
+
 
 def answer(call: dict[str, Any]) -> dict[str, Any]:
     """The answer to one `call` frame, made in this process under the run's
@@ -264,6 +346,12 @@ def answer(call: dict[str, Any]) -> dict[str, Any]:
     from .runtime import outside_builtin
     from .values import FailSignal
     name, line = str(call.get("name")), int(call.get("line") or 0)
+    if name == NET_EXCHANGE:
+        # the bytes of one TLS exchange, and no decision: nothing is
+        # recorded, nothing is counted, and no grant is read here
+        asked = (call.get("args") or [{}])[0]
+        return {"value": _exchange(asked if isinstance(asked, dict) else {}),
+                "did": [], "counted": {}}
     recorder = _HostRecorder()
     g = vars(_state)
     saved = g["RUN_RECORDER"]

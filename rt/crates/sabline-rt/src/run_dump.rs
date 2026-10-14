@@ -594,7 +594,13 @@ fn run_inner(
                 read_any: asked.read_any,
                 stop_file: given.stop_file.clone(),
             };
-            let mut done = crate::confine::apply(&policy, &extras);
+            let applied = crate::confine::apply(&policy, &extras);
+            // where the operating system answered differently from what the
+            // audit predicts for it, which the receipt says and wins (the
+            // maintainer's answer 1 of 2026-10-14). It is asked of what the
+            // system did, before the note below about what happens outside
+            // this process.
+            let mut done = crate::confine::with_prediction(&applied, &policy, asked.read_any);
             // the one thing this run cannot hold itself: the network, a
             // granted Python module and a tool are the host's to call. A
             // policy that is enforced nowhere needs no saying - its reason
@@ -613,6 +619,20 @@ fn run_inner(
         recorder.confinement = Some(report.clone());
         // settled, whichever way it went: whoever is waiting on it may go
         crate::confine::now_settled();
+        // what the run says out loud about its container, besides what the
+        // receipt records: a grant too wide for one is nothing the budget
+        // asked for (the maintainer's answer 3 of 2026-10-14)
+        if let Some(said) = crate::confine_appcontainer::notice() {
+            let line = Text::from(said + "\n");
+            match &relay {
+                Some(relay) if !given.dump => {
+                    let _ = relay
+                        .frames
+                        .send(crate::exec::frame(crate::interp::Frame::Err(line)).canonical());
+                }
+                _ => doc.stderr = doc.stderr.concat(&line),
+            }
+        }
         // --require-confinement (E326), and then the fault-injection hook,
         // which only a run allowed to start may try
         let mut stopped = crate::confine::require(asked.require.as_deref(), Some(&report));
