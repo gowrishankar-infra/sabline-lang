@@ -387,17 +387,40 @@ def main() -> int:                        # noqa: C901 - a suite, not logic
     with sabline.Pool(size=1, allow={"io", "ffi", f"net:127.0.0.1:{shut_a}"},
                       timeout=TIMEOUT) as hosts:
         widened = hosts.run(WIDENS_ITS_HOSTS.replace("{SHUT_B}", str(shut_b)))
-        ok("a program CAN widen a grant its host checks through ffi - a host "
-           "of net, in either runtime - and this is what the next check is "
-           "against",
-           widened.ok and "widened" in widened.output
-           and "let through: cannot reach" in widened.output,
-           str(widened.as_dict())[:240])
-        then = hosts.run(FETCHES_HOST_B.replace("{SHUT_B}", str(shut_b)))
-        ok("...and it cannot widen it for the next program on the same worker",
-           not then.ok and then.problems and then.problems[0].code == "E314"
-           and hosts.started == 1,
-           f"{then.as_dict()}, started {hosts.started}")
+        if through_rt.chosen() != "rust":
+            ok("a program CAN widen a grant its host checks through ffi - a "
+               "host of net - and this is what the next check is against",
+               widened.ok and "widened" in widened.output
+               and "let through: cannot reach" in widened.output,
+               str(widened.as_dict())[:240])
+            then = hosts.run(FETCHES_HOST_B.replace("{SHUT_B}", str(shut_b)))
+            ok("...and it cannot widen it for the next program on the same "
+               "worker",
+               not then.ok and then.problems
+               and then.problems[0].code == "E314"
+               and hosts.started == 1,
+               f"{then.as_dict()}, started {hosts.started}")
+        else:
+            # from 9.0's M4 the hosts a request is held to are sabline-rt's,
+            # in sabline-rt's own process: the module still widens this
+            # worker's copy - "widened" is printed - and the request is
+            # refused all the same, because the copy that bounds it is one
+            # a granted module cannot reach. The port closed this hole.
+            ok("through sabline-rt a program CANNOT widen the hosts its own "
+               "requests are held to: they are checked in sabline-rt's "
+               "process, where a granted module cannot reach them",
+               not widened.ok and widened.problems
+               and widened.problems[0].code == "E314"
+               and "widened" in widened.output
+               and "reached it" not in widened.output,
+               str(widened.as_dict())[:240])
+            then = hosts.run(FETCHES_HOST_B.replace("{SHUT_B}", str(shut_b)))
+            ok("...and the next program on the pool is refused that host "
+               "too (the worker was replaced, as every run that ends in an "
+               "error replaces it)",
+               not then.ok and then.problems
+               and then.problems[0].code == "E314",
+               f"{then.as_dict()}, started {hosts.started}")
 
     with sabline.Pool(size=1, allow={"io", f"fs:read:{box.as_posix()}@2"},
                       timeout=TIMEOUT) as counted:

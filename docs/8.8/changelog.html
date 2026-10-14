@@ -69,7 +69,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="../capability/v1/index.html">capability/v1</a></li><li><a href="../receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html" aria-current="page">Changelog</a>
-<ul><li><a href="changelog-9-1.html">9.x: 9.0.0-alpha.13 to 9.0.0-alpha.8</a></li><li><a href="changelog-9-2.html">9.x: 9.0.0-alpha.7 to 9.0.0-alpha.1</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-9-1.html">9.x: 9.0.0-alpha.14 to 9.0.0-alpha.9</a></li><li><a href="changelog-9-2.html">9.x: 9.0.0-alpha.8 to 9.0.0-alpha.1</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -154,6 +154,11 @@ its receipt's reason and is <code>partial</code> rather than <code>full</code>; 
 checkpoint a <strong>Windows</strong> run is held by an AppContainer of its own, so a
 budget that restricts both directions and names no loopback host is <code>full</code>
 there. docs/confinement.md and docs/os-enforces.md.</p>
+<p>api: the audit document's <code>confinement</code> gains <code>runtime</code> (9.0, M4), naming
+which runtime the prediction in it is for - <code>python</code> or <code>rust</code> - because
+from this checkpoint <code>sabline audit</code>, <code>sabline doctor</code> and
+<code>sabline.audit()</code> predict for the runtime that will run the program, and on
+Windows the two differ. Nothing else about the document changes.</p>
 <p>api: <code>sabline serve</code> and <code>sabline mcp</code> take <code>--confine strict</code> and
 <code>--require-confinement full|partial</code> (9.0, M4), beside the <code>--no-confine</code>
 they already took: the operator's own, on the command line, carried to every
@@ -198,15 +203,16 @@ parser fuzzer found a 23 KB program whose check document was 120 MB of
 the same few problems - a minute of work for both checkers, where it is
 now a fifth of a second. <code>agreement_checks.py</code>'s
 <code>fn-values-nested-deeply</code> holds the two runtimes to it.</p>
-<h2 id="9x-900-alpha13-to-900-alpha8">9.x: 9.0.0-alpha.13 to 9.0.0-alpha.8 <a class="anchor" href="#9x-900-alpha13-to-900-alpha8" aria-label="Link to this section">#</a></h2>
-<ul><li><a href="changelog-9-1.html#900-alpha13---m4-the-windows-appcontainer-and-sabline-eval-through-sabline-rt">9.0.0-alpha.13 - M4: the Windows AppContainer, and sabline eval through sabline-rt</a></li>
+<h2 id="9x-900-alpha14-to-900-alpha9">9.x: 9.0.0-alpha.14 to 9.0.0-alpha.9 <a class="anchor" href="#9x-900-alpha14-to-900-alpha9" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-9-1.html#900-alpha14---m4-the-network-in-sabline-rt-and-the-audits-prediction">9.0.0-alpha.14 - M4: the network in sabline-rt, and the audit&#x27;s prediction</a></li>
+<li><a href="changelog-9-1.html#900-alpha13---m4-the-windows-appcontainer-and-sabline-eval-through-sabline-rt">9.0.0-alpha.13 - M4: the Windows AppContainer, and sabline eval through sabline-rt</a></li>
 <li><a href="changelog-9-1.html#900-alpha12---m4-sabline-rt-confines-its-own-runs-and-the-command-that-starts-it-confines-itself">9.0.0-alpha.12 - M4: sabline-rt confines its own runs, and the command that starts it confines itself</a></li>
 <li><a href="changelog-9-1.html#900-alpha11---m3-the-network-python-and-tools-relayed-to-the-package-and-the-organisation-ceiling">9.0.0-alpha.11 - M3: the network, Python and tools relayed to the package, and the organisation ceiling</a></li>
 <li><a href="changelog-9-1.html#900-alpha10---m3-every-run-through-sabline-rt-the-limits-held-by-the-caller-and-the-suites-counted-per-question">9.0.0-alpha.10 - M3: every run through sabline-rt, the limits held by the caller, and the suites counted per question</a></li>
-<li><a href="changelog-9-1.html#900-alpha9---m3-sabline-run-through-sabline-rt-and-what-is-written-out-counted-first">9.0.0-alpha.9 - M3: sabline run through sabline-rt, and what is written out counted first</a></li>
-<li><a href="changelog-9-1.html#900-alpha8---m3-receipts-and-the-audit-stream-field-for-field">9.0.0-alpha.8 - M3: receipts and the audit stream, field for field</a></li></ul>
-<h2 id="9x-900-alpha7-to-900-alpha1">9.x: 9.0.0-alpha.7 to 9.0.0-alpha.1 <a class="anchor" href="#9x-900-alpha7-to-900-alpha1" aria-label="Link to this section">#</a></h2>
-<ul><li><a href="changelog-9-2.html#900-alpha7---m3-the-builtins-under-every-budget-as-far-as-they-got">9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got</a></li>
+<li><a href="changelog-9-1.html#900-alpha9---m3-sabline-run-through-sabline-rt-and-what-is-written-out-counted-first">9.0.0-alpha.9 - M3: sabline run through sabline-rt, and what is written out counted first</a></li></ul>
+<h2 id="9x-900-alpha8-to-900-alpha1">9.x: 9.0.0-alpha.8 to 9.0.0-alpha.1 <a class="anchor" href="#9x-900-alpha8-to-900-alpha1" aria-label="Link to this section">#</a></h2>
+<ul><li><a href="changelog-9-2.html#900-alpha8---m3-receipts-and-the-audit-stream-field-for-field">9.0.0-alpha.8 - M3: receipts and the audit stream, field for field</a></li>
+<li><a href="changelog-9-2.html#900-alpha7---m3-the-builtins-under-every-budget-as-far-as-they-got">9.0.0-alpha.7 - M3: the builtins under every budget, as far as they got</a></li>
 <li><a href="changelog-9-2.html#900-alpha6---m3-the-interpreter-as-far-as-it-got">9.0.0-alpha.6 - M3: the interpreter, as far as it got</a></li>
 <li><a href="changelog-9-2.html#900-alpha5---m2-the-checkers-the-budget-parser-and-a-loop-bounded-by-its-input">9.0.0-alpha.5 - M2: the checkers, the budget parser, and a loop bounded by its input</a></li>
 <li><a href="changelog-9-2.html#900-alpha4---the-job-that-was-read-and-then-run">9.0.0-alpha.4 - The job that was read, and then run</a></li>
@@ -374,7 +380,7 @@ now a fifth of a second. <code>agreement_checks.py</code>'s
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/CHANGELOG.md">CHANGELOG.md</a> by build_docs.py, for Sabline 8.8.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#9x-900-alpha13-to-900-alpha8">9.x: 9.0.0-alpha.13 to 9.0.0-alpha.8</a></li><li><a href="#9x-900-alpha7-to-900-alpha1">9.x: 9.0.0-alpha.7 to 9.0.0-alpha.1</a></li><li><a href="#8x-88-to-870">8.x: 8.8 to 8.7.0</a></li><li><a href="#8x-86-to-85">8.x: 8.6 to 8.5</a></li><li><a href="#8x-84-to-831">8.x: 8.4 to 8.3.1</a></li><li><a href="#8x-83-to-821">8.x: 8.3 to 8.2.1</a></li><li><a href="#8x-82-to-80">8.x: 8.2 to 8.0</a></li><li><a href="#7x">7.x</a></li><li><a href="#6x">6.x</a></li><li><a href="#5x">5.x</a></li><li><a href="#4x-44-to-421">4.x: 4.4 to 4.2.1</a></li><li><a href="#4x-42-to-40">4.x: 4.2 to 4.0</a></li><li><a href="#3x">3.x</a></li><li><a href="#2x-2631-to-2401">2.x: 2.63.1 to 2.40.1</a></li><li><a href="#2x-240-to-20">2.x: 2.40 to 2.0</a></li><li><a href="#1x">1.x</a></li><li><a href="#0x">0.x</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#9x-900-alpha14-to-900-alpha9">9.x: 9.0.0-alpha.14 to 9.0.0-alpha.9</a></li><li><a href="#9x-900-alpha8-to-900-alpha1">9.x: 9.0.0-alpha.8 to 9.0.0-alpha.1</a></li><li><a href="#8x-88-to-870">8.x: 8.8 to 8.7.0</a></li><li><a href="#8x-86-to-85">8.x: 8.6 to 8.5</a></li><li><a href="#8x-84-to-831">8.x: 8.4 to 8.3.1</a></li><li><a href="#8x-83-to-821">8.x: 8.3 to 8.2.1</a></li><li><a href="#8x-82-to-80">8.x: 8.2 to 8.0</a></li><li><a href="#7x">7.x</a></li><li><a href="#6x">6.x</a></li><li><a href="#5x">5.x</a></li><li><a href="#4x-44-to-421">4.x: 4.4 to 4.2.1</a></li><li><a href="#4x-42-to-40">4.x: 4.2 to 4.0</a></li><li><a href="#3x">3.x</a></li><li><a href="#2x-2631-to-2401">2.x: 2.63.1 to 2.40.1</a></li><li><a href="#2x-240-to-20">2.x: 2.40 to 2.0</a></li><li><a href="#1x">1.x</a></li><li><a href="#0x">0.x</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

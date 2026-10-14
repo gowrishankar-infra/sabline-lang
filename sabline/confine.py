@@ -1468,6 +1468,124 @@ def predict(policy: dict[str, Any], *, read_any: bool = False,
 
 SYSTEMS = ("linux", "macos", "windows")
 
+# The framed stream `sabline-rt os-policy --predict` writes, which is how
+# this package asks the other runtime what it would hold.
+PREDICT_BATCH_HEADER = "sabline.os-predict-batch/1"
+
+
+def predicted(allow: str | None, *, deny: str | None = None,
+              strict: bool = False, read_any: bool = False,
+              system: str | None = None,
+              runtime: str | None = None) -> dict[str, Any]:
+    """What **the runtime that will run this program** would report for
+    this budget: `predict` for the Python package's own runs, and
+    sabline-rt's own prediction when `SABLINE_REFERENCE_RUNTIME` says a run
+    goes there (9.0, M4; the maintainer's answer 1 of 2026-10-14).
+
+    `sabline audit`, `sabline doctor` and the library's audit answer with
+    this, because a prediction for a runtime that will not run the program
+    is a prediction about nothing. On Windows the two differ: sabline-rt
+    starts a run's own process inside an AppContainer, which a running
+    python.exe cannot enter, so it holds reads and the network where this
+    package cannot.
+
+    It is **asked of sabline-rt and not modelled here**: a second copy of
+    its Windows behaviour in this file is the thing `ENFORCES_HELD` was
+    shaped to avoid. Where sabline-rt is what will run and cannot be asked
+    - it is not built, or not on PATH - the answer is this package's with
+    `runtime` saying so, because a prediction nobody can make is not a
+    reason for a command to fail.
+
+    The answer carries `runtime`: which runtime it is a prediction for. A
+    prediction is never a promise - what one run got is in its receipt, and
+    **where the two differ the receipt is the one that counts** and says so.
+    """
+    from . import through_rt as _through_rt
+    from .budget import Budget
+    budget = Budget.parse("" if allow is None else allow)
+    if deny:
+        budget.deny({n.strip() for n in deny.split(",") if n.strip()})
+    policy = os_policy(budget, strict=strict)
+    mine = dict(predict(policy, read_any=read_any, system=system),
+                runtime="python")
+    try:
+        chosen = runtime or _through_rt.chosen()
+    except _through_rt.RuntimeChoiceError:
+        return mine
+    if chosen != "rust":
+        return mine
+    said = _predict_through_rt(allow, deny, strict, system)
+    if said is None:
+        return dict(mine, runtime="python", reason=(
+            "sabline-rt is the runtime that will run this program and it "
+            "could not be asked (it is not built here and not on PATH), so "
+            "this is the Python package's own prediction: " + mine["reason"]))
+    return dict(mine, **said, runtime="rust")
+
+
+# Who asks sabline-rt for a prediction when this process cannot: set by a
+# pool's worker, which is confined at its start and may start no process,
+# so it asks the parent that starts sabline-rt for its runs (9.0, M4). It
+# takes (allow, deny, strict, system) and answers the document
+# `_predict_through_rt` would have, or None.
+#
+# Without it an audit made in a worker and one made in the caller's own
+# process would carry different predictions for the same program, and the
+# audit document is meant to be the same bytes wherever it is made.
+ASKED_ELSEWHERE: Any = None
+
+
+def _predict_through_rt(allow: str | None, deny: str | None, strict: bool,
+                        system: str | None) -> dict[str, Any] | None:
+    """sabline-rt's own prediction for one budget, or None when it cannot
+    be asked. One process, one line in and one document out - or, in a
+    process that may start none, whatever `ASKED_ELSEWHERE` answers."""
+    import subprocess
+    from . import through_rt as _through_rt
+    if ASKED_ELSEWHERE is not None:
+        try:
+            said = ASKED_ELSEWHERE(allow, deny, strict, system)
+        except Exception:
+            return None
+        return said if isinstance(said, dict) else None
+    exe = _through_rt.binary()
+    if not exe:
+        return None
+    words = [exe, "os-policy", "--predict"] + (
+        [] if system is not None else ["--here"]) + ["-"]
+    line = json.dumps([allow, deny]) + "\n"
+    try:
+        done = subprocess.run(words, input=line.encode("utf-8"),
+                              capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if done.returncode != 0:
+        return None
+    body = done.stdout.decode("utf-8", "replace").splitlines()
+    if not body or body[0].strip() != PREDICT_BATCH_HEADER:
+        return None
+    for text in body[1:]:
+        if not text.startswith("{"):
+            continue                        # the frame's own header line
+        try:
+            found = json.loads(text)
+        except ValueError:
+            return None
+        if not found.get("valid"):
+            return None
+        where = found["strict" if strict else "default"]
+        said = where[system] if system is not None else where
+        # the digest is the policy's, which both runtimes derive from the
+        # same budget and the agreement gate compares for every budget it
+        # has, so it is taken from this side rather than carried twice
+        out = {"level": said["level"], "reason": said["reason"],
+               "layers": list(said["layers"]),
+               "platform": said.get("platform", system or _platform())}
+        if said.get("offers"):
+            out["offers"] = said["offers"]
+        return out
+    return None
+
 
 def private_temp() -> tuple[str | None, str | None]:
     """A temporary directory of this run's own, made before confinement and

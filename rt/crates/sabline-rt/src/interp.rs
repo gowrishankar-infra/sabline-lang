@@ -184,6 +184,25 @@ pub enum Frame {
     Call(crate::json::Json),
 }
 
+/// The builtins of the network, whose **decisions are this runtime's** from
+/// 9.0's M4: the URL is split here, the host and port are matched against
+/// the budget's `net:` grants here, the grant and the operation are counted
+/// here, an ambient proxy is refused here, and every redirect's target is
+/// checked here. The connection is opened here too for `http://`;
+/// `https://` needs a TLS stack this crate has none of, so the bytes of
+/// one exchange are asked of the host, which decides nothing ([`crate::net`]
+/// says what is and is not ported, and plan/9.0.md gives the rest to M5).
+///
+/// They are still in [`RELAYED`], because a request an ambient proxy the
+/// budget covers would carry is relayed whole, as M3 relayed every
+/// request: what a proxy does to a request is urllib's.
+pub const NET_BUILTINS: [&str; 4] = ["fetch", "post", "fetch_status", "request"];
+
+/// The name of the one thing a run still asks the host about the network:
+/// the bytes of one TLS exchange ([`crate::net::EXCHANGE_SCHEMA`]). It is
+/// no builtin, so no program can name it.
+pub const NET_EXCHANGE: &str = "net.exchange";
+
 /// The builtins whose work a run relays to the process that started it
 /// (9.0, M3): every builtin of the network, Python and tools, which is the
 /// host's to make - urllib with its redirects and its proxy refusal, the
@@ -191,6 +210,10 @@ pub enum Frame {
 /// every builtin; what the call does after that, its grants, counts and
 /// refusals included, is the host's, made with the Python package's own
 /// code, and told back with what it recorded.
+///
+/// From 9.0's M4 the four of the network are relayed only where this
+/// runtime cannot make the request itself ([`NET_BUILTINS`]): an ambient
+/// proxy the budget covers. Everything else about them is decided here.
 pub const RELAYED: [&str; 14] = [
     "fetch",
     "post",
@@ -354,6 +377,14 @@ pub struct Runtime {
     rng: Option<Twister>,
     environ: Option<Environ>,
     fs_count: u64,
+    /// Whether this run has already said that its container is why a
+    /// loopback connection was refused: once a run, not once a call.
+    said_the_container: bool,
+    /// How many network operations this run has made: `OP_COUNTS["net"]`,
+    /// spent by a request this runtime makes itself (9.0, M4) and by one
+    /// it relays, so that a `net@N` count is the same number of requests
+    /// whichever process opened the socket.
+    net_count: u64,
     /// How many builtin calls each effect let through: `EFFECT_USES`.
     pub effect_uses: HashMap<String, u64>,
     /// What each grant let through, by the grant's own text and in the
@@ -411,6 +442,8 @@ impl Runtime {
             rng: None,
             environ: None,
             fs_count: 0,
+            said_the_container: false,
+            net_count: 0,
             effect_uses: HashMap::new(),
             grant_uses: Vec::new(),
             recorder: Recorder::default(),
@@ -1298,6 +1331,408 @@ impl Runtime {
         }))
     }
 
+    /// The network's four builtins, **decided here** (9.0, M4;
+    /// [`crate::net`] and [`NET_BUILTINS`]): the URL, the budget's hosts,
+    /// the counts, the proxy and every redirect's target. The connection is
+    /// opened here for `http://` and the bytes of one `https://` exchange
+    /// are the host's, which decides nothing.
+    ///
+    /// Every message is `sabline/runtime.py`'s, because a program cannot
+    /// tell which runtime refused it.
+    fn network(&mut self, name: &str, args: &[Value], line: u32) -> R<Value> {
+        use crate::net::{Request, Response};
+        let text = |v: Option<&Value>| to_text(v.unwrap_or(&Value::None));
+        // the arguments, as `sabline/runtime.py` reads them
+        let (mut method, given, body, mut headers) = if name == "request" {
+            // `method.upper() or "GET"`, and whatever that is: urllib
+            // sends a method it knows nothing about, so this keeps no
+            // table of them
+            let said = text(args.first()).to_string_lossy().to_uppercase();
+            let method = if said.is_empty() { "GET".to_string() } else { said };
+            let given = crate::net::with_scheme(&text(args.get(1)));
+            let body = text(args.get(2)).to_string_lossy();
+            let said = text(args.get(3));
+            (method, given, body, self.given_headers(&said)?)
+        } else {
+            let given = crate::net::with_scheme(&text(args.first()));
+            let body = if name == "post" {
+                text(args.get(1)).to_string_lossy()
+            } else {
+                String::new()
+            };
+            (
+                if name == "post" { "POST".to_string() } else { "GET".to_string() },
+                given,
+                body,
+                Vec::new(),
+            )
+        };
+        let first = given.to_string_lossy();
+        let mut sends = match name {
+            "post" => crate::net::Sends::Post,
+            "request" => crate::net::Sends::Request,
+            _ => crate::net::Sends::Fetch,
+        };
+        // the host, the proxy and the count, in the order
+        // `sabline/runtime.py` asks them: the grant counted first, since
+        // it is counted there before the proxy is looked at, then E317,
+        // then the operation - a request a proxy stopped has spent its
+        // grant and not its count
+        self.allow_host(&first, name, line)?;
+        let mut here = crate::net::split(&first).map_err(|_| Stop::Raised("NotPorted"))?;
+        let mut through: Option<(String, u32)> = None;
+        if let Some(proxy) = crate::net::proxy_for(&here) {
+            if let Some(why) = self.redirect_refusal(&proxy) {
+                let _ = why;
+                let parts = crate::net::split(&proxy).ok();
+                let peer = parts.as_ref().map_or_else(|| proxy.clone(), |p| p.host.clone());
+                let port = parts.as_ref().map_or(80, |p| p.port);
+                return Err(Stop::Error(RunError {
+                    code: "E317",
+                    message: Text::from(format!(
+                        "an ambient proxy ({proxy}) would carry this request, and its host \
+                         {peer}:{port} is outside this run's net grants: a net grant bounds \
+                         the URL's host, and from 8.0 also the socket's peer"
+                    )),
+                    // line 0, as `sabline/budget.py`'s guarded_opener
+                    // raises it: the proxy is the environment's and not
+                    // this line's
+                    line: 0,
+                    fixes: vec![
+                        format!("grant the proxy too: --allow net:{peer}:{port}"),
+                        "or run with no HTTP_PROXY / HTTPS_PROXY set".to_string(),
+                    ],
+                    file: None,
+                }));
+            }
+            // a proxy the budget covers carries the request, and the
+            // socket's peer is the proxy: for `http` this runtime asks it
+            // for the whole URL, and for `https` the host tunnels to the
+            // origin through it. Which proxy, and whether it may be used
+            // at all, was decided here.
+            let parts = crate::net::split(&proxy).map_err(|_| Stop::Raised("NotPorted"))?;
+            through = Some((parts.host, parts.port));
+        }
+        self.count_net(name, line)?;
+        // one request, and as many more as its redirects ask for, each
+        // target checked against the grants before it is followed
+        let mut hops = 0;
+        let answer: Response = loop {
+            // whatever the method, as `data = body.encode() if body else
+            // None` gives it - and nothing at all once a redirect has been
+            // followed, which carries no body. The headers are made from
+            // **this** body and not the one the call was given, or a
+            // followed redirect would say `Content-Length` for a body it
+            // is not sending and the other end would wait for it.
+            let sending = if hops == 0 { body.clone() } else { String::new() };
+            let request = Request {
+                method: method.clone(),
+                url: here.clone(),
+                headers: self.headers_of(&here, sends, &sending, &headers),
+                body: sending,
+                through: through.clone(),
+                // `request` waits twice as long as the other three, which
+                // is what the package passes urllib for each
+                patience: if name == "request" {
+                    crate::net::LONGER_PATIENCE
+                } else {
+                    crate::net::PATIENCE
+                },
+            };
+            let said = if here.scheme == "http" {
+                crate::net::exchange(&request)
+            } else {
+                self.tls_exchange(&request, name)?
+            };
+            let answer = match said {
+                Ok(answer) => answer,
+                Err(why) => {
+                    self.say_if_the_container_refused_it(&here, &why);
+                    // `request` says what went wrong and the other three
+                    // do not, which is what `sabline/runtime.py` does:
+                    // one branch chooses a reason and the other says
+                    // `cannot reach` alone
+                    return Err(Stop::Fail(Value::Text(Text::from(if name == "request" {
+                        format!("cannot reach '{first}': {}", crate::net::why_not(&why))
+                    } else {
+                        format!("cannot reach '{first}'")
+                    }))));
+                }
+            };
+            let next = crate::net::redirect_method(answer.status, &method)
+                .zip(answer.location.clone());
+            let Some((next_method, location)) = next else { break answer };
+            let target = crate::net::join(&here, &location);
+            if let Some(why) = self.redirect_refusal(&target) {
+                // the one refusal a program is told about as a failure and
+                // may carry on from, recorded as the Python runtime
+                // records it (`_note_redirect`)
+                self.recorder.note_refusal(None, Some("net".to_string()), line, false);
+                return Err(Stop::Fail(Value::Text(Text::from(format!(
+                    "'{first}' redirected to '{target}', which this run does not allow: {why}"
+                )))));
+            }
+            hops += 1;
+            if hops > crate::net::MOST_REDIRECTS {
+                // urllib's own answer to a chain that does not end is an
+                // HTTPError of the last status
+                break answer;
+            }
+            here = crate::net::split(&target).map_err(|_| Stop::Raised("NotPorted"))?;
+            method = next_method;
+            // the content headers go with the body, as
+            // `redirect_request`'s `CONTENT_HEADERS` go - the program's
+            // own and the ones this runtime would add for a body
+            headers.retain(|(n, _)| {
+                !n.eq_ignore_ascii_case("content-type")
+                    && !n.eq_ignore_ascii_case("content-length")
+            });
+            sends = crate::net::Sends::Fetch;
+        };
+        self.net_answer(name, &first, &answer)
+    }
+
+    /// Say, once a run, that a Windows AppContainer may be why a request
+    /// the budget allows was refused (9.0, M4; the maintainer's answer 2 of
+    /// 2026-10-14).
+    ///
+    /// A container cannot reach the loopback address: Windows isolates one
+    /// from it unless an administrator exempts it. A budget that names a
+    /// loopback **host**, and one granting `net` with no host - which
+    /// allows every host, the loopback among them - both leave the
+    /// container off for exactly that reason, so neither reaches here.
+    /// What is left is a granted host **name** that resolves to a loopback
+    /// address: a hosts-file entry for a development server. The budget
+    /// grants it, the language allows it, and the kernel refuses it - and
+    /// the one thing it must not be is refused with nothing from Sabline
+    /// explaining it. The failure a program sees stays the same in both
+    /// runtimes; this is the line beside it, for whoever is running it.
+    fn say_if_the_container_refused_it(&mut self, url: &crate::net::Url, why: &str) {
+        if !matches!(
+            crate::confine_appcontainer::here(),
+            Some(crate::confine_appcontainer::Where::Inside)
+        ) {
+            return;
+        }
+        // a name that is loopback outright, or a refusal the container is
+        // what makes: Windows answers WSAEACCES, which is a permission
+        // and not a connection that nobody answered
+        let denied = {
+            let said = why.to_ascii_lowercase();
+            said.contains("permission") || said.contains("denied") || said.contains("access")
+        };
+        if !denied && !crate::confine_appcontainer::loopback(&url.host) {
+            return;
+        }
+        if self.said_the_container {
+            return;
+        }
+        self.said_the_container = true;
+        let host = url.host.clone();
+        let port = url.port;
+        self.io.write_err(&Text::from(format!(
+            "sabline: the connection to {host}:{port}, which this run's budget grants, was \
+             refused ({why}); this run is inside a Windows AppContainer, which cannot reach \
+             the loopback address - if {host} resolves to one, grant it by that address \
+             (--allow net:127.0.0.1:{port}), which leaves the container off\n"
+        )));
+    }
+
+    /// The bytes of one `https://` exchange, asked of the process that
+    /// started this one, because TLS is not in this crate (9.0, M4;
+    /// [`crate::net`]).
+    ///
+    /// **One request, one response, and nothing else**: no redirect is
+    /// followed there, no grant is looked at there and no count is spent
+    /// there. Everything this run is allowed to reach was decided here
+    /// before the bytes went out, and every redirect's target is checked
+    /// here before another exchange is asked for. `NotPorted` where
+    /// nobody is listening - the gate's own batch - as a relayed builtin
+    /// is.
+    fn tls_exchange(
+        &mut self,
+        request: &crate::net::Request,
+        name: &str,
+    ) -> R<Result<crate::net::Response, String>> {
+        use crate::json::Json;
+        if self.io.relay.is_none() {
+            return Err(Stop::Raised("NotPorted"));
+        }
+        let call = Json::obj([
+            ("name", Json::text(NET_EXCHANGE)),
+            ("args", Json::List(vec![crate::net::asked_of_the_host(request)])),
+            ("line", Json::Int(0)),
+        ]);
+        let _ = name;
+        let Some(said) = self.io.call(call) else { return Err(Stop::Raised("NotPorted")) };
+        let Ok(frame) = Json::parse(said.trim_end_matches(['\r', '\n'])) else {
+            return Err(Stop::Raised("HostAnswer"));
+        };
+        let Json::Obj(frame) = &frame else { return Err(Stop::Raised("HostAnswer")) };
+        let Some(Json::Obj(answer)) = frame.get("answer") else {
+            return Err(Stop::Raised("HostAnswer"));
+        };
+        let Some(value) = answer.get("value") else {
+            return Err(Stop::Raised("HostAnswer"));
+        };
+        Ok(crate::net::the_host_said(value))
+    }
+
+    /// What one of the four builtins answers, from the response: the body,
+    /// the status, or the document `request` writes - and the failure
+    /// `urllib`'s `HTTPError` becomes where the status is not a success.
+    fn net_answer(
+        &mut self,
+        name: &str,
+        url: &str,
+        answer: &crate::net::Response,
+    ) -> R<Value> {
+        if name == "fetch_status" {
+            return Ok(Value::Int(i64::from(answer.status)));
+        }
+        if name == "request" {
+            // `json.dumps({"status", "body", "headers"}, ensure_ascii=False)`,
+            // the headers in the order the response carried them
+            let mut reply = Dict::new();
+            let _ = reply.set(Value::text("status"), Value::Int(i64::from(answer.status)));
+            let _ =
+                reply.set(Value::text("body"), Value::Text(Text::from(answer.body.clone())));
+            let mut headers = Dict::new();
+            for (k, v) in &answer.headers {
+                let _ = headers.set(Value::text(k), Value::text(v));
+            }
+            let _ = reply.set(Value::text("headers"), Value::Map(headers.into()));
+            let written = crate::pyjson::dumps(&Value::Map(reply.into()))
+                .map_err(|_| Stop::Raised("TypeError"))?;
+            return Ok(Value::Text(written));
+        }
+        if !(200..300).contains(&answer.status) {
+            return Err(Stop::Fail(Value::Text(Text::from(format!(
+                "'{url}' answered with status {}",
+                answer.status
+            )))));
+        }
+        Ok(Value::Text(Text::from(answer.body.clone())))
+    }
+
+    /// `request`'s own headers: a JSON object of texts, with the user agent
+    /// this runtime sends unless the program named one.
+    fn given_headers(&mut self, said: &Text) -> R<Vec<(String, String)>> {
+        if said.to_string_lossy().trim().is_empty() {
+            return Ok(Vec::new());
+        }
+        let found = match crate::pyjson::loads(said) {
+            Err(why) => {
+                return Err(Stop::Fail(Value::Text(Text::from(format!(
+                    "the headers are not valid JSON: {why}"
+                )))))
+            }
+            Ok(found) => found,
+        };
+        let Value::Map(map) = found else {
+            return Err(Stop::Fail(Value::text(
+                "the headers must be a JSON object, like {\"Accept\": \"application/json\"}",
+            )));
+        };
+        let mut out: Vec<(String, String)> = Vec::new();
+        for (key, value) in map.entries() {
+            out.push((to_text(key).to_string_lossy(), to_text(value).to_string_lossy()));
+        }
+        Ok(out)
+    }
+
+    /// The headers one request carries: this runtime's own, and then the
+    /// program's, which win where they name the same header.
+    fn headers_of(
+        &self,
+        url: &crate::net::Url,
+        sends: crate::net::Sends,
+        body: &str,
+        given: &[(String, String)],
+    ) -> Vec<(String, String)> {
+        let mut out = crate::net::headers_for(url, sends, body);
+        for (name, value) in given {
+            match out.iter_mut().find(|(n, _)| n.eq_ignore_ascii_case(name)) {
+                Some(slot) => slot.1 = value.clone(),
+                None => out.push((name.clone(), value.clone())),
+            }
+        }
+        out
+    }
+
+    /// `allow_host(url, what, line)`: refuse a request to a host this run
+    /// did not grant (E314), and count the grant that let it through.
+    ///
+    /// The decision is this runtime's from 9.0's M4 ([`crate::net`]), where
+    /// through M3 it was the host's: the process the operating system holds
+    /// to the budget's hosts is the process that decides which host a
+    /// request may reach, and for `http://` the one that opens the socket.
+    fn allow_host(&mut self, url: &str, what: &str, line: u32) -> R<()> {
+        match crate::net::host_refusal(self.budget.net.as_ref(), url) {
+            crate::net::Allowed::By(grant) => {
+                self.grant_used(grant);
+                Ok(())
+            }
+            crate::net::Allowed::No(why) => Err(self.no_such_host(url, what, line, &why)),
+        }
+    }
+
+    /// E314: the host a request reaches is outside this run's `net:`
+    /// grants, in `sabline/budget.py`'s words.
+    fn no_such_host(&self, url: &str, what: &str, line: u32, why: &str) -> Stop {
+        // `urlsplit(url).hostname or "?"`, which answers even where
+        // `.port` raises: an address whose port is not a number still
+        // names a host, and the message shows it
+        let host = crate::net::host_of(url);
+        let host = if host.is_empty() { "?".to_string() } else { host };
+        Stop::Error(RunError {
+            code: "E314",
+            message: Text::from(format!(
+                "'{what}' reaches host '{host}', which this run does not allow: {why}"
+            )),
+            line,
+            fixes: vec!["or use a program that stays with the granted hosts".to_string()],
+            file: None,
+        })
+    }
+
+    /// Why this run's `net:` grants refuse a redirect's target, or `None`:
+    /// `host_refusal` without counting, as the Python runtime's redirect
+    /// handler asks it.
+    fn redirect_refusal(&self, url: &str) -> Option<String> {
+        match crate::net::host_refusal(self.budget.net.as_ref(), url) {
+            crate::net::Allowed::By(_) => None,
+            crate::net::Allowed::No(why) => Some(why),
+        }
+    }
+
+    /// `count_op("net", what, line)`: spend one of the run's network
+    /// operations, E315 past the count. One request is one operation,
+    /// whatever its redirects and whichever process opened the socket.
+    fn count_net(&mut self, what: &str, line: u32) -> R<()> {
+        self.net_count += 1;
+        let n = self.net_count;
+        let Some(limit) = &self.budget.net_limit else { return Ok(()) };
+        let over = limit.digits().parse::<u128>().is_ok_and(|l| u128::from(n) > l);
+        if !over {
+            return Ok(());
+        }
+        Err(Stop::Error(RunError {
+            code: "E315",
+            message: Text::from(format!(
+                "'{what}' is the {n}{} net operation, and this run allows {}",
+                ordinal(n),
+                limit.digits()
+            )),
+            line,
+            fixes: vec![
+                format!("allow more: --allow net@{n}"),
+                "or use a program that does less".to_string(),
+            ],
+            file: None,
+        }))
+    }
+
     /// `count_op("fs", what, line)`: spend one of the run's file
     /// operations, E315 past the count.
     fn count_op(&mut self, what: &str, line: u32) -> R<()> {
@@ -1309,16 +1744,7 @@ impl Runtime {
         if !over {
             return Ok(());
         }
-        let th = if (10..=20).contains(&(n % 100)) {
-            "th"
-        } else {
-            match n % 10 {
-                1 => "st",
-                2 => "nd",
-                3 => "rd",
-                _ => "th",
-            }
-        };
+        let th = ordinal(n);
         Err(Stop::Error(RunError {
             code: "E315",
             message: Text::from(format!(
@@ -1993,13 +2419,31 @@ impl Runtime {
                 file.write_all(&bytes).map_err(|e| refused(&e))?;
                 Ok(Value::None)
             }
-            // a builtin whose work is the network, Python or a tool: spent
-            // above, and refused there by every budget that does not grant
-            // it; its work is the host's
+            // the network: which host it may reach is decided here, and
+            // the connection is opened here for `http://` (9.0, M4;
+            // `crate::net`). A `https://` exchange's bytes are still the
+            // host's, and so is a request an ambient proxy would carry.
+            _ if NET_BUILTINS.contains(&name) => self.network(name, &args, line),
+            // a builtin whose work is Python or a tool: spent above, and
+            // refused there by every budget that does not grant it; its
+            // work is the host's
             _ if RELAYED.contains(&name) => self.relayed(name, &args, line),
             _ if is_builtin(name) => Err(Stop::Raised("NotPorted")),
             _ => Ok(Value::None),
         }
+    }
+}
+
+/// `_ordinal(n)`: what follows a count in E315's message.
+fn ordinal(n: u64) -> &'static str {
+    if (10..=20).contains(&(n % 100)) {
+        return "th";
+    }
+    match n % 10 {
+        1 => "st",
+        2 => "nd",
+        3 => "rd",
+        _ => "th",
     }
 }
 

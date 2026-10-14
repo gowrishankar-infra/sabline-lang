@@ -546,13 +546,21 @@ def doctor() -> int:
                      f"sabline-lang/issues")
     # what the operating system will be asked to hold of a run (8.4)
     from . import confine as _confine
-    from .budget import Budget
     from .tables import DEFAULT_ALLOW
     offered, what = _confine.supported()
-    would = _confine.predict(_confine.os_policy(Budget.parse(DEFAULT_ALLOW)))
+    # for the runtime that will run a program (9.0, M4; the maintainer's
+    # answer 1 of 2026-10-14): on Windows sabline-rt holds reads and the
+    # network inside an AppContainer, which this package cannot enter
+    would = _confine.predicted(DEFAULT_ALLOW)
+    through = ("" if would.get("runtime") == "python"
+               else f", through {would['runtime']}")
+    # and what that runtime says this system offers it, which is the other
+    # half of one sentence: a level from one runtime beside the layers of
+    # another would be two answers in one line
+    offers = would.get("offers") or what
     lines.append(f"{OK if would['level'] != _confine.NONE else OPT} "
                  f"confinement: {would['level']} for a run under "
-                 f"--allow {DEFAULT_ALLOW} - {what}")
+                 f"--allow {DEFAULT_ALLOW}{through} - {offers}")
     if would["level"] != _confine.FULL:
         lines.append(f"       why: {would['reason']}")
     print(f"sabline doctor - {VERSION}")

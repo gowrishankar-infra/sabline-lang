@@ -795,24 +795,34 @@ pub fn relayed_elsewhere(budget: &Budget, host: Option<&str>) -> Option<String> 
     if matches!(host, Some(level) if level != NONE) {
         return None;
     }
-    let what = match relayed.as_slice() {
-        [one] => format!("a call to {}", named(one)),
-        many => {
-            let names: Vec<String> = many.iter().map(|e| named(e).to_string()).collect();
-            format!("a call to {}", names.join(", "))
-        }
+    let named: Vec<&str> = relayed.iter().map(|e| named(e)).collect();
+    let what = named.join(", ");
+    let is = if named.len() == 1 { "is" } else { "are" };
+    let also = if relayed.contains(&"net") {
+        // what this runtime does hold of the network from 9.0's M4: every
+        // decision, and the socket itself where there is no TLS to do
+        "; a request to an http host is made here, in the process this \
+         policy holds, and which host a request may reach - its grants, \
+         its counts and every redirect's target - is this runtime's \
+         whatever the scheme"
+    } else {
+        ""
     };
     Some(format!(
-        "{what} is made in the process that started this one, which is held to \
-         nothing, so this policy does not bound it"
+        "{what} {is} made in the process that started this one, which is held to \
+         nothing, so this policy does not bound it{also}"
     ))
 }
 
 fn named(effect: &str) -> &'static str {
     match effect {
-        "net" => "the network",
-        "ffi" => "a granted Python module",
-        _ => "a tool",
+        // the bytes and not the call: from 9.0's M4 every decision about a
+        // request is this runtime's, and what the host still does is carry
+        // the bytes of a TLS exchange, which this crate has no stack for
+        // (crate::net; plan/9.0.md gives the rest to M5)
+        "net" => "the bytes of a request to an https host",
+        "ffi" => "a call to a granted Python module",
+        _ => "a tool call",
     }
 }
 
@@ -954,6 +964,422 @@ pub fn current() -> Option<Report> {
     APPLIED.get().cloned()
 }
 
+/// What [`apply`] **would** report, without applying anything: this
+/// runtime's answer to `sabline/confine.py`'s `predict` (9.0, M4; the
+/// maintainer's answer 1 of 2026-10-14).
+///
+/// With `system` - `linux`, `macos` or `windows` - it is what that system
+/// gives where every layer it has is there, and it reads nothing of the
+/// machine, so the audit document it goes into stays the same bytes
+/// wherever it is made. With `None` it is this machine: the kernel is
+/// asked what it offers, and a granted path that is not there yet is
+/// looked for.
+///
+/// It is a prediction and never a promise. **A receipt records what
+/// happened, and where the two differ the receipt is the one that counts.**
+/// A Windows that cannot make a container, a kernel with no Landlock, a
+/// grant too wide for a container's ACEs: none of them is visible here,
+/// and each is in the receipt's reason. [`differs_from_prediction`] is
+/// what says so.
+pub fn predict(policy: &Json, read_any: bool, system: Option<&str>) -> Report {
+    if !enforced(policy) {
+        return unconfined(policy, &why_not_enforced(policy));
+    }
+    let nominal = system.is_some();
+    let system = match system {
+        None => platform(),
+        Some(said) => match ENFORCES_SYSTEMS.iter().find(|s| **s == said) {
+            Some(known) => *known,
+            None => {
+                return Report {
+                    level: NONE,
+                    reason: format!("nothing is known for {said}"),
+                    layers: Vec::new(),
+                    policy_sha256: policy_sha256(policy),
+                    platform: platform(),
+                }
+            }
+        },
+    };
+    // a granted path that is not there yet is held to the nearest
+    // directory that is, which a nominal prediction knows nothing about
+    let not_yet = |which: &str| -> Vec<String> {
+        if nominal {
+            return Vec::new();
+        }
+        granted(policy, which)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|g| nearest_directory(g).1)
+            .collect()
+    };
+    let mut held: Vec<(&'static str, Held)> = Vec::new();
+    let (layers, notes) = match system {
+        "linux" => predict_linux(policy, read_any, nominal, &not_yet, &mut held),
+        "macos" => predict_macos(policy, read_any, &not_yet, &mut held),
+        "windows" => predict_windows(policy, read_any, nominal, &not_yet, &mut held),
+        other => {
+            return Report {
+                level: NONE,
+                reason: format!("nothing is known for {other}"),
+                layers: Vec::new(),
+                policy_sha256: policy_sha256(policy),
+                platform: platform(),
+            }
+        }
+    };
+    let mut done = judge(policy, &held, &layers, &notes);
+    done.platform = system;
+    done
+}
+
+/// Linux's prediction: Landlock's ABI and seccomp's table, this machine's
+/// or a machine where both are there.
+fn predict_linux(
+    policy: &Json,
+    read_any: bool,
+    nominal: bool,
+    not_yet: &dyn Fn(&str) -> Vec<String>,
+    held: &mut Vec<(&'static str, Held)>,
+) -> (Vec<String>, Vec<String>) {
+    #[cfg(target_os = "linux")]
+    let (abi, arch) = if nominal {
+        (4, Some("x86_64"))
+    } else {
+        (crate::confine_linux::landlock_abi(), crate::confine_linux::seccomp_arch())
+    };
+    #[cfg(not(target_os = "linux"))]
+    let (abi, arch) = {
+        let _ = nominal;
+        (4u32, Some("x86_64"))
+    };
+    let no_landlock = "this kernel has no Landlock";
+    let no_seccomp = "seccomp has no system call table for this machine";
+    let mut layers: Vec<String> = Vec::new();
+    if abi > 0 {
+        layers.push(if nominal {
+            crate::confine_linux::LANDLOCK.to_string()
+        } else {
+            format!("{}-abi{abi}", crate::confine_linux::LANDLOCK)
+        });
+    }
+    if arch.is_some() {
+        layers.push(crate::confine_linux::SECCOMP.to_string());
+    }
+    if granted(policy, "fs_read").is_some() {
+        let later = not_yet("fs_read");
+        held.push((
+            "fs_read",
+            if abi == 0 {
+                Held::No(no_landlock.to_string())
+            } else if read_any {
+                Held::No("this pool has no import_root, so reads are not held".to_string())
+            } else {
+                match later.first() {
+                    None => Held::Yes,
+                    Some(g) => Held::Partly(format!(
+                        "{g} does not exist yet, so reads are held to the nearest \
+                         directory that does"
+                    )),
+                }
+            },
+        ));
+    }
+    if granted(policy, "fs_write").is_some() {
+        let wider = not_yet("fs_write");
+        held.push((
+            "fs_write",
+            if abi == 0 {
+                Held::No(no_landlock.to_string())
+            } else if abi < 3 {
+                Held::Partly(format!("Landlock ABI {abi} cannot hold truncation"))
+            } else {
+                match wider.first() {
+                    None => Held::Yes,
+                    Some(g) => Held::Partly(format!(
+                        "{g} does not exist yet, so writes are held to the nearest \
+                         directory that does"
+                    )),
+                }
+            },
+        ));
+    }
+    if no_net(policy) {
+        held.push((
+            "net",
+            if arch.is_some() { Held::Yes } else { Held::No(no_seccomp.to_string()) },
+        ));
+    } else if !any_net(policy) {
+        held.push((
+            "net",
+            if abi >= 4 && tcp_ports(policy).is_some() {
+                Held::Partly(
+                    "the kernel holds TCP to the granted ports; the host is held by the \
+                     language alone"
+                        .to_string(),
+                )
+            } else {
+                Held::No(
+                    "the kernel cannot hold a host; it is held by the language alone"
+                        .to_string(),
+                )
+            },
+        ));
+    }
+    if !spawn(policy) {
+        held.push((
+            "spawn",
+            if arch.is_some() {
+                Held::Yes
+            } else if abi > 0 {
+                Held::Partly("Landlock refuses execute only".to_string())
+            } else {
+                Held::No(no_seccomp.to_string())
+            },
+        ));
+    }
+    (layers, Vec::new())
+}
+
+/// macOS's prediction: one `sandbox_init` profile, which Apple has
+/// deprecated.
+fn predict_macos(
+    policy: &Json,
+    read_any: bool,
+    not_yet: &dyn Fn(&str) -> Vec<String>,
+    held: &mut Vec<(&'static str, Held)>,
+) -> (Vec<String>, Vec<String>) {
+    if granted(policy, "fs_read").is_some() {
+        held.push((
+            "fs_read",
+            if read_any {
+                Held::No("this pool has no import_root, so reads are not held".to_string())
+            } else {
+                Held::Partly(
+                    "reads are refused under the home directory and /Volumes only, not \
+                     held to exactly the grants"
+                        .to_string(),
+                )
+            },
+        ));
+    }
+    if granted(policy, "fs_write").is_some() {
+        let wider = not_yet("fs_write");
+        held.push((
+            "fs_write",
+            match wider.first() {
+                None => Held::Yes,
+                Some(g) => Held::Partly(format!(
+                    "{g} does not exist yet, so writes are held to the nearest directory \
+                     that does"
+                )),
+            },
+        ));
+    }
+    if no_net(policy) {
+        held.push(("net", Held::Yes));
+    } else if !any_net(policy) {
+        held.push((
+            "net",
+            Held::No(
+                "the profile allows the network; the host is held by the language alone"
+                    .to_string(),
+            ),
+        ));
+    }
+    if !spawn(policy) {
+        held.push(("spawn", Held::Yes));
+    }
+    (
+        vec![crate::confine_macos::MAC_SANDBOX.to_string()],
+        vec!["sandbox profiles are deprecated by Apple".to_string()],
+    )
+}
+
+/// Windows' prediction, **which is this runtime's and not the package's**:
+/// the run's own process is started inside an AppContainer, so reads are
+/// held to the ACEs it is given and the network is refused without the
+/// `internetClient` capability - where a container can hold the budget at
+/// all ([`crate::confine_appcontainer::left_off`]), and the package's own
+/// answer where it cannot.
+///
+/// What a prediction cannot see is whether a container can be **made** on
+/// this machine, and whether a process inside one resolves a path as its
+/// host does: both are asked at run time, and both are in the receipt's
+/// reason when the answer is no. That is the one place the two may differ,
+/// and the receipt is what counts.
+fn predict_windows(
+    policy: &Json,
+    read_any: bool,
+    nominal: bool,
+    not_yet: &dyn Fn(&str) -> Vec<String>,
+    held: &mut Vec<(&'static str, Held)>,
+) -> (Vec<String>, Vec<String>) {
+    use crate::confine_appcontainer::{left_off, APPCONTAINER};
+    use crate::confine_windows::{WINDOWS_JOB, WINDOWS_LOW, WINDOWS_NOT_HELD, WINDOWS_TOKEN};
+
+    let extras = Extras { read_any, ..Extras::default() };
+    let off = left_off(policy, &extras).or_else(|| {
+        // and what this machine has already found out, which a prediction
+        // of **this machine** is entitled to know: a system whose
+        // containers cannot resolve a path remembers that, and a `doctor`
+        // that said `full` where no run of this machine can be full would
+        // be the wrong answer by the one command whose whole question is
+        // what this machine gives. A nominal prediction reads nothing of
+        // the machine and so never asks (9.0, M4).
+        if nominal {
+            None
+        } else {
+            remembered_no_container()
+        }
+    });
+    let inside = off.is_none();
+    let mut layers: Vec<String> = Vec::new();
+    let mut notes: Vec<String> = Vec::new();
+    if inside {
+        layers.push(APPCONTAINER.to_string());
+    }
+    layers.push(WINDOWS_TOKEN.to_string());
+    let lower = !inside && crate::confine_windows::lower_the_label(policy, &extras);
+    if lower {
+        layers.push(WINDOWS_LOW.to_string());
+    }
+    if !spawn(policy) {
+        held.push(("spawn", Held::Yes));
+        layers.push(WINDOWS_JOB.to_string());
+    }
+    if granted(policy, "fs_write").is_some() {
+        let wider = not_yet("fs_write");
+        held.push((
+            "fs_write",
+            if inside {
+                match wider.first() {
+                    None => Held::Yes,
+                    Some(g) => Held::Partly(format!(
+                        "{g} does not exist yet, so writes are held to the nearest \
+                         directory that does"
+                    )),
+                }
+            } else if lower {
+                Held::Yes
+            } else {
+                Held::No(
+                    "a budget with a write grant runs at medium integrity, because \
+                     lowering it would need the granted directory relabelled"
+                        .to_string(),
+                )
+            },
+        ));
+    }
+    if granted(policy, "fs_read").is_some() {
+        let later = not_yet("fs_read");
+        held.push((
+            "fs_read",
+            if !inside {
+                Held::No("reads are not held on Windows without an AppContainer".to_string())
+            } else {
+                match later.first() {
+                    None => Held::Yes,
+                    Some(g) => Held::Partly(format!(
+                        "{g} does not exist yet, so reads are held to the nearest \
+                         directory that does"
+                    )),
+                }
+            },
+        ));
+    }
+    if no_net(policy) {
+        held.push((
+            "net",
+            if inside {
+                Held::Yes
+            } else {
+                Held::No(
+                    "the network is not held on Windows without an AppContainer".to_string(),
+                )
+            },
+        ));
+    } else if !any_net(policy) {
+        held.push((
+            "net",
+            if inside {
+                Held::Partly(
+                    "the internetClient capability admits every host; the host is held by \
+                     the language alone"
+                        .to_string(),
+                )
+            } else {
+                Held::No(
+                    "the network is not held on Windows without an AppContainer".to_string(),
+                )
+            },
+        ));
+    }
+    if !inside && (granted(policy, "fs_read").is_some() || !any_net(policy)) {
+        notes.push(match off {
+            Some(why) => format!("no AppContainer for this run: {why}"),
+            None => WINDOWS_NOT_HELD.to_string(),
+        });
+    }
+    (layers, notes)
+}
+
+/// What this machine has already found out about its own containers, as a
+/// reason a prediction can carry: `None` where nothing is remembered, and
+/// never anything on a system that has no containers to remember.
+fn remembered_no_container() -> Option<String> {
+    #[cfg(windows)]
+    {
+        crate::confine_appcontainer::remembered_no()
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
+}
+
+/// What a receipt says when the level the **operating system** gave this
+/// run is not the one [`predict`] gave for the same policy on this system,
+/// or `None` when they agree (the maintainer's answer 1 of 2026-10-14).
+///
+/// The audit predicts; the receipt records what happened; **where they
+/// differ the receipt wins and says so**, because a prediction cannot know
+/// whether a container could be made, whether this kernel has Landlock, or
+/// how many files a grant covers - and a run that quietly got less than
+/// the audit promised is the one thing a receipt is for.
+///
+/// It is given the report [`apply`] made, and not the one a note about
+/// work outside this process was added to ([`relayed_elsewhere`]): a
+/// prediction is of what the operating system will hold, and a call made
+/// in another process is not the operating system answering differently.
+/// That note is in the reason already, and in its own words.
+pub fn differs_from_prediction(policy: &Json, read_any: bool, got: &Report) -> Option<String> {
+    let said = predict(policy, read_any, Some(platform()));
+    (said.level != got.level).then(|| {
+        format!(
+            "the audit predicts {} for this budget on {} and this run got {}: a \
+             prediction cannot know what this machine answered, and this receipt is what \
+             happened",
+            said.level, said.platform, got.level
+        )
+    })
+}
+
+/// A report with what [`differs_from_prediction`] found said beside its
+/// reason - and **the level untouched**, because what happened is what the
+/// receipt records.
+pub fn with_prediction(done: &Report, policy: &Json, read_any: bool) -> Report {
+    match differs_from_prediction(policy, read_any, done) {
+        None => done.clone(),
+        Some(said) => {
+            let mut out = done.clone();
+            out.reason =
+                if out.reason.is_empty() { said } else { format!("{}; {said}", out.reason) };
+            out
+        }
+    }
+}
+
 static APPLIED: std::sync::OnceLock<Report> = std::sync::OnceLock::new();
 
 /// What this system offers, and what, for a report of the machine.
@@ -1004,6 +1430,81 @@ pub fn policy_document(allow: Option<&str>, deny: Option<&str>) -> Json {
             ("sha256", Json::text(digest)),
             ("restricted", Json::List(asks.into_iter().map(Json::text).collect())),
             ("not_enforced", why),
+        ])
+    };
+    Json::obj([
+        ("valid", Json::Bool(true)),
+        ("default", one(true, false)),
+        ("strict", one(true, true)),
+        ("no_confine", one(false, false)),
+    ])
+}
+
+/// The header of the framed stream `os-policy --predict` writes.
+pub const PREDICT_BATCH_HEADER: &str = "sabline.os-predict-batch/1";
+
+/// One budget's **predictions**, as `check_confine.py` compares them: what
+/// this runtime says each of the three systems would hold for that budget,
+/// under `--confine strict` and without it and under `--no-confine`, where
+/// every layer that system has is there (9.0, M4; the maintainer's answer
+/// 1 of 2026-10-14).
+///
+/// It reads nothing of the machine, so one document is every machine's,
+/// and `check_confine.py` holds this runtime's level to be **at least**
+/// the package's for every row, with each difference Windows' and
+/// explained - the same rule it holds `ENFORCES_HELD` to.
+pub fn predict_document(allow: Option<&str>, deny: Option<&str>) -> Json {
+    let b = match budget_from(allow, deny) {
+        Err(BudgetError(_)) => return Json::obj([("valid", Json::Bool(false))]),
+        Ok(b) => b,
+    };
+    let one = |confine: bool, strict: bool| {
+        let policy = os_policy(&b, confine, strict);
+        Json::obj(ENFORCES_SYSTEMS.map(|system| {
+            let said = predict(&policy, false, Some(system));
+            (
+                system,
+                Json::obj([
+                    ("level", Json::text(said.level)),
+                    ("reason", Json::text(said.reason)),
+                    ("layers", Json::List(said.layers.into_iter().map(Json::text).collect())),
+                ]),
+            )
+        }))
+    };
+    Json::obj([
+        ("valid", Json::Bool(true)),
+        ("default", one(true, false)),
+        ("strict", one(true, true)),
+        ("no_confine", one(false, false)),
+    ])
+}
+
+/// One budget's prediction for **this machine**: what this runtime says
+/// this system would hold for that budget, with the kernel asked what it
+/// offers and a granted path that is not there yet looked for.
+///
+/// It is what `sabline doctor` and `sabline audit --confinement-probe`
+/// print when sabline-rt is the runtime that will run the program (the
+/// maintainer's answer 1 of 2026-10-14), and unlike [`predict_document`]
+/// it is this machine's answer and no other's.
+pub fn predict_here_document(allow: Option<&str>, deny: Option<&str>) -> Json {
+    let b = match budget_from(allow, deny) {
+        Err(BudgetError(_)) => return Json::obj([("valid", Json::Bool(false))]),
+        Ok(b) => b,
+    };
+    let one = |confine: bool, strict: bool| {
+        let said = predict(&os_policy(&b, confine, strict), false, None);
+        Json::obj([
+            ("level", Json::text(said.level)),
+            ("reason", Json::text(said.reason)),
+            ("layers", Json::List(said.layers.into_iter().map(Json::text).collect())),
+            ("platform", Json::text(said.platform)),
+            // what this system offers *this* runtime, which is the other
+            // half of what `sabline doctor` prints: a line saying `full`
+            // beside a list of layers that has no container in it would be
+            // two runtimes' answers in one sentence
+            ("offers", Json::text(supported().1)),
         ])
     };
     Json::obj([

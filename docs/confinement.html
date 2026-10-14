@@ -69,7 +69,7 @@
 <ul><li><a href="stability.html">Stability</a></li><li><a href="velaris.html">Formerly Velaris</a></li><li><a href="renamed.html">Renamed from Velaris</a></li><li><a href="capability/v1/index.html">capability/v1</a></li><li><a href="receipt/v1/index.html">receipt/v1</a></li></ul>
 </li>
 <li><a href="changelog.html">Changelog</a>
-<ul><li><a href="changelog-9-1.html">9.x: 9.0.0-alpha.13 to 9.0.0-alpha.8</a></li><li><a href="changelog-9-2.html">9.x: 9.0.0-alpha.7 to 9.0.0-alpha.1</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
+<ul><li><a href="changelog-9-1.html">9.x: 9.0.0-alpha.14 to 9.0.0-alpha.9</a></li><li><a href="changelog-9-2.html">9.x: 9.0.0-alpha.8 to 9.0.0-alpha.1</a></li><li><a href="changelog-8-1.html">8.x: 8.8 to 8.7.0</a></li><li><a href="changelog-8-2.html">8.x: 8.6 to 8.5</a></li><li><a href="changelog-8-3.html">8.x: 8.4 to 8.3.1</a></li><li><a href="changelog-8-4.html">8.x: 8.3 to 8.2.1</a></li><li><a href="changelog-8-5.html">8.x: 8.2 to 8.0</a></li><li><a href="changelog-7.html">7.x</a></li><li><a href="changelog-6.html">6.x</a></li><li><a href="changelog-5.html">5.x</a></li><li><a href="changelog-4-1.html">4.x: 4.4 to 4.2.1</a></li><li><a href="changelog-4-2.html">4.x: 4.2 to 4.0</a></li><li><a href="changelog-3.html">3.x</a></li><li><a href="changelog-2-1.html">2.x: 2.63.1 to 2.40.1</a></li><li><a href="changelog-2-2.html">2.x: 2.40 to 2.0</a></li><li><a href="changelog-1.html">1.x</a></li><li><a href="changelog-0.html">0.x</a></li></ul>
 </li>
 </ul></nav>
 <div class="col">
@@ -139,12 +139,21 @@ run whose level is not one an earlier run of the same program had, and says
 when it is weaker.</li>
 <li><strong>The audit.</strong> <code>sabline audit --json</code> has <code>confinement</code>: for the program's
 <code>safe_command</code>, the level and reason on each of the three systems where
-every layer that system has is there, and <code>widened_by</code>, the granted Python
-modules that widen the OS policy and to what. It reads nothing of the
-machine, so the audit stays the same bytes wherever it is made. The command
-line's audit prints what this machine would give.</li>
+every layer that system has is there, <code>widened_by</code>, the granted Python
+modules that widen the OS policy and to what, and <code>runtime</code>, <strong>which
+runtime the prediction is for</strong>. It reads nothing of the machine, so the
+audit stays the same bytes wherever it is made for that runtime. From
+9.0's M4 the prediction is <strong>the runtime that will run the program</strong>
+(<code>SABLINE_REFERENCE_RUNTIME</code>), and on Windows the two differ: sabline-rt
+holds reads and the network inside an AppContainer, which a running
+<code>python.exe</code> cannot enter. It is asked of sabline-rt rather than modelled
+in the package, so there is one copy of that behaviour and not two. A
+prediction is never a promise: what one run got is in its receipt, and
+<strong>where the two differ the receipt is the one that counts</strong> and says so in
+its reason.</li>
 <li><strong><code>sabline doctor</code>.</strong> What this machine offers, and the level a run under
-the default budget gets on it.</li>
+the default budget gets on it - for the runtime that will run it, which
+the line names when it is not this package's.</li>
 </ul>
 <p><code>sabline eval</code> requires full or partial, and refuses to run at none.</p>
 <h2 id="python-modules-widen-it">Python modules widen it <a class="anchor" href="#python-modules-widen-it" aria-label="Link to this section">#</a></h2>
@@ -270,11 +279,12 @@ receipt, rather than a run being refused a file its budget allows.
 reason on each one the two runtimes differ on.</p>
 <p><strong>A container is left off</strong> for a budget it would refuse something the
 budget allows, and the receipt's reason says which: a budget granting a
-<strong>loopback host</strong>, since Windows isolates a container from the loopback
-address unless an administrator exempts it; a budget that restricts
-<strong>neither reads nor writes</strong>, since a container reaches only what it is
-given an ACE for; and a <strong>system where a process inside a container cannot
-resolve a path</strong> as the process that started it does. That last one is
+<strong>loopback host</strong> - or <code>net</code> with <strong>no host</strong>, which allows every host
+including the loopback address - since Windows isolates a container from
+the loopback address unless an administrator exempts it; a budget that
+restricts <strong>neither reads nor writes</strong>, since a container reaches only
+what it is given an ACE for; and a <strong>system where a process inside a
+container cannot resolve a path</strong> as the process that started it does. That last one is
 asked rather than assumed: before a run is handed to a container, the
 container is asked to resolve a spelling of its granted paths that is
 <strong>not</strong> their canonical form - the 8.3 form, where the volume keeps one -
@@ -296,11 +306,15 @@ grants.</p>
 AppContainer reaches a file only through that file's own rights, and
 Windows' inheritance is a copy and not a lookup: giving a directory an
 inheritable ACE writes it into every file under it, and taking it back
-writes them all again. That is about half a millisecond a file, charged to
-the run's own deadline, and it changes the rights of the user's files while
-the run lasts. So a grant over a tree larger than that is a container left
-off, with the reason in the receipt, rather than a run that pays for a tree
-nobody counted.</p>
+writes them all again. <code>perf_gates.py --only contained</code> measures what that
+costs rather than estimating it - <strong>0.3 ms a file</strong> for the two writes
+together on the machine the bound was set on, so a thousand files is about
+a third of a second charged to the run's own deadline - and it changes the
+rights of the user's files while the run lasts. So a grant over a tree
+larger than that is a container left off, with the reason in the receipt
+<strong>and a line on the error channel</strong>: every other reason is one the budget
+asked for, and this one is not, so the run says it where its operator is
+looking.</p>
 <p><strong>Two runs at once</strong> are two containers with an ACE each on the same file,
 and adding one is <em>read the rights, add to them, write them back</em>: without
 a lock the second write is of rights read before the first, and one of the
@@ -317,18 +331,67 @@ it does not:</p>
 because the program runs in another process. In the package it runs in the
 caller's own, which Sabline never confines, so a level asked of it is
 refused (E326); through sabline-rt it is given.</li>
-<li><strong>A command confines itself too.</strong> The network, a granted Python module
-and a tool are called in the process that started sabline-rt, so that
-process is held to the same policy - after sabline-rt has been started,
-since the policy lets no process be started. For a pool that process is
-its worker, which was already confined; for <code>sabline run</code> it is the
-command's own, which ends with the run.</li>
+<li><strong>A command confines itself too.</strong> A granted Python module, a tool and
+the bytes of an <code>https</code> exchange are handled in the process that started
+sabline-rt, so that process is held to the same policy - after sabline-rt
+has been started, since the policy lets no process be started. For a pool
+that process is its worker, which was already confined; for <code>sabline run</code>
+it is the command's own, which ends with the run.</li>
 <li><strong>An unbounded <code>sabline.run()</code>'s host is not confined</strong>, for the same
 reason its own run never was: it is the caller's process. A run there whose
 budget grants <code>net</code>, <code>ffi</code> or <code>tool</code> says so in its receipt's reason, and
-its level is <code>partial</code> rather than <code>full</code>, because a connection opened in
-another process is not something this policy bounds.</li>
+its level is <code>partial</code> rather than <code>full</code>, because work done in another
+process is not something this policy bounds.</li>
 </ul>
+<h3 id="the-network-in-the-process-this-policy-holds-90">The network, in the process this policy holds (9.0) <a class="anchor" href="#the-network-in-the-process-this-policy-holds-90" aria-label="Link to this section">#</a></h3>
+<p>Through M3 every call to the network was handled in the process that
+started sabline-rt. So the process the operating system held to the
+budget's hosts was not the process that opened the connection, which is
+the thing a <code>net:</code> grant is about. From M4 <strong>every decision the budget
+bounds is sabline-rt's</strong>: the URL split, the host and port matched against
+the <code>net:</code> grants, the grant and the operation counted, an ambient proxy
+refused unless the budget covers its own host and port (E317), and <strong>each
+redirect's target checked before it is followed</strong>. What is not the
+budget's stays where it was - a TLS certificate is checked by whoever
+makes the TLS connection, which for an <code>https</code> exchange is still the
+host. A request to an
+<code>http</code> host - and one carried by a proxy the budget covers - is made
+there too: the socket is opened inside the Windows AppContainer, under the
+Linux seccomp filter and inside the macOS profile, so what the kernel
+refuses a <code>fetch</code> is what this page's table says it refuses.</p>
+<p>One thing is still two processes, and the receipt says so: <strong>the bytes of
+an <code>https</code> exchange</strong>, because sabline-rt has no TLS stack and the crate
+takes no dependency for one yet. The host is a transport there and nothing
+else - one request, one response, no redirect followed, no grant read,
+nothing counted. <code>plan/9.0.md</code> finishes the port in M5.</p>
+<p>It has one consequence on Windows. A budget granting <code>net</code> with <strong>no
+host</strong> allows every host, the loopback address among them, and no
+AppContainer may reach the loopback address - so such a budget now
+<strong>leaves the container off</strong>, with the reason in the receipt, as a budget
+naming a loopback host already did. That is the rule every other reason
+follows: a container that would refuse what the budget allows is a
+container left off, because a run refused something its budget grants is a
+wrong answer and not a safe one. It costs that run its file confinement on
+Windows, and the receipt says so. A budget that names one host outside
+this machine keeps its container, and a policy a granted module widened to
+any host loses it for the same reason a plain <code>net</code> grant does.</p>
+<p>What is left is a granted host <strong>name</strong> that resolves to a loopback
+address - a hosts-file entry for a development server. The budget grants
+it, the language allows it, and the kernel refuses it; the run says so on
+its error channel, naming the container and the grant that would avoid it,
+because the one thing that must not happen is a refusal with nothing from
+Sabline explaining it.</p>
+<p>One difference between the two runtimes is left, and this is where it is
+written down: <code>sabline/budget.py</code> asks CPython's
+<code>getproxies()</code>, which reads the environment <strong>and</strong> Internet Settings in
+the Windows registry and the macOS system configuration, while sabline-rt
+reads the environment alone - and then opens the socket itself, so there
+is no proxy in the path to bound. A machine with a system-wide proxy set
+outside the environment is a run the Python runtime refuses with E317 and
+sabline-rt carries out, direct, to the host the budget granted. Neither
+sends the request anywhere the budget does not name; what differs is
+whether the run happens at all, and no suite can settle it, because no
+runner has such a proxy to measure.</p>
 <p><code>check_confine.py --runtime rust</code> asks every question on this page of
 sabline-rt: the honesty test with its fault-injection hook, what still
 works, what is reported, what a program cannot reach, what is tried against
@@ -339,7 +402,11 @@ that a run killed while holding them is swept by the next, that
 container is left off for says so in its receipt. Two parts stay the
 package's and say so: the policy and the filter, which the agreement gate
 already compares; and the escape targets, which are measured on a Sabline
-whose <em>Python</em> budget checks are knocked out.</p>
+whose <em>Python</em> budget checks are knocked out. The network's own port is
+asked there as well: that a request to a granted host is made and answered
+under confinement, that the kernel holds the socket to the granted ports
+where Landlock ABI 4 does, and - on Windows - the loopback consequence
+above, both ways round.</p>
 <h2 id="what-is-not-confined">What is not confined <a class="anchor" href="#what-is-not-confined" aria-label="Link to this section">#</a></h2>
 <ul>
 <li><strong>An in-process <code>sabline.run()</code></strong> - one with no <code>timeout</code> and no
@@ -390,7 +457,7 @@ does (<code>tests/confine/kernel-linux.json</code>, <code>kernel-windows.json</c
 <p>Generated from <a href="https://github.com/gowrishankar-infra/sabline-lang/blob/main/docs/confinement.md">docs/confinement.md</a> by build_docs.py, for Sabline 8.8.0. <a href="https://github.com/gowrishankar-infra/sabline-lang">Sabline on GitHub</a>, MIT licence.</p>
 </footer>
 </div>
-<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#one-derivation">One derivation</a></li><li><a href="#the-level-and-its-reason">The level, and its reason</a></li><li><a href="#python-modules-widen-it">Python modules widen it</a></li><li><a href="#--confine-strict-a-granted-module-widens-nothing-90">--confine strict: a granted module widens nothing (9.0)</a></li><li><a href="#--require-confinement-refuse-rather-than-warn-90">--require-confinement: refuse, rather than warn (9.0)</a></li><li><a href="#sabline-rt-confines-its-own-runs-90">sabline-rt confines its own runs (9.0)</a><ul><li><a href="#the-windows-appcontainer-90">The Windows AppContainer (9.0)</a></li></ul></li><li><a href="#what-is-not-confined">What is not confined</a></li><li><a href="#what-it-does-not-make-true">What it does not make true</a></li><li><a href="#how-it-is-tested">How it is tested</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#one-derivation">One derivation</a></li><li><a href="#the-level-and-its-reason">The level, and its reason</a></li><li><a href="#python-modules-widen-it">Python modules widen it</a></li><li><a href="#--confine-strict-a-granted-module-widens-nothing-90">--confine strict: a granted module widens nothing (9.0)</a></li><li><a href="#--require-confinement-refuse-rather-than-warn-90">--require-confinement: refuse, rather than warn (9.0)</a></li><li><a href="#sabline-rt-confines-its-own-runs-90">sabline-rt confines its own runs (9.0)</a><ul><li><a href="#the-windows-appcontainer-90">The Windows AppContainer (9.0)</a></li><li><a href="#the-network-in-the-process-this-policy-holds-90">The network, in the process this policy holds (9.0)</a></li></ul></li><li><a href="#what-is-not-confined">What is not confined</a></li><li><a href="#what-it-does-not-make-true">What it does not make true</a></li><li><a href="#how-it-is-tested">How it is tested</a></li></ul></nav>
 </div>
 <p id="live" class="vh" aria-live="polite"></p>
 </body>

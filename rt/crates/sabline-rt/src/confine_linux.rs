@@ -395,17 +395,60 @@ fn add_rules(fd: c_int, plan: &Plan) -> Option<String> {
 /// same list for a process that *is* a Python installation, which is why
 /// that one is forty entries and this is four.
 ///
-/// The network's own names - the resolver's configuration, the TLS roots -
-/// are not here, because a run's calls to the network are made in the
-/// process that started this one. They belong here on the day sabline-rt
-/// opens a connection itself (plan/9.0.md, M4 and M5).
-pub fn runtime_reads(_net: bool) -> Vec<String> {
-    existing(&[
+/// **Under a `net` grant the resolver's own names are here**, because from
+/// 9.0's M4 an `http` request is made in this process and a host name has
+/// to be turned into an address before a socket can go to it
+/// ([`crate::net`]). `getaddrinfo` is glibc's, and glibc loads its name
+/// service modules when it is first asked - so the loader's cache and the
+/// library directories are needed as well as `/etc/hosts` and
+/// `/etc/resolv.conf`. Without them a name does not resolve and a run is
+/// refused a host its budget grants, which the Linux leg of
+/// `check_confine.py` is what found.
+///
+/// The TLS roots are **not** here: the bytes of an `https` exchange are
+/// still the host's, and this process opens no TLS connection. They belong
+/// here on the day it does (plan/9.0.md, M5).
+///
+/// It is still narrower than `interpreter_reads`, which grants the library
+/// directories to every run because a Python process cannot start without
+/// them: here they are granted only to a run whose budget grants the
+/// network.
+pub fn runtime_reads(net: bool) -> Vec<String> {
+    let mut places = vec![
         "/proc/self".to_string(),
         "/dev/null".to_string(),
         "/dev/urandom".to_string(),
         "/dev/random".to_string(),
-    ])
+    ];
+    if net {
+        places.extend(
+            [
+                // what glibc's resolver reads
+                "/etc/resolv.conf",
+                "/etc/hosts",
+                "/etc/nsswitch.conf",
+                "/etc/gai.conf",
+                "/etc/host.conf",
+                "/etc/services",
+                "/etc/protocols",
+                "/run/systemd/resolve",
+                "/run/resolvconf",
+                "/mnt/wsl/resolv.conf",
+                "/var/run/nscd",
+                // and what it needs to load its name service modules
+                "/etc/ld.so.cache",
+                "/etc/ld.so.conf",
+                "/etc/ld.so.conf.d",
+                "/lib",
+                "/lib64",
+                "/usr/lib",
+                "/usr/lib64",
+                "/usr/local/lib",
+            ]
+            .map(str::to_string),
+        );
+    }
+    existing(&places)
 }
 
 // ---- seccomp-bpf -------------------------------------------------------------

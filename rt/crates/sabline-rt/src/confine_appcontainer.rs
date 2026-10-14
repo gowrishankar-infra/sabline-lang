@@ -113,6 +113,23 @@ pub fn left_off(policy: &Json, extras: &Extras) -> Option<String> {
             named.join(", ")
         ));
     }
+    // and a budget granting `net` with **no host** allows every host, the
+    // loopback address among them, which is the same loss said another way
+    // (the maintainer's answer 2 of 2026-10-14, and the rule every reason
+    // above follows: a container that would refuse what the budget allows
+    // is a container left off). Until the network was ported into this
+    // runtime nothing was lost by keeping one, because the connection was
+    // the host's; from 9.0's M4 the socket is this process's, so a `net`
+    // run that tried the loopback address would be refused something its
+    // budget grants - a wrong answer, and not a safe one.
+    if crate::confine::any_net(policy) {
+        return Some(
+            "the budget grants net with no host, which allows every host including the \
+             loopback address, and no AppContainer may reach the loopback address: \
+             Windows isolates a container from it unless an administrator exempts it"
+                .to_string(),
+        );
+    }
     None
 }
 
@@ -203,12 +220,17 @@ pub fn plan(policy: &Json, extras: &Extras) -> Plan {
 /// An AppContainer reaches a file only through that file's **own** rights,
 /// and Windows' inheritance is a copy and not a lookup: giving a directory
 /// an inheritable ACE writes it into every file under it, and taking it
-/// back writes them all again. That is about half a millisecond a file on
-/// the machine this was measured on - a quarter of a second for a thousand
-/// files, each way - and it is work charged to the run's own deadline, as
-/// well as a change to the rights of the user's files. So a grant wider
-/// than this leaves the container off, with the reason in the receipt,
-/// rather than making every run pay for a tree nobody counted.
+/// back writes them all again.
+///
+/// `perf_gates.py --only contained` is what measures that, rather than
+/// anyone's estimate of it (the maintainer's answer 4 of 2026-10-14): on
+/// the machine this bound was set on, **0.3 ms a file** for the two
+/// writes together, so a thousand files is about a third of a second
+/// charged to the run's own deadline - as well as a change to the rights
+/// of the user's files while the run lasts. So a grant wider than this
+/// leaves the container off, with the reason in the receipt and a line on
+/// the error channel, rather than making every run pay for a tree nobody
+/// counted.
 pub const MOST_UNDER_A_GRANT: usize = 1024;
 
 /// Why a container's ACEs would be too much work for this run's grants, or
@@ -222,7 +244,10 @@ pub fn too_wide(made: &Plan) -> Option<String> {
         let under = count_up_to(path, MOST_UNDER_A_GRANT + 1);
         if under > MOST_UNDER_A_GRANT {
             return Some(format!(
-                "{path} holds more than {MOST_UNDER_A_GRANT} files, and an                  AppContainer reaches a file only through that file's own rights:                  giving the container this grant would write its ACE into every one                  of them, and take it out again when the run ended"
+                "{path} holds more than {MOST_UNDER_A_GRANT} files, and an AppContainer \
+                 reaches a file only through that file's own rights: giving the container \
+                 this grant would write its ACE into every one of them, and take it out \
+                 again when the run ended"
             ));
         }
     }
@@ -270,9 +295,34 @@ pub enum Where {
 
 static WHERE: std::sync::OnceLock<Where> = std::sync::OnceLock::new();
 
+/// What this run says on the error channel about its container, besides
+/// what its receipt records.
+static NOTICE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
 /// Say where this process stands. Called once, by `sabline-rt exec`.
 pub fn stands(it: Where) {
     let _ = WHERE.set(it);
+}
+
+/// One line for the error channel, or `None` when the run has nothing to
+/// say out loud.
+///
+/// Most reasons a container is left off are the budget's own - it grants a
+/// loopback host, or restricts neither reads nor writes - and a run whose
+/// receipt records them says nothing more. **Exceeding the bound on a
+/// grant's size is not one of those**: nothing in the budget asked for it,
+/// the loss is a Windows run that is `partial` where it would have been
+/// `full`, and a thing nobody can see is a thing nobody fixes, so the run
+/// says it where its operator is looking (the maintainer's answer 3 of
+/// 2026-10-14). The words are the receipt's, so the two cannot drift.
+pub fn notice() -> Option<String> {
+    NOTICE.get().cloned()
+}
+
+/// Say it out loud as well, once.
+#[cfg(windows)]
+fn say_out_loud(why: &str) {
+    let _ = NOTICE.set(format!("sabline: no AppContainer for this run: {why}"));
 }
 
 /// Where it stands, or `None` when nobody said - a process that never
@@ -472,6 +522,49 @@ mod calls {
         ) -> BOOL;
         fn GetAce(acl: *mut c_void, index: DWORD, ace: *mut *mut c_void) -> BOOL;
         fn EqualSid(a: PSID, b: PSID) -> BOOL;
+    }
+
+    #[link(name = "ntdll")]
+    extern "system" {
+        fn RtlGetVersion(info: *mut OsVersionInfoW) -> i32;
+    }
+
+    /// `RTL_OSVERSIONINFOW`, which is what `RtlGetVersion` fills.
+    #[repr(C)]
+    struct OsVersionInfoW {
+        size: DWORD,
+        major: DWORD,
+        minor: DWORD,
+        build: DWORD,
+        platform: DWORD,
+        service_pack: [u16; 128],
+    }
+
+    /// This Windows' version, as `major.minor.build`.
+    ///
+    /// `RtlGetVersion` and not `GetVersionExW`, which answers 6.2 for a
+    /// program with no compatibility manifest and would make every
+    /// Windows since 8 look like one.
+    pub fn os_build() -> String {
+        let mut info = OsVersionInfoW {
+            size: u32::try_from(std::mem::size_of::<OsVersionInfoW>()).unwrap_or(0),
+            major: 0,
+            minor: 0,
+            build: 0,
+            platform: 0,
+            service_pack: [0; 128],
+        };
+        let got = {
+            // SAFETY: `info` is an RTL_OSVERSIONINFOW whose `size` field is
+            // its own size, which is what the call reads to know what it
+            // may fill; it outlives the call and nothing else is passed.
+            // test: the_os_build_is_this_windows_and_not_a_shimmed_one.
+            unsafe { RtlGetVersion(&mut info) }
+        };
+        if got != 0 {
+            return "unknown".to_string();
+        }
+        format!("{}.{}.{}", info.major, info.minor, info.build)
     }
 
     const EXTENDED_STARTUPINFO_PRESENT: DWORD = 0x0008_0000;
@@ -1331,24 +1424,40 @@ const PROBE_PATIENCE: u32 = 30_000;
 /// run would be refused a file its budget grants - and the cost of asking
 /// again on a machine that says yes is one process inside a container that
 /// is already made.
+///
+/// **The key is both this crate's version and this Windows' build** (the
+/// maintainer's answer 4 of 2026-10-14). The file is the crate version's,
+/// as it was, and the build number is the first line in it: whether a
+/// container can resolve a path is a property of the operating system, so
+/// a Windows upgrade has to ask again - a memo that outlived the system it
+/// was measured on would keep a machine uncontained after the upgrade that
+/// fixed it. A Sabline upgrade asks again too, since this runtime's own
+/// `realpath` is the other half of the question.
 #[cfg(windows)]
 fn remembered() -> Option<std::path::PathBuf> {
     Some(records()?.join(format!(".no-container-{}.txt", crate::VERSION)))
 }
 
-/// The remembered reason, or `None` when nothing is remembered.
+/// The remembered reason, or `None` when nothing is remembered - which a
+/// memo written on another Windows build is: it says nothing about this
+/// one.
 #[cfg(windows)]
 pub fn remembered_no() -> Option<String> {
     let said = std::fs::read_to_string(remembered()?).ok()?;
-    let said = said.trim();
-    (!said.is_empty()).then(|| said.to_string())
+    let (build, why) = said.split_once('\n')?;
+    if build.trim() != calls::os_build() {
+        return None;
+    }
+    let why = why.trim();
+    (!why.is_empty()).then(|| why.to_string())
 }
 
-/// Remember that this system's containers cannot resolve a path.
+/// Remember that this system's containers cannot resolve a path: the
+/// Windows build it was asked on, and then why.
 #[cfg(windows)]
 fn remember_no(why: &str) {
     if let Some(path) = remembered() {
-        let _ = std::fs::write(path, why);
+        let _ = std::fs::write(path, format!("{}\n{}", calls::os_build(), why));
     }
 }
 
@@ -1397,7 +1506,9 @@ fn cannot_resolve(
         // is not claimed. A volume that keeps no 8.3 names gives no such
         // spelling, and then a container is left off rather than trusted.
         return Some((
-            "no path of this run has a spelling that is not its canonical form, so whether              a process inside an AppContainer resolves one as this process does could not              be asked"
+            "no path of this run has a spelling that is not its canonical form, so whether \
+             a process inside an AppContainer resolves one as this process does could not \
+             be asked"
                 .to_string(),
             false, // a property of this run's paths, not of the system
         ));
@@ -1419,7 +1530,8 @@ fn cannot_resolve(
             let Some(code) = probe.wait_for(PROBE_PATIENCE) else {
                 probe.kill();
                 return Some((
-                    "a process inside an AppContainer did not answer whether it can                      resolve a path"
+                    "a process inside an AppContainer did not answer whether it can \
+                     resolve a path"
                         .to_string(),
                     false,
                 ));
@@ -1427,7 +1539,8 @@ fn cannot_resolve(
             if code != 0 {
                 return Some((
                     format!(
-                        "a process inside an AppContainer could not be asked to resolve a                          path (it ended {code})"
+                        "a process inside an AppContainer could not be asked to resolve a \
+                         path (it ended {code})"
                     ),
                     false,
                 ));
@@ -1439,7 +1552,8 @@ fn cannot_resolve(
     if answers.len() != asked.len() {
         return Some((
             format!(
-                "a process inside an AppContainer answered for {} of the {} paths it was                  asked about",
+                "a process inside an AppContainer answered for {} of the {} paths it was \
+                 asked about",
                 answers.len(),
                 asked.len()
             ),
@@ -1452,7 +1566,9 @@ fn cannot_resolve(
         {
             return Some((
                 format!(
-                    "a process inside an AppContainer on this system resolves {path} to                      {inside} where this one resolves it to {here}, so a run inside one                      would be refused a file its budget grants"
+                    "a process inside an AppContainer on this system resolves {path} to \
+                     {inside} where this one resolves it to {here}, so a run inside one \
+                     would be refused a file its budget grants"
                 ),
                 true, // the system's answer, and the same every time
             ));
@@ -1542,6 +1658,9 @@ pub fn consider(request: &str, install_dir: &str) -> Taken {
         return Taken::Here;
     }
     if let Some(why) = too_wide(&plan(&policy, &extras)) {
+        // the one reason the budget did not ask for, so the one the run
+        // says out loud (the maintainer's answer 3 of 2026-10-14)
+        say_out_loud(&why);
         stands(Where::Without(why));
         return Taken::Here;
     }
@@ -1587,6 +1706,13 @@ pub fn outer(
         .map(|d| d.as_nanos())
         .unwrap_or_default();
     let profile = profile_name(std::process::id(), at);
+    // the hook's way of standing the container down, which is asked here
+    // and nowhere else: a profile that cannot be made is a run with no ACE
+    // written and nothing started, which is what a machine whose group
+    // policy refuses one gives (the maintainer's answer 6 of 2026-10-14)
+    if let Some(why) = crate::confine_fault::appcontainer_refused() {
+        return Err(why);
+    }
     let sid = calls::make_profile(&profile)?;
     let sid_text = calls::sid_text(sid.raw)
         .ok_or_else(|| "the container's SID could not be read".to_string())?;
@@ -1708,7 +1834,17 @@ mod tests {
             left_off(&policy_of("io,net:api.example.com:443"), &Extras::default()),
             None
         );
-        assert_eq!(left_off(&policy_of("io,net"), &Extras::default()), None);
+        // and `net` with no host allows the loopback address too, so it is
+        // the same loss and the same answer (the maintainer's answer 2 of
+        // 2026-10-14; from M4 the socket is this process's)
+        let off = left_off(&policy_of("io,net"), &Extras::default());
+        assert!(
+            off.as_deref()
+                .is_some_and(|w| w.contains("net with no host") && w.contains("loopback")),
+            "{off:?}"
+        );
+        // a budget granting no network at all keeps its container: there
+        // is no connection it allows for one to refuse
         assert_eq!(left_off(&policy_of("io"), &Extras::default()), None);
     }
 
@@ -1839,6 +1975,27 @@ mod tests {
         // a path that is not there has no short form
         assert_eq!(calls::short_form(&dir.join("not-there").to_string_lossy()), None);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn the_os_build_is_this_windows_and_not_a_shimmed_one() {
+        // the memo of a `no` from the resolution probe is keyed by it (the
+        // maintainer's answer 4 of 2026-10-14), so a wrong answer here
+        // would keep a machine uncontained after the upgrade that fixed it
+        let build = calls::os_build();
+        let parts: Vec<&str> = build.split('.').collect();
+        assert_eq!(parts.len(), 3, "major.minor.build, not {build}");
+        let numbers: Vec<u32> = parts.iter().filter_map(|p| p.parse().ok()).collect();
+        assert_eq!(numbers.len(), 3, "three numbers, not {build}");
+        // GetVersionExW answers 6.2 for a program with no compatibility
+        // manifest, which is what RtlGetVersion is here to avoid: every
+        // Windows this crate's minimum supports is 10 or later
+        assert!(numbers[0] >= 10, "{build}: a shimmed version, not this Windows'");
+        assert!(numbers[2] > 0, "{build}: no build number");
+        // and it is the same answer every time, since a memo keyed by it
+        // must not move under a second run on one machine
+        assert_eq!(calls::os_build(), build);
     }
 
     #[cfg(windows)]

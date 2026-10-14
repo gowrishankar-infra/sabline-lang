@@ -14,6 +14,16 @@
 //!                                  <file>, framed as `budget --list` is:
 //!                                  what the operating system is asked to
 //!                                  hold for that budget (M4)
+//! sabline-rt os-policy --predict <file>
+//!                                  one prediction document per line of
+//!                                  <file>: what this runtime says each of
+//!                                  the three systems would hold for that
+//!                                  budget, reading nothing of the machine
+//!                                  (M4). `-` is standard input
+//! sabline-rt os-policy --predict --here <file>
+//!                                  the same for **this machine**: the
+//!                                  kernel asked what it offers, which is
+//!                                  what `sabline doctor` prints (M4)
 //! sabline-rt os-policy --table     the confinement tables, as one
 //!                                  document (M4)
 //! sabline-rt os-policy --enforces  how much of each row of THREAT_MODEL's
@@ -78,6 +88,7 @@ fn main() -> ExitCode {
             eprintln!("       sabline-rt tables");
             eprintln!("       sabline-rt budget --list <budgets-file>");
             eprintln!("       sabline-rt os-policy --list <budgets-file>");
+            eprintln!("       sabline-rt os-policy --predict [--here] <budgets-file>");
             eprintln!("       sabline-rt os-policy --table");
             eprintln!("       sabline-rt os-policy --enforces");
             eprintln!("       sabline-rt resolve <path>...");
@@ -111,6 +122,8 @@ fn run(words: &[&str]) -> Result<ExitCode, String> {
         }
         ["budget", "--list", list] => budget_list_of(list),
         ["os-policy", "--list", list] => policy_list_of(list),
+        ["os-policy", "--predict", list] => predict_list_of(list, false),
+        ["os-policy", "--predict", "--here", list] => predict_list_of(list, true),
         ["os-policy", "--table"] => {
             write_out(&sabline_rt::confine::table_document().canonical())?;
             Ok(ExitCode::SUCCESS)
@@ -532,6 +545,23 @@ const POLICY_BATCH_HEADER: &str = sabline_rt::confine::POLICY_BATCH_HEADER;
 fn policy_list_of(list: &str) -> Result<ExitCode, String> {
     framed_budgets(list, POLICY_BATCH_HEADER, |allow, deny| {
         sabline_rt::confine::policy_document(allow, deny)
+    })
+}
+
+/// The header of the framed stream `os-policy --predict` writes.
+const PREDICT_BATCH_HEADER: &str = sabline_rt::confine::PREDICT_BATCH_HEADER;
+
+/// One prediction document per line of `list` (M4): what this runtime says
+/// each of the three systems would hold for that budget, where every layer
+/// that system has is there. The lines are `budget --list`'s, and `-` is
+/// standard input.
+fn predict_list_of(list: &str, here: bool) -> Result<ExitCode, String> {
+    framed_budgets(list, PREDICT_BATCH_HEADER, |allow, deny| {
+        if here {
+            sabline_rt::confine::predict_here_document(allow, deny)
+        } else {
+            sabline_rt::confine::predict_document(allow, deny)
+        }
     })
 }
 

@@ -601,12 +601,20 @@ def _audit_confinement(safe_budget: str) -> dict[str, Any] | None:
             "" if safe_budget == "''" else safe_budget))
     except BudgetError:
         return None
-    systems = {}
+    systems, runtime = {}, "python"
     for system in _confine.SYSTEMS:
-        would = _confine.predict(policy, system=system)
+        # the runtime that will run the program, which on Windows holds
+        # more than this package can (9.0, M4; the maintainer's answer 1 of
+        # 2026-10-14). `runtime` is in the document because the prediction
+        # is that runtime's: the same bytes wherever it is made, for the
+        # runtime it names.
+        would = _confine.predicted(
+            "" if safe_budget == "''" else safe_budget, system=system)
+        runtime = would.get("runtime", "python")
         systems[system] = {"level": would["level"],
                            "reason": would["reason"]}
-    return {"widened_by": policy["widened_by"], "systems": systems}
+    return {"widened_by": policy["widened_by"], "systems": systems,
+            "runtime": runtime}
 
 
 @_on_big_stack

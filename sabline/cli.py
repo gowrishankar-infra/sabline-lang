@@ -1221,9 +1221,14 @@ def main() -> int:
         except BudgetError:
             policy = None
         if policy is not None:
-            would = _confine.predict(policy)
+            # for the runtime that will run it (9.0, M4; the maintainer's
+            # answer 1 of 2026-10-14), which the line says when it is not
+            # this package's
+            would = _confine.predicted(judged)
             print()
-            print(f"CONFINEMENT ON THIS MACHINE: {would['level']}")
+            print(f"CONFINEMENT ON THIS MACHINE: {would['level']}"
+                  + ("" if would.get("runtime") == "python"
+                     else f" (through {would['runtime']})"))
             for w in policy["widened_by"]:
                 named = "plain ffi" if w["module"] == "*" \
                     else f"ffi:{w['module']}"

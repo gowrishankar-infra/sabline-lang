@@ -93,8 +93,9 @@ SABLINE = str(HERE / "sabline.py")
 FAULTY = str(HERE / "tests" / "confine" / "faulty_runtime.py")
 sys.path.insert(0, str(HERE))
 import sabline  # noqa: E402
-from sabline import confine, through_rt  # noqa: E402
+from sabline import check_dump, confine, through_rt  # noqa: E402
 from sabline.budget import Budget  # noqa: E402
+from sabline.tables import DEFAULT_ALLOW  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_confine")
@@ -105,6 +106,11 @@ PASSED = FAILED = 0
 # here, and `cli` puts it in every child's environment - so a case written
 # for one runtime is asked of the other without being written twice.
 RUNTIME = "rust" if "--runtime" in sys.argv and "rust" in sys.argv else "python"
+
+# The variable a run reads to know which runtime it goes through, which
+# `cli` puts in every child's environment and which one case here sets for
+# a library call of its own.
+RUNTIME_VAR = through_rt.VARIABLE
 
 # What each system's row of THREAT_MODEL.md's table says of the hook's
 # attempts under the default budget, io: True is "the kernel refuses it".
@@ -144,11 +150,13 @@ HELD = {system: dict(row)
         for system, row in HELD_BY_RUNTIME[RUNTIME].items()}
 # What a run measured here gets: the runtime that will run it.
 LEVEL = dict(LEVEL_BY_RUNTIME[RUNTIME])
-# What `sabline audit`, `sabline doctor` and `confine.predict()` answer,
-# which is the Python package's own runtime whatever will run the program.
-# It is the weaker of the two on Windows, so a prediction never promises
-# more than the run gets (plan/9.0-m4-progress.md's question of
-# 2026-10-13).
+# What `confine.predict()` answers, and what `sabline audit` and the
+# library's audit answer **in this process**, where no runtime variable is
+# set: the Python package's own. `sabline audit` and `sabline doctor` in a
+# child answer for the runtime that will run the program, which is `LEVEL`
+# (9.0, M4; the maintainer's answer 1 of 2026-10-14: the audit predicts for
+# the runtime that will run, the receipt records what happened, and where
+# they differ the receipt wins and says so).
 PREDICTED = LEVEL_BY_RUNTIME["python"]
 # Whether a run through sabline-rt on this machine is held by a Windows
 # AppContainer: asked once, in main(), because it is not a given (see
@@ -443,6 +451,11 @@ def table_cases() -> None:
                for w in confine.ENFORCES_HELD.values()),
        confine.ENFORCES_HELD)
     rt_enforces_cases(text)
+    print()
+    print("what each runtime predicts, system by system and budget by "
+          "budget")
+    print("-" * 62)
+    rt_predict_cases()
 
 
 def rt_enforces_cases(page: str) -> None:
@@ -496,6 +509,216 @@ def rt_enforces_cases(page: str) -> None:
                if r["why"] and r["why"] not in page]
     ok("...and docs/os-enforces.md prints each of those reasons, word for "
        "word", not missing, missing)
+
+
+def rt_predict_cases() -> None:
+    """sabline-rt's own **prediction** (9.0, M4; the maintainer's answer 1
+    of 2026-10-14): for every budget the confinement tables are written
+    for, what each of the three systems would hold, asked of sabline-rt and
+    held to the package's by the same rule its ENFORCES table is - never
+    weaker, and every difference Windows'.
+
+    It is what `sabline audit`, `sabline doctor` and `confine.predicted()`
+    answer with when a run goes through sabline-rt, and asking it rather
+    than modelling it here is why there is one copy of sabline-rt's Windows
+    behaviour and not two."""
+    exe = through_rt.binary()
+    if not exe:
+        print("  skip     sabline-rt is not built here, so its predictions "
+              "cannot be asked for")
+        return
+    budgets = [b for b in check_dump.TABLE_BUDGETS] + [
+        "io,fs:read:.", "io,fs:read:.,fs:write:.", "io,net:localhost:80",
+        "io,net:127.0.0.1", "fs:read:.,fs:write:.,net:a.example:443"]
+    lines = "".join(json.dumps([b, None]) + "\n" for b in budgets)
+    done = subprocess.run([exe, "os-policy", "--predict", "-"],
+                          input=lines, capture_output=True, text=True,
+                          errors="replace", timeout=300)
+    if done.returncode != 0:
+        ok("sabline-rt os-policy --predict answers its predictions", False,
+           done.stderr[-400:])
+        return
+    found = [json.loads(ln) for ln in done.stdout.splitlines()
+             if ln.startswith("{")]
+    ok(f"sabline-rt predicts for each of the {len(budgets)} budgets the "
+       f"confinement tables are written for, and for each of the three "
+       f"systems",
+       len(found) == len(budgets)
+       and all(set(d.get("default", {})) == set(confine.SYSTEMS)
+               for d in found), [len(found), len(budgets)])
+    rank = confine.LEVELS.index
+    weaker, differ, empty = [], [], []
+    for budget, doc in zip(budgets, found):
+        for mode, strict in (("default", False), ("strict", True)):
+            policy = confine.os_policy(Budget.parse(budget), strict=strict)
+            for system in confine.SYSTEMS:
+                mine = confine.predict(policy, system=system)
+                theirs = doc[mode][system]
+                if not theirs["reason"]:
+                    empty.append(f"{budget} {mode} {system}")
+                if rank(theirs["level"]) < rank(mine["level"]):
+                    weaker.append(f"--allow {budget} ({mode}) on {system}: "
+                                  f"{mine['level']} -> {theirs['level']}")
+                elif theirs["level"] != mine["level"]:
+                    differ.append(f"--allow {budget} ({mode}) on {system}: "
+                                  f"{mine['level']} -> {theirs['level']}")
+    ok("no prediction of sabline-rt's is weaker than the package's: a run "
+       "through it is never held less than a run here", not weaker, weaker)
+    ok("...and every prediction carries a reason", not empty, empty[:4])
+    ok(f"...and each of the {len(differ)} that differ is Windows', where "
+       f"sabline-rt starts the run's own process inside an AppContainer",
+       differ and all(" on windows:" in d for d in differ), differ[:4])
+    # and the two runtimes agree about Linux and macOS, which is what makes
+    # asking sabline-rt for a prediction safe at all
+    ok("...so Linux and macOS are the same prediction in both runtimes, "
+       "for every budget and both modes",
+       not [d for d in differ + weaker if " on windows:" not in d],
+       [d for d in differ + weaker if " on windows:" not in d][:4])
+
+
+# ---- the network, made in the process this policy holds (9.0, M4) ------------------
+
+def net_port_cases() -> None:
+    """The network ported into sabline-rt (9.0, M4): what changes about the
+    confinement when the process that opens the socket is the process the
+    operating system holds to the budget's hosts.
+
+    Three things are measured, and nothing is claimed that is not:
+
+      the socket  a request to an `http` host is made by the run's own
+                  process - so the kernel's own limits bound it, and the
+                  receipt says which half is still the host's
+      the ports   with Landlock ABI 4 and a port on every `net:` grant the
+                  kernel holds TCP to those ports, which is now a bound on
+                  a **program's** request and not only on the runtime's
+      the loopback  a budget granting `net` with no host keeps its Windows
+                  container, which cannot reach the loopback address, and
+                  the run says so (the maintainer's answer 2 of
+                  2026-10-14)
+
+    It runs for the rust runtime, which is the one that made the port; the
+    Python runtime's own network is unchanged and `check_sandbox.py` holds
+    it."""
+    print()
+    print("the network, in the process this policy holds")
+    print("-" * 62)
+    srv, port = http_server()
+    shut, other = listener()
+    hello = program("hello.vel", HELLO)
+    try:
+        prog = program("net-rt.vel", f'''
+fn main() uses io, net {{
+    check fetch("http://localhost:{port}/") {{
+        ok body {{ print("fetched: " + body) }}
+        fail why {{ print("could not fetch: " + why) }}
+    }}
+}}
+''')
+        rec = WORK / "net-rt.json"
+        rec.unlink(missing_ok=True)
+        code, out, err = cli(prog, "--allow", f"io,net:localhost:{port}",
+                             "--receipt", str(rec))
+        said = (json.loads(rec.read_text(encoding="utf-8"))["predicate"]
+                ["run_parameters"] if rec.exists() else {})
+        ok("a request to an http host is made under confinement and "
+           "answered", code == 0
+           and "fetched: hello from the granted host" in out, err[-400:] + out)
+        # and what the receipt says about the half that is still the
+        # host's, which only a run whose **host** is unconfined says - a
+        # command line holds itself to the same policy once sabline-rt is
+        # running, so it has nothing to report about itself
+        was = os.environ.get(RUNTIME_VAR)
+        os.environ[RUNTIME_VAR] = "rust"
+        try:
+            r = sabline.run(Path(prog).read_text(encoding="utf-8"),
+                            allow=f"io,net:localhost:{port}")
+        finally:
+            if was is None:
+                os.environ.pop(RUNTIME_VAR, None)
+            else:
+                os.environ[RUNTIME_VAR] = was
+        params = parameters_of(r)
+        ok("...and an unbounded run, whose host is held to nothing, says "
+           "in its receipt which half of the network is still the host's: "
+           "the bytes of an https exchange, and not an http request",
+           r.ok and "a request to an http host is made here"
+           in params.get("confinement_reason", "")
+           and "the bytes of a request to an https host"
+           in params.get("confinement_reason", ""), params)
+
+        # the kernel's own bound on the socket a request opens: with
+        # Landlock ABI 4 and a port on every grant, TCP goes to those ports
+        # and 53 alone, which now bounds a program's request too
+        abi = confine.landlock_abi() if PLATFORM == "linux" else 0
+        holds_ports = PLATFORM == "linux" and abi >= 4
+        code, out, err = cli(hello, "--allow", f"io,net:localhost:{port}",
+                             env={confine.FAULT_ENV: f"connect:127.0.0.1:{port}"})
+        ok("the hook's connection to the granted port goes through: the "
+           "kernel does not refuse what the budget allows",
+           code == 0 and "succeeded" in err, err[-400:])
+        code, out, err = cli(hello, "--allow", f"io,net:localhost:{port}",
+                             env={confine.FAULT_ENV: f"connect:127.0.0.1:{other}"})
+        if holds_ports:
+            ok(f"...and to a port the budget does not grant it is refused "
+               f"by the kernel (E319): Landlock ABI {abi} holds TCP to the "
+               f"granted ports",
+               code != 0 and "error[E319]" in err, err[-500:])
+        else:
+            ok(f"...and to a port the budget does not grant it goes "
+               f"through, as this platform's row says (abi {abi}): the "
+               f"port is held by the language alone",
+               code == 0 and "succeeded" in err, err[-500:])
+
+        if PLATFORM == "windows" and CONTAINED:
+            # the loopback, and the two budgets that differ about it
+            prog = program("net-loop.vel", f'''
+fn main() uses io, net {{
+    check fetch("http://127.0.0.1:{port}/") {{
+        ok body {{ print("fetched: " + body) }}
+        fail why {{ print("could not fetch: " + why) }}
+    }}
+}}
+''')
+            rec.unlink(missing_ok=True)
+            code, out, err = cli(prog, "--allow", "io,net",
+                                 "--receipt", str(rec))
+            said = (json.loads(rec.read_text(encoding="utf-8"))["predicate"]
+                    ["run_parameters"] if rec.exists() else {})
+            ok("a budget granting net with no host allows the loopback "
+               "address, which no container may reach, so the container is "
+               "left off and the request is made - and the receipt says "
+               "which of the two it lost",
+               code == 0 and "fetched: hello from the granted host" in out
+               and said.get("confinement") == "partial"
+               and "net with no host" in said.get("confinement_reason", "")
+               and "appcontainer" not in (said.get("confinement_layers")
+                                          or []), [code, err[-400:], said])
+            code, out, err = cli(prog, "--allow", f"io,net:127.0.0.1:{port}")
+            ok("...and so does granting the loopback host itself",
+               code == 0 and "fetched: hello from the granted host" in out,
+               [code, err[-400:], out])
+            # and a budget that grants a host outside the machine keeps its
+            # container: there is no connection it allows that a container
+            # refuses
+            rec.unlink(missing_ok=True)
+            held = WORK / "net-held"
+            held.mkdir(exist_ok=True)
+            code, out, err = cli(hello, "--allow",
+                                 f"io,net:api.example.com:443,"
+                                 f"fs:read:{held.as_posix()}",
+                                 "--receipt", str(rec))
+            said = (json.loads(rec.read_text(encoding="utf-8"))["predicate"]
+                    ["run_parameters"] if rec.exists() else {})
+            ok("a budget granting one host outside this machine keeps its "
+               "container, with the internetClient capability",
+               code == 0 and said.get("confinement") == "partial"
+               and "appcontainer" in (said.get("confinement_layers") or [])
+               and "the host is held by the language alone"
+               in said.get("confinement_reason", ""),
+               [code, err[-300:], said])
+    finally:
+        srv.shutdown()
+        shut.close()
 
 
 # ---- the honesty test --------------------------------------------------------------
@@ -844,10 +1067,22 @@ def reported_cases() -> None:
        and "ffi:subprocess widens the OS policy to nothing enforced" in out,
        out[-700:])
     code, out, err = cli("doctor")
-    ok("sabline doctor reports the level this package's own runtime "
-       "gives, and the reason when it is not full",
-       f"confinement: {PREDICTED.get(PLATFORM)}" in out
-       and (PREDICTED.get(PLATFORM) == "full" or "why:" in out), out)
+    # it prints the prediction for the runtime that will run the program
+    # (the maintainer's answer 1 of 2026-10-14), which is the question
+    # `confine.predicted` answers - never the level of a run, which a
+    # prediction cannot know and a receipt is what records. rt_predict_cases
+    # above is what holds the prediction itself; this holds the command to
+    # it, and to naming the runtime when it is not this package's.
+    want = confine.predicted(DEFAULT_ALLOW, runtime=RUNTIME)
+    ok("sabline doctor reports the level the runtime that will run the "
+       "program is predicted to give, naming that runtime, and the reason "
+       "when it is not full",
+       f"confinement: {want['level']}" in out
+       and (want["level"] == "full" or "why:" in out)
+       and (RUNTIME == "python") == ("through rust" not in out)
+       and confine.LEVELS.index(want["level"])
+       >= confine.LEVELS.index(PREDICTED.get(PLATFORM, "none")),
+       [out, want])
 
     from sabline.evaluation import EvalRefused, _EvalPool
 
@@ -1128,28 +1363,17 @@ def against_cases() -> None:
             ok(f"the network through ffi:json: not held on {PLATFORM}",
                code == 0 and "succeeded" in err, err[-400:])
         code, out, err = cli(hello, "--allow", "io,ffi:socket", env=connect)
-        if PLATFORM == "windows" and RUNTIME == "rust" and CONTAINED:
-            # the hook's connection is made inside the AppContainer, which
-            # Windows isolates from the loopback address whatever
-            # capability it holds (rt/spikes/appcontainer/README.md). A
-            # budget that *names* a loopback host leaves the container off
-            # for that reason; one that grants any host does not say it
-            # needs the loopback address, so the container stays and this
-            # is what it cannot reach from inside. A run's own fetch is
-            # made by its host, which can - the case under "nothing
-            # legitimate breaks" is that one.
-            ok("ffi:socket widens the policy to any host, and the run is "
-               "confined all the same: the connection from inside the "
-               "AppContainer cannot reach the loopback address",
-               "error[E319]" in err and f"confinement: {LEVEL[PLATFORM]}"
-               in err, err[-400:])
-        else:
-            ok("ffi:socket widens the policy to any host, as the table "
-               "says: the connection goes through and the run is still "
-               "confined",
-               code == 0 and "succeeded; confinement: "
-               + ("partial" if PLATFORM != "linux" else "full") in err,
-               err[-400:])
+        # a policy widened to any host allows the loopback address too, so
+        # on Windows the container is left off for the same reason a budget
+        # naming a loopback host leaves it off (9.0, M4; the maintainer's
+        # answer 2 of 2026-10-14): a container that would refuse what the
+        # policy allows is a container left off, and Windows isolates one
+        # from the loopback address whatever capability it holds.
+        ok("ffi:socket widens the policy to any host, as the table says: "
+           "the connection goes through and the run is still confined",
+           code == 0 and "succeeded; confinement: "
+           + ("partial" if PLATFORM != "linux" else "full") in err,
+           err[-400:])
     finally:
         srv.close()
     spawn = {confine.FAULT_ENV: "spawn"}
@@ -1674,6 +1898,18 @@ def target_cases(record: bool) -> None:
 
 APPCONTAINER_SID = re.compile(r"S-1-15-2-[-0-9]+")
 
+# How many files may be under one granted directory before a run is left
+# uncontained: rt/.../confine_appcontainer.rs's MOST_UNDER_A_GRANT, which
+# the maintainer's answer 3 of 2026-10-14 keeps and asks to be said out
+# loud when it is exceeded.
+MOST_UNDER_A_GRANT = 1024
+
+# The hook's way of standing the container down, so that the one Windows
+# path no runner can reach - a machine whose policy refuses
+# CreateAppContainerProfile - is measured on one that can (the maintainer's
+# answer 6 of 2026-10-14).
+NO_APPCONTAINER = "SABLINE_FAULT_NO_APPCONTAINER"
+
 
 def container_aces(path: Path) -> list[str]:
     """Every AppContainer SID the rights of `path` name, as icacls prints
@@ -1872,6 +2108,68 @@ fn main() uses io, fs {{
            and "appcontainer" not in (p.get("confinement_layers") or []),
            [code, err[-300:], p])
 
+    # a grant wider than MOST_UNDER_A_GRANT: the one reason the budget did
+    # not ask for, so the one the run says out loud as well as in its
+    # receipt (the maintainer's answer 3 of 2026-10-14)
+    wide = WORK / "container-wide"
+    wide.mkdir(exist_ok=True)
+    for n in range(MOST_UNDER_A_GRANT + 1):
+        (wide / f"f{n}.txt").write_text("x", encoding="utf-8")
+    rec.unlink(missing_ok=True)
+    code, out, err = cli(hello, "--allow", f"io,fs:read:{wide.as_posix()}",
+                         "--receipt", str(rec))
+    p = parameters()
+    ok(f"a grant over more than {MOST_UNDER_A_GRANT} files leaves the "
+       f"container off, and the run says so on the error channel as well "
+       f"as in its receipt's reason",
+       code == 0 and p.get("confinement") == "partial"
+       and f"more than {MOST_UNDER_A_GRANT} files"
+       in p.get("confinement_reason", "")
+       and "no AppContainer for this run:" in err
+       and f"more than {MOST_UNDER_A_GRANT} files" in err
+       and "appcontainer" not in (p.get("confinement_layers") or []),
+       [code, err[-400:], p])
+    ok("...and a grant inside the bound says nothing out loud: the "
+       "reasons the budget asked for are the receipt's alone",
+       "no AppContainer for this run:" not in
+       cli(hello, "--allow", grant)[2], cli(hello, "--allow", grant)[2])
+    shutil.rmtree(wide, ignore_errors=True)
+
+    # a Windows that cannot make a profile at all: the fallback nothing
+    # could reach, because every runner can make one (the maintainer's
+    # answer 6 of 2026-10-14)
+    rec.unlink(missing_ok=True)
+    no_container = {NO_APPCONTAINER: "1"}
+    code, out, err = cli(hello, "--allow", grant, "--receipt", str(rec),
+                         env=no_container)
+    p = parameters()
+    ok("a Windows that refuses to make an AppContainer profile falls back "
+       "to the job object and the token, with the reason in the receipt",
+       code == 0 and "ran to the end" in out
+       and p.get("confinement") == "partial"
+       and "no AppContainer could be made for this run"
+       in p.get("confinement_reason", "")
+       and "CreateAppContainerProfile" in p.get("confinement_reason", "")
+       and "appcontainer" not in (p.get("confinement_layers") or []),
+       [code, err[-400:], p])
+    outside = outside_dir() / "beyond.txt"
+    outside.write_text("outside every grant", encoding="utf-8")
+    code, out, err = cli(hello, "--allow", grant,
+                         env=dict(no_container,
+                                  **{confine.FAULT_ENV: f"read:{outside}"}))
+    ok("...and that fallback holds less: the hook's read outside every "
+       "grant goes through, where the container refuses it (E319)",
+       code == 0 and "succeeded" in err, [code, err[-400:]])
+    code, out, err = cli(hello, "--allow", grant, "--require-confinement",
+                         "full", env=no_container)
+    ok("...so --require-confinement full refuses the run there (E326), "
+       "where with a container it runs",
+       code != 0 and "E326" in err, [code, err[-300:]])
+    code, out, err = cli(hello, "--allow", grant, "--require-confinement",
+                         "full")
+    ok("...and with one it does run", code == 0 and "ran to the end" in out,
+       [code, err[-300:]])
+
 
 # ---- a kernel with no Landlock, simulated (9.0, M4) --------------------------------
 
@@ -2055,6 +2353,11 @@ def main() -> int:
         table_cases()
     honesty_cases()
     legitimate_cases()
+    if RUNTIME == "rust":
+        # the network's port is sabline-rt's (9.0, M4): what the Python
+        # runtime does with the network has not changed, and
+        # check_sandbox.py holds it in both
+        net_port_cases()
     reported_cases()
     unreachable_cases()
     against_cases()

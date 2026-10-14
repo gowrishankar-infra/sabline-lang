@@ -23,12 +23,14 @@
 //! # The `fault-inject` feature
 //!
 //! Three of those attempts are C calls - a Unix socket made, `kill(pid,
-//! 0)`, a bind mount - and one more thing here stands a layer down:
+//! 0)`, a bind mount - and two more things here stand a layer down:
 //! [`NO_LANDLOCK_ENV`], which makes this runtime behave as a kernel with
-//! no Landlock would, so that the path a machine nobody has would take is
-//! measured on an ordinary one. A variable that turns a layer off in a
+//! no Landlock would, and [`NO_APPCONTAINER_ENV`], which makes it behave
+//! as a Windows that refuses to make an AppContainer profile does - so
+//! that the two paths a machine nobody has would take are measured on
+//! ordinary ones. A variable that turns a layer off in a
 //! released binary is a variable that turns confinement off, which
-//! `check_self_budget.py` exists to refuse, so **both are behind the
+//! `check_self_budget.py` exists to refuse, so **all of them are behind the
 //! `fault-inject` feature, which is off by default**: a released crate
 //! carries neither, and the suites that measure the confinement build with
 //! it (`cargo build --release --features fault-inject`). The attempts that
@@ -51,6 +53,45 @@ pub const FAULT_ENV: &str = "SABLINE_FAULT_INJECT";
 /// is what such a machine gives. Behind the `fault-inject` feature, so a
 /// released binary has no way to stand a layer down.
 pub const NO_LANDLOCK_ENV: &str = "SABLINE_FAULT_NO_LANDLOCK";
+
+/// The variable that makes a Windows AppContainer impossible to make, as
+/// a machine whose group policy refuses `CreateAppContainerProfile` - or
+/// a Server install without the AppX stack - makes it: the profile is not
+/// created, no ACE is written, nothing is started, and the run falls back
+/// to the job object and the lowered token with the reason in its receipt.
+///
+/// That fallback is the one Windows path no runner could reach, because
+/// every runner can make a profile (the maintainer's answer 6 of
+/// 2026-10-14). Behind the `fault-inject` feature with [`NO_LANDLOCK_ENV`],
+/// for the same reason: a variable that stands a layer down in a released
+/// binary is a variable that turns confinement off.
+pub const NO_APPCONTAINER_ENV: &str = "SABLINE_FAULT_NO_APPCONTAINER";
+
+/// Why no container could be made on this run, when the hook says none
+/// can; `None` when it says nothing. Always `None` without the
+/// `fault-inject` feature.
+///
+/// The words are a profile creation's own, because that is where it is
+/// asked: `confine_appcontainer::outer` fails at `make_profile` and
+/// nothing after it runs, which is exactly what a machine that refuses
+/// one does.
+#[cfg(feature = "fault-inject")]
+pub fn appcontainer_refused() -> Option<String> {
+    let said = std::env::var(NO_APPCONTAINER_ENV).ok()?;
+    (!said.is_empty() && said != "0").then(|| {
+        format!(
+            "CreateAppContainerProfile: this machine does not make AppContainer profiles \
+             ({NO_APPCONTAINER_ENV})"
+        )
+    })
+}
+
+/// Why no container could be made on this run: never, in a build without
+/// the `fault-inject` feature.
+#[cfg(not(feature = "fault-inject"))]
+pub fn appcontainer_refused() -> Option<String> {
+    None
+}
 
 /// Whether Landlock is to be treated as absent on this run (the leg that
 /// has no machine: plan/9.0.md, M4). Always false without the

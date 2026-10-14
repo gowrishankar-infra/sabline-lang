@@ -73,12 +73,21 @@ places:
   when it is weaker.
 - **The audit.** `sabline audit --json` has `confinement`: for the program's
   `safe_command`, the level and reason on each of the three systems where
-  every layer that system has is there, and `widened_by`, the granted Python
-  modules that widen the OS policy and to what. It reads nothing of the
-  machine, so the audit stays the same bytes wherever it is made. The command
-  line's audit prints what this machine would give.
+  every layer that system has is there, `widened_by`, the granted Python
+  modules that widen the OS policy and to what, and `runtime`, **which
+  runtime the prediction is for**. It reads nothing of the machine, so the
+  audit stays the same bytes wherever it is made for that runtime. From
+  9.0's M4 the prediction is **the runtime that will run the program**
+  (`SABLINE_REFERENCE_RUNTIME`), and on Windows the two differ: sabline-rt
+  holds reads and the network inside an AppContainer, which a running
+  `python.exe` cannot enter. It is asked of sabline-rt rather than modelled
+  in the package, so there is one copy of that behaviour and not two. A
+  prediction is never a promise: what one run got is in its receipt, and
+  **where the two differ the receipt is the one that counts** and says so in
+  its reason.
 - **`sabline doctor`.** What this machine offers, and the level a run under
-  the default budget gets on it.
+  the default budget gets on it - for the runtime that will run it, which
+  the line names when it is not this package's.
 
 `sabline eval` requires full or partial, and refuses to run at none.
 
@@ -229,11 +238,12 @@ reason on each one the two runtimes differ on.
 
 **A container is left off** for a budget it would refuse something the
 budget allows, and the receipt's reason says which: a budget granting a
-**loopback host**, since Windows isolates a container from the loopback
-address unless an administrator exempts it; a budget that restricts
-**neither reads nor writes**, since a container reaches only what it is
-given an ACE for; and a **system where a process inside a container cannot
-resolve a path** as the process that started it does. That last one is
+**loopback host** - or `net` with **no host**, which allows every host
+including the loopback address - since Windows isolates a container from
+the loopback address unless an administrator exempts it; a budget that
+restricts **neither reads nor writes**, since a container reaches only
+what it is given an ACE for; and a **system where a process inside a
+container cannot resolve a path** as the process that started it does. That last one is
 asked rather than assumed: before a run is handed to a container, the
 container is asked to resolve a spelling of its granted paths that is
 **not** their canonical form - the 8.3 form, where the volume keeps one -
@@ -256,11 +266,15 @@ grants.
 AppContainer reaches a file only through that file's own rights, and
 Windows' inheritance is a copy and not a lookup: giving a directory an
 inheritable ACE writes it into every file under it, and taking it back
-writes them all again. That is about half a millisecond a file, charged to
-the run's own deadline, and it changes the rights of the user's files while
-the run lasts. So a grant over a tree larger than that is a container left
-off, with the reason in the receipt, rather than a run that pays for a tree
-nobody counted.
+writes them all again. `perf_gates.py --only contained` measures what that
+costs rather than estimating it - **0.3 ms a file** for the two writes
+together on the machine the bound was set on, so a thousand files is about
+a third of a second charged to the run's own deadline - and it changes the
+rights of the user's files while the run lasts. So a grant over a tree
+larger than that is a container left off, with the reason in the receipt
+**and a line on the error channel**: every other reason is one the budget
+asked for, and this one is not, so the run says it where its operator is
+looking.
 
 **Two runs at once** are two containers with an ACE each on the same file,
 and adding one is *read the rights, add to them, write them back*: without
@@ -279,17 +293,72 @@ it does not:
   because the program runs in another process. In the package it runs in the
   caller's own, which Sabline never confines, so a level asked of it is
   refused (E326); through sabline-rt it is given.
-- **A command confines itself too.** The network, a granted Python module
-  and a tool are called in the process that started sabline-rt, so that
-  process is held to the same policy - after sabline-rt has been started,
-  since the policy lets no process be started. For a pool that process is
-  its worker, which was already confined; for `sabline run` it is the
-  command's own, which ends with the run.
+- **A command confines itself too.** A granted Python module, a tool and
+  the bytes of an `https` exchange are handled in the process that started
+  sabline-rt, so that process is held to the same policy - after sabline-rt
+  has been started, since the policy lets no process be started. For a pool
+  that process is its worker, which was already confined; for `sabline run`
+  it is the command's own, which ends with the run.
 - **An unbounded `sabline.run()`'s host is not confined**, for the same
   reason its own run never was: it is the caller's process. A run there whose
   budget grants `net`, `ffi` or `tool` says so in its receipt's reason, and
-  its level is `partial` rather than `full`, because a connection opened in
-  another process is not something this policy bounds.
+  its level is `partial` rather than `full`, because work done in another
+  process is not something this policy bounds.
+
+### The network, in the process this policy holds (9.0)
+
+Through M3 every call to the network was handled in the process that
+started sabline-rt. So the process the operating system held to the
+budget's hosts was not the process that opened the connection, which is
+the thing a `net:` grant is about. From M4 **every decision the budget
+bounds is sabline-rt's**: the URL split, the host and port matched against
+the `net:` grants, the grant and the operation counted, an ambient proxy
+refused unless the budget covers its own host and port (E317), and **each
+redirect's target checked before it is followed**. What is not the
+budget's stays where it was - a TLS certificate is checked by whoever
+makes the TLS connection, which for an `https` exchange is still the
+host. A request to an
+`http` host - and one carried by a proxy the budget covers - is made
+there too: the socket is opened inside the Windows AppContainer, under the
+Linux seccomp filter and inside the macOS profile, so what the kernel
+refuses a `fetch` is what this page's table says it refuses.
+
+One thing is still two processes, and the receipt says so: **the bytes of
+an `https` exchange**, because sabline-rt has no TLS stack and the crate
+takes no dependency for one yet. The host is a transport there and nothing
+else - one request, one response, no redirect followed, no grant read,
+nothing counted. `plan/9.0.md` finishes the port in M5.
+
+It has one consequence on Windows. A budget granting `net` with **no
+host** allows every host, the loopback address among them, and no
+AppContainer may reach the loopback address - so such a budget now
+**leaves the container off**, with the reason in the receipt, as a budget
+naming a loopback host already did. That is the rule every other reason
+follows: a container that would refuse what the budget allows is a
+container left off, because a run refused something its budget grants is a
+wrong answer and not a safe one. It costs that run its file confinement on
+Windows, and the receipt says so. A budget that names one host outside
+this machine keeps its container, and a policy a granted module widened to
+any host loses it for the same reason a plain `net` grant does.
+
+What is left is a granted host **name** that resolves to a loopback
+address - a hosts-file entry for a development server. The budget grants
+it, the language allows it, and the kernel refuses it; the run says so on
+its error channel, naming the container and the grant that would avoid it,
+because the one thing that must not happen is a refusal with nothing from
+Sabline explaining it.
+
+One difference between the two runtimes is left, and this is where it is
+written down: `sabline/budget.py` asks CPython's
+`getproxies()`, which reads the environment **and** Internet Settings in
+the Windows registry and the macOS system configuration, while sabline-rt
+reads the environment alone - and then opens the socket itself, so there
+is no proxy in the path to bound. A machine with a system-wide proxy set
+outside the environment is a run the Python runtime refuses with E317 and
+sabline-rt carries out, direct, to the host the budget granted. Neither
+sends the request anywhere the budget does not name; what differs is
+whether the run happens at all, and no suite can settle it, because no
+runner has such a proxy to measure.
 
 `check_confine.py --runtime rust` asks every question on this page of
 sabline-rt: the honesty test with its fault-injection hook, what still
@@ -301,7 +370,11 @@ that a run killed while holding them is swept by the next, that
 container is left off for says so in its receipt. Two parts stay the
 package's and say so: the policy and the filter, which the agreement gate
 already compares; and the escape targets, which are measured on a Sabline
-whose *Python* budget checks are knocked out.
+whose *Python* budget checks are knocked out. The network's own port is
+asked there as well: that a request to a granted host is made and answered
+under confinement, that the kernel holds the socket to the granted ports
+where Landlock ABI 4 does, and - on Windows - the loopback consequence
+above, both ways round.
 
 ## What is not confined
 
