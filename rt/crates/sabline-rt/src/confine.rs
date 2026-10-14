@@ -1017,7 +1017,7 @@ pub fn predict(policy: &Json, read_any: bool, system: Option<&str>) -> Report {
     let (layers, notes) = match system {
         "linux" => predict_linux(policy, read_any, nominal, &not_yet, &mut held),
         "macos" => predict_macos(policy, read_any, &not_yet, &mut held),
-        "windows" => predict_windows(policy, read_any, &not_yet, &mut held),
+        "windows" => predict_windows(policy, read_any, nominal, &not_yet, &mut held),
         other => {
             return Report {
                 level: NONE,
@@ -1211,6 +1211,7 @@ fn predict_macos(
 fn predict_windows(
     policy: &Json,
     read_any: bool,
+    nominal: bool,
     not_yet: &dyn Fn(&str) -> Vec<String>,
     held: &mut Vec<(&'static str, Held)>,
 ) -> (Vec<String>, Vec<String>) {
@@ -1218,7 +1219,20 @@ fn predict_windows(
     use crate::confine_windows::{WINDOWS_JOB, WINDOWS_LOW, WINDOWS_NOT_HELD, WINDOWS_TOKEN};
 
     let extras = Extras { read_any, ..Extras::default() };
-    let off = left_off(policy, &extras);
+    let off = left_off(policy, &extras).or_else(|| {
+        // and what this machine has already found out, which a prediction
+        // of **this machine** is entitled to know: a system whose
+        // containers cannot resolve a path remembers that, and a `doctor`
+        // that said `full` where no run of this machine can be full would
+        // be the wrong answer by the one command whose whole question is
+        // what this machine gives. A nominal prediction reads nothing of
+        // the machine and so never asks (9.0, M4).
+        if nominal {
+            None
+        } else {
+            remembered_no_container()
+        }
+    });
     let inside = off.is_none();
     let mut layers: Vec<String> = Vec::new();
     let mut notes: Vec<String> = Vec::new();
@@ -1308,6 +1322,20 @@ fn predict_windows(
         });
     }
     (layers, notes)
+}
+
+/// What this machine has already found out about its own containers, as a
+/// reason a prediction can carry: `None` where nothing is remembered, and
+/// never anything on a system that has no containers to remember.
+fn remembered_no_container() -> Option<String> {
+    #[cfg(windows)]
+    {
+        crate::confine_appcontainer::remembered_no()
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
 }
 
 /// What a receipt says when the level the **operating system** gave this

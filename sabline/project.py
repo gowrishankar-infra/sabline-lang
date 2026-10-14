@@ -546,7 +546,6 @@ def doctor() -> int:
                      f"sabline-lang/issues")
     # what the operating system will be asked to hold of a run (8.4)
     from . import confine as _confine
-    from .budget import Budget
     from .tables import DEFAULT_ALLOW
     offered, what = _confine.supported()
     # for the runtime that will run a program (9.0, M4; the maintainer's

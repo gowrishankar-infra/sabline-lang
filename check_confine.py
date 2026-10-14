@@ -95,6 +95,7 @@ sys.path.insert(0, str(HERE))
 import sabline  # noqa: E402
 from sabline import check_dump, confine, through_rt  # noqa: E402
 from sabline.budget import Budget  # noqa: E402
+from sabline.tables import DEFAULT_ALLOW  # noqa: E402
 from suite_dirs import isolate  # noqa: E402
 
 WORK = isolate("check_confine")
@@ -1066,11 +1067,22 @@ def reported_cases() -> None:
        and "ffi:subprocess widens the OS policy to nothing enforced" in out,
        out[-700:])
     code, out, err = cli("doctor")
+    # it prints the prediction for the runtime that will run the program
+    # (the maintainer's answer 1 of 2026-10-14), which is the question
+    # `confine.predicted` answers - never the level of a run, which a
+    # prediction cannot know and a receipt is what records. rt_predict_cases
+    # above is what holds the prediction itself; this holds the command to
+    # it, and to naming the runtime when it is not this package's.
+    want = confine.predicted(DEFAULT_ALLOW, runtime=RUNTIME)
     ok("sabline doctor reports the level the runtime that will run the "
-       "program gives, and the reason when it is not full",
-       f"confinement: {LEVEL.get(PLATFORM)}" in out
-       and (LEVEL.get(PLATFORM) == "full" or "why:" in out)
-       and (RUNTIME == "python") == ("through rust" not in out), out)
+       "program is predicted to give, naming that runtime, and the reason "
+       "when it is not full",
+       f"confinement: {want['level']}" in out
+       and (want["level"] == "full" or "why:" in out)
+       and (RUNTIME == "python") == ("through rust" not in out)
+       and confine.LEVELS.index(want["level"])
+       >= confine.LEVELS.index(PREDICTED.get(PLATFORM, "none")),
+       [out, want])
 
     from sabline.evaluation import EvalRefused, _EvalPool
 

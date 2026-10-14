@@ -1544,9 +1544,10 @@ def _predict_through_rt(allow: str | None, deny: str | None, strict: bool,
     from . import through_rt as _through_rt
     if ASKED_ELSEWHERE is not None:
         try:
-            return ASKED_ELSEWHERE(allow, deny, strict, system)
+            said = ASKED_ELSEWHERE(allow, deny, strict, system)
         except Exception:
             return None
+        return said if isinstance(said, dict) else None
     exe = _through_rt.binary()
     if not exe:
         return None
