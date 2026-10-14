@@ -516,6 +516,16 @@ pub fn exchange(request: &Request) -> Result<Response, String> {
                     head_end = find(&raw, b"\r\n\r\n").map(|at| at + 4);
                     if let Some(at) = head_end {
                         want = Some(how_it_ends(&raw[..at]));
+                        // a HEAD answer, a 204 and a 304 carry no body
+                        // whatever their head says of one, which
+                        // `http.client` knows and a reader that waited for
+                        // a `Content-Length` of bytes nobody will send
+                        // would not
+                        if request.method == "HEAD"
+                            || matches!(status_of(&raw[..at]), Some(204 | 304))
+                        {
+                            want = Some(Complete::Length(0));
+                        }
                     }
                 }
                 if let Some(at) = head_end {
@@ -587,6 +597,15 @@ fn how_it_ends(head: &[u8]) -> Complete {
         Some(n) => Complete::Length(n),
         None => Complete::AtTheEnd,
     }
+}
+
+/// The status a head says, or `None` when it says none.
+fn status_of(head: &[u8]) -> Option<u32> {
+    let text = String::from_utf8_lossy(head);
+    let line = text.split("\r\n").next()?;
+    let mut words = line.split(' ');
+    words.next().filter(|v| v.starts_with("HTTP/"))?;
+    words.next()?.parse().ok()
 }
 
 /// Whether a chunked body has reached its last chunk: the zero-length one.
